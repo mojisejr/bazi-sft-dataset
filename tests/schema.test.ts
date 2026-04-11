@@ -3,7 +3,15 @@ import { getTableConfig } from "drizzle-orm/pg-core";
 import { describe, expect, test } from "vitest";
 
 import {
+  baziCanonicalRawRows,
+  baziCanonicalSources,
   baziDatasetRecords,
+  baziDayMasterProfiles,
+  baziDomainMatrices,
+  baziFaqTaxonomies,
+  baziReferenceDocuments,
+  baziSixtyJiaziNarratives,
+  baziTimeSolarTerms,
   datasetStatusEnum,
   intentDomainEnum,
   reviewedDatasetContentCheckName,
@@ -34,10 +42,12 @@ describe("baziDatasetRecords", () => {
     expect(intentDomainEnum.enumValues).toEqual([
       "general",
       "work",
+      "study",
       "wealth",
       "love",
       "health",
       "family",
+      "other",
       "timing",
     ]);
   });
@@ -48,5 +58,18 @@ describe("baziDatasetRecords", () => {
     expect(tableConfig.checks.map((entry) => entry.name)).toContain(
       reviewedDatasetContentCheckName,
     );
+  });
+});
+
+describe("phase 1.5 canonical tables", () => {
+  test("exposes the canonical knowledge tables required for online lookup", () => {
+    expect(getTableColumns(baziCanonicalSources)).toHaveProperty("relativePath");
+    expect(getTableColumns(baziReferenceDocuments)).toHaveProperty("content");
+    expect(getTableColumns(baziCanonicalRawRows)).toHaveProperty("cells");
+    expect(getTableColumns(baziTimeSolarTerms)).toHaveProperty("label");
+    expect(getTableColumns(baziFaqTaxonomies)).toHaveProperty("intentDomains");
+    expect(getTableColumns(baziDayMasterProfiles)).toHaveProperty("combinedNarrative");
+    expect(getTableColumns(baziSixtyJiaziNarratives)).toHaveProperty("combinedNarrative");
+    expect(getTableColumns(baziDomainMatrices)).toHaveProperty("rawCells");
   });
 });

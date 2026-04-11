@@ -1,6 +1,9 @@
-import "dotenv/config";
+import { config as loadEnv } from "dotenv";
 
 import { defineConfig } from "drizzle-kit";
+
+loadEnv({ path: ".env.local", override: false, quiet: true });
+loadEnv({ path: ".env", override: false, quiet: true });
 
 export default defineConfig({
   dialect: "postgresql",

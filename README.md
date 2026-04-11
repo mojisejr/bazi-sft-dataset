@@ -6,7 +6,9 @@ A Neuro-Symbolic Web Application designed for deep Bazi data annotation and supe
 
 - Phase 0: Git isolation and operator provisioning complete.
 - Phase 0.5: App scaffold, Drizzle wiring, and Vitest hard-gate foundation complete.
-- Phase 1: `bazi_dataset_records` schema is now defined in Drizzle and ready for live Neon synchronization.
+- Phase 1: `bazi_dataset_records` schema is live in Drizzle and Neon.
+- Phase 1.5: Canonical knowledge normalization landed for the current Mootech corpus, including FAQ taxonomy, interaction tables, day-master profiles, 60 Jiazi narratives, and domain matrices.
+- Phase 1.5 blocker: the raw 100-year solar-term source is still missing from the current corpus, so `bazi_time_solar_terms` exists in schema but remains unseeded.
 
 ## Stack
 
@@ -29,8 +31,10 @@ A Neuro-Symbolic Web Application designed for deep Bazi data annotation and supe
 - `npm run db:migrate`
 - `npm run db:push`
 - `npm run db:studio`
+- `npm run db:seed:canonical:dry`
+- `npm run db:seed:canonical`
 
-The current Drizzle schema defines the Phase 1 `bazi_dataset_records` table, typed JSONB state, intent/status enums, and the reviewed-content check constraint.
+The current Drizzle schema defines the Phase 1 `bazi_dataset_records` table plus the Phase 1.5 canonical knowledge tables used to store the online single source for the distilled Mootech corpus.
 
 ## Owner
 
