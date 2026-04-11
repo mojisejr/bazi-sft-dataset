@@ -1,11 +1,11 @@
 {
-  "id": "259aaccc-e5d5-4f15-a4bc-12b68f0cb558",
+  "id": "51bca280-bf39-401e-b48c-5f2950c04860",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.scaffold_metadata": {
-      "name": "scaffold_metadata",
+    "public.bazi_dataset_records": {
+      "name": "bazi_dataset_records",
       "schema": "",
       "columns": {
         "id": {
@@ -15,26 +15,45 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "project_slug": {
-          "name": "project_slug",
-          "type": "text",
+        "raw_input": {
+          "name": "raw_input",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "scaffold_stage",
+        "calculated_state": {
+          "name": "calculated_state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intent_domain": {
+          "name": "intent_domain",
+          "type": "intent_domain",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'scaffolded'"
+          "default": "'general'"
         },
-        "notes": {
-          "name": "notes",
-          "type": "jsonb",
+        "chain_of_thought": {
+          "name": "chain_of_thought",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_output": {
+          "name": "target_output",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "dataset_status",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": "'{}'::jsonb"
+          "default": "'draft'"
         },
         "created_at": {
           "name": "created_at",
@@ -54,27 +73,38 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "scaffold_metadata_project_slug_unique": {
-          "name": "scaffold_metadata_project_slug_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "project_slug"
-          ]
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "bazi_dataset_records_reviewed_content_check": {
+          "name": "bazi_dataset_records_reviewed_content_check",
+          "value": "(\n        \"bazi_dataset_records\".\"status\" <> 'reviewed'\n        OR (\n          nullif(btrim(\"bazi_dataset_records\".\"chain_of_thought\"), '') IS NOT NULL\n          AND nullif(btrim(\"bazi_dataset_records\".\"target_output\"), '') IS NOT NULL\n        )\n      )"
         }
       },
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     }
   },
   "enums": {
-    "public.scaffold_stage": {
-      "name": "scaffold_stage",
+    "public.dataset_status": {
+      "name": "dataset_status",
       "schema": "public",
       "values": [
-        "scaffolded",
-        "phase_1_pending"
+        "draft",
+        "reviewed",
+        "exported"
+      ]
+    },
+    "public.intent_domain": {
+      "name": "intent_domain",
+      "schema": "public",
+      "values": [
+        "general",
+        "work",
+        "wealth",
+        "love",
+        "health",
+        "family",
+        "timing"
       ]
     }
   },

@@ -6,7 +6,7 @@ A Neuro-Symbolic Web Application designed for deep Bazi data annotation and supe
 
 - Phase 0: Git isolation and operator provisioning complete.
 - Phase 0.5: App scaffold, Drizzle wiring, and Vitest hard-gate foundation complete.
-- Phase 1: Real `bazi_dataset_records` schema is the next implementation slice.
+- Phase 1: `bazi_dataset_records` schema is now defined in Drizzle and ready for live Neon synchronization.
 
 ## Stack
 
@@ -30,7 +30,7 @@ A Neuro-Symbolic Web Application designed for deep Bazi data annotation and supe
 - `npm run db:push`
 - `npm run db:studio`
 
-The current Drizzle schema is scaffold-only and exists to verify infrastructure wiring. Phase 1 will replace or extend it with the real `bazi_dataset_records` schema.
+The current Drizzle schema defines the Phase 1 `bazi_dataset_records` table, typed JSONB state, intent/status enums, and the reviewed-content check constraint.
 
 ## Owner
 
