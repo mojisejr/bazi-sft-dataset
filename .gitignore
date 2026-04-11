@@ -5,6 +5,7 @@
 
 # testing
 /coverage
+.vitest
 
 # next.js
 /.next/
@@ -25,13 +26,13 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.test
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
 # 🛑 ORACLE HQ ISOLATION (STRICT)
 ψ/
