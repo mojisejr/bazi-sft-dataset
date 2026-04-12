@@ -729,7 +729,7 @@ function buildSixtyJiaziNarratives(
     "ลักษณะนิสัย60แบบ_ราศีบน-ล่าง_12เซี่ยงแซ - นิสัยราศีบน,ล่าง,เซี่ยงแซ.csv",
   );
   const relativePath = toRelativeWorkspacePath(fullPath, workspaceRoot);
-  const rows = parseCsvRows(fullPath).filter((row) => row.some((cell) => cell.length > 0));
+  const rows = parseCsvRows(fullPath).filter((row) => row[0]?.length > 0);
   const payloadRows = rows.slice(1);
   const records: SixtyJiaziNarrativeRecord[] = [];
 

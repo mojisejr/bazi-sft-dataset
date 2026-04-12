@@ -15,7 +15,7 @@ describe("buildCanonicalKnowledgeDataset", () => {
     expect(dataset.twelveQiStages.length).toBeGreaterThanOrEqual(120);
     expect(dataset.dayMasterProfiles.length).toBeGreaterThan(50);
     expect(dataset.dayMasterStrengthStates.length).toBeGreaterThan(200);
-    expect(dataset.sixtyJiaziNarratives.length).toBeGreaterThan(50);
+    expect(dataset.sixtyJiaziNarratives.length).toBe(60);
     expect(dataset.domainMatrices.length).toBeGreaterThan(500);
   });
 
