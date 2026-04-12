@@ -4,6 +4,8 @@ import path from "node:path";
 
 import { parse as parseCsv } from "csv-parse/sync";
 
+import { buildGeneratedSolarTermRows } from "./solar-terms";
+
 const DISTILLED_CORPUS_SEGMENTS = [
   ".tmp",
   "p-pol",
@@ -811,17 +813,20 @@ export function buildCanonicalKnowledgeDataset(repoRoot = process.cwd()): BaziCa
   }
 
   const warnings: string[] = [];
-  const timeSolarTermCandidates = listFiles(rawRoot, (entry) => /solar|term|สารท|ปฏิทิน|calendar|เวลา/i.test(entry));
+  let timeSolarTerms: TimeSolarTermRecord[] = [];
 
-  if (timeSolarTermCandidates.length === 0) {
-    warnings.push("time-solar-term-source-missing");
+  try {
+    timeSolarTerms = buildGeneratedSolarTermRows();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    warnings.push(`time-solar-term-generation-failed:${message}`);
   }
 
   return {
     sources: buildCanonicalSources(workspaceRoot, distilledRoot, rawRoot),
     referenceDocuments: buildReferenceDocuments(workspaceRoot, distilledRoot),
     canonicalRawRows: buildCanonicalRawRows(workspaceRoot, distilledRoot),
-    timeSolarTerms: [],
+    timeSolarTerms,
     faqTaxonomies: buildFaqTaxonomies(workspaceRoot, distilledRoot),
     elementInteractions: buildElementInteractions(workspaceRoot, distilledRoot),
     twelveQiStages: buildTwelveQiStages(workspaceRoot, distilledRoot),

@@ -16,6 +16,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:seed:solar-terms": "tsx scripts/seed-time-solar-terms.ts",
+    "db:seed:solar-terms:dry": "tsx scripts/seed-time-solar-terms.ts --dry-run",
     "db:seed:canonical": "tsx scripts/seed-canonical-knowledge.ts",
     "db:seed:canonical:dry": "tsx scripts/seed-canonical-knowledge.ts --dry-run"
   },
@@ -23,6 +25,7 @@
     "@neondatabase/serverless": "^1.0.2",
     "csv-parse": "^6.2.1",
     "drizzle-orm": "^0.45.2",
+    "lunar-javascript": "^1.7.7",
     "next": "16.2.3",
     "react": "19.2.5",
     "react-dom": "19.2.5",
