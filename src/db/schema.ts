@@ -10,7 +10,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import {
-  type AnnotationDataValue,
+  type StoredAnnotationDataValue,
   type CalculatedStateValue,
   REQUIRED_ANNOTATION_DIMENSION_COUNT,
   type RawInputValue,
@@ -78,7 +78,7 @@ export const baziDatasetRecords = pgTable(
       .$type<CalculatedStateValue>()
       .notNull(),
     intentDomain: intentDomainEnum("intent_domain").notNull().default("general"),
-    annotationData: jsonb("annotation_data").$type<AnnotationDataValue>(),
+    annotationData: jsonb("annotation_data").$type<StoredAnnotationDataValue>(),
     status: datasetStatusEnum("status").notNull().default("draft"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })

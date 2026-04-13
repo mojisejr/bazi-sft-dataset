@@ -430,6 +430,22 @@ textarea {
   opacity: 0.78;
 }
 
+.secondary-action {
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(159, 83, 32, 0.18);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--accent);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.secondary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 .form-footnote {
   margin: 0;
 }
@@ -455,6 +471,32 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+.annotation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.save-indicator {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.save-indicator--saving {
+  color: #94611a;
+}
+
+.save-indicator--saved {
+  color: var(--success);
+}
+
+.save-indicator--error {
+  color: var(--danger);
 }
 
 .metric-pill,

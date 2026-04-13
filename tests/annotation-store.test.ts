@@ -1,10 +1,13 @@
 import { describe, expect, test } from "vitest";
 
 import {
+  createDraftAnnotationData,
   createAnnotationStore,
   getAnnotationProgressSummary,
   getDimensionProgress,
+  isAnnotationReadyForReview,
 } from "@/lib/bazi/annotation-store";
+import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
 
 describe("annotation store", () => {
   test("updates one dimension without mutating the others", () => {
@@ -50,5 +53,22 @@ describe("annotation store", () => {
       draftCount: 1,
       notStartedCount: 14,
     });
+  });
+
+  test("serializes draft annotation data in canonical order and detects review readiness", () => {
+    const store = createAnnotationStore();
+
+    for (const dimensionName of REQUIRED_ANNOTATION_DIMENSION_NAMES) {
+      store.getState().updateThoughtProcess(dimensionName, `Reasoning for ${dimensionName}`);
+      store.getState().updateFinalPrediction(dimensionName, `Prediction for ${dimensionName}`);
+    }
+
+    const annotationData = createDraftAnnotationData(store.getState().dimensions);
+
+    expect(annotationData.version).toBe("1.6");
+    expect(annotationData.dimensions.map((dimension) => dimension.dimension_name)).toEqual(
+      [...REQUIRED_ANNOTATION_DIMENSION_NAMES],
+    );
+    expect(isAnnotationReadyForReview(store.getState().dimensions)).toBe(true);
   });
 });

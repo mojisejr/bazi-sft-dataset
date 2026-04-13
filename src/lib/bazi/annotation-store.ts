@@ -4,6 +4,7 @@ import { createStore } from "zustand/vanilla";
 import {
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type AnnotationDimensionName,
+  type DraftAnnotationDataValue,
 } from "@/lib/bazi/schema-types";
 
 export type AnnotationProgressState = "not-started" | "draft" | "complete";
@@ -32,6 +33,8 @@ export type AnnotationProgressSummary = {
   draftCount: number;
   notStartedCount: number;
 };
+
+export type AnnotationDraftContentState = "empty" | "active";
 
 export const ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
   {
@@ -207,6 +210,40 @@ export function getAnnotationProgressSummary(
       notStartedCount: 0,
     },
   );
+}
+
+export function getAnnotationDraftContentState(
+  dimensions: AnnotationDimensionDraftState,
+): AnnotationDraftContentState {
+  const summary = getAnnotationProgressSummary(dimensions);
+
+  if (summary.completeCount > 0 || summary.draftCount > 0) {
+    return "active";
+  }
+
+  return "empty";
+}
+
+export function isAnnotationReadyForReview(
+  dimensions: AnnotationDimensionDraftState,
+) {
+  const summary = getAnnotationProgressSummary(dimensions);
+
+  return summary.completeCount === REQUIRED_ANNOTATION_DIMENSION_NAMES.length;
+}
+
+export function createDraftAnnotationData(
+  dimensions: AnnotationDimensionDraftState,
+): DraftAnnotationDataValue {
+  return {
+    version: "1.6",
+    dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+      dimension_name: dimensionName,
+      thought_process: dimensions[dimensionName].thoughtProcess,
+      final_prediction: dimensions[dimensionName].finalPrediction,
+      supporting_signals: [],
+    })),
+  };
 }
 
 type AnnotationStoreState = {

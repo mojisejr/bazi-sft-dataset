@@ -82,6 +82,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Four Pillars");
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("ฐานดวงเดิม และภาพรวม");
+    expect(html).toContain("Complete Annotation");
     expect(html).toContain("己");
     expect(html).toContain("3.07");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");

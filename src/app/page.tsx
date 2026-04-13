@@ -3,14 +3,21 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 
 import {
+  createDraftAnnotationPayload,
+  type SaveDatasetStatus,
+} from "@/lib/bazi/dataset-records";
+import {
   CalculatedStateSchema,
   type CalculatedStateValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import {
   ANNOTATION_DIMENSION_META,
+  createDraftAnnotationData,
+  getAnnotationDraftContentState,
   getAnnotationProgressSummary,
   getDimensionProgress,
+  isAnnotationReadyForReview,
   resetAnnotationStore,
   useAnnotationStore,
   type AnnotationProgressState,
@@ -57,6 +64,8 @@ export type FormState = {
 };
 
 type SubmissionState = "idle" | "submitting" | "ready" | "error";
+
+type SaveState = "idle" | "saving" | "saved" | "error";
 
 type BaziTrainerWorkspaceProps = {
   initialFormState?: FormState;
@@ -163,6 +172,18 @@ function getProgressCopy(progress: AnnotationProgressState) {
   return "ยังไม่เริ่ม";
 }
 
+function formatSaveTimestamp(timestamp: string | null) {
+  if (!timestamp) {
+    return "ยังไม่มีการบันทึก";
+  }
+
+  return new Intl.DateTimeFormat("th-TH", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(timestamp));
+}
+
 export function BaziTrainerWorkspace({
   initialFormState,
   initialSubmittedInput = null,
@@ -182,6 +203,12 @@ export function BaziTrainerWorkspace({
     initialSubmissionState,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [datasetRecordId, setDatasetRecordId] = useState<string | null>(null);
+  const [datasetStatus, setDatasetStatus] = useState<SaveDatasetStatus | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
   const annotationDimensions = useAnnotationStore((state) => state.dimensions);
   const expandedDimensionName = useAnnotationStore(
     (state) => state.expandedDimensionName,
@@ -198,6 +225,88 @@ export function BaziTrainerWorkspace({
 
   const statusCopy = getStatusCopy(submissionState, Boolean(calculatedState));
   const annotationSummary = getAnnotationProgressSummary(annotationDimensions);
+  const annotationDraftContentState = getAnnotationDraftContentState(annotationDimensions);
+  const canCompleteAnnotation = isAnnotationReadyForReview(annotationDimensions);
+
+  async function persistAnnotation(status: SaveDatasetStatus) {
+    if (!submittedInput || !calculatedState) {
+      return true;
+    }
+
+    const annotationData = createDraftAnnotationData(annotationDimensions);
+    const requestPayload = createDraftAnnotationPayload(
+      submittedInput,
+      calculatedState,
+      annotationData,
+      status,
+      datasetRecordId ?? undefined,
+    );
+    const nextSignature = JSON.stringify(requestPayload);
+
+    if (
+      status === "draft" &&
+      annotationDraftContentState === "empty" &&
+      !datasetRecordId
+    ) {
+      return true;
+    }
+
+    if (status === "draft" && nextSignature === lastSavedSignature) {
+      return true;
+    }
+
+    setSaveState("saving");
+    setSaveErrorMessage(null);
+
+    try {
+      const response = await fetch("/api/dataset/save", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(requestPayload),
+      });
+      const body = (await response.json()) as {
+        recordId?: string;
+        status?: SaveDatasetStatus;
+        updatedAt?: string;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(body.error ?? "ยังไม่สามารถบันทึก annotation ได้ในตอนนี้");
+      }
+
+      setDatasetRecordId(body.recordId ?? null);
+      setDatasetStatus(body.status ?? status);
+      setLastSavedAt(body.updatedAt ?? null);
+      setLastSavedSignature(nextSignature);
+      setSaveState("saved");
+
+      return true;
+    } catch (error) {
+      setSaveState("error");
+      setSaveErrorMessage(normalizeErrorMessage(error));
+
+      return false;
+    }
+  }
+
+  async function handleCompleteAnnotation() {
+    if (!canCompleteAnnotation) {
+      return;
+    }
+
+    await persistAnnotation("reviewed");
+  }
+
+  async function handleAccordionToggle(dimensionName: typeof expandedDimensionName) {
+    if (expandedDimensionName !== dimensionName) {
+      await persistAnnotation("draft");
+    }
+
+    setExpandedDimension(dimensionName);
+  }
 
   function handleFieldChange(
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -242,6 +351,12 @@ export function BaziTrainerWorkspace({
       setCalculatedState(parsedState);
       setSubmittedInput(payload);
       setSubmissionState("ready");
+      setDatasetRecordId(null);
+      setDatasetStatus(null);
+      setSaveState("idle");
+      setSaveErrorMessage(null);
+      setLastSavedAt(null);
+      setLastSavedSignature(null);
     } catch (error) {
       setSubmissionState("error");
       setErrorMessage(normalizeErrorMessage(error));
@@ -554,6 +669,40 @@ export function BaziTrainerWorkspace({
                     รอเริ่ม {annotationSummary.notStartedCount}
                   </div>
                 </div>
+
+                <div className="annotation-actions">
+                  <p
+                    className={`save-indicator save-indicator--${saveState}`}
+                    aria-live="polite"
+                  >
+                    {saveState === "saving"
+                      ? datasetStatus === "reviewed"
+                        ? "กำลังปิด annotation ชุดนี้..."
+                        : "Auto-saving..."
+                      : saveState === "error"
+                        ? saveErrorMessage ?? "บันทึกไม่สำเร็จ ลองแก้ไขแล้ว blur อีกครั้ง"
+                        : datasetStatus === "reviewed"
+                          ? `Annotation reviewed แล้ว • ${formatSaveTimestamp(lastSavedAt)}`
+                          : `Auto-saved • ${formatSaveTimestamp(lastSavedAt)}`}
+                  </p>
+
+                  <button
+                    type="button"
+                    className="secondary-action"
+                    onClick={() => void handleCompleteAnnotation()}
+                    disabled={
+                      !canCompleteAnnotation ||
+                      saveState === "saving" ||
+                      datasetStatus === "reviewed"
+                    }
+                  >
+                    {datasetStatus === "reviewed"
+                      ? "Reviewed แล้ว"
+                      : saveState === "saving"
+                        ? "กำลังบันทึก..."
+                        : "Complete Annotation"}
+                  </button>
+                </div>
               </div>
 
               <div className="accordion-list">
@@ -572,7 +721,7 @@ export function BaziTrainerWorkspace({
                       <button
                         type="button"
                         className="accordion-trigger"
-                        onClick={() => setExpandedDimension(dimension.dimensionName)}
+                        onClick={() => void handleAccordionToggle(dimension.dimensionName)}
                         aria-expanded={isExpanded}
                       >
                         <span className="accordion-index">{String(dimension.step).padStart(2, "0")}</span>
@@ -599,6 +748,7 @@ export function BaziTrainerWorkspace({
                               rows={5}
                               value={draft.thoughtProcess}
                               placeholder={dimension.thoughtPrompt}
+                              onBlur={() => void persistAnnotation("draft")}
                               onChange={(event) =>
                                 updateThoughtProcess(
                                   dimension.dimensionName,
@@ -618,6 +768,7 @@ export function BaziTrainerWorkspace({
                               value={draft.finalPrediction}
                               placeholder={dimension.predictionPrompt}
                               disabled={!predictionUnlocked}
+                              onBlur={() => void persistAnnotation("draft")}
                               onChange={(event) =>
                                 updateFinalPrediction(
                                   dimension.dimensionName,

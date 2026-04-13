@@ -18,6 +18,7 @@ import {
 } from "@/db/schema";
 import {
   AnnotationDataSchema,
+  DraftAnnotationDataSchema,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
 } from "@/lib/bazi/schema-types";
 
@@ -87,6 +88,19 @@ describe("baziDatasetRecords", () => {
         })),
       }),
     ).toThrow(/duplicate dimensions/i);
+  });
+
+  test("allows draft annotation data with partial text while preserving all 15 dimensions", () => {
+    const parsed = DraftAnnotationDataSchema.parse({
+      version: "1.6",
+      dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+        dimension_name: dimensionName,
+        thought_process: dimensionName === "chart_foundation" ? "Has draft" : "",
+        final_prediction: "",
+      })),
+    });
+
+    expect(parsed.dimensions).toHaveLength(15);
   });
 });
 

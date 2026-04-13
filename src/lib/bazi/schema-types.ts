@@ -74,40 +74,64 @@ export const DimensionSchema = z.object({
   confidence_note: z.string().trim().min(1).optional(),
 });
 
+export const DraftDimensionSchema = z.object({
+  dimension_name: AnnotationDimensionNameSchema,
+  thought_process: z.string(),
+  final_prediction: z.string(),
+  supporting_signals: z.array(z.string().trim().min(1)).default([]),
+  confidence_note: z.string().trim().min(1).optional(),
+});
+
+function refineAnnotationDimensions(
+  value: { dimensions: Array<{ dimension_name: AnnotationDimensionName }> },
+  context: z.RefinementCtx,
+) {
+  const names = value.dimensions.map((dimension) => dimension.dimension_name);
+  const uniqueNames = new Set(names);
+
+  if (uniqueNames.size !== REQUIRED_ANNOTATION_DIMENSION_COUNT) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "annotation_data.dimensions must not contain duplicate dimensions.",
+      path: ["dimensions"],
+    });
+  }
+
+  const missingNames = REQUIRED_ANNOTATION_DIMENSION_NAMES.filter(
+    (dimensionName) => !uniqueNames.has(dimensionName),
+  );
+
+  if (missingNames.length > 0) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `annotation_data.dimensions is missing: ${missingNames.join(", ")}`,
+      path: ["dimensions"],
+    });
+  }
+}
+
+export const DraftAnnotationDataSchema = z
+  .object({
+    version: z.literal("1.6"),
+    dimensions: z.array(DraftDimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    reviewSummary: z.string().trim().min(1).optional(),
+  })
+  .superRefine(refineAnnotationDimensions);
+
 export const AnnotationDataSchema = z
   .object({
     version: z.literal("1.6"),
     dimensions: z.array(DimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
   })
-  .superRefine((value, context) => {
-    const names = value.dimensions.map((dimension) => dimension.dimension_name);
-    const uniqueNames = new Set(names);
-
-    if (uniqueNames.size !== REQUIRED_ANNOTATION_DIMENSION_COUNT) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "annotation_data.dimensions must not contain duplicate dimensions.",
-        path: ["dimensions"],
-      });
-    }
-
-    const missingNames = REQUIRED_ANNOTATION_DIMENSION_NAMES.filter(
-      (dimensionName) => !uniqueNames.has(dimensionName),
-    );
-
-    if (missingNames.length > 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `annotation_data.dimensions is missing: ${missingNames.join(", ")}`,
-        path: ["dimensions"],
-      });
-    }
-  });
+  .superRefine(refineAnnotationDimensions);
 
 export type PillarValue = z.infer<typeof PillarValueSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;
 export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
+export type DraftDimensionValue = z.infer<typeof DraftDimensionSchema>;
 export type DimensionValue = z.infer<typeof DimensionSchema>;
+export type DraftAnnotationDataValue = z.infer<typeof DraftAnnotationDataSchema>;
 export type AnnotationDataValue = z.infer<typeof AnnotationDataSchema>;
+export type StoredAnnotationDataValue = DraftAnnotationDataValue | AnnotationDataValue;
