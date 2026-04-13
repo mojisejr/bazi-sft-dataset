@@ -1,11 +1,16 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test } from "vitest";
 
 import { BaziTrainerWorkspace, createDefaultFormState } from "@/app/page";
+import { resetAnnotationStore } from "@/lib/bazi/annotation-store";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
 describe("BaziTrainerWorkspace", () => {
+  beforeEach(() => {
+    resetAnnotationStore();
+  });
+
   test("renders the branding and calm empty state before calculation", () => {
     const html = renderToStaticMarkup(createElement(BaziTrainerWorkspace));
 
@@ -75,6 +80,8 @@ describe("BaziTrainerWorkspace", () => {
 
     expect(html).toContain("ภาพรวมพร้อมอ่าน");
     expect(html).toContain("Four Pillars");
+    expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
+    expect(html).toContain("ฐานดวงเดิม และภาพรวม");
     expect(html).toContain("己");
     expect(html).toContain("3.07");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");

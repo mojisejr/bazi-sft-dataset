@@ -35,7 +35,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -161,7 +162,8 @@ select {
 }
 
 .engine-stack,
-.input-form {
+.input-form,
+.annotation-stage {
   display: grid;
   gap: 18px;
 }
@@ -436,6 +438,144 @@ select {
   margin-top: 18px;
 }
 
+.annotation-summary-card {
+  display: grid;
+  gap: 18px;
+}
+
+.annotation-intro,
+.field-hint,
+.prediction-lock {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.annotation-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.metric-pill,
+.progress-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.metric-dot,
+.progress-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.metric-pill--complete,
+.progress-badge--complete {
+  color: var(--success);
+  background: rgba(69, 106, 50, 0.08);
+  border-color: rgba(69, 106, 50, 0.18);
+}
+
+.metric-pill--draft,
+.progress-badge--draft {
+  color: #94611a;
+  background: rgba(148, 97, 26, 0.08);
+  border-color: rgba(148, 97, 26, 0.18);
+}
+
+.metric-pill--not-started,
+.progress-badge--not-started {
+  color: var(--muted);
+  background: rgba(105, 89, 76, 0.08);
+  border-color: rgba(105, 89, 76, 0.14);
+}
+
+.accordion-list {
+  display: grid;
+  gap: 14px;
+}
+
+.accordion-item {
+  padding: 0;
+  overflow: hidden;
+}
+
+.accordion-trigger {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 18px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.accordion-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: rgba(159, 83, 32, 0.08);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.accordion-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.accordion-copy strong {
+  font-size: 1rem;
+}
+
+.accordion-copy span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.annotation-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 18px 18px;
+}
+
+.field textarea {
+  width: 100%;
+  resize: vertical;
+  min-height: 132px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(110, 79, 48, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+}
+
+.field textarea:focus {
+  outline: 2px solid rgba(159, 83, 32, 0.18);
+  outline-offset: 2px;
+}
+
+.field textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 @media (max-width: 1160px) {
   .trainer-grid,
   .trainer-header {
@@ -459,6 +599,11 @@ select {
   .detail-grid,
   .metaphor-list {
     grid-template-columns: 1fr;
+  }
+
+  .accordion-trigger {
+    grid-template-columns: 1fr;
+    justify-items: start;
   }
 
   .pillar-row {

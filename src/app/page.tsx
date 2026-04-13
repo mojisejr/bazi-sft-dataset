@@ -7,6 +7,14 @@ import {
   type CalculatedStateValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
+import {
+  ANNOTATION_DIMENSION_META,
+  getAnnotationProgressSummary,
+  getDimensionProgress,
+  resetAnnotationStore,
+  useAnnotationStore,
+  type AnnotationProgressState,
+} from "@/lib/bazi/annotation-store";
 
 const pillarColumns = [
   { key: "year", label: "ปี" },
@@ -131,6 +139,30 @@ function buildPayload(formState: FormState): RawInputValue {
   };
 }
 
+function getProgressTone(progress: AnnotationProgressState) {
+  if (progress === "complete") {
+    return "complete";
+  }
+
+  if (progress === "draft") {
+    return "draft";
+  }
+
+  return "not-started";
+}
+
+function getProgressCopy(progress: AnnotationProgressState) {
+  if (progress === "complete") {
+    return "สมบูรณ์";
+  }
+
+  if (progress === "draft") {
+    return "กำลังเขียน";
+  }
+
+  return "ยังไม่เริ่ม";
+}
+
 export function BaziTrainerWorkspace({
   initialFormState,
   initialSubmittedInput = null,
@@ -150,8 +182,22 @@ export function BaziTrainerWorkspace({
     initialSubmissionState,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const annotationDimensions = useAnnotationStore((state) => state.dimensions);
+  const expandedDimensionName = useAnnotationStore(
+    (state) => state.expandedDimensionName,
+  );
+  const setExpandedDimension = useAnnotationStore(
+    (state) => state.setExpandedDimension,
+  );
+  const updateThoughtProcess = useAnnotationStore(
+    (state) => state.updateThoughtProcess,
+  );
+  const updateFinalPrediction = useAnnotationStore(
+    (state) => state.updateFinalPrediction,
+  );
 
   const statusCopy = getStatusCopy(submissionState, Boolean(calculatedState));
+  const annotationSummary = getAnnotationProgressSummary(annotationDimensions);
 
   function handleFieldChange(
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -192,6 +238,7 @@ export function BaziTrainerWorkspace({
 
       const parsedState = CalculatedStateSchema.parse(body.calculatedState);
 
+      resetAnnotationStore();
       setCalculatedState(parsedState);
       setSubmittedInput(payload);
       setSubmissionState("ready");
@@ -482,11 +529,123 @@ export function BaziTrainerWorkspace({
             </p>
           </form>
 
-          <div className="surface inset-card message-card" aria-live="polite">
-            <p className="section-kicker">สัญญาณจากระบบ</p>
-            <h3>{statusCopy.label}</h3>
-            <p>{errorMessage ?? statusCopy.detail}</p>
-          </div>
+          {calculatedState ? (
+            <section className="annotation-stage">
+              <div className="surface inset-card annotation-summary-card">
+                <div>
+                  <p className="section-kicker">สมุดวิเคราะห์ 15 มิติ</p>
+                  <h3>ไล่เขียนทีละหัวข้อแบบไม่หลงทาง</h3>
+                  <p className="annotation-intro">
+                    เริ่มจากหัวข้อที่ระบบเปิดไว้ก่อน แล้วค่อยเติมเหตุผลการวิเคราะห์ให้ชัด เมื่อเหตุผลครบ ระบบจะเปิดช่องคำทำนายของหัวข้อนั้นเอง
+                  </p>
+                </div>
+
+                <div className="annotation-metrics" aria-label="annotation progress summary">
+                  <div className="metric-pill metric-pill--complete">
+                    <span className="metric-dot" aria-hidden="true" />
+                    ครบแล้ว {annotationSummary.completeCount}
+                  </div>
+                  <div className="metric-pill metric-pill--draft">
+                    <span className="metric-dot" aria-hidden="true" />
+                    กำลังเขียน {annotationSummary.draftCount}
+                  </div>
+                  <div className="metric-pill metric-pill--not-started">
+                    <span className="metric-dot" aria-hidden="true" />
+                    รอเริ่ม {annotationSummary.notStartedCount}
+                  </div>
+                </div>
+              </div>
+
+              <div className="accordion-list">
+                {ANNOTATION_DIMENSION_META.map((dimension) => {
+                  const draft = annotationDimensions[dimension.dimensionName];
+                  const progress = getDimensionProgress(draft);
+                  const predictionUnlocked = draft.thoughtProcess.trim().length > 0;
+                  const isExpanded =
+                    expandedDimensionName === dimension.dimensionName;
+
+                  return (
+                    <section
+                      key={dimension.dimensionName}
+                      className="surface inset-card accordion-item"
+                    >
+                      <button
+                        type="button"
+                        className="accordion-trigger"
+                        onClick={() => setExpandedDimension(dimension.dimensionName)}
+                        aria-expanded={isExpanded}
+                      >
+                        <span className="accordion-index">{String(dimension.step).padStart(2, "0")}</span>
+
+                        <span className="accordion-copy">
+                          <strong>{dimension.title}</strong>
+                          <span>{dimension.guidance}</span>
+                        </span>
+
+                        <span
+                          className={`progress-badge progress-badge--${getProgressTone(progress)}`}
+                        >
+                          <span className="progress-dot" aria-hidden="true" />
+                          {getProgressCopy(progress)}
+                        </span>
+                      </button>
+
+                      {isExpanded ? (
+                        <div className="annotation-body">
+                          <label className="field">
+                            <span>เหตุผลการวิเคราะห์</span>
+                            <textarea
+                              name={`${dimension.dimensionName}-thought-process`}
+                              rows={5}
+                              value={draft.thoughtProcess}
+                              placeholder={dimension.thoughtPrompt}
+                              onChange={(event) =>
+                                updateThoughtProcess(
+                                  dimension.dimensionName,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          <p className="field-hint">{dimension.guidance}</p>
+
+                          <label className="field">
+                            <span>คำทำนาย</span>
+                            <textarea
+                              name={`${dimension.dimensionName}-prediction`}
+                              rows={4}
+                              value={draft.finalPrediction}
+                              placeholder={dimension.predictionPrompt}
+                              disabled={!predictionUnlocked}
+                              onChange={(event) =>
+                                updateFinalPrediction(
+                                  dimension.dimensionName,
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+
+                          {predictionUnlocked ? null : (
+                            <p className="prediction-lock">
+                              เติมเหตุผลการวิเคราะห์ก่อน แล้วช่องคำทำนายจะเปิดให้อัตโนมัติ
+                            </p>
+                          )}
+                        </div>
+                      ) : null}
+                    </section>
+                  );
+                })}
+              </div>
+            </section>
+          ) : (
+            <div className="surface inset-card message-card" aria-live="polite">
+              <p className="section-kicker">สัญญาณจากระบบ</p>
+              <h3>{statusCopy.label}</h3>
+              <p>{errorMessage ?? statusCopy.detail}</p>
+            </div>
+          )}
         </aside>
       </section>
     </main>

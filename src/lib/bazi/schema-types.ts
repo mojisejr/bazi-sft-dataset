@@ -106,6 +106,7 @@ export const AnnotationDataSchema = z
   });
 
 export type PillarValue = z.infer<typeof PillarValueSchema>;
+export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;
 export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
 export type DimensionValue = z.infer<typeof DimensionSchema>;
