@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Bazi SFT Dataset",
-  description: "Scaffold foundation for the Bazi annotation and dataset platform.",
+  title: "Bazi Trainer",
+  description: "Bazi Trainer that makes ซินแส ซินแส !",
 };
 
 type RootLayoutProps = Readonly<{
