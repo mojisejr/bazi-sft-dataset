@@ -10,8 +10,31 @@ export type DateTimeParts = {
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const TIME_PATTERN = /^(\d{2}):(\d{2})(?::(\d{2}))?$/;
 
+const FIXED_TIMEZONE_OFFSETS = {
+  "Asia/Bangkok": 7 * 60,
+  "Asia/Hong_Kong": 8 * 60,
+  "Asia/Shanghai": 8 * 60,
+  "Asia/Singapore": 8 * 60,
+  "Asia/Taipei": 8 * 60,
+} as const;
+
 function getPart(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes) {
   return parts.find((entry) => entry.type === type)?.value;
+}
+
+function getFixedTimezoneOffsetMinutes(timeZone: string) {
+  return FIXED_TIMEZONE_OFFSETS[timeZone as keyof typeof FIXED_TIMEZONE_OFFSETS] ?? null;
+}
+
+function getUtcParts(date: Date): DateTimeParts {
+  return {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+    hour: date.getUTCHours(),
+    minute: date.getUTCMinutes(),
+    second: date.getUTCSeconds(),
+  };
 }
 
 export function parseDateTimeParts(dateText: string, timeText: string): DateTimeParts {
@@ -33,6 +56,12 @@ export function parseDateTimeParts(dateText: string, timeText: string): DateTime
 }
 
 export function getDateTimePartsInTimeZone(date: Date, timeZone: string): DateTimeParts {
+  const fixedOffsetMinutes = getFixedTimezoneOffsetMinutes(timeZone);
+
+  if (fixedOffsetMinutes !== null) {
+    return getUtcParts(new Date(date.getTime() + fixedOffsetMinutes * 60 * 1000));
+  }
+
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone,
     year: "numeric",
@@ -63,6 +92,21 @@ export function formatDateTimeParts(parts: DateTimeParts) {
 }
 
 export function zonedDateTimeToUtc(parts: DateTimeParts, timeZone: string) {
+  const fixedOffsetMinutes = getFixedTimezoneOffsetMinutes(timeZone);
+
+  if (fixedOffsetMinutes !== null) {
+    return new Date(
+      Date.UTC(
+        parts.year,
+        parts.month - 1,
+        parts.day,
+        parts.hour,
+        parts.minute,
+        parts.second,
+      ) - fixedOffsetMinutes * 60 * 1000,
+    );
+  }
+
   let guess = Date.UTC(
     parts.year,
     parts.month - 1,

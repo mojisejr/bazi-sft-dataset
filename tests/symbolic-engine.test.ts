@@ -154,6 +154,26 @@ describe("calculateBaziChart", () => {
       },
     ]);
   });
+
+  test("keeps historical Bangkok births on fixed regional offsets instead of political DST", async () => {
+    const repository = createTestKnowledgeRepository();
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1966-09-29",
+        birthTime: "11:44",
+        gender: "female",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    expect(result.fourPillars.year).toMatchObject({ stem: "丙", branch: "午" });
+    expect(result.fourPillars.month).toMatchObject({ stem: "丁", branch: "酉" });
+    expect(result.fourPillars.day).toMatchObject({ stem: "辛", branch: "卯" });
+    expect(result.fourPillars.hour).toMatchObject({ stem: "甲", branch: "午" });
+  });
 });
 
 describe("createCalculateBaziHandler", () => {
