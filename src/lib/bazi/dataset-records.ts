@@ -49,8 +49,18 @@ export type SavedDatasetRecord = {
   updatedAt: string;
 };
 
+export type SaveDatasetAuth = {
+  userId: string | null;
+  isAuthenticated?: boolean;
+};
+
+export type SaveDatasetAuthenticate = () => Promise<SaveDatasetAuth>;
+
 export type DatasetRecordRepository = {
-  saveRecord: (input: SaveDatasetRequest) => Promise<SavedDatasetRecord>;
+  saveRecord: (
+    input: SaveDatasetRequest,
+    annotatorId: string,
+  ) => Promise<SavedDatasetRecord>;
 };
 
 export function createDraftAnnotationPayload(
@@ -73,13 +83,14 @@ export function createDbDatasetRecordRepository(
   databaseUrl?: string,
 ): DatasetRecordRepository {
   return {
-    async saveRecord(input) {
+    async saveRecord(input, annotatorId) {
       const db = createDbClient(databaseUrl);
       const values = {
         rawInput: input.rawInput,
         calculatedState: input.calculatedState,
         annotationData: input.annotationData,
         status: input.status,
+        annotatorId,
       };
 
       if (input.recordId) {
@@ -122,14 +133,27 @@ export function createDbDatasetRecordRepository(
 
 type SaveDatasetHandlerOptions = {
   repository?: DatasetRecordRepository;
+  authenticate: SaveDatasetAuthenticate;
 };
 
-export function createSaveDatasetHandler(options: SaveDatasetHandlerOptions = {}) {
+export function createSaveDatasetHandler(options: SaveDatasetHandlerOptions) {
   return async function POST(request: Request) {
     try {
+      const authResult = await options.authenticate();
+      const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
+
+      if (!isAuthenticated || !authResult.userId) {
+        return Response.json(
+          {
+            error: "Unauthorized",
+          },
+          { status: 401 },
+        );
+      }
+
       const payload = SaveDatasetRequestSchema.parse(await request.json());
       const repository = options.repository ?? createDbDatasetRecordRepository();
-      const record = await repository.saveRecord(payload);
+      const record = await repository.saveRecord(payload, authResult.userId);
 
       return Response.json(record, { status: 200 });
     } catch (error) {

@@ -31,6 +31,7 @@ describe("baziDatasetRecords", () => {
       "intentDomain",
       "annotationData",
       "status",
+      "annotatorId",
       "createdAt",
       "updatedAt",
     ]);

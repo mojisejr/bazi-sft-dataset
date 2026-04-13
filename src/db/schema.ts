@@ -80,6 +80,7 @@ export const baziDatasetRecords = pgTable(
     intentDomain: intentDomainEnum("intent_domain").notNull().default("general"),
     annotationData: jsonb("annotation_data").$type<StoredAnnotationDataValue>(),
     status: datasetStatusEnum("status").notNull().default("draft"),
+    annotatorId: text("annotator_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()

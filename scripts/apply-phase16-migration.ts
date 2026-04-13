@@ -1,3 +1,4 @@
+import { access } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 
@@ -5,9 +6,14 @@ import { config as loadEnv } from "dotenv";
 
 import { getDatabaseUrl } from "../src/lib/env";
 
-const migrationFilePath = path.resolve(
+const annotationTruthMigrationFilePath = path.resolve(
   process.cwd(),
   "drizzle/0002_phase16_annotation_truth.sql",
+);
+
+const annotatorIdentityMigrationFilePath = path.resolve(
+  process.cwd(),
+  "drizzle/0003_phase53_annotator_identity.sql",
 );
 
 const columnQuery = [
@@ -43,15 +49,50 @@ function readDatasetColumns() {
   return output.length === 0 ? [] : output.split("\n");
 }
 
+function hasAnnotationTruth(columns: string[]) {
+  return (
+    columns.includes("annotation_data") &&
+    !columns.includes("chain_of_thought") &&
+    !columns.includes("target_output")
+  );
+}
+
+async function ensureMigrationExists(filePath: string) {
+  try {
+    await access(filePath);
+  } catch {
+    throw new Error(`Expected migration file is missing: ${path.basename(filePath)}`);
+  }
+}
+
 async function main() {
   const beforeColumns = readDatasetColumns();
-  const alreadyApplied =
-    beforeColumns.includes("annotation_data") &&
-    !beforeColumns.includes("chain_of_thought") &&
-    !beforeColumns.includes("target_output");
+  const annotationTruthApplied = hasAnnotationTruth(beforeColumns);
 
-  if (!alreadyApplied) {
-    runPsql(["-d", getDatabaseUrl(), "-v", "ON_ERROR_STOP=1", "-f", migrationFilePath]);
+  if (!annotationTruthApplied) {
+    await ensureMigrationExists(annotationTruthMigrationFilePath);
+    runPsql([
+      "-d",
+      getDatabaseUrl(),
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      annotationTruthMigrationFilePath,
+    ]);
+  }
+
+  const afterAnnotationTruthColumns = readDatasetColumns();
+
+  if (!afterAnnotationTruthColumns.includes("annotator_id")) {
+    await ensureMigrationExists(annotatorIdentityMigrationFilePath);
+    runPsql([
+      "-d",
+      getDatabaseUrl(),
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      annotatorIdentityMigrationFilePath,
+    ]);
   }
 
   const afterColumns = readDatasetColumns();
@@ -62,6 +103,10 @@ async function main() {
 
   if (afterColumns.includes("chain_of_thought") || afterColumns.includes("target_output")) {
     throw new Error("Phase 1.6 migration did not fully remove legacy dataset columns.");
+  }
+
+  if (!afterColumns.includes("annotator_id")) {
+    throw new Error("Phase 5.3 migration did not add annotator_id to bazi_dataset_records.");
   }
 
   console.log(

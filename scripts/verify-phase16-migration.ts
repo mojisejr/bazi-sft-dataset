@@ -76,7 +76,7 @@ async function main() {
   }
 
   console.log(
-    `Verified ${path.basename(latestSqlFile)} and ${path.basename(latestSnapshotFile)}: Phase 1.6 migration only touches dataset schema surfaces.`,
+    `Verified ${path.basename(latestSqlFile)} and ${path.basename(latestSnapshotFile)}: latest dataset migration only touches dataset schema surfaces.`,
   );
 }
 

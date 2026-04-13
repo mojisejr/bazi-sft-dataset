@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
   createSaveDatasetHandler,
   type DatasetRecordRepository,
+  type SaveDatasetAuthenticate,
 } from "@/lib/bazi/dataset-records";
 import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
 
@@ -74,7 +75,11 @@ describe("createSaveDatasetHandler", () => {
         updatedAt: "2026-04-13T04:30:00.000Z",
       }),
     };
-    const handler = createSaveDatasetHandler({ repository });
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveDatasetHandler({ repository, authenticate });
 
     const response = await handler(
       new Request("http://localhost/api/dataset/save", {
@@ -93,13 +98,23 @@ describe("createSaveDatasetHandler", () => {
       updatedAt: "2026-04-13T04:30:00.000Z",
     });
     expect(repository.saveRecord).toHaveBeenCalledTimes(1);
+    expect(repository.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "reviewed",
+      }),
+      "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+    );
   });
 
   test("rejects reviewed payloads when any dimension is incomplete", async () => {
     const repository: DatasetRecordRepository = {
       saveRecord: vi.fn(),
     };
-    const handler = createSaveDatasetHandler({ repository });
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveDatasetHandler({ repository, authenticate });
     const requestBody = createRequestBody();
 
     requestBody.annotationData.dimensions[0] = {
@@ -118,6 +133,33 @@ describe("createSaveDatasetHandler", () => {
     );
 
     expect(response.status).toBe(400);
+    expect(repository.saveRecord).not.toHaveBeenCalled();
+  });
+
+  test("rejects unauthenticated requests with 401 before touching the repository", async () => {
+    const repository: DatasetRecordRepository = {
+      saveRecord: vi.fn(),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: null,
+      isAuthenticated: false,
+    });
+    const handler = createSaveDatasetHandler({ repository, authenticate });
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/save", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(createRequestBody()),
+      }),
+    );
+
+    expect(response.status).toBe(401);
+    expect(await response.json()).toEqual({
+      error: "Unauthorized",
+    });
     expect(repository.saveRecord).not.toHaveBeenCalled();
   });
 });

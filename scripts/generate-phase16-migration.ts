@@ -2,39 +2,10 @@ import { randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const migrationTag = "0002_phase16_annotation_truth";
-const snapshotFileName = "0002_snapshot.json";
-const requiredCheckValue = `(
-        "bazi_dataset_records"."status" <> 'reviewed'
-        OR (
-          "bazi_dataset_records"."annotation_data" IS NOT NULL
-          AND jsonb_typeof("bazi_dataset_records"."annotation_data") = 'object'
-          AND jsonb_typeof("bazi_dataset_records"."annotation_data" -> 'dimensions') = 'array'
-          AND jsonb_array_length("bazi_dataset_records"."annotation_data" -> 'dimensions') = 15
-          AND NOT jsonb_path_exists(
-            "bazi_dataset_records"."annotation_data",
-            '$.dimensions[*] ? (@.dimension_name == null || @.dimension_name == "" || @.thought_process == null || @.thought_process == "" || @.final_prediction == null || @.final_prediction == "")'
-          )
-        )
-      )`;
+const migrationTag = "0003_phase53_annotator_identity";
+const snapshotFileName = "0003_snapshot.json";
 
-const migrationSql = `ALTER TABLE "bazi_dataset_records" DROP CONSTRAINT "bazi_dataset_records_reviewed_content_check";--> statement-breakpoint
-ALTER TABLE "bazi_dataset_records" ADD COLUMN "annotation_data" jsonb;--> statement-breakpoint
-ALTER TABLE "bazi_dataset_records" DROP COLUMN "chain_of_thought";--> statement-breakpoint
-ALTER TABLE "bazi_dataset_records" DROP COLUMN "target_output";--> statement-breakpoint
-ALTER TABLE "bazi_dataset_records" ADD CONSTRAINT "bazi_dataset_records_reviewed_content_check" CHECK ((
-        "bazi_dataset_records"."status" <> 'reviewed'
-        OR (
-          "bazi_dataset_records"."annotation_data" IS NOT NULL
-          AND jsonb_typeof("bazi_dataset_records"."annotation_data") = 'object'
-          AND jsonb_typeof("bazi_dataset_records"."annotation_data" -> 'dimensions') = 'array'
-          AND jsonb_array_length("bazi_dataset_records"."annotation_data" -> 'dimensions') = 15
-          AND NOT jsonb_path_exists(
-            "bazi_dataset_records"."annotation_data",
-            '$.dimensions[*] ? (@.dimension_name == null || @.dimension_name == "" || @.thought_process == null || @.thought_process == "" || @.final_prediction == null || @.final_prediction == "")'
-          )
-        )
-      ));
+const migrationSql = `ALTER TABLE "bazi_dataset_records" ADD COLUMN IF NOT EXISTS "annotator_id" text;
 `;
 
 type Snapshot = {
@@ -67,7 +38,7 @@ type Journal = {
 async function main() {
   const drizzleDirectory = path.resolve(process.cwd(), "drizzle");
   const metaDirectory = path.resolve(drizzleDirectory, "meta");
-  const latestSnapshotPath = path.resolve(metaDirectory, "0001_snapshot.json");
+  const latestSnapshotPath = path.resolve(metaDirectory, "0002_snapshot.json");
   const nextSnapshotPath = path.resolve(metaDirectory, snapshotFileName);
   const journalPath = path.resolve(metaDirectory, "_journal.json");
   const migrationPath = path.resolve(drizzleDirectory, `${migrationTag}.sql`);
@@ -83,25 +54,18 @@ async function main() {
 
   const datasetTable = nextSnapshot.tables["public.bazi_dataset_records"] as {
     columns: Record<string, unknown>;
-    checkConstraints: Record<string, { name: string; value: string }>;
   };
 
-  delete datasetTable.columns.chain_of_thought;
-  delete datasetTable.columns.target_output;
-  datasetTable.columns.annotation_data = {
-    name: "annotation_data",
-    type: "jsonb",
+  datasetTable.columns.annotator_id = {
+    name: "annotator_id",
+    type: "text",
     primaryKey: false,
     notNull: false,
-  };
-  datasetTable.checkConstraints.bazi_dataset_records_reviewed_content_check = {
-    name: "bazi_dataset_records_reviewed_content_check",
-    value: requiredCheckValue,
   };
 
   const existingEntryIndex = journal.entries.findIndex((entry) => entry.tag === migrationTag);
   const nextEntry = {
-    idx: 2,
+    idx: 3,
     version: journal.version,
     when: Date.now(),
     tag: migrationTag,
@@ -119,7 +83,7 @@ async function main() {
   await writeFile(journalPath, `${JSON.stringify(journal, null, 2)}\n`, "utf8");
 
   console.log(
-    `Generated deterministic Phase 1.6 migration at ${path.basename(migrationPath)} and snapshot ${path.basename(nextSnapshotPath)}.`,
+    `Generated deterministic Phase 5.3 migration at ${path.basename(migrationPath)} and snapshot ${path.basename(nextSnapshotPath)}.`,
   );
 }
 

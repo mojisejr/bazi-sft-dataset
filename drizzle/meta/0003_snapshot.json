@@ -1,0 +1,1123 @@
+{
+  "id": "dc519d1b-749d-44de-8090-412e38f5186b",
+  "prevId": "e63b452f-48bd-4996-88be-06f97083562e",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.bazi_canonical_raw_rows": {
+      "name": "bazi_canonical_raw_rows",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_group": {
+          "name": "source_group",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "row_order": {
+          "name": "row_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "primary_value": {
+          "name": "primary_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "secondary_value": {
+          "name": "secondary_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cells": {
+          "name": "cells",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_canonical_sources": {
+      "name": "bazi_canonical_sources",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "relative_path": {
+          "name": "relative_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_root": {
+          "name": "source_root",
+          "type": "bazi_source_root",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_format": {
+          "name": "source_format",
+          "type": "bazi_knowledge_source_format",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "bazi_knowledge_domain",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'general'"
+        },
+        "normalized_table": {
+          "name": "normalized_table",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bazi_canonical_sources_relative_path_unique": {
+          "name": "bazi_canonical_sources_relative_path_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "relative_path"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_dataset_records": {
+      "name": "bazi_dataset_records",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "raw_input": {
+          "name": "raw_input",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calculated_state": {
+          "name": "calculated_state",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intent_domain": {
+          "name": "intent_domain",
+          "type": "intent_domain",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'general'"
+        },
+        "status": {
+          "name": "status",
+          "type": "dataset_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "annotation_data": {
+          "name": "annotation_data",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "annotator_id": {
+          "name": "annotator_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "bazi_dataset_records_reviewed_content_check": {
+          "name": "bazi_dataset_records_reviewed_content_check",
+          "value": "(\n        \"bazi_dataset_records\".\"status\" <> 'reviewed'\n        OR (\n          \"bazi_dataset_records\".\"annotation_data\" IS NOT NULL\n          AND jsonb_typeof(\"bazi_dataset_records\".\"annotation_data\") = 'object'\n          AND jsonb_typeof(\"bazi_dataset_records\".\"annotation_data\" -> 'dimensions') = 'array'\n          AND jsonb_array_length(\"bazi_dataset_records\".\"annotation_data\" -> 'dimensions') = 15\n          AND NOT jsonb_path_exists(\n            \"bazi_dataset_records\".\"annotation_data\",\n            '$.dimensions[*] ? (@.dimension_name == null || @.dimension_name == \"\" || @.thought_process == null || @.thought_process == \"\" || @.final_prediction == null || @.final_prediction == \"\")'\n          )\n        )\n      )"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.bazi_day_master_profiles": {
+      "name": "bazi_day_master_profiles",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "record_number": {
+          "name": "record_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day_master_code": {
+          "name": "day_master_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_code": {
+          "name": "branch_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_master_chinese": {
+          "name": "day_master_chinese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "branch_chinese": {
+          "name": "branch_chinese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_original": {
+          "name": "baseline_original",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day_master_trait": {
+          "name": "day_master_trait",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "merged_baseline": {
+          "name": "merged_baseline",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interpreted_profile": {
+          "name": "interpreted_profile",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "concise_profile": {
+          "name": "concise_profile",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "combined_narrative": {
+          "name": "combined_narrative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_day_master_strength_states": {
+      "name": "bazi_day_master_strength_states",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_variant": {
+          "name": "source_variant",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_master_code": {
+          "name": "day_master_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day_master_chinese": {
+          "name": "day_master_chinese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "strength_state": {
+          "name": "strength_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "score_text": {
+          "name": "score_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qi_label": {
+          "name": "qi_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "narrative_summary": {
+          "name": "narrative_summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "row_order": {
+          "name": "row_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_cells": {
+          "name": "raw_cells",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_domain_matrices": {
+      "name": "bazi_domain_matrices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "bazi_matrix_domain",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_variant": {
+          "name": "source_variant",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pair_key": {
+          "name": "pair_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "row_order": {
+          "name": "row_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "score_text": {
+          "name": "score_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "narrative": {
+          "name": "narrative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_cells": {
+          "name": "raw_cells",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_element_interactions": {
+      "name": "bazi_element_interactions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_table": {
+          "name": "source_table",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_master": {
+          "name": "day_master",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "left_symbol": {
+          "name": "left_symbol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "right_symbol": {
+          "name": "right_symbol",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "relation_type": {
+          "name": "relation_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "qi_label": {
+          "name": "qi_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_faq_taxonomies": {
+      "name": "bazi_faq_taxonomies",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "row_group": {
+          "name": "row_group",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question_order": {
+          "name": "question_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw_type_label": {
+          "name": "raw_type_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "primary_intent": {
+          "name": "primary_intent",
+          "type": "bazi_knowledge_domain",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "intent_domains": {
+          "name": "intent_domains",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "question_text": {
+          "name": "question_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalized_question": {
+          "name": "normalized_question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_reference_documents": {
+      "name": "bazi_reference_documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "domain": {
+          "name": "domain",
+          "type": "bazi_knowledge_domain",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'general'"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "headings": {
+          "name": "headings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "bazi_reference_documents_source_path_unique": {
+          "name": "bazi_reference_documents_source_path_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "source_path"
+          ]
+        },
+        "bazi_reference_documents_slug_unique": {
+          "name": "bazi_reference_documents_slug_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "slug"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_sixty_jiazi_narratives": {
+      "name": "bazi_sixty_jiazi_narratives",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "row_group": {
+          "name": "row_group",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_master_code": {
+          "name": "day_master_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_master_chinese": {
+          "name": "day_master_chinese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_code": {
+          "name": "branch_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_chinese": {
+          "name": "branch_chinese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "element_tone": {
+          "name": "element_tone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "twelve_qi_label": {
+          "name": "twelve_qi_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "day_master_narrative": {
+          "name": "day_master_narrative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "branch_narrative": {
+          "name": "branch_narrative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "combined_narrative": {
+          "name": "combined_narrative",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "raw_cells": {
+          "name": "raw_cells",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_time_solar_terms": {
+      "name": "bazi_time_solar_terms",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "solar_term_name": {
+          "name": "solar_term_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "boundary_at": {
+          "name": "boundary_at",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.bazi_twelve_qi_stages": {
+      "name": "bazi_twelve_qi_stages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "source_path": {
+          "name": "source_path",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage_order": {
+          "name": "stage_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage_name_chinese": {
+          "name": "stage_name_chinese",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage_name_thai": {
+          "name": "stage_name_thai",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "day_master": {
+          "name": "day_master",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch": {
+          "name": "branch",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.dataset_status": {
+      "name": "dataset_status",
+      "schema": "public",
+      "values": [
+        "draft",
+        "reviewed",
+        "exported"
+      ]
+    },
+    "public.intent_domain": {
+      "name": "intent_domain",
+      "schema": "public",
+      "values": [
+        "general",
+        "work",
+        "study",
+        "wealth",
+        "love",
+        "health",
+        "family",
+        "other",
+        "timing"
+      ]
+    },
+    "public.bazi_knowledge_domain": {
+      "name": "bazi_knowledge_domain",
+      "schema": "public",
+      "values": [
+        "general",
+        "work",
+        "study",
+        "wealth",
+        "love",
+        "health",
+        "family",
+        "other",
+        "timing"
+      ]
+    },
+    "public.bazi_knowledge_source_format": {
+      "name": "bazi_knowledge_source_format",
+      "schema": "public",
+      "values": [
+        "csv",
+        "markdown",
+        "docx",
+        "xlsx"
+      ]
+    },
+    "public.bazi_matrix_domain": {
+      "name": "bazi_matrix_domain",
+      "schema": "public",
+      "values": [
+        "love",
+        "work"
+      ]
+    },
+    "public.bazi_source_root": {
+      "name": "bazi_source_root",
+      "schema": "public",
+      "values": [
+        "distilled",
+        "raw"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
