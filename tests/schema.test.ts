@@ -16,6 +16,10 @@ import {
   intentDomainEnum,
   reviewedDatasetContentCheckName,
 } from "@/db/schema";
+import {
+  AnnotationDataSchema,
+  REQUIRED_ANNOTATION_DIMENSION_NAMES,
+} from "@/lib/bazi/schema-types";
 
 describe("baziDatasetRecords", () => {
   test("exposes the phase 1 dataset columns required by the blueprint", () => {
@@ -24,8 +28,7 @@ describe("baziDatasetRecords", () => {
       "rawInput",
       "calculatedState",
       "intentDomain",
-      "chainOfThought",
-      "targetOutput",
+      "annotationData",
       "status",
       "createdAt",
       "updatedAt",
@@ -58,6 +61,32 @@ describe("baziDatasetRecords", () => {
     expect(tableConfig.checks.map((entry) => entry.name)).toContain(
       reviewedDatasetContentCheckName,
     );
+  });
+
+  test("enforces the phase 1.6 annotation contract with all 15 dimensions", () => {
+    const parsed = AnnotationDataSchema.parse({
+      version: "1.6",
+      dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+        dimension_name: dimensionName,
+        thought_process: `Reasoning for ${dimensionName}`,
+        final_prediction: `Prediction for ${dimensionName}`,
+      })),
+    });
+
+    expect(parsed.dimensions).toHaveLength(15);
+  });
+
+  test("rejects duplicate annotation dimensions", () => {
+    expect(() =>
+      AnnotationDataSchema.parse({
+        version: "1.6",
+        dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map(() => ({
+          dimension_name: "chart_foundation",
+          thought_process: "Reasoning",
+          final_prediction: "Prediction",
+        })),
+      }),
+    ).toThrow(/duplicate dimensions/i);
   });
 });
 

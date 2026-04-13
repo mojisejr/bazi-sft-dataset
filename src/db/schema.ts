@@ -9,34 +9,12 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-
-export type PillarValue = {
-  stem: string;
-  branch: string;
-  hiddenStems?: string[];
-};
-
-export type RawInputValue = {
-  birthDate: string;
-  birthTime: string;
-  gender: string;
-  province: string;
-  calendarSystem?: "solar" | "lunar";
-  timezone?: string;
-};
-
-export type CalculatedStateValue = {
-  fourPillars: {
-    year: PillarValue;
-    month: PillarValue;
-    day: PillarValue;
-    hour: PillarValue;
-  };
-  dayMaster: string;
-  strengthScore: number;
-  tenGods: Record<string, string>;
-  twelveQi: Record<string, string>;
-};
+import {
+  type AnnotationDataValue,
+  type CalculatedStateValue,
+  REQUIRED_ANNOTATION_DIMENSION_COUNT,
+  type RawInputValue,
+} from "@/lib/bazi/schema-types";
 
 export type CanonicalMetadataValue = Record<string, unknown>;
 
@@ -100,8 +78,7 @@ export const baziDatasetRecords = pgTable(
       .$type<CalculatedStateValue>()
       .notNull(),
     intentDomain: intentDomainEnum("intent_domain").notNull().default("general"),
-    chainOfThought: text("chain_of_thought"),
-    targetOutput: text("target_output"),
+    annotationData: jsonb("annotation_data").$type<AnnotationDataValue>(),
     status: datasetStatusEnum("status").notNull().default("draft"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -115,8 +92,14 @@ export const baziDatasetRecords = pgTable(
       sql`(
         ${table.status} <> 'reviewed'
         OR (
-          nullif(btrim(${table.chainOfThought}), '') IS NOT NULL
-          AND nullif(btrim(${table.targetOutput}), '') IS NOT NULL
+          ${table.annotationData} IS NOT NULL
+          AND jsonb_typeof(${table.annotationData}) = 'object'
+          AND jsonb_typeof(${table.annotationData} -> 'dimensions') = 'array'
+          AND jsonb_array_length(${table.annotationData} -> 'dimensions') = ${REQUIRED_ANNOTATION_DIMENSION_COUNT}
+          AND NOT jsonb_path_exists(
+            ${table.annotationData},
+            '$.dimensions[*] ? (@.dimension_name == null || @.dimension_name == "" || @.thought_process == null || @.thought_process == "" || @.final_prediction == null || @.final_prediction == "")'
+          )
         )
       )`,
     ),

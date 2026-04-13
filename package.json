@@ -12,14 +12,18 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push",
+    "db:generate": "tsx scripts/generate-phase16-migration.ts && tsx scripts/verify-phase16-migration.ts",
+    "db:migrate": "tsx scripts/check-phase16-db-state.ts && tsx scripts/apply-phase16-migration.ts",
+    "db:migrate:safe": "tsx scripts/check-phase16-db-state.ts && tsx scripts/apply-phase16-migration.ts",
+    "db:push": "tsx scripts/forbid-db-push.ts",
     "db:studio": "drizzle-kit studio",
+    "db:check:phase16": "tsx scripts/check-phase16-db-state.ts",
     "db:seed:solar-terms": "tsx scripts/seed-time-solar-terms.ts",
     "db:seed:solar-terms:dry": "tsx scripts/seed-time-solar-terms.ts --dry-run",
     "db:seed:canonical": "tsx scripts/seed-canonical-knowledge.ts",
-    "db:seed:canonical:dry": "tsx scripts/seed-canonical-knowledge.ts --dry-run"
+    "db:seed:canonical:dry": "tsx scripts/seed-canonical-knowledge.ts --dry-run",
+    "db:seed:dataset-sample:dry": "tsx scripts/validate-phase16-sample.ts --dry-run",
+    "db:seed:dataset-sample:write": "tsx scripts/validate-phase16-sample.ts --write"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
