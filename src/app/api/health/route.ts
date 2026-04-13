@@ -1,7 +1,8 @@
 export async function GET() {
   return Response.json({
     project: "bazi",
-    phase: "0.5",
-    status: "scaffold-ready",
+    phase: "2",
+    status: "symbolic-engine-ready",
+    routes: ["/api/health", "/api/bazi/calculate"],
   });
 }
