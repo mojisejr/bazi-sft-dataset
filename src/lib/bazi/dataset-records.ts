@@ -3,45 +3,29 @@ import { ZodError, z } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziDatasetRecords } from "@/db/schema";
+import { collectCalculatedStateIntegrityIssues } from "@/lib/bazi/calculated-state-integrity";
 import {
-  AnnotationDataSchema,
-  CalculatedStateSchema,
-  DraftAnnotationDataSchema,
-  RawInputSchema,
-  type CalculatedStateValue,
-  type DraftAnnotationDataValue,
-  type RawInputValue,
-} from "@/lib/bazi/schema-types";
+  BaseSaveDatasetRequestSchema,
+  type SaveDatasetRequest,
+  type SaveDatasetStatus,
+} from "@/lib/bazi/dataset-request";
 
-export const SaveDatasetStatusSchema = z.enum(["draft", "reviewed"]);
-
-export const SaveDatasetRequestSchema = z
-  .object({
-    recordId: z.string().uuid().optional(),
-    rawInput: RawInputSchema,
-    calculatedState: CalculatedStateSchema,
-    annotationData: DraftAnnotationDataSchema,
-    status: SaveDatasetStatusSchema,
-  })
+export const SaveDatasetRequestSchema = BaseSaveDatasetRequestSchema
   .superRefine((value, context) => {
-    if (value.status !== "reviewed") {
-      return;
+    const integrityIssues = collectCalculatedStateIntegrityIssues(
+      value.rawInput,
+      value.calculatedState,
+    );
+
+    for (const issue of integrityIssues) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: issue,
+        path: ["calculatedState"],
+      });
     }
 
-    const reviewedResult = AnnotationDataSchema.safeParse(value.annotationData);
-
-    if (!reviewedResult.success) {
-      for (const issue of reviewedResult.error.issues) {
-        context.addIssue({
-          ...issue,
-          path: ["annotationData", ...issue.path],
-        });
-      }
-    }
   });
-
-export type SaveDatasetStatus = z.infer<typeof SaveDatasetStatusSchema>;
-export type SaveDatasetRequest = z.infer<typeof SaveDatasetRequestSchema>;
 
 export type SavedDatasetRecord = {
   recordId: string;
@@ -62,22 +46,6 @@ export type DatasetRecordRepository = {
     annotatorId: string,
   ) => Promise<SavedDatasetRecord>;
 };
-
-export function createDraftAnnotationPayload(
-  rawInput: RawInputValue,
-  calculatedState: CalculatedStateValue,
-  annotationData: DraftAnnotationDataValue,
-  status: SaveDatasetStatus,
-  recordId?: string,
-): SaveDatasetRequest {
-  return SaveDatasetRequestSchema.parse({
-    recordId,
-    rawInput,
-    calculatedState,
-    annotationData,
-    status,
-  });
-}
 
 export function createDbDatasetRecordRepository(
   databaseUrl?: string,

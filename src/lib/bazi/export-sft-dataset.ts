@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { ANNOTATION_DIMENSION_TITLE_MAP } from "@/lib/bazi/annotation-dimension-meta";
+import { collectCalculatedStateIntegrityIssues } from "@/lib/bazi/calculated-state-integrity";
 import {
   AnnotationDataSchema,
   CalculatedStateSchema,
@@ -31,6 +32,19 @@ export const BaziSftExportRecordSchema = z.object({
   intentDomain: ExportIntentDomainSchema,
   annotationData: AnnotationDataSchema,
   status: ExportDatasetStatusSchema,
+}).superRefine((value, context) => {
+  const integrityIssues = collectCalculatedStateIntegrityIssues(
+    value.rawInput,
+    value.calculatedState,
+  );
+
+  for (const issue of integrityIssues) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: issue,
+      path: ["calculatedState"],
+    });
+  }
 });
 
 export const BaziSftMessageSchema = z.object({

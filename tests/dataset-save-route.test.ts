@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from "vitest";
 import {
   createSaveDatasetHandler,
   type DatasetRecordRepository,
+  SaveDatasetRequestSchema,
   type SaveDatasetAuthenticate,
 } from "@/lib/bazi/dataset-records";
 import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
@@ -22,7 +23,7 @@ function createRequestBody() {
         year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
-        hour: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
       dayMaster: "己",
       strengthScore: 3.07,
@@ -66,7 +67,72 @@ function createRequestBody() {
   };
 }
 
+function createCase2ConflictRequestBody() {
+  return {
+    rawInput: {
+      birthDate: "1981-03-12",
+      birthTime: "05:59",
+      gender: "male",
+      province: "Bangkok",
+      calendarSystem: "solar",
+      timezone: "Asia/Bangkok",
+    },
+    calculatedState: {
+      fourPillars: {
+        year: { stem: "辛", branch: "酉", hiddenStems: ["辛"] },
+        month: { stem: "辛", branch: "卯", hiddenStems: ["乙"] },
+        day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
+        hour: { stem: "丁", branch: "卯", hiddenStems: ["乙"] },
+      },
+      dayMaster: "己",
+      strengthScore: 1.93,
+      tenGods: {
+        yearStem: "食神",
+        yearBranch: "食神",
+        monthStem: "食神",
+        monthBranch: "七杀",
+        dayStem: "日主",
+        dayBranch: "正印,劫财,正官",
+        hourStem: "偏印",
+        hourBranch: "七杀",
+      },
+      twelveQi: {
+        yearBranch: "长生",
+        monthBranch: "病",
+        dayBranch: "帝旺",
+        hourBranch: "病",
+      },
+      elementMetaphors: [
+        {
+          element: "earth",
+          metaphor: "fertile cultivated soil that nurtures, absorbs, and organizes",
+        },
+      ],
+      sixtyJiaziCorePersona: {
+        code: "己巳",
+        narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
+        precedenceNotes: ["Near solar-term boundary."],
+      },
+    },
+    annotationData: {
+      version: "1.6",
+      dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+        dimension_name: dimensionName,
+        thought_process: `Reasoning for ${dimensionName}`,
+        final_prediction: `Prediction for ${dimensionName}`,
+      })),
+    },
+    status: "reviewed",
+  } as const;
+}
+
 describe("createSaveDatasetHandler", () => {
+  test("schema rejects calculated states that contradict the raw-input pillar truth", () => {
+    expect(() => SaveDatasetRequestSchema.parse(createCase2ConflictRequestBody())).toThrow(
+      /四?calculatedState\.fourPillars\.day|expected, received/i,
+    );
+  });
+
   test("saves a reviewed payload through the repository seam", async () => {
     const repository: DatasetRecordRepository = {
       saveRecord: vi.fn().mockResolvedValue({
@@ -161,5 +227,32 @@ describe("createSaveDatasetHandler", () => {
       error: "Unauthorized",
     });
     expect(repository.saveRecord).not.toHaveBeenCalled();
+  });
+
+  test("rejects reviewed payloads when calculated pillars contradict raw input", async () => {
+    const repository: DatasetRecordRepository = {
+      saveRecord: vi.fn(),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveDatasetHandler({ repository, authenticate });
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/save", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(createCase2ConflictRequestBody()),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(repository.saveRecord).not.toHaveBeenCalled();
+
+    const body = (await response.json()) as { details: Array<{ message: string }> };
+    expect(body.details.some((issue) => issue.message.includes("己丑 expected, received 己巳"))).toBe(true);
   });
 });

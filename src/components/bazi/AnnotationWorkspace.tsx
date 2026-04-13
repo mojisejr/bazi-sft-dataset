@@ -8,7 +8,7 @@ import {
   type AnnotationDimensionDraftState,
   type AnnotationProgressSummary,
 } from "@/lib/bazi/annotation-store";
-import type { SaveDatasetStatus } from "@/lib/bazi/dataset-records";
+import type { SaveDatasetStatus } from "@/lib/bazi/dataset-request";
 import type { AnnotationDimensionName } from "@/lib/bazi/schema-types";
 import {
   appendSpeechTranscript,

@@ -1,7 +1,7 @@
 import type {
   AnnotationProgressState,
 } from "@/lib/bazi/annotation-store";
-import type { SaveDatasetStatus } from "@/lib/bazi/dataset-records";
+import type { SaveDatasetStatus } from "@/lib/bazi/dataset-request";
 import type {
   CalculatedStateValue,
   RawInputValue,

@@ -195,6 +195,8 @@ type NormalizedBirthContext = {
   birthAtHongKong: string;
 };
 
+export type BaziStructuralState = Pick<CalculatedStateValue, "fourPillars" | "dayMaster">;
+
 function splitGanZhi(value: string) {
   const [stem = "", branch = ""] = Array.from(value);
 
@@ -392,6 +394,23 @@ function normalizeBirthContext(rawInput: RawInputValue): NormalizedBirthContext 
   };
 }
 
+export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
+  const rawInput = RawInputSchema.parse(payload);
+  const birthContext = normalizeBirthContext(rawInput);
+  const eightChar = birthContext.solar.getLunar().getEightChar();
+  const pillars = {
+    year: buildPillarValue(eightChar.getYear(), eightChar.getYearHideGan()),
+    month: buildPillarValue(eightChar.getMonth(), eightChar.getMonthHideGan()),
+    day: buildPillarValue(eightChar.getDay(), eightChar.getDayHideGan()),
+    hour: buildPillarValue(eightChar.getTime(), eightChar.getTimeHideGan()),
+  };
+
+  return {
+    fourPillars: pillars,
+    dayMaster: pillars.day.stem,
+  };
+}
+
 export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledgeRepository {
   const db = createDbClient(databaseUrl);
 
@@ -475,14 +494,9 @@ export async function calculateBaziChart(
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
   const eightChar = birthContext.solar.getLunar().getEightChar();
-
-  const pillars = {
-    year: buildPillarValue(eightChar.getYear(), eightChar.getYearHideGan()),
-    month: buildPillarValue(eightChar.getMonth(), eightChar.getMonthHideGan()),
-    day: buildPillarValue(eightChar.getDay(), eightChar.getDayHideGan()),
-    hour: buildPillarValue(eightChar.getTime(), eightChar.getTimeHideGan()),
-  };
-  const dayMasterStem = pillars.day.stem;
+  const structuralState = calculateBaziStructuralState(rawInput);
+  const pillars = structuralState.fourPillars;
+  const dayMasterStem = structuralState.dayMaster;
   const [yearStage, monthStage, dayStage, hourStage, persona, solarTerms] = await Promise.all([
     repository.findTwelveQiStage(dayMasterStem, pillars.year.branch),
     repository.findTwelveQiStage(dayMasterStem, pillars.month.branch),

@@ -23,10 +23,10 @@ function createReviewedRecord() {
       fourPillars: {
         year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
-        day: { stem: "己", branch: "卯", hiddenStems: ["乙"] },
-        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+        day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
+        hour: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
       },
-      dayMaster: "己土",
+      dayMaster: "己",
       strengthScore: 2.75,
       tenGods: {
         yearStem: "偏财",
@@ -46,7 +46,7 @@ function createReviewedRecord() {
         },
       ],
       sixtyJiaziCorePersona: {
-        code: "己卯",
+        code: "己巳",
         narrative: "Measured earth that grows through patience and timing.",
         precedenceNotes: ["Respect seasonal balance before reading annual timing."],
       },
@@ -107,5 +107,47 @@ describe("phase 4 export transformer", () => {
         status: "draft",
       }),
     ).toThrow();
+  });
+
+  test("rejects reviewed export payloads when calculated pillars contradict raw input", () => {
+    expect(() =>
+      transformReviewedRecordToSftExample({
+        ...createReviewedRecord(),
+        rawInput: {
+          birthDate: "1981-03-12",
+          birthTime: "05:59",
+          gender: "male",
+          province: "Bangkok",
+          calendarSystem: "solar",
+          timezone: "Asia/Bangkok",
+        },
+        calculatedState: {
+          ...createReviewedRecord().calculatedState,
+          fourPillars: {
+            year: { stem: "辛", branch: "酉", hiddenStems: ["辛"] },
+            month: { stem: "辛", branch: "卯", hiddenStems: ["乙"] },
+            day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
+            hour: { stem: "丁", branch: "卯", hiddenStems: ["乙"] },
+          },
+          dayMaster: "己",
+          tenGods: {
+            yearStem: "食神",
+            monthStem: "食神",
+            hourStem: "偏印",
+          },
+          twelveQi: {
+            yearBranch: "长生",
+            monthBranch: "病",
+            dayBranch: "帝旺",
+            hourBranch: "病",
+          },
+          sixtyJiaziCorePersona: {
+            code: "己巳",
+            narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
+            precedenceNotes: ["Near solar-term boundary."],
+          },
+        },
+      }),
+    ).toThrow(/己丑 expected, received 己巳/i);
   });
 });
