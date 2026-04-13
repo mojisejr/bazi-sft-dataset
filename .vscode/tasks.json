@@ -1,0 +1,68 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "bazi: start prod 3002",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"start",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3002"
+			],
+			"isBackground": true,
+			"group": "test"
+		},
+		{
+			"label": "bazi: start prod server 3002",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"start",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3002"
+			],
+			"isBackground": true,
+			"group": "none"
+		},
+		{
+			"label": "bazi: start prod 3002",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"run",
+				"start",
+				"--",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3002"
+			],
+			"isBackground": true,
+			"group": "test"
+		},
+		{
+			"label": "bazi-prod-3002-browser-truth",
+			"type": "shell",
+			"command": "./node_modules/.bin/next",
+			"args": [
+				"start",
+				".",
+				"--hostname",
+				"127.0.0.1",
+				"--port",
+				"3002"
+			],
+			"isBackground": true,
+			"group": "test"
+		}
+	]
+}
