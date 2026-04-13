@@ -1,6 +1,10 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeEach, describe, expect, test } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+vi.mock("@clerk/nextjs", () => ({
+  UserButton: () => "User menu",
+}));
 
 import {
   BaziTrainerWorkspace,
@@ -20,6 +24,8 @@ describe("BaziTrainerWorkspace", () => {
     const html = renderToStaticMarkup(createElement(BaziTrainerWorkspace));
 
     expect(html).toContain("Bazi Trainer that makes ซินแส ซินแส !");
+    expect(html).toContain("Operator Session");
+    expect(html).toContain("User menu");
     expect(html).toContain("ตั้งข้อมูลเพื่อดูภาพรวมดวง");
     expect(html).toContain("คำนวณภาพรวมดวง");
   });

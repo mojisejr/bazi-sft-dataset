@@ -17,6 +17,7 @@ import {
   getStatusCopy,
   type BaziTrainerWorkspaceProps,
 } from "@/lib/bazi/trainer-workspace";
+import { SystemHeader } from "@/components/bazi/SystemHeader";
 
 export {
   createDefaultFormState,
@@ -87,24 +88,7 @@ export function BaziTrainerWorkspace({
 
   return (
     <main className="trainer-page">
-      <section className="surface trainer-header">
-        <div className="brand-lockup">
-          <p className="brand-mark">Bazi Trainer</p>
-          <h1>Bazi Trainer that makes ซินแส ซินแส !</h1>
-          <p className="brand-story">
-            พื้นที่ทำงานที่พาเรื่องยากให้ไหลลื่น ตั้งข้อมูลให้ชัด คำนวณให้ตรง แล้วอ่านภาพรวมได้ทันที
-            แบบเรียบง่ายแต่มั่นคง
-          </p>
-        </div>
-
-        <div className="status-stack">
-          <div className={`status-chip status-chip--${statusCopy.tone}`}>
-            <span className="status-dot" aria-hidden="true" />
-            {statusCopy.label}
-          </div>
-          <p className="status-detail">{statusCopy.detail}</p>
-        </div>
-      </section>
+      <SystemHeader statusCopy={statusCopy} />
 
       <section className="trainer-grid">
         <CalculatedBoard
