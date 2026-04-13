@@ -24,7 +24,7 @@ describe("BaziTrainerWorkspace", () => {
     const html = renderToStaticMarkup(createElement(BaziTrainerWorkspace));
 
     expect(html).toContain("Bazi Trainer that makes ซินแส ซินแส !");
-    expect(html).toContain("Operator Session");
+    expect(html).toContain("Secure Operator Access");
     expect(html).toContain("User menu");
     expect(html).toContain("ตั้งข้อมูลเพื่อดูภาพรวมดวง");
     expect(html).toContain("คำนวณภาพรวมดวง");
