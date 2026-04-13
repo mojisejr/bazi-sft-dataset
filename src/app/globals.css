@@ -168,6 +168,24 @@ textarea {
   gap: 18px;
 }
 
+.input-form-shell {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: 18px;
+}
+
+.input-form-shell:disabled {
+  opacity: 0.62;
+}
+
+.input-form-shell:disabled input,
+.input-form-shell:disabled select {
+  cursor: not-allowed;
+}
+
 .section-heading {
   display: flex;
   align-items: start;
@@ -441,13 +459,31 @@ textarea {
   cursor: pointer;
 }
 
+.secondary-action--warning {
+  border-color: rgba(154, 60, 53, 0.16);
+  color: #844037;
+  background: rgba(255, 247, 243, 0.9);
+}
+
 .secondary-action:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
 
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
 .form-footnote {
   margin: 0;
+}
+
+.form-lock-note {
+  margin: -8px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
 }
 
 .message-card {

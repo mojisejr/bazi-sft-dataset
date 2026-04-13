@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import {
   createDraftAnnotationPayload,
@@ -184,6 +184,29 @@ function formatSaveTimestamp(timestamp: string | null) {
   }).format(new Date(timestamp));
 }
 
+export function shouldConfirmSessionReset(
+  datasetRecordId: string | null,
+  datasetStatus: SaveDatasetStatus | null,
+) {
+  return Boolean(datasetRecordId && datasetStatus !== "reviewed");
+}
+
+export function getResetActionCopy(datasetStatus: SaveDatasetStatus | null) {
+  if (datasetStatus === "reviewed") {
+    return {
+      label: "ผูกดวงใหม่",
+      detail: "annotation ชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
+      tone: "primary" as const,
+    };
+  }
+
+  return {
+    label: "ล้างข้อมูลเพื่อผูกดวงใหม่",
+    detail: "หากต้องการคำนวณดวงใหม่ ต้องรีเซ็ต session นี้ก่อน เพื่อกันข้อมูลปนกันระหว่าง record",
+    tone: "secondary" as const,
+  };
+}
+
 export function BaziTrainerWorkspace({
   initialFormState,
   initialSubmittedInput = null,
@@ -209,6 +232,7 @@ export function BaziTrainerWorkspace({
   const [saveErrorMessage, setSaveErrorMessage] = useState<string | null>(null);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
   const [lastSavedSignature, setLastSavedSignature] = useState<string | null>(null);
+  const sessionVersionRef = useRef(0);
   const annotationDimensions = useAnnotationStore((state) => state.dimensions);
   const expandedDimensionName = useAnnotationStore(
     (state) => state.expandedDimensionName,
@@ -227,11 +251,35 @@ export function BaziTrainerWorkspace({
   const annotationSummary = getAnnotationProgressSummary(annotationDimensions);
   const annotationDraftContentState = getAnnotationDraftContentState(annotationDimensions);
   const canCompleteAnnotation = isAnnotationReadyForReview(annotationDimensions);
+  const isSessionLocked = Boolean(calculatedState);
+  const resetActionCopy = getResetActionCopy(datasetStatus);
+
+  function clearPersistedSessionState() {
+    resetAnnotationStore();
+    setDatasetRecordId(null);
+    setDatasetStatus(null);
+    setSaveState("idle");
+    setSaveErrorMessage(null);
+    setLastSavedAt(null);
+    setLastSavedSignature(null);
+  }
+
+  function resetWorkspaceSession() {
+    sessionVersionRef.current += 1;
+    clearPersistedSessionState();
+    setFormState(createDefaultFormState());
+    setCalculatedState(null);
+    setSubmittedInput(null);
+    setSubmissionState("idle");
+    setErrorMessage(null);
+  }
 
   async function persistAnnotation(status: SaveDatasetStatus) {
     if (!submittedInput || !calculatedState) {
       return true;
     }
+
+    const requestSessionVersion = sessionVersionRef.current;
 
     const annotationData = createDraftAnnotationData(annotationDimensions);
     const requestPayload = createDraftAnnotationPayload(
@@ -273,6 +321,10 @@ export function BaziTrainerWorkspace({
         error?: string;
       };
 
+      if (requestSessionVersion !== sessionVersionRef.current) {
+        return false;
+      }
+
       if (!response.ok) {
         throw new Error(body.error ?? "ยังไม่สามารถบันทึก annotation ได้ในตอนนี้");
       }
@@ -285,6 +337,10 @@ export function BaziTrainerWorkspace({
 
       return true;
     } catch (error) {
+      if (requestSessionVersion !== sessionVersionRef.current) {
+        return false;
+      }
+
       setSaveState("error");
       setSaveErrorMessage(normalizeErrorMessage(error));
 
@@ -308,6 +364,20 @@ export function BaziTrainerWorkspace({
     setExpandedDimension(dimensionName);
   }
 
+  function handleReset() {
+    if (shouldConfirmSessionReset(datasetRecordId, datasetStatus)) {
+      const shouldReset = window.confirm(
+        "คุณยังวิเคราะห์ดวงนี้ไม่เสร็จ ยืนยันว่าจะรีเซ็ตเพื่อผูกดวงใหม่หรือไม่?",
+      );
+
+      if (!shouldReset) {
+        return;
+      }
+    }
+
+    resetWorkspaceSession();
+  }
+
   function handleFieldChange(
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
@@ -321,6 +391,10 @@ export function BaziTrainerWorkspace({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (calculatedState || submissionState === "submitting") {
+      return;
+    }
 
     const payload = buildPayload(formState);
 
@@ -347,16 +421,11 @@ export function BaziTrainerWorkspace({
 
       const parsedState = CalculatedStateSchema.parse(body.calculatedState);
 
-      resetAnnotationStore();
+      sessionVersionRef.current += 1;
+      clearPersistedSessionState();
       setCalculatedState(parsedState);
       setSubmittedInput(payload);
       setSubmissionState("ready");
-      setDatasetRecordId(null);
-      setDatasetStatus(null);
-      setSaveState("idle");
-      setSaveErrorMessage(null);
-      setLastSavedAt(null);
-      setLastSavedSignature(null);
     } catch (error) {
       setSubmissionState("error");
       setErrorMessage(normalizeErrorMessage(error));
@@ -568,80 +637,112 @@ export function BaziTrainerWorkspace({
           </ol>
 
           <form className="input-form" onSubmit={handleSubmit}>
-            <label className="field">
-              <span>วันเกิด</span>
-              <input
-                name="birthDate"
-                type="date"
-                value={formState.birthDate}
-                onChange={handleFieldChange}
-                required
-              />
-            </label>
-
-            <div className="field-grid">
+            <fieldset
+              className="input-form-shell"
+              disabled={isSessionLocked}
+              data-form-locked={isSessionLocked ? "true" : "false"}
+            >
               <label className="field">
-                <span>เวลาเกิด</span>
+                <span>วันเกิด</span>
                 <input
-                  name="birthTime"
-                  type="time"
-                  value={formState.birthTime}
+                  name="birthDate"
+                  type="date"
+                  value={formState.birthDate}
                   onChange={handleFieldChange}
                   required
                 />
               </label>
 
-              <label className="field">
-                <span>เพศ</span>
-                <select name="gender" value={formState.gender} onChange={handleFieldChange}>
-                  <option value="female">หญิง</option>
-                  <option value="male">ชาย</option>
-                  <option value="other">อื่นๆ</option>
-                </select>
-              </label>
-            </div>
+              <div className="field-grid">
+                <label className="field">
+                  <span>เวลาเกิด</span>
+                  <input
+                    name="birthTime"
+                    type="time"
+                    value={formState.birthTime}
+                    onChange={handleFieldChange}
+                    required
+                  />
+                </label>
 
-            <label className="field">
-              <span>จังหวัดหรือเมืองเกิด</span>
-              <input
-                name="province"
-                type="text"
-                placeholder="เช่น กรุงเทพมหานคร"
-                value={formState.province}
-                onChange={handleFieldChange}
-                required
-              />
-            </label>
+                <label className="field">
+                  <span>เพศ</span>
+                  <select name="gender" value={formState.gender} onChange={handleFieldChange}>
+                    <option value="female">หญิง</option>
+                    <option value="male">ชาย</option>
+                    <option value="other">อื่นๆ</option>
+                  </select>
+                </label>
+              </div>
 
-            <div className="field-grid">
               <label className="field">
-                <span>ระบบปฏิทิน</span>
-                <select
-                  name="calendarSystem"
-                  value={formState.calendarSystem}
+                <span>จังหวัดหรือเมืองเกิด</span>
+                <input
+                  name="province"
+                  type="text"
+                  placeholder="เช่น กรุงเทพมหานคร"
+                  value={formState.province}
                   onChange={handleFieldChange}
+                  required
+                />
+              </label>
+
+              <div className="field-grid">
+                <label className="field">
+                  <span>ระบบปฏิทิน</span>
+                  <select
+                    name="calendarSystem"
+                    value={formState.calendarSystem}
+                    onChange={handleFieldChange}
+                  >
+                    <option value="solar">สุริยคติ</option>
+                    <option value="lunar">จันทรคติ</option>
+                  </select>
+                </label>
+
+                <label className="field">
+                  <span>เขตเวลา</span>
+                  <select name="timezone" value={formState.timezone} onChange={handleFieldChange}>
+                    <option value="Asia/Bangkok">Asia/Bangkok</option>
+                    <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
+                  </select>
+                </label>
+              </div>
+            </fieldset>
+
+            <div className="form-actions">
+              {isSessionLocked ? (
+                <button
+                  className={
+                    resetActionCopy.tone === "primary"
+                      ? "primary-action"
+                      : "secondary-action secondary-action--warning"
+                  }
+                  type="button"
+                  onClick={handleReset}
                 >
-                  <option value="solar">สุริยคติ</option>
-                  <option value="lunar">จันทรคติ</option>
-                </select>
-              </label>
-
-              <label className="field">
-                <span>เขตเวลา</span>
-                <select name="timezone" value={formState.timezone} onChange={handleFieldChange}>
-                  <option value="Asia/Bangkok">Asia/Bangkok</option>
-                  <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
-                </select>
-              </label>
+                  {resetActionCopy.label}
+                </button>
+              ) : (
+                <button
+                  className="primary-action"
+                  type="submit"
+                  disabled={submissionState === "submitting"}
+                >
+                  {submissionState === "submitting" ? "กำลังคำนวณ..." : "คำนวณภาพรวมดวง"}
+                </button>
+              )}
             </div>
-
-            <button className="primary-action" type="submit" disabled={submissionState === "submitting"}>
-              {submissionState === "submitting" ? "กำลังคำนวณ..." : "คำนวณภาพรวมดวง"}
-            </button>
 
             <p className="form-footnote">
               ข้อมูลตั้งต้นจะถูกใช้เพื่ออ่านโครงสร้างดวงจีนก่อน จากนั้นพื้นที่วิเคราะห์เชิงลึกจะต่อยอดจากผลชุดนี้
             </p>
+
+            {isSessionLocked ? (
+              <p className="form-lock-note" aria-live="polite">
+                {resetActionCopy.detail}
+              </p>
+            ) : null}
           </form>
 
           {calculatedState ? (

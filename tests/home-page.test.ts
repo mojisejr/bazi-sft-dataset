@@ -2,7 +2,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, describe, expect, test } from "vitest";
 
-import { BaziTrainerWorkspace, createDefaultFormState } from "@/app/page";
+import {
+  BaziTrainerWorkspace,
+  createDefaultFormState,
+  getResetActionCopy,
+  shouldConfirmSessionReset,
+} from "@/app/page";
 import { resetAnnotationStore } from "@/lib/bazi/annotation-store";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
@@ -17,6 +22,27 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Bazi Trainer that makes ซินแส ซินแส !");
     expect(html).toContain("ตั้งข้อมูลเพื่อดูภาพรวมดวง");
     expect(html).toContain("คำนวณภาพรวมดวง");
+  });
+
+  test("requires confirmation only for active unfinished dataset sessions", () => {
+    expect(shouldConfirmSessionReset(null, null)).toBe(false);
+    expect(shouldConfirmSessionReset("record-1", "draft")).toBe(true);
+    expect(shouldConfirmSessionReset("record-1", "reviewed")).toBe(false);
+  });
+
+  test("switches reset copy after annotation is reviewed", () => {
+    expect(getResetActionCopy(null)).toEqual({
+      label: "ล้างข้อมูลเพื่อผูกดวงใหม่",
+      detail:
+        "หากต้องการคำนวณดวงใหม่ ต้องรีเซ็ต session นี้ก่อน เพื่อกันข้อมูลปนกันระหว่าง record",
+      tone: "secondary",
+    });
+
+    expect(getResetActionCopy("reviewed")).toEqual({
+      label: "ผูกดวงใหม่",
+      detail: "annotation ชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
+      tone: "primary",
+    });
   });
 
   test("renders calculated chart data in the engine column", () => {
@@ -79,10 +105,12 @@ describe("BaziTrainerWorkspace", () => {
     );
 
     expect(html).toContain("ภาพรวมพร้อมอ่าน");
+  expect(html).toContain('data-form-locked="true"');
     expect(html).toContain("Four Pillars");
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("ฐานดวงเดิม และภาพรวม");
-    expect(html).toContain("Complete Annotation");
+  expect(html).toContain("Complete Annotation");
+  expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
     expect(html).toContain("己");
     expect(html).toContain("3.07");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");
