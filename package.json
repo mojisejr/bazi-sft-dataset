@@ -23,7 +23,8 @@
     "db:seed:canonical": "tsx scripts/seed-canonical-knowledge.ts",
     "db:seed:canonical:dry": "tsx scripts/seed-canonical-knowledge.ts --dry-run",
     "db:seed:dataset-sample:dry": "tsx scripts/validate-phase16-sample.ts --dry-run",
-    "db:seed:dataset-sample:write": "tsx scripts/validate-phase16-sample.ts --write"
+    "db:seed:dataset-sample:write": "tsx scripts/validate-phase16-sample.ts --write",
+    "dataset:export:sft": "tsx scripts/export-sft-dataset.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

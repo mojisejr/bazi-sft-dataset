@@ -17,6 +17,7 @@
     *   API endpoint สำหรับรับ Raw Input แล้วคืน `calculated_state` จาก Symbolic Engine
 *   `scripts/`:
     *   แหล่งรวม Safety Scripts & Guards สำหรับ Migration (เช่น `generate-phase16-migration.ts`, `apply-phase16-migration.ts`, `check-phase16-db-state.ts`) เพื่อหลีกเลี่ยงข้อจำกัดของ tooling (non-TTY, websocket limitations)
+    *   `export-sft-dataset.ts`: local-only headless exporter สำหรับดึง `reviewed` records ออกมาเป็น `.jsonl` โดยไม่สร้าง UI export บนหน้าเว็บ
 *   `drizzle/`:
     *   SQL Migrations ที่ generate ออกมาแบบ Deterministic
 *   `tests/`:
@@ -27,9 +28,11 @@
 2. **Symbolic Engine** -> normalize เวลาเกิดเข้าสู่ HKT -> อ้างอิง `bazi_time_solar_terms`, `bazi_twelve_qi_stages`, `bazi_sixty_jiazi_narratives` -> (Calculated State) -> **Human/UI**
 3. **Human/UI** -> ตรวจสอบและกรอก 15-Dimension Annotation & CoT -> `POST /api/dataset/save`
 4. **API** -> Validate ด้วย Zod `AnnotationDataSchema` -> บันทึกลง `bazi_dataset_records.annotation_data` (JSONB) ใน Neon DB
+5. **Local Operator Script** -> `scripts/export-sft-dataset.ts` -> ดึงเฉพาะ `status='reviewed'` -> แปลงเป็น ShareGPT/Alpaca-compatible JSONL บน Local Disk
 
 ## 4. 🐉 Challenges & Known Dragons
 *   **ORM Tooling Limitations**: `drizzle-kit push` / `migrate` มีปัญหากับ Neon serverless driver และ TTY prompt ใน environment นี้ -> *Solution*: ใช้ Deterministic migration pipeline และ direct `psql` apply.
 *   **Deep Reasoning Validation**: การรับประกันโครงสร้าง JSONB 15 มิติที่ถูกต้อง -> *Solution*: ผูก `Zod` validation เข้ากับ `CHECK` constraint ในระดับ DB
 *   **Conflict Resolution**: ความรู้ Bazi มีความขัดแย้ง (เช่น ฮะแก้ชง) -> *Solution*: ใช้ Precedence Fixtures เป็นกฎให้ Symbolic Engine ใน Phase 2.
 *   **Timezone Normalization**: เวลาสารทใน canonical tables ถูกเก็บเป็น HKT -> *Solution*: normalize เวลาเกิดจาก timezone ต้นทางเป็น HKT ก่อนผูกดวงและเทียบ boundary
+*   **Dataset Privacy**: งาน export training data ไม่ควรโผล่บน UI ของซินแส -> *Solution*: ย้าย phase 4 ไปเป็น headless local script และ ignore generated output artifacts ใน repo
