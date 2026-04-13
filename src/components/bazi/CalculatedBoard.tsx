@@ -19,14 +19,41 @@ export function CalculatedBoard({
   submittedInput,
   calculatedState,
 }: CalculatedBoardProps) {
+  function handlePrint() {
+    window.print();
+  }
+
   return (
     <article className="surface engine-column">
-      <div className="section-heading">
+      <header className="print-report-header">
+        <p className="section-kicker">Bazi DNA Report</p>
+        <h2>รายงานดวงชะตาส่วนบุคคล</h2>
+        <p className="print-summary-note">
+          {submittedInput
+            ? `${formatBirthMoment(submittedInput)} • ${submittedInput.province}`
+            : "รอข้อมูลตั้งต้น"}
+        </p>
+      </header>
+
+      <div className="section-heading board-heading">
         <div>
           <p className="section-kicker">ภาพรวมดวงจีน</p>
           <h2>โครงสร้างที่ระบบคำนวณให้</h2>
         </div>
-        <p className="section-note">อ่านจากบนลงล่างเพื่อเห็นภาพรวมก่อนเข้าสู่การวิเคราะห์เชิงลึก</p>
+        <div className="board-actions">
+          <p className="section-note board-section-note">
+            อ่านจากบนลงล่างเพื่อเห็นภาพรวมก่อนเข้าสู่การวิเคราะห์เชิงลึก
+          </p>
+          {calculatedState ? (
+            <button
+              type="button"
+              className="secondary-action board-print-action"
+              onClick={handlePrint}
+            >
+              ตัวอย่างรายงาน (Print DNA)
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="identity-strip">

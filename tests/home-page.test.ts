@@ -107,8 +107,10 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ภาพรวมพร้อมอ่าน");
   expect(html).toContain('data-form-locked="true"');
     expect(html).toContain("Four Pillars");
+    expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("ฐานดวงเดิม และภาพรวม");
+    expect(html).toContain("พูดด้วยเสียง");
   expect(html).toContain("Complete Annotation");
   expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
     expect(html).toContain("己");

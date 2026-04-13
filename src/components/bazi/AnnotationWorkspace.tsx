@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import {
   ANNOTATION_DIMENSION_META,
   getDimensionProgress,
@@ -8,6 +10,10 @@ import {
 } from "@/lib/bazi/annotation-store";
 import type { SaveDatasetStatus } from "@/lib/bazi/dataset-records";
 import type { AnnotationDimensionName } from "@/lib/bazi/schema-types";
+import {
+  appendSpeechTranscript,
+  useWebSpeech,
+} from "@/hooks/bazi/useWebSpeech";
 import {
   formatSaveTimestamp,
   getProgressCopy,
@@ -53,6 +59,87 @@ export function AnnotationWorkspace({
   onFinalPredictionChange,
   onPersistDraft,
 }: AnnotationWorkspaceProps) {
+  const [activeVoiceDimension, setActiveVoiceDimension] =
+    useState<AnnotationDimensionName | null>(null);
+  const activeVoiceDimensionRef = useRef<AnnotationDimensionName | null>(null);
+  const annotationDimensionsRef = useRef(annotationDimensions);
+  const pendingVoicePersistDimensionRef =
+    useRef<AnnotationDimensionName | null>(null);
+
+  useEffect(() => {
+    activeVoiceDimensionRef.current = activeVoiceDimension;
+  }, [activeVoiceDimension]);
+
+  useEffect(() => {
+    annotationDimensionsRef.current = annotationDimensions;
+  }, [annotationDimensions]);
+
+  const {
+    isSupported: isVoiceSupported,
+    isListening,
+    interimTranscript,
+    errorMessage: speechErrorMessage,
+    startListening,
+    stopListening,
+  } = useWebSpeech({
+    onTranscript: (transcript) => {
+      const dimensionName = activeVoiceDimensionRef.current;
+
+      if (!dimensionName) {
+        return;
+      }
+
+      const currentValue = annotationDimensionsRef.current[dimensionName].thoughtProcess;
+
+      onThoughtProcessChange(
+        dimensionName,
+        appendSpeechTranscript(currentValue, transcript),
+      );
+      pendingVoicePersistDimensionRef.current = dimensionName;
+    },
+    onSessionEnd: () => {
+      setActiveVoiceDimension(null);
+    },
+  });
+
+  useEffect(() => {
+    const pendingVoicePersistDimension = pendingVoicePersistDimensionRef.current;
+
+    if (!pendingVoicePersistDimension) {
+      return;
+    }
+
+    const draft = annotationDimensions[pendingVoicePersistDimension];
+
+    if (draft.thoughtProcess.trim().length === 0) {
+      return;
+    }
+
+    pendingVoicePersistDimensionRef.current = null;
+    void onPersistDraft();
+  }, [annotationDimensions, onPersistDraft]);
+
+  function handleVoiceToggle(dimensionName: AnnotationDimensionName) {
+    if (!isVoiceSupported) {
+      return;
+    }
+
+    if (isListening && activeVoiceDimension === dimensionName) {
+      stopListening();
+      return;
+    }
+
+    if (isListening) {
+      return;
+    }
+
+    setActiveVoiceDimension(dimensionName);
+
+    if (!startListening()) {
+      setActiveVoiceDimension(null);
+    }
+  }
+
   if (!hasCalculatedState) {
     return (
       <div className="surface inset-card message-card" aria-live="polite">
@@ -155,7 +242,28 @@ export function AnnotationWorkspace({
               {isExpanded ? (
                 <div className="annotation-body">
                   <label className="field">
-                    <span>เหตุผลการวิเคราะห์</span>
+                    <div className="field-toolbar">
+                      <span>เหตุผลการวิเคราะห์</span>
+                      <button
+                        type="button"
+                        className={`voice-action${
+                          isListening && activeVoiceDimension === dimension.dimensionName
+                            ? " voice-action--listening"
+                            : ""
+                        }`}
+                        onClick={() => handleVoiceToggle(dimension.dimensionName)}
+                        aria-pressed={
+                          isListening && activeVoiceDimension === dimension.dimensionName
+                        }
+                        disabled={
+                          isListening && activeVoiceDimension !== dimension.dimensionName
+                        }
+                      >
+                        {isListening && activeVoiceDimension === dimension.dimensionName
+                          ? "หยุดการฟัง"
+                          : "พูดด้วยเสียง"}
+                      </button>
+                    </div>
                     <textarea
                       name={`${dimension.dimensionName}-thought-process`}
                       rows={5}
@@ -167,6 +275,26 @@ export function AnnotationWorkspace({
                       }
                     />
                   </label>
+
+                  {!isVoiceSupported ? (
+                    <p className="voice-support-note">
+                      เบราว์เซอร์นี้ยังไม่รองรับ dictation ใช้วิธีพิมพ์ตามปกติแทนได้ทันที
+                    </p>
+                  ) : null}
+
+                  {isListening && activeVoiceDimension === dimension.dimensionName ? (
+                    <p className="voice-live-note" aria-live="polite">
+                      {interimTranscript.length > 0
+                        ? `กำลังฟัง: ${interimTranscript}`
+                        : "กำลังฟังอยู่ พูดช้า ๆ แล้วระบบจะเติมข้อความให้อัตโนมัติ"}
+                    </p>
+                  ) : null}
+
+                  {speechErrorMessage && activeVoiceDimension === dimension.dimensionName ? (
+                    <p className="voice-error" aria-live="polite">
+                      {speechErrorMessage}
+                    </p>
+                  ) : null}
 
                   <p className="field-hint">{dimension.guidance}</p>
 
