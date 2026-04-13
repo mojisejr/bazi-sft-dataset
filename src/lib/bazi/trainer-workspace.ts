@@ -38,8 +38,33 @@ export const workflowSteps = [
   "อ่านผล 4 เสาและภาพรวมก่อนเข้าสู่การวิเคราะห์เชิงลึก",
 ] as const;
 
+export const THAI_MONTH_OPTIONS = [
+  { value: "1", label: "มกราคม" },
+  { value: "2", label: "กุมภาพันธ์" },
+  { value: "3", label: "มีนาคม" },
+  { value: "4", label: "เมษายน" },
+  { value: "5", label: "พฤษภาคม" },
+  { value: "6", label: "มิถุนายน" },
+  { value: "7", label: "กรกฎาคม" },
+  { value: "8", label: "สิงหาคม" },
+  { value: "9", label: "กันยายน" },
+  { value: "10", label: "ตุลาคม" },
+  { value: "11", label: "พฤศจิกายน" },
+  { value: "12", label: "ธันวาคม" },
+] as const;
+
+export const BUDDHIST_ERA_YEAR_MIN = 2450;
+export const BUDDHIST_ERA_YEAR_MAX = 2570;
+
+export const BUDDHIST_ERA_YEAR_OPTIONS = Array.from(
+  { length: BUDDHIST_ERA_YEAR_MAX - BUDDHIST_ERA_YEAR_MIN + 1 },
+  (_, index) => String(BUDDHIST_ERA_YEAR_MAX - index),
+);
+
 export type FormState = {
-  birthDate: string;
+  birthDay: string;
+  birthMonth: string;
+  birthYearBe: string;
   birthTime: string;
   gender: string;
   province: string;
@@ -72,13 +97,114 @@ export type ResetActionCopy = {
 
 export function createDefaultFormState(): FormState {
   return {
-    birthDate: "",
+    birthDay: "",
+    birthMonth: "",
+    birthYearBe: "",
     birthTime: "",
     gender: "female",
     province: "",
     calendarSystem: "solar",
     timezone: "Asia/Bangkok",
   };
+}
+
+function parseNumericFormValue(value: string) {
+  if (!/^\d+$/.test(value)) {
+    return null;
+  }
+
+  return Number.parseInt(value, 10);
+}
+
+function isLeapYear(year: number) {
+  if (year % 400 === 0) {
+    return true;
+  }
+
+  if (year % 100 === 0) {
+    return false;
+  }
+
+  return year % 4 === 0;
+}
+
+function getDaysInMonth(year: number, month: number) {
+  if (month === 2) {
+    return isLeapYear(year) ? 29 : 28;
+  }
+
+  if ([4, 6, 9, 11].includes(month)) {
+    return 30;
+  }
+
+  return 31;
+}
+
+export function getGregorianYearFromBuddhistEra(yearBe: string) {
+  const parsedYear = parseNumericFormValue(yearBe);
+
+  if (parsedYear === null) {
+    return null;
+  }
+
+  return parsedYear - 543;
+}
+
+export function getBirthDayOptions(month: string, yearBe: string) {
+  const parsedMonth = parseNumericFormValue(month);
+  const gregorianYear = getGregorianYearFromBuddhistEra(yearBe);
+  const totalDays =
+    parsedMonth && gregorianYear
+      ? getDaysInMonth(gregorianYear, parsedMonth)
+      : 31;
+
+  return Array.from({ length: totalDays }, (_, index) => String(index + 1));
+}
+
+export function applyFormFieldChange(
+  current: FormState,
+  name: string,
+  value: string,
+): FormState {
+  const next = {
+    ...current,
+    [name]: value,
+  };
+
+  if (name !== "birthMonth" && name !== "birthYearBe") {
+    return next;
+  }
+
+  const maxValidDay = getBirthDayOptions(next.birthMonth, next.birthYearBe).length;
+  const selectedDay = parseNumericFormValue(next.birthDay);
+
+  if (selectedDay !== null && selectedDay > maxValidDay) {
+    next.birthDay = "";
+  }
+
+  return next;
+}
+
+export function buildBirthDateValue(formState: FormState) {
+  const day = parseNumericFormValue(formState.birthDay);
+  const month = parseNumericFormValue(formState.birthMonth);
+  const gregorianYear = getGregorianYearFromBuddhistEra(formState.birthYearBe);
+
+  if (day === null || month === null || gregorianYear === null) {
+    return "";
+  }
+
+  if (month < 1 || month > 12) {
+    return "";
+  }
+
+  const maxValidDay = getDaysInMonth(gregorianYear, month);
+
+  if (day < 1 || day > maxValidDay) {
+    return "";
+  }
+
+  return `${String(gregorianYear).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 export function getStatusCopy(
@@ -138,7 +264,7 @@ export function normalizeErrorMessage(error: unknown) {
 
 export function buildPayload(formState: FormState): RawInputValue {
   return {
-    birthDate: formState.birthDate,
+    birthDate: buildBirthDateValue(formState),
     birthTime: formState.birthTime,
     gender: formState.gender,
     province: formState.province,

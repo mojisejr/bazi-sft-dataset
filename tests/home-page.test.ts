@@ -28,6 +28,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("User menu");
     expect(html).toContain("ตั้งข้อมูลเพื่อดูภาพรวมดวง");
     expect(html).toContain("คำนวณภาพรวมดวง");
+    expect(html).toContain("ปี พ.ศ.");
+    expect(html).toContain("เลือกปี พ.ศ.");
+    expect(html).toContain("มีนาคม");
   });
 
   test("requires confirmation only for active unfinished dataset sessions", () => {

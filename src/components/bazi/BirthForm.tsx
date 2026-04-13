@@ -3,6 +3,9 @@
 import type { ChangeEvent, FormEvent } from "react";
 
 import {
+  BUDDHIST_ERA_YEAR_OPTIONS,
+  THAI_MONTH_OPTIONS,
+  getBirthDayOptions,
   workflowSteps,
   type FormState,
   type ResetActionCopy,
@@ -28,6 +31,8 @@ export function BirthForm({
   onSubmit,
   onReset,
 }: BirthFormProps) {
+  const dayOptions = getBirthDayOptions(formState.birthMonth, formState.birthYearBe);
+
   return (
     <>
       <div className="section-heading">
@@ -50,16 +55,56 @@ export function BirthForm({
           disabled={isSessionLocked}
           data-form-locked={isSessionLocked ? "true" : "false"}
         >
-          <label className="field">
+          <div className="field">
             <span>วันเกิด</span>
-            <input
-              name="birthDate"
-              type="date"
-              value={formState.birthDate}
-              onChange={onFieldChange}
-              required
-            />
-          </label>
+            <div className="field-grid field-grid--triple">
+              <label className="field field--compact">
+                <span>วัน</span>
+                <select name="birthDay" value={formState.birthDay} onChange={onFieldChange} required>
+                  <option value="">เลือกวัน</option>
+                  {dayOptions.map((day) => (
+                    <option key={day} value={day}>
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field field--compact">
+                <span>เดือน</span>
+                <select
+                  name="birthMonth"
+                  value={formState.birthMonth}
+                  onChange={onFieldChange}
+                  required
+                >
+                  <option value="">เลือกเดือน</option>
+                  {THAI_MONTH_OPTIONS.map((month) => (
+                    <option key={month.value} value={month.value}>
+                      {month.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field field--compact">
+                <span>ปี พ.ศ.</span>
+                <select
+                  name="birthYearBe"
+                  value={formState.birthYearBe}
+                  onChange={onFieldChange}
+                  required
+                >
+                  <option value="">เลือกปี พ.ศ.</option>
+                  {BUDDHIST_ERA_YEAR_OPTIONS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </div>
 
           <div className="field-grid">
             <label className="field">
@@ -143,7 +188,7 @@ export function BirthForm({
         </div>
 
         <p className="form-footnote">
-          ข้อมูลตั้งต้นจะถูกใช้เพื่ออ่านโครงสร้างดวงจีนก่อน จากนั้นพื้นที่วิเคราะห์เชิงลึกจะต่อยอดจากผลชุดนี้
+          ข้อมูลวันเกิดจะเลือกเป็น พ.ศ. เพื่อให้กรอกง่ายขึ้น และระบบจะแปลงเป็น ค.ศ. มาตรฐานก่อนคำนวณอัตโนมัติ
         </p>
 
         {isSessionLocked ? (

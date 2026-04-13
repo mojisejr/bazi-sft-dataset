@@ -516,9 +516,17 @@ textarea {
   gap: 14px;
 }
 
+.field-grid--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .field {
   display: grid;
   gap: 8px;
+}
+
+.field--compact {
+  gap: 6px;
 }
 
 .field span {

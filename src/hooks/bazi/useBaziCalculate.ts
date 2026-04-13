@@ -8,6 +8,7 @@ import {
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import {
+  applyFormFieldChange,
   buildPayload,
   createDefaultFormState,
   normalizeErrorMessage,
@@ -45,10 +46,7 @@ export function useBaziCalculate({
   ) {
     const { name, value } = event.target;
 
-    setFormState((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    setFormState((current) => applyFormFieldChange(current, name, value));
   }
 
   function resetCalculationSession() {
