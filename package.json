@@ -27,6 +27,7 @@
     "dataset:export:sft": "tsx scripts/export-sft-dataset.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.0.12",
     "@neondatabase/serverless": "^1.0.2",
     "csv-parse": "^6.2.1",
     "drizzle-orm": "^0.45.2",
