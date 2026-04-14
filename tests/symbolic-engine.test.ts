@@ -94,6 +94,30 @@ describe("calculateBaziChart", () => {
     expect(result.fourPillars.day).toMatchObject({ stem: "辛", branch: "卯" });
     expect(result.fourPillars.hour).toMatchObject({ stem: "甲", branch: "午" });
   });
+
+  test("keeps Bangkok local time when the hour pillar sits near a two-hour boundary", async () => {
+    const repository = createTestKnowledgeRepository();
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1980-04-05",
+        birthTime: "08:23",
+        gender: "male",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    expect(result.fourPillars.year).toMatchObject({ stem: "庚", branch: "申" });
+    expect(result.fourPillars.month).toMatchObject({ stem: "庚", branch: "辰" });
+    expect(result.fourPillars.day).toMatchObject({ stem: "戊", branch: "申" });
+    expect(result.fourPillars.hour).toMatchObject({ stem: "丙", branch: "辰" });
+    expect(`${result.fourPillars.hour.stem}${result.fourPillars.hour.branch}`).toBe("丙辰");
+    expect(`${result.fourPillars.hour.stem}${result.fourPillars.hour.branch}`).not.toBe("丁巳");
+    expect(result.tenGods.hourStem).toBe("偏印");
+    expect(result.twelveQi.hourBranch).toBe("冠带");
+  });
 });
 
 describe("createCalculateBaziHandler", () => {

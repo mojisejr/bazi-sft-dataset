@@ -383,12 +383,12 @@ function normalizeBirthContext(rawInput: RawInputValue): NormalizedBirthContext 
 
   return {
     solar: Solar.fromYmdHms(
-      hongKongParts.year,
-      hongKongParts.month,
-      hongKongParts.day,
-      hongKongParts.hour,
-      hongKongParts.minute,
-      hongKongParts.second,
+      baseParts.year,
+      baseParts.month,
+      baseParts.day,
+      baseParts.hour,
+      baseParts.minute,
+      baseParts.second,
     ),
     birthAtHongKong: formatDateTimeParts(hongKongParts),
   };

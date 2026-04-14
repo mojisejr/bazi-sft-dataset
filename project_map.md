@@ -12,7 +12,7 @@
 *   `src/lib/bazi/`:
     *   `schema-types.ts`: Zod Contracts สำหรับ 15-Dimension Annotation, Raw Input, และ Calculated State (Single Source of Truth สำหรับ API และ UI)
     *   `symbolic-engine.ts`: Phase 2 service layer สำหรับผูกดวง, ดึง canonical knowledge, และสร้าง `calculated_state`
-    *   `timezone.ts`: utility สำหรับ normalize เวลาเกิดจาก timezone ต้นทางไปสู่ HKT boundary truth
+    *   `timezone.ts`: utility สำหรับ parse เวลา local ของผู้ใช้, แปลงเป็น UTC เมื่อจำเป็น, และคำนวณ HKT boundary truth สำหรับ solar-term context
 *   `src/app/api/bazi/calculate/route.ts`:
     *   API endpoint สำหรับรับ Raw Input แล้วคืน `calculated_state` จาก Symbolic Engine
 *   `scripts/`:
@@ -25,7 +25,7 @@
 
 ## 3. 🔄 Data Flow (The Pulse)
 1. **Human/UI** -> (Raw Input) -> `POST /api/bazi/calculate`
-2. **Symbolic Engine** -> normalize เวลาเกิดเข้าสู่ HKT -> อ้างอิง `bazi_time_solar_terms`, `bazi_twelve_qi_stages`, `bazi_sixty_jiazi_narratives` -> (Calculated State) -> **Human/UI**
+2. **Symbolic Engine** -> ผูก 4 เสาจากเวลา local ของผู้ใช้โดยตรง -> แปลงเวลาเดียวกันไปเป็น HKT เฉพาะตอน lookup `bazi_time_solar_terms` และ canonical context -> อ้างอิง `bazi_twelve_qi_stages`, `bazi_sixty_jiazi_narratives` -> (Calculated State) -> **Human/UI**
 3. **Human/UI** -> ตรวจสอบและกรอก 15-Dimension Annotation & CoT -> `POST /api/dataset/save`
 4. **API** -> Validate ด้วย Zod `AnnotationDataSchema` -> บันทึกลง `bazi_dataset_records.annotation_data` (JSONB) ใน Neon DB
 5. **Local Operator Script** -> `scripts/export-sft-dataset.ts` -> ดึงเฉพาะ `status='reviewed'` -> แปลงเป็น ShareGPT/Alpaca-compatible JSONL บน Local Disk
@@ -34,5 +34,5 @@
 *   **ORM Tooling Limitations**: `drizzle-kit push` / `migrate` มีปัญหากับ Neon serverless driver และ TTY prompt ใน environment นี้ -> *Solution*: ใช้ Deterministic migration pipeline และ direct `psql` apply.
 *   **Deep Reasoning Validation**: การรับประกันโครงสร้าง JSONB 15 มิติที่ถูกต้อง -> *Solution*: ผูก `Zod` validation เข้ากับ `CHECK` constraint ในระดับ DB
 *   **Conflict Resolution**: ความรู้ Bazi มีความขัดแย้ง (เช่น ฮะแก้ชง) -> *Solution*: ใช้ Precedence Fixtures เป็นกฎให้ Symbolic Engine ใน Phase 2.
-*   **Timezone Normalization**: เวลาสารทใน canonical tables ถูกเก็บเป็น HKT -> *Solution*: normalize เวลาเกิดจาก timezone ต้นทางเป็น HKT ก่อนผูกดวงและเทียบ boundary
+*   **Timezone Normalization**: เวลาสารทใน canonical tables ถูกเก็บเป็น HKT แต่หลักเวลาในดวงต้องยึด local time ของผู้เกิด -> *Solution*: ผูก 4 เสาจาก local time ก่อน แล้วค่อยแปลง timestamp เดียวกันไปเทียบ HKT boundary สำหรับ context เพิ่มเติมเท่านั้น
 *   **Dataset Privacy**: งาน export training data ไม่ควรโผล่บน UI ของซินแส -> *Solution*: ย้าย phase 4 ไปเป็น headless local script และ ignore generated output artifacts ใน repo

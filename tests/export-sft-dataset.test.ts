@@ -24,19 +24,19 @@ function createReviewedRecord() {
         year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
-        hour: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
       dayMaster: "己",
-      strengthScore: 2.75,
+      strengthScore: 3.07,
       tenGods: {
-        yearStem: "偏财",
+        yearStem: "正财",
         monthStem: "劫财",
         hourStem: "食神",
       },
       twelveQi: {
         yearBranch: "沐浴",
         monthBranch: "沐浴",
-        dayBranch: "病",
+        dayBranch: "帝旺",
         hourBranch: "冠带",
       },
       elementMetaphors: [

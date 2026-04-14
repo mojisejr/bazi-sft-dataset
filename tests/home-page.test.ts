@@ -66,7 +66,7 @@ describe("BaziTrainerWorkspace", () => {
         year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
-        hour: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
       dayMaster: "己",
       strengthScore: 3.07,
@@ -77,14 +77,14 @@ describe("BaziTrainerWorkspace", () => {
         monthBranch: "伤官,正财,劫财",
         dayStem: "比肩",
         dayBranch: "正印,伤官,劫财",
-        hourStem: "正财",
-        hourBranch: "伤官,正财,劫财",
+        hourStem: "食神",
+        hourBranch: "比肩,偏印,七杀",
       },
       twelveQi: {
         yearBranch: "沐浴",
         monthBranch: "沐浴",
         dayBranch: "帝旺",
-        hourBranch: "沐浴",
+        hourBranch: "冠带",
       },
       elementMetaphors: [
         {
