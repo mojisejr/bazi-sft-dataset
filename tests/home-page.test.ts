@@ -33,7 +33,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("มีนาคม");
     expect(html).toContain("thai-province-options");
     expect(html).toContain("กรุงเทพมหานคร");
+    expect(html).toContain("00-23");
+    expect(html).toContain("00-59");
     expect(html).not.toContain("ระบบปฏิทิน");
+    expect(html).toContain("Asia/Bangkok");
+    expect(html).not.toContain("Asia/Hong_Kong");
   });
 
   test("requires confirmation only for active unfinished dataset sessions", () => {
@@ -109,7 +113,7 @@ describe("BaziTrainerWorkspace", () => {
           gender: "female",
           province: "Bangkok",
           calendarSystem: "solar",
-          timezone: "Asia/Hong_Kong",
+          timezone: "Asia/Bangkok",
         },
         initialCalculatedState,
         initialSubmissionState: "ready",
@@ -126,6 +130,8 @@ describe("BaziTrainerWorkspace", () => {
   expect(html).toContain("Complete Annotation");
     expect(html).not.toContain("Accept Annotation");
   expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
+    expect(html).toContain("Asia/Bangkok");
+    expect(html).not.toContain("Asia/Hong_Kong");
     expect(html).toContain("己");
     expect(html).toContain("3.07");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");

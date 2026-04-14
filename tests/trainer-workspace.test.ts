@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   applyFormFieldChange,
+  buildBirthTimeValue,
   buildPayload,
   createDefaultFormState,
   getBirthDayOptions,
@@ -14,13 +15,22 @@ describe("trainer workspace birth date helpers", () => {
       birthDay: "12",
       birthMonth: "3",
       birthYearBe: "2524",
-      birthTime: "09:15",
+      birthHour: "09",
+      birthMinute: "15",
       gender: "female",
       province: "กรุงเทพมหานคร",
     });
 
     expect(payload.birthDate).toBe("1981-03-12");
+    expect(payload.birthTime).toBe("09:15");
     expect(payload.calendarSystem).toBe("solar");
+    expect(payload.timezone).toBe("Asia/Bangkok");
+  });
+
+  test("builds a deterministic 24-hour birthTime string from hour and minute parts", () => {
+    expect(buildBirthTimeValue("14", "05")).toBe("14:05");
+    expect(buildBirthTimeValue("", "05")).toBe("");
+    expect(buildBirthTimeValue("14", "")).toBe("");
   });
 
   test("keeps leap-year February day options aligned with Gregorian conversion", () => {

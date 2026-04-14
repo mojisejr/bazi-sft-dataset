@@ -3,6 +3,8 @@
 import type { ChangeEvent, FormEvent } from "react";
 
 import {
+  BIRTH_HOUR_OPTIONS,
+  BIRTH_MINUTE_OPTIONS,
   BUDDHIST_ERA_YEAR_OPTIONS,
   THAI_PROVINCE_OPTIONS,
   THAI_MONTH_OPTIONS,
@@ -110,13 +112,42 @@ export function BirthForm({
           <div className="field-grid">
             <label className="field">
               <span>เวลาเกิด</span>
-              <input
-                name="birthTime"
-                type="time"
-                value={formState.birthTime}
-                onChange={onFieldChange}
-                required
-              />
+              <div className="field-grid">
+                <label className="field field--compact">
+                  <span>ชั่วโมง</span>
+                  <select
+                    name="birthHour"
+                    value={formState.birthHour}
+                    onChange={onFieldChange}
+                    required
+                  >
+                    <option value="">00-23</option>
+                    {BIRTH_HOUR_OPTIONS.map((hour) => (
+                      <option key={hour} value={hour}>
+                        {hour}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="field field--compact">
+                  <span>นาที</span>
+                  <select
+                    name="birthMinute"
+                    value={formState.birthMinute}
+                    onChange={onFieldChange}
+                    required
+                  >
+                    <option value="">00-59</option>
+                    {BIRTH_MINUTE_OPTIONS.map((minute) => (
+                      <option key={minute} value={minute}>
+                        {minute}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+              <p className="field-hint">ใช้เวลาแบบ 24 ชั่วโมง เช่น 14:05</p>
             </label>
 
             <label className="field">
@@ -149,16 +180,6 @@ export function BirthForm({
               รองรับจังหวัดในประเทศไทยก่อน พิมพ์ไม่กี่ตัวแล้วเลือกจากรายการได้ทันที
             </p>
           </label>
-
-          <div className="field-grid">
-            <label className="field">
-              <span>เขตเวลา</span>
-              <select name="timezone" value={formState.timezone} onChange={onFieldChange}>
-                <option value="Asia/Bangkok">Asia/Bangkok</option>
-                <option value="Asia/Hong_Kong">Asia/Hong_Kong</option>
-              </select>
-            </label>
-          </div>
         </fieldset>
 
         <div className="form-actions">
@@ -186,7 +207,7 @@ export function BirthForm({
         </div>
 
         <p className="form-footnote">
-          ข้อมูลวันเกิดจะเลือกเป็น พ.ศ. เพื่อให้กรอกง่ายขึ้น และระบบจะคำนวณด้วยปฏิทินสุริยคติแบบไทยให้อัตโนมัติ
+          ข้อมูลวันเกิดจะเลือกเป็น พ.ศ. เพื่อให้กรอกง่ายขึ้น เวลาเกิดใช้ระบบ 24 ชั่วโมง และระบบจะคำนวณด้วยเวลาประเทศไทยร่วมกับปฏิทินสุริยคติแบบไทยให้อัตโนมัติ
         </p>
 
         {isSessionLocked ? (

@@ -61,6 +61,14 @@ export const BUDDHIST_ERA_YEAR_OPTIONS = Array.from(
   (_, index) => String(BUDDHIST_ERA_YEAR_MAX - index),
 );
 
+export const BIRTH_HOUR_OPTIONS = Array.from({ length: 24 }, (_, index) =>
+  String(index).padStart(2, "0"),
+);
+
+export const BIRTH_MINUTE_OPTIONS = Array.from({ length: 60 }, (_, index) =>
+  String(index).padStart(2, "0"),
+);
+
 export const THAI_PROVINCE_OPTIONS = [
   "กรุงเทพมหานคร",
   "กระบี่",
@@ -143,10 +151,10 @@ export type FormState = {
   birthDay: string;
   birthMonth: string;
   birthYearBe: string;
-  birthTime: string;
+  birthHour: string;
+  birthMinute: string;
   gender: string;
   province: string;
-  timezone: string;
 };
 
 export type SubmissionState = "idle" | "submitting" | "ready" | "error";
@@ -177,11 +185,19 @@ export function createDefaultFormState(): FormState {
     birthDay: "",
     birthMonth: "",
     birthYearBe: "",
-    birthTime: "",
+    birthHour: "",
+    birthMinute: "",
     gender: "female",
     province: "",
-    timezone: "Asia/Bangkok",
   };
+}
+
+export function buildBirthTimeValue(hour: string, minute: string) {
+  if (!/^\d{2}$/.test(hour) || !/^\d{2}$/.test(minute)) {
+    return "";
+  }
+
+  return `${hour}:${minute}`;
 }
 
 function parseNumericFormValue(value: string) {
@@ -341,11 +357,11 @@ export function normalizeErrorMessage(error: unknown) {
 export function buildPayload(formState: FormState): RawInputValue {
   return {
     birthDate: buildBirthDateValue(formState),
-    birthTime: formState.birthTime,
+    birthTime: buildBirthTimeValue(formState.birthHour, formState.birthMinute),
     gender: formState.gender,
     province: formState.province,
     calendarSystem: "solar",
-    timezone: formState.timezone,
+    timezone: "Asia/Bangkok",
   };
 }
 
