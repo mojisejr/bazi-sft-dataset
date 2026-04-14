@@ -58,6 +58,13 @@ describe("calculateBaziChart", () => {
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.twelveQi.dayBranch).toBe("帝旺");
+    expect(result.mingGong).toBeUndefined();
+    expect(result.daYun).toEqual([]);
+    expect(result.liuNian).toMatchObject({
+      stem: expect.any(String),
+      branch: expect.any(String),
+    });
+    expect(result.shenSha).toEqual([]);
     expect(result.sixtyJiaziCorePersona).toMatchObject({
       code: "己巳",
       narrative:
@@ -117,6 +124,49 @@ describe("calculateBaziChart", () => {
     expect(`${result.fourPillars.hour.stem}${result.fourPillars.hour.branch}`).not.toBe("丁巳");
     expect(result.tenGods.hourStem).toBe("偏印");
     expect(result.twelveQi.hourBranch).toBe("冠带");
+  });
+
+});
+
+describe("CalculatedStateSchema", () => {
+  test("accepts legacy calculated state payloads while defaulting phase 1 scaffold collections", () => {
+    const parsed = CalculatedStateSchema.parse({
+      fourPillars: {
+        year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
+        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+      },
+      dayMaster: "己",
+      strengthScore: 3.07,
+      tenGods: {
+        yearStem: "正财",
+        yearBranch: "伤官,正财,劫财",
+        monthStem: "劫财",
+        monthBranch: "伤官,正财,劫财",
+        dayStem: "比肩",
+        dayBranch: "正印,伤官,劫财",
+        hourStem: "食神",
+        hourBranch: "比肩,偏印,七杀",
+      },
+      twelveQi: {
+        yearBranch: "沐浴",
+        monthBranch: "沐浴",
+        dayBranch: "帝旺",
+        hourBranch: "冠带",
+      },
+      elementMetaphors: [
+        {
+          element: "earth",
+          metaphor: "fertile cultivated soil that nurtures, absorbs, and organizes",
+        },
+      ],
+    });
+
+    expect(parsed.daYun).toEqual([]);
+    expect(parsed.shenSha).toEqual([]);
+    expect(parsed.mingGong).toBeUndefined();
+    expect(parsed.liuNian).toBeUndefined();
   });
 });
 
