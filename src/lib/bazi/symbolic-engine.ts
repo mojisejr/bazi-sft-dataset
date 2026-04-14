@@ -29,6 +29,7 @@ type EightCharLike = {
   getMonth(): string;
   getDay(): string;
   getTime(): string;
+  getMingGong(): string;
   getYearHideGan(): string[] | string;
   getMonthHideGan(): string[] | string;
   getDayHideGan(): string[] | string;
@@ -45,6 +46,28 @@ type EightCharLike = {
   getMonthDiShi(): string;
   getDayDiShi(): string;
   getTimeDiShi(): string;
+  getYun(gender: number, sect?: number): YunLike;
+};
+
+type LiuNianLike = {
+  getYear(): number;
+  getAge(): number;
+  getGanZhi(): string;
+};
+
+type DaYunLike = {
+  getIndex(): number;
+  getStartAge(): number;
+  getEndAge(): number;
+  getGanZhi(): string;
+  getLiuNian(count?: number): LiuNianLike[];
+};
+
+type YunLike = {
+  getStartYear(): number;
+  getStartMonth(): number;
+  getStartDay(): number;
+  getDaYun(count?: number): DaYunLike[];
 };
 
 type SolarInstance = {
@@ -156,7 +179,102 @@ const STAGE_WEIGHTS = {
   养: 1.1,
 } as const;
 
+const BRANCH_HIDDEN_STEMS = {
+  子: ["癸"],
+  丑: ["己", "癸", "辛"],
+  寅: ["甲", "丙", "戊"],
+  卯: ["乙"],
+  辰: ["戊", "乙", "癸"],
+  巳: ["丙", "庚", "戊"],
+  午: ["丁", "己"],
+  未: ["己", "丁", "乙"],
+  申: ["庚", "壬", "戊"],
+  酉: ["辛"],
+  戌: ["戊", "辛", "丁"],
+  亥: ["壬", "甲"],
+} as const;
+
+const NOBLEMAN_BRANCHES_BY_DAY_STEM = {
+  甲: ["丑", "未"],
+  戊: ["丑", "未"],
+  乙: ["子", "申"],
+  己: ["子", "申"],
+  丙: ["亥", "酉"],
+  丁: ["亥", "酉"],
+  庚: ["午", "寅"],
+  辛: ["午", "寅"],
+  壬: ["卯", "巳"],
+  癸: ["卯", "巳"],
+} as const;
+
+const WEN_CHANG_BRANCH_BY_DAY_STEM = {
+  甲: "巳",
+  乙: "午",
+  丙: "申",
+  丁: "酉",
+  戊: "申",
+  己: "酉",
+  庚: "亥",
+  辛: "子",
+  壬: "寅",
+  癸: "卯",
+} as const;
+
+const PEACH_BLOSSOM_BRANCH_BY_GROUP = {
+  申: "酉",
+  子: "酉",
+  辰: "酉",
+  寅: "卯",
+  午: "卯",
+  戌: "卯",
+  巳: "午",
+  酉: "午",
+  丑: "午",
+  亥: "子",
+  卯: "子",
+  未: "子",
+} as const;
+
+const TRAVELING_HORSE_BRANCH_BY_GROUP = {
+  申: "寅",
+  子: "寅",
+  辰: "寅",
+  寅: "申",
+  午: "申",
+  戌: "申",
+  巳: "亥",
+  酉: "亥",
+  丑: "亥",
+  亥: "巳",
+  卯: "巳",
+  未: "巳",
+} as const;
+
+const SHEN_SHA_COPY = {
+  nobleman: {
+    starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+    meaning: "ดาวอุปถัมภ์ ชี้จังหวะที่มีผู้ใหญ่ค้ำชู คนแนะนำ หรือแรงสนับสนุนเข้ามาช่วยเปิดทาง",
+  },
+  peachBlossom: {
+    starName: "ดอกท้อ (桃花)",
+    meaning: "ดาวเสน่ห์และแรงดึงดูด ชี้พลังด้านภาพลักษณ์ สังคม ความนิยม และความสัมพันธ์",
+  },
+  wenChang: {
+    starName: "บุ่งเชียง/วิชาการ (文昌)",
+    meaning: "ดาววิชาการ การคิดเชิงระบบ การเขียน การเรียนรู้ และงานที่ต้องใช้ปัญญาหรือชื่อเสียงทางความรู้",
+  },
+  travelingHorse: {
+    starName: "ม้าเหิน (驿马)",
+    meaning: "ดาวการเคลื่อนไหว การเดินทาง การโยกย้าย และโอกาสที่เกิดจากการเปลี่ยนจังหวะชีวิตหรือสถานที่",
+  },
+} as const;
+
 type SupportedElement = (typeof STEM_TO_ELEMENT)[keyof typeof STEM_TO_ELEMENT];
+
+type ReferencePillar = {
+  label: string;
+  pillar: Pick<PillarValue, "stem" | "branch">;
+};
 
 export type SolarTermBoundaryRecord = {
   label: string;
@@ -222,6 +340,197 @@ function buildPillarValue(pillarText: string, hiddenStemValue: string[] | string
     branch,
     hiddenStems: normalizeHiddenStems(hiddenStemValue),
   };
+}
+
+function buildDerivedPillarValue(pillarText: string): PillarValue {
+  const { stem, branch } = splitGanZhi(pillarText);
+
+  return {
+    stem,
+    branch,
+    hiddenStems: [...(BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [])],
+  };
+}
+
+function normalizeGenderForYun(gender: string) {
+  const normalized = gender.trim().toLowerCase();
+
+  if (
+    normalized.startsWith("f") ||
+    normalized.includes("woman") ||
+    normalized.includes("female") ||
+    normalized.includes("หญิง")
+  ) {
+    return 0;
+  }
+
+  return 1;
+}
+
+function getCurrentHongKongDateTimeParts(now = new Date()) {
+  return getDateTimePartsInTimeZone(now, HONG_KONG_TIMEZONE);
+}
+
+function buildCurrentReferenceSolar(now = new Date()) {
+  const parts = getCurrentHongKongDateTimeParts(now);
+
+  return Solar.fromYmdHms(
+    parts.year,
+    parts.month,
+    parts.day,
+    parts.hour,
+    parts.minute,
+    parts.second,
+  );
+}
+
+function buildDaYunState(eightChar: EightCharLike, gender: string, currentYear: number) {
+  return eightChar
+    .getYun(normalizeGenderForYun(gender))
+    .getDaYun()
+    .filter((entry) => entry.getGanZhi().trim().length > 0)
+    .map((entry) => {
+      const { stem, branch } = splitGanZhi(entry.getGanZhi());
+      const isCurrent = entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear);
+
+      return {
+        startAge: entry.getStartAge(),
+        endAge: entry.getEndAge(),
+        stem,
+        branch,
+        isCurrent,
+      };
+    });
+}
+
+function buildLiuNianState(
+  currentDaYun: DaYunLike | undefined,
+  currentYear: number,
+  currentReferenceEightChar: EightCharLike,
+) {
+  const currentLiuNian = currentDaYun
+    ?.getLiuNian()
+    .find((entry) => entry.getYear() === currentYear);
+
+  if (currentLiuNian?.getGanZhi()) {
+    return buildPillarValue(
+      currentLiuNian.getGanZhi(),
+      currentReferenceEightChar.getYearHideGan(),
+    );
+  }
+
+  return buildPillarValue(
+    currentReferenceEightChar.getYear(),
+    currentReferenceEightChar.getYearHideGan(),
+  );
+}
+
+function pushShenSha(
+  collection: CalculatedStateValue["shenSha"],
+  seen: Set<string>,
+  starName: string,
+  relatedPillar: string,
+  meaning: string,
+) {
+  const key = `${starName}:${relatedPillar}`;
+
+  if (seen.has(key)) {
+    return;
+  }
+
+  seen.add(key);
+  collection.push({
+    starName,
+    relatedPillar,
+    meaning,
+  });
+}
+
+function findReferenceMatches(referencePillars: ReferencePillar[], targetBranch: string) {
+  return referencePillars.filter((entry) => entry.pillar.branch === targetBranch);
+}
+
+function buildShenShaState(args: {
+  pillars: CalculatedStateValue["fourPillars"];
+  dayMasterStem: string;
+  mingGong?: PillarValue;
+  liuNian?: PillarValue;
+  currentDaYun?: { stem: string; branch: string };
+}) {
+  const { pillars, dayMasterStem, mingGong, liuNian, currentDaYun } = args;
+  const referencePillars: ReferencePillar[] = [
+    { label: "ปี", pillar: pillars.year },
+    { label: "เดือน", pillar: pillars.month },
+    { label: "วัน", pillar: pillars.day },
+    { label: "ยาม", pillar: pillars.hour },
+    ...(mingGong ? [{ label: "ลัคนา", pillar: mingGong }] : []),
+    ...(liuNian ? [{ label: "ปีจร", pillar: liuNian }] : []),
+    ...(currentDaYun ? [{ label: `วัยจรปัจจุบัน (${currentDaYun.stem}${currentDaYun.branch})`, pillar: currentDaYun }] : []),
+  ];
+  const shenSha: CalculatedStateValue["shenSha"] = [];
+  const seen = new Set<string>();
+
+  const noblemanBranches = NOBLEMAN_BRANCHES_BY_DAY_STEM[
+    dayMasterStem as keyof typeof NOBLEMAN_BRANCHES_BY_DAY_STEM
+  ] ?? [];
+  for (const branch of noblemanBranches) {
+    for (const match of findReferenceMatches(referencePillars, branch)) {
+      pushShenSha(
+        shenSha,
+        seen,
+        SHEN_SHA_COPY.nobleman.starName,
+        match.label,
+        SHEN_SHA_COPY.nobleman.meaning,
+      );
+    }
+  }
+
+  const peachBlossomBranch = PEACH_BLOSSOM_BRANCH_BY_GROUP[
+    pillars.day.branch as keyof typeof PEACH_BLOSSOM_BRANCH_BY_GROUP
+  ];
+  if (peachBlossomBranch) {
+    for (const match of findReferenceMatches(referencePillars, peachBlossomBranch)) {
+      pushShenSha(
+        shenSha,
+        seen,
+        SHEN_SHA_COPY.peachBlossom.starName,
+        match.label,
+        SHEN_SHA_COPY.peachBlossom.meaning,
+      );
+    }
+  }
+
+  const wenChangBranch = WEN_CHANG_BRANCH_BY_DAY_STEM[
+    dayMasterStem as keyof typeof WEN_CHANG_BRANCH_BY_DAY_STEM
+  ];
+  if (wenChangBranch) {
+    for (const match of findReferenceMatches(referencePillars, wenChangBranch)) {
+      pushShenSha(
+        shenSha,
+        seen,
+        SHEN_SHA_COPY.wenChang.starName,
+        match.label,
+        SHEN_SHA_COPY.wenChang.meaning,
+      );
+    }
+  }
+
+  const travelingHorseBranch = TRAVELING_HORSE_BRANCH_BY_GROUP[
+    pillars.day.branch as keyof typeof TRAVELING_HORSE_BRANCH_BY_GROUP
+  ];
+  if (travelingHorseBranch) {
+    for (const match of findReferenceMatches(referencePillars, travelingHorseBranch)) {
+      pushShenSha(
+        shenSha,
+        seen,
+        SHEN_SHA_COPY.travelingHorse.starName,
+        match.label,
+        SHEN_SHA_COPY.travelingHorse.meaning,
+      );
+    }
+  }
+
+  return shenSha;
 }
 
 function getElement(stem: string): SupportedElement {
@@ -494,9 +803,20 @@ export async function calculateBaziChart(
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
   const eightChar = birthContext.solar.getLunar().getEightChar();
+  const currentReferenceSolar = buildCurrentReferenceSolar();
+  const currentReferenceEightChar = currentReferenceSolar.getLunar().getEightChar();
+  const currentYear = currentReferenceSolar.getYear();
   const structuralState = calculateBaziStructuralState(rawInput);
   const pillars = structuralState.fourPillars;
   const dayMasterStem = structuralState.dayMaster;
+  const mingGong = buildDerivedPillarValue(eightChar.getMingGong());
+  const daYunState = buildDaYunState(eightChar, rawInput.gender, currentYear);
+  const currentDaYunEntry = eightChar
+    .getYun(normalizeGenderForYun(rawInput.gender))
+    .getDaYun()
+    .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
+  const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
+  const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
   const [yearStage, monthStage, dayStage, hourStage, persona, solarTerms] = await Promise.all([
     repository.findTwelveQiStage(dayMasterStem, pillars.year.branch),
     repository.findTwelveQiStage(dayMasterStem, pillars.month.branch),
@@ -508,6 +828,16 @@ export async function calculateBaziChart(
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
+    mingGong,
+    daYun: daYunState,
+    liuNian,
+    shenSha: buildShenShaState({
+      pillars,
+      dayMasterStem,
+      mingGong,
+      liuNian,
+      currentDaYun: currentDaYunPillar,
+    }),
     dayMaster: dayMasterStem,
     strengthScore: computeStrengthScore(
       dayMasterStem,

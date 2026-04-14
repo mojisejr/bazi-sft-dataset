@@ -1,10 +1,14 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { createCalculateBaziHandler } from "@/app/api/bazi/calculate/route";
 import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
 import { calculateBaziChart } from "@/lib/bazi/symbolic-engine";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("calculateBaziChart", () => {
   test("flips the year and month pillars when crossing the start-of-spring boundary", async () => {
@@ -40,6 +44,9 @@ describe("calculateBaziChart", () => {
   });
 
   test("returns a deterministic calculated state for a pinned sample chart", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T04:00:00.000Z"));
+
     const repository = createTestKnowledgeRepository();
     const result = await calculateBaziChart(
       RawInputSchema.parse({
@@ -58,10 +65,33 @@ describe("calculateBaziChart", () => {
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.twelveQi.dayBranch).toBe("帝旺");
-    expect(result.mingGong).toBeUndefined();
-    expect(result.daYun).toEqual([]);
-    expect(result.liuNian).toBeUndefined();
-    expect(result.shenSha).toEqual([]);
+    expect(result.mingGong).toMatchObject({ stem: "壬", branch: "寅" });
+    expect(result.daYun).toHaveLength(9);
+    expect(result.daYun[0]).toMatchObject({ startAge: 6, endAge: 15, stem: "丁", branch: "未" });
+    expect(result.daYun.find((entry) => entry.isCurrent)).toMatchObject({
+      startAge: 26,
+      endAge: 35,
+      stem: "乙",
+      branch: "巳",
+      isCurrent: true,
+    });
+    expect(result.liuNian).toMatchObject({ stem: "丙", branch: "午" });
+    expect(result.shenSha).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+          relatedPillar: "ปี",
+        }),
+        expect.objectContaining({
+          starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+          relatedPillar: "เดือน",
+        }),
+        expect.objectContaining({
+          starName: "ดอกท้อ (桃花)",
+          relatedPillar: "ปีจร",
+        }),
+      ]),
+    );
     expect(result.sixtyJiaziCorePersona).toMatchObject({
       code: "己巳",
       narrative:
@@ -80,6 +110,9 @@ describe("calculateBaziChart", () => {
   });
 
   test("keeps historical Bangkok births on fixed regional offsets instead of political DST", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T04:00:00.000Z"));
+
     const repository = createTestKnowledgeRepository();
     const result = await calculateBaziChart(
       RawInputSchema.parse({
@@ -100,6 +133,9 @@ describe("calculateBaziChart", () => {
   });
 
   test("keeps Bangkok local time when the hour pillar sits near a two-hour boundary", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T04:00:00.000Z"));
+
     const repository = createTestKnowledgeRepository();
     const result = await calculateBaziChart(
       RawInputSchema.parse({
