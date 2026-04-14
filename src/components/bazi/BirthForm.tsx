@@ -4,6 +4,7 @@ import type { ChangeEvent, FormEvent } from "react";
 
 import {
   BUDDHIST_ERA_YEAR_OPTIONS,
+  THAI_PROVINCE_OPTIONS,
   THAI_MONTH_OPTIONS,
   getBirthDayOptions,
   workflowSteps,
@@ -129,30 +130,27 @@ export function BirthForm({
           </div>
 
           <label className="field">
-            <span>จังหวัดหรือเมืองเกิด</span>
+            <span>จังหวัดเกิด</span>
             <input
               name="province"
               type="text"
-              placeholder="เช่น กรุงเทพมหานคร"
+              list="thai-province-options"
+              placeholder="พิมพ์ชื่อจังหวัด เช่น กรุงเทพมหานคร"
               value={formState.province}
               onChange={onFieldChange}
               required
             />
+            <datalist id="thai-province-options">
+              {THAI_PROVINCE_OPTIONS.map((province) => (
+                <option key={province} value={province} />
+              ))}
+            </datalist>
+            <p className="field-hint">
+              รองรับจังหวัดในประเทศไทยก่อน พิมพ์ไม่กี่ตัวแล้วเลือกจากรายการได้ทันที
+            </p>
           </label>
 
           <div className="field-grid">
-            <label className="field">
-              <span>ระบบปฏิทิน</span>
-              <select
-                name="calendarSystem"
-                value={formState.calendarSystem}
-                onChange={onFieldChange}
-              >
-                <option value="solar">สุริยคติ</option>
-                <option value="lunar">จันทรคติ</option>
-              </select>
-            </label>
-
             <label className="field">
               <span>เขตเวลา</span>
               <select name="timezone" value={formState.timezone} onChange={onFieldChange}>
@@ -188,7 +186,7 @@ export function BirthForm({
         </div>
 
         <p className="form-footnote">
-          ข้อมูลวันเกิดจะเลือกเป็น พ.ศ. เพื่อให้กรอกง่ายขึ้น และระบบจะแปลงเป็น ค.ศ. มาตรฐานก่อนคำนวณอัตโนมัติ
+          ข้อมูลวันเกิดจะเลือกเป็น พ.ศ. เพื่อให้กรอกง่ายขึ้น และระบบจะคำนวณด้วยปฏิทินสุริยคติแบบไทยให้อัตโนมัติ
         </p>
 
         {isSessionLocked ? (

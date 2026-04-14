@@ -16,10 +16,11 @@ describe("trainer workspace birth date helpers", () => {
       birthYearBe: "2524",
       birthTime: "09:15",
       gender: "female",
-      province: "Bangkok",
+      province: "กรุงเทพมหานคร",
     });
 
     expect(payload.birthDate).toBe("1981-03-12");
+    expect(payload.calendarSystem).toBe("solar");
   });
 
   test("keeps leap-year February day options aligned with Gregorian conversion", () => {

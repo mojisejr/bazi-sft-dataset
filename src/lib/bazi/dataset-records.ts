@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { ZodError, z } from "zod";
 
 import { createDbClient } from "@/db/client";
@@ -47,9 +47,13 @@ export type DatasetRecordRepository = {
   ) => Promise<SavedDatasetRecord>;
 };
 
+export type DatasetDraftPurgeRepository = {
+  purgeDrafts: (annotatorId: string) => Promise<void>;
+};
+
 export function createDbDatasetRecordRepository(
   databaseUrl?: string,
-): DatasetRecordRepository {
+): DatasetRecordRepository & DatasetDraftPurgeRepository {
   return {
     async saveRecord(input, annotatorId) {
       const db = createDbClient(databaseUrl);
@@ -96,11 +100,28 @@ export function createDbDatasetRecordRepository(
         updatedAt: createdRecord.updatedAt.toISOString(),
       };
     },
+    async purgeDrafts(annotatorId) {
+      const db = createDbClient(databaseUrl);
+
+      await db
+        .delete(baziDatasetRecords)
+        .where(
+          and(
+            eq(baziDatasetRecords.annotatorId, annotatorId),
+            eq(baziDatasetRecords.status, "draft"),
+          ),
+        );
+    },
   };
 }
 
 type SaveDatasetHandlerOptions = {
   repository?: DatasetRecordRepository;
+  authenticate: SaveDatasetAuthenticate;
+};
+
+type PurgeDatasetDraftsHandlerOptions = {
+  repository?: DatasetDraftPurgeRepository;
   authenticate: SaveDatasetAuthenticate;
 };
 
@@ -145,6 +166,41 @@ export function createSaveDatasetHandler(options: SaveDatasetHandlerOptions) {
       }
 
       const message = error instanceof Error ? error.message : "Unknown dataset save error.";
+
+      return Response.json(
+        {
+          error: message,
+        },
+        { status: 500 },
+      );
+    }
+  };
+}
+
+export function createPurgeDatasetDraftsHandler(
+  options: PurgeDatasetDraftsHandlerOptions,
+) {
+  return async function POST() {
+    try {
+      const authResult = await options.authenticate();
+      const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
+
+      if (!isAuthenticated || !authResult.userId) {
+        return Response.json(
+          {
+            error: "Unauthorized",
+          },
+          { status: 401 },
+        );
+      }
+
+      const repository = options.repository ?? createDbDatasetRecordRepository();
+
+      await repository.purgeDrafts(authResult.userId);
+
+      return new Response(null, { status: 200 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown dataset purge error.";
 
       return Response.json(
         {

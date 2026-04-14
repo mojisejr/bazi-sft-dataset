@@ -29,8 +29,8 @@ type UseDatasetPersistenceOptions = {
   annotationDimensions: AnnotationDimensionDraftState;
   annotationDraftContentState: AnnotationDraftContentState;
   canCompleteAnnotation: boolean;
-  expandedDimensionName: AnnotationDimensionName;
-  setExpandedDimension: (dimensionName: AnnotationDimensionName) => void;
+  expandedDimensionName: AnnotationDimensionName | null;
+  setExpandedDimension: (dimensionName: AnnotationDimensionName | null) => void;
 };
 
 export function useDatasetPersistence({
@@ -62,6 +62,9 @@ export function useDatasetPersistence({
 
   function beginNewSession() {
     sessionVersionRef.current += 1;
+    void fetch("/api/dataset/purge-drafts", {
+      method: "POST",
+    }).catch(() => undefined);
     clearPersistedSessionState();
   }
 
@@ -125,6 +128,10 @@ export function useDatasetPersistence({
       setLastSavedSignature(nextSignature);
       setSaveState("saved");
 
+      if (canCompleteAnnotation && expandedDimensionName !== null) {
+        setExpandedDimension(null);
+      }
+
       return true;
     } catch (error) {
       if (requestSessionVersion !== sessionVersionRef.current) {
@@ -151,7 +158,7 @@ export function useDatasetPersistence({
       await persistAnnotation("draft");
     }
 
-    setExpandedDimension(dimensionName);
+    setExpandedDimension(expandedDimensionName === dimensionName ? null : dimensionName);
   }
 
   function handleReset(onResetSession: () => void) {

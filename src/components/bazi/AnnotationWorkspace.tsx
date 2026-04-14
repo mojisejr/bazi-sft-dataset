@@ -28,7 +28,7 @@ type AnnotationWorkspaceProps = {
   errorMessage: string | null;
   annotationSummary: AnnotationProgressSummary;
   annotationDimensions: AnnotationDimensionDraftState;
-  expandedDimensionName: AnnotationDimensionName;
+  expandedDimensionName: AnnotationDimensionName | null;
   saveState: SaveState;
   saveErrorMessage: string | null;
   lastSavedAt: string | null;
@@ -324,6 +324,31 @@ export function AnnotationWorkspace({
           );
         })}
       </div>
+
+      {canCompleteAnnotation ? (
+        <div className="surface inset-card completion-reveal" aria-live="polite">
+          <div>
+            <p className="section-kicker">พร้อมส่งงาน</p>
+            <h3>ครบทั้ง 15 มิติแล้ว</h3>
+            <p className="annotation-intro">
+              ตรวจอีกครั้งได้ทันที หรือกดยืนยันเพื่อปิด annotation ชุดนี้เป็น reviewed
+            </p>
+          </div>
+
+          <button
+            type="button"
+            className="primary-action completion-reveal__action"
+            onClick={() => void onCompleteAnnotation()}
+            disabled={saveState === "saving" || datasetStatus === "reviewed"}
+          >
+            {datasetStatus === "reviewed"
+              ? "Reviewed แล้ว"
+              : saveState === "saving"
+                ? "กำลังบันทึก..."
+                : "Accept Annotation"}
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

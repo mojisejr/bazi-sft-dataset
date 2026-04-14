@@ -118,8 +118,8 @@ export function createDraftAnnotationData(
 
 type AnnotationStoreState = {
   dimensions: AnnotationDimensionDraftState;
-  expandedDimensionName: AnnotationDimensionName;
-  setExpandedDimension: (dimensionName: AnnotationDimensionName) => void;
+  expandedDimensionName: AnnotationDimensionName | null;
+  setExpandedDimension: (dimensionName: AnnotationDimensionName | null) => void;
   updateThoughtProcess: (
     dimensionName: AnnotationDimensionName,
     thoughtProcess: string,

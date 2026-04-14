@@ -743,6 +743,32 @@ textarea {
   gap: 14px;
 }
 
+.completion-reveal {
+  display: grid;
+  gap: 16px;
+  border-color: rgba(159, 83, 32, 0.18);
+  background:
+    linear-gradient(135deg, rgba(255, 248, 240, 0.96), rgba(255, 255, 255, 0.94)),
+    var(--panel-strong);
+  animation: completionReveal 220ms ease-out;
+}
+
+.completion-reveal__action {
+  width: 100%;
+}
+
+@keyframes completionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .accordion-item {
   padding: 0;
   overflow: hidden;
@@ -846,6 +872,10 @@ textarea {
   .detail-grid,
   .metaphor-list {
     grid-template-columns: 1fr;
+  }
+
+  .annotation-actions {
+    align-items: stretch;
   }
 
   .accordion-trigger {

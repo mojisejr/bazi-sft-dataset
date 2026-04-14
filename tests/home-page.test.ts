@@ -31,6 +31,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ปี พ.ศ.");
     expect(html).toContain("เลือกปี พ.ศ.");
     expect(html).toContain("มีนาคม");
+    expect(html).toContain("thai-province-options");
+    expect(html).toContain("กรุงเทพมหานคร");
+    expect(html).not.toContain("ระบบปฏิทิน");
   });
 
   test("requires confirmation only for active unfinished dataset sessions", () => {
@@ -121,6 +124,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ฐานดวงเดิม และภาพรวม");
     expect(html).toContain("พูดด้วยเสียง");
   expect(html).toContain("Complete Annotation");
+    expect(html).not.toContain("Accept Annotation");
   expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
     expect(html).toContain("己");
     expect(html).toContain("3.07");
