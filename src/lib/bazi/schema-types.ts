@@ -31,20 +31,6 @@ export const PillarValueSchema = z.object({
   hiddenStems: z.array(z.string().trim().min(1)).optional(),
 });
 
-export const DaYunPillarSchema = z.object({
-  startAge: z.number().int().nonnegative(),
-  endAge: z.number().int().nonnegative(),
-  stem: z.string().trim().min(1),
-  branch: z.string().trim().min(1),
-  isCurrent: z.boolean().optional(),
-});
-
-export const ShenShaSchema = z.object({
-  starName: z.string().trim().min(1),
-  relatedPillar: z.string().trim().min(1),
-  meaning: z.string().trim().min(1),
-});
-
 export const RawInputSchema = z.object({
   birthDate: z.string().trim().min(1),
   birthTime: z.string().trim().min(1),
@@ -72,10 +58,6 @@ export const CalculatedStateSchema = z.object({
     day: PillarValueSchema,
     hour: PillarValueSchema,
   }),
-  mingGong: PillarValueSchema.optional(),
-  daYun: z.array(DaYunPillarSchema).default([]),
-  liuNian: PillarValueSchema.optional(),
-  shenSha: z.array(ShenShaSchema).default([]),
   dayMaster: z.string().trim().min(1),
   strengthScore: z.number().finite(),
   tenGods: z.record(z.string(), z.string()),
@@ -145,8 +127,6 @@ export const AnnotationDataSchema = z
   .superRefine(refineAnnotationDimensions);
 
 export type PillarValue = z.infer<typeof PillarValueSchema>;
-export type DaYunPillarValue = z.infer<typeof DaYunPillarSchema>;
-export type ShenShaValue = z.infer<typeof ShenShaSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;
 export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
