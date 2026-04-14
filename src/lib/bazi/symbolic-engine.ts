@@ -29,7 +29,6 @@ type EightCharLike = {
   getMonth(): string;
   getDay(): string;
   getTime(): string;
-  getMingGong(): string;
   getYearHideGan(): string[] | string;
   getMonthHideGan(): string[] | string;
   getDayHideGan(): string[] | string;
@@ -225,15 +224,6 @@ function buildPillarValue(pillarText: string, hiddenStemValue: string[] | string
   };
 }
 
-function buildStemBranchPillarValue(pillarText: string): PillarValue {
-  const { stem, branch } = splitGanZhi(pillarText);
-
-  return {
-    stem,
-    branch,
-  };
-}
-
 function getElement(stem: string): SupportedElement {
   const element = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
 
@@ -404,22 +394,6 @@ function normalizeBirthContext(rawInput: RawInputValue): NormalizedBirthContext 
   };
 }
 
-function buildCurrentLiuNianValue(referenceDate = new Date()) {
-  const nowInBangkok = getDateTimePartsInTimeZone(referenceDate, DEFAULT_INPUT_TIMEZONE);
-  const currentYearEightChar = Solar.fromYmdHms(
-    nowInBangkok.year,
-    nowInBangkok.month,
-    nowInBangkok.day,
-    nowInBangkok.hour,
-    nowInBangkok.minute,
-    nowInBangkok.second,
-  )
-    .getLunar()
-    .getEightChar();
-
-  return buildStemBranchPillarValue(currentYearEightChar.getYear());
-}
-
 export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
@@ -534,9 +508,6 @@ export async function calculateBaziChart(
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
-    daYun: [],
-    liuNian: buildCurrentLiuNianValue(),
-    shenSha: [],
     dayMaster: dayMasterStem,
     strengthScore: computeStrengthScore(
       dayMasterStem,
