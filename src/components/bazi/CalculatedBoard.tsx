@@ -1,11 +1,12 @@
 import type {
   CalculatedStateValue,
+  PillarValue,
   RawInputValue,
+  ShenShaValue,
 } from "@/lib/bazi/schema-types";
 import {
   formatScore,
   formatThaiBirthMoment,
-  reportPillarColumns,
   tenGodRows,
   twelveQiRows,
 } from "@/lib/bazi/trainer-workspace";
@@ -15,6 +16,33 @@ type CalculatedBoardProps = {
   calculatedState: CalculatedStateValue | null;
 };
 
+type StaticDestinyColumn = {
+  key: string;
+  label: string;
+  englishLabel: string;
+  relatedPillar: string;
+  pillar: PillarValue | undefined;
+};
+
+function formatPillarCode(pillar: PillarValue | undefined) {
+  if (!pillar) {
+    return "-";
+  }
+
+  return `${pillar.stem}${pillar.branch}`;
+}
+
+function formatDaYunAgeRange(startAge: number, endAge: number) {
+  return `${startAge}-${endAge}`;
+}
+
+function getRelatedShenShaEntries(
+  entries: ShenShaValue[],
+  relatedPillar: string,
+) {
+  return entries.filter((entry) => entry.relatedPillar === relatedPillar);
+}
+
 export function CalculatedBoard({
   submittedInput,
   calculatedState,
@@ -22,6 +50,58 @@ export function CalculatedBoard({
   function handlePrint() {
     window.print();
   }
+
+  const staticDestinyColumns: StaticDestinyColumn[] = calculatedState
+    ? [
+        {
+          key: "ming-gong",
+          label: "ลัคนา",
+          englishLabel: "Ming Gong",
+          relatedPillar: "ลัคนา",
+          pillar: calculatedState.mingGong,
+        },
+        {
+          key: "hour",
+          label: "ยาม",
+          englishLabel: "Hour",
+          relatedPillar: "ยาม",
+          pillar: calculatedState.fourPillars.hour,
+        },
+        {
+          key: "day",
+          label: "วัน",
+          englishLabel: "Day",
+          relatedPillar: "วัน",
+          pillar: calculatedState.fourPillars.day,
+        },
+        {
+          key: "month",
+          label: "เดือน",
+          englishLabel: "Month",
+          relatedPillar: "เดือน",
+          pillar: calculatedState.fourPillars.month,
+        },
+        {
+          key: "year",
+          label: "ปี",
+          englishLabel: "Year",
+          relatedPillar: "ปี",
+          pillar: calculatedState.fourPillars.year,
+        },
+      ]
+    : [];
+  const staticDestinyLabels = new Set(
+    staticDestinyColumns.map((column) => column.relatedPillar),
+  );
+  const transientShenSha = calculatedState
+    ? calculatedState.shenSha.filter(
+        (entry) => !staticDestinyLabels.has(entry.relatedPillar),
+      )
+    : [];
+  const liuNianShenSha = calculatedState
+    ? getRelatedShenShaEntries(calculatedState.shenSha, "ปีจร")
+    : [];
+  const currentDaYun = calculatedState?.daYun.find((entry) => entry.isCurrent) ?? null;
 
   return (
     <article className="surface engine-column">
@@ -38,11 +118,11 @@ export function CalculatedBoard({
       <div className="section-heading board-heading">
         <div>
           <p className="section-kicker">ภาพรวมดวงจีน</p>
-          <h2>จัดผังให้อ่านตามลำดับเดียวกับใบรายงานอ้างอิง</h2>
+          <h2>แยกชะตากำเนิด วัยจร และบทวิเคราะห์ให้อ่านจบในหน้าเดียว</h2>
         </div>
         <div className="board-actions">
           <p className="section-note board-section-note">
-            เริ่มจากแผง 4 เสาแบบ classic ก่อน แล้วค่อยไล่ธาตุแฝง 10 เทพ และจังหวะพลัง
+            phase นี้กางข้อมูลที่ซินแสต้องใช้ทันทีให้ครบทั้ง Ming Gong, Da Yun, Liu Nian และ Shen Sha โดยไม่ต้องคิดต่อในหัว
           </p>
           {calculatedState ? (
             <button
@@ -58,154 +138,295 @@ export function CalculatedBoard({
 
       {calculatedState ? (
         <div className="engine-stack">
-          <section className="surface inset-card classic-report" aria-label="classic bazi report">
-            <div className="classic-report__header">
-              <p className="classic-report__summary">{formatThaiBirthMoment(submittedInput)}</p>
-              <div className="identity-strip identity-strip--compact">
-                <div>
-                  <span className="identity-label">เพศ</span>
-                  <strong>{submittedInput?.gender ?? "รอข้อมูล"}</strong>
-                </div>
-                <div>
-                  <span className="identity-label">จังหวัด</span>
-                  <strong>{submittedInput?.province ?? "รอข้อมูล"}</strong>
-                </div>
-                <div>
-                  <span className="identity-label">เขตเวลา</span>
-                  <strong>{submittedInput?.timezone ?? "Asia/Bangkok"}</strong>
-                </div>
+          <section className="surface inset-card report-zone" aria-label="static destiny zone">
+            <div className="zone-heading">
+              <div>
+                <p className="section-kicker">โซนที่ 1</p>
+                <h3>Static Destiny</h3>
               </div>
-            </div>
-
-            <div className="classic-report__body">
-              <aside className="classic-report__aside">
-                <span className="classic-report__aside-kicker">ลัคนา</span>
-                <strong>{submittedInput?.gender === "male" ? "ชาย" : submittedInput?.gender === "female" ? "หญิง" : "อื่นๆ"}</strong>
-                <p>เรียงหลักเวลาไว้ซ้ายสุดตาม pattern ของใบรายงานอ้างอิง เพื่อลดการอ่านสลับคอลัมน์</p>
-              </aside>
-
-              <div className="classic-pillars" role="table" aria-label="Four pillars overview">
-                <div className="classic-pillars__labels" role="row">
-                  {reportPillarColumns.map((column) => (
-                    <span key={column.key} className="classic-pillars__label" role="columnheader">
-                      {column.label}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="classic-pillars__row classic-pillars__row--stems" role="row">
-                  {reportPillarColumns.map((column) => (
-                    <span key={column.key} className="classic-pillars__glyph" role="cell">
-                      {calculatedState.fourPillars[column.key].stem}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="classic-pillars__row classic-pillars__row--branches" role="row">
-                  {reportPillarColumns.map((column) => (
-                    <span key={column.key} className="classic-pillars__glyph" role="cell">
-                      {calculatedState.fourPillars[column.key].branch}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="classic-pillars__hidden" role="row">
-                  {reportPillarColumns.map((column) => (
-                    <span key={column.key} className="classic-pillars__hidden-cell" role="cell">
-                      <span className="classic-pillars__hidden-label">ธาตุแฝง</span>
-                      <strong>{calculatedState.fourPillars[column.key].hiddenStems?.join(" · ") ?? "-"}</strong>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="spotlight-grid">
-            <div className="surface inset-card highlight-card">
-              <p className="section-kicker">หัวใจดวง</p>
-              <h3>{calculatedState.dayMaster}</h3>
-              <p className="metric-copy">Day Master</p>
-            </div>
-
-            <div className="surface inset-card highlight-card">
-              <p className="section-kicker">คะแนนพลัง</p>
-              <h3>{formatScore(calculatedState.strengthScore)}</h3>
-              <p className="metric-copy">Strength Score</p>
-            </div>
-
-            <div className="surface inset-card highlight-card highlight-card--wide">
-              <p className="section-kicker">60 Jiazi Core Persona</p>
-              <h3>{calculatedState.sixtyJiaziCorePersona?.code ?? "ยังไม่มี narrative เฉพาะ"}</h3>
-              <p className="metric-copy">
-                {calculatedState.sixtyJiaziCorePersona?.narrative ??
-                  "ผลรอบนี้ยังไม่มีคำบรรยายเพิ่มเติมจากคลัง canonical"}
+              <p className="section-note zone-note">
+                ชะตากำเนิดถูกกางเป็น 5 เสาให้อ่านตามรูปแบบ DNA report โดยรวมลัคนา ธาตุแฝง และดาวพื้นฐานไว้ในคอลัมน์เดียวกัน
               </p>
             </div>
-          </section>
 
-          <section className="detail-grid">
-            <div className="surface inset-card">
-              <div className="section-heading section-heading--compact">
-                <div>
-                  <p className="section-kicker">10 เทพ</p>
-                  <h3>Ten Gods</h3>
-                </div>
-              </div>
-
-              <dl className="detail-list">
-                {tenGodRows.map((item) => (
-                  <div key={item.key} className="detail-list-row">
-                    <dt>{item.label}</dt>
-                    <dd>{calculatedState.tenGods[item.key] ?? "-"}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-
-            <div className="surface inset-card">
-              <div className="section-heading section-heading--compact">
-                <div>
-                  <p className="section-kicker">12 Qi</p>
-                  <h3>Twelve Qi</h3>
-                </div>
-              </div>
-
-              <dl className="detail-list">
-                {twelveQiRows.map((item) => (
-                  <div key={item.key} className="detail-list-row">
-                    <dt>{item.label}</dt>
-                    <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </section>
-
-          <section className="surface inset-card">
-            <div className="section-heading section-heading--compact">
+            <div className="identity-strip identity-strip--compact">
               <div>
-                <p className="section-kicker">คำเปรียบเปรยธาตุ</p>
-                <h3>Element Metaphors</h3>
+                <span className="identity-label">วันเวลาเกิด</span>
+                <strong>{formatThaiBirthMoment(submittedInput)}</strong>
+              </div>
+              <div>
+                <span className="identity-label">เพศ</span>
+                <strong>{submittedInput?.gender ?? "รอข้อมูล"}</strong>
+              </div>
+              <div>
+                <span className="identity-label">จังหวัด</span>
+                <strong>{submittedInput?.province ?? "รอข้อมูล"}</strong>
+              </div>
+              <div>
+                <span className="identity-label">เขตเวลา</span>
+                <strong>{submittedInput?.timezone ?? "Asia/Bangkok"}</strong>
               </div>
             </div>
 
-            <div className="metaphor-list">
-              {calculatedState.elementMetaphors.map((item) => (
-                <article key={`${item.element}-${item.metaphor}`} className="metaphor-card">
-                  <strong>{item.element}</strong>
-                  <p>{item.metaphor}</p>
-                </article>
-              ))}
+            <div className="destiny-pillar-grid">
+              {staticDestinyColumns.map((column) => {
+                const stars = getRelatedShenShaEntries(
+                  calculatedState.shenSha,
+                  column.relatedPillar,
+                );
+
+                return (
+                  <article key={column.key} className="destiny-pillar-card">
+                    <header className="destiny-pillar-card__header">
+                      <span className="destiny-pillar-card__label">{column.label}</span>
+                      <span className="destiny-pillar-card__english">
+                        {column.englishLabel}
+                      </span>
+                    </header>
+
+                    <div className="destiny-glyph-stack">
+                      <span className="destiny-glyph destiny-glyph--stem">
+                        {column.pillar?.stem ?? "-"}
+                      </span>
+                      <span className="destiny-glyph destiny-glyph--branch">
+                        {column.pillar?.branch ?? "-"}
+                      </span>
+                    </div>
+
+                    <dl className="pillar-metadata-list">
+                      <div className="pillar-metadata-row">
+                        <dt>รหัสเสา</dt>
+                        <dd>{formatPillarCode(column.pillar)}</dd>
+                      </div>
+                      <div className="pillar-metadata-row">
+                        <dt>ธาตุแฝง</dt>
+                        <dd>{column.pillar?.hiddenStems?.join(" · ") ?? "-"}</dd>
+                      </div>
+                    </dl>
+
+                    <div className="shen-sha-cluster">
+                      {stars.length > 0 ? (
+                        stars.map((entry) => (
+                          <article
+                            key={`${column.key}-${entry.starName}-${entry.relatedPillar}`}
+                            className="shen-sha-chip"
+                            title={entry.meaning}
+                          >
+                            <strong>{entry.starName}</strong>
+                            <span>{entry.meaning}</span>
+                          </article>
+                        ))
+                      ) : (
+                        <span className="shen-sha-empty">ยังไม่มีดาวเด่นในเสานี้</span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
             </div>
+          </section>
+
+          <section className="surface inset-card report-zone" aria-label="dynamic luck zone">
+            <div className="zone-heading">
+              <div>
+                <p className="section-kicker">โซนที่ 2</p>
+                <h3>Dynamic Luck</h3>
+              </div>
+              <p className="section-note zone-note">
+                ปีจรปัจจุบันและทางเดินวัยจรถูกยกขึ้นมาไว้ด้านหน้า เพื่อให้ตอบหัวข้อ Annual Star Energy และ Major Luck Cycles ได้ทันที
+              </p>
+            </div>
+
+            <div className="dynamic-luck-grid">
+              <article className="annual-energy-card">
+                <p className="section-kicker">ปีจรปัจจุบัน</p>
+                <h4>{formatPillarCode(calculatedState.liuNian)}</h4>
+                <p className="metric-copy">
+                  {calculatedState.liuNian
+                    ? `Stem ${calculatedState.liuNian.stem} / Branch ${calculatedState.liuNian.branch}`
+                    : "ยังไม่มีปีจรสำหรับเคสนี้"}
+                </p>
+                <div className="shen-sha-cluster shen-sha-cluster--compact">
+                  {liuNianShenSha.length > 0 ? (
+                    liuNianShenSha.map((entry) => (
+                      <article
+                        key={`liu-nian-${entry.starName}`}
+                        className="shen-sha-chip"
+                        title={entry.meaning}
+                      >
+                        <strong>{entry.starName}</strong>
+                        <span>{entry.meaning}</span>
+                      </article>
+                    ))
+                  ) : (
+                    <span className="shen-sha-empty">ยังไม่มีดาวจรเพิ่มเติม</span>
+                  )}
+                </div>
+              </article>
+
+              <article className="current-luck-card">
+                <p className="section-kicker">วัยจรที่กำลังเดินอยู่</p>
+                <h4>
+                  {currentDaYun
+                    ? `${currentDaYun.stem}${currentDaYun.branch}`
+                    : "ยังไม่พบวัยจรปัจจุบัน"}
+                </h4>
+                <p className="metric-copy">
+                  {currentDaYun
+                    ? `ช่วงอายุ ${formatDaYunAgeRange(currentDaYun.startAge, currentDaYun.endAge)}`
+                    : "ยังไม่สามารถไฮไลต์รอบวัยจรของเคสนี้ได้"}
+                </p>
+              </article>
+            </div>
+
+            <div className="dayun-section">
+              <div className="section-heading section-heading--compact">
+                <div>
+                  <p className="section-kicker">Major Luck Cycles</p>
+                  <h4>วัยจร 10 ปี</h4>
+                </div>
+              </div>
+
+              <div className="dayun-track" aria-label="Da Yun track">
+                {calculatedState.daYun.map((entry) => (
+                  <article
+                    key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}
+                    className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
+                  >
+                    <span className="dayun-card__age">
+                      {formatDaYunAgeRange(entry.startAge, entry.endAge)}
+                    </span>
+                    <strong className="dayun-card__code">{entry.stem}{entry.branch}</strong>
+                    <span className="dayun-card__label">
+                      {entry.isCurrent ? "วัยจรปัจจุบัน" : "ทางเดิน 10 ปี"}
+                    </span>
+                  </article>
+                ))}
+              </div>
+            </div>
+
+            {transientShenSha.length > 0 ? (
+              <div className="transient-shen-sha-panel">
+                <div className="section-heading section-heading--compact">
+                  <div>
+                    <p className="section-kicker">ดาวจรเสริม</p>
+                    <h4>Transient Shen Sha</h4>
+                  </div>
+                </div>
+
+                <div className="transient-shen-sha-list">
+                  {transientShenSha.map((entry) => (
+                    <article
+                      key={`transient-${entry.relatedPillar}-${entry.starName}`}
+                      className="transient-shen-sha-card"
+                    >
+                      <strong>{entry.starName}</strong>
+                      <span>{entry.relatedPillar}</span>
+                      <p>{entry.meaning}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <section className="surface inset-card report-zone" aria-label="deep analysis zone">
+            <div className="zone-heading">
+              <div>
+                <p className="section-kicker">โซนที่ 3</p>
+                <h3>Deep Analysis</h3>
+              </div>
+              <p className="section-note zone-note">
+                คงแกน Day Master, Strength Score, Ten Gods, Twelve Qi และ persona เดิมไว้เป็นพื้นที่ตีความเชิงลึกต่อจาก 2 โซนบน
+              </p>
+            </div>
+
+            <section className="spotlight-grid">
+              <div className="surface inset-card highlight-card">
+                <p className="section-kicker">หัวใจดวง</p>
+                <h3>{calculatedState.dayMaster}</h3>
+                <p className="metric-copy">Day Master</p>
+              </div>
+
+              <div className="surface inset-card highlight-card">
+                <p className="section-kicker">คะแนนพลัง</p>
+                <h3>{formatScore(calculatedState.strengthScore)}</h3>
+                <p className="metric-copy">Strength Score</p>
+              </div>
+
+              <div className="surface inset-card highlight-card highlight-card--wide">
+                <p className="section-kicker">60 Jiazi Core Persona</p>
+                <h3>{calculatedState.sixtyJiaziCorePersona?.code ?? "ยังไม่มี narrative เฉพาะ"}</h3>
+                <p className="metric-copy">
+                  {calculatedState.sixtyJiaziCorePersona?.narrative ??
+                    "ผลรอบนี้ยังไม่มีคำบรรยายเพิ่มเติมจากคลัง canonical"}
+                </p>
+              </div>
+            </section>
+
+            <section className="detail-grid">
+              <div className="surface inset-card">
+                <div className="section-heading section-heading--compact">
+                  <div>
+                    <p className="section-kicker">10 เทพ</p>
+                    <h3>Ten Gods</h3>
+                  </div>
+                </div>
+
+                <dl className="detail-list">
+                  {tenGodRows.map((item) => (
+                    <div key={item.key} className="detail-list-row">
+                      <dt>{item.label}</dt>
+                      <dd>{calculatedState.tenGods[item.key] ?? "-"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+
+              <div className="surface inset-card">
+                <div className="section-heading section-heading--compact">
+                  <div>
+                    <p className="section-kicker">12 Qi</p>
+                    <h3>Twelve Qi</h3>
+                  </div>
+                </div>
+
+                <dl className="detail-list">
+                  {twelveQiRows.map((item) => (
+                    <div key={item.key} className="detail-list-row">
+                      <dt>{item.label}</dt>
+                      <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            </section>
+
+            <section className="surface inset-card">
+              <div className="section-heading section-heading--compact">
+                <div>
+                  <p className="section-kicker">คำเปรียบเปรยธาตุ</p>
+                  <h3>Element Metaphors</h3>
+                </div>
+              </div>
+
+              <div className="metaphor-list">
+                {calculatedState.elementMetaphors.map((item) => (
+                  <article key={`${item.element}-${item.metaphor}`} className="metaphor-card">
+                    <strong>{item.element}</strong>
+                    <p>{item.metaphor}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
           </section>
         </div>
       ) : (
         <section className="surface inset-card empty-state">
           <p className="section-kicker">พร้อมเริ่ม</p>
-          <h3>ตั้งข้อมูลเพื่อดูผังดวงแบบ classic</h3>
+          <h3>ตั้งข้อมูลเพื่อเปิด 3 โซนของรายงานให้ครบ</h3>
           <p>
-            เมื่อกดคำนวณแล้ว ฝั่งนี้จะเรียง 4 เสาแบบ เวลา-วัน-เดือน-ปี ก่อน แล้วค่อยเติม 10 เทพ, 12 Qi และภาพรวมอื่นให้อ่านต่อทันที
+            เมื่อกดคำนวณแล้ว ฝั่งนี้จะกาง Static Destiny, Dynamic Luck และ Deep Analysis ให้ครบในหน้าเดียวเพื่อให้ซินแสอ่านและ annotate ต่อได้ทันที
           </p>
         </section>
       )}

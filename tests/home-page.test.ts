@@ -26,7 +26,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Bazi Trainer that makes ซินแส ซินแส !");
     expect(html).toContain("Secure Operator Access");
     expect(html).toContain("User menu");
-    expect(html).toContain("ตั้งข้อมูลเพื่อดูผังดวงแบบ classic");
+    expect(html).toContain("ตั้งข้อมูลเพื่อเปิด 3 โซนของรายงานให้ครบ");
     expect(html).toContain("คำนวณภาพรวมดวง");
     expect(html).toContain("ปี พ.ศ.");
     expect(html).toContain("เลือกปี พ.ศ.");
@@ -68,6 +68,25 @@ describe("BaziTrainerWorkspace", () => {
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
         hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
+      mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
+      daYun: [
+        { startAge: 6, endAge: 15, stem: "丁", branch: "未" },
+        { startAge: 16, endAge: 25, stem: "丙", branch: "午" },
+        { startAge: 26, endAge: 35, stem: "乙", branch: "巳", isCurrent: true },
+      ],
+      liuNian: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
+      shenSha: [
+        {
+          starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+          relatedPillar: "ปี",
+          meaning: "มีผู้ใหญ่หรือกุ้ยนั้งเข้ามาช่วยยามสำคัญ",
+        },
+        {
+          starName: "ดอกท้อ (桃花)",
+          relatedPillar: "ปีจร",
+          meaning: "ปีนี้แรงดึงดูดและเรื่องสัมพันธ์เด่นกว่าปกติ",
+        },
+      ],
       dayMaster: "己",
       strengthScore: 3.07,
       tenGods: {
@@ -121,8 +140,10 @@ describe("BaziTrainerWorkspace", () => {
 
     expect(html).toContain("ภาพรวมพร้อมอ่าน");
     expect(html).toContain('data-form-locked="true"');
-    expect(html).toContain("classic bazi report");
-    expect(html).toContain("จัดผังให้อ่านตามลำดับเดียวกับใบรายงานอ้างอิง");
+    expect(html).toContain("Static Destiny");
+    expect(html).toContain("Dynamic Luck");
+    expect(html).toContain("Deep Analysis");
+    expect(html).toContain("Ming Gong");
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
@@ -133,6 +154,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Asia/Bangkok");
     expect(html).not.toContain("Asia/Hong_Kong");
     expect(html).toContain("己");
+    expect(html).toContain("壬寅");
+    expect(html).toContain("ปีจรปัจจุบัน");
+    expect(html).toContain("วัยจร 10 ปี");
+    expect(html).toContain("乙巳");
+    expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("3.07");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");
     expect(html).toContain(
