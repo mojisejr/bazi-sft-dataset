@@ -26,7 +26,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Bazi Trainer that makes ซินแส ซินแส !");
     expect(html).toContain("Secure Operator Access");
     expect(html).toContain("User menu");
-    expect(html).toContain("ตั้งข้อมูลเพื่อดูภาพรวมดวง");
+    expect(html).toContain("ตั้งข้อมูลเพื่อดูผังดวงแบบ classic");
     expect(html).toContain("คำนวณภาพรวมดวง");
     expect(html).toContain("ปี พ.ศ.");
     expect(html).toContain("เลือกปี พ.ศ.");
@@ -36,7 +36,6 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("00-23");
     expect(html).toContain("00-59");
     expect(html).not.toContain("ระบบปฏิทิน");
-    expect(html).toContain("Asia/Bangkok");
     expect(html).not.toContain("Asia/Hong_Kong");
   });
 
@@ -121,15 +120,16 @@ describe("BaziTrainerWorkspace", () => {
     );
 
     expect(html).toContain("ภาพรวมพร้อมอ่าน");
-  expect(html).toContain('data-form-locked="true"');
-    expect(html).toContain("Four Pillars");
+    expect(html).toContain('data-form-locked="true"');
+    expect(html).toContain("classic bazi report");
+    expect(html).toContain("จัดผังให้อ่านตามลำดับเดียวกับใบรายงานอ้างอิง");
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
-    expect(html).toContain("ฐานดวงเดิม และภาพรวม");
+    expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("พูดด้วยเสียง");
-  expect(html).toContain("Complete Annotation");
+    expect(html).toContain("Complete Annotation");
     expect(html).not.toContain("Accept Annotation");
-  expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
+    expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
     expect(html).toContain("Asia/Bangkok");
     expect(html).not.toContain("Asia/Hong_Kong");
     expect(html).toContain("己");

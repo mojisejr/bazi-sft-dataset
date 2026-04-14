@@ -90,42 +90,42 @@ export function BaziTrainerWorkspace({
     <main className="trainer-page">
       <SystemHeader statusCopy={statusCopy} />
 
-      <section className="trainer-grid">
+      <section className="surface intake-stage">
+        <BirthForm
+          formState={formState}
+          isSessionLocked={isSessionLocked}
+          submissionState={submissionState}
+          resetActionCopy={resetActionCopy}
+          onFieldChange={handleFieldChange}
+          onSubmit={(event) => handleSubmit(event, { onBeforeApplyResult: beginNewSession })}
+          onReset={() => handleReset(resetCalculationSession)}
+        />
+      </section>
+
+      <section className="workspace-stack">
         <CalculatedBoard
           submittedInput={submittedInput}
           calculatedState={calculatedState}
         />
 
-        <aside className="surface intake-column">
-          <BirthForm
-            formState={formState}
-            isSessionLocked={isSessionLocked}
-            submissionState={submissionState}
-            resetActionCopy={resetActionCopy}
-            onFieldChange={handleFieldChange}
-            onSubmit={(event) => handleSubmit(event, { onBeforeApplyResult: beginNewSession })}
-            onReset={() => handleReset(resetCalculationSession)}
-          />
-
-          <AnnotationWorkspace
-            hasCalculatedState={Boolean(calculatedState)}
-            statusCopy={statusCopy}
-            errorMessage={errorMessage}
-            annotationSummary={annotationSummary}
-            annotationDimensions={annotationDimensions}
-            expandedDimensionName={expandedDimensionName}
-            saveState={saveState}
-            saveErrorMessage={saveErrorMessage}
-            lastSavedAt={lastSavedAt}
-            datasetStatus={datasetStatus}
-            canCompleteAnnotation={canCompleteAnnotation}
-            onCompleteAnnotation={handleCompleteAnnotation}
-            onAccordionToggle={handleAccordionToggle}
-            onThoughtProcessChange={updateThoughtProcess}
-            onFinalPredictionChange={updateFinalPrediction}
-            onPersistDraft={() => void persistAnnotation("draft")}
-          />
-        </aside>
+        <AnnotationWorkspace
+          hasCalculatedState={Boolean(calculatedState)}
+          statusCopy={statusCopy}
+          errorMessage={errorMessage}
+          annotationSummary={annotationSummary}
+          annotationDimensions={annotationDimensions}
+          expandedDimensionName={expandedDimensionName}
+          saveState={saveState}
+          saveErrorMessage={saveErrorMessage}
+          lastSavedAt={lastSavedAt}
+          datasetStatus={datasetStatus}
+          canCompleteAnnotation={canCompleteAnnotation}
+          onCompleteAnnotation={handleCompleteAnnotation}
+          onAccordionToggle={handleAccordionToggle}
+          onThoughtProcessChange={updateThoughtProcess}
+          onFinalPredictionChange={updateFinalPrediction}
+          onPersistDraft={() => void persistAnnotation("draft")}
+        />
       </section>
     </main>
   );

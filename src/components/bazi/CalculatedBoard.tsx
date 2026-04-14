@@ -3,9 +3,9 @@ import type {
   RawInputValue,
 } from "@/lib/bazi/schema-types";
 import {
-  formatBirthMoment,
   formatScore,
-  pillarColumns,
+  formatThaiBirthMoment,
+  reportPillarColumns,
   tenGodRows,
   twelveQiRows,
 } from "@/lib/bazi/trainer-workspace";
@@ -27,10 +27,10 @@ export function CalculatedBoard({
     <article className="surface engine-column">
       <header className="print-report-header">
         <p className="section-kicker">Bazi DNA Report</p>
-        <h2>รายงานดวงชะตาส่วนบุคคล</h2>
+        <h2>ผังดวงจีน 4 เสา</h2>
         <p className="print-summary-note">
           {submittedInput
-            ? `${formatBirthMoment(submittedInput)} • ${submittedInput.province}`
+            ? `${formatThaiBirthMoment(submittedInput)} • ${submittedInput.province}`
             : "รอข้อมูลตั้งต้น"}
         </p>
       </header>
@@ -38,11 +38,11 @@ export function CalculatedBoard({
       <div className="section-heading board-heading">
         <div>
           <p className="section-kicker">ภาพรวมดวงจีน</p>
-          <h2>โครงสร้างที่ระบบคำนวณให้</h2>
+          <h2>จัดผังให้อ่านตามลำดับเดียวกับใบรายงานอ้างอิง</h2>
         </div>
         <div className="board-actions">
           <p className="section-note board-section-note">
-            อ่านจากบนลงล่างเพื่อเห็นภาพรวมก่อนเข้าสู่การวิเคราะห์เชิงลึก
+            เริ่มจากแผง 4 เสาแบบ classic ก่อน แล้วค่อยไล่ธาตุแฝง 10 เทพ และจังหวะพลัง
           </p>
           {calculatedState ? (
             <button
@@ -56,70 +56,67 @@ export function CalculatedBoard({
         </div>
       </div>
 
-      <div className="identity-strip">
-        <div>
-          <span className="identity-label">เวลาเกิด</span>
-          <strong>{formatBirthMoment(submittedInput)}</strong>
-        </div>
-        <div>
-          <span className="identity-label">เพศ</span>
-          <strong>{submittedInput?.gender ?? "รอข้อมูล"}</strong>
-        </div>
-        <div>
-          <span className="identity-label">จังหวัด</span>
-          <strong>{submittedInput?.province ?? "รอข้อมูล"}</strong>
-        </div>
-        <div>
-          <span className="identity-label">เขตเวลา</span>
-          <strong>{submittedInput?.timezone ?? "Asia/Bangkok"}</strong>
-        </div>
-      </div>
-
       {calculatedState ? (
         <div className="engine-stack">
-          <section className="surface inset-card">
-            <div className="section-heading section-heading--compact">
-              <div>
-                <p className="section-kicker">4 เสา</p>
-                <h3>Four Pillars</h3>
+          <section className="surface inset-card classic-report" aria-label="classic bazi report">
+            <div className="classic-report__header">
+              <p className="classic-report__summary">{formatThaiBirthMoment(submittedInput)}</p>
+              <div className="identity-strip identity-strip--compact">
+                <div>
+                  <span className="identity-label">เพศ</span>
+                  <strong>{submittedInput?.gender ?? "รอข้อมูล"}</strong>
+                </div>
+                <div>
+                  <span className="identity-label">จังหวัด</span>
+                  <strong>{submittedInput?.province ?? "รอข้อมูล"}</strong>
+                </div>
+                <div>
+                  <span className="identity-label">เขตเวลา</span>
+                  <strong>{submittedInput?.timezone ?? "Asia/Bangkok"}</strong>
+                </div>
               </div>
             </div>
 
-            <div className="pillar-table" role="table" aria-label="Four pillars overview">
-              <div className="pillar-row pillar-row--header" role="row">
-                <span className="pillar-label" />
-                {pillarColumns.map((column) => (
-                  <span key={column.key} className="pillar-cell pillar-cell--header" role="columnheader">
-                    {column.label}
-                  </span>
-                ))}
-              </div>
+            <div className="classic-report__body">
+              <aside className="classic-report__aside">
+                <span className="classic-report__aside-kicker">ลัคนา</span>
+                <strong>{submittedInput?.gender === "male" ? "ชาย" : submittedInput?.gender === "female" ? "หญิง" : "อื่นๆ"}</strong>
+                <p>เรียงหลักเวลาไว้ซ้ายสุดตาม pattern ของใบรายงานอ้างอิง เพื่อลดการอ่านสลับคอลัมน์</p>
+              </aside>
 
-              <div className="pillar-row" role="row">
-                <span className="pillar-label">ก้านฟ้า</span>
-                {pillarColumns.map((column) => (
-                  <span key={column.key} className="pillar-cell" role="cell">
-                    {calculatedState.fourPillars[column.key].stem}
-                  </span>
-                ))}
-              </div>
+              <div className="classic-pillars" role="table" aria-label="Four pillars overview">
+                <div className="classic-pillars__labels" role="row">
+                  {reportPillarColumns.map((column) => (
+                    <span key={column.key} className="classic-pillars__label" role="columnheader">
+                      {column.label}
+                    </span>
+                  ))}
+                </div>
 
-              <div className="pillar-row" role="row">
-                <span className="pillar-label">กิ่งดิน</span>
-                {pillarColumns.map((column) => (
-                  <span key={column.key} className="pillar-cell" role="cell">
-                    {calculatedState.fourPillars[column.key].branch}
-                  </span>
-                ))}
-              </div>
+                <div className="classic-pillars__row classic-pillars__row--stems" role="row">
+                  {reportPillarColumns.map((column) => (
+                    <span key={column.key} className="classic-pillars__glyph" role="cell">
+                      {calculatedState.fourPillars[column.key].stem}
+                    </span>
+                  ))}
+                </div>
 
-              <div className="pillar-row" role="row">
-                <span className="pillar-label">ซ่อนธาตุ</span>
-                {pillarColumns.map((column) => (
-                  <span key={column.key} className="pillar-cell pillar-cell--stacked" role="cell">
-                    {calculatedState.fourPillars[column.key].hiddenStems?.join(" · ") ?? "-"}
-                  </span>
-                ))}
+                <div className="classic-pillars__row classic-pillars__row--branches" role="row">
+                  {reportPillarColumns.map((column) => (
+                    <span key={column.key} className="classic-pillars__glyph" role="cell">
+                      {calculatedState.fourPillars[column.key].branch}
+                    </span>
+                  ))}
+                </div>
+
+                <div className="classic-pillars__hidden" role="row">
+                  {reportPillarColumns.map((column) => (
+                    <span key={column.key} className="classic-pillars__hidden-cell" role="cell">
+                      <span className="classic-pillars__hidden-label">ธาตุแฝง</span>
+                      <strong>{calculatedState.fourPillars[column.key].hiddenStems?.join(" · ") ?? "-"}</strong>
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           </section>
@@ -206,9 +203,9 @@ export function CalculatedBoard({
       ) : (
         <section className="surface inset-card empty-state">
           <p className="section-kicker">พร้อมเริ่ม</p>
-          <h3>ตั้งข้อมูลเพื่อดูภาพรวมดวง</h3>
+          <h3>ตั้งข้อมูลเพื่อดูผังดวงแบบ classic</h3>
           <p>
-            เมื่อกดคำนวณแล้ว ฝั่งนี้จะเติม 4 เสา, 10 เทพ, 12 Qi, core persona และคำเปรียบเปรยธาตุให้อ่านทันที
+            เมื่อกดคำนวณแล้ว ฝั่งนี้จะเรียง 4 เสาแบบ เวลา-วัน-เดือน-ปี ก่อน แล้วค่อยเติม 10 เทพ, 12 Qi และภาพรวมอื่นให้อ่านต่อทันที
           </p>
         </section>
       )}

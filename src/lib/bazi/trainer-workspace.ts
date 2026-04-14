@@ -14,6 +14,13 @@ export const pillarColumns = [
   { key: "hour", label: "เวลา" },
 ] as const;
 
+export const reportPillarColumns = [
+  { key: "hour", label: "เวลา" },
+  { key: "day", label: "วัน" },
+  { key: "month", label: "เดือน" },
+  { key: "year", label: "ปี" },
+] as const;
+
 export const tenGodRows = [
   { key: "yearStem", label: "ก้านปี" },
   { key: "monthStem", label: "ก้านเดือน" },
@@ -344,6 +351,27 @@ export function formatBirthMoment(rawInput: RawInputValue | null) {
   }
 
   return `${rawInput.birthDate} • ${rawInput.birthTime}`;
+}
+
+function getThaiMonthLabel(month: number) {
+  return THAI_MONTH_OPTIONS.find((item) => Number(item.value) === month)?.label ?? String(month);
+}
+
+export function formatThaiBirthMoment(rawInput: RawInputValue | null) {
+  if (!rawInput) {
+    return "รอข้อมูลตั้งต้น";
+  }
+
+  const [yearText = "", monthText = "", dayText = ""] = rawInput.birthDate.split("-");
+  const [hourText = "", minuteText = ""] = rawInput.birthTime.split(":");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const buddhistYear = Number.isFinite(year) ? year + 543 : yearText;
+  const thaiMonth = Number.isFinite(month) ? getThaiMonthLabel(month) : monthText;
+  const thaiTime = hourText && minuteText ? `${hourText}.${minuteText}` : rawInput.birthTime;
+
+  return `เกิดวันที่ ${day} ${thaiMonth} พ.ศ.${buddhistYear} เวลา ${thaiTime} น.`;
 }
 
 export function normalizeErrorMessage(error: unknown) {
