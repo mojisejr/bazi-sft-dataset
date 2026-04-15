@@ -123,10 +123,54 @@ describe("calculateBaziChart", () => {
       code: "己巳",
       narrative:
         "Builds influence patiently, then turns preparation into visible results when timing opens.",
+      elementTone: "fire",
+      twelveQiLabel: "帝旺",
     });
+    expect(result.sixtyJiaziCorePersona?.semanticNotes).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("fire"),
+        expect.stringContaining("帝旺"),
+      ]),
+    );
     expect(result.sixtyJiaziCorePersona?.precedenceNotes).toEqual(
       expect.arrayContaining([
         expect.stringContaining("巳申"),
+      ]),
+    );
+    expect(result.compatibilityMatrixProfiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          domain: "love",
+          pairKey: "12เชี่ยงแซความรัก",
+          entries: expect.arrayContaining([
+            expect.objectContaining({
+              code: "A4",
+              label: "ลิ่มกัว",
+              counterpartBranch: "午",
+            }),
+            expect.objectContaining({
+              code: "A5",
+              label: "ตี้อ๋วง",
+              counterpartBranch: "巳",
+            }),
+          ]),
+        }),
+        expect.objectContaining({
+          domain: "work",
+          pairKey: "12เชี่ยงแซการงาน",
+          entries: expect.arrayContaining([
+            expect.objectContaining({
+              code: "B3",
+              label: "กวงตั่ว",
+              counterpartBranch: "未",
+            }),
+            expect.objectContaining({
+              code: "B4",
+              label: "ลิ่มกัว",
+              counterpartBranch: "酉",
+            }),
+          ]),
+        }),
       ]),
     );
     expect(result.elementMetaphors).toEqual([
@@ -259,8 +303,10 @@ describe("CalculatedStateSchema", () => {
 
     expect(parsed.daYun).toEqual([]);
     expect(parsed.shenSha).toEqual([]);
+    expect(parsed.compatibilityMatrixProfiles).toEqual([]);
     expect(parsed.mingGong).toBeUndefined();
     expect(parsed.liuNian).toBeUndefined();
+    expect(parsed.sixtyJiaziCorePersona?.semanticNotes ?? []).toEqual([]);
   });
 });
 

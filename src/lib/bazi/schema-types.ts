@@ -62,7 +62,25 @@ export const ElementMetaphorSchema = z.object({
 export const SixtyJiaziCorePersonaSchema = z.object({
   code: z.string().trim().min(1),
   narrative: z.string().trim().min(1),
+  elementTone: z.string().trim().min(1).optional(),
+  twelveQiLabel: z.string().trim().min(1).optional(),
+  semanticNotes: z.array(z.string().trim().min(1)).default([]),
   precedenceNotes: z.array(z.string().trim().min(1)).default([]),
+});
+
+export const CompatibilityMatrixEntrySchema = z.object({
+  code: z.string().trim().min(1),
+  label: z.string().trim().min(1),
+  scoreText: z.string().trim().min(1).optional(),
+  narrative: z.string().trim().min(1).optional(),
+  counterpartCode: z.string().trim().min(1).optional(),
+  counterpartBranch: z.string().trim().min(1),
+});
+
+export const CompatibilityMatrixProfileSchema = z.object({
+  domain: z.enum(["love", "work"]),
+  pairKey: z.string().trim().min(1),
+  entries: z.array(CompatibilityMatrixEntrySchema).default([]),
 });
 
 export const CalculatedStateSchema = z.object({
@@ -82,6 +100,7 @@ export const CalculatedStateSchema = z.object({
   twelveQi: z.record(z.string(), z.string()),
   elementMetaphors: z.array(ElementMetaphorSchema).default([]),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
+  compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
 });
 
 export const DimensionSchema = z.object({
@@ -155,3 +174,4 @@ export type DimensionValue = z.infer<typeof DimensionSchema>;
 export type DraftAnnotationDataValue = z.infer<typeof DraftAnnotationDataSchema>;
 export type AnnotationDataValue = z.infer<typeof AnnotationDataSchema>;
 export type StoredAnnotationDataValue = DraftAnnotationDataValue | AnnotationDataValue;
+export type CompatibilityMatrixProfileValue = z.infer<typeof CompatibilityMatrixProfileSchema>;

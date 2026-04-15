@@ -4,6 +4,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import {
+  baziDomainMatrices,
   baziSixtyJiaziNarratives,
   baziTimeSolarTerms,
   baziTwelveQiStages,
@@ -11,6 +12,7 @@ import {
 import {
   CalculatedStateSchema,
   type CalculatedStateValue,
+  type CompatibilityMatrixProfileValue,
   type PillarValue,
   RawInputSchema,
   type RawInputValue,
@@ -27,6 +29,8 @@ const require = createRequire(import.meta.url);
 type JieQiSolarLike = {
   toYmdHms(): string;
 };
+
+type MatrixDomain = "love" | "work";
 
 type LunarLike = {
   getEightChar(): EightCharLike;
@@ -435,10 +439,23 @@ export type SixtyJiaziPersonaRecord = {
   combinedNarrative: string | null;
 };
 
+export type DomainMatrixRecord = {
+  domain: MatrixDomain;
+  sourceVariant: string;
+  pairKey: string | null;
+  rowOrder: number;
+  code: string | null;
+  label: string | null;
+  scoreText: string | null;
+  narrative: string | null;
+  rawCells: string[];
+};
+
 export type BaziKnowledgeRepository = {
   findSolarTermBoundaryContext(birthAtHongKong: string): Promise<SolarTermBoundaryContext>;
   findTwelveQiStage(dayMasterChinese: string, branchChinese: string): Promise<TwelveQiStageRecord | null>;
   findSixtyJiaziPersona(dayMasterChinese: string, branchChinese: string): Promise<SixtyJiaziPersonaRecord | null>;
+  findDomainMatrixRows(domain: MatrixDomain): Promise<DomainMatrixRecord[]>;
 };
 
 type NormalizedBirthContext = {
@@ -759,6 +776,125 @@ function buildNormalizedBranchPairLabel(left: string, right: string) {
 
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values));
+}
+
+function normalizeCorpusBranchSymbol(value: string) {
+  return value.replaceAll("辰", "辰").trim();
+}
+
+function buildSixtyJiaziSemanticNotes(persona: SixtyJiaziPersonaRecord | null) {
+  if (!persona) {
+    return [];
+  }
+
+  const notes: string[] = [];
+
+  if (persona.elementTone) {
+    notes.push(`โทนธาตุของ 60 กะจื่อวันนี้คือ ${persona.elementTone}`);
+  }
+
+  if (persona.twelveQiLabel) {
+    notes.push(
+      `ชั้น 12 เชี่ยงแซของกะจื่อวันอยู่ที่ ${normalizeCorpusBranchSymbol(persona.twelveQiLabel)}`,
+    );
+  }
+
+  return notes;
+}
+
+function buildMatrixStemColumnLookup(rows: DomainMatrixRecord[]) {
+  const lookup = new Map<string, { codeIndex: number; branchIndex: number }>();
+  const headerRow = rows.find((row) =>
+    row.rawCells.some((cell) =>
+      ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"].includes(cell.trim()),
+    ),
+  );
+
+  if (!headerRow) {
+    return lookup;
+  }
+
+  headerRow.rawCells.forEach((cell, index) => {
+    const stem = cell.trim();
+
+    if (
+      !["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"].includes(stem) ||
+      index < 1
+    ) {
+      return;
+    }
+
+    lookup.set(stem, {
+      codeIndex: index - 1,
+      branchIndex: index,
+    });
+  });
+
+  return lookup;
+}
+
+export function buildCompatibilityMatrixProfiles(
+  dayMasterStem: string,
+  rows: DomainMatrixRecord[],
+): CompatibilityMatrixProfileValue[] {
+  const rowsByPairKey = new Map<string, DomainMatrixRecord[]>();
+
+  for (const row of rows) {
+    const pairKey = row.pairKey?.trim() || row.sourceVariant.trim();
+    const existing = rowsByPairKey.get(pairKey);
+
+    if (existing) {
+      existing.push(row);
+      continue;
+    }
+
+    rowsByPairKey.set(pairKey, [row]);
+  }
+
+  return Array.from(rowsByPairKey.entries()).flatMap(([pairKey, pairRows]) => {
+    const stemColumns = buildMatrixStemColumnLookup(pairRows);
+    const stemColumn = stemColumns.get(dayMasterStem);
+
+    if (!stemColumn) {
+      return [];
+    }
+
+    const entries = pairRows
+      .filter((row) => row.scoreText || row.narrative)
+      .map((row) => {
+        const counterpartBranch = normalizeCorpusBranchSymbol(
+          row.rawCells[stemColumn.branchIndex] ?? "",
+        );
+
+        if (!row.code || !row.label || !counterpartBranch) {
+          return null;
+        }
+
+        const counterpartCode = row.rawCells[stemColumn.codeIndex]?.trim() || undefined;
+
+        return {
+          code: row.code,
+          label: row.label,
+          scoreText: row.scoreText ?? undefined,
+          narrative: row.narrative ?? undefined,
+          counterpartCode,
+          counterpartBranch,
+        };
+      })
+      .filter((entry) => entry !== null);
+
+    if (entries.length === 0) {
+      return [];
+    }
+
+    return [
+      {
+        domain: pairRows[0].domain,
+        pairKey,
+        entries,
+      },
+    ];
+  });
 }
 
 function buildPairInteractions(
@@ -1200,6 +1336,24 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
 
       return persona ?? null;
     },
+
+    async findDomainMatrixRows(domain) {
+      return db
+        .select({
+          domain: baziDomainMatrices.domain,
+          sourceVariant: baziDomainMatrices.sourceVariant,
+          pairKey: baziDomainMatrices.pairKey,
+          rowOrder: baziDomainMatrices.rowOrder,
+          code: baziDomainMatrices.code,
+          label: baziDomainMatrices.label,
+          scoreText: baziDomainMatrices.scoreText,
+          narrative: baziDomainMatrices.narrative,
+          rawCells: baziDomainMatrices.rawCells,
+        })
+        .from(baziDomainMatrices)
+        .where(eq(baziDomainMatrices.domain, domain))
+        .orderBy(asc(baziDomainMatrices.sourceVariant), asc(baziDomainMatrices.rowOrder));
+    },
   };
 }
 
@@ -1224,13 +1378,15 @@ export async function calculateBaziChart(
     .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
   const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
   const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
-  const [yearStage, monthStage, dayStage, hourStage, persona, solarTerms] = await Promise.all([
+  const [yearStage, monthStage, dayStage, hourStage, persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
     repository.findTwelveQiStage(dayMasterStem, pillars.year.branch),
     repository.findTwelveQiStage(dayMasterStem, pillars.month.branch),
     repository.findTwelveQiStage(dayMasterStem, pillars.day.branch),
     repository.findTwelveQiStage(dayMasterStem, pillars.hour.branch),
     repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
     repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
+    repository.findDomainMatrixRows("love"),
+    repository.findDomainMatrixRows("work"),
   ]);
   const twelveQiState = {
     yearBranch: yearStage?.stageNameChinese ?? eightChar.getYearDiShi(),
@@ -1239,6 +1395,10 @@ export async function calculateBaziChart(
     hourBranch: hourStage?.stageNameChinese ?? eightChar.getTimeDiShi(),
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
+  const compatibilityMatrixProfiles = buildCompatibilityMatrixProfiles(dayMasterStem, [
+    ...loveMatrixRows,
+    ...workMatrixRows,
+  ]);
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
@@ -1280,6 +1440,11 @@ export async function calculateBaziChart(
       ? {
           code: `${pillars.day.stem}${pillars.day.branch}`,
           narrative: persona.combinedNarrative,
+          elementTone: persona.elementTone ?? undefined,
+          twelveQiLabel: persona.twelveQiLabel
+            ? normalizeCorpusBranchSymbol(persona.twelveQiLabel)
+            : undefined,
+          semanticNotes: buildSixtyJiaziSemanticNotes(persona),
           precedenceNotes: buildPrecedenceNotes(
             birthContext.birthAtHongKong,
             solarTerms,
@@ -1288,6 +1453,7 @@ export async function calculateBaziChart(
           ),
         }
       : undefined,
+    compatibilityMatrixProfiles,
   });
 
   return calculatedState;
