@@ -24,6 +24,16 @@ import {
 
 const require = createRequire(import.meta.url);
 
+type JieQiSolarLike = {
+  toYmdHms(): string;
+};
+
+type LunarLike = {
+  getEightChar(): EightCharLike;
+  getJieQiTable(): Record<string, JieQiSolarLike>;
+  getYearGanIndexExact(): number;
+};
+
 type EightCharLike = {
   getYear(): string;
   getMonth(): string;
@@ -105,14 +115,33 @@ type LunarConstructor = {
   };
 };
 
-const { Lunar, Solar } = require("lunar-javascript") as {
+const { Lunar, Solar, LunarUtil } = require("lunar-javascript") as {
   Lunar: LunarConstructor;
   Solar: SolarConstructor;
+  LunarUtil: {
+    GAN: string[];
+    MONTH_ZHI: string[];
+  };
 };
 
 export const HONG_KONG_TIMEZONE = "Asia/Hong_Kong";
 const DEFAULT_INPUT_TIMEZONE = "Asia/Bangkok";
 const NEAR_BOUNDARY_WINDOW_HOURS = 24;
+
+const MING_GONG_ZHONG_QI_BY_MONTH_BRANCH = {
+  寅: "雨水",
+  卯: "春分",
+  辰: "谷雨",
+  巳: "小满",
+  午: "夏至",
+  未: "大暑",
+  申: "处暑",
+  酉: "秋分",
+  戌: "霜降",
+  亥: "小雪",
+  子: "冬至",
+  丑: "大寒",
+} as const;
 
 const STEM_TO_ELEMENT = {
   甲: "wood",
@@ -350,6 +379,72 @@ function buildDerivedPillarValue(pillarText: string): PillarValue {
     branch,
     hiddenStems: [...(BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [])],
   };
+}
+
+function getMonthBranchIndex(branch: string) {
+  const index = LunarUtil.MONTH_ZHI.indexOf(branch);
+
+  if (index < 1) {
+    throw new Error(`Unsupported month-branch index for Ming Gong: ${branch}`);
+  }
+
+  return index;
+}
+
+function getNextMonthBranch(branch: string) {
+  const currentIndex = getMonthBranchIndex(branch);
+  const nextIndex = currentIndex === 12 ? 1 : currentIndex + 1;
+
+  return LunarUtil.MONTH_ZHI[nextIndex] ?? branch;
+}
+
+function getAdjustedMingGongMonthBranch(
+  monthBranch: string,
+  birthAtHongKong: string,
+  jieQiTable: Record<string, JieQiSolarLike>,
+) {
+  const zhongQiName = MING_GONG_ZHONG_QI_BY_MONTH_BRANCH[
+    monthBranch as keyof typeof MING_GONG_ZHONG_QI_BY_MONTH_BRANCH
+  ];
+
+  if (!zhongQiName) {
+    return monthBranch;
+  }
+
+  const boundaryAt = jieQiTable[zhongQiName]?.toYmdHms?.();
+
+  if (!boundaryAt || birthAtHongKong < boundaryAt) {
+    return monthBranch;
+  }
+
+  return getNextMonthBranch(monthBranch);
+}
+
+function buildOrthodoxMingGongValue(birthContext: NormalizedBirthContext) {
+  const lunar = birthContext.solar.getLunar() as LunarLike;
+  const eightChar = lunar.getEightChar();
+  const monthBranch = splitGanZhi(eightChar.getMonth()).branch;
+  const timeBranch = splitGanZhi(eightChar.getTime()).branch;
+  const adjustedMonthBranch = getAdjustedMingGongMonthBranch(
+    monthBranch,
+    birthContext.birthAtHongKong,
+    lunar.getJieQiTable(),
+  );
+  const monthZhiIndex = getMonthBranchIndex(adjustedMonthBranch);
+  const timeZhiIndex = getMonthBranchIndex(timeBranch);
+  let offset = monthZhiIndex + timeZhiIndex;
+
+  offset = (offset >= 14 ? 26 : 14) - offset;
+
+  let ganIndex = (lunar.getYearGanIndexExact() + 1) * 2 + offset;
+
+  while (ganIndex > 10) {
+    ganIndex -= 10;
+  }
+
+  return buildDerivedPillarValue(
+    `${LunarUtil.GAN[ganIndex]}${LunarUtil.MONTH_ZHI[offset]}`,
+  );
 }
 
 function normalizeGenderForYun(gender: string) {
@@ -809,7 +904,7 @@ export async function calculateBaziChart(
   const structuralState = calculateBaziStructuralState(rawInput);
   const pillars = structuralState.fourPillars;
   const dayMasterStem = structuralState.dayMaster;
-  const mingGong = buildDerivedPillarValue(eightChar.getMingGong());
+  const mingGong = buildOrthodoxMingGongValue(birthContext);
   const daYunState = buildDaYunState(eightChar, rawInput.gender, currentYear);
   const currentDaYunEntry = eightChar
     .getYun(normalizeGenderForYun(rawInput.gender))

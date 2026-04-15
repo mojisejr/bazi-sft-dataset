@@ -158,6 +158,36 @@ describe("calculateBaziChart", () => {
     expect(result.tenGods.hourStem).toBe("偏印");
     expect(result.twelveQi.hourBranch).toBe("冠带");
   });
+
+  test("uses Zhong Qi month rollover when deriving Ming Gong for orthodox fixtures", async () => {
+    const repository = createTestKnowledgeRepository();
+
+    const novemberCase = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1977-11-27",
+        birthTime: "00:26",
+        gender: "female",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+    const juneCase = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1949-06-25",
+        birthTime: "12:00",
+        gender: "male",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    expect(novemberCase.mingGong).toMatchObject({ stem: "乙", branch: "巳" });
+    expect(juneCase.mingGong).toMatchObject({ stem: "戊", branch: "辰" });
+  });
 });
 
 describe("CalculatedStateSchema", () => {
