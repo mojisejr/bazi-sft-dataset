@@ -2,7 +2,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { createCalculateBaziHandler } from "@/app/api/bazi/calculate/route";
 import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
-import { calculateBaziChart } from "@/lib/bazi/symbolic-engine";
+import {
+  calculateBaziChart,
+  resolveBranchInteractionEffects,
+} from "@/lib/bazi/symbolic-engine";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
 
@@ -11,6 +14,30 @@ afterEach(() => {
 });
 
 describe("calculateBaziChart", () => {
+  test("lets combinations neutralize clashes before reducing seasonal month support", () => {
+    const resolved = resolveBranchInteractionEffects({
+      year: { stem: "甲", branch: "子", hiddenStems: [] },
+      month: { stem: "乙", branch: "午", hiddenStems: [] },
+      day: { stem: "丙", branch: "丑", hiddenStems: [] },
+      hour: { stem: "丁", branch: "申", hiddenStems: [] },
+    });
+    const unresolved = resolveBranchInteractionEffects({
+      year: { stem: "甲", branch: "子", hiddenStems: [] },
+      month: { stem: "乙", branch: "午", hiddenStems: [] },
+      day: { stem: "丙", branch: "卯", hiddenStems: [] },
+      hour: { stem: "丁", branch: "辰", hiddenStems: [] },
+    });
+
+    expect(resolved.activeCombinations).toContain("子丑");
+    expect(resolved.neutralizedClashes).toContain("子午");
+    expect(resolved.activeClashes).toEqual([]);
+    expect(resolved.monthBranchSeasonalFactor).toBe(1);
+
+    expect(unresolved.activeCombinations).toEqual([]);
+    expect(unresolved.activeClashes).toContain("子午");
+    expect(unresolved.monthBranchSeasonalFactor).toBe(0.6);
+  });
+
   test("flips the year and month pillars when crossing the start-of-spring boundary", async () => {
     const repository = createTestKnowledgeRepository();
     const before = await calculateBaziChart(
@@ -61,7 +88,7 @@ describe("calculateBaziChart", () => {
     );
 
     expect(result.dayMaster).toBe("己");
-    expect(result.strengthScore).toBe(3.07);
+    expect(result.strengthScore).toBe(3.51);
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.twelveQi.dayBranch).toBe("帝旺");
@@ -97,6 +124,11 @@ describe("calculateBaziChart", () => {
       narrative:
         "Builds influence patiently, then turns preparation into visible results when timing opens.",
     });
+    expect(result.sixtyJiaziCorePersona?.precedenceNotes).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("巳申"),
+      ]),
+    );
     expect(result.elementMetaphors).toEqual([
       {
         element: "earth",

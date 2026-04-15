@@ -143,6 +143,21 @@ const MING_GONG_ZHONG_QI_BY_MONTH_BRANCH = {
   丑: "大寒",
 } as const;
 
+const BRANCH_ORDER = [
+  "子",
+  "丑",
+  "寅",
+  "卯",
+  "辰",
+  "巳",
+  "午",
+  "未",
+  "申",
+  "酉",
+  "戌",
+  "亥",
+] as const;
+
 const STEM_TO_ELEMENT = {
   甲: "wood",
   乙: "wood",
@@ -279,6 +294,88 @@ const TRAVELING_HORSE_BRANCH_BY_GROUP = {
   未: "巳",
 } as const;
 
+const SIX_COMBINATION_PAIRS = new Set([
+  "子|丑",
+  "寅|亥",
+  "卯|戌",
+  "辰|酉",
+  "巳|申",
+  "午|未",
+]);
+
+const CLASH_PAIRS = new Set([
+  "子|午",
+  "丑|未",
+  "寅|申",
+  "卯|酉",
+  "辰|戌",
+  "巳|亥",
+]);
+
+const HARM_PAIRS = new Set([
+  "子|未",
+  "丑|午",
+  "寅|巳",
+  "卯|辰",
+  "申|亥",
+  "酉|戌",
+]);
+
+const DESTRUCTION_PAIRS = new Set([
+  "子|酉",
+  "卯|午",
+  "辰|丑",
+  "未|戌",
+  "寅|亥",
+]);
+
+const PUNISHMENT_PAIR_KEYS = new Set(["子|卯"]);
+
+const PUNISHMENT_TRIOS = [
+  ["丑", "未", "戌"],
+  ["寅", "巳", "申"],
+] as const;
+
+const SELF_PUNISHMENT_BRANCHES = new Set(["辰", "午", "酉", "亥"]);
+
+const STAGE_POSITION_WEIGHTS = {
+  year: 0.75,
+  month: 1.75,
+  day: 1,
+  hour: 0.75,
+} as const;
+
+const STAGE_WEIGHT_NORMALIZER = 2.5;
+const BASE_STRENGTH_OFFSET = 0.75;
+const MONTH_SEASONAL_CLASH_FACTOR = 0.6;
+
+type PillarKey = keyof CalculatedStateValue["fourPillars"];
+
+type PairInteraction = {
+  leftPillar: PillarKey;
+  rightPillar: PillarKey;
+  leftBranch: string;
+  rightBranch: string;
+  label: string;
+};
+
+type MultiBranchInteraction = {
+  pillars: PillarKey[];
+  branches: string[];
+  label: string;
+};
+
+export type BranchInteractionResolution = {
+  activeCombinations: string[];
+  neutralizedClashes: string[];
+  activeClashes: string[];
+  activePunishments: string[];
+  activeHarms: string[];
+  activeDestructions: string[];
+  monthBranchSeasonalFactor: number;
+  precedenceNotes: string[];
+};
+
 const SHEN_SHA_COPY = {
   nobleman: {
     starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
@@ -303,6 +400,13 @@ type SupportedElement = (typeof STEM_TO_ELEMENT)[keyof typeof STEM_TO_ELEMENT];
 type ReferencePillar = {
   label: string;
   pillar: Pick<PillarValue, "stem" | "branch">;
+};
+
+type StrengthStageSnapshot = {
+  year: string;
+  month: string;
+  day: string;
+  hour: string;
 };
 
 export type SolarTermBoundaryRecord = {
@@ -638,6 +742,187 @@ function getElement(stem: string): SupportedElement {
   return element;
 }
 
+function normalizeBranchPairKey(left: string, right: string) {
+  const leftIndex = BRANCH_ORDER.indexOf(left as (typeof BRANCH_ORDER)[number]);
+  const rightIndex = BRANCH_ORDER.indexOf(right as (typeof BRANCH_ORDER)[number]);
+
+  if (leftIndex === -1 || rightIndex === -1) {
+    return [left, right].sort().join("|");
+  }
+
+  return leftIndex <= rightIndex ? `${left}|${right}` : `${right}|${left}`;
+}
+
+function buildNormalizedBranchPairLabel(left: string, right: string) {
+  return normalizeBranchPairKey(left, right).replace("|", "");
+}
+
+function uniqueStrings(values: string[]) {
+  return Array.from(new Set(values));
+}
+
+function buildPairInteractions(
+  pillars: CalculatedStateValue["fourPillars"],
+  relationKeys: Set<string>,
+) {
+  const entries = Object.entries(pillars) as Array<[PillarKey, PillarValue]>;
+  const interactions: PairInteraction[] = [];
+
+  for (let leftIndex = 0; leftIndex < entries.length - 1; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < entries.length; rightIndex += 1) {
+      const [leftPillar, leftValue] = entries[leftIndex];
+      const [rightPillar, rightValue] = entries[rightIndex];
+      const pairKey = normalizeBranchPairKey(leftValue.branch, rightValue.branch);
+
+      if (!relationKeys.has(pairKey)) {
+        continue;
+      }
+
+      interactions.push({
+        leftPillar,
+        rightPillar,
+        leftBranch: leftValue.branch,
+        rightBranch: rightValue.branch,
+        label: buildNormalizedBranchPairLabel(leftValue.branch, rightValue.branch),
+      });
+    }
+  }
+
+  return interactions;
+}
+
+function buildPunishmentInteractions(pillars: CalculatedStateValue["fourPillars"]) {
+  const entries = Object.entries(pillars) as Array<[PillarKey, PillarValue]>;
+  const interactions: MultiBranchInteraction[] = [];
+
+  for (const interaction of buildPairInteractions(pillars, PUNISHMENT_PAIR_KEYS)) {
+    interactions.push({
+      pillars: [interaction.leftPillar, interaction.rightPillar],
+      branches: [interaction.leftBranch, interaction.rightBranch],
+      label: interaction.label,
+    });
+  }
+
+  for (const trio of PUNISHMENT_TRIOS) {
+    const matches = entries.filter(([, value]) =>
+      trio.some((branch) => branch === value.branch),
+    );
+
+    if (matches.length === trio.length) {
+      interactions.push({
+        pillars: matches.map(([pillarKey]) => pillarKey),
+        branches: [...trio],
+        label: trio.join(""),
+      });
+    }
+  }
+
+  for (const branch of SELF_PUNISHMENT_BRANCHES) {
+    const matches = entries.filter(([, value]) => value.branch === branch);
+
+    if (matches.length >= 2) {
+      interactions.push({
+        pillars: matches.map(([pillarKey]) => pillarKey),
+        branches: matches.map(([, value]) => value.branch),
+        label: `${branch}${branch}`,
+      });
+    }
+  }
+
+  return interactions;
+}
+
+export function resolveBranchInteractionEffects(
+  pillars: CalculatedStateValue["fourPillars"],
+): BranchInteractionResolution {
+  const combinations = buildPairInteractions(pillars, SIX_COMBINATION_PAIRS);
+  const clashes = buildPairInteractions(pillars, CLASH_PAIRS);
+  const harms = buildPairInteractions(pillars, HARM_PAIRS);
+  const destructions = buildPairInteractions(pillars, DESTRUCTION_PAIRS);
+  const punishments = buildPunishmentInteractions(pillars);
+  const combinationPillars = new Set(
+    combinations.flatMap((interaction) => [interaction.leftPillar, interaction.rightPillar]),
+  );
+  const neutralizedClashes = clashes.filter(
+    (interaction) =>
+      combinationPillars.has(interaction.leftPillar) ||
+      combinationPillars.has(interaction.rightPillar),
+  );
+  const activeClashes = clashes.filter(
+    (interaction) => !neutralizedClashes.includes(interaction),
+  );
+  const activeClashPillars = new Set(
+    activeClashes.flatMap((interaction) => [interaction.leftPillar, interaction.rightPillar]),
+  );
+  const activePunishments = punishments.filter(
+    (interaction) =>
+      !interaction.pillars.some((pillarKey) => combinationPillars.has(pillarKey)) &&
+      !interaction.pillars.some((pillarKey) => activeClashPillars.has(pillarKey)),
+  );
+  const majorConflictPillars = new Set([
+    ...combinationPillars,
+    ...activeClashPillars,
+  ]);
+  const monthBranchSeasonalFactor = activeClashes.some(
+    (interaction) =>
+      interaction.leftPillar === "month" || interaction.rightPillar === "month",
+  )
+    ? MONTH_SEASONAL_CLASH_FACTOR
+    : 1;
+  const precedenceNotes = uniqueStrings([
+    ...combinations.map(
+      (interaction) =>
+        `Active combination ${interaction.label} takes precedence over clashes touching the same branches.`,
+    ),
+    ...neutralizedClashes.map(
+      (interaction) =>
+        `Clash ${interaction.label} is neutralized because one of its branches first enters a combination.`,
+    ),
+    ...activeClashes.map(
+      (interaction) =>
+        `Active clash ${interaction.label} remains in force and should outrank punishment-level interpretations.`,
+    ),
+    ...activePunishments.map(
+      (interaction) =>
+        `Punishment pattern ${interaction.label} remains active after higher-precedence interactions were resolved.`,
+    ),
+    ...harms.map((interaction) => {
+      const supplementary =
+        majorConflictPillars.has(interaction.leftPillar) ||
+        majorConflictPillars.has(interaction.rightPillar);
+
+      return supplementary
+        ? `Harm ${interaction.label} is present but treated as a supplementary detail because a higher-precedence interaction exists.`
+        : `Harm ${interaction.label} is active as a secondary relational signal.`;
+    }),
+    ...destructions.map((interaction) => {
+      const supplementary =
+        majorConflictPillars.has(interaction.leftPillar) ||
+        majorConflictPillars.has(interaction.rightPillar);
+
+      return supplementary
+        ? `Destruction ${interaction.label} is present but remains a supplementary note under higher-precedence interactions.`
+        : `Destruction ${interaction.label} is active as a secondary relational signal.`;
+    }),
+    ...(monthBranchSeasonalFactor < 1
+      ? [
+          `Month-branch clash reduces seasonal support weighting to ${monthBranchSeasonalFactor.toFixed(2)} until a higher-precedence combination resolves it.`,
+        ]
+      : []),
+  ]);
+
+  return {
+    activeCombinations: uniqueStrings(combinations.map((interaction) => interaction.label)),
+    neutralizedClashes: uniqueStrings(neutralizedClashes.map((interaction) => interaction.label)),
+    activeClashes: uniqueStrings(activeClashes.map((interaction) => interaction.label)),
+    activePunishments: uniqueStrings(activePunishments.map((interaction) => interaction.label)),
+    activeHarms: uniqueStrings(harms.map((interaction) => interaction.label)),
+    activeDestructions: uniqueStrings(destructions.map((interaction) => interaction.label)),
+    monthBranchSeasonalFactor,
+    precedenceNotes,
+  };
+}
+
 function relationWeight(dayMasterElement: SupportedElement, candidateElement: SupportedElement, hidden = false) {
   const supportWeight = hidden ? 0.12 : 0.35;
   const resourceWeight = hidden ? 0.1 : 0.3;
@@ -668,9 +953,26 @@ function relationWeight(dayMasterElement: SupportedElement, candidateElement: Su
   return 0;
 }
 
-function computeStrengthScore(dayMasterStem: string, pillars: CalculatedStateValue["fourPillars"], monthStage: string) {
+function getStageStrengthWeight(stageName: string) {
+  return STAGE_WEIGHTS[stageName as keyof typeof STAGE_WEIGHTS] ?? 1;
+}
+
+function computeStrengthScore(
+  dayMasterStem: string,
+  pillars: CalculatedStateValue["fourPillars"],
+  stages: StrengthStageSnapshot,
+  interactionResolution: BranchInteractionResolution,
+) {
   const dayMasterElement = getElement(dayMasterStem);
-  let score = 1.5 + (STAGE_WEIGHTS[monthStage as keyof typeof STAGE_WEIGHTS] ?? 1);
+  const stageContribution =
+    (getStageStrengthWeight(stages.year) * STAGE_POSITION_WEIGHTS.year +
+      getStageStrengthWeight(stages.month) *
+        STAGE_POSITION_WEIGHTS.month *
+        interactionResolution.monthBranchSeasonalFactor +
+      getStageStrengthWeight(stages.day) * STAGE_POSITION_WEIGHTS.day +
+      getStageStrengthWeight(stages.hour) * STAGE_POSITION_WEIGHTS.hour) /
+    STAGE_WEIGHT_NORMALIZER;
+  let score = BASE_STRENGTH_OFFSET + stageContribution;
 
   const visibleSupporters = [pillars.year.stem, pillars.month.stem, pillars.hour.stem];
 
@@ -687,6 +989,14 @@ function computeStrengthScore(dayMasterStem: string, pillars: CalculatedStateVal
 
   for (const stem of allHiddenStems) {
     score += relationWeight(dayMasterElement, getElement(stem), true);
+  }
+
+  score -= interactionResolution.activeClashes.length * 0.18;
+  score -= interactionResolution.activePunishments.length * 0.08;
+
+  if (interactionResolution.activeCombinations.length === 0 && interactionResolution.activeClashes.length === 0) {
+    score -= interactionResolution.activeHarms.length * 0.05;
+    score -= interactionResolution.activeDestructions.length * 0.05;
   }
 
   return Number(score.toFixed(2));
@@ -726,9 +1036,11 @@ function buildPrecedenceNotes(
   birthAtHongKong: string,
   solarTerms: SolarTermBoundaryContext,
   persona: SixtyJiaziPersonaRecord | null,
+  interactionResolution: BranchInteractionResolution,
 ) {
   const notes = [
     "60 Jiazi narrative supports interpretation but does not override clash-resolution logic.",
+    ...interactionResolution.precedenceNotes,
   ];
 
   if (persona?.twelveQiLabel) {
@@ -920,6 +1232,13 @@ export async function calculateBaziChart(
     repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
     repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
   ]);
+  const twelveQiState = {
+    yearBranch: yearStage?.stageNameChinese ?? eightChar.getYearDiShi(),
+    monthBranch: monthStage?.stageNameChinese ?? eightChar.getMonthDiShi(),
+    dayBranch: dayStage?.stageNameChinese ?? eightChar.getDayDiShi(),
+    hourBranch: hourStage?.stageNameChinese ?? eightChar.getTimeDiShi(),
+  };
+  const interactionResolution = resolveBranchInteractionEffects(pillars);
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
@@ -937,7 +1256,13 @@ export async function calculateBaziChart(
     strengthScore: computeStrengthScore(
       dayMasterStem,
       pillars,
-      monthStage?.stageNameChinese ?? eightChar.getMonthDiShi(),
+      {
+        year: twelveQiState.yearBranch,
+        month: twelveQiState.monthBranch,
+        day: twelveQiState.dayBranch,
+        hour: twelveQiState.hourBranch,
+      },
+      interactionResolution,
     ),
     tenGods: {
       yearStem: eightChar.getYearShiShenGan(),
@@ -949,12 +1274,7 @@ export async function calculateBaziChart(
       hourStem: eightChar.getTimeShiShenGan(),
       hourBranch: String(eightChar.getTimeShiShenZhi()),
     },
-    twelveQi: {
-      yearBranch: yearStage?.stageNameChinese ?? eightChar.getYearDiShi(),
-      monthBranch: monthStage?.stageNameChinese ?? eightChar.getMonthDiShi(),
-      dayBranch: dayStage?.stageNameChinese ?? eightChar.getDayDiShi(),
-      hourBranch: hourStage?.stageNameChinese ?? eightChar.getTimeDiShi(),
-    },
+    twelveQi: twelveQiState,
     elementMetaphors: buildElementMetaphors(dayMasterStem),
     sixtyJiaziCorePersona: persona?.combinedNarrative
       ? {
@@ -964,6 +1284,7 @@ export async function calculateBaziChart(
             birthContext.birthAtHongKong,
             solarTerms,
             persona,
+            interactionResolution,
           ),
         }
       : undefined,
