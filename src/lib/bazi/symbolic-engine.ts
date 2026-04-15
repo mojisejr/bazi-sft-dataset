@@ -12,7 +12,9 @@ import {
 import {
   CalculatedStateSchema,
   type CalculatedStateValue,
+  type CalculationTraceValue,
   type CompatibilityMatrixProfileValue,
+  type ExplainableValue,
   type PillarValue,
   RawInputSchema,
   type RawInputValue,
@@ -413,6 +415,26 @@ type StrengthStageSnapshot = {
   hour: string;
 };
 
+type StrengthContribution = {
+  label: string;
+  stem: string;
+  hidden: boolean;
+  weight: number;
+};
+
+type StrengthScoreBreakdown = {
+  score: number;
+  stageContribution: number;
+  visibleContributions: StrengthContribution[];
+  hiddenContributions: StrengthContribution[];
+  penalties: {
+    clashes: number;
+    punishments: number;
+    harms: number;
+    destructions: number;
+  };
+};
+
 export type SolarTermBoundaryRecord = {
   label: string;
   solarTermName: string | null;
@@ -461,6 +483,14 @@ export type BaziKnowledgeRepository = {
 type NormalizedBirthContext = {
   solar: SolarInstance;
   birthAtHongKong: string;
+};
+
+type MingGongMonthAdjustment = {
+  monthBranch: string;
+  adjustedMonthBranch: string;
+  zhongQiName: string | null;
+  boundaryAt: string | null;
+  isPastZhongQi: boolean;
 };
 
 export type BaziStructuralState = Pick<CalculatedStateValue, "fourPillars" | "dayMaster">;
@@ -519,39 +549,50 @@ function getNextMonthBranch(branch: string) {
   return LunarUtil.MONTH_ZHI[nextIndex] ?? branch;
 }
 
-function getAdjustedMingGongMonthBranch(
+function getAdjustedMingGongMonthAdjustment(
   monthBranch: string,
   birthAtHongKong: string,
   jieQiTable: Record<string, JieQiSolarLike>,
-) {
+) : MingGongMonthAdjustment {
   const zhongQiName = MING_GONG_ZHONG_QI_BY_MONTH_BRANCH[
     monthBranch as keyof typeof MING_GONG_ZHONG_QI_BY_MONTH_BRANCH
   ];
 
   if (!zhongQiName) {
-    return monthBranch;
+    return {
+      monthBranch,
+      adjustedMonthBranch: monthBranch,
+      zhongQiName: null,
+      boundaryAt: null,
+      isPastZhongQi: false,
+    };
   }
 
   const boundaryAt = jieQiTable[zhongQiName]?.toYmdHms?.();
+  const isPastZhongQi = Boolean(boundaryAt && birthAtHongKong >= boundaryAt);
 
-  if (!boundaryAt || birthAtHongKong < boundaryAt) {
-    return monthBranch;
-  }
-
-  return getNextMonthBranch(monthBranch);
+  return {
+    monthBranch,
+    adjustedMonthBranch: isPastZhongQi ? getNextMonthBranch(monthBranch) : monthBranch,
+    zhongQiName,
+    boundaryAt: boundaryAt ?? null,
+    isPastZhongQi,
+  };
 }
 
-function buildOrthodoxMingGongValue(birthContext: NormalizedBirthContext) {
+function buildOrthodoxMingGongValue(
+  birthContext: NormalizedBirthContext,
+): ExplainableValue<PillarValue> {
   const lunar = birthContext.solar.getLunar() as LunarLike;
   const eightChar = lunar.getEightChar();
   const monthBranch = splitGanZhi(eightChar.getMonth()).branch;
   const timeBranch = splitGanZhi(eightChar.getTime()).branch;
-  const adjustedMonthBranch = getAdjustedMingGongMonthBranch(
+  const monthAdjustment = getAdjustedMingGongMonthAdjustment(
     monthBranch,
     birthContext.birthAtHongKong,
     lunar.getJieQiTable(),
   );
-  const monthZhiIndex = getMonthBranchIndex(adjustedMonthBranch);
+  const monthZhiIndex = getMonthBranchIndex(monthAdjustment.adjustedMonthBranch);
   const timeZhiIndex = getMonthBranchIndex(timeBranch);
   let offset = monthZhiIndex + timeZhiIndex;
 
@@ -563,9 +604,42 @@ function buildOrthodoxMingGongValue(birthContext: NormalizedBirthContext) {
     ganIndex -= 10;
   }
 
-  return buildDerivedPillarValue(
+  const value = buildDerivedPillarValue(
     `${LunarUtil.GAN[ganIndex]}${LunarUtil.MONTH_ZHI[offset]}`,
   );
+
+  const trace: CalculationTraceValue = {
+    engine: "orthodox-override",
+    ruleName: "MingGong_ZhongQi_Adjustment",
+    steps: [
+      `Read month branch ${monthAdjustment.monthBranch} and time branch ${timeBranch} from the natal chart.`,
+      monthAdjustment.zhongQiName
+        ? monthAdjustment.isPastZhongQi
+          ? `Birth time passed Zhong Qi boundary ${monthAdjustment.zhongQiName}, so the Ming Gong month branch advances to ${monthAdjustment.adjustedMonthBranch}.`
+          : `Birth time stayed before Zhong Qi boundary ${monthAdjustment.zhongQiName}, so the Ming Gong month branch remains ${monthAdjustment.adjustedMonthBranch}.`
+        : `No Zhong Qi override mapping exists for month branch ${monthAdjustment.monthBranch}, so the original month branch is preserved.`,
+      `Resolve Ming Gong from adjusted month index ${monthZhiIndex} and time index ${timeZhiIndex} to ${value.stem}${value.branch}.`,
+    ],
+    rawVariables: {
+      birthAtHongKong: birthContext.birthAtHongKong,
+      monthBranch: monthAdjustment.monthBranch,
+      adjustedMonthBranch: monthAdjustment.adjustedMonthBranch,
+      timeBranch,
+      zhongQiName: monthAdjustment.zhongQiName,
+      boundaryAt: monthAdjustment.boundaryAt,
+      isPastZhongQi: monthAdjustment.isPastZhongQi,
+      monthZhiIndex,
+      timeZhiIndex,
+      offset,
+      ganIndex,
+      result: `${value.stem}${value.branch}`,
+    },
+  };
+
+  return {
+    value,
+    trace,
+  };
 }
 
 function normalizeGenderForYun(gender: string) {
@@ -1089,16 +1163,12 @@ function relationWeight(dayMasterElement: SupportedElement, candidateElement: Su
   return 0;
 }
 
-function getStageStrengthWeight(stageName: string) {
-  return STAGE_WEIGHTS[stageName as keyof typeof STAGE_WEIGHTS] ?? 1;
-}
-
-function computeStrengthScore(
+function computeStrengthScoreBreakdown(
   dayMasterStem: string,
   pillars: CalculatedStateValue["fourPillars"],
   stages: StrengthStageSnapshot,
   interactionResolution: BranchInteractionResolution,
-) {
+): StrengthScoreBreakdown {
   const dayMasterElement = getElement(dayMasterStem);
   const stageContribution =
     (getStageStrengthWeight(stages.year) * STAGE_POSITION_WEIGHTS.year +
@@ -1110,32 +1180,135 @@ function computeStrengthScore(
     STAGE_WEIGHT_NORMALIZER;
   let score = BASE_STRENGTH_OFFSET + stageContribution;
 
-  const visibleSupporters = [pillars.year.stem, pillars.month.stem, pillars.hour.stem];
-
-  for (const stem of visibleSupporters) {
-    score += relationWeight(dayMasterElement, getElement(stem));
-  }
-
-  const allHiddenStems = [
-    ...(pillars.year.hiddenStems ?? []),
-    ...(pillars.month.hiddenStems ?? []),
-    ...(pillars.day.hiddenStems ?? []),
-    ...(pillars.hour.hiddenStems ?? []),
+  const visibleContributions: StrengthContribution[] = [
+    {
+      label: "yearStem",
+      stem: pillars.year.stem,
+      hidden: false,
+      weight: relationWeight(dayMasterElement, getElement(pillars.year.stem)),
+    },
+    {
+      label: "monthStem",
+      stem: pillars.month.stem,
+      hidden: false,
+      weight: relationWeight(dayMasterElement, getElement(pillars.month.stem)),
+    },
+    {
+      label: "hourStem",
+      stem: pillars.hour.stem,
+      hidden: false,
+      weight: relationWeight(dayMasterElement, getElement(pillars.hour.stem)),
+    },
   ];
 
-  for (const stem of allHiddenStems) {
-    score += relationWeight(dayMasterElement, getElement(stem), true);
+  for (const contribution of visibleContributions) {
+    score += contribution.weight;
   }
 
-  score -= interactionResolution.activeClashes.length * 0.18;
-  score -= interactionResolution.activePunishments.length * 0.08;
+  const hiddenContributions: StrengthContribution[] = [
+    ...((pillars.year.hiddenStems ?? []).map((stem, index) => ({
+      label: `yearHiddenStem${index + 1}`,
+      stem,
+      hidden: true,
+      weight: relationWeight(dayMasterElement, getElement(stem), true),
+    }))),
+    ...((pillars.month.hiddenStems ?? []).map((stem, index) => ({
+      label: `monthHiddenStem${index + 1}`,
+      stem,
+      hidden: true,
+      weight: relationWeight(dayMasterElement, getElement(stem), true),
+    }))),
+    ...((pillars.day.hiddenStems ?? []).map((stem, index) => ({
+      label: `dayHiddenStem${index + 1}`,
+      stem,
+      hidden: true,
+      weight: relationWeight(dayMasterElement, getElement(stem), true),
+    }))),
+    ...((pillars.hour.hiddenStems ?? []).map((stem, index) => ({
+      label: `hourHiddenStem${index + 1}`,
+      stem,
+      hidden: true,
+      weight: relationWeight(dayMasterElement, getElement(stem), true),
+    }))),
+  ];
 
-  if (interactionResolution.activeCombinations.length === 0 && interactionResolution.activeClashes.length === 0) {
-    score -= interactionResolution.activeHarms.length * 0.05;
-    score -= interactionResolution.activeDestructions.length * 0.05;
+  for (const contribution of hiddenContributions) {
+    score += contribution.weight;
   }
 
-  return Number(score.toFixed(2));
+  const penalties = {
+    clashes: interactionResolution.activeClashes.length * 0.18,
+    punishments: interactionResolution.activePunishments.length * 0.08,
+    harms:
+      interactionResolution.activeCombinations.length === 0 &&
+      interactionResolution.activeClashes.length === 0
+        ? interactionResolution.activeHarms.length * 0.05
+        : 0,
+    destructions:
+      interactionResolution.activeCombinations.length === 0 &&
+      interactionResolution.activeClashes.length === 0
+        ? interactionResolution.activeDestructions.length * 0.05
+        : 0,
+  };
+
+  score -= penalties.clashes;
+  score -= penalties.punishments;
+  score -= penalties.harms;
+  score -= penalties.destructions;
+
+  return {
+    score: Number(score.toFixed(2)),
+    stageContribution,
+    visibleContributions,
+    hiddenContributions,
+    penalties,
+  };
+}
+
+function getStageStrengthWeight(stageName: string) {
+  return STAGE_WEIGHTS[stageName as keyof typeof STAGE_WEIGHTS] ?? 1;
+}
+
+function buildStrengthScoreExplainable(
+  dayMasterStem: string,
+  pillars: CalculatedStateValue["fourPillars"],
+  stages: StrengthStageSnapshot,
+  interactionResolution: BranchInteractionResolution,
+): ExplainableValue<number> {
+  const breakdown = computeStrengthScoreBreakdown(
+    dayMasterStem,
+    pillars,
+    stages,
+    interactionResolution,
+  );
+
+  return {
+    value: breakdown.score,
+    trace: {
+      engine: "orthodox-override",
+      ruleName: "StrengthScore_WeightedSeasonalSupport",
+      steps: [
+        `Weight the four twelve-qi stages with month priority ${STAGE_POSITION_WEIGHTS.month.toFixed(2)} and seasonal factor ${interactionResolution.monthBranchSeasonalFactor.toFixed(2)}.`,
+        `Add visible and hidden stem relation weights against day master ${dayMasterStem}.`,
+        `Subtract precedence-aware penalties from clashes, punishments, harms, and destructions to reach score ${breakdown.score.toFixed(2)}.`,
+      ],
+      rawVariables: {
+        dayMasterStem,
+        stages,
+        stageContribution: Number(breakdown.stageContribution.toFixed(4)),
+        monthBranchSeasonalFactor: interactionResolution.monthBranchSeasonalFactor,
+        activeCombinations: interactionResolution.activeCombinations,
+        activeClashes: interactionResolution.activeClashes,
+        activePunishments: interactionResolution.activePunishments,
+        activeHarms: interactionResolution.activeHarms,
+        activeDestructions: interactionResolution.activeDestructions,
+        visibleContributions: breakdown.visibleContributions,
+        hiddenContributions: breakdown.hiddenContributions,
+        penalties: breakdown.penalties,
+        result: breakdown.score,
+      },
+    },
+  };
 }
 
 function buildElementMetaphors(dayMasterStem: string) {
@@ -1395,6 +1568,17 @@ export async function calculateBaziChart(
     hourBranch: hourStage?.stageNameChinese ?? eightChar.getTimeDiShi(),
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
+  const strengthScore = buildStrengthScoreExplainable(
+    dayMasterStem,
+    pillars,
+    {
+      year: twelveQiState.yearBranch,
+      month: twelveQiState.monthBranch,
+      day: twelveQiState.dayBranch,
+      hour: twelveQiState.hourBranch,
+    },
+    interactionResolution,
+  );
   const compatibilityMatrixProfiles = buildCompatibilityMatrixProfiles(dayMasterStem, [
     ...loveMatrixRows,
     ...workMatrixRows,
@@ -1402,28 +1586,18 @@ export async function calculateBaziChart(
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
-    mingGong,
+    mingGong: mingGong.value,
     daYun: daYunState,
     liuNian,
     shenSha: buildShenShaState({
       pillars,
       dayMasterStem,
-      mingGong,
+      mingGong: mingGong.value,
       liuNian,
       currentDaYun: currentDaYunPillar,
     }),
     dayMaster: dayMasterStem,
-    strengthScore: computeStrengthScore(
-      dayMasterStem,
-      pillars,
-      {
-        year: twelveQiState.yearBranch,
-        month: twelveQiState.monthBranch,
-        day: twelveQiState.dayBranch,
-        hour: twelveQiState.hourBranch,
-      },
-      interactionResolution,
-    ),
+    strengthScore: strengthScore.value,
     tenGods: {
       yearStem: eightChar.getYearShiShenGan(),
       yearBranch: String(eightChar.getYearShiShenZhi()),
@@ -1436,6 +1610,10 @@ export async function calculateBaziChart(
     },
     twelveQi: twelveQiState,
     elementMetaphors: buildElementMetaphors(dayMasterStem),
+    explainable: {
+      mingGong,
+      strengthScore,
+    },
     sixtyJiaziCorePersona: persona?.combinedNarrative
       ? {
           code: `${pillars.day.stem}${pillars.day.branch}`,

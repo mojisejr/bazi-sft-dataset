@@ -93,6 +93,16 @@ describe("calculateBaziChart", () => {
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.twelveQi.dayBranch).toBe("帝旺");
     expect(result.mingGong).toMatchObject({ stem: "壬", branch: "寅" });
+    expect(result.explainable.mingGong?.value).toMatchObject({ stem: "壬", branch: "寅" });
+    expect(result.explainable.mingGong?.trace).toMatchObject({
+      engine: "orthodox-override",
+      ruleName: "MingGong_ZhongQi_Adjustment",
+    });
+    expect(result.explainable.strengthScore?.value).toBe(3.51);
+    expect(result.explainable.strengthScore?.trace).toMatchObject({
+      engine: "orthodox-override",
+      ruleName: "StrengthScore_WeightedSeasonalSupport",
+    });
     expect(result.daYun).toHaveLength(9);
     expect(result.daYun[0]).toMatchObject({ startAge: 6, endAge: 15, stem: "丁", branch: "未" });
     expect(result.daYun.find((entry) => entry.isCurrent)).toMatchObject({
@@ -183,6 +193,12 @@ describe("calculateBaziChart", () => {
         metaphor: "fire that bakes the soil into useful ground",
       },
     ]);
+    expect(result.explainable.strengthScore?.trace?.rawVariables).toMatchObject({
+      dayMasterStem: "己",
+      monthBranchSeasonalFactor: 1,
+      result: 3.51,
+    });
+    expect(Array.isArray(result.explainable.strengthScore?.trace?.rawVariables?.visibleContributions)).toBe(true);
   });
 
   test("keeps historical Bangkok births on fixed regional offsets instead of political DST", async () => {
@@ -263,6 +279,16 @@ describe("calculateBaziChart", () => {
 
     expect(novemberCase.mingGong).toMatchObject({ stem: "乙", branch: "巳" });
     expect(juneCase.mingGong).toMatchObject({ stem: "戊", branch: "辰" });
+    expect(novemberCase.explainable.mingGong?.trace?.rawVariables).toMatchObject({
+      isPastZhongQi: true,
+      monthBranch: "亥",
+      adjustedMonthBranch: "子",
+      result: "乙巳",
+    });
+    expect(juneCase.explainable.mingGong?.trace?.rawVariables).toMatchObject({
+      isPastZhongQi: true,
+      result: "戊辰",
+    });
   });
 });
 
@@ -304,6 +330,7 @@ describe("CalculatedStateSchema", () => {
     expect(parsed.daYun).toEqual([]);
     expect(parsed.shenSha).toEqual([]);
     expect(parsed.compatibilityMatrixProfiles).toEqual([]);
+    expect(parsed.explainable).toEqual({});
     expect(parsed.mingGong).toBeUndefined();
     expect(parsed.liuNian).toBeUndefined();
     expect(parsed.sixtyJiaziCorePersona?.semanticNotes ?? []).toEqual([]);

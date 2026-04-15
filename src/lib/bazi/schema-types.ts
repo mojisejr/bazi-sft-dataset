@@ -59,6 +59,23 @@ export const ElementMetaphorSchema = z.object({
   metaphor: z.string().trim().min(1),
 });
 
+export const CalculationTraceSchema = z.object({
+  engine: z.enum(["lunar-js", "orthodox-override"]),
+  ruleName: z.string().trim().min(1),
+  steps: z.array(z.string().trim().min(1)).default([]),
+  rawVariables: z.record(z.string(), z.unknown()).optional(),
+});
+
+export function createExplainableValueSchema<T extends z.ZodTypeAny>(valueSchema: T) {
+  return z.object({
+    value: valueSchema,
+    trace: CalculationTraceSchema.optional(),
+  });
+}
+
+export const ExplainablePillarValueSchema = createExplainableValueSchema(PillarValueSchema);
+export const ExplainableNumberSchema = createExplainableValueSchema(z.number().finite());
+
 export const SixtyJiaziCorePersonaSchema = z.object({
   code: z.string().trim().min(1),
   narrative: z.string().trim().min(1),
@@ -83,6 +100,11 @@ export const CompatibilityMatrixProfileSchema = z.object({
   entries: z.array(CompatibilityMatrixEntrySchema).default([]),
 });
 
+export const CalculatedStateExplainableSchema = z.object({
+  mingGong: ExplainablePillarValueSchema.optional(),
+  strengthScore: ExplainableNumberSchema.optional(),
+});
+
 export const CalculatedStateSchema = z.object({
   fourPillars: z.object({
     year: PillarValueSchema,
@@ -101,6 +123,7 @@ export const CalculatedStateSchema = z.object({
   elementMetaphors: z.array(ElementMetaphorSchema).default([]),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
+  explainable: CalculatedStateExplainableSchema.default({}),
 });
 
 export const DimensionSchema = z.object({
@@ -169,9 +192,15 @@ export type ShenShaValue = z.infer<typeof ShenShaSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;
 export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
+export type CalculationTraceValue = z.infer<typeof CalculationTraceSchema>;
+export type ExplainableValue<T> = {
+  value: T;
+  trace?: CalculationTraceValue;
+};
 export type DraftDimensionValue = z.infer<typeof DraftDimensionSchema>;
 export type DimensionValue = z.infer<typeof DimensionSchema>;
 export type DraftAnnotationDataValue = z.infer<typeof DraftAnnotationDataSchema>;
 export type AnnotationDataValue = z.infer<typeof AnnotationDataSchema>;
 export type StoredAnnotationDataValue = DraftAnnotationDataValue | AnnotationDataValue;
 export type CompatibilityMatrixProfileValue = z.infer<typeof CompatibilityMatrixProfileSchema>;
+export type CalculatedStateExplainableValue = z.infer<typeof CalculatedStateExplainableSchema>;
