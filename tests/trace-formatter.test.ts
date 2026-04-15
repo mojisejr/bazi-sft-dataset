@@ -1,7 +1,10 @@
 import { describe, expect, test } from "vitest";
 
 import { CalculationTraceSchema } from "@/lib/bazi/schema-types";
-import { formatCalculationTrace } from "@/lib/bazi/trace-formatter";
+import {
+  formatCalculationTrace,
+  formatDeveloperTraceSnapshot,
+} from "@/lib/bazi/trace-formatter";
 import { TRACE_STEP_KEYS } from "@/lib/bazi/trace-keys";
 
 describe("formatCalculationTrace", () => {
@@ -44,8 +47,57 @@ describe("formatCalculationTrace", () => {
     });
 
     expect(formatCalculationTrace(trace)).toEqual({
-      summary: "LegacyRule",
+      summary: "ระบบใช้กฎคำนวณเฉพาะสำหรับรายการนี้",
       steps: ["legacy trace copy"],
     });
+  });
+
+  test("localizes strength score trace without exposing technical English copy in the default summary", () => {
+    const trace = CalculationTraceSchema.parse({
+      engine: "orthodox-override",
+      ruleName: "StrengthScore_WeightedSeasonalSupport",
+      stepKeys: [
+        TRACE_STEP_KEYS.strengthScore.weightStages,
+        TRACE_STEP_KEYS.strengthScore.addRelations,
+        TRACE_STEP_KEYS.strengthScore.applyPenalties,
+      ],
+      rawVariables: {
+        dayMasterStem: "己",
+        monthBranchSeasonalFactor: 1,
+        visibleContributions: [{ pillar: "month" }, { pillar: "day" }],
+        hiddenContributions: [{ pillar: "month" }],
+        result: 3.07,
+      },
+    });
+
+    const formatted = formatCalculationTrace(trace);
+
+    expect(formatted.summary).toContain("เจ้าชะตา");
+    expect(formatted.summary).not.toContain("Day Master");
+    expect(formatted.steps[0]).not.toContain("seasonal factor");
+    expect(formatted.steps[1]).not.toContain("Day Master");
+    expect(formatted.steps[2]).not.toContain("precedence");
+  });
+
+  test("formats developer trace payload only when technical trace data exists", () => {
+    const trace = CalculationTraceSchema.parse({
+      engine: "orthodox-override",
+      ruleName: "MingGong_ZhongQi_Adjustment",
+      stepKeys: [TRACE_STEP_KEYS.mingGong.readBranches],
+      rawVariables: {
+        monthBranch: "申",
+      },
+    });
+
+    expect(formatDeveloperTraceSnapshot(trace)).toContain('"ruleName": "MingGong_ZhongQi_Adjustment"');
+    expect(formatDeveloperTraceSnapshot(trace)).toContain('"monthBranch": "申"');
+    expect(
+      formatDeveloperTraceSnapshot(
+        CalculationTraceSchema.parse({
+          engine: "orthodox-override",
+          ruleName: "MingGong_ZhongQi_Adjustment",
+        }),
+      ),
+    ).toBeNull();
   });
 });

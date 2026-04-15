@@ -4,7 +4,10 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 import type { CalculationTraceValue } from "@/lib/bazi/schema-types";
-import { formatCalculationTrace } from "@/lib/bazi/trace-formatter";
+import {
+  formatCalculationTrace,
+  formatDeveloperTraceSnapshot,
+} from "@/lib/bazi/trace-formatter";
 
 type ExplainableNodeProps = {
   title: string;
@@ -47,7 +50,9 @@ export function ExplainableNode({
   }
 
   const formattedTrace = formatCalculationTrace(trace);
+  const developerTrace = formatDeveloperTraceSnapshot(trace);
   const portalTarget = typeof document === "undefined" ? null : document.body;
+  const isDeveloperToggleAvailable = process.env.NODE_ENV !== "production";
   const modal = isOpen ? (
     <div className="explainable-modal-root" role="presentation">
       <div
@@ -63,7 +68,7 @@ export function ExplainableNode({
       >
         <div className="explainable-modal__header">
           <div>
-            <p className="section-kicker">Explainable Logic</p>
+            <p className="section-kicker">คำอธิบายวิธีคำนวณ</p>
             <h3 id={headingId}>{title}</h3>
           </div>
 
@@ -84,6 +89,16 @@ export function ExplainableNode({
             <li key={step}>{step}</li>
           ))}
         </ol>
+
+        {isDeveloperToggleAvailable && developerTrace ? (
+          <details className="explainable-devtools">
+            <summary>โหมดนักพัฒนา: ดูข้อมูล trace ดิบ</summary>
+            <p className="explainable-devtools__note">
+              ส่วนนี้ซ่อนจากผู้ใช้งานทั่วไป และมีไว้สำหรับตรวจตัวแปรดิบ, rule name, และ step keys ระหว่างพัฒนาเท่านั้น
+            </p>
+            <pre className="explainable-devtools__json">{developerTrace}</pre>
+          </details>
+        ) : null}
       </section>
     </div>
   ) : null;

@@ -51,11 +51,25 @@ function formatNumber(value: number | null, digits = 2) {
   return value === null ? "-" : value.toFixed(digits);
 }
 
+function formatSeasonalFactor(rawVariables: TraceVariables) {
+  return formatNumber(getNumber(rawVariables, "monthBranchSeasonalFactor"));
+}
+
+function getDeveloperTracePayload(trace: CalculationTraceValue) {
+  const payload = {
+    ruleName: trace.ruleName,
+    stepKeys: trace.stepKeys ?? [],
+    rawVariables: getRawVariables(trace),
+  };
+
+  return JSON.stringify(payload, null, 2);
+}
+
 const TRACE_SUMMARY_FORMATTERS: Record<string, TraceSummaryFormatter> = {
   [TRACE_RULE_NAMES.mingGong]: () =>
-    "ตรวจเดือนเกิดกับยามเกิด แล้วเช็กว่าผ่านจุดจงชี่หรือยัง ก่อนสรุปลัคนาตามกฎ orthodox override",
+    "ตรวจเสาเดือนและยามเกิด แล้วเช็กจุดจงชี่ก่อนสรุปลัคนาตามเกณฑ์โหราศาสตร์จีนสาย orthodox",
   [TRACE_RULE_NAMES.strengthScore]: () =>
-    "ชั่งน้ำหนักพลัง Day Master จาก 12 Qi, ธาตุที่หนุนหรือกด, และแรงปะทะของกิ่งดินเพื่อได้คะแนนสุดท้าย",
+    "ชั่งน้ำหนักพลังเจ้าชะตาจาก 12 เชี่ยงแซ ธาตุที่หนุนหรือกด และแรงกระทบของกิ่งดิน เพื่อสรุปคะแนนพลังรวม",
 };
 
 const TRACE_STEP_FORMATTERS: Record<string, TraceStepFormatter> = {
@@ -80,11 +94,11 @@ const TRACE_STEP_FORMATTERS: Record<string, TraceStepFormatter> = {
   [TRACE_STEP_KEYS.mingGong.finalize]: ({ rawVariables }) =>
     `ใช้ดัชนีเดือน ${formatNumber(getNumber(rawVariables, "monthZhiIndex"), 0)} กับดัชนียาม ${formatNumber(getNumber(rawVariables, "timeZhiIndex"), 0)} เพื่อสรุปลัคนา ${getString(rawVariables, "result")}`,
   [TRACE_STEP_KEYS.strengthScore.weightStages]: ({ rawVariables }) =>
-    `ให้น้ำหนัก 12 Qi ทั้ง 4 เสาโดยยกเสาเดือนเป็น ${formatNumber(getNumber(rawVariables, "monthBranchSeasonalFactor"))} ของ seasonal factor ก่อนรวมคะแนนตั้งต้น`,
+    `เริ่มจากให้น้ำหนัก 12 เชี่ยงแซทั้ง 4 เสา โดยให้เสาเดือนส่งผลตามน้ำหนักฤดูกาล ${formatSeasonalFactor(rawVariables)} ก่อนรวมคะแนนตั้งต้น`,
   [TRACE_STEP_KEYS.strengthScore.addRelations]: ({ rawVariables }) =>
-    `รวมแรงจากก้านฟ้าที่มองเห็น ${getArrayLength(rawVariables, "visibleContributions")} จุด และธาตุแฝง ${getArrayLength(rawVariables, "hiddenContributions")} จุด เทียบกับ Day Master ${getString(rawVariables, "dayMasterStem")}`,
+    `รวมแรงจากก้านฟ้าที่มองเห็น ${getArrayLength(rawVariables, "visibleContributions")} จุด และธาตุแฝง ${getArrayLength(rawVariables, "hiddenContributions")} จุด เทียบกับเจ้าชะตา ${getString(rawVariables, "dayMasterStem")}`,
   [TRACE_STEP_KEYS.strengthScore.applyPenalties]: ({ rawVariables }) =>
-    `หักแรงปะทะตาม precedence จาก clash, punishment, harm และ destruction ก่อนสรุปคะแนนสุดท้าย ${formatNumber(getNumber(rawVariables, "result"))}`,
+    `หักแรงกระทบจากชง ฮื้อ ไห่ และผั่วตามลำดับความสำคัญของระบบ ก่อนสรุปคะแนนพลัง ${formatNumber(getNumber(rawVariables, "result"))}`,
 };
 
 function formatTraceStep(stepKey: string, context: TraceFormatterContext, fallbackStep?: string) {
@@ -98,7 +112,7 @@ function formatTraceStep(stepKey: string, context: TraceFormatterContext, fallba
     return fallbackStep;
   }
 
-  return stepKey;
+  return "ระบบมีรายละเอียดการคำนวณภายในเพิ่มเติมสำหรับขั้นตอนนี้";
 }
 
 export function formatCalculationTrace(trace: CalculationTraceValue): TraceFormatResult {
@@ -111,7 +125,19 @@ export function formatCalculationTrace(trace: CalculationTraceValue): TraceForma
     : trace.steps;
 
   return {
-    summary: summaryFormatter ? summaryFormatter(context) : trace.ruleName,
+    summary: summaryFormatter
+      ? summaryFormatter(context)
+      : "ระบบใช้กฎคำนวณเฉพาะสำหรับรายการนี้",
     steps,
   };
+}
+
+export function formatDeveloperTraceSnapshot(trace: CalculationTraceValue) {
+  const rawVariables = getRawVariables(trace);
+
+  if ((trace.stepKeys?.length ?? 0) === 0 && Object.keys(rawVariables).length === 0) {
+    return null;
+  }
+
+  return getDeveloperTracePayload(trace);
 }

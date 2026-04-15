@@ -424,6 +424,37 @@ textarea {
   line-height: 1.7;
 }
 
+.explainable-devtools {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(110, 79, 48, 0.12);
+}
+
+.explainable-devtools summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.explainable-devtools__note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.explainable-devtools__json {
+  margin: 0;
+  overflow: auto;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(35, 27, 22, 0.92);
+  color: rgba(255, 248, 239, 0.96);
+  font-family: "SFMono-Regular", "Consolas", monospace;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
 .destiny-glyph-stack {
   display: grid;
   gap: 10px;
