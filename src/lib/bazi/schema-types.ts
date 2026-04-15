@@ -63,6 +63,7 @@ export const CalculationTraceSchema = z.object({
   engine: z.enum(["lunar-js", "orthodox-override"]),
   ruleName: z.string().trim().min(1),
   steps: z.array(z.string().trim().min(1)).default([]),
+  stepKeys: z.array(z.string().trim().min(1)).default([]),
   rawVariables: z.record(z.string(), z.unknown()).optional(),
 });
 

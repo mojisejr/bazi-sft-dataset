@@ -14,6 +14,7 @@ import {
 } from "@/app/page";
 import { resetAnnotationStore } from "@/lib/bazi/annotation-store";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
+import { TRACE_STEP_KEYS } from "@/lib/bazi/trace-keys";
 
 describe("BaziTrainerWorkspace", () => {
   beforeEach(() => {
@@ -120,6 +121,49 @@ describe("BaziTrainerWorkspace", () => {
         narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
         precedenceNotes: ["Near solar-term boundary."],
       },
+      explainable: {
+        mingGong: {
+          value: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
+          trace: {
+            engine: "orthodox-override",
+            ruleName: "MingGong_ZhongQi_Adjustment",
+            stepKeys: [
+              TRACE_STEP_KEYS.mingGong.readBranches,
+              TRACE_STEP_KEYS.mingGong.resolveBoundary,
+              TRACE_STEP_KEYS.mingGong.finalize,
+            ],
+            rawVariables: {
+              monthBranch: "申",
+              adjustedMonthBranch: "申",
+              timeBranch: "未",
+              zhongQiName: "处暑",
+              isPastZhongQi: false,
+              monthZhiIndex: 7,
+              timeZhiIndex: 8,
+              result: "壬寅",
+            },
+          },
+        },
+        strengthScore: {
+          value: 3.07,
+          trace: {
+            engine: "orthodox-override",
+            ruleName: "StrengthScore_WeightedSeasonalSupport",
+            stepKeys: [
+              TRACE_STEP_KEYS.strengthScore.weightStages,
+              TRACE_STEP_KEYS.strengthScore.addRelations,
+              TRACE_STEP_KEYS.strengthScore.applyPenalties,
+            ],
+            rawVariables: {
+              dayMasterStem: "己",
+              monthBranchSeasonalFactor: 1,
+              visibleContributions: [{ pillar: "month" }],
+              hiddenContributions: [{ pillar: "month" }],
+              result: 3.07,
+            },
+          },
+        },
+      },
     });
 
     const html = renderToStaticMarkup(
@@ -145,6 +189,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Deep Analysis");
     expect(html).toContain("Ming Gong");
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
+    expect(html).toContain("ดูวิธีคำนวณลัคนา");
+    expect(html).toContain("ดูวิธีคำนวณคะแนนพลัง");
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("พูดด้วยเสียง");

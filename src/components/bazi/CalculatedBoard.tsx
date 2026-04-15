@@ -4,6 +4,7 @@ import type {
   RawInputValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
+import { ExplainableNode } from "@/components/bazi/ExplainableNode";
 import {
   formatScore,
   formatThaiBirthMoment,
@@ -174,6 +175,9 @@ export function CalculatedBoard({
                   calculatedState.shenSha,
                   column.relatedPillar,
                 );
+                const explainableTrace = column.key === "ming-gong"
+                  ? calculatedState.explainable.mingGong?.trace
+                  : undefined;
 
                 return (
                   <article key={column.key} className="destiny-pillar-card">
@@ -182,6 +186,11 @@ export function CalculatedBoard({
                       <span className="destiny-pillar-card__english">
                         {column.englishLabel}
                       </span>
+                      <ExplainableNode
+                        title="ลัคนา (Ming Gong)"
+                        buttonLabel="ดูวิธีคำนวณลัคนา"
+                        trace={explainableTrace}
+                      />
                     </header>
 
                     <div className="destiny-glyph-stack">
@@ -352,6 +361,11 @@ export function CalculatedBoard({
                 <p className="section-kicker">คะแนนพลัง</p>
                 <h3>{formatScore(calculatedState.strengthScore)}</h3>
                 <p className="metric-copy">Strength Score</p>
+                <ExplainableNode
+                  title="คะแนนพลัง (Strength Score)"
+                  buttonLabel="ดูวิธีคำนวณคะแนนพลัง"
+                  trace={calculatedState.explainable.strengthScore?.trace}
+                />
               </div>
 
               <div className="surface inset-card highlight-card highlight-card--wide">

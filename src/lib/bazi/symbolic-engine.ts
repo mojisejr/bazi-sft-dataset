@@ -25,6 +25,10 @@ import {
   parseDateTimeParts,
   zonedDateTimeToUtc,
 } from "@/lib/bazi/timezone";
+import {
+  TRACE_RULE_NAMES,
+  TRACE_STEP_KEYS,
+} from "@/lib/bazi/trace-keys";
 
 const require = createRequire(import.meta.url);
 
@@ -610,15 +614,12 @@ function buildOrthodoxMingGongValue(
 
   const trace: CalculationTraceValue = {
     engine: "orthodox-override",
-    ruleName: "MingGong_ZhongQi_Adjustment",
-    steps: [
-      `Read month branch ${monthAdjustment.monthBranch} and time branch ${timeBranch} from the natal chart.`,
-      monthAdjustment.zhongQiName
-        ? monthAdjustment.isPastZhongQi
-          ? `Birth time passed Zhong Qi boundary ${monthAdjustment.zhongQiName}, so the Ming Gong month branch advances to ${monthAdjustment.adjustedMonthBranch}.`
-          : `Birth time stayed before Zhong Qi boundary ${monthAdjustment.zhongQiName}, so the Ming Gong month branch remains ${monthAdjustment.adjustedMonthBranch}.`
-        : `No Zhong Qi override mapping exists for month branch ${monthAdjustment.monthBranch}, so the original month branch is preserved.`,
-      `Resolve Ming Gong from adjusted month index ${monthZhiIndex} and time index ${timeZhiIndex} to ${value.stem}${value.branch}.`,
+    ruleName: TRACE_RULE_NAMES.mingGong,
+    steps: [],
+    stepKeys: [
+      TRACE_STEP_KEYS.mingGong.readBranches,
+      TRACE_STEP_KEYS.mingGong.resolveBoundary,
+      TRACE_STEP_KEYS.mingGong.finalize,
     ],
     rawVariables: {
       birthAtHongKong: birthContext.birthAtHongKong,
@@ -1286,11 +1287,12 @@ function buildStrengthScoreExplainable(
     value: breakdown.score,
     trace: {
       engine: "orthodox-override",
-      ruleName: "StrengthScore_WeightedSeasonalSupport",
-      steps: [
-        `Weight the four twelve-qi stages with month priority ${STAGE_POSITION_WEIGHTS.month.toFixed(2)} and seasonal factor ${interactionResolution.monthBranchSeasonalFactor.toFixed(2)}.`,
-        `Add visible and hidden stem relation weights against day master ${dayMasterStem}.`,
-        `Subtract precedence-aware penalties from clashes, punishments, harms, and destructions to reach score ${breakdown.score.toFixed(2)}.`,
+      ruleName: TRACE_RULE_NAMES.strengthScore,
+      steps: [],
+      stepKeys: [
+        TRACE_STEP_KEYS.strengthScore.weightStages,
+        TRACE_STEP_KEYS.strengthScore.addRelations,
+        TRACE_STEP_KEYS.strengthScore.applyPenalties,
       ],
       rawVariables: {
         dayMasterStem,

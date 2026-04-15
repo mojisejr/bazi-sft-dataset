@@ -6,6 +6,7 @@ import {
   calculateBaziChart,
   resolveBranchInteractionEffects,
 } from "@/lib/bazi/symbolic-engine";
+import { TRACE_STEP_KEYS } from "@/lib/bazi/trace-keys";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
 
@@ -97,11 +98,21 @@ describe("calculateBaziChart", () => {
     expect(result.explainable.mingGong?.trace).toMatchObject({
       engine: "orthodox-override",
       ruleName: "MingGong_ZhongQi_Adjustment",
+      stepKeys: [
+        TRACE_STEP_KEYS.mingGong.readBranches,
+        TRACE_STEP_KEYS.mingGong.resolveBoundary,
+        TRACE_STEP_KEYS.mingGong.finalize,
+      ],
     });
     expect(result.explainable.strengthScore?.value).toBe(3.51);
     expect(result.explainable.strengthScore?.trace).toMatchObject({
       engine: "orthodox-override",
       ruleName: "StrengthScore_WeightedSeasonalSupport",
+      stepKeys: [
+        TRACE_STEP_KEYS.strengthScore.weightStages,
+        TRACE_STEP_KEYS.strengthScore.addRelations,
+        TRACE_STEP_KEYS.strengthScore.applyPenalties,
+      ],
     });
     expect(result.daYun).toHaveLength(9);
     expect(result.daYun[0]).toMatchObject({ startAge: 6, endAge: 15, stem: "丁", branch: "未" });
