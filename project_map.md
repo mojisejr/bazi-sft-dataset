@@ -17,6 +17,8 @@
     *   API endpoint สำหรับรับ Raw Input แล้วคืน `calculated_state` จาก Symbolic Engine
 *   `scripts/`:
     *   แหล่งรวม Safety Scripts & Guards สำหรับ Migration (เช่น `generate-phase16-migration.ts`, `apply-phase16-migration.ts`, `check-phase16-db-state.ts`) เพื่อหลีกเลี่ยงข้อจำกัดของ tooling (non-TTY, websocket limitations)
+    *   `generate-random-bazi.ts`: Queue master สำหรับ pre-generate deterministic raw input + calculated state ลง pending queue ก่อนส่งให้ Copilot persona ตีความ
+    *   `import-agent-drafts.ts`: importer สำหรับ validate และบันทึก AI draft batches เป็น `draft` records พร้อม prune queue ที่ประมวลผลแล้ว
     *   `export-sft-dataset.ts`: local-only headless exporter สำหรับดึง `reviewed` records ออกมาเป็น `.jsonl` โดยไม่สร้าง UI export บนหน้าเว็บ
 *   `drizzle/`:
     *   SQL Migrations ที่ generate ออกมาแบบ Deterministic
@@ -26,9 +28,11 @@
 ## 3. 🔄 Data Flow (The Pulse)
 1. **Human/UI** -> (Raw Input) -> `POST /api/bazi/calculate`
 2. **Symbolic Engine** -> ผูก 4 เสาจากเวลา local ของผู้ใช้โดยตรง -> แปลงเวลาเดียวกันไปเป็น HKT เฉพาะตอน lookup `bazi_time_solar_terms` และ canonical context -> อ้างอิง `bazi_twelve_qi_stages`, `bazi_sixty_jiazi_narratives` -> (Calculated State) -> **Human/UI**
-3. **Human/UI** -> ตรวจสอบและกรอก 15-Dimension Annotation & CoT -> `POST /api/dataset/save`
-4. **API** -> Validate ด้วย Zod `AnnotationDataSchema` -> บันทึกลง `bazi_dataset_records.annotation_data` (JSONB) ใน Neon DB
-5. **Local Operator Script** -> `scripts/export-sft-dataset.ts` -> ดึงเฉพาะ `status='reviewed'` -> แปลงเป็น ShareGPT/Alpaca-compatible JSONL บน Local Disk
+3. **Local Queue Master** -> `scripts/generate-random-bazi.ts` -> สร้าง pending queue ที่มี Raw Input + Calculated State จาก symbolic engine เท่านั้น
+4. **Copilot Sinsae Pipeline** -> `.github/agents/sinsae.agent.md` + `.github/skills/bazi-data-gen/SKILL.md` -> อ่าน queue ทีละ batch เล็ก -> สร้าง 15-Dimension draft annotations -> `scripts/import-agent-drafts.ts`
+5. **API / Import Layer** -> Validate ด้วย Zod (`DraftAnnotationDataSchema` / `AnnotationDataSchema`) -> บันทึก `draft` หรือ `reviewed` ลง `bazi_dataset_records.annotation_data` (JSONB) ใน Neon DB
+6. **Human Proofing Flow** -> ซินแสมนุษย์แก้ CoT/Prediction และเพิ่ม `sinsaeProofNote` ก่อนอนุมัติเป็น `reviewed`
+7. **Local Operator Script** -> `scripts/export-sft-dataset.ts` -> ดึงเฉพาะ `status='reviewed'` -> แปลงเป็น ShareGPT/Alpaca-compatible JSONL บน Local Disk
 
 ## 4. 🐉 Challenges & Known Dragons
 *   **ORM Tooling Limitations**: `drizzle-kit push` / `migrate` มีปัญหากับ Neon serverless driver และ TTY prompt ใน environment นี้ -> *Solution*: ใช้ Deterministic migration pipeline และ direct `psql` apply.
@@ -36,3 +40,4 @@
 *   **Conflict Resolution**: ความรู้ Bazi มีความขัดแย้ง (เช่น ฮะแก้ชง) -> *Solution*: ใช้ Precedence Fixtures เป็นกฎให้ Symbolic Engine ใน Phase 2.
 *   **Timezone Normalization**: เวลาสารทใน canonical tables ถูกเก็บเป็น HKT แต่หลักเวลาในดวงต้องยึด local time ของผู้เกิด -> *Solution*: ผูก 4 เสาจาก local time ก่อน แล้วค่อยแปลง timestamp เดียวกันไปเทียบ HKT boundary สำหรับ context เพิ่มเติมเท่านั้น
 *   **Dataset Privacy**: งาน export training data ไม่ควรโผล่บน UI ของซินแส -> *Solution*: ย้าย phase 4 ไปเป็น headless local script และ ignore generated output artifacts ใน repo
+*   **Agent Draft Integrity**: AI draft ห้ามสร้าง calculated state เองและห้าม bypass human proof note ตอน review -> *Solution*: บังคับ symbolic-engine-first queue, จำกัด skill contract, และ require `sinsaeProofNote` เมื่อ record เปลี่ยนเป็น `reviewed`
