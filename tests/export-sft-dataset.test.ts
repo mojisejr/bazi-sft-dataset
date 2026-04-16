@@ -55,6 +55,8 @@ function createReviewedRecord() {
     annotationData: {
       version: "1.6",
       reviewSummary: "Balanced wealth reading with caution around overextension.",
+      sinsaeProofNote:
+        "Reviewed the AI draft, corrected two metaphors, and confirmed the structure is ready for export.",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
         thought_process: `Reasoning trace for ${dimensionName}.`,

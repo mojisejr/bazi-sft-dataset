@@ -6,8 +6,8 @@ import {
   DraftAnnotationDataSchema,
   RawInputSchema,
   type CalculatedStateValue,
-  type DraftAnnotationDataValue,
   type RawInputValue,
+  type StoredAnnotationDataValue,
 } from "@/lib/bazi/schema-types";
 
 export const SaveDatasetStatusSchema = z.enum(["draft", "reviewed"]);
@@ -43,7 +43,7 @@ export type SaveDatasetRequest = z.infer<typeof BaseSaveDatasetRequestSchema>;
 export function createDraftAnnotationPayload(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  annotationData: DraftAnnotationDataValue,
+  annotationData: StoredAnnotationDataValue,
   status: SaveDatasetStatus,
   recordId?: string,
 ): SaveDatasetRequest {

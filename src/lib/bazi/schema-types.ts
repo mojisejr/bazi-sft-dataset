@@ -176,6 +176,7 @@ export const DraftAnnotationDataSchema = z
     version: z.literal("1.6"),
     dimensions: z.array(DraftDimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
+    sinsaeProofNote: z.string().trim().min(1).optional(),
   })
   .superRefine(refineAnnotationDimensions);
 
@@ -184,6 +185,7 @@ export const AnnotationDataSchema = z
     version: z.literal("1.6"),
     dimensions: z.array(DimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
+    sinsaeProofNote: z.string().trim().min(1),
   })
   .superRefine(refineAnnotationDimensions);
 

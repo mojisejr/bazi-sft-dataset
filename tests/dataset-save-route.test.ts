@@ -57,6 +57,8 @@ function createRequestBody() {
     },
     annotationData: {
       version: "1.6",
+      sinsaeProofNote:
+        "AI draft is structurally sound; adjusted emphasis so the language reads like a senior sinsae.",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
         thought_process: `Reasoning for ${dimensionName}`,
@@ -116,6 +118,7 @@ function createCase2ConflictRequestBody() {
     },
     annotationData: {
       version: "1.6",
+      sinsaeProofNote: "Conflict sample for validation coverage.",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
         thought_process: `Reasoning for ${dimensionName}`,
@@ -187,6 +190,33 @@ describe("createSaveDatasetHandler", () => {
       ...requestBody.annotationData.dimensions[0],
       final_prediction: "",
     };
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/save", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(repository.saveRecord).not.toHaveBeenCalled();
+  });
+
+  test("rejects reviewed payloads when sinsae proof note is missing", async () => {
+    const repository: DatasetRecordRepository = {
+      saveRecord: vi.fn(),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveDatasetHandler({ repository, authenticate });
+    const requestBody = createRequestBody();
+
+    delete requestBody.annotationData.sinsaeProofNote;
 
     const response = await handler(
       new Request("http://localhost/api/dataset/save", {

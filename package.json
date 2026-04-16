@@ -24,6 +24,8 @@
     "db:seed:canonical:dry": "tsx scripts/seed-canonical-knowledge.ts --dry-run",
     "db:seed:dataset-sample:dry": "tsx scripts/validate-phase16-sample.ts --dry-run",
     "db:seed:dataset-sample:write": "tsx scripts/validate-phase16-sample.ts --write",
+    "dataset:queue:generate": "tsx scripts/generate-random-bazi.ts",
+    "dataset:queue:import-agent": "tsx scripts/import-agent-drafts.ts",
     "dataset:export:sft": "tsx scripts/export-sft-dataset.ts"
   },
   "dependencies": {

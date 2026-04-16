@@ -6,8 +6,8 @@ import { eq } from "drizzle-orm";
 import { createDbClient } from "../src/db/client";
 import { baziDatasetRecords } from "../src/db/schema";
 import {
-  AnnotationDataSchema,
   CalculatedStateSchema,
+  DraftAnnotationDataSchema,
   RawInputSchema,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
 } from "../src/lib/bazi/schema-types";
@@ -57,7 +57,7 @@ const calculatedState = CalculatedStateSchema.parse({
   },
 });
 
-const annotationData = AnnotationDataSchema.parse({
+const annotationData = DraftAnnotationDataSchema.parse({
   version: "1.6",
   dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
     dimension_name: dimensionName,

@@ -95,6 +95,7 @@ export const baziDatasetRecords = pgTable(
         OR (
           ${table.annotationData} IS NOT NULL
           AND jsonb_typeof(${table.annotationData}) = 'object'
+          AND nullif(btrim(${table.annotationData} ->> 'sinsaeProofNote'), '') IS NOT NULL
           AND jsonb_typeof(${table.annotationData} -> 'dimensions') = 'array'
           AND jsonb_array_length(${table.annotationData} -> 'dimensions') = ${REQUIRED_ANNOTATION_DIMENSION_COUNT}
           AND NOT jsonb_path_exists(

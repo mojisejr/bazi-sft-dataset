@@ -68,6 +68,7 @@ describe("baziDatasetRecords", () => {
   test("enforces the phase 1.6 annotation contract with all 15 dimensions", () => {
     const parsed = AnnotationDataSchema.parse({
       version: "1.6",
+      sinsaeProofNote: "Adjusted the final tone to match orthodox reading language.",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
         thought_process: `Reasoning for ${dimensionName}`,
@@ -82,6 +83,7 @@ describe("baziDatasetRecords", () => {
     expect(() =>
       AnnotationDataSchema.parse({
         version: "1.6",
+        sinsaeProofNote: "Proof note",
         dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map(() => ({
           dimension_name: "chart_foundation",
           thought_process: "Reasoning",
@@ -89,6 +91,19 @@ describe("baziDatasetRecords", () => {
         })),
       }),
     ).toThrow(/duplicate dimensions/i);
+  });
+
+  test("requires sinsae proof note for reviewed annotation data", () => {
+    expect(() =>
+      AnnotationDataSchema.parse({
+        version: "1.6",
+        dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+          dimension_name: dimensionName,
+          thought_process: `Reasoning for ${dimensionName}`,
+          final_prediction: `Prediction for ${dimensionName}`,
+        })),
+      }),
+    ).toThrow(/sinsaeProofNote/i);
   });
 
   test("allows draft annotation data with partial text while preserving all 15 dimensions", () => {

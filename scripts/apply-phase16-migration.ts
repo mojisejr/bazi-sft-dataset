@@ -16,6 +16,11 @@ const annotatorIdentityMigrationFilePath = path.resolve(
   "drizzle/0003_phase53_annotator_identity.sql",
 );
 
+const sinsaeProofNoteMigrationFilePath = path.resolve(
+  process.cwd(),
+  "drizzle/0004_phase2_sinsae_proof_note.sql",
+);
+
 const columnQuery = [
   "select column_name",
   "from information_schema.columns",
@@ -57,6 +62,21 @@ function hasAnnotationTruth(columns: string[]) {
   );
 }
 
+function readReviewedContentConstraintDefinition() {
+  return runPsql([
+    "-d",
+    getDatabaseUrl(),
+    "-At",
+    "-c",
+    [
+      "select pg_get_constraintdef(oid)",
+      "from pg_constraint",
+      "where conname = 'bazi_dataset_records_reviewed_content_check'",
+      "limit 1;",
+    ].join("\n"),
+  ]);
+}
+
 async function ensureMigrationExists(filePath: string) {
   try {
     await access(filePath);
@@ -95,7 +115,22 @@ async function main() {
     ]);
   }
 
+  const reviewedContentConstraint = readReviewedContentConstraintDefinition();
+
+  if (!reviewedContentConstraint.includes("sinsaeProofNote")) {
+    await ensureMigrationExists(sinsaeProofNoteMigrationFilePath);
+    runPsql([
+      "-d",
+      getDatabaseUrl(),
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      sinsaeProofNoteMigrationFilePath,
+    ]);
+  }
+
   const afterColumns = readDatasetColumns();
+  const finalReviewedContentConstraint = readReviewedContentConstraintDefinition();
 
   if (!afterColumns.includes("annotation_data")) {
     throw new Error("Phase 1.6 migration did not add annotation_data to bazi_dataset_records.");
@@ -107,6 +142,12 @@ async function main() {
 
   if (!afterColumns.includes("annotator_id")) {
     throw new Error("Phase 5.3 migration did not add annotator_id to bazi_dataset_records.");
+  }
+
+  if (!finalReviewedContentConstraint.includes("sinsaeProofNote")) {
+    throw new Error(
+      "Phase 2 schema refinement did not require sinsaeProofNote inside the reviewed dataset constraint.",
+    );
   }
 
   console.log(
