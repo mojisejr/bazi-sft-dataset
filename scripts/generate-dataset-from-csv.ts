@@ -3,25 +3,63 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { config as loadEnv } from "dotenv";
 
+import { createDraftAnnotationPayload } from "../src/lib/bazi/dataset-request";
+import {
+  createDbDatasetRecordRepository,
+  findExistingDraftOrReviewedDatasetRecord,
+} from "../src/lib/bazi/dataset-records";
 import { parseThaiBaziCasesCsv } from "../src/lib/bazi/csv-case-loader";
+import { generateGeminiDraftAnnotation } from "../src/lib/bazi/gemini-draft-generator";
+import {
+  calculateBaziChart,
+  createDbKnowledgeRepository,
+} from "../src/lib/bazi/symbolic-engine";
 
 type CliOptions = {
   input: string;
-  output?: string;
+  output: string;
+  receipt?: string;
   province: string;
   timezone: string;
+  model: string;
+  annotator: string;
+  limit?: number;
   dryRun: boolean;
 };
+
+const DEFAULT_OUTPUT_PATH = path.resolve(
+  process.cwd(),
+  "output/generated_dataset_from_csv.json",
+);
+
+const DEFAULT_RECEIPT_PATH = path.resolve(
+  process.cwd(),
+  "output/generated_dataset_from_csv.receipt.json",
+);
 
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quiet: true });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
 
+function parseNumberOption(value: string | undefined) {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 function parseCliOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
     input: "",
-    output: undefined,
+    output: DEFAULT_OUTPUT_PATH,
+    receipt: DEFAULT_RECEIPT_PATH,
     province: "Bangkok",
     timezone: "Asia/Bangkok",
+    model: "gemini-2.5-flash",
+    annotator: "gemini-2.5-flash",
+    limit: undefined,
     dryRun: false,
   };
 
@@ -41,6 +79,12 @@ function parseCliOptions(argv: string[]): CliOptions {
       continue;
     }
 
+    if (argument === "--receipt" && nextValue) {
+      options.receipt = path.resolve(process.cwd(), nextValue);
+      index += 1;
+      continue;
+    }
+
     if (argument === "--province" && nextValue) {
       options.province = nextValue;
       index += 1;
@@ -49,6 +93,25 @@ function parseCliOptions(argv: string[]): CliOptions {
 
     if (argument === "--timezone" && nextValue) {
       options.timezone = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--model" && nextValue) {
+      options.model = nextValue;
+      options.annotator = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--annotator" && nextValue) {
+      options.annotator = nextValue;
+      index += 1;
+      continue;
+    }
+
+    if (argument === "--limit") {
+      options.limit = parseNumberOption(nextValue);
       index += 1;
       continue;
     }
@@ -68,27 +131,108 @@ function parseCliOptions(argv: string[]): CliOptions {
 async function main() {
   const options = parseCliOptions(process.argv.slice(2));
   const csvText = await readFile(options.input, "utf8");
-  const cases = parseThaiBaziCasesCsv(csvText, {
+  const importedCases = parseThaiBaziCasesCsv(csvText, {
     province: options.province,
     timezone: options.timezone,
   });
+  const cases = options.limit
+    ? importedCases.slice(0, options.limit)
+    : importedCases;
+  const knowledgeRepository = createDbKnowledgeRepository();
+  const datasetRepository = createDbDatasetRecordRepository();
+  const results = [];
+
+  for (const entry of cases) {
+    const calculatedState = await calculateBaziChart(entry.rawInput, knowledgeRepository);
+    const existingRecord = await findExistingDraftOrReviewedDatasetRecord(entry.rawInput);
+
+    if (existingRecord) {
+      results.push({
+        sourceRow: entry.sourceRow,
+        name: entry.name,
+        status: "skipped_existing",
+        rawInput: entry.rawInput,
+        existingRecord,
+      });
+      console.log(
+        `Skipped existing row ${entry.sourceRow}: ${entry.name} -> ${existingRecord.id} (${existingRecord.status})`,
+      );
+      continue;
+    }
+
+    const generation = await generateGeminiDraftAnnotation({
+      rawInput: entry.rawInput,
+      calculatedState,
+      model: options.model,
+    });
+    const payload = createDraftAnnotationPayload(
+      entry.rawInput,
+      calculatedState,
+      generation.annotationData,
+      "draft",
+    );
+
+    if (options.dryRun) {
+      results.push({
+        sourceRow: entry.sourceRow,
+        name: entry.name,
+        status: "generated_dry_run",
+        rawInput: entry.rawInput,
+        calculatedState,
+        annotationData: generation.annotationData,
+        model: generation.model,
+        referenceCasePaths: generation.referenceCasePaths,
+      });
+      console.log(`Generated dry-run row ${entry.sourceRow}: ${entry.name}`);
+      continue;
+    }
+
+    const savedRecord = await datasetRepository.saveRecord(payload, options.annotator);
+
+    results.push({
+      sourceRow: entry.sourceRow,
+      name: entry.name,
+      status: "inserted",
+      rawInput: entry.rawInput,
+      recordId: savedRecord.recordId,
+      updatedAt: savedRecord.updatedAt,
+      model: generation.model,
+      referenceCasePaths: generation.referenceCasePaths,
+    });
+    console.log(`Inserted row ${entry.sourceRow}: ${entry.name} -> ${savedRecord.recordId}`);
+  }
+
   const payload = {
     input: options.input,
     count: cases.length,
     dryRun: options.dryRun,
-    cases: cases.map((entry) => ({
-      sourceRow: entry.sourceRow,
-      name: entry.name,
-      rawInput: entry.rawInput,
-    })),
+    model: options.model,
+    annotator: options.annotator,
+    output: options.output,
+    receipt: options.receipt ?? null,
+    results,
   };
 
-  if (!options.dryRun && options.output) {
-    await mkdir(path.dirname(options.output), { recursive: true });
-    await writeFile(options.output, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+  await mkdir(path.dirname(options.output), { recursive: true });
+  await writeFile(options.output, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
+
+  if (options.receipt) {
+    const receipt = {
+      input: options.input,
+      output: options.output,
+      totalRows: cases.length,
+      insertedCount: results.filter((entry) => entry.status === "inserted").length,
+      skippedExistingCount: results.filter((entry) => entry.status === "skipped_existing").length,
+      dryRunGeneratedCount: results.filter((entry) => entry.status === "generated_dry_run").length,
+      model: options.model,
+      annotator: options.annotator,
+    };
+
+    await mkdir(path.dirname(options.receipt), { recursive: true });
+    await writeFile(options.receipt, `${JSON.stringify(receipt, null, 2)}\n`, "utf8");
   }
 
-  console.log(JSON.stringify({ ...payload, output: options.output ?? null }, null, 2));
+  console.log(JSON.stringify(payload, null, 2));
 }
 
 main().catch((error) => {

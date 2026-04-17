@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { ZodError, z } from "zod";
 
 import { createDbClient } from "@/db/client";
@@ -38,6 +38,14 @@ export const SaveDatasetRequestSchema = BaseSaveDatasetRequestSchema
 export type SavedDatasetRecord = {
   recordId: string;
   status: SaveDatasetStatus;
+  updatedAt: string;
+};
+
+export type ExistingDatasetRecord = {
+  id: string;
+  status: "draft" | "reviewed";
+  annotatorId: string | null;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -267,6 +275,48 @@ export async function getProofDatasetRecord(
   const repository = options.repository ?? createDbDatasetRecordRepository();
 
   return repository.getRecordById(recordId);
+}
+
+export async function findExistingDraftOrReviewedDatasetRecord(
+  rawInput: RawInputValue,
+  databaseUrl?: string,
+): Promise<ExistingDatasetRecord | null> {
+  const db = createDbClient(databaseUrl);
+  const [record] = await db
+    .select({
+      id: baziDatasetRecords.id,
+      status: baziDatasetRecords.status,
+      annotatorId: baziDatasetRecords.annotatorId,
+      createdAt: baziDatasetRecords.createdAt,
+      updatedAt: baziDatasetRecords.updatedAt,
+    })
+    .from(baziDatasetRecords)
+    .where(
+      and(
+        eq(baziDatasetRecords.rawInput, rawInput),
+        inArray(baziDatasetRecords.status, ["draft", "reviewed"]),
+      ),
+    )
+    .orderBy(desc(baziDatasetRecords.updatedAt))
+    .limit(1);
+
+  if (!record) {
+    return null;
+  }
+
+  if (record.status !== "draft" && record.status !== "reviewed") {
+    throw new Error(
+      `Unexpected dataset status returned from existing-record lookup: ${record.status}`,
+    );
+  }
+
+  return {
+    id: record.id,
+    status: record.status,
+    annotatorId: record.annotatorId,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
 }
 
 type SaveDatasetHandlerOptions = {
