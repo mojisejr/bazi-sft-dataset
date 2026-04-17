@@ -82,6 +82,23 @@ function createProofRecord() {
   };
 }
 
+function createLegacyEncodedProofRecord() {
+  return {
+    ...createProofRecord(),
+    id: "eb662a4a-4b12-4e11-886e-ea0d425a7c2f",
+    calculatedState: {
+      ...createProofRecord().calculatedState,
+      fourPillars: {
+        year: { stem: "ren", branch: "shen", hiddenStems: ["geng", "ren", "wu"] },
+        month: { stem: "wu", branch: "shen", hiddenStems: ["geng", "ren", "wu"] },
+        day: { stem: "ji", branch: "mao", hiddenStems: ["yi"] },
+        hour: { stem: "xin", branch: "wei", hiddenStems: ["ji", "ding", "yi"] },
+      },
+      dayMaster: "ji-earth",
+    },
+  };
+}
+
 describe("ProofWorkspace", () => {
   test("renders mobile-friendly proof controls with human-readable labels", () => {
     const html = renderToStaticMarkup(
@@ -194,6 +211,56 @@ describe("createSaveProofDatasetHandler", () => {
     expect(repository.saveRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "rejected",
+      }),
+      "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+    );
+  });
+
+  test("saves reviewed proof payloads for legacy persisted records without revalidating stored chart encoding", async () => {
+    const legacyRecord = createLegacyEncodedProofRecord();
+    const repository: DatasetRecordRepository & DatasetProofLookupRepository = {
+      getRecordById: vi.fn().mockResolvedValue(legacyRecord),
+      saveRecord: vi.fn().mockResolvedValue({
+        recordId: legacyRecord.id,
+        status: "reviewed",
+        updatedAt: "2026-04-17T02:30:00.000Z",
+      }),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveProofDatasetHandler({ repository, authenticate });
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/proof", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          recordId: legacyRecord.id,
+          status: "reviewed",
+          annotationData: {
+            version: "1.6",
+            sinsaeProofNote: "legacy draft นี้ตรวจแล้วและอนุมัติได้แม้ chart encoding เดิมยังเป็น romanized",
+            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+              dimension_name: dimensionName,
+              thought_process: `Reasoning for ${dimensionName}`,
+              final_prediction: `Prediction for ${dimensionName}`,
+            })),
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordId: legacyRecord.id,
+        rawInput: legacyRecord.rawInput,
+        calculatedState: legacyRecord.calculatedState,
+        status: "reviewed",
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );

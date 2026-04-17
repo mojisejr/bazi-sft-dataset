@@ -441,13 +441,13 @@ export function createSaveProofDatasetHandler(
         );
       }
 
-      const mergedPayload = SaveDatasetRequestSchema.parse({
+      const mergedPayload: SaveDatasetRequest = {
         recordId: payload.recordId,
         rawInput: existingRecord.rawInput,
         calculatedState: existingRecord.calculatedState,
         annotationData: payload.annotationData,
         status: payload.status,
-      });
+      };
       const record = await repository.saveRecord(mergedPayload, authResult.userId);
 
       return Response.json(record, { status: 200 });
