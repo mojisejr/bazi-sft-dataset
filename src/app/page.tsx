@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   getAnnotationDraftContentState,
   getAnnotationProgressSummary,
@@ -11,6 +11,7 @@ import {
 import { AnnotationWorkspace } from "@/components/bazi/AnnotationWorkspace";
 import { BirthForm } from "@/components/bazi/BirthForm";
 import { CalculatedBoard } from "@/components/bazi/CalculatedBoard";
+import { PendingDraftQueue } from "@/components/bazi/PendingDraftQueue";
 import { useBaziCalculate } from "@/hooks/bazi/useBaziCalculate";
 import { useDatasetPersistence } from "@/hooks/bazi/useDatasetPersistence";
 import {
@@ -26,6 +27,7 @@ export {
   shouldConfirmSessionReset,
   type FormState,
 } from "@/lib/bazi/trainer-workspace";
+import type { PendingDraftDatasetRecord } from "@/lib/bazi/dataset-records";
 
 function getWorkspaceStatusCopy(
   activeWorkspace: "manual" | "queue",
@@ -49,6 +51,12 @@ export function BaziTrainerWorkspace({
   initialSubmissionState = "idle",
 }: BaziTrainerWorkspaceProps) {
   const [activeWorkspace, setActiveWorkspace] = useState<"manual" | "queue">("manual");
+  const [pendingDraftRecords, setPendingDraftRecords] = useState<PendingDraftDatasetRecord[]>([]);
+  const [pendingQueueReloadToken, setPendingQueueReloadToken] = useState(0);
+  const [pendingQueueState, setPendingQueueState] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [pendingQueueError, setPendingQueueError] = useState<string | null>(null);
 
   const {
     formState,
@@ -104,6 +112,61 @@ export function BaziTrainerWorkspace({
   const workspaceStatusCopy = getWorkspaceStatusCopy(activeWorkspace, statusCopy);
   const isSessionLocked = Boolean(calculatedState);
   const resetActionCopy = getResetActionCopy(datasetStatus);
+
+  useEffect(() => {
+    if (activeWorkspace !== "queue") {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    async function loadDraftQueue() {
+      setPendingQueueState("loading");
+      setPendingQueueError(null);
+
+      try {
+        const response = await fetch("/api/dataset/drafts", {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+          },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as PendingDraftDatasetRecord[] | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            Array.isArray(body) ? "ยังไม่สามารถโหลด draft queue ได้ในตอนนี้" : body.error ?? "ยังไม่สามารถโหลด draft queue ได้ในตอนนี้",
+          );
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        setPendingDraftRecords(Array.isArray(body) ? body : []);
+        setPendingQueueState("ready");
+      } catch (error) {
+        if (!isActive || controller.signal.aborted) {
+          return;
+        }
+
+        setPendingQueueError(
+          error instanceof Error ? error.message : "ยังไม่สามารถโหลด draft queue ได้ในตอนนี้",
+        );
+        setPendingQueueState("error");
+      }
+    }
+
+    void loadDraftQueue();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [activeWorkspace, pendingQueueReloadToken]);
 
   return (
     <main className="trainer-page">
@@ -191,18 +254,34 @@ export function BaziTrainerWorkspace({
 
       {activeWorkspace === "queue" && (
         <section className="workspace-stack px-4 pb-10 pt-2">
-          <div className="mx-auto w-full max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
-            <div className="mb-3 text-4xl">🤖</div>
-            <p className="mb-2 text-sm font-medium text-amber-700 dark:text-amber-300">Proof Queue Workspace</p>
-            <h3 className="mb-2 text-xl font-semibold text-slate-900 dark:text-white">เข้าคิวตรวจ draft ได้โดยไม่ต้องตั้งดวงก่อน</h3>
-            <p className="mx-auto max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-              พื้นที่นี้จะใช้สำหรับเปิดรายการ draft ที่ script generate และ import เข้า database แล้ว จากนั้นซินแสค่อยเลือก
-              record เพื่อ proof, แก้ข้อความ, และตัดสินใจ approve หรือ reject ต่อในขั้นตอนถัดไป
-            </p>
-            <div className="mt-6 rounded-2xl bg-slate-50 p-4 text-sm text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
-              ฟีเจอร์นี้กำลังอยู่ระหว่างการพัฒนาใน Phase 4 แต่ root flow ถูกแก้แล้วให้เข้า queue ได้ตรงๆ ตั้งแต่หน้าแรก
+          {pendingQueueState === "ready" ? (
+            <PendingDraftQueue records={pendingDraftRecords} />
+          ) : (
+            <div className="surface inset-card message-card">
+              <p className="section-kicker">Proof Queue Workspace</p>
+              <h3>
+                {pendingQueueState === "error"
+                  ? "ยังโหลด draft queue ไม่สำเร็จ"
+                  : "กำลังโหลด draft queue จากฐานข้อมูล"}
+              </h3>
+              <p>
+                {pendingQueueState === "error"
+                  ? pendingQueueError ?? "ลองใหม่อีกครั้งเมื่อระบบเชื่อมต่อฐานข้อมูลพร้อม"
+                  : "กำลังดึงรายการ draft ที่ AI generate ไว้แล้วเพื่อให้ซินแสเปิด proof ต่อได้ทันที"}
+              </p>
+              {pendingQueueState === "error" && (
+                <div className="message-card__actions">
+                  <button
+                    type="button"
+                    className="secondary-action pending-link"
+                    onClick={() => setPendingQueueReloadToken((current) => current + 1)}
+                  >
+                    ลองโหลดคิวอีกครั้ง
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </section>
       )}
     </main>
