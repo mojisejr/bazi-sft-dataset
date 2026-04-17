@@ -15,8 +15,8 @@ import {
 } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
-const MAX_REFERENCE_EXCERPT_CHARS = 2_200;
+const DEFAULT_MODEL = "gemini-3-flash-preview";
+const MAX_REFERENCE_EXCERPT_CHARS = 1_100;
 const MAX_GENERATION_ATTEMPTS = 6;
 const INITIAL_RETRY_DELAY_MS = 1_500;
 
@@ -319,14 +319,13 @@ export function selectReferenceCaseExamplePaths(
 
   const seed = buildStableReferenceSelectorSeed(rawInput);
   const startIndex = seed % availablePaths.length;
-  const selectionCount = 2 + (seed % 2);
   const orderedPaths = Array.from({ length: availablePaths.length }, (_, offset) => {
     const nextIndex = (startIndex + offset) % availablePaths.length;
 
     return availablePaths[nextIndex] ?? availablePaths[0] ?? "";
   }).filter((entry, index, array) => entry.length > 0 && array.indexOf(entry) === index);
 
-  return orderedPaths.slice(0, selectionCount);
+  return orderedPaths.slice(0, 2);
 }
 
 async function loadReferenceCaseExamples(filePaths: readonly string[]) {
@@ -358,13 +357,38 @@ function buildSystemInstruction() {
 }
 
 function buildDimensionBriefs() {
-  return ANNOTATION_DIMENSION_META.map((dimension) => ({
-    dimension_name: dimension.dimensionName,
-    title: dimension.title,
-    guidance: dimension.guidance,
-    thought_prompt: dimension.thoughtPrompt,
-    prediction_prompt: dimension.predictionPrompt,
-  }));
+  return ANNOTATION_DIMENSION_META.map(
+    (dimension) =>
+      `${dimension.step}. ${dimension.dimensionName} | ${dimension.title} | ${dimension.guidance}`,
+  ).join("\n");
+}
+
+function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
+  return {
+    fourPillars: calculatedState.fourPillars,
+    mingGong: calculatedState.mingGong ?? null,
+    dayMaster: calculatedState.dayMaster,
+    strengthScore: calculatedState.strengthScore,
+    tenGods: calculatedState.tenGods,
+    twelveQi: calculatedState.twelveQi,
+    shenSha: calculatedState.shenSha.map((entry) => ({
+      starName: entry.starName,
+      relatedPillar: entry.relatedPillar,
+      meaning: entry.meaning,
+    })),
+    elementMetaphors: calculatedState.elementMetaphors,
+    currentDaYun:
+      calculatedState.daYun.find((entry) => entry.isCurrent)
+      ?? calculatedState.daYun[0]
+      ?? null,
+    upcomingDaYun: calculatedState.daYun.slice(0, 4),
+    liuNian: calculatedState.liuNian ?? null,
+    sixtyJiaziCorePersona: calculatedState.sixtyJiaziCorePersona ?? null,
+    compatibilityMatrixProfiles: calculatedState.compatibilityMatrixProfiles.map((profile) => ({
+      domain: profile.domain,
+      pairKey: profile.pairKey,
+    })),
+  };
 }
 
 function buildUserPrompt(
@@ -386,16 +410,21 @@ function buildUserPrompt(
     "reviewSummary should be a short Thai summary of the whole reading.",
     "",
     "Dimension briefs:",
-    JSON.stringify(buildDimensionBriefs(), null, 2),
+    buildDimensionBriefs(),
     "",
     "Raw input:",
     JSON.stringify(rawInput, null, 2),
     "",
-    "Calculated state:",
-    JSON.stringify(calculatedState, null, 2),
+    "Calculated state summary:",
+    JSON.stringify(buildCompactCalculatedState(calculatedState), null, 2),
     "",
     "Reference style excerpts:",
-    JSON.stringify(serializedExamples, null, 2),
+    serializedExamples
+      .map(
+        (example) =>
+          `Example ${example.example_number} | ${example.source_path}\n${example.excerpt}`,
+      )
+      .join("\n\n"),
   ].join("\n");
 }
 
@@ -497,6 +526,9 @@ export async function generateGeminiDraftAnnotation(
       }
 
       retryDelayMs = getRetryDelayMs(error, retryDelayMs);
+      console.warn(
+        `Gemini generation attempt ${attempt} failed for model ${model}. Waiting ${Math.ceil(retryDelayMs / 1000)}s before retry.`,
+      );
       await sleep(retryDelayMs);
       retryDelayMs *= 2;
     }

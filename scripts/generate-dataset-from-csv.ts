@@ -23,6 +23,7 @@ type CliOptions = {
   timezone: string;
   model: string;
   annotator: string;
+  requestDelayMs: number;
   limit?: number;
   dryRun: boolean;
 };
@@ -50,6 +51,12 @@ function parseNumberOption(value: string | undefined) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
 }
 
+function sleep(milliseconds: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
 function parseCliOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
     input: "",
@@ -57,8 +64,9 @@ function parseCliOptions(argv: string[]): CliOptions {
     receipt: DEFAULT_RECEIPT_PATH,
     province: "Bangkok",
     timezone: "Asia/Bangkok",
-    model: "gemini-2.5-flash",
-    annotator: "gemini-2.5-flash",
+    model: "gemini-3-flash-preview",
+    annotator: "gemini-3-flash-preview",
+    requestDelayMs: 10_000,
     limit: undefined,
     dryRun: false,
   };
@@ -116,6 +124,12 @@ function parseCliOptions(argv: string[]): CliOptions {
       continue;
     }
 
+    if (argument === "--request-delay-ms") {
+      options.requestDelayMs = parseNumberOption(nextValue) ?? options.requestDelayMs;
+      index += 1;
+      continue;
+    }
+
     if (argument === "--dry-run") {
       options.dryRun = true;
     }
@@ -142,7 +156,7 @@ async function main() {
   const datasetRepository = createDbDatasetRecordRepository();
   const results = [];
 
-  for (const entry of cases) {
+  for (const [index, entry] of cases.entries()) {
     const calculatedState = await calculateBaziChart(entry.rawInput, knowledgeRepository);
     const existingRecord = await findExistingDraftOrReviewedDatasetRecord(entry.rawInput);
 
@@ -200,6 +214,15 @@ async function main() {
       referenceCasePaths: generation.referenceCasePaths,
     });
     console.log(`Inserted row ${entry.sourceRow}: ${entry.name} -> ${savedRecord.recordId}`);
+
+    const hasMoreRows = index < cases.length - 1;
+
+    if (hasMoreRows && options.requestDelayMs > 0) {
+      console.log(
+        `Cooling down for ${Math.ceil(options.requestDelayMs / 1000)}s before the next Gemini request...`,
+      );
+      await sleep(options.requestDelayMs);
+    }
   }
 
   const payload = {

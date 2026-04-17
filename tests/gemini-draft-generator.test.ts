@@ -45,8 +45,7 @@ describe("gemini draft generator helpers", () => {
       "/tmp/case3.md",
     ]);
 
-    expect(selected.length).toBeGreaterThanOrEqual(2);
-    expect(selected.length).toBeLessThanOrEqual(3);
+    expect(selected.length).toBe(2);
     expect(selected).toEqual(selectReferenceCaseExamplePaths(SAMPLE_RAW_INPUT, [
       "/tmp/case1.md",
       "/tmp/case2.md",
