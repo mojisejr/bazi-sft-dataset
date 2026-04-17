@@ -24,7 +24,7 @@ export default async function PendingPage() {
   return (
     <main className="trainer-page">
       <SystemHeader statusCopy={pendingQueueStatusCopy} />
-      <PendingDraftQueue records={records} />
+      <PendingDraftQueue records={records} returnToPath="/pending" />
     </main>
   );
 }

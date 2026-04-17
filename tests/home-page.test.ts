@@ -6,6 +6,15 @@ vi.mock("@clerk/nextjs", () => ({
   UserButton: () => "User menu",
 }));
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({
+    replace: vi.fn(),
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 import {
   BaziTrainerWorkspace,
   createDefaultFormState,
@@ -222,5 +231,13 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain(
       "Builds influence patiently, then turns preparation into visible results when timing opens.",
     );
+  });
+
+  test("restores the queue workspace when the URL asks for workspace=queue", () => {
+    const html = renderToStaticMarkup(createElement(BaziTrainerWorkspace, { initialWorkspace: "queue" }));
+
+    expect(html).toContain("พร้อมตรวจงาน AI");
+    expect(html).toContain("กำลังโหลด draft queue จากฐานข้อมูล");
+    expect(html).not.toContain("ตั้งข้อมูลเพื่อเปิด 3 โซนของรายงานให้ครบ");
   });
 });

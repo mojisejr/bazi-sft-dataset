@@ -18,6 +18,7 @@ describe("PendingDraftQueue", () => {
   test("renders pending draft metadata and the human-readable review link", () => {
     const html = renderToStaticMarkup(
       createElement(PendingDraftQueue, {
+        returnToPath: "/?workspace=queue",
         records: [
           {
             id: "d5a591e2-7a5e-4f43-9819-c65a8a3eef87",
@@ -34,12 +35,14 @@ describe("PendingDraftQueue", () => {
     );
 
     expect(html).toContain("Pending Queue สำหรับรอตรวจทาน");
+    expect(html).toContain("ตอนนี้มี 1 เคสในคิวรอตรวจ");
     expect(html).toContain("AI Generated");
     expect(html).toContain("ดิถี 己");
     expect(html).toContain("love");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
-    expect(html).toContain("เปิดหน้าตรวจทาน");
+    expect(html).toContain("ตรวจเคส");
     expect(html).toContain("d5a591e2-7a5e-4f43-9819-c65a8a3eef87");
+    expect(html).toContain("returnTo=%2F%3Fworkspace%3Dqueue");
   });
 
   test("renders the empty state when no draft records exist", () => {

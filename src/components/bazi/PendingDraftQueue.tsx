@@ -4,6 +4,7 @@ import type { PendingDraftDatasetRecord } from "@/lib/bazi/dataset-records";
 
 type PendingDraftQueueProps = {
   records: PendingDraftDatasetRecord[];
+  returnToPath?: string;
 };
 
 function formatThaiBirthMoment(birthDate: string, birthTime: string) {
@@ -46,7 +47,10 @@ function getAnnotatorBadge(annotatorId: string | null) {
   return "Draft Record";
 }
 
-export function PendingDraftQueue({ records }: PendingDraftQueueProps) {
+export function PendingDraftQueue({
+  records,
+  returnToPath = "/pending",
+}: PendingDraftQueueProps) {
   return (
     <section className="workspace-stack">
       <section className="surface inset-card message-card pending-hero-card">
@@ -54,7 +58,7 @@ export function PendingDraftQueue({ records }: PendingDraftQueueProps) {
         <h2>Pending Queue สำหรับรอตรวจทาน</h2>
         <p>
           หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเลือกเคสที่ AI สร้างไว้แล้ว
-          แล้วค่อยเปิดเข้าสู่ proofing workspace ใน phase ถัดไป
+          แล้วเปิดเข้าไปตรวจทานและปิดงานได้ทันทีโดยไม่ต้องไล่เปิดทีละ card ใหญ่
         </p>
       </section>
 
@@ -67,48 +71,67 @@ export function PendingDraftQueue({ records }: PendingDraftQueueProps) {
           </p>
         </section>
       ) : (
-        <section className="pending-grid" aria-label="draft pending queue">
+        <section className="surface inset-card pending-list" aria-label="draft pending queue">
+          <div className="pending-list__header">
+            <div>
+              <p className="section-kicker">Draft Queue</p>
+              <h3>เลือกเคสแล้วเข้าไปตรวจได้ทันที</h3>
+            </div>
+            <p className="pending-list__summary">ตอนนี้มี {records.length} เคสในคิวรอตรวจ</p>
+          </div>
+
+          <div className="pending-list__table-head" aria-hidden="true">
+            <span>เคส</span>
+            <span>วันเวลาเกิด</span>
+            <span>ขอบเขต</span>
+            <span>อัปเดตล่าสุด</span>
+            <span>เปิดตรวจ</span>
+          </div>
+
+          <div className="pending-list__rows">
           {records.map((record) => (
-            <article key={record.id} className="surface inset-card pending-card">
-              <div className="pending-card__badges">
-                <span className="pending-badge pending-badge--ai">
-                  {getAnnotatorBadge(record.annotatorId)}
-                </span>
-                <span className="pending-badge pending-badge--domain">
-                  {record.intentDomain}
-                </span>
+            <article key={record.id} className="pending-row">
+              <div className="pending-row__case">
+                <div className="pending-row__badges">
+                  <span className="pending-badge pending-badge--ai">
+                    {getAnnotatorBadge(record.annotatorId)}
+                  </span>
+                  <span className="pending-badge pending-badge--domain">
+                    {record.intentDomain}
+                  </span>
+                </div>
+
+                <div className="pending-row__identity">
+                  <strong>{record.id.slice(0, 8)}</strong>
+                  <span>Record ID {record.id}</span>
+                </div>
               </div>
 
-              <div className="pending-card__header">
-                <div>
-                  <p className="section-kicker">Draft Record</p>
-                  <h3>{record.id.slice(0, 8)}</h3>
-                </div>
-                <strong className="pending-day-master">ดิถี {record.dayMaster}</strong>
+              <div className="pending-row__birth">{formatThaiBirthMoment(record.birthDate, record.birthTime)}</div>
+
+              <div className="pending-row__scope">
+                <strong>ดิถี {record.dayMaster}</strong>
+                <span>{record.intentDomain}</span>
               </div>
 
-              <dl className="pending-metadata-list">
-                <div className="pending-metadata-row">
-                  <dt>วันเวลาเกิด</dt>
-                  <dd>{formatThaiBirthMoment(record.birthDate, record.birthTime)}</dd>
-                </div>
-                <div className="pending-metadata-row">
-                  <dt>Record ID</dt>
-                  <dd>{record.id}</dd>
-                </div>
-                <div className="pending-metadata-row">
-                  <dt>อัปเดตล่าสุด</dt>
-                  <dd>{formatUpdatedAt(record.updatedAt)}</dd>
-                </div>
-              </dl>
+              <div className="pending-row__updated">{formatUpdatedAt(record.updatedAt)}</div>
 
-              <div className="pending-card__actions">
-                <Link className="secondary-action pending-link" href={`/proof/${record.id}`}>
-                  เปิดหน้าตรวจทาน
+              <div className="pending-row__action">
+                <Link
+                  className="secondary-action pending-link"
+                  href={{
+                    pathname: `/proof/${record.id}`,
+                    query: {
+                      returnTo: returnToPath,
+                    },
+                  }}
+                >
+                  ตรวจเคส
                 </Link>
               </div>
             </article>
           ))}
+          </div>
         </section>
       )}
     </section>

@@ -68,15 +68,91 @@ textarea {
   gap: 10px;
 }
 
-.pending-grid {
+.pending-list {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 18px;
+  padding: 22px;
 }
 
-.pending-card {
-  display: grid;
+.pending-list__header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
   gap: 16px;
+}
+
+.pending-list__summary {
+  margin: 0;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.pending-list__table-head,
+.pending-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 2fr) minmax(120px, 0.9fr) minmax(150px, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.pending-list__table-head {
+  padding: 0 10px 6px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pending-list__rows {
+  display: grid;
+  gap: 10px;
+}
+
+.pending-row {
+  padding: 14px 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(110, 79, 48, 0.08);
+}
+
+.pending-row__case,
+.pending-row__scope {
+  display: grid;
+  gap: 10px;
+}
+
+.pending-row__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pending-row__identity {
+  display: grid;
+  gap: 4px;
+}
+
+.pending-row__identity strong,
+.pending-row__scope strong,
+.pending-row__updated {
+  font-weight: 700;
+}
+
+.pending-row__identity span,
+.pending-row__scope span,
+.pending-row__birth {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.pending-row__scope {
+  justify-items: start;
+}
+
+.pending-row__action {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .pending-card__badges {
@@ -167,6 +243,7 @@ textarea {
   align-items: center;
   justify-content: center;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .proof-hero-card,
@@ -1738,6 +1815,31 @@ textarea {
   }
 
   .operator-actions {
+    justify-content: flex-start;
+  }
+
+  .pending-list {
+    padding: 18px;
+  }
+
+  .pending-list__header {
+    display: grid;
+  }
+
+  .pending-list__summary {
+    white-space: normal;
+  }
+
+  .pending-list__table-head {
+    display: none;
+  }
+
+  .pending-row {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .pending-row__action {
     justify-content: flex-start;
   }
 

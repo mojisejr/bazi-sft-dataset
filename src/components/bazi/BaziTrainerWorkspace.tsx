@@ -1,0 +1,305 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+
+import {
+  getAnnotationDraftContentState,
+  getAnnotationProgressSummary,
+  isAnnotationReadyForReview,
+  useAnnotationStore,
+} from "@/lib/bazi/annotation-store";
+
+import { AnnotationWorkspace } from "@/components/bazi/AnnotationWorkspace";
+import { BirthForm } from "@/components/bazi/BirthForm";
+import { CalculatedBoard } from "@/components/bazi/CalculatedBoard";
+import { PendingDraftQueue } from "@/components/bazi/PendingDraftQueue";
+import { SystemHeader } from "@/components/bazi/SystemHeader";
+import { useBaziCalculate } from "@/hooks/bazi/useBaziCalculate";
+import { useDatasetPersistence } from "@/hooks/bazi/useDatasetPersistence";
+import type { PendingDraftDatasetRecord } from "@/lib/bazi/dataset-records";
+import {
+  getResetActionCopy,
+  getStatusCopy,
+  type BaziTrainerWorkspaceProps,
+} from "@/lib/bazi/trainer-workspace";
+
+export type WorkspaceMode = "manual" | "queue";
+
+type BaziTrainerWorkspaceClientProps = BaziTrainerWorkspaceProps & {
+  initialWorkspace?: WorkspaceMode;
+};
+
+function getWorkspaceStatusCopy(
+  activeWorkspace: WorkspaceMode,
+  statusCopy: ReturnType<typeof getStatusCopy>,
+) {
+  if (activeWorkspace === "queue") {
+    return {
+      tone: "ready" as const,
+      label: "พร้อมตรวจงาน AI",
+      detail: "เลือกเข้าคิว proof draft ที่ถูก generate ไว้แล้วได้ทันที โดยไม่ต้องตั้งดวงใหม่",
+    };
+  }
+
+  return statusCopy;
+}
+
+export function BaziTrainerWorkspace({
+  initialFormState,
+  initialSubmittedInput = null,
+  initialCalculatedState = null,
+  initialSubmissionState = "idle",
+  initialWorkspace = "manual",
+}: BaziTrainerWorkspaceClientProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceMode>(initialWorkspace);
+  const [pendingDraftRecords, setPendingDraftRecords] = useState<PendingDraftDatasetRecord[]>([]);
+  const [pendingQueueReloadToken, setPendingQueueReloadToken] = useState(0);
+  const [pendingQueueState, setPendingQueueState] = useState<
+    "idle" | "loading" | "ready" | "error"
+  >("idle");
+  const [pendingQueueError, setPendingQueueError] = useState<string | null>(null);
+
+  const {
+    formState,
+    submittedInput,
+    calculatedState,
+    submissionState,
+    errorMessage,
+    handleFieldChange,
+    handleSubmit,
+    resetCalculationSession,
+  } = useBaziCalculate({
+    initialFormState,
+    initialSubmittedInput,
+    initialCalculatedState,
+    initialSubmissionState,
+  });
+  const annotationDimensions = useAnnotationStore((state) => state.dimensions);
+  const expandedDimensionName = useAnnotationStore(
+    (state) => state.expandedDimensionName,
+  );
+  const setExpandedDimension = useAnnotationStore(
+    (state) => state.setExpandedDimension,
+  );
+  const updateThoughtProcess = useAnnotationStore(
+    (state) => state.updateThoughtProcess,
+  );
+  const updateFinalPrediction = useAnnotationStore(
+    (state) => state.updateFinalPrediction,
+  );
+  const annotationSummary = getAnnotationProgressSummary(annotationDimensions);
+  const annotationDraftContentState = getAnnotationDraftContentState(annotationDimensions);
+  const canCompleteAnnotation = isAnnotationReadyForReview(annotationDimensions);
+  const {
+    datasetStatus,
+    saveState,
+    saveErrorMessage,
+    lastSavedAt,
+    beginNewSession,
+    persistAnnotation,
+    handleCompleteAnnotation,
+    handleAccordionToggle,
+    handleReset,
+  } = useDatasetPersistence({
+    submittedInput,
+    calculatedState,
+    annotationDimensions,
+    annotationDraftContentState,
+    canCompleteAnnotation,
+    expandedDimensionName,
+    setExpandedDimension,
+  });
+  const statusCopy = getStatusCopy(submissionState, Boolean(calculatedState));
+  const workspaceStatusCopy = getWorkspaceStatusCopy(activeWorkspace, statusCopy);
+  const isSessionLocked = Boolean(calculatedState);
+  const resetActionCopy = getResetActionCopy(datasetStatus);
+
+  useEffect(() => {
+    setActiveWorkspace(initialWorkspace);
+  }, [initialWorkspace]);
+
+  function handleWorkspaceChange(nextWorkspace: WorkspaceMode) {
+    setActiveWorkspace(nextWorkspace);
+
+    const nextUrl = nextWorkspace === "queue" ? `${pathname}?workspace=queue` : pathname;
+
+    router.replace(nextUrl, { scroll: false });
+  }
+
+  useEffect(() => {
+    if (activeWorkspace !== "queue") {
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+
+    async function loadDraftQueue() {
+      setPendingQueueState("loading");
+      setPendingQueueError(null);
+
+      try {
+        const response = await fetch("/api/dataset/drafts", {
+          method: "GET",
+          headers: {
+            accept: "application/json",
+          },
+          cache: "no-store",
+          signal: controller.signal,
+        });
+        const body = (await response.json()) as PendingDraftDatasetRecord[] | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            Array.isArray(body) ? "ยังไม่สามารถโหลด draft queue ได้ในตอนนี้" : body.error ?? "ยังไม่สามารถโหลด draft queue ได้ในตอนนี้",
+          );
+        }
+
+        if (!isActive) {
+          return;
+        }
+
+        setPendingDraftRecords(Array.isArray(body) ? body : []);
+        setPendingQueueState("ready");
+      } catch (error) {
+        if (!isActive || controller.signal.aborted) {
+          return;
+        }
+
+        setPendingQueueError(
+          error instanceof Error ? error.message : "ยังไม่สามารถโหลด draft queue ได้ในตอนนี้",
+        );
+        setPendingQueueState("error");
+      }
+    }
+
+    void loadDraftQueue();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [activeWorkspace, pendingQueueReloadToken]);
+
+  return (
+    <main className="trainer-page">
+      <SystemHeader statusCopy={workspaceStatusCopy} />
+
+      <section className="workspace-switch-shell">
+        <div className="workspace-switch" role="tablist" aria-label="workspace mode switch">
+          <div className="workspace-switch__backdrop" aria-hidden="true" />
+          <div className="workspace-switch__rail">
+            <button
+              type="button"
+              onClick={() => handleWorkspaceChange("manual")}
+              aria-pressed={activeWorkspace === "manual"}
+              className={`workspace-switch__option ${
+                activeWorkspace === "manual"
+                  ? "workspace-switch__option--active"
+                  : "workspace-switch__option--idle"
+              }`}
+            >
+              <span className="workspace-switch__icon" aria-hidden="true">🔮</span>
+              <span className="workspace-switch__label">พยากรณ์เอง</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleWorkspaceChange("queue")}
+              aria-pressed={activeWorkspace === "queue"}
+              className={`workspace-switch__option ${
+                activeWorkspace === "queue"
+                  ? "workspace-switch__option--active"
+                  : "workspace-switch__option--idle"
+              }`}
+            >
+              <span className="workspace-switch__icon" aria-hidden="true">🤖</span>
+              <span className="workspace-switch__label">คิวตรวจงาน AI</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {activeWorkspace === "manual" && (
+        <>
+          <section className="surface intake-stage">
+            <BirthForm
+              formState={formState}
+              isSessionLocked={isSessionLocked}
+              submissionState={submissionState}
+              resetActionCopy={resetActionCopy}
+              onFieldChange={handleFieldChange}
+              onSubmit={(event) => handleSubmit(event, { onBeforeApplyResult: beginNewSession })}
+              onReset={() => handleReset(resetCalculationSession)}
+            />
+          </section>
+
+          <section className="workspace-stack">
+            <CalculatedBoard
+              submittedInput={submittedInput}
+              calculatedState={calculatedState}
+            />
+
+            {calculatedState && (
+              <div className="mx-auto w-full max-w-4xl px-4 pb-8 pt-4">
+                <AnnotationWorkspace
+                  hasCalculatedState={Boolean(calculatedState)}
+                  statusCopy={statusCopy}
+                  errorMessage={errorMessage}
+                  annotationSummary={annotationSummary}
+                  annotationDimensions={annotationDimensions}
+                  expandedDimensionName={expandedDimensionName}
+                  saveState={saveState}
+                  saveErrorMessage={saveErrorMessage}
+                  lastSavedAt={lastSavedAt}
+                  datasetStatus={datasetStatus}
+                  canCompleteAnnotation={canCompleteAnnotation}
+                  onCompleteAnnotation={handleCompleteAnnotation}
+                  onAccordionToggle={handleAccordionToggle}
+                  onThoughtProcessChange={updateThoughtProcess}
+                  onFinalPredictionChange={updateFinalPrediction}
+                  onPersistDraft={() => void persistAnnotation("draft")}
+                />
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {activeWorkspace === "queue" && (
+        <section className="workspace-stack px-4 pb-10 pt-2">
+          {pendingQueueState === "ready" ? (
+            <PendingDraftQueue records={pendingDraftRecords} returnToPath="/?workspace=queue" />
+          ) : (
+            <div className="surface inset-card message-card">
+              <p className="section-kicker">Proof Queue Workspace</p>
+              <h3>
+                {pendingQueueState === "error"
+                  ? "ยังโหลด draft queue ไม่สำเร็จ"
+                  : "กำลังโหลด draft queue จากฐานข้อมูล"}
+              </h3>
+              <p>
+                {pendingQueueState === "error"
+                  ? pendingQueueError ?? "ลองใหม่อีกครั้งเมื่อระบบเชื่อมต่อฐานข้อมูลพร้อม"
+                  : "กำลังดึงรายการ draft ที่ AI generate ไว้แล้วเพื่อให้ซินแสเปิด proof ต่อได้ทันที"}
+              </p>
+              {pendingQueueState === "error" && (
+                <div className="message-card__actions">
+                  <button
+                    type="button"
+                    className="secondary-action pending-link"
+                    onClick={() => setPendingQueueReloadToken((current) => current + 1)}
+                  >
+                    ลองโหลดคิวอีกครั้ง
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+    </main>
+  );
+}

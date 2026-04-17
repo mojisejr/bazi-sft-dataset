@@ -27,6 +27,7 @@ import {
 
 type ProofWorkspaceProps = {
   record: ProofDatasetRecord;
+  returnToPath?: string;
 };
 
 type ProofDimensionDraft = {
@@ -151,7 +152,7 @@ function getSaveMessage(
   return "แก้ไขข้อความได้ทันที จากนั้นค่อยเลือกอนุมัติหรือตีกลับพร้อมเหตุผล";
 }
 
-export function ProofWorkspace({ record }: ProofWorkspaceProps) {
+export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: ProofWorkspaceProps) {
   const router = useRouter();
   const [dimensions, setDimensions] = useState<ProofDimensionDraftState>(() =>
     createProofDimensions(record.annotationData),
@@ -235,7 +236,7 @@ export function ProofWorkspace({ record }: ProofWorkspaceProps) {
         return;
       }
 
-      router.push("/pending");
+      router.push(returnToPath);
       router.refresh();
     } catch (error) {
       setSaveState("error");
@@ -256,7 +257,7 @@ export function ProofWorkspace({ record }: ProofWorkspaceProps) {
           </p>
         </div>
         <div className="message-card__actions">
-          <Link className="secondary-action pending-link" href="/pending">
+          <Link className="secondary-action pending-link" href={returnToPath}>
             กลับไปคิวรอตรวจ
           </Link>
         </div>

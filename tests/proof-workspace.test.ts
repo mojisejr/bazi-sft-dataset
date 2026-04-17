@@ -87,11 +87,13 @@ describe("ProofWorkspace", () => {
     const html = renderToStaticMarkup(
       createElement(ProofWorkspace, {
         record: createProofRecord(),
+        returnToPath: "/?workspace=queue",
       }),
     );
 
     expect(html).toContain("หน้าตรวจทานคำทำนาย AI");
     expect(html).toContain("กลับไปคิวรอตรวจ");
+    expect(html).toContain("/?workspace=queue");
     expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");
     expect(html).toContain("ตีกลับงาน AI");
     expect(html).toContain("อนุมัติและปิดงาน");
