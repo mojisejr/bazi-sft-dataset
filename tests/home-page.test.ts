@@ -27,6 +27,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Bazi Trainer that makes ซินแส ซินแส !");
     expect(html).toContain("Secure Operator Access");
     expect(html).toContain("User menu");
+    expect(html).toContain("คิวตรวจงาน AI");
+    expect(html).toContain("พยากรณ์เอง");
+    expect(html).toContain("workspace mode switch");
+    expect(html).not.toContain("เลือกโหมดการทำงาน");
+    expect(html).not.toContain("เริ่มจาก manual add หรือ proof queue ได้ทันที");
     expect(html).toContain("ตั้งข้อมูลเพื่อเปิด 3 โซนของรายงานให้ครบ");
     expect(html).toContain("คำนวณภาพรวมดวง");
     expect(html).toContain("ปี พ.ศ.");
