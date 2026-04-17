@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { config as loadEnv } from "dotenv";
 
+import { createDatasetRecordMetadata } from "../src/lib/bazi/dataset-metadata";
 import { createDraftAnnotationPayload } from "../src/lib/bazi/dataset-request";
 import {
   createDbDatasetRecordRepository,
@@ -197,6 +198,11 @@ async function main() {
       generation.annotationData,
       "draft",
       shouldRewriteDraft ? existingRecord?.id : undefined,
+      createDatasetRecordMetadata({
+        customerName: entry.name,
+        sourceFile: options.input,
+        sourceRow: entry.sourceRow,
+      }),
     );
 
     if (options.dryRun) {

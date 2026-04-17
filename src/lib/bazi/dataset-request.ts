@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { DatasetRecordMetadataSchema } from "@/lib/bazi/dataset-metadata";
 import {
   AnnotationDataSchema,
   CalculatedStateSchema,
@@ -20,6 +21,7 @@ export const BaseSaveDatasetRequestSchema = z
     calculatedState: CalculatedStateSchema,
     annotationData: DraftAnnotationDataSchema,
     status: SaveDatasetStatusSchema,
+    metadata: DatasetRecordMetadataSchema.optional(),
   })
   .superRefine((value, context) => {
     if (value.status === "draft") {
@@ -49,6 +51,7 @@ export function createDraftAnnotationPayload(
   annotationData: StoredAnnotationDataValue,
   status: SaveDatasetStatus,
   recordId?: string,
+  metadata?: z.infer<typeof DatasetRecordMetadataSchema>,
 ): SaveDatasetRequest {
   return BaseSaveDatasetRequestSchema.parse({
     recordId,
@@ -56,5 +59,6 @@ export function createDraftAnnotationPayload(
     calculatedState,
     annotationData,
     status,
+    metadata,
   });
 }

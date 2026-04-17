@@ -3,6 +3,7 @@ import { ZodError, z } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziDatasetRecords } from "@/db/schema";
+import { type DatasetRecordMetadataValue } from "@/lib/bazi/dataset-metadata";
 import { collectCalculatedStateIntegrityIssues } from "@/lib/bazi/calculated-state-integrity";
 import {
   BaseSaveDatasetRequestSchema,
@@ -55,6 +56,7 @@ export type PendingDraftDatasetRecord = {
   birthTime: string;
   dayMaster: string;
   intentDomain: string;
+  customerName: string | null;
   annotatorId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -68,6 +70,7 @@ export type ProofDatasetRecord = {
   annotationData: StoredAnnotationDataValue | null;
   status: "draft" | "reviewed" | "rejected" | "exported";
   annotatorId: string | null;
+  metadata: DatasetRecordMetadataValue;
   createdAt: string;
   updatedAt: string;
 };
@@ -138,6 +141,7 @@ export function createDbDatasetRecordRepository(
         annotationData: input.annotationData,
         status: input.status,
         annotatorId,
+        ...(input.metadata ? { metadata: input.metadata } : {}),
       };
 
       if (input.recordId) {
@@ -196,6 +200,7 @@ export function createDbDatasetRecordRepository(
           birthTime: sql<string>`${baziDatasetRecords.rawInput} ->> 'birthTime'`,
           dayMaster: sql<string>`${baziDatasetRecords.calculatedState} ->> 'dayMaster'`,
           intentDomain: baziDatasetRecords.intentDomain,
+          customerName: sql<string | null>`${baziDatasetRecords.metadata} ->> 'customerName'`,
           annotatorId: baziDatasetRecords.annotatorId,
           createdAt: baziDatasetRecords.createdAt,
           updatedAt: baziDatasetRecords.updatedAt,
@@ -210,6 +215,7 @@ export function createDbDatasetRecordRepository(
         birthTime: record.birthTime,
         dayMaster: record.dayMaster,
         intentDomain: record.intentDomain,
+        customerName: record.customerName,
         annotatorId: record.annotatorId,
         createdAt: record.createdAt.toISOString(),
         updatedAt: record.updatedAt.toISOString(),
@@ -226,6 +232,7 @@ export function createDbDatasetRecordRepository(
           annotationData: baziDatasetRecords.annotationData,
           status: baziDatasetRecords.status,
           annotatorId: baziDatasetRecords.annotatorId,
+          metadata: baziDatasetRecords.metadata,
           createdAt: baziDatasetRecords.createdAt,
           updatedAt: baziDatasetRecords.updatedAt,
         })
@@ -245,6 +252,7 @@ export function createDbDatasetRecordRepository(
         annotationData: record.annotationData,
         status: record.status,
         annotatorId: record.annotatorId,
+        metadata: record.metadata,
         createdAt: record.createdAt.toISOString(),
         updatedAt: record.updatedAt.toISOString(),
       };
@@ -497,6 +505,7 @@ export function createSaveProofDatasetHandler(
         calculatedState: existingRecord.calculatedState,
         annotationData: payload.annotationData,
         status: payload.status,
+        metadata: existingRecord.metadata,
       };
       const record = await repository.saveRecord(mergedPayload, authResult.userId);
 

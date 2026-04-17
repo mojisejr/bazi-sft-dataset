@@ -26,6 +26,7 @@ describe("PendingDraftQueue", () => {
             birthTime: "14:35",
             dayMaster: "己",
             intentDomain: "love",
+            customerName: "สมบัติ",
             annotatorId: "agent_gpt4o",
             createdAt: "2026-04-17T00:00:00.000Z",
             updatedAt: "2026-04-17T01:00:00.000Z",
@@ -37,6 +38,7 @@ describe("PendingDraftQueue", () => {
     expect(html).toContain("Pending Queue สำหรับรอตรวจทาน");
     expect(html).toContain("ตอนนี้มี 1 เคสในคิวรอตรวจ");
     expect(html).toContain("AI Generated");
+    expect(html).toContain("สมบัติ");
     expect(html).toContain("ดิถี 己");
     expect(html).toContain("love");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
@@ -63,6 +65,7 @@ describe("listDraftDatasetRecords", () => {
           birthTime: "14:35",
           dayMaster: "己",
           intentDomain: "general",
+          customerName: "KD",
           annotatorId: "agent_gpt4o",
           createdAt: "2026-04-17T00:00:00.000Z",
           updatedAt: "2026-04-17T01:00:00.000Z",
@@ -77,6 +80,7 @@ describe("listDraftDatasetRecords", () => {
         birthTime: "14:35",
         dayMaster: "己",
         intentDomain: "general",
+        customerName: "KD",
         annotatorId: "agent_gpt4o",
         createdAt: "2026-04-17T00:00:00.000Z",
         updatedAt: "2026-04-17T01:00:00.000Z",
@@ -96,6 +100,7 @@ describe("createListDraftDatasetRecordsHandler", () => {
           birthTime: "14:35",
           dayMaster: "己",
           intentDomain: "general",
+          customerName: "KD",
           annotatorId: "agent_gpt4o",
           createdAt: "2026-04-17T00:00:00.000Z",
           updatedAt: "2026-04-17T01:00:00.000Z",
@@ -118,6 +123,7 @@ describe("createListDraftDatasetRecordsHandler", () => {
         birthTime: "14:35",
         dayMaster: "己",
         intentDomain: "general",
+        customerName: "KD",
         annotatorId: "agent_gpt4o",
         createdAt: "2026-04-17T00:00:00.000Z",
         updatedAt: "2026-04-17T01:00:00.000Z",

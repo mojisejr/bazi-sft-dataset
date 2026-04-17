@@ -33,6 +33,7 @@ describe("baziDatasetRecords", () => {
       "annotationData",
       "status",
       "annotatorId",
+      "metadata",
       "createdAt",
       "updatedAt",
     ]);

@@ -275,6 +275,12 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
             </div>
 
             <dl className="pending-metadata-list proof-meta-list">
+              {record.metadata.customerName ? (
+                <div className="pending-metadata-row">
+                  <dt>ชื่อลูกค้า</dt>
+                  <dd>{record.metadata.customerName}</dd>
+                </div>
+              ) : null}
               <div className="pending-metadata-row">
                 <dt>วันเวลาเกิด</dt>
                 <dd>{formatThaiBirthMoment(record.rawInput)}</dd>

@@ -52,6 +52,11 @@ function createReviewedRecord() {
       },
     },
     intentDomain: "wealth",
+    metadata: {
+      customerName: "สมบัติ",
+      sourceFile: "/tmp/example-cases.csv",
+      sourceRow: 2,
+    },
     annotationData: {
       version: "1.6",
       reviewSummary: "Balanced wealth reading with caution around overextension.",
@@ -77,6 +82,7 @@ describe("phase 4 export transformer", () => {
     expect(prompt).toContain("Calculated State:");
     expect(prompt).toContain("Year Pillar");
     expect(prompt).toContain("Sixty Jiazi Core Persona");
+    expect(prompt).not.toContain("สมบัติ");
   });
 
   test("builds assistant blocks in schema order with titles and reasoning", () => {

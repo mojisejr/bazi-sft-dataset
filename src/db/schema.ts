@@ -15,6 +15,7 @@ import {
   REQUIRED_ANNOTATION_DIMENSION_COUNT,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
+import { type DatasetRecordMetadataValue } from "@/lib/bazi/dataset-metadata";
 
 export type CanonicalMetadataValue = Record<string, unknown>;
 
@@ -82,6 +83,10 @@ export const baziDatasetRecords = pgTable(
     annotationData: jsonb("annotation_data").$type<StoredAnnotationDataValue>(),
     status: datasetStatusEnum("status").notNull().default("draft"),
     annotatorId: text("annotator_id"),
+    metadata: jsonb("metadata")
+      .$type<DatasetRecordMetadataValue>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()

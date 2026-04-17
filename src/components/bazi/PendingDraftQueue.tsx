@@ -102,7 +102,8 @@ export function PendingDraftQueue({
                 </div>
 
                 <div className="pending-row__identity">
-                  <strong>{record.id.slice(0, 8)}</strong>
+                  <strong>{record.customerName ?? record.id.slice(0, 8)}</strong>
+                  {record.customerName ? <span>Record Key {record.id.slice(0, 8)}</span> : null}
                   <span>Record ID {record.id}</span>
                 </div>
               </div>

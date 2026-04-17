@@ -65,6 +65,11 @@ function createProofRecord() {
       explainable: {},
     },
     intentDomain: "general",
+    metadata: {
+      customerName: "สมบัติ",
+      sourceFile: "/tmp/example-cases.csv",
+      sourceRow: 2,
+    },
     annotationData: {
       version: "1.6",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
@@ -111,6 +116,8 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("หน้าตรวจทานคำทำนาย AI");
     expect(html).toContain("กลับไปคิวรอตรวจ");
     expect(html).toContain("/?workspace=queue");
+    expect(html).toContain("ชื่อลูกค้า");
+    expect(html).toContain("สมบัติ");
     expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");
     expect(html).toContain("ตีกลับงาน AI");
     expect(html).toContain("อนุมัติและปิดงาน");
@@ -165,6 +172,11 @@ describe("createSaveProofDatasetHandler", () => {
       expect.objectContaining({
         recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
         status: "reviewed",
+        metadata: {
+          customerName: "สมบัติ",
+          sourceFile: "/tmp/example-cases.csv",
+          sourceRow: 2,
+        },
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );
@@ -211,6 +223,11 @@ describe("createSaveProofDatasetHandler", () => {
     expect(repository.saveRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "rejected",
+        metadata: {
+          customerName: "สมบัติ",
+          sourceFile: "/tmp/example-cases.csv",
+          sourceRow: 2,
+        },
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );
@@ -261,6 +278,11 @@ describe("createSaveProofDatasetHandler", () => {
         rawInput: legacyRecord.rawInput,
         calculatedState: legacyRecord.calculatedState,
         status: "reviewed",
+        metadata: {
+          customerName: "สมบัติ",
+          sourceFile: "/tmp/example-cases.csv",
+          sourceRow: 2,
+        },
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );
