@@ -25,6 +25,7 @@ type CliOptions = {
   annotator: string;
   requestDelayMs: number;
   limit?: number;
+  rewriteDrafts: boolean;
   dryRun: boolean;
 };
 
@@ -68,6 +69,7 @@ function parseCliOptions(argv: string[]): CliOptions {
     annotator: "gemini-3-flash-preview",
     requestDelayMs: 10_000,
     limit: undefined,
+    rewriteDrafts: false,
     dryRun: false,
   };
 
@@ -130,6 +132,11 @@ function parseCliOptions(argv: string[]): CliOptions {
       continue;
     }
 
+    if (argument === "--rewrite-drafts") {
+      options.rewriteDrafts = true;
+      continue;
+    }
+
     if (argument === "--dry-run") {
       options.dryRun = true;
     }
@@ -159,8 +166,13 @@ async function main() {
   for (const [index, entry] of cases.entries()) {
     const calculatedState = await calculateBaziChart(entry.rawInput, knowledgeRepository);
     const existingRecord = await findExistingDraftOrReviewedDatasetRecord(entry.rawInput);
+    const shouldRewriteDraft = Boolean(
+      options.rewriteDrafts
+      && existingRecord
+      && existingRecord.status === "draft",
+    );
 
-    if (existingRecord) {
+    if (existingRecord && !shouldRewriteDraft) {
       results.push({
         sourceRow: entry.sourceRow,
         name: entry.name,
@@ -184,20 +196,32 @@ async function main() {
       calculatedState,
       generation.annotationData,
       "draft",
+      shouldRewriteDraft ? existingRecord?.id : undefined,
     );
 
     if (options.dryRun) {
       results.push({
         sourceRow: entry.sourceRow,
         name: entry.name,
-        status: "generated_dry_run",
+        status: shouldRewriteDraft ? "rewritten_dry_run" : "generated_dry_run",
         rawInput: entry.rawInput,
         calculatedState,
         annotationData: generation.annotationData,
         model: generation.model,
         referenceCasePaths: generation.referenceCasePaths,
+        rewrittenRecordId: shouldRewriteDraft ? existingRecord?.id ?? null : null,
       });
-      console.log(`Generated dry-run row ${entry.sourceRow}: ${entry.name}`);
+      console.log(
+        `${shouldRewriteDraft ? "Re-generated draft" : "Generated dry-run"} row ${entry.sourceRow}: ${entry.name}`,
+      );
+      const hasMoreRows = index < cases.length - 1;
+
+      if (hasMoreRows && options.requestDelayMs > 0) {
+        console.log(
+          `Cooling down for ${Math.ceil(options.requestDelayMs / 1000)}s before the next Gemini request...`,
+        );
+        await sleep(options.requestDelayMs);
+      }
       continue;
     }
 
@@ -206,14 +230,16 @@ async function main() {
     results.push({
       sourceRow: entry.sourceRow,
       name: entry.name,
-      status: "inserted",
+      status: shouldRewriteDraft ? "rewritten" : "inserted",
       rawInput: entry.rawInput,
       recordId: savedRecord.recordId,
       updatedAt: savedRecord.updatedAt,
       model: generation.model,
       referenceCasePaths: generation.referenceCasePaths,
     });
-    console.log(`Inserted row ${entry.sourceRow}: ${entry.name} -> ${savedRecord.recordId}`);
+    console.log(
+      `${shouldRewriteDraft ? "Rewrote" : "Inserted"} row ${entry.sourceRow}: ${entry.name} -> ${savedRecord.recordId}`,
+    );
 
     const hasMoreRows = index < cases.length - 1;
 
@@ -245,8 +271,10 @@ async function main() {
       output: options.output,
       totalRows: cases.length,
       insertedCount: results.filter((entry) => entry.status === "inserted").length,
+      rewrittenCount: results.filter((entry) => entry.status === "rewritten").length,
       skippedExistingCount: results.filter((entry) => entry.status === "skipped_existing").length,
       dryRunGeneratedCount: results.filter((entry) => entry.status === "generated_dry_run").length,
+      dryRunRewrittenCount: results.filter((entry) => entry.status === "rewritten_dry_run").length,
       model: options.model,
       annotator: options.annotator,
     };
