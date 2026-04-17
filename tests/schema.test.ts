@@ -19,6 +19,7 @@ import {
 import {
   AnnotationDataSchema,
   DraftAnnotationDataSchema,
+  RejectedAnnotationDataSchema,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
 } from "@/lib/bazi/schema-types";
 
@@ -41,6 +42,7 @@ describe("baziDatasetRecords", () => {
     expect(datasetStatusEnum.enumValues).toEqual([
       "draft",
       "reviewed",
+      "rejected",
       "exported",
     ]);
 
@@ -117,6 +119,19 @@ describe("baziDatasetRecords", () => {
     });
 
     expect(parsed.dimensions).toHaveLength(15);
+  });
+
+  test("requires sinsae proof note when a record is rejected", () => {
+    expect(() =>
+      RejectedAnnotationDataSchema.parse({
+        version: "1.6",
+        dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+          dimension_name: dimensionName,
+          thought_process: dimensionName === "chart_foundation" ? "AI reason" : "",
+          final_prediction: "",
+        })),
+      }),
+    ).toThrow(/sinsaeProofNote/i);
   });
 });
 

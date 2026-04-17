@@ -4,13 +4,14 @@ import {
   AnnotationDataSchema,
   CalculatedStateSchema,
   DraftAnnotationDataSchema,
+  RejectedAnnotationDataSchema,
   RawInputSchema,
   type CalculatedStateValue,
   type RawInputValue,
   type StoredAnnotationDataValue,
 } from "@/lib/bazi/schema-types";
 
-export const SaveDatasetStatusSchema = z.enum(["draft", "reviewed"]);
+export const SaveDatasetStatusSchema = z.enum(["draft", "reviewed", "rejected"]);
 
 export const BaseSaveDatasetRequestSchema = z
   .object({
@@ -21,14 +22,16 @@ export const BaseSaveDatasetRequestSchema = z
     status: SaveDatasetStatusSchema,
   })
   .superRefine((value, context) => {
-    if (value.status !== "reviewed") {
+    if (value.status === "draft") {
       return;
     }
 
-    const reviewedResult = AnnotationDataSchema.safeParse(value.annotationData);
+    const validationResult = (value.status === "reviewed"
+      ? AnnotationDataSchema
+      : RejectedAnnotationDataSchema).safeParse(value.annotationData);
 
-    if (!reviewedResult.success) {
-      for (const issue of reviewedResult.error.issues) {
+    if (!validationResult.success) {
+      for (const issue of validationResult.error.issues) {
         context.addIssue({
           ...issue,
           path: ["annotationData", ...issue.path],

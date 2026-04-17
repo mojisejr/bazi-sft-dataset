@@ -259,6 +259,46 @@ describe("createSaveDatasetHandler", () => {
     expect(repository.saveRecord).not.toHaveBeenCalled();
   });
 
+  test("allows rejected payloads with a proof note even when dimensions are still incomplete", async () => {
+    const repository: DatasetRecordRepository = {
+      saveRecord: vi.fn().mockResolvedValue({
+        recordId: "5dca0c34-9f8f-4f42-8e1e-6787dce1dd7e",
+        status: "rejected",
+        updatedAt: "2026-04-13T04:30:00.000Z",
+      }),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveDatasetHandler({ repository, authenticate });
+    const requestBody = createRequestBody();
+
+    requestBody.status = "rejected";
+    requestBody.annotationData.dimensions[0] = {
+      ...requestBody.annotationData.dimensions[0],
+      final_prediction: "",
+    };
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/save", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "rejected",
+      }),
+      "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+    );
+  });
+
   test("rejects reviewed payloads when calculated pillars contradict raw input", async () => {
     const repository: DatasetRecordRepository = {
       saveRecord: vi.fn(),

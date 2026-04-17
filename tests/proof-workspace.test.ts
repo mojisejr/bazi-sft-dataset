@@ -1,0 +1,235 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, test, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
+import { ProofWorkspace } from "@/components/bazi/ProofWorkspace";
+import {
+  createSaveProofDatasetHandler,
+  type DatasetProofLookupRepository,
+  type DatasetRecordRepository,
+  type SaveDatasetAuthenticate,
+} from "@/lib/bazi/dataset-records";
+import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
+
+function createProofRecord() {
+  return {
+    id: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+    rawInput: {
+      birthDate: "1992-08-21",
+      birthTime: "14:35",
+      gender: "female",
+      province: "Bangkok",
+      calendarSystem: "solar",
+      timezone: "Asia/Bangkok",
+    },
+    calculatedState: {
+      fourPillars: {
+        year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
+        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+      },
+      dayMaster: "己",
+      strengthScore: 3.07,
+      tenGods: {
+        yearStem: "正财",
+        yearBranch: "伤官,正财,劫财",
+        monthStem: "劫财",
+        monthBranch: "伤官,正财,劫财",
+        dayStem: "日主",
+        dayBranch: "正印,伤官,劫财",
+        hourStem: "正财",
+        hourBranch: "伤官,正财,劫财",
+      },
+      twelveQi: {
+        yearBranch: "沐浴",
+        monthBranch: "沐浴",
+        dayBranch: "帝旺",
+        hourBranch: "沐浴",
+      },
+      elementMetaphors: [],
+      sixtyJiaziCorePersona: {
+        code: "己巳",
+        narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
+        precedenceNotes: ["Near solar-term boundary."],
+      },
+      daYun: [],
+      shenSha: [],
+      explainable: {},
+    },
+    intentDomain: "general",
+    annotationData: {
+      version: "1.6",
+      dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+        dimension_name: dimensionName,
+        thought_process: dimensionName === "chart_foundation" ? "AI draft reason" : "",
+        final_prediction: dimensionName === "chart_foundation" ? "AI draft prediction" : "",
+        supporting_signals: [],
+      })),
+      sinsaeProofNote: "ตรวจโครงสร้างก่อนเริ่มเกลา",
+    },
+    status: "draft" as const,
+    annotatorId: "agent_gpt4o",
+    createdAt: "2026-04-17T00:00:00.000Z",
+    updatedAt: "2026-04-17T01:00:00.000Z",
+  };
+}
+
+describe("ProofWorkspace", () => {
+  test("renders mobile-friendly proof controls with human-readable labels", () => {
+    const html = renderToStaticMarkup(
+      createElement(ProofWorkspace, {
+        record: createProofRecord(),
+      }),
+    );
+
+    expect(html).toContain("หน้าตรวจทานคำทำนาย AI");
+    expect(html).toContain("กลับไปคิวรอตรวจ");
+    expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");
+    expect(html).toContain("ตีกลับงาน AI");
+    expect(html).toContain("อนุมัติและปิดงาน");
+    expect(html).not.toContain("proofing hook");
+    expect(html).not.toContain("Accept Annotation");
+  });
+});
+
+describe("createSaveProofDatasetHandler", () => {
+  test("saves a reviewed proof payload against the existing record", async () => {
+    const repository: DatasetRecordRepository & DatasetProofLookupRepository = {
+      getRecordById: vi.fn().mockResolvedValue(createProofRecord()),
+      saveRecord: vi.fn().mockResolvedValue({
+        recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+        status: "reviewed",
+        updatedAt: "2026-04-17T02:00:00.000Z",
+      }),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveProofDatasetHandler({ repository, authenticate });
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/proof", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+          status: "reviewed",
+          annotationData: {
+            version: "1.6",
+            sinsaeProofNote: "ปรับภาษาและยืนยันว่าครบทุกมิติแล้ว",
+            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+              dimension_name: dimensionName,
+              thought_process: `Reasoning for ${dimensionName}`,
+              final_prediction: `Prediction for ${dimensionName}`,
+            })),
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.getRecordById).toHaveBeenCalledWith(
+      "f1d128dc-8a32-4659-88c0-e42dc742b171",
+    );
+    expect(repository.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+        status: "reviewed",
+      }),
+      "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+    );
+  });
+
+  test("accepts rejected proof payloads with a proof note even when predictions are incomplete", async () => {
+    const repository: DatasetRecordRepository & DatasetProofLookupRepository = {
+      getRecordById: vi.fn().mockResolvedValue(createProofRecord()),
+      saveRecord: vi.fn().mockResolvedValue({
+        recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+        status: "rejected",
+        updatedAt: "2026-04-17T02:00:00.000Z",
+      }),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveProofDatasetHandler({ repository, authenticate });
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/proof", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+          status: "rejected",
+          annotationData: {
+            version: "1.6",
+            sinsaeProofNote: "logic หลักยังผิดอยู่ จึงตีกลับโดยไม่ฝืนเกลาให้จบ",
+            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+              dimension_name: dimensionName,
+              thought_process: dimensionName === "chart_foundation" ? "ยังมีแกนผิด" : "",
+              final_prediction: "",
+            })),
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(repository.saveRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: "rejected",
+      }),
+      "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+    );
+  });
+
+  test("rejects proof requests that omit the proof note for rejected status", async () => {
+    const repository: DatasetRecordRepository & DatasetProofLookupRepository = {
+      getRecordById: vi.fn().mockResolvedValue(createProofRecord()),
+      saveRecord: vi.fn(),
+    };
+    const authenticate: SaveDatasetAuthenticate = vi.fn().mockResolvedValue({
+      userId: "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
+      isAuthenticated: true,
+    });
+    const handler = createSaveProofDatasetHandler({ repository, authenticate });
+
+    const response = await handler(
+      new Request("http://localhost/api/dataset/proof", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+          status: "rejected",
+          annotationData: {
+            version: "1.6",
+            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+              dimension_name: dimensionName,
+              thought_process: "",
+              final_prediction: "",
+            })),
+          },
+        }),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(repository.saveRecord).not.toHaveBeenCalled();
+  });
+});

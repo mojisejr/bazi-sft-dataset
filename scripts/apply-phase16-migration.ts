@@ -21,6 +21,11 @@ const sinsaeProofNoteMigrationFilePath = path.resolve(
   "drizzle/0004_phase2_sinsae_proof_note.sql",
 );
 
+const rejectedStatusMigrationFilePath = path.resolve(
+  process.cwd(),
+  "drizzle/0005_phase5_rejected_status.sql",
+);
+
 const columnQuery = [
   "select column_name",
   "from information_schema.columns",
@@ -77,6 +82,24 @@ function readReviewedContentConstraintDefinition() {
   ]);
 }
 
+function readDatasetStatusValues() {
+  const output = runPsql([
+    "-d",
+    getDatabaseUrl(),
+    "-At",
+    "-c",
+    [
+      "select enumlabel",
+      "from pg_enum",
+      "join pg_type on pg_enum.enumtypid = pg_type.oid",
+      "where pg_type.typname = 'dataset_status'",
+      "order by enumsortorder;",
+    ].join("\n"),
+  ]);
+
+  return output.length === 0 ? [] : output.split("\n");
+}
+
 async function ensureMigrationExists(filePath: string) {
   try {
     await access(filePath);
@@ -129,8 +152,23 @@ async function main() {
     ]);
   }
 
+  const datasetStatusValues = readDatasetStatusValues();
+
+  if (!datasetStatusValues.includes("rejected")) {
+    await ensureMigrationExists(rejectedStatusMigrationFilePath);
+    runPsql([
+      "-d",
+      getDatabaseUrl(),
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-f",
+      rejectedStatusMigrationFilePath,
+    ]);
+  }
+
   const afterColumns = readDatasetColumns();
   const finalReviewedContentConstraint = readReviewedContentConstraintDefinition();
+  const finalDatasetStatusValues = readDatasetStatusValues();
 
   if (!afterColumns.includes("annotation_data")) {
     throw new Error("Phase 1.6 migration did not add annotation_data to bazi_dataset_records.");
@@ -150,8 +188,12 @@ async function main() {
     );
   }
 
+  if (!finalDatasetStatusValues.includes("rejected")) {
+    throw new Error("Phase 5 migration did not add the rejected dataset status.");
+  }
+
   console.log(
-    `Phase 1.6 migration applied successfully. Current dataset columns: ${afterColumns.join(", ")}`,
+    `Phase 1.6 migration applied successfully. Current dataset columns: ${afterColumns.join(", ")} | statuses: ${finalDatasetStatusValues.join(", ")}`,
   );
 }
 

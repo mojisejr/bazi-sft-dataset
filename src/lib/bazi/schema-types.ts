@@ -189,6 +189,15 @@ export const AnnotationDataSchema = z
   })
   .superRefine(refineAnnotationDimensions);
 
+export const RejectedAnnotationDataSchema = z
+  .object({
+    version: z.literal("1.6"),
+    dimensions: z.array(DraftDimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    reviewSummary: z.string().trim().min(1).optional(),
+    sinsaeProofNote: z.string().trim().min(1),
+  })
+  .superRefine(refineAnnotationDimensions);
+
 export type PillarValue = z.infer<typeof PillarValueSchema>;
 export type DaYunPillarValue = z.infer<typeof DaYunPillarSchema>;
 export type ShenShaValue = z.infer<typeof ShenShaSchema>;
@@ -204,6 +213,10 @@ export type DraftDimensionValue = z.infer<typeof DraftDimensionSchema>;
 export type DimensionValue = z.infer<typeof DimensionSchema>;
 export type DraftAnnotationDataValue = z.infer<typeof DraftAnnotationDataSchema>;
 export type AnnotationDataValue = z.infer<typeof AnnotationDataSchema>;
-export type StoredAnnotationDataValue = DraftAnnotationDataValue | AnnotationDataValue;
+export type RejectedAnnotationDataValue = z.infer<typeof RejectedAnnotationDataSchema>;
+export type StoredAnnotationDataValue =
+  | DraftAnnotationDataValue
+  | AnnotationDataValue
+  | RejectedAnnotationDataValue;
 export type CompatibilityMatrixProfileValue = z.infer<typeof CompatibilityMatrixProfileSchema>;
 export type CalculatedStateExplainableValue = z.infer<typeof CalculatedStateExplainableSchema>;

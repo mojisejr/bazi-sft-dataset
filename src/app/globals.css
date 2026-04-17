@@ -169,6 +169,126 @@ textarea {
   text-decoration: none;
 }
 
+.proof-hero-card,
+.proof-summary-card,
+.proof-note-card,
+.proof-actions-card {
+  display: grid;
+  gap: 14px;
+}
+
+.proof-layout {
+  display: grid;
+  gap: 20px;
+}
+
+.proof-sidebar,
+.proof-main {
+  display: grid;
+  gap: 18px;
+}
+
+.proof-summary-card__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.proof-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(159, 83, 32, 0.12);
+  border: 1px solid rgba(159, 83, 32, 0.18);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.proof-meta-list {
+  gap: 10px;
+}
+
+.proof-pill-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.proof-pill-chip {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(110, 79, 48, 0.1);
+}
+
+.proof-pill-chip span {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.proof-pill-chip strong {
+  font-size: 1.1rem;
+}
+
+.proof-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.proof-pillar-card {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(110, 79, 48, 0.1);
+}
+
+.proof-pillar-card span,
+.proof-pillar-card small {
+  color: var(--muted);
+}
+
+.proof-pillar-card strong {
+  font-size: 1.18rem;
+}
+
+.proof-guidance-list {
+  margin-bottom: 0;
+}
+
+.proof-annotation-body {
+  gap: 14px;
+}
+
+.proof-action-group {
+  display: grid;
+  gap: 12px;
+}
+
+.proof-primary-action {
+  width: 100%;
+}
+
+@media (min-width: 1080px) {
+  .proof-layout {
+    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .proof-sidebar {
+    position: sticky;
+    top: 24px;
+  }
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -1619,6 +1739,15 @@ textarea {
 
   .operator-actions {
     justify-content: flex-start;
+  }
+
+  .proof-pill-strip,
+  .proof-pillars-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .proof-summary-card__header {
+    display: grid;
   }
 }
 

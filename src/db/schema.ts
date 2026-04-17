@@ -37,6 +37,7 @@ export const intentDomainEnum = pgEnum("intent_domain", [
 export const datasetStatusEnum = pgEnum("dataset_status", [
   "draft",
   "reviewed",
+  "rejected",
   "exported",
 ]);
 
@@ -91,8 +92,13 @@ export const baziDatasetRecords = pgTable(
     check(
       reviewedDatasetContentCheckName,
       sql`(
-        ${table.status} <> 'reviewed'
+        (
+          ${table.status} <> 'reviewed'
+          AND ${table.status} <> 'rejected'
+        )
         OR (
+          ${table.status} = 'reviewed'
+          AND
           ${table.annotationData} IS NOT NULL
           AND jsonb_typeof(${table.annotationData}) = 'object'
           AND nullif(btrim(${table.annotationData} ->> 'sinsaeProofNote'), '') IS NOT NULL
@@ -102,6 +108,12 @@ export const baziDatasetRecords = pgTable(
             ${table.annotationData},
             '$.dimensions[*] ? (@.dimension_name == null || @.dimension_name == "" || @.thought_process == null || @.thought_process == "" || @.final_prediction == null || @.final_prediction == "")'
           )
+        )
+        OR (
+          ${table.status} = 'rejected'
+          AND ${table.annotationData} IS NOT NULL
+          AND jsonb_typeof(${table.annotationData}) = 'object'
+          AND nullif(btrim(${table.annotationData} ->> 'sinsaeProofNote'), '') IS NOT NULL
         )
       )`,
     ),

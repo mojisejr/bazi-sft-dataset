@@ -15,7 +15,7 @@ import {
 } from "@/lib/bazi/dataset-records";
 
 describe("PendingDraftQueue", () => {
-  test("renders pending draft metadata and proof hook link", () => {
+  test("renders pending draft metadata and the human-readable review link", () => {
     const html = renderToStaticMarkup(
       createElement(PendingDraftQueue, {
         records: [
@@ -38,7 +38,7 @@ describe("PendingDraftQueue", () => {
     expect(html).toContain("ดิถี 己");
     expect(html).toContain("love");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
-    expect(html).toContain("เปิด proofing hook");
+    expect(html).toContain("เปิดหน้าตรวจทาน");
     expect(html).toContain("d5a591e2-7a5e-4f43-9819-c65a8a3eef87");
   });
 

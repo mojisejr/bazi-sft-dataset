@@ -104,7 +104,7 @@ export function PendingDraftQueue({ records }: PendingDraftQueueProps) {
 
               <div className="pending-card__actions">
                 <Link className="secondary-action pending-link" href={`/proof/${record.id}`}>
-                  เปิด proofing hook
+                  เปิดหน้าตรวจทาน
                 </Link>
               </div>
             </article>

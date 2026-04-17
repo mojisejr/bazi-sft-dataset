@@ -49,6 +49,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(shouldConfirmSessionReset(null, null)).toBe(false);
     expect(shouldConfirmSessionReset("record-1", "draft")).toBe(true);
     expect(shouldConfirmSessionReset("record-1", "reviewed")).toBe(false);
+    expect(shouldConfirmSessionReset("record-1", "rejected")).toBe(false);
   });
 
   test("switches reset copy after annotation is reviewed", () => {
@@ -61,7 +62,13 @@ describe("BaziTrainerWorkspace", () => {
 
     expect(getResetActionCopy("reviewed")).toEqual({
       label: "ผูกดวงใหม่",
-      detail: "annotation ชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
+      detail: "งานชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
+      tone: "primary",
+    });
+
+    expect(getResetActionCopy("rejected")).toEqual({
+      label: "ผูกดวงใหม่",
+      detail: "งานชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
       tone: "primary",
     });
   });

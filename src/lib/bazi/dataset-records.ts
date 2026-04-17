@@ -9,6 +9,14 @@ import {
   type SaveDatasetRequest,
   type SaveDatasetStatus,
 } from "@/lib/bazi/dataset-request";
+import {
+  AnnotationDataSchema,
+  DraftAnnotationDataSchema,
+  RejectedAnnotationDataSchema,
+  type CalculatedStateValue,
+  type RawInputValue,
+  type StoredAnnotationDataValue,
+} from "@/lib/bazi/schema-types";
 
 export const SaveDatasetRequestSchema = BaseSaveDatasetRequestSchema
   .superRefine((value, context) => {
@@ -44,6 +52,43 @@ export type PendingDraftDatasetRecord = {
   updatedAt: string;
 };
 
+export type ProofDatasetRecord = {
+  id: string;
+  rawInput: RawInputValue;
+  calculatedState: CalculatedStateValue;
+  intentDomain: string;
+  annotationData: StoredAnnotationDataValue | null;
+  status: "draft" | "reviewed" | "rejected" | "exported";
+  annotatorId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export const ProofDatasetRequestSchema = z
+  .object({
+    recordId: z.string().uuid(),
+    annotationData: DraftAnnotationDataSchema,
+    status: z.enum(["draft", "reviewed", "rejected"]),
+  })
+  .superRefine((value, context) => {
+    if (value.status === "draft") {
+      return;
+    }
+
+    const validationResult = (value.status === "reviewed"
+      ? AnnotationDataSchema
+      : RejectedAnnotationDataSchema).safeParse(value.annotationData);
+
+    if (!validationResult.success) {
+      for (const issue of validationResult.error.issues) {
+        context.addIssue({
+          ...issue,
+          path: ["annotationData", ...issue.path],
+        });
+      }
+    }
+  });
+
 export type SaveDatasetAuth = {
   userId: string | null;
   isAuthenticated?: boolean;
@@ -66,9 +111,16 @@ export type DatasetDraftListRepository = {
   listDraftRecords: () => Promise<PendingDraftDatasetRecord[]>;
 };
 
+export type DatasetProofLookupRepository = {
+  getRecordById: (recordId: string) => Promise<ProofDatasetRecord | null>;
+};
+
 export function createDbDatasetRecordRepository(
   databaseUrl?: string,
-): DatasetRecordRepository & DatasetDraftPurgeRepository & DatasetDraftListRepository {
+): DatasetRecordRepository
+  & DatasetDraftPurgeRepository
+  & DatasetDraftListRepository
+  & DatasetProofLookupRepository {
   return {
     async saveRecord(input, annotatorId) {
       const db = createDbClient(databaseUrl);
@@ -155,6 +207,40 @@ export function createDbDatasetRecordRepository(
         updatedAt: record.updatedAt.toISOString(),
       }));
     },
+    async getRecordById(recordId) {
+      const db = createDbClient(databaseUrl);
+      const [record] = await db
+        .select({
+          id: baziDatasetRecords.id,
+          rawInput: baziDatasetRecords.rawInput,
+          calculatedState: baziDatasetRecords.calculatedState,
+          intentDomain: baziDatasetRecords.intentDomain,
+          annotationData: baziDatasetRecords.annotationData,
+          status: baziDatasetRecords.status,
+          annotatorId: baziDatasetRecords.annotatorId,
+          createdAt: baziDatasetRecords.createdAt,
+          updatedAt: baziDatasetRecords.updatedAt,
+        })
+        .from(baziDatasetRecords)
+        .where(eq(baziDatasetRecords.id, recordId))
+        .limit(1);
+
+      if (!record) {
+        return null;
+      }
+
+      return {
+        id: record.id,
+        rawInput: record.rawInput,
+        calculatedState: record.calculatedState,
+        intentDomain: record.intentDomain,
+        annotationData: record.annotationData,
+        status: record.status,
+        annotatorId: record.annotatorId,
+        createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
+      };
+    },
   };
 }
 
@@ -170,6 +256,19 @@ export async function listDraftDatasetRecords(
   return repository.listDraftRecords();
 }
 
+type GetProofDatasetRecordOptions = {
+  repository?: DatasetProofLookupRepository;
+};
+
+export async function getProofDatasetRecord(
+  recordId: string,
+  options: GetProofDatasetRecordOptions = {},
+) {
+  const repository = options.repository ?? createDbDatasetRecordRepository();
+
+  return repository.getRecordById(recordId);
+}
+
 type SaveDatasetHandlerOptions = {
   repository?: DatasetRecordRepository;
   authenticate: SaveDatasetAuthenticate;
@@ -182,6 +281,11 @@ type PurgeDatasetDraftsHandlerOptions = {
 
 type ListDraftDatasetRecordsHandlerOptions = {
   repository?: DatasetDraftListRepository;
+  authenticate: SaveDatasetAuthenticate;
+};
+
+type SaveProofDatasetHandlerOptions = {
+  repository?: DatasetRecordRepository & DatasetProofLookupRepository;
   authenticate: SaveDatasetAuthenticate;
 };
 
@@ -296,6 +400,69 @@ export function createListDraftDatasetRecordsHandler(
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown dataset draft listing error.";
+
+      return Response.json(
+        {
+          error: message,
+        },
+        { status: 500 },
+      );
+    }
+  };
+}
+
+export function createSaveProofDatasetHandler(
+  options: SaveProofDatasetHandlerOptions,
+) {
+  return async function POST(request: Request) {
+    try {
+      const authResult = await options.authenticate();
+      const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
+
+      if (!isAuthenticated || !authResult.userId) {
+        return Response.json(
+          {
+            error: "Unauthorized",
+          },
+          { status: 401 },
+        );
+      }
+
+      const payload = ProofDatasetRequestSchema.parse(await request.json());
+      const repository = options.repository ?? createDbDatasetRecordRepository();
+      const existingRecord = await repository.getRecordById(payload.recordId);
+
+      if (!existingRecord || existingRecord.status === "exported") {
+        return Response.json(
+          {
+            error: `Dataset record ${payload.recordId} was not found.`,
+          },
+          { status: 404 },
+        );
+      }
+
+      const mergedPayload = SaveDatasetRequestSchema.parse({
+        recordId: payload.recordId,
+        rawInput: existingRecord.rawInput,
+        calculatedState: existingRecord.calculatedState,
+        annotationData: payload.annotationData,
+        status: payload.status,
+      });
+      const record = await repository.saveRecord(mergedPayload, authResult.userId);
+
+      return Response.json(record, { status: 200 });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return Response.json(
+          {
+            error: "Invalid proof dataset payload.",
+            details: error.issues,
+          },
+          { status: 400 },
+        );
+      }
+
+      const message = error instanceof Error ? error.message : "Unknown proof dataset error.";
 
       return Response.json(
         {

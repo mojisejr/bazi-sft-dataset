@@ -433,16 +433,20 @@ export function shouldConfirmSessionReset(
   datasetRecordId: string | null,
   datasetStatus: SaveDatasetStatus | null,
 ) {
-  return Boolean(datasetRecordId && datasetStatus !== "reviewed");
+  return Boolean(
+    datasetRecordId
+    && datasetStatus !== "reviewed"
+    && datasetStatus !== "rejected",
+  );
 }
 
 export function getResetActionCopy(
   datasetStatus: SaveDatasetStatus | null,
 ): ResetActionCopy {
-  if (datasetStatus === "reviewed") {
+  if (datasetStatus === "reviewed" || datasetStatus === "rejected") {
     return {
       label: "ผูกดวงใหม่",
-      detail: "annotation ชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
+      detail: "งานชุดนี้ถูกปิดแล้ว หากต้องการอ่านดวงใหม่ให้เริ่มรอบใหม่จากปุ่มนี้",
       tone: "primary",
     };
   }
