@@ -62,7 +62,33 @@ function createProofRecord() {
       },
       daYun: [],
       shenSha: [],
-      explainable: {},
+      explainable: {
+        strengthScore: {
+          value: 3.07,
+          trace: {
+            engine: "orthodox-override",
+            ruleName: "StrengthScore_WeightedSeasonalSupport",
+            stepKeys: ["weight-stages", "add-relations", "apply-penalties"],
+            rawVariables: {
+              stageContribution: 0.82,
+              visibleContributions: [
+                { label: "monthStem", stem: "戊", hidden: false, weight: 0.75 },
+                { label: "hourStem", stem: "辛", hidden: false, weight: 0.4 },
+              ],
+              hiddenContributions: [
+                { label: "dayHiddenStem1", stem: "丙", hidden: true, weight: 0.3 },
+              ],
+              penalties: {
+                clashes: 0.2,
+                punishments: 0,
+                harms: 0,
+                destructions: 0,
+              },
+              result: 3.07,
+            },
+          },
+        },
+      },
     },
     intentDomain: "general",
     metadata: {
@@ -118,6 +144,9 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("/?workspace=queue");
     expect(html).toContain("ชื่อลูกค้า");
     expect(html).toContain("สมบัติ");
+    expect(html).toContain("สมการคะแนนพลังสำหรับงานตรวจ");
+    expect(html).toContain("ก้านฟ้าเดือน · 戊");
+    expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");
     expect(html).toContain("ตีกลับงาน AI");
     expect(html).toContain("อนุมัติและปิดงาน");

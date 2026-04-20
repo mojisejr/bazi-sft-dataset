@@ -207,8 +207,21 @@ describe("BaziTrainerWorkspace", () => {
             rawVariables: {
               dayMasterStem: "己",
               monthBranchSeasonalFactor: 1,
-              visibleContributions: [{ pillar: "month" }],
-              hiddenContributions: [{ pillar: "month" }],
+              stageContribution: 0.82,
+              visibleContributions: [
+                { label: "monthStem", stem: "戊", hidden: false, weight: 0.75 },
+                { label: "hourStem", stem: "辛", hidden: false, weight: 0.4 },
+              ],
+              hiddenContributions: [
+                { label: "dayHiddenStem1", stem: "丙", hidden: true, weight: 0.3 },
+                { label: "hourHiddenStem2", stem: "丁", hidden: true, weight: 0.2 },
+              ],
+              penalties: {
+                clashes: 0.2,
+                punishments: 0,
+                harms: 0,
+                destructions: 0,
+              },
               result: 3.07,
             },
           },
@@ -241,6 +254,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("ดูวิธีคำนวณลัคนา");
     expect(html).toContain("ดูวิธีคำนวณคะแนนพลัง");
+    expect(html).toContain("สมการคะแนนพลัง");
+    expect(html).toContain("แรงจากก้านฟ้าที่มองเห็น");
+    expect(html).toContain("ก้านฟ้าเดือน · 戊");
+    expect(html).toContain("แรงชง");
+    expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("พูดด้วยเสียง");

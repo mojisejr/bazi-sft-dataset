@@ -24,6 +24,7 @@ import {
   formatThaiBirthMoment,
   reportPillarColumns,
 } from "@/lib/bazi/trainer-workspace";
+import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 
 type ProofWorkspaceProps = {
   record: ProofDatasetRecord;
@@ -330,6 +331,12 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                 );
               })}
             </div>
+
+            <StrengthScoreBreakdown
+              score={record.calculatedState.strengthScore}
+              trace={record.calculatedState.explainable.strengthScore?.trace}
+              title="สมการคะแนนพลังสำหรับงานตรวจ"
+            />
           </section>
 
           <section className="surface inset-card proof-summary-card">

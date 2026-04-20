@@ -7,6 +7,7 @@ import type {
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
 import { ExplainableNode } from "@/components/bazi/ExplainableNode";
+import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 import {
   formatScore,
   formatThaiBirthMoment,
@@ -449,6 +450,11 @@ export function CalculatedBoard({
                 </p>
               </div>
             </section>
+
+            <StrengthScoreBreakdown
+              score={calculatedState.strengthScore}
+              trace={calculatedState.explainable.strengthScore?.trace}
+            />
 
             <section className="detail-grid">
               <div className="surface inset-card">
