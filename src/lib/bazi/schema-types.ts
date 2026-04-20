@@ -31,12 +31,23 @@ export const PillarValueSchema = z.object({
   hiddenStems: z.array(z.string().trim().min(1)).optional(),
 });
 
+export const DaYunPhaseSchema = z.object({
+  startAge: z.number().int().nonnegative(),
+  endAge: z.number().int().nonnegative(),
+  symbol: z.string().trim().min(1),
+  source: z.enum(["stem", "branch"]),
+  isCurrent: z.boolean().optional(),
+});
+
 export const DaYunPillarSchema = z.object({
   startAge: z.number().int().nonnegative(),
   endAge: z.number().int().nonnegative(),
   stem: z.string().trim().min(1),
   branch: z.string().trim().min(1),
   isCurrent: z.boolean().optional(),
+  currentPhase: z.enum(["upper", "lower"]).optional(),
+  upperPhase: DaYunPhaseSchema.optional(),
+  lowerPhase: DaYunPhaseSchema.optional(),
 });
 
 export const ShenShaSchema = z.object({
@@ -199,6 +210,7 @@ export const RejectedAnnotationDataSchema = z
   .superRefine(refineAnnotationDimensions);
 
 export type PillarValue = z.infer<typeof PillarValueSchema>;
+export type DaYunPhaseValue = z.infer<typeof DaYunPhaseSchema>;
 export type DaYunPillarValue = z.infer<typeof DaYunPillarSchema>;
 export type ShenShaValue = z.infer<typeof ShenShaSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;

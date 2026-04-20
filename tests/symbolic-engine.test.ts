@@ -115,13 +115,45 @@ describe("calculateBaziChart", () => {
       ],
     });
     expect(result.daYun).toHaveLength(9);
-    expect(result.daYun[0]).toMatchObject({ startAge: 6, endAge: 15, stem: "丁", branch: "未" });
+    expect(result.daYun[0]).toMatchObject({
+      startAge: 6,
+      endAge: 15,
+      stem: "丁",
+      branch: "未",
+      upperPhase: {
+        startAge: 6,
+        endAge: 10,
+        symbol: "丁",
+        source: "stem",
+      },
+      lowerPhase: {
+        startAge: 11,
+        endAge: 15,
+        symbol: "未",
+        source: "branch",
+      },
+    });
     expect(result.daYun.find((entry) => entry.isCurrent)).toMatchObject({
       startAge: 26,
       endAge: 35,
       stem: "乙",
       branch: "巳",
       isCurrent: true,
+      currentPhase: "lower",
+      upperPhase: {
+        startAge: 26,
+        endAge: 30,
+        symbol: "乙",
+        source: "stem",
+        isCurrent: false,
+      },
+      lowerPhase: {
+        startAge: 31,
+        endAge: 35,
+        symbol: "巳",
+        source: "branch",
+        isCurrent: true,
+      },
     });
     expect(result.liuNian).toMatchObject({ stem: "丙", branch: "午" });
     expect(result.shenSha).toEqual(

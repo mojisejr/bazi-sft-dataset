@@ -240,14 +240,41 @@ export function buildDaYunState(
     .filter((entry) => entry.getGanZhi().trim().length > 0)
     .map((entry) => {
       const { stem, branch } = splitGanZhi(entry.getGanZhi());
-      const isCurrent = entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear);
+      const currentLiuNian = entry
+        .getLiuNian()
+        .find((liuNian) => liuNian.getYear() === currentYear);
+      const isCurrent = Boolean(currentLiuNian);
+      const startAge = entry.getStartAge();
+      const endAge = entry.getEndAge();
+      const upperPhaseEndAge = Math.min(startAge + 4, endAge);
+      const lowerPhaseStartAge = Math.min(upperPhaseEndAge + 1, endAge);
+      const currentPhase = currentLiuNian?.getAge() !== undefined
+        ? currentLiuNian.getAge() <= upperPhaseEndAge
+          ? "upper"
+          : "lower"
+        : undefined;
 
       return {
-        startAge: entry.getStartAge(),
-        endAge: entry.getEndAge(),
+        startAge,
+        endAge,
         stem,
         branch,
         isCurrent,
+        currentPhase,
+        upperPhase: {
+          startAge,
+          endAge: upperPhaseEndAge,
+          symbol: stem,
+          source: "stem" as const,
+          isCurrent: currentPhase === "upper",
+        },
+        lowerPhase: {
+          startAge: lowerPhaseStartAge,
+          endAge,
+          symbol: branch,
+          source: "branch" as const,
+          isCurrent: currentPhase === "lower",
+        },
       };
     });
 }

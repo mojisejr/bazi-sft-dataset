@@ -364,6 +364,11 @@ function buildDimensionBriefs() {
 }
 
 function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
+  const currentDaYun =
+    calculatedState.daYun.find((entry) => entry.isCurrent)
+    ?? calculatedState.daYun[0]
+    ?? null;
+
   return {
     fourPillars: calculatedState.fourPillars,
     mingGong: calculatedState.mingGong ?? null,
@@ -377,11 +382,22 @@ function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
       meaning: entry.meaning,
     })),
     elementMetaphors: calculatedState.elementMetaphors,
-    currentDaYun:
-      calculatedState.daYun.find((entry) => entry.isCurrent)
-      ?? calculatedState.daYun[0]
-      ?? null,
-    upcomingDaYun: calculatedState.daYun.slice(0, 4),
+    currentDaYun,
+    currentDaYunPhase: currentDaYun?.currentPhase
+      ? currentDaYun.currentPhase === "upper"
+        ? currentDaYun.upperPhase
+        : currentDaYun.lowerPhase
+      : null,
+    upcomingDaYun: calculatedState.daYun.slice(0, 4).map((entry) => ({
+      startAge: entry.startAge,
+      endAge: entry.endAge,
+      stem: entry.stem,
+      branch: entry.branch,
+      upperPhase: entry.upperPhase ?? null,
+      lowerPhase: entry.lowerPhase ?? null,
+      currentPhase: entry.currentPhase ?? null,
+      isCurrent: entry.isCurrent ?? false,
+    })),
     liuNian: calculatedState.liuNian ?? null,
     sixtyJiaziCorePersona: calculatedState.sixtyJiaziCorePersona ?? null,
     compatibilityMatrixProfiles: calculatedState.compatibilityMatrixProfiles.map((profile) => ({
