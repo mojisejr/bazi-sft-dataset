@@ -169,6 +169,12 @@ describe("BaziTrainerWorkspace", () => {
       sixtyJiaziCorePersona: {
         code: "己巳",
         narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
+        elementTone: "fire",
+        twelveQiLabel: "帝旺",
+        semanticNotes: [
+          "โทนธาตุของ 60 กะจื่อวันนี้คือ fire",
+          "ชั้น 12 เชี่ยงแซของกะจื่อวันอยู่ที่ 帝旺",
+        ],
         precedenceNotes: ["Near solar-term boundary."],
       },
       explainable: {
@@ -254,6 +260,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("ดูวิธีคำนวณลัคนา");
     expect(html).toContain("ดูวิธีคำนวณคะแนนพลัง");
+    expect(html).toContain("แกนบุคลิกพื้นฐาน");
+    expect(html).toContain('data-core-persona="available"');
+    expect(html).toContain("โทนธาตุ fire");
+    expect(html).toContain("12 เชี่ยงแซ 帝旺");
+    expect(html).toContain("Near solar-term boundary.");
     expect(html).toContain("สมการคะแนนพลัง");
     expect(html).toContain("แรงจากก้านฟ้าที่มองเห็น");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");

@@ -58,6 +58,12 @@ function createProofRecord() {
       sixtyJiaziCorePersona: {
         code: "己巳",
         narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
+        elementTone: "fire",
+        twelveQiLabel: "帝旺",
+        semanticNotes: [
+          "โทนธาตุของ 60 กะจื่อวันนี้คือ fire",
+          "ชั้น 12 เชี่ยงแซของกะจื่อวันอยู่ที่ 帝旺",
+        ],
         precedenceNotes: ["Near solar-term boundary."],
       },
       daYun: [],
@@ -144,6 +150,9 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("/?workspace=queue");
     expect(html).toContain("ชื่อลูกค้า");
     expect(html).toContain("สมบัติ");
+    expect(html).toContain("แกนบุคลิกสำหรับงานตรวจ");
+    expect(html).toContain('data-core-persona="available"');
+    expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("สมการคะแนนพลังสำหรับงานตรวจ");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain('data-strength-breakdown="available"');

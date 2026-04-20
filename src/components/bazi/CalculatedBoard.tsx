@@ -6,6 +6,7 @@ import type {
   RawInputValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
+import { CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { ExplainableNode } from "@/components/bazi/ExplainableNode";
 import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 import {
@@ -441,15 +442,9 @@ export function CalculatedBoard({
                 />
               </div>
 
-              <div className="surface inset-card highlight-card highlight-card--wide">
-                <p className="section-kicker">60 Jiazi Core Persona</p>
-                <h3>{calculatedState.sixtyJiaziCorePersona?.code ?? "ยังไม่มี narrative เฉพาะ"}</h3>
-                <p className="metric-copy">
-                  {calculatedState.sixtyJiaziCorePersona?.narrative ??
-                    "ผลรอบนี้ยังไม่มีคำบรรยายเพิ่มเติมจากคลัง canonical"}
-                </p>
-              </div>
             </section>
+
+            <CorePersonaSurface persona={calculatedState.sixtyJiaziCorePersona} />
 
             <StrengthScoreBreakdown
               score={calculatedState.strengthScore}

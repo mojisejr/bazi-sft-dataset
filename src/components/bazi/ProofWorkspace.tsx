@@ -24,6 +24,7 @@ import {
   formatThaiBirthMoment,
   reportPillarColumns,
 } from "@/lib/bazi/trainer-workspace";
+import { CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 
 type ProofWorkspaceProps = {
@@ -317,6 +318,12 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                 <strong>{formatScore(record.calculatedState.strengthScore)}</strong>
               </div>
             </div>
+
+            <CorePersonaSurface
+              persona={record.calculatedState.sixtyJiaziCorePersona}
+              title="แกนบุคลิกสำหรับงานตรวจ"
+              kicker="Core Persona For Review"
+            />
 
             <div className="proof-pillars-grid" aria-label="proof record pillars">
               {reportPillarColumns.map((column) => {
