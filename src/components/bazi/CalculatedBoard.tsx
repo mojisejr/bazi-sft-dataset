@@ -1,5 +1,7 @@
 import type {
   CalculatedStateValue,
+  DaYunPhaseValue,
+  DaYunPillarValue,
   PillarValue,
   RawInputValue,
   ShenShaValue,
@@ -35,6 +37,38 @@ function formatPillarCode(pillar: PillarValue | undefined) {
 
 function formatDaYunAgeRange(startAge: number, endAge: number) {
   return `${startAge}-${endAge}`;
+}
+
+function formatDaYunCycleCode(entry: DaYunPillarValue) {
+  return `${entry.stem}${entry.branch}`;
+}
+
+function formatDaYunPhaseSource(source: DaYunPhaseValue["source"]) {
+  return source === "stem" ? "ราศีบน" : "ราศีล่าง";
+}
+
+function resolveCurrentDaYunPhase(entry: DaYunPillarValue | null) {
+  if (!entry) {
+    return null;
+  }
+
+  if (entry.currentPhase === "upper" && entry.upperPhase) {
+    return entry.upperPhase;
+  }
+
+  if (entry.currentPhase === "lower" && entry.lowerPhase) {
+    return entry.lowerPhase;
+  }
+
+  if (entry.upperPhase?.isCurrent) {
+    return entry.upperPhase;
+  }
+
+  if (entry.lowerPhase?.isCurrent) {
+    return entry.lowerPhase;
+  }
+
+  return null;
 }
 
 function getRelatedShenShaEntries(
@@ -103,6 +137,13 @@ export function CalculatedBoard({
     ? getRelatedShenShaEntries(calculatedState.shenSha, "ปีจร")
     : [];
   const currentDaYun = calculatedState?.daYun.find((entry) => entry.isCurrent) ?? null;
+  const currentDaYunPhase = resolveCurrentDaYunPhase(currentDaYun);
+  const daYunTrackEntries = calculatedState ? [...calculatedState.daYun].reverse() : [];
+  const currentDaYunDisplay = currentDaYunPhase
+    ? currentDaYunPhase.symbol
+    : currentDaYun
+      ? formatDaYunCycleCode(currentDaYun)
+      : null;
 
   return (
     <article className="surface engine-column">
@@ -275,16 +316,21 @@ export function CalculatedBoard({
 
               <article className="current-luck-card">
                 <p className="section-kicker">วัยจรที่กำลังเดินอยู่</p>
-                <h4>
-                  {currentDaYun
-                    ? `${currentDaYun.stem}${currentDaYun.branch}`
-                    : "ยังไม่พบวัยจรปัจจุบัน"}
+                <h4 data-current-luck-symbol={currentDaYunDisplay ?? undefined}>
+                  {currentDaYunDisplay ?? "ยังไม่พบวัยจรปัจจุบัน"}
                 </h4>
                 <p className="metric-copy">
-                  {currentDaYun
-                    ? `ช่วงอายุ ${formatDaYunAgeRange(currentDaYun.startAge, currentDaYun.endAge)}`
-                    : "ยังไม่สามารถไฮไลต์รอบวัยจรของเคสนี้ได้"}
+                  {currentDaYunPhase
+                    ? `ช่วงอายุ ${formatDaYunAgeRange(currentDaYunPhase.startAge, currentDaYunPhase.endAge)} · ${formatDaYunPhaseSource(currentDaYunPhase.source)}`
+                    : currentDaYun
+                      ? `ช่วงอายุ ${formatDaYunAgeRange(currentDaYun.startAge, currentDaYun.endAge)}`
+                      : "ยังไม่สามารถไฮไลต์รอบวัยจรของเคสนี้ได้"}
                 </p>
+                {currentDaYun ? (
+                  <p className="current-luck-card__cycle">
+                    {`รอบวัยจร ${formatDaYunAgeRange(currentDaYun.startAge, currentDaYun.endAge)} · ${formatDaYunCycleCode(currentDaYun)}`}
+                  </p>
+                ) : null}
               </article>
             </div>
 
@@ -296,18 +342,44 @@ export function CalculatedBoard({
                 </div>
               </div>
 
-              <div className="dayun-track" aria-label="Da Yun track">
-                {calculatedState.daYun.map((entry) => (
+              <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction="rtl">
+                {daYunTrackEntries.map((entry) => (
                   <article
                     key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}
                     className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
                   >
-                    <span className="dayun-card__age">
+                    <span className="dayun-card__cycle">
                       {formatDaYunAgeRange(entry.startAge, entry.endAge)}
                     </span>
-                    <strong className="dayun-card__code">{entry.stem}{entry.branch}</strong>
+                    {entry.upperPhase && entry.lowerPhase ? (
+                      <div className="dayun-card__phase-stack">
+                        {[entry.upperPhase, entry.lowerPhase].map((phase) => (
+                          <section
+                            key={`${entry.startAge}-${entry.endAge}-${phase.source}`}
+                            className={`dayun-card__phase${phase.isCurrent ? " dayun-card__phase--current" : ""}`}
+                          >
+                            <span className="dayun-card__phase-age">
+                              {formatDaYunAgeRange(phase.startAge, phase.endAge)}
+                            </span>
+                            <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
+                            <span className="dayun-card__phase-label">
+                              {formatDaYunPhaseSource(phase.source)}
+                            </span>
+                          </section>
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        <strong className="dayun-card__code">{formatDaYunCycleCode(entry)}</strong>
+                        <span className="dayun-card__label">
+                          {entry.isCurrent ? "วัยจรปัจจุบัน" : "ทางเดิน 10 ปี"}
+                        </span>
+                      </>
+                    )}
                     <span className="dayun-card__label">
-                      {entry.isCurrent ? "วัยจรปัจจุบัน" : "ทางเดิน 10 ปี"}
+                      {entry.isCurrent
+                        ? `รอบปัจจุบัน · ${formatDaYunCycleCode(entry)}`
+                        : formatDaYunCycleCode(entry)}
                     </span>
                   </article>
                 ))}

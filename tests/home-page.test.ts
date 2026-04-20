@@ -92,9 +92,38 @@ describe("BaziTrainerWorkspace", () => {
       },
       mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
       daYun: [
-        { startAge: 6, endAge: 15, stem: "丁", branch: "未" },
-        { startAge: 16, endAge: 25, stem: "丙", branch: "午" },
-        { startAge: 26, endAge: 35, stem: "乙", branch: "巳", isCurrent: true },
+        {
+          startAge: 6,
+          endAge: 15,
+          stem: "丁",
+          branch: "未",
+          upperPhase: { startAge: 6, endAge: 10, symbol: "丁", source: "stem" },
+          lowerPhase: { startAge: 11, endAge: 15, symbol: "未", source: "branch" },
+        },
+        {
+          startAge: 16,
+          endAge: 25,
+          stem: "丙",
+          branch: "午",
+          upperPhase: { startAge: 16, endAge: 20, symbol: "丙", source: "stem" },
+          lowerPhase: { startAge: 21, endAge: 25, symbol: "午", source: "branch" },
+        },
+        {
+          startAge: 26,
+          endAge: 35,
+          stem: "乙",
+          branch: "巳",
+          isCurrent: true,
+          currentPhase: "lower",
+          upperPhase: { startAge: 26, endAge: 30, symbol: "乙", source: "stem" },
+          lowerPhase: {
+            startAge: 31,
+            endAge: 35,
+            symbol: "巳",
+            source: "branch",
+            isCurrent: true,
+          },
+        },
       ],
       liuNian: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
       shenSha: [
@@ -224,13 +253,20 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("壬寅");
     expect(html).toContain("ปีจรปัจจุบัน");
     expect(html).toContain("วัยจร 10 ปี");
-    expect(html).toContain("乙巳");
+    expect(html).toContain('data-current-luck-symbol="巳"');
+    expect(html).toContain("ช่วงอายุ 31-35 · ราศีล่าง");
+    expect(html).toContain("รอบวัยจร 26-35 · 乙巳");
+    expect(html).toContain('data-dayun-direction="rtl"');
+    expect(html).toContain("26-30");
+    expect(html).toContain("31-35");
     expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("3.07");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");
     expect(html).toContain(
       "Builds influence patiently, then turns preparation into visible results when timing opens.",
     );
+
+    expect(html.indexOf("16-20")).toBeLessThan(html.indexOf("6-10"));
   });
 
   test("restores the queue workspace when the URL asks for workspace=queue", () => {

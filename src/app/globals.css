@@ -972,9 +972,15 @@ textarea {
   font-size: 1.9rem;
 }
 
+.current-luck-card__cycle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
 .dayun-track {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 12px;
 }
 
@@ -997,8 +1003,43 @@ textarea {
   border-color: rgba(159, 83, 32, 0.24);
 }
 
+.dayun-card__cycle {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.dayun-card__phase-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.dayun-card__phase {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(110, 79, 48, 0.08);
+}
+
+.dayun-card__phase--current {
+  background: rgba(159, 83, 32, 0.12);
+  border-color: rgba(159, 83, 32, 0.22);
+}
+
+.dayun-card__phase-age {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.dayun-card__phase-symbol {
+  font-size: 1.65rem;
+}
+
 .dayun-card__age,
 .dayun-card__label,
+.dayun-card__phase-label,
 .transient-shen-sha-card span {
   color: var(--muted);
   font-size: 0.84rem;
