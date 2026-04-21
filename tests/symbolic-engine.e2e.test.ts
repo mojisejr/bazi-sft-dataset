@@ -49,6 +49,23 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       dayBranch: "绝",
       hourBranch: "病",
     });
+    expect(result.elementAnalysis.totalCounts).toEqual({
+      wood: 2,
+      fire: 4,
+      earth: 2,
+      metal: 2,
+      water: 0,
+    });
+    expect(result.elementAnalysis.dominantElements).toEqual(["fire"]);
+    expect(result.elementAnalysis.missingElements).toEqual(["water"]);
+    expect(result.seasonalInteraction).toMatchObject({
+      dayMasterStem: "辛",
+      monthBranch: "酉",
+      season: "autumn",
+      phase: "peak",
+      seasonLabel: "ฤดูใบไม้ร่วง",
+      metaphor: "โลหะประณีตในฤดูใบไม้ร่วง",
+    });
   });
 
   test("matches expert case2 and rejects the OCR-hallucinated day pillar", async () => {
@@ -87,6 +104,23 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       monthBranch: "病",
       dayBranch: "墓",
       hourBranch: "病",
+    });
+    expect(result.elementAnalysis.totalCounts).toEqual({
+      wood: 2,
+      fire: 1,
+      earth: 2,
+      metal: 4,
+      water: 1,
+    });
+    expect(result.elementAnalysis.dominantElements).toEqual(["metal"]);
+    expect(result.elementAnalysis.missingElements).toEqual([]);
+    expect(result.seasonalInteraction).toMatchObject({
+      dayMasterStem: "己",
+      monthBranch: "卯",
+      season: "spring",
+      phase: "peak",
+      seasonLabel: "ฤดูใบไม้ผลิ",
+      metaphor: "ดินเพาะปลูกในฤดูใบไม้ผลิ",
     });
   });
 });

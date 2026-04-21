@@ -70,6 +70,48 @@ export const ElementMetaphorSchema = z.object({
   metaphor: z.string().trim().min(1),
 });
 
+const DEFAULT_ELEMENT_COUNTS = {
+  wood: 0,
+  fire: 0,
+  earth: 0,
+  metal: 0,
+  water: 0,
+} as const;
+
+export const SupportedElementSchema = z.enum([
+  "wood",
+  "fire",
+  "earth",
+  "metal",
+  "water",
+]);
+
+export const ElementCountsSchema = z.object({
+  wood: z.number().int().nonnegative(),
+  fire: z.number().int().nonnegative(),
+  earth: z.number().int().nonnegative(),
+  metal: z.number().int().nonnegative(),
+  water: z.number().int().nonnegative(),
+});
+
+export const ElementAnalysisSchema = z.object({
+  visibleCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
+  hiddenCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
+  totalCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
+  missingElements: z.array(SupportedElementSchema).default([]),
+  dominantElements: z.array(SupportedElementSchema).default([]),
+});
+
+export const SeasonalInteractionSchema = z.object({
+  dayMasterStem: z.string().trim().min(1),
+  dayMasterElement: SupportedElementSchema,
+  monthBranch: z.string().trim().min(1),
+  season: z.enum(["spring", "summer", "autumn", "winter"]),
+  phase: z.enum(["early", "peak", "late"]),
+  seasonLabel: z.string().trim().min(1),
+  metaphor: z.string().trim().min(1),
+});
+
 export const CalculationTraceSchema = z.object({
   engine: z.enum(["lunar-js", "orthodox-override"]),
   ruleName: z.string().trim().min(1),
@@ -133,6 +175,14 @@ export const CalculatedStateSchema = z.object({
   tenGods: z.record(z.string(), z.string()),
   twelveQi: z.record(z.string(), z.string()),
   elementMetaphors: z.array(ElementMetaphorSchema).default([]),
+  elementAnalysis: ElementAnalysisSchema.default({
+    visibleCounts: DEFAULT_ELEMENT_COUNTS,
+    hiddenCounts: DEFAULT_ELEMENT_COUNTS,
+    totalCounts: DEFAULT_ELEMENT_COUNTS,
+    missingElements: [],
+    dominantElements: [],
+  }),
+  seasonalInteraction: SeasonalInteractionSchema.optional(),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
   explainable: CalculatedStateExplainableSchema.default({}),
@@ -216,6 +266,10 @@ export type ShenShaValue = z.infer<typeof ShenShaSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;
 export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
+export type SupportedElementValue = z.infer<typeof SupportedElementSchema>;
+export type ElementCountsValue = z.infer<typeof ElementCountsSchema>;
+export type ElementAnalysisValue = z.infer<typeof ElementAnalysisSchema>;
+export type SeasonalInteractionValue = z.infer<typeof SeasonalInteractionSchema>;
 export type CalculationTraceValue = z.infer<typeof CalculationTraceSchema>;
 export type ExplainableValue<T> = {
   value: T;

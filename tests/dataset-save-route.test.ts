@@ -215,8 +215,13 @@ describe("createSaveDatasetHandler", () => {
     });
     const handler = createSaveDatasetHandler({ repository, authenticate });
     const requestBody = createRequestBody();
-
-    delete requestBody.annotationData.sinsaeProofNote;
+    const invalidRequestBody = {
+      ...requestBody,
+      annotationData: {
+        version: requestBody.annotationData.version,
+        dimensions: requestBody.annotationData.dimensions,
+      },
+    };
 
     const response = await handler(
       new Request("http://localhost/api/dataset/save", {
@@ -224,7 +229,7 @@ describe("createSaveDatasetHandler", () => {
         headers: {
           "content-type": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify(invalidRequestBody),
       }),
     );
 

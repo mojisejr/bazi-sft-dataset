@@ -349,6 +349,7 @@ function buildSystemInstruction() {
     "Write every field in Thai.",
     "Use only the provided raw_input, calculated_state, and reference-case style signals.",
     "Do not invent new chart facts, ages, or stars that are absent from calculated_state.",
+    "When elementAnalysis or seasonalInteraction are present, use them as the canonical source instead of re-inferring elemental balance from scratch.",
     "The tone must feel like a private Thai Bazi report: direct, concrete, compassionate, metaphor-rich, and never generic marketing copy.",
     "Every thought_process and final_prediction must be complete, specific, and non-empty.",
     "supporting_signals must contain short factual strings derived from the chart.",
@@ -382,6 +383,8 @@ function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
       meaning: entry.meaning,
     })),
     elementMetaphors: calculatedState.elementMetaphors,
+    elementAnalysis: calculatedState.elementAnalysis,
+    seasonalInteraction: calculatedState.seasonalInteraction ?? null,
     currentDaYun,
     currentDaYunPhase: currentDaYun?.currentPhase
       ? currentDaYun.currentPhase === "upper"

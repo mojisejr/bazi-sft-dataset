@@ -1512,6 +1512,40 @@ textarea {
   gap: 16px;
 }
 
+.core-persona__seasonal {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(110, 79, 48, 0.12);
+  background: linear-gradient(135deg, rgba(255, 244, 230, 0.96) 0%, rgba(250, 234, 213, 0.9) 100%);
+}
+
+.core-persona__seasonal h4,
+.core-persona__seasonal-copy,
+.core-persona__analysis-summary p,
+.core-persona__element-card span,
+.core-persona__element-card strong,
+.core-persona__eyebrow {
+  margin: 0;
+}
+
+.core-persona__eyebrow {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.core-persona__seasonal h4 {
+  font-size: clamp(1.2rem, 1rem + 0.45vw, 1.55rem);
+}
+
+.core-persona__seasonal-copy {
+  color: var(--muted);
+}
+
 .core-persona__hero {
   display: grid;
   gap: 8px;
@@ -1572,6 +1606,36 @@ textarea {
   font-size: 0.98rem;
 }
 
+.core-persona__element-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.core-persona__element-card {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(110, 79, 48, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.core-persona__element-card span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.core-persona__element-card strong {
+  font-size: 1.2rem;
+}
+
+.core-persona__analysis-summary {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
 .core-persona__list {
   margin: 0;
   padding-left: 18px;
@@ -1597,7 +1661,8 @@ textarea {
 
 @media (max-width: 760px) {
   .core-persona__grid,
-  .strength-breakdown__grid {
+  .strength-breakdown__grid,
+  .core-persona__element-grid {
     grid-template-columns: 1fr;
   }
 }

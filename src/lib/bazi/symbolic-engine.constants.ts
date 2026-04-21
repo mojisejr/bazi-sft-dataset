@@ -32,6 +32,16 @@ export const BRANCH_ORDER = [
   "亥",
 ] as const;
 
+export const FIVE_ELEMENT_ORDER = ["wood", "fire", "earth", "metal", "water"] as const;
+
+export const ELEMENT_LABELS_TH = {
+  wood: "ไม้",
+  fire: "ไฟ",
+  earth: "ดิน",
+  metal: "ทอง",
+  water: "น้ำ",
+} as const;
+
 export const STEM_TO_ELEMENT = {
   甲: "wood",
   乙: "wood",
@@ -80,6 +90,34 @@ export const SUPPORT_ELEMENT_METAPHORS = {
   earth: "earth that condenses pressure into ore and tools",
   metal: "metal that channels water into clean and directed flow",
   water: "water that feeds root systems and keeps growth flexible",
+} as const;
+
+export const MONTH_BRANCH_SEASONAL_PROFILE = {
+  寅: { season: "spring", phase: "early", seasonLabel: "ต้นฤดูใบไม้ผลิ" },
+  卯: { season: "spring", phase: "peak", seasonLabel: "ฤดูใบไม้ผลิ" },
+  辰: { season: "spring", phase: "late", seasonLabel: "ปลายฤดูใบไม้ผลิ" },
+  巳: { season: "summer", phase: "early", seasonLabel: "ต้นฤดูร้อน" },
+  午: { season: "summer", phase: "peak", seasonLabel: "ฤดูร้อน" },
+  未: { season: "summer", phase: "late", seasonLabel: "ปลายฤดูร้อน" },
+  申: { season: "autumn", phase: "early", seasonLabel: "ต้นฤดูใบไม้ร่วง" },
+  酉: { season: "autumn", phase: "peak", seasonLabel: "ฤดูใบไม้ร่วง" },
+  戌: { season: "autumn", phase: "late", seasonLabel: "ปลายฤดูใบไม้ร่วง" },
+  亥: { season: "winter", phase: "early", seasonLabel: "ต้นฤดูหนาว" },
+  子: { season: "winter", phase: "peak", seasonLabel: "ฤดูหนาว" },
+  丑: { season: "winter", phase: "late", seasonLabel: "ปลายฤดูหนาว" },
+} as const;
+
+export const DAY_MASTER_SEASONAL_NOUNS_TH = {
+  甲: "ต้นไม้ใหญ่",
+  乙: "เถาไม้",
+  丙: "ดวงอาทิตย์",
+  丁: "เปลวเทียน",
+  戊: "ภูเขา",
+  己: "ดินเพาะปลูก",
+  庚: "โลหะดิบ",
+  辛: "โลหะประณีต",
+  壬: "สายน้ำใหญ่",
+  癸: "สายฝน",
 } as const;
 
 export const STAGE_WEIGHTS = {

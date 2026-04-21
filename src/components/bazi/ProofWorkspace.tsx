@@ -321,6 +321,8 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
 
             <CorePersonaSurface
               persona={record.calculatedState.sixtyJiaziCorePersona}
+              elementAnalysis={record.calculatedState.elementAnalysis}
+              seasonalInteraction={record.calculatedState.seasonalInteraction}
               title="แกนบุคลิกสำหรับงานตรวจ"
               kicker="Core Persona For Review"
             />

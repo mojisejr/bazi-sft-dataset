@@ -444,7 +444,11 @@ export function CalculatedBoard({
 
             </section>
 
-            <CorePersonaSurface persona={calculatedState.sixtyJiaziCorePersona} />
+            <CorePersonaSurface
+              persona={calculatedState.sixtyJiaziCorePersona}
+              elementAnalysis={calculatedState.elementAnalysis}
+              seasonalInteraction={calculatedState.seasonalInteraction}
+            />
 
             <StrengthScoreBreakdown
               score={calculatedState.strengthScore}

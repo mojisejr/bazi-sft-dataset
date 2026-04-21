@@ -42,6 +42,10 @@ import {
   buildElementMetaphors,
   buildStrengthScoreExplainable,
 } from "@/lib/bazi/symbolic-engine.strength";
+import {
+  buildElementAnalysis,
+  buildSeasonalInteraction,
+} from "@/lib/bazi/symbolic-engine.seasonal";
 import type {
   BaziKnowledgeRepository,
   BaziStructuralState,
@@ -200,6 +204,8 @@ export async function calculateBaziChart(
     hourBranch: hourStage?.stageNameChinese ?? eightChar.getTimeDiShi(),
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
+  const elementAnalysis = buildElementAnalysis(pillars);
+  const seasonalInteraction = buildSeasonalInteraction(dayMasterStem, pillars.month.branch);
   const strengthScore = buildStrengthScoreExplainable(
     dayMasterStem,
     pillars,
@@ -242,6 +248,8 @@ export async function calculateBaziChart(
     },
     twelveQi: twelveQiState,
     elementMetaphors: buildElementMetaphors(dayMasterStem),
+    elementAnalysis,
+    seasonalInteraction,
     explainable: {
       mingGong,
       strengthScore,

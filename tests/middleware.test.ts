@@ -25,8 +25,12 @@ describe("proxy", () => {
 
   test("protects application routes by default", async () => {
     const proxyModule = await import("@/proxy");
+    const invokeProxy = proxyModule.proxy as unknown as (
+      auth: { protect: typeof protect },
+      request: { nextUrl: { pathname: string } },
+    ) => Promise<void>;
 
-    await proxyModule.proxy(
+    await invokeProxy(
       { protect },
       { nextUrl: { pathname: "/" } },
     );
@@ -36,8 +40,12 @@ describe("proxy", () => {
 
   test("leaves the sign-in route public", async () => {
     const proxyModule = await import("@/proxy");
+    const invokeProxy = proxyModule.proxy as unknown as (
+      auth: { protect: typeof protect },
+      request: { nextUrl: { pathname: string } },
+    ) => Promise<void>;
 
-    await proxyModule.proxy(
+    await invokeProxy(
       { protect },
       { nextUrl: { pathname: "/sign-in" } },
     );

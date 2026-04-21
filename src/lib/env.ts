@@ -13,7 +13,7 @@ const envSchema = z.object({
 
 export type AppEnv = z.infer<typeof envSchema>;
 
-export function readEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
+export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
   return envSchema.parse({
     DATABASE_URL: raw.DATABASE_URL,
     GEMINI_API_KEY: raw.GEMINI_API_KEY,
@@ -28,7 +28,7 @@ export function readEnv(raw: NodeJS.ProcessEnv = process.env): AppEnv {
   });
 }
 
-export function getDatabaseUrl(raw: NodeJS.ProcessEnv = process.env): string {
+export function getDatabaseUrl(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
   const env = readEnv(raw);
 
   if (!env.DATABASE_URL) {
@@ -38,7 +38,7 @@ export function getDatabaseUrl(raw: NodeJS.ProcessEnv = process.env): string {
   return env.DATABASE_URL;
 }
 
-export function getGeminiApiKey(raw: NodeJS.ProcessEnv = process.env): string {
+export function getGeminiApiKey(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
   const env = readEnv(raw);
 
   if (!env.GEMINI_API_KEY) {

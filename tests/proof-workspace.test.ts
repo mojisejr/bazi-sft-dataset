@@ -16,20 +16,25 @@ import {
   type DatasetRecordRepository,
   type SaveDatasetAuthenticate,
 } from "@/lib/bazi/dataset-records";
-import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
+import {
+  CalculatedStateSchema,
+  DraftAnnotationDataSchema,
+  REQUIRED_ANNOTATION_DIMENSION_NAMES,
+  RawInputSchema,
+} from "@/lib/bazi/schema-types";
 
 function createProofRecord() {
   return {
     id: "f1d128dc-8a32-4659-88c0-e42dc742b171",
-    rawInput: {
+    rawInput: RawInputSchema.parse({
       birthDate: "1992-08-21",
       birthTime: "14:35",
       gender: "female",
       province: "Bangkok",
       calendarSystem: "solar",
       timezone: "Asia/Bangkok",
-    },
-    calculatedState: {
+    }),
+    calculatedState: CalculatedStateSchema.parse({
       fourPillars: {
         year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
@@ -55,6 +60,40 @@ function createProofRecord() {
         hourBranch: "沐浴",
       },
       elementMetaphors: [],
+      elementAnalysis: {
+        visibleCounts: {
+          wood: 0,
+          fire: 1,
+          earth: 1,
+          metal: 1,
+          water: 0,
+        },
+        hiddenCounts: {
+          wood: 3,
+          fire: 1,
+          earth: 3,
+          metal: 1,
+          water: 2,
+        },
+        totalCounts: {
+          wood: 3,
+          fire: 2,
+          earth: 4,
+          metal: 2,
+          water: 2,
+        },
+        missingElements: [],
+        dominantElements: ["earth"],
+      },
+      seasonalInteraction: {
+        dayMasterStem: "己",
+        dayMasterElement: "earth",
+        monthBranch: "申",
+        season: "autumn",
+        phase: "early",
+        seasonLabel: "ต้นฤดูใบไม้ร่วง",
+        metaphor: "ดินเพาะปลูกในต้นฤดูใบไม้ร่วง",
+      },
       sixtyJiaziCorePersona: {
         code: "己巳",
         narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
@@ -95,14 +134,14 @@ function createProofRecord() {
           },
         },
       },
-    },
+    }),
     intentDomain: "general",
     metadata: {
       customerName: "สมบัติ",
       sourceFile: "/tmp/example-cases.csv",
       sourceRow: 2,
     },
-    annotationData: {
+    annotationData: DraftAnnotationDataSchema.parse({
       version: "1.6",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
@@ -111,7 +150,7 @@ function createProofRecord() {
         supporting_signals: [],
       })),
       sinsaeProofNote: "ตรวจโครงสร้างก่อนเริ่มเกลา",
-    },
+    }),
     status: "draft" as const,
     annotatorId: "agent_gpt4o",
     createdAt: "2026-04-17T00:00:00.000Z",
@@ -152,6 +191,10 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("สมบัติ");
     expect(html).toContain("แกนบุคลิกสำหรับงานตรวจ");
     expect(html).toContain('data-core-persona="available"');
+    expect(html).toContain('data-seasonal-metaphor="available"');
+    expect(html).toContain('data-element-analysis="available"');
+    expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
+    expect(html).toContain("ธาตุนำ ดิน");
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("สมการคะแนนพลังสำหรับงานตรวจ");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");

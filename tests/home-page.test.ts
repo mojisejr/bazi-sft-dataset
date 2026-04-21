@@ -166,6 +166,40 @@ describe("BaziTrainerWorkspace", () => {
           metaphor: "fire that bakes the soil into useful ground",
         },
       ],
+      elementAnalysis: {
+        visibleCounts: {
+          wood: 0,
+          fire: 0,
+          earth: 2,
+          metal: 1,
+          water: 1,
+        },
+        hiddenCounts: {
+          wood: 1,
+          fire: 2,
+          earth: 2,
+          metal: 3,
+          water: 2,
+        },
+        totalCounts: {
+          wood: 1,
+          fire: 2,
+          earth: 4,
+          metal: 4,
+          water: 3,
+        },
+        missingElements: [],
+        dominantElements: ["earth", "metal"],
+      },
+      seasonalInteraction: {
+        dayMasterStem: "己",
+        dayMasterElement: "earth",
+        monthBranch: "申",
+        season: "autumn",
+        phase: "early",
+        seasonLabel: "ต้นฤดูใบไม้ร่วง",
+        metaphor: "ดินเพาะปลูกในต้นฤดูใบไม้ร่วง",
+      },
       sixtyJiaziCorePersona: {
         code: "己巳",
         narrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
@@ -262,6 +296,12 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ดูวิธีคำนวณคะแนนพลัง");
     expect(html).toContain("แกนบุคลิกพื้นฐาน");
     expect(html).toContain('data-core-persona="available"');
+    expect(html).toContain('data-seasonal-metaphor="available"');
+    expect(html).toContain('data-element-analysis="available"');
+    expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
+    expect(html).toContain("ธาตุนำ ดิน");
+    expect(html).toContain("ธาตุนำ ทอง");
+    expect(html).toContain("Element Distribution");
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
     expect(html).toContain("Near solar-term boundary.");

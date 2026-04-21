@@ -6,7 +6,10 @@ import {
   createBaziUserPrompt,
   transformReviewedRecordToSftExample,
 } from "@/lib/bazi/export-sft-dataset";
-import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
+import {
+  CalculatedStateSchema,
+  REQUIRED_ANNOTATION_DIMENSION_NAMES,
+} from "@/lib/bazi/schema-types";
 
 function createReviewedRecord() {
   return {
@@ -19,7 +22,7 @@ function createReviewedRecord() {
       calendarSystem: "solar",
       timezone: "Asia/Bangkok",
     },
-    calculatedState: {
+    calculatedState: CalculatedStateSchema.parse({
       fourPillars: {
         year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
         month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
@@ -50,7 +53,7 @@ function createReviewedRecord() {
         narrative: "Measured earth that grows through patience and timing.",
         precedenceNotes: ["Respect seasonal balance before reading annual timing."],
       },
-    },
+    }),
     intentDomain: "wealth",
     metadata: {
       customerName: "สมบัติ",

@@ -242,6 +242,21 @@ describe("calculateBaziChart", () => {
       result: 3.51,
     });
     expect(Array.isArray(result.explainable.strengthScore?.trace?.rawVariables?.visibleContributions)).toBe(true);
+    expect(result.elementAnalysis.totalCounts).toEqual({
+      wood: 1,
+      fire: 2,
+      earth: 6,
+      metal: 4,
+      water: 3,
+    });
+    expect(result.seasonalInteraction).toMatchObject({
+      dayMasterStem: "己",
+      monthBranch: "申",
+      season: "autumn",
+      phase: "early",
+      seasonLabel: "ต้นฤดูใบไม้ร่วง",
+      metaphor: "ดินเพาะปลูกในต้นฤดูใบไม้ร่วง",
+    });
   });
 
   test("keeps historical Bangkok births on fixed regional offsets instead of political DST", async () => {
@@ -374,6 +389,14 @@ describe("CalculatedStateSchema", () => {
     expect(parsed.shenSha).toEqual([]);
     expect(parsed.compatibilityMatrixProfiles).toEqual([]);
     expect(parsed.explainable).toEqual({});
+    expect(parsed.elementAnalysis.totalCounts).toEqual({
+      wood: 0,
+      fire: 0,
+      earth: 0,
+      metal: 0,
+      water: 0,
+    });
+    expect(parsed.seasonalInteraction).toBeUndefined();
     expect(parsed.mingGong).toBeUndefined();
     expect(parsed.liuNian).toBeUndefined();
     expect(parsed.sixtyJiaziCorePersona?.semanticNotes ?? []).toEqual([]);
