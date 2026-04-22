@@ -90,6 +90,47 @@ function formatRawInput(rawInput: RawInputValue) {
   return lines.join("\n");
 }
 
+function formatElementCounts(
+  label: string,
+  counts: CalculatedStateValue["elementAnalysis"]["totalCounts"],
+) {
+  return `${label}: ${Object.entries(counts)
+    .map(([element, value]) => `${element}=${value}`)
+    .join(", ")}`;
+}
+
+function formatElementStrengths(calculatedState: CalculatedStateValue) {
+  const strengths = calculatedState.elementAnalysis?.elementStrengths;
+
+  if (!strengths?.length) {
+    return "none";
+  }
+
+  return strengths
+    .map(({ element, strength, rooted, seasonalSupport }) => (
+      `${element}=strength:${strength},rooted:${rooted ? "yes" : "no"},seasonal:${seasonalSupport}`
+    ))
+    .join(" | ");
+}
+
+function formatPrecedenceNoteSignals(calculatedState: CalculatedStateValue) {
+  const signals = calculatedState.sixtyJiaziCorePersona?.precedenceNoteSignals;
+
+  if (!signals?.length) {
+    return "none";
+  }
+
+  return signals
+    .map(({ key, params }) => {
+      const formattedParams = Object.entries(params)
+        .map(([paramKey, value]) => `${paramKey}=${value}`)
+        .join(", ");
+
+      return formattedParams.length > 0 ? `${key}(${formattedParams})` : key;
+    })
+    .join(" | ");
+}
+
 function formatCalculatedState(calculatedState: CalculatedStateValue) {
   const tenGods = Object.entries(calculatedState.tenGods)
     .map(([key, value]) => `${key}=${value}`)
@@ -113,6 +154,23 @@ function formatCalculatedState(calculatedState: CalculatedStateValue) {
         .filter(Boolean)
         .join(" | ")
     : "none";
+  const seasonalInteraction = calculatedState.seasonalInteraction
+    ? [
+        `season=${calculatedState.seasonalInteraction.season}`,
+        `phase=${calculatedState.seasonalInteraction.phase}`,
+        `label=${calculatedState.seasonalInteraction.seasonLabel}`,
+        `metaphor=${calculatedState.seasonalInteraction.metaphor}`,
+      ].join(" | ")
+    : "none";
+  const dominantElements = calculatedState.elementAnalysis?.dominantElements.length
+    ? calculatedState.elementAnalysis.dominantElements.join(", ")
+    : "none";
+  const missingElements = calculatedState.elementAnalysis?.missingElements.length
+    ? calculatedState.elementAnalysis.missingElements.join(", ")
+    : "none";
+  const semanticNotes = calculatedState.sixtyJiaziCorePersona?.semanticNotes?.length
+    ? calculatedState.sixtyJiaziCorePersona.semanticNotes.join(" | ")
+    : "none";
 
   return [
     formatPillar("Year Pillar", calculatedState.fourPillars.year),
@@ -124,7 +182,22 @@ function formatCalculatedState(calculatedState: CalculatedStateValue) {
     `- Ten Gods: ${tenGods}`,
     `- Twelve Qi: ${twelveQi}`,
     `- Element Metaphors: ${metaphors}`,
+    `- Seasonal Interaction: ${seasonalInteraction}`,
+    calculatedState.elementAnalysis
+      ? `- ${formatElementCounts("Visible Element Counts", calculatedState.elementAnalysis.visibleCounts)}`
+      : "- Visible Element Counts: none",
+    calculatedState.elementAnalysis
+      ? `- ${formatElementCounts("Hidden Element Counts", calculatedState.elementAnalysis.hiddenCounts)}`
+      : "- Hidden Element Counts: none",
+    calculatedState.elementAnalysis
+      ? `- ${formatElementCounts("Total Element Counts", calculatedState.elementAnalysis.totalCounts)}`
+      : "- Total Element Counts: none",
+    `- Dominant Elements: ${dominantElements}`,
+    `- Missing Elements: ${missingElements}`,
+    `- Element Strengths: ${formatElementStrengths(calculatedState)}`,
     `- Sixty Jiazi Core Persona: ${persona}`,
+    `- Semantic Notes: ${semanticNotes}`,
+    `- Precedence Note Signals: ${formatPrecedenceNoteSignals(calculatedState)}`,
   ].join("\n");
 }
 

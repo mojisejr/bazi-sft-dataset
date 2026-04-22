@@ -42,6 +42,47 @@ function createReviewedRecord() {
         dayBranch: "帝旺",
         hourBranch: "冠带",
       },
+      elementAnalysis: {
+        visibleCounts: {
+          wood: 0,
+          fire: 1,
+          earth: 1,
+          metal: 1,
+          water: 1,
+        },
+        hiddenCounts: {
+          wood: 1,
+          fire: 1,
+          earth: 3,
+          metal: 2,
+          water: 2,
+        },
+        totalCounts: {
+          wood: 1,
+          fire: 2,
+          earth: 4,
+          metal: 3,
+          water: 3,
+        },
+        missingElements: [],
+        dominantElements: ["earth"],
+        elementStrengths: [
+          { element: "wood", rooted: true, seasonalSupport: "seasonal-drained", strength: "weak" },
+          { element: "fire", rooted: true, seasonalSupport: "seasonal-drained", strength: "balanced" },
+          { element: "earth", rooted: true, seasonalSupport: "seasonal-drained", strength: "strong" },
+          { element: "metal", rooted: true, seasonalSupport: "seasonal-peak", strength: "strong" },
+          { element: "water", rooted: true, seasonalSupport: "seasonal-support", strength: "strong" },
+        ],
+      },
+      seasonalInteraction: {
+        dayMasterStem: "己",
+        dayMasterElement: "earth",
+        monthBranch: "申",
+        season: "autumn",
+        phase: "early",
+        seasonLabel: "ต้นฤดูใบไม้ร่วง",
+        metaphor: "fertile cultivated soil in early autumn",
+      },
       elementMetaphors: [
         {
           element: "earth",
@@ -51,7 +92,21 @@ function createReviewedRecord() {
       sixtyJiaziCorePersona: {
         code: "己巳",
         narrative: "Measured earth that grows through patience and timing.",
+        semanticNotes: [
+          "โทนธาตุของ 60 กะจื่อวันนี้คือ ไม้",
+          "ชั้น 12 เชี่ยงแซของกะจื่อวันอยู่ที่ ตี้อ๋วง",
+        ],
         precedenceNotes: ["Respect seasonal balance before reading annual timing."],
+        precedenceNoteSignals: [
+          {
+            key: "SOLAR_TERM_BOUNDARY_NEAR",
+            params: {
+              hours: "1.50",
+              solarTermName: "立秋",
+              boundaryAt: "1992-08-21T15:00:00",
+            },
+          },
+        ],
       },
     }),
     intentDomain: "wealth",
@@ -85,6 +140,9 @@ describe("phase 4 export transformer", () => {
     expect(prompt).toContain("Calculated State:");
     expect(prompt).toContain("Year Pillar");
     expect(prompt).toContain("Sixty Jiazi Core Persona");
+    expect(prompt).toContain("Seasonal Interaction: season=autumn | phase=early | label=ต้นฤดูใบไม้ร่วง");
+    expect(prompt).toContain("Element Strengths: wood=strength:weak,rooted:yes,seasonal:seasonal-drained");
+    expect(prompt).toContain("Precedence Note Signals: SOLAR_TERM_BOUNDARY_NEAR(hours=1.50, solarTermName=立秋, boundaryAt=1992-08-21T15:00:00)");
     expect(prompt).not.toContain("สมบัติ");
   });
 
