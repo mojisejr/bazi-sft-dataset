@@ -190,6 +190,13 @@ describe("BaziTrainerWorkspace", () => {
         },
         missingElements: [],
         dominantElements: ["earth", "metal"],
+        elementStrengths: [
+          { element: "wood", rooted: false, seasonalSupport: "seasonal-drained", strength: "weak" },
+          { element: "fire", rooted: true, seasonalSupport: "seasonal-drained", strength: "balanced" },
+          { element: "earth", rooted: true, seasonalSupport: "seasonal-support", strength: "strong" },
+          { element: "metal", rooted: true, seasonalSupport: "seasonal-peak", strength: "strong" },
+          { element: "water", rooted: true, seasonalSupport: "seasonal-support", strength: "balanced" },
+        ],
       },
       seasonalInteraction: {
         dayMasterStem: "己",
@@ -210,6 +217,16 @@ describe("BaziTrainerWorkspace", () => {
           "ชั้น 12 เชี่ยงแซของกะจื่อวันอยู่ที่ 帝旺",
         ],
         precedenceNotes: ["Near solar-term boundary."],
+        precedenceNoteSignals: [
+          {
+            key: "SOLAR_TERM_BOUNDARY_NEAR",
+            params: {
+              hours: "1.50",
+              solarTermName: "立秋",
+              boundaryAt: "1992-08-21T15:00:00",
+            },
+          },
+        ],
       },
       explainable: {
         mingGong: {
@@ -301,10 +318,13 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
     expect(html).toContain("ธาตุนำ ดิน");
     expect(html).toContain("ธาตุนำ ทอง");
-    expect(html).toContain("Element Distribution");
+    expect(html).toContain("ดุลธาตุและกำลังธาตุ");
+    expect(html).toContain("กำลังเด่น");
+    expect(html).toContain("มีราก");
+    expect(html).toContain("ฤดูหนุนสูง");
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
-    expect(html).toContain("Near solar-term boundary.");
+    expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
     expect(html).toContain("สมการคะแนนพลัง");
     expect(html).toContain("แรงจากก้านฟ้าที่มองเห็น");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");

@@ -84,6 +84,13 @@ function createProofRecord() {
         },
         missingElements: [],
         dominantElements: ["earth"],
+        elementStrengths: [
+          { element: "wood", rooted: true, seasonalSupport: "seasonal-support", strength: "balanced" },
+          { element: "fire", rooted: true, seasonalSupport: "seasonal-drained", strength: "balanced" },
+          { element: "earth", rooted: true, seasonalSupport: "seasonal-support", strength: "strong" },
+          { element: "metal", rooted: true, seasonalSupport: "seasonal-peak", strength: "balanced" },
+          { element: "water", rooted: true, seasonalSupport: "seasonal-support", strength: "balanced" },
+        ],
       },
       seasonalInteraction: {
         dayMasterStem: "己",
@@ -104,6 +111,16 @@ function createProofRecord() {
           "ชั้น 12 เชี่ยงแซของกะจื่อวันอยู่ที่ 帝旺",
         ],
         precedenceNotes: ["Near solar-term boundary."],
+        precedenceNoteSignals: [
+          {
+            key: "SOLAR_TERM_BOUNDARY_NEAR",
+            params: {
+              hours: "1.50",
+              solarTermName: "立秋",
+              boundaryAt: "1992-08-21T15:00:00",
+            },
+          },
+        ],
       },
       daYun: [],
       shenSha: [],
@@ -195,7 +212,11 @@ describe("ProofWorkspace", () => {
     expect(html).toContain('data-element-analysis="available"');
     expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
     expect(html).toContain("ธาตุนำ ดิน");
+    expect(html).toContain("ดุลธาตุและกำลังธาตุ");
+    expect(html).toContain("กำลังเด่น");
+    expect(html).toContain("มีราก");
     expect(html).toContain("โทนธาตุ fire");
+    expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
     expect(html).toContain("สมการคะแนนพลังสำหรับงานตรวจ");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain('data-strength-breakdown="available"');

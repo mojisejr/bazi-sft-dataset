@@ -1614,11 +1614,18 @@ textarea {
 
 .core-persona__element-card {
   display: grid;
-  gap: 4px;
+  gap: 8px;
   padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(110, 79, 48, 0.08);
   background: rgba(255, 255, 255, 0.78);
+}
+
+.core-persona__element-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .core-persona__element-card span {
@@ -1628,6 +1635,43 @@ textarea {
 
 .core-persona__element-card strong {
   font-size: 1.2rem;
+}
+
+.core-persona__strength-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.core-persona__strength-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.core-persona__strength-badge--strong {
+  background: rgba(69, 106, 50, 0.12);
+  color: var(--success);
+}
+
+.core-persona__strength-badge--balanced {
+  background: rgba(159, 83, 32, 0.12);
+  color: var(--accent);
+}
+
+.core-persona__strength-badge--weak {
+  background: rgba(154, 60, 53, 0.1);
+  color: var(--danger);
+}
+
+.core-persona__strength-badge--missing {
+  background: rgba(110, 79, 48, 0.08);
+  color: var(--muted);
 }
 
 .core-persona__analysis-summary {

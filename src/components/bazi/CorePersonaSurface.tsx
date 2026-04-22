@@ -1,4 +1,8 @@
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
+import {
+  getElementStrengthBadges,
+  localizeContextRuleNotes,
+} from "@/lib/bazi/context-dictionary";
 import { ELEMENT_LABELS_TH, FIVE_ELEMENT_ORDER } from "@/lib/bazi/symbolic-engine.constants";
 
 type CorePersonaSurfaceProps = {
@@ -19,6 +23,12 @@ export function CorePersonaSurface({
   const dominantElements = elementAnalysis?.dominantElements ?? [];
   const missingElements = elementAnalysis?.missingElements ?? [];
   const totalCounts = elementAnalysis?.totalCounts;
+  const elementStrengthMap = new Map(
+    (elementAnalysis?.elementStrengths ?? []).map((strength) => [strength.element, strength]),
+  );
+  const localizedPrecedenceNotes = persona?.precedenceNoteSignals?.length
+    ? localizeContextRuleNotes(persona.precedenceNoteSignals, persona.precedenceNotes)
+    : (persona?.precedenceNotes ?? []);
 
   return (
     <section
@@ -34,7 +44,7 @@ export function CorePersonaSurface({
 
       {seasonalInteraction ? (
         <article className="core-persona__seasonal" data-seasonal-metaphor="available">
-          <p className="core-persona__eyebrow">Seasonal Metaphor</p>
+          <p className="core-persona__eyebrow">อุปมาเชิงฤดูกาล</p>
           <h4>{seasonalInteraction.metaphor}</h4>
           <p className="core-persona__seasonal-copy">
             {`ดิถี ${seasonalInteraction.dayMasterStem} เจอเดือน ${seasonalInteraction.monthBranch} ใน${seasonalInteraction.seasonLabel}`}
@@ -42,7 +52,7 @@ export function CorePersonaSurface({
         </article>
       ) : (
         <article className="core-persona__seasonal" data-seasonal-metaphor="missing">
-          <p className="core-persona__eyebrow">Seasonal Metaphor</p>
+          <p className="core-persona__eyebrow">อุปมาเชิงฤดูกาล</p>
           <p className="core-persona__empty">รอบนี้ engine ยังไม่ได้ส่ง seasonal interaction เข้ามา</p>
         </article>
       )}
@@ -74,14 +84,32 @@ export function CorePersonaSurface({
 
       {totalCounts ? (
         <article className="core-persona__panel" data-element-analysis="available">
-          <h4>Element Distribution</h4>
+          <h4>ดุลธาตุและกำลังธาตุ</h4>
           <div className="core-persona__element-grid">
-            {FIVE_ELEMENT_ORDER.map((element) => (
-              <div key={element} className="core-persona__element-card">
-                <span>{ELEMENT_LABELS_TH[element]}</span>
-                <strong>{totalCounts[element]}</strong>
-              </div>
-            ))}
+            {FIVE_ELEMENT_ORDER.map((element) => {
+              const elementStrength = elementStrengthMap.get(element);
+
+              return (
+                <div key={element} className="core-persona__element-card">
+                  <div className="core-persona__element-card-header">
+                    <span>{ELEMENT_LABELS_TH[element]}</span>
+                    <strong>{totalCounts[element]}</strong>
+                  </div>
+                  {elementStrength ? (
+                    <div className="core-persona__strength-badges" data-element-strengths="available">
+                      {getElementStrengthBadges(elementStrength).map((badge) => (
+                        <span
+                          key={`${element}-${badge}`}
+                          className={`core-persona__strength-badge core-persona__strength-badge--${elementStrength.strength}`}
+                        >
+                          {badge}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
           <div className="core-persona__analysis-summary">
             <p>{`ธาตุนำ: ${dominantElements.length > 0 ? dominantElements.map((element) => ELEMENT_LABELS_TH[element]).join(" · ") : "ยังไม่ชัด"}`}</p>
@@ -90,7 +118,7 @@ export function CorePersonaSurface({
         </article>
       ) : (
         <article className="core-persona__panel" data-element-analysis="missing">
-          <h4>Element Distribution</h4>
+          <h4>ดุลธาตุและกำลังธาตุ</h4>
           <p className="core-persona__empty">รอบนี้ engine ยังไม่ได้สรุปการกระจายธาตุเข้ามา</p>
         </article>
       )}
@@ -113,10 +141,10 @@ export function CorePersonaSurface({
 
         <article className="core-persona__panel">
           <h4>หมายเหตุเชิงกฎและบริบท</h4>
-          {persona?.precedenceNotes.length ? (
+          {localizedPrecedenceNotes.length ? (
             <ul className="core-persona__list">
-              {persona.precedenceNotes.map((note) => (
-                <li key={note}>{note}</li>
+              {localizedPrecedenceNotes.map((note, index) => (
+                <li key={`${index}-${note}`}>{note}</li>
               ))}
             </ul>
           ) : (
