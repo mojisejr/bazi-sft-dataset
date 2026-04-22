@@ -1,6 +1,7 @@
 import type {
   CalculatedStateValue,
   ElementAnalysisValue,
+  ElementStrengthValue,
   SeasonalInteractionValue,
 } from "@/lib/bazi/schema-types";
 import {
@@ -12,6 +13,17 @@ import {
 import type { SupportedElement } from "@/lib/bazi/symbolic-engine.types";
 
 type ElementCounts = ElementAnalysisValue["totalCounts"];
+type ElementStrengths = ElementAnalysisValue["elementStrengths"];
+
+const SEASONAL_SUPPORT_MATRIX: Record<
+  SeasonalInteractionValue["season"],
+  { peak: SupportedElement; support: SupportedElement }
+> = {
+  spring: { peak: "wood", support: "fire" },
+  summer: { peak: "fire", support: "earth" },
+  autumn: { peak: "metal", support: "water" },
+  winter: { peak: "water", support: "wood" },
+};
 
 function createEmptyCounts(): ElementCounts {
   return {
@@ -37,6 +49,77 @@ function incrementCount(counts: ElementCounts, stem: string) {
   const element = resolveElementFromStem(stem);
 
   counts[element] += 1;
+}
+
+function resolveSeasonalSupport(
+  element: SupportedElement,
+  monthBranch: string,
+): ElementStrengthValue["seasonalSupport"] {
+  const season = MONTH_BRANCH_SEASONAL_PROFILE[
+    monthBranch as keyof typeof MONTH_BRANCH_SEASONAL_PROFILE
+  ]?.season;
+
+  if (!season) {
+    return "seasonal-drained";
+  }
+
+  const profile = SEASONAL_SUPPORT_MATRIX[season];
+
+  if (profile.peak === element) {
+    return "seasonal-peak";
+  }
+
+  if (profile.support === element) {
+    return "seasonal-support";
+  }
+
+  return "seasonal-drained";
+}
+
+function resolveStrengthLevel(
+  count: number,
+  rooted: boolean,
+  seasonalSupport: ElementStrengthValue["seasonalSupport"],
+): ElementStrengthValue["strength"] {
+  if (count === 0) {
+    return "missing";
+  }
+
+  const supportScore =
+    seasonalSupport === "seasonal-peak"
+      ? 2
+      : seasonalSupport === "seasonal-support"
+        ? 1
+        : 0;
+  const score = count + (rooted ? 1 : 0) + supportScore;
+
+  if (score >= 5) {
+    return "strong";
+  }
+
+  if (score <= 2) {
+    return "weak";
+  }
+
+  return "balanced";
+}
+
+function buildElementStrengths(
+  monthBranch: string,
+  hiddenCounts: ElementCounts,
+  totalCounts: ElementCounts,
+): ElementStrengths {
+  return FIVE_ELEMENT_ORDER.map((element) => {
+    const rooted = hiddenCounts[element] > 0;
+    const seasonalSupport = resolveSeasonalSupport(element, monthBranch);
+
+    return {
+      element,
+      rooted,
+      seasonalSupport,
+      strength: resolveStrengthLevel(totalCounts[element], rooted, seasonalSupport),
+    };
+  });
 }
 
 export const SEASONAL_METAPHOR_MATRIX: Record<string, Record<string, string>> = Object.fromEntries(
@@ -82,6 +165,7 @@ export function buildElementAnalysis(
       maxCount > 0
         ? FIVE_ELEMENT_ORDER.filter((element) => totalCounts[element] === maxCount)
         : [],
+    elementStrengths: buildElementStrengths(pillars.month.branch, hiddenCounts, totalCounts),
   };
 }
 

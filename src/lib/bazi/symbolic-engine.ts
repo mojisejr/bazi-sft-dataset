@@ -35,9 +35,10 @@ import {
 export { buildCompatibilityMatrixProfiles } from "@/lib/bazi/symbolic-engine.matrix";
 import { buildShenShaState } from "@/lib/bazi/symbolic-engine.shen-sha";
 import {
-  buildPrecedenceNotes,
+  buildPrecedenceNoteSignals,
   buildSixtyJiaziSemanticNotes,
 } from "@/lib/bazi/symbolic-engine.persona";
+import { renderContextRuleNoteEnglish } from "@/lib/bazi/symbolic-engine.context-notes";
 import {
   buildElementMetaphors,
   buildStrengthScoreExplainable,
@@ -221,6 +222,12 @@ export async function calculateBaziChart(
     ...loveMatrixRows,
     ...workMatrixRows,
   ]);
+  const precedenceNoteSignals = buildPrecedenceNoteSignals(
+    birthContext.birthAtHongKong,
+    solarTerms,
+    persona,
+    interactionResolution,
+  );
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
@@ -263,12 +270,10 @@ export async function calculateBaziChart(
             ? normalizeCorpusBranchSymbol(persona.twelveQiLabel)
             : undefined,
           semanticNotes: buildSixtyJiaziSemanticNotes(persona),
-          precedenceNotes: buildPrecedenceNotes(
-            birthContext.birthAtHongKong,
-            solarTerms,
-            persona,
-            interactionResolution,
+          precedenceNotes: precedenceNoteSignals.map((signal) =>
+            renderContextRuleNoteEnglish(signal),
           ),
+          precedenceNoteSignals,
         }
       : undefined,
     compatibilityMatrixProfiles,

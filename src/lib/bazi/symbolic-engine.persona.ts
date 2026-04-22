@@ -1,10 +1,15 @@
 import { NEAR_BOUNDARY_WINDOW_HOURS } from "@/lib/bazi/symbolic-engine.constants";
+import {
+  buildContextRuleNote,
+  renderContextRuleNoteEnglish,
+  uniqueContextRuleNotes,
+} from "@/lib/bazi/symbolic-engine.context-notes";
 import { normalizeCorpusBranchSymbol } from "@/lib/bazi/symbolic-engine.matrix";
 import type {
   BranchInteractionResolution,
-  SixtyJiaziPersonaRecord,
   SolarTermBoundaryContext,
   SolarTermBoundaryRecord,
+  SixtyJiaziPersonaRecord,
 } from "@/lib/bazi/symbolic-engine.types";
 
 export function buildSixtyJiaziSemanticNotes(persona: SixtyJiaziPersonaRecord | null) {
@@ -34,19 +39,23 @@ function hoursBetween(left: string, right: string) {
   return Math.abs(leftDate.getTime() - rightDate.getTime()) / (1000 * 60 * 60);
 }
 
-export function buildPrecedenceNotes(
+export function buildPrecedenceNoteSignals(
   birthAtHongKong: string,
   solarTerms: SolarTermBoundaryContext,
   persona: SixtyJiaziPersonaRecord | null,
   interactionResolution: BranchInteractionResolution,
 ) {
-  const notes = [
-    "60 Jiazi narrative supports interpretation but does not override clash-resolution logic.",
-    ...interactionResolution.precedenceNotes,
+  const signals = [
+    buildContextRuleNote("NARRATIVE_SUPPORTS_BUT_NOT_OVERRIDE"),
+    ...interactionResolution.precedenceSignals,
   ];
 
   if (persona?.twelveQiLabel) {
-    notes.push(`Canonical persona source labels this chart with twelve-qi tone ${persona.twelveQiLabel}.`);
+    signals.push(
+      buildContextRuleNote("PERSONA_TWELVE_QI_TONE", {
+        twelveQiLabel: persona.twelveQiLabel,
+      }),
+    );
   }
 
   const candidates = [solarTerms.previous, solarTerms.next]
@@ -58,10 +67,29 @@ export function buildPrecedenceNotes(
   const nearest = candidates[0];
 
   if (nearest?.entry.boundaryAt) {
-    notes.push(
-      `Birth occurs ${nearest.hours.toFixed(2)} hours from solar-term boundary ${nearest.entry.solarTermName ?? nearest.entry.label} (${nearest.entry.boundaryAt} HKT); review edge-case interpretations manually when needed.`,
+    signals.push(
+      buildContextRuleNote("SOLAR_TERM_BOUNDARY_NEAR", {
+        hours: nearest.hours.toFixed(2),
+        solarTermName: nearest.entry.solarTermName ?? nearest.entry.label,
+        label: nearest.entry.label,
+        boundaryAt: nearest.entry.boundaryAt,
+      }),
     );
   }
 
-  return notes;
+  return uniqueContextRuleNotes(signals);
+}
+
+export function buildPrecedenceNotes(
+  birthAtHongKong: string,
+  solarTerms: SolarTermBoundaryContext,
+  persona: SixtyJiaziPersonaRecord | null,
+  interactionResolution: BranchInteractionResolution,
+) {
+  return buildPrecedenceNoteSignals(
+    birthAtHongKong,
+    solarTerms,
+    persona,
+    interactionResolution,
+  ).map((signal) => renderContextRuleNoteEnglish(signal));
 }

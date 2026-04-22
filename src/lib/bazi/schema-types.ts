@@ -94,12 +94,53 @@ export const ElementCountsSchema = z.object({
   water: z.number().int().nonnegative(),
 });
 
+export const ElementSeasonalSupportSchema = z.enum([
+  "seasonal-peak",
+  "seasonal-support",
+  "seasonal-drained",
+]);
+
+export const ElementStrengthLevelSchema = z.enum([
+  "missing",
+  "weak",
+  "balanced",
+  "strong",
+]);
+
+export const ElementStrengthSchema = z.object({
+  element: SupportedElementSchema,
+  rooted: z.boolean().default(false),
+  seasonalSupport: ElementSeasonalSupportSchema,
+  strength: ElementStrengthLevelSchema,
+});
+
+export const ContextRuleNoteKeySchema = z.enum([
+  "NARRATIVE_SUPPORTS_BUT_NOT_OVERRIDE",
+  "PERSONA_TWELVE_QI_TONE",
+  "SOLAR_TERM_BOUNDARY_NEAR",
+  "ACTIVE_COMBINATION_PRECEDENCE",
+  "CLASH_NEUTRALIZED_BY_COMBINATION",
+  "ACTIVE_CLASH_OUTRANKS_PUNISHMENT",
+  "ACTIVE_PUNISHMENT_REMAINS",
+  "HARM_SUPPLEMENTARY_UNDER_HIGHER_PRECEDENCE",
+  "HARM_ACTIVE_SECONDARY",
+  "DESTRUCTION_SUPPLEMENTARY_UNDER_HIGHER_PRECEDENCE",
+  "DESTRUCTION_ACTIVE_SECONDARY",
+  "MONTH_BRANCH_CLASH_REDUCES_SEASONAL_SUPPORT",
+]);
+
+export const ContextRuleNoteSchema = z.object({
+  key: ContextRuleNoteKeySchema,
+  params: z.record(z.string(), z.string()).default({}),
+});
+
 export const ElementAnalysisSchema = z.object({
   visibleCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
   hiddenCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
   totalCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
   missingElements: z.array(SupportedElementSchema).default([]),
   dominantElements: z.array(SupportedElementSchema).default([]),
+  elementStrengths: z.array(ElementStrengthSchema).default([]),
 });
 
 export const SeasonalInteractionSchema = z.object({
@@ -137,6 +178,7 @@ export const SixtyJiaziCorePersonaSchema = z.object({
   twelveQiLabel: z.string().trim().min(1).optional(),
   semanticNotes: z.array(z.string().trim().min(1)).default([]),
   precedenceNotes: z.array(z.string().trim().min(1)).default([]),
+  precedenceNoteSignals: z.array(ContextRuleNoteSchema).default([]),
 });
 
 export const CompatibilityMatrixEntrySchema = z.object({
@@ -181,6 +223,7 @@ export const CalculatedStateSchema = z.object({
     totalCounts: DEFAULT_ELEMENT_COUNTS,
     missingElements: [],
     dominantElements: [],
+    elementStrengths: [],
   }),
   seasonalInteraction: SeasonalInteractionSchema.optional(),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
@@ -268,8 +311,13 @@ export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
 export type SupportedElementValue = z.infer<typeof SupportedElementSchema>;
 export type ElementCountsValue = z.infer<typeof ElementCountsSchema>;
+export type ElementSeasonalSupportValue = z.infer<typeof ElementSeasonalSupportSchema>;
+export type ElementStrengthLevelValue = z.infer<typeof ElementStrengthLevelSchema>;
+export type ElementStrengthValue = z.infer<typeof ElementStrengthSchema>;
 export type ElementAnalysisValue = z.infer<typeof ElementAnalysisSchema>;
 export type SeasonalInteractionValue = z.infer<typeof SeasonalInteractionSchema>;
+export type ContextRuleNoteKeyValue = z.infer<typeof ContextRuleNoteKeySchema>;
+export type ContextRuleNoteValue = z.infer<typeof ContextRuleNoteSchema>;
 export type CalculationTraceValue = z.infer<typeof CalculationTraceSchema>;
 export type ExplainableValue<T> = {
   value: T;

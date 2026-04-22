@@ -20,6 +20,11 @@ import type {
   PairInteraction,
   PillarKey,
 } from "@/lib/bazi/symbolic-engine.types";
+import {
+  buildContextRuleNote,
+  renderContextRuleNoteEnglish,
+  uniqueContextRuleNotes,
+} from "@/lib/bazi/symbolic-engine.context-notes";
 
 export function uniqueStrings(values: string[]) {
   return Array.from(new Set(values));
@@ -146,47 +151,66 @@ export function resolveBranchInteractionEffects(
   )
     ? MONTH_SEASONAL_CLASH_FACTOR
     : 1;
-  const precedenceNotes = uniqueStrings([
-    ...combinations.map(
-      (interaction) =>
-        `Active combination ${interaction.label} takes precedence over clashes touching the same branches.`,
+  const precedenceSignals = uniqueContextRuleNotes([
+    ...combinations.map((interaction) =>
+      buildContextRuleNote("ACTIVE_COMBINATION_PRECEDENCE", {
+        label: interaction.label,
+      }),
     ),
-    ...neutralizedClashes.map(
-      (interaction) =>
-        `Clash ${interaction.label} is neutralized because one of its branches first enters a combination.`,
+    ...neutralizedClashes.map((interaction) =>
+      buildContextRuleNote("CLASH_NEUTRALIZED_BY_COMBINATION", {
+        label: interaction.label,
+      }),
     ),
-    ...activeClashes.map(
-      (interaction) =>
-        `Active clash ${interaction.label} remains in force and should outrank punishment-level interpretations.`,
+    ...activeClashes.map((interaction) =>
+      buildContextRuleNote("ACTIVE_CLASH_OUTRANKS_PUNISHMENT", {
+        label: interaction.label,
+      }),
     ),
-    ...activePunishments.map(
-      (interaction) =>
-        `Punishment pattern ${interaction.label} remains active after higher-precedence interactions were resolved.`,
+    ...activePunishments.map((interaction) =>
+      buildContextRuleNote("ACTIVE_PUNISHMENT_REMAINS", {
+        label: interaction.label,
+      }),
     ),
     ...harms.map((interaction) => {
       const supplementary =
         majorConflictPillars.has(interaction.leftPillar) ||
         majorConflictPillars.has(interaction.rightPillar);
 
-      return supplementary
-        ? `Harm ${interaction.label} is present but treated as a supplementary detail because a higher-precedence interaction exists.`
-        : `Harm ${interaction.label} is active as a secondary relational signal.`;
+      return buildContextRuleNote(
+        supplementary
+          ? "HARM_SUPPLEMENTARY_UNDER_HIGHER_PRECEDENCE"
+          : "HARM_ACTIVE_SECONDARY",
+        {
+          label: interaction.label,
+        },
+      );
     }),
     ...destructions.map((interaction) => {
       const supplementary =
         majorConflictPillars.has(interaction.leftPillar) ||
         majorConflictPillars.has(interaction.rightPillar);
 
-      return supplementary
-        ? `Destruction ${interaction.label} is present but remains a supplementary note under higher-precedence interactions.`
-        : `Destruction ${interaction.label} is active as a secondary relational signal.`;
+      return buildContextRuleNote(
+        supplementary
+          ? "DESTRUCTION_SUPPLEMENTARY_UNDER_HIGHER_PRECEDENCE"
+          : "DESTRUCTION_ACTIVE_SECONDARY",
+        {
+          label: interaction.label,
+        },
+      );
     }),
     ...(monthBranchSeasonalFactor < 1
       ? [
-          `Month-branch clash reduces seasonal support weighting to ${monthBranchSeasonalFactor.toFixed(2)} until a higher-precedence combination resolves it.`,
+          buildContextRuleNote("MONTH_BRANCH_CLASH_REDUCES_SEASONAL_SUPPORT", {
+            factor: monthBranchSeasonalFactor.toFixed(2),
+          }),
         ]
       : []),
   ]);
+  const precedenceNotes = uniqueStrings(
+    precedenceSignals.map((signal) => renderContextRuleNoteEnglish(signal)),
+  );
 
   return {
     activeCombinations: uniqueStrings(combinations.map((interaction) => interaction.label)),
@@ -197,5 +221,6 @@ export function resolveBranchInteractionEffects(
     activeDestructions: uniqueStrings(destructions.map((interaction) => interaction.label)),
     monthBranchSeasonalFactor,
     precedenceNotes,
+    precedenceSignals,
   };
 }

@@ -1,5 +1,6 @@
 import type {
   CalculatedStateValue,
+  ContextRuleNoteValue,
   PillarValue,
 } from "@/lib/bazi/schema-types";
 
@@ -117,6 +118,7 @@ export type BranchInteractionResolution = {
   activeDestructions: string[];
   monthBranchSeasonalFactor: number;
   precedenceNotes: string[];
+  precedenceSignals: ContextRuleNoteValue[];
 };
 
 export type ReferencePillar = {

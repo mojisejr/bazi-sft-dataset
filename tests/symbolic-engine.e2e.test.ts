@@ -56,6 +56,22 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       metal: 2,
       water: 0,
     });
+    expect(result.elementAnalysis.elementStrengths).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          element: "fire",
+          rooted: true,
+          seasonalSupport: "seasonal-drained",
+          strength: "strong",
+        }),
+        expect.objectContaining({
+          element: "water",
+          rooted: false,
+          seasonalSupport: "seasonal-support",
+          strength: "missing",
+        }),
+      ]),
+    );
     expect(result.elementAnalysis.dominantElements).toEqual(["fire"]);
     expect(result.elementAnalysis.missingElements).toEqual(["water"]);
     expect(result.seasonalInteraction).toMatchObject({
@@ -112,6 +128,22 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       metal: 4,
       water: 1,
     });
+    expect(result.elementAnalysis.elementStrengths).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          element: "fire",
+          rooted: false,
+          seasonalSupport: "seasonal-support",
+          strength: "weak",
+        }),
+        expect.objectContaining({
+          element: "metal",
+          rooted: true,
+          seasonalSupport: "seasonal-drained",
+          strength: "strong",
+        }),
+      ]),
+    );
     expect(result.elementAnalysis.dominantElements).toEqual(["metal"]);
     expect(result.elementAnalysis.missingElements).toEqual([]);
     expect(result.seasonalInteraction).toMatchObject({

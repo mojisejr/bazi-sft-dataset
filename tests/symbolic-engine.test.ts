@@ -190,6 +190,19 @@ describe("calculateBaziChart", () => {
         expect.stringContaining("巳申"),
       ]),
     );
+    expect(result.sixtyJiaziCorePersona?.precedenceNoteSignals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          key: "NARRATIVE_SUPPORTS_BUT_NOT_OVERRIDE",
+        }),
+        expect.objectContaining({
+          key: "ACTIVE_COMBINATION_PRECEDENCE",
+          params: expect.objectContaining({
+            label: "巳申",
+          }),
+        }),
+      ]),
+    );
     expect(result.compatibilityMatrixProfiles).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -249,6 +262,22 @@ describe("calculateBaziChart", () => {
       metal: 4,
       water: 3,
     });
+    expect(result.elementAnalysis.elementStrengths).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          element: "earth",
+          rooted: true,
+          seasonalSupport: "seasonal-drained",
+          strength: "strong",
+        }),
+        expect.objectContaining({
+          element: "metal",
+          rooted: true,
+          seasonalSupport: "seasonal-peak",
+          strength: "strong",
+        }),
+      ]),
+    );
     expect(result.seasonalInteraction).toMatchObject({
       dayMasterStem: "己",
       monthBranch: "申",
@@ -396,10 +425,12 @@ describe("CalculatedStateSchema", () => {
       metal: 0,
       water: 0,
     });
+    expect(parsed.elementAnalysis.elementStrengths).toEqual([]);
     expect(parsed.seasonalInteraction).toBeUndefined();
     expect(parsed.mingGong).toBeUndefined();
     expect(parsed.liuNian).toBeUndefined();
     expect(parsed.sixtyJiaziCorePersona?.semanticNotes ?? []).toEqual([]);
+    expect(parsed.sixtyJiaziCorePersona?.precedenceNoteSignals ?? []).toEqual([]);
   });
 });
 
