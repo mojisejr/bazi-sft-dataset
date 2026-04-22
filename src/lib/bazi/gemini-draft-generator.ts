@@ -7,6 +7,12 @@ import { z } from "zod";
 
 import { ANNOTATION_DIMENSION_META } from "@/lib/bazi/annotation-dimension-meta";
 import {
+  getElementRootLabel,
+  getElementSeasonalSupportLabel,
+  getElementStrengthLabel,
+  localizeContextRuleNotes,
+} from "@/lib/bazi/context-dictionary";
+import {
   REQUIRED_ANNOTATION_DIMENSION_COUNT,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type CalculatedStateValue,
@@ -14,6 +20,7 @@ import {
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
+import { ELEMENT_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 const MAX_REFERENCE_EXCERPT_CHARS = 1_100;
@@ -343,13 +350,16 @@ async function loadReferenceCaseExamples(filePaths: readonly string[]) {
   return examples;
 }
 
-function buildSystemInstruction() {
+export function buildSystemInstruction() {
   return [
     "You are a senior Thai Bazi reader creating professional draft annotations for a human sinsae review workflow.",
     "Write every field in Thai.",
     "Use only the provided raw_input, calculated_state, and reference-case style signals.",
     "Do not invent new chart facts, ages, or stars that are absent from calculated_state.",
     "When elementAnalysis or seasonalInteraction are present, use them as the canonical source instead of re-inferring elemental balance from scratch.",
+    "When thaiContextSignals are present, use them as the human-readable Thai bridge for element strength, seasonal context, and rule notes.",
+    "Do not reduce elemental balance to counts alone when structured strength labels, rooted state, or seasonal support are available.",
+    "When precedenceNoteSignals or thaiContextSignals.contextRuleNotes are present, cite those rule notes as the canonical context order instead of inventing alternate interaction stories.",
     "The tone must feel like a private Thai Bazi report: direct, concrete, compassionate, metaphor-rich, and never generic marketing copy.",
     "Every thought_process and final_prediction must be complete, specific, and non-empty.",
     "supporting_signals must contain short factual strings derived from the chart.",
@@ -364,7 +374,44 @@ function buildDimensionBriefs() {
   ).join("\n");
 }
 
-function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
+function buildThaiContextSignals(calculatedState: CalculatedStateValue) {
+  const precedenceNoteSignals = calculatedState.sixtyJiaziCorePersona?.precedenceNoteSignals ?? [];
+  const precedenceNotes = calculatedState.sixtyJiaziCorePersona?.precedenceNotes ?? [];
+
+  return {
+    seasonalInteraction: calculatedState.seasonalInteraction
+      ? {
+          seasonLabel: calculatedState.seasonalInteraction.seasonLabel,
+          metaphor: calculatedState.seasonalInteraction.metaphor,
+        }
+      : null,
+    dominantElements: calculatedState.elementAnalysis.dominantElements.map((element) => ({
+      element,
+      elementLabelThai: ELEMENT_LABELS_TH[element],
+    })),
+    missingElements: calculatedState.elementAnalysis.missingElements.map((element) => ({
+      element,
+      elementLabelThai: ELEMENT_LABELS_TH[element],
+    })),
+    elementStrengths: calculatedState.elementAnalysis.elementStrengths.map((entry) => ({
+      element: entry.element,
+      elementLabelThai: ELEMENT_LABELS_TH[entry.element],
+      totalCount: calculatedState.elementAnalysis.totalCounts[entry.element],
+      strength: entry.strength,
+      strengthLabelThai: getElementStrengthLabel(entry.strength),
+      rooted: entry.rooted,
+      rootLabelThai: getElementRootLabel(entry.rooted),
+      seasonalSupport: entry.seasonalSupport,
+      seasonalSupportLabelThai: getElementSeasonalSupportLabel(entry.seasonalSupport),
+    })),
+    contextRuleNotes:
+      precedenceNoteSignals.length > 0
+        ? localizeContextRuleNotes(precedenceNoteSignals, precedenceNotes)
+        : precedenceNotes,
+  };
+}
+
+export function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
   const currentDaYun =
     calculatedState.daYun.find((entry) => entry.isCurrent)
     ?? calculatedState.daYun[0]
@@ -385,6 +432,7 @@ function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
     elementMetaphors: calculatedState.elementMetaphors,
     elementAnalysis: calculatedState.elementAnalysis,
     seasonalInteraction: calculatedState.seasonalInteraction ?? null,
+    thaiContextSignals: buildThaiContextSignals(calculatedState),
     currentDaYun,
     currentDaYunPhase: currentDaYun?.currentPhase
       ? currentDaYun.currentPhase === "upper"
