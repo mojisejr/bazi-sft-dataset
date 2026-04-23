@@ -1,9 +1,14 @@
+import {
+  classifyOperatorStrengthScore,
+  OPERATOR_STRENGTH_CLASS_BANDS,
+} from "@/lib/bazi/constants";
 import type { CalculationTraceValue } from "@/lib/bazi/schema-types";
 
 type StrengthScoreBreakdownProps = {
   score: number;
   trace: CalculationTraceValue | undefined;
   title?: string;
+  mode?: "general" | "review";
 };
 
 type StrengthContributionItem = {
@@ -143,7 +148,8 @@ function toPenaltyItems(value: unknown) {
 export function StrengthScoreBreakdown({
   score,
   trace,
-  title = "สมการคะแนนพลัง",
+  title = "แผนผังกำลังดิถี",
+  mode = "general",
 }: StrengthScoreBreakdownProps) {
   const rawVariables = getRawVariables(trace);
   const visibleContributions = toContributionItems(rawVariables?.visibleContributions);
@@ -158,6 +164,15 @@ export function StrengthScoreBreakdown({
   const hiddenTotal = sumWeights(hiddenContributions);
   const penaltyTotal = sumPenalties(penalties);
   const hasOperatorBreakdown = qiAdjustments.length > 0 || relationAdjustments.length > 0;
+  const strengthBand = classifyOperatorStrengthScore(score);
+  const traceResult = getNumber(rawVariables?.result);
+  const frictionState = mode === "review"
+    ? traceResult === null
+      ? "needs-review"
+      : Math.abs(traceResult - score) > 0.01
+        ? "mismatch"
+        : "aligned"
+    : "hidden";
   const baseOffset = hasOperatorBreakdown
     ? Number((score - visibleTotal - qiTotal - relationTotal).toFixed(2))
     : Number((score - stageContribution - visibleTotal - hiddenTotal + penaltyTotal).toFixed(2));
@@ -177,17 +192,67 @@ export function StrengthScoreBreakdown({
       className="surface inset-card strength-breakdown"
       aria-label={title}
       data-strength-breakdown={hasBreakdown ? "available" : "missing"}
+      data-strength-mode={mode}
+      data-strength-band={strengthBand.id}
+      data-friction-state={frictionState}
     >
       <div className="section-heading section-heading--compact">
         <div>
-          <p className="section-kicker">Strength Score Breakdown</p>
+          <p className="section-kicker">กำลังดิถี 5 ระดับ</p>
           <h3>{title}</h3>
         </div>
       </div>
 
-      <div className="strength-equation" aria-label="สมการคะแนนพลัง">
+      <div className="strength-hero" aria-label="มาตรวัดกำลังดิถี">
+        <div className="strength-hero__summary">
+          <p className="strength-hero__eyebrow">ผลสรุปปัจจุบัน</p>
+          <div className="strength-hero__headline">
+            <strong>{strengthBand.displayLabel}</strong>
+            <span>{formatPlainNumber(score)}</span>
+          </div>
+          <p className="strength-hero__copy">
+            {hasOperatorBreakdown
+              ? "อ่านจากแรงหนุนตำแหน่งหลัก โซนเชี่ยงแซ และแรงปะทะที่ยังเหลือ"
+              : "อ่านจากโครงสร้างคะแนนที่ระบบส่งมาในรอบนี้"}
+          </p>
+        </div>
+
+        <div className="strength-gauge" aria-label="แถบกำลังดิถี 5 ระดับ">
+          {OPERATOR_STRENGTH_CLASS_BANDS.map((band) => (
+            <article
+              key={band.id}
+              className={`strength-gauge__stop${band.id === strengthBand.id ? " strength-gauge__stop--active" : ""}`}
+              data-band-id={band.id}
+            >
+              <span className="strength-gauge__dot" />
+              <strong>{band.label}</strong>
+            </article>
+          ))}
+        </div>
+
+        {mode === "review" ? (
+          <div className="strength-friction-banner" data-friction-state={frictionState}>
+            <strong>
+              {frictionState === "aligned"
+                ? "Ground Truth Sync"
+                : frictionState === "mismatch"
+                  ? "ต้องตรวจความต่างคะแนน"
+                  : "ยังต้องตรวจมือ"}
+            </strong>
+            <span>
+              {frictionState === "aligned"
+                ? "ค่าที่ใช้รีวิวตรงกับ trace ปัจจุบัน"
+                : frictionState === "mismatch"
+                  ? "คะแนนที่เห็นกับ trace ดิบไม่ตรงกัน ควรตรวจสมการก่อนปิดงาน"
+                  : "record นี้ยังไม่มี trace ครบพอสำหรับยืนยันคะแนนด้วย runtime surface"}
+            </span>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="strength-equation" aria-label="โหนดกำลังดิถี">
         <span className="strength-equation__term">
-          <strong>ฐาน</strong>
+          <strong>ฐานตั้งต้น</strong>
           <span>{formatPlainNumber(baseOffset)}</span>
         </span>
         <span className="strength-equation__term">
@@ -202,12 +267,8 @@ export function StrengthScoreBreakdown({
           <strong>{hasOperatorBreakdown ? "แรงปะทะ" : "ธาตุแฝง"}</strong>
           <span>{formatSignedNumber(hasOperatorBreakdown ? relationTotal : hiddenTotal)}</span>
         </span>
-        <span className="strength-equation__term strength-equation__term--penalty">
-          <strong>{hasOperatorBreakdown ? "แรงเสริมเก่า" : "แรงกระทบ"}</strong>
-          <span>{formatSignedNumber(hasOperatorBreakdown ? 0 : -penaltyTotal)}</span>
-        </span>
         <span className="strength-equation__result">
-          <strong>รวม</strong>
+          <strong>ผลรวมกำลังดิถี</strong>
           <span>{formatPlainNumber(score)}</span>
         </span>
       </div>
@@ -215,7 +276,7 @@ export function StrengthScoreBreakdown({
       {hasBreakdown ? (
         <div className="strength-breakdown__grid">
           <article className="strength-breakdown__panel">
-            <h4>แรงจากตำแหน่งที่มองเห็น</h4>
+            <h4>แรงหนุนจากตำแหน่งหลัก</h4>
             {visibleContributions.length > 0 ? (
               <dl className="strength-breakdown__list">
                 {visibleContributions.map((entry) => (
@@ -251,7 +312,7 @@ export function StrengthScoreBreakdown({
           </article>
 
           <article className="strength-breakdown__panel strength-breakdown__panel--wide">
-            <h4>{hasOperatorBreakdown ? "แรงปะทะและตัวตั้งต้น" : "แรงหักและตัวตั้งต้น"}</h4>
+            <h4>{hasOperatorBreakdown ? "แรงปะทะและจุดที่ต้องเฝ้า" : "แรงหักและตัวตั้งต้น"}</h4>
             <dl className="strength-breakdown__list">
               <div className="strength-breakdown__row">
                 <dt>คะแนนตั้งต้นของระบบ</dt>

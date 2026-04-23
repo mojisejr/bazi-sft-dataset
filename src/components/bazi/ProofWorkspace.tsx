@@ -178,6 +178,9 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     annotationSummary.completeCount === REQUIRED_ANNOTATION_DIMENSION_NAMES.length
     && sinsaeProofNote.trim().length > 0;
   const canReject = sinsaeProofNote.trim().length > 0;
+  const mingGong = record.calculatedState.mingGong;
+  const mingGongDisplay = mingGong ? `${mingGong.stem}${mingGong.branch}` : "ยังไม่มีผลลัพธ์";
+  const mingGongHiddenStems = mingGong?.hiddenStems?.join(" · ") ?? "";
 
   function updateDimension(
     dimensionName: AnnotationDimensionName,
@@ -314,8 +317,16 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                 <strong>{record.calculatedState.dayMaster}</strong>
               </div>
               <div className="proof-pill-chip">
-                <span>คะแนนพลัง</span>
+                <span>กำลังดิถี</span>
                 <strong>{formatScore(record.calculatedState.strengthScore)}</strong>
+              </div>
+              <div
+                className="proof-pill-chip proof-pill-chip--lagna"
+                data-review-lagna={mingGong ? "available" : "missing"}
+              >
+                <span>ผลลัพธ์เสาลัคนา</span>
+                <strong>{mingGongDisplay}</strong>
+                {mingGongHiddenStems ? <small>{mingGongHiddenStems}</small> : null}
               </div>
             </div>
 
@@ -344,7 +355,8 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
             <StrengthScoreBreakdown
               score={record.calculatedState.strengthScore}
               trace={record.calculatedState.explainable.strengthScore?.trace}
-              title="สมการคะแนนพลังสำหรับงานตรวจ"
+              title="แผนผังกำลังดิถีสำหรับงานตรวจ"
+              mode="review"
             />
           </section>
 

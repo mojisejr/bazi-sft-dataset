@@ -432,7 +432,7 @@ export function CalculatedBoard({
                 <h3>Deep Analysis</h3>
               </div>
               <p className="section-note zone-note">
-                คงแกน Day Master, Strength Score, Ten Gods, Twelve Qi และ persona เดิมไว้เป็นพื้นที่ตีความเชิงลึกต่อจาก 2 โซนบน
+                คงแกนดิถี กำลังดิถี 10 เทพ 12 เชี่ยงแซ และ persona เดิมไว้เป็นพื้นที่ตีความเชิงลึกต่อจาก 2 โซนบน
               </p>
             </div>
 
@@ -440,16 +440,16 @@ export function CalculatedBoard({
               <div className="surface inset-card highlight-card">
                 <p className="section-kicker">หัวใจดวง</p>
                 <h3>{calculatedState.dayMaster}</h3>
-                <p className="metric-copy">Day Master</p>
+                <p className="metric-copy">ดิถี</p>
               </div>
 
               <div className="surface inset-card highlight-card">
-                <p className="section-kicker">คะแนนพลัง</p>
+                <p className="section-kicker">กำลังดิถี</p>
                 <h3>{formatScore(calculatedState.strengthScore)}</h3>
-                <p className="metric-copy">Strength Score</p>
+                <p className="metric-copy">ระดับพลังปัจจุบัน</p>
                 <ExplainableNode
-                  title="คะแนนพลัง (Strength Score)"
-                  buttonLabel="ดูวิธีคำนวณคะแนนพลัง"
+                  title="กำลังดิถี"
+                  buttonLabel="ดูวิธีคำนวณกำลังดิถี"
                   trace={calculatedState.explainable.strengthScore?.trace}
                 />
               </div>
@@ -465,6 +465,7 @@ export function CalculatedBoard({
             <StrengthScoreBreakdown
               score={calculatedState.strengthScore}
               trace={calculatedState.explainable.strengthScore?.trace}
+              title="แผนผังกำลังดิถี"
             />
 
             <section className="detail-grid">
