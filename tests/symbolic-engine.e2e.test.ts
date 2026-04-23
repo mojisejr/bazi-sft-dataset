@@ -14,6 +14,23 @@ function normalizeDerivedRecord(record: Record<string, string>) {
 describe("calculateBaziChart ground-truth fixtures", () => {
   const repository = createTestKnowledgeRepository();
 
+  test("enters red state for the sinsae phase 1 fixture before the engine refactor", async () => {
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "2018-12-08",
+        birthTime: "17:13",
+        gender: "female",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    expect.soft(result.mingGong).toMatchObject({ stem: "庚", branch: "申" });
+    expect.soft(result.strengthScore).toBe(4.5);
+  });
+
   test("matches expert case1 with fixed-offset Bangkok normalization", async () => {
     const result = await calculateBaziChart(
       RawInputSchema.parse({
