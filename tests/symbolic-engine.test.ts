@@ -90,6 +90,11 @@ describe("calculateBaziChart", () => {
 
     expect(result.dayMaster).toBe("己");
     expect(result.strengthScore).toBe(3.75);
+    expect(result.ageSnapshot).toEqual({
+      referenceDate: "2026-06-15",
+      thaiAge: 33,
+      chineseAge: 34,
+    });
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.twelveQi.dayBranch).toBe("帝旺");
@@ -251,9 +256,11 @@ describe("calculateBaziChart", () => {
     ]);
     expect(result.explainable.strengthScore?.trace?.rawVariables).toMatchObject({
       dayMasterStem: "己",
-      monthBranchSeasonalFactor: 1,
+      qiAdjustments: expect.any(Array),
+      relationAdjustments: expect.any(Array),
       result: 3.75,
     });
+    expect(result.explainable.strengthScore?.trace?.rawVariables).not.toHaveProperty("hiddenContributions");
     expect(Array.isArray(result.explainable.strengthScore?.trace?.rawVariables?.visibleContributions)).toBe(true);
     expect(result.elementAnalysis.totalCounts).toEqual({
       wood: 1,

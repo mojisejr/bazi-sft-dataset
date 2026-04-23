@@ -171,6 +171,9 @@ function formatCalculatedState(calculatedState: CalculatedStateValue) {
   const semanticNotes = calculatedState.sixtyJiaziCorePersona?.semanticNotes?.length
     ? calculatedState.sixtyJiaziCorePersona.semanticNotes.join(" | ")
     : "none";
+  const ageSnapshot = calculatedState.ageSnapshot
+    ? `thai=${calculatedState.ageSnapshot.thaiAge} | chinese=${calculatedState.ageSnapshot.chineseAge} | asOf=${calculatedState.ageSnapshot.referenceDate}`
+    : "none";
 
   return [
     formatPillar("Year Pillar", calculatedState.fourPillars.year),
@@ -179,6 +182,7 @@ function formatCalculatedState(calculatedState: CalculatedStateValue) {
     formatPillar("Hour Pillar", calculatedState.fourPillars.hour),
     `- Day Master: ${calculatedState.dayMaster}`,
     `- Strength Score: ${calculatedState.strengthScore}`,
+    `- Age Snapshot: ${ageSnapshot}`,
     `- Ten Gods: ${tenGods}`,
     `- Twelve Qi: ${twelveQi}`,
     `- Element Metaphors: ${metaphors}`,

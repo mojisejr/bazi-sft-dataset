@@ -49,6 +49,14 @@ function formatDaYunPhaseSource(source: DaYunPhaseValue["source"]) {
   return source === "stem" ? "ราศีบน" : "ราศีล่าง";
 }
 
+function formatAgeSnapshot(ageSnapshot: CalculatedStateValue["ageSnapshot"]) {
+  if (!ageSnapshot) {
+    return null;
+  }
+
+  return `อายุไทย ${ageSnapshot.thaiAge} · อายุจีน ${ageSnapshot.chineseAge} (อ้างอิง ${ageSnapshot.referenceDate})`;
+}
+
 function resolveCurrentDaYunPhase(entry: DaYunPillarValue | null) {
   if (!entry) {
     return null;
@@ -146,6 +154,7 @@ export function CalculatedBoard({
     : currentDaYun
       ? formatDaYunCycleCode(currentDaYun)
       : null;
+  const ageSnapshotLabel = formatAgeSnapshot(calculatedState?.ageSnapshot);
 
   return (
     <article className="surface engine-column">
@@ -332,6 +341,9 @@ export function CalculatedBoard({
                   <p className="current-luck-card__cycle">
                     {`รอบวัยจร ${formatDaYunAgeRange(currentDaYun.startAge, currentDaYun.endAge)} · ${formatDaYunCycleCode(currentDaYun)}`}
                   </p>
+                ) : null}
+                {ageSnapshotLabel ? (
+                  <p className="current-luck-card__cycle">{ageSnapshotLabel}</p>
                 ) : null}
               </article>
             </div>

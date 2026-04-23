@@ -90,6 +90,11 @@ describe("BaziTrainerWorkspace", () => {
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
         hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
+      ageSnapshot: {
+        referenceDate: "2026-06-15",
+        thaiAge: 33,
+        chineseAge: 34,
+      },
       mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
       daYun: [
         {
@@ -263,22 +268,14 @@ describe("BaziTrainerWorkspace", () => {
             ],
             rawVariables: {
               dayMasterStem: "己",
-              monthBranchSeasonalFactor: 1,
-              stageContribution: 0.82,
               visibleContributions: [
-                { label: "monthStem", stem: "戊", hidden: false, weight: 0.75 },
-                { label: "hourStem", stem: "辛", hidden: false, weight: 0.4 },
+                { label: "monthStem", symbol: "戊", weight: 1.25 },
+                { label: "hourStem", symbol: "辛", weight: 1 },
               ],
-              hiddenContributions: [
-                { label: "dayHiddenStem1", stem: "丙", hidden: true, weight: 0.3 },
-                { label: "hourHiddenStem2", stem: "丁", hidden: true, weight: 0.2 },
+              qiAdjustments: [
+                { label: "yearZone", symbol: "沐浴", weight: -0.18 },
               ],
-              penalties: {
-                clashes: 0.2,
-                punishments: 0,
-                harms: 0,
-                destructions: 0,
-              },
+              relationAdjustments: [],
               result: 3.07,
             },
           },
@@ -306,6 +303,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain('data-form-locked="true"');
     expect(html).toContain("Static Destiny");
     expect(html).toContain("Dynamic Luck");
+    expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");
     expect(html).toContain("Deep Analysis");
     expect(html).toContain("Ming Gong");
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
@@ -326,9 +324,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
     expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
     expect(html).toContain("สมการคะแนนพลัง");
-    expect(html).toContain("แรงจากก้านฟ้าที่มองเห็น");
+    expect(html).toContain("แรงจากตำแหน่งที่มองเห็น");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
-    expect(html).toContain("แรงชง");
+    expect(html).toContain("แรงเสริมจากโซนเชี่ยงแซ");
     expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");

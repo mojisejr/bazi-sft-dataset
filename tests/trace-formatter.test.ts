@@ -63,9 +63,9 @@ describe("formatCalculationTrace", () => {
       ],
       rawVariables: {
         dayMasterStem: "己",
-        monthBranchSeasonalFactor: 1,
         visibleContributions: [{ pillar: "month" }, { pillar: "day" }],
-        hiddenContributions: [{ pillar: "month" }],
+        qiAdjustments: [{ label: "yearZone" }],
+        relationAdjustments: [{ label: "monthBranchVsDayBranchConflict" }],
         result: 3.07,
       },
     });

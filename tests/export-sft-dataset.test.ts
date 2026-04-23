@@ -29,6 +29,11 @@ function createReviewedRecord() {
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
         hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
+      ageSnapshot: {
+        referenceDate: "2026-06-15",
+        thaiAge: 33,
+        chineseAge: 34,
+      },
       dayMaster: "己",
       strengthScore: 3.07,
       tenGods: {
@@ -139,6 +144,7 @@ describe("phase 4 export transformer", () => {
     expect(prompt).toContain("Raw Input:");
     expect(prompt).toContain("Calculated State:");
     expect(prompt).toContain("Year Pillar");
+    expect(prompt).toContain("Age Snapshot: thai=33 | chinese=34 | asOf=2026-06-15");
     expect(prompt).toContain("Sixty Jiazi Core Persona");
     expect(prompt).toContain("Seasonal Interaction: season=autumn | phase=early | label=ต้นฤดูใบไม้ร่วง");
     expect(prompt).toContain("Element Strengths: wood=strength:weak,rooted:yes,seasonal:seasonal-drained");

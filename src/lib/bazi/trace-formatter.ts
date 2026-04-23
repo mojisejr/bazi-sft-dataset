@@ -51,8 +51,10 @@ function formatNumber(value: number | null, digits = 2) {
   return value === null ? "-" : value.toFixed(digits);
 }
 
-function formatSeasonalFactor(rawVariables: TraceVariables) {
-  return formatNumber(getNumber(rawVariables, "monthBranchSeasonalFactor"));
+function getAdjustmentCount(rawVariables: TraceVariables, key: string) {
+  const value = rawVariables[key];
+
+  return Array.isArray(value) ? value.length : 0;
 }
 
 function getDeveloperTracePayload(trace: CalculationTraceValue) {
@@ -69,7 +71,7 @@ const TRACE_SUMMARY_FORMATTERS: Record<string, TraceSummaryFormatter> = {
   [TRACE_RULE_NAMES.mingGong]: () =>
     "ตรวจเสาเดือนและยามเกิด แล้วเช็กจุดจงชี่ก่อนสรุปลัคนาตามเกณฑ์โหราศาสตร์จีนสาย orthodox",
   [TRACE_RULE_NAMES.strengthScore]: () =>
-    "ชั่งน้ำหนักพลังเจ้าชะตาจาก 12 เชี่ยงแซ ธาตุที่หนุนหรือกด และแรงกระทบของกิ่งดิน เพื่อสรุปคะแนนพลังรวม",
+    "ชั่งน้ำหนักกำลังเจ้าชะตาจากตำแหน่งที่หนุนจริง เชี่ยงแซในโซนหลัก และแรงปะทะที่ยังเหลือ เพื่อสรุปคะแนนรวม",
 };
 
 const TRACE_STEP_FORMATTERS: Record<string, TraceStepFormatter> = {
@@ -94,11 +96,11 @@ const TRACE_STEP_FORMATTERS: Record<string, TraceStepFormatter> = {
   [TRACE_STEP_KEYS.mingGong.finalize]: ({ rawVariables }) =>
     `ใช้ดัชนีเดือน ${formatNumber(getNumber(rawVariables, "monthZhiIndex"), 0)} กับดัชนียาม ${formatNumber(getNumber(rawVariables, "timeZhiIndex"), 0)} เพื่อสรุปลัคนา ${getString(rawVariables, "result")}`,
   [TRACE_STEP_KEYS.strengthScore.weightStages]: ({ rawVariables }) =>
-    `เริ่มจากให้น้ำหนัก 12 เชี่ยงแซทั้ง 4 เสา โดยให้เสาเดือนส่งผลตามน้ำหนักฤดูกาล ${formatSeasonalFactor(rawVariables)} ก่อนรวมคะแนนตั้งต้น`,
+    `เริ่มจากชั่งน้ำหนักตำแหน่งก้านและกิ่งที่หนุนดิถี ${getArrayLength(rawVariables, "visibleContributions")} จุด ก่อนดูโซนเชี่ยงแซที่เกี่ยวข้อง`,
   [TRACE_STEP_KEYS.strengthScore.addRelations]: ({ rawVariables }) =>
-    `รวมแรงจากก้านฟ้าที่มองเห็น ${getArrayLength(rawVariables, "visibleContributions")} จุด และธาตุแฝง ${getArrayLength(rawVariables, "hiddenContributions")} จุด เทียบกับเจ้าชะตา ${getString(rawVariables, "dayMasterStem")}`,
+    `เติมแรงเสริมจากโซนเชี่ยงแซ ${getAdjustmentCount(rawVariables, "qiAdjustments")} จุด และเทียบความสัมพันธ์กับดิถี ${getString(rawVariables, "dayMasterStem")}`,
   [TRACE_STEP_KEYS.strengthScore.applyPenalties]: ({ rawVariables }) =>
-    `หักแรงกระทบจากชง ฮื้อ ไห่ และผั่วตามลำดับความสำคัญของระบบ ก่อนสรุปคะแนนพลัง ${formatNumber(getNumber(rawVariables, "result"))}`,
+    `หักเฉพาะแรงปะทะที่ยังเหลือ ${getAdjustmentCount(rawVariables, "relationAdjustments")} จุด ก่อนสรุปกำลังดิถี ${formatNumber(getNumber(rawVariables, "result"))}`,
 };
 
 function formatTraceStep(stepKey: string, context: TraceFormatterContext, fallbackStep?: string) {

@@ -8,7 +8,7 @@ type StrengthScoreBreakdownProps = {
 
 type StrengthContributionItem = {
   label: string;
-  stem: string;
+  symbol: string;
   weight: number;
 };
 
@@ -46,14 +46,23 @@ function sumPenalties(entries: StrengthPenaltyItem[]) {
 }
 
 function toContributionLabel(rawLabel: string, fallbackIndex: number) {
-  const visibleLabels: Record<string, string> = {
+  const labels: Record<string, string> = {
     yearStem: "ก้านฟ้าปี",
     monthStem: "ก้านฟ้าเดือน",
     hourStem: "ก้านฟ้ายาม",
+    yearBranch: "ราศีล่างปี",
+    monthBranch: "ราศีล่างเดือน",
+    dayBranch: "ราศีล่างวัน",
+    hourBranch: "ราศีล่างยาม",
+    yearZone: "โซนปี",
+    dayMonthBranchZone: "โซนวัน-เดือน",
+    hourMonthStemZone: "โซนยาม-เดือน",
+    monthBranchVsDayBranchConflict: "แรงปะทะเดือน-วัน",
+    dayBranchVsHourBranchConflict: "แรงปะทะวัน-ยาม",
   };
 
-  if (visibleLabels[rawLabel]) {
-    return visibleLabels[rawLabel];
+  if (labels[rawLabel]) {
+    return labels[rawLabel];
   }
 
   const hiddenMatch = rawLabel.match(/^(year|month|day|hour)HiddenStem(\d+)$/);
@@ -97,7 +106,11 @@ function toContributionItems(value: unknown) {
     return [
       {
         label: toContributionLabel(rawLabel, index),
-        stem: typeof entry.stem === "string" ? entry.stem : "-",
+        symbol: typeof entry.stem === "string"
+          ? entry.stem
+          : typeof entry.symbol === "string"
+            ? entry.symbol
+            : "-",
         weight,
       },
     ];
@@ -134,19 +147,30 @@ export function StrengthScoreBreakdown({
 }: StrengthScoreBreakdownProps) {
   const rawVariables = getRawVariables(trace);
   const visibleContributions = toContributionItems(rawVariables?.visibleContributions);
+  const qiAdjustments = toContributionItems(rawVariables?.qiAdjustments);
+  const relationAdjustments = toContributionItems(rawVariables?.relationAdjustments);
   const hiddenContributions = toContributionItems(rawVariables?.hiddenContributions);
   const penalties = toPenaltyItems(rawVariables?.penalties);
   const stageContribution = getNumber(rawVariables?.stageContribution) ?? 0;
   const visibleTotal = sumWeights(visibleContributions);
+  const qiTotal = sumWeights(qiAdjustments);
+  const relationTotal = sumWeights(relationAdjustments);
   const hiddenTotal = sumWeights(hiddenContributions);
   const penaltyTotal = sumPenalties(penalties);
-  const baseOffset = Number((score - stageContribution - visibleTotal - hiddenTotal + penaltyTotal).toFixed(2));
+  const hasOperatorBreakdown = qiAdjustments.length > 0 || relationAdjustments.length > 0;
+  const baseOffset = hasOperatorBreakdown
+    ? Number((score - visibleTotal - qiTotal - relationTotal).toFixed(2))
+    : Number((score - stageContribution - visibleTotal - hiddenTotal + penaltyTotal).toFixed(2));
   const hasBreakdown = Boolean(rawVariables) && (
-    visibleContributions.length > 0 ||
-    hiddenContributions.length > 0 ||
-    penalties.length > 0 ||
-    stageContribution !== 0
+    visibleContributions.length > 0
+    || qiAdjustments.length > 0
+    || relationAdjustments.length > 0
+    || hiddenContributions.length > 0
+    || penalties.length > 0
+    || stageContribution !== 0
   );
+
+  const middleEntries = hasOperatorBreakdown ? qiAdjustments : hiddenContributions;
 
   return (
     <section
@@ -167,20 +191,20 @@ export function StrengthScoreBreakdown({
           <span>{formatPlainNumber(baseOffset)}</span>
         </span>
         <span className="strength-equation__term">
-          <strong>ฤดูกาล</strong>
-          <span>{formatSignedNumber(stageContribution)}</span>
+          <strong>{hasOperatorBreakdown ? "ตำแหน่งหลัก" : "ฤดูกาล"}</strong>
+          <span>{formatSignedNumber(hasOperatorBreakdown ? visibleTotal : stageContribution)}</span>
         </span>
         <span className="strength-equation__term">
-          <strong>ก้านฟ้า</strong>
-          <span>{formatSignedNumber(visibleTotal)}</span>
+          <strong>{hasOperatorBreakdown ? "โซนเชี่ยงแซ" : "ก้านฟ้า"}</strong>
+          <span>{formatSignedNumber(hasOperatorBreakdown ? qiTotal : visibleTotal)}</span>
         </span>
         <span className="strength-equation__term">
-          <strong>ธาตุแฝง</strong>
-          <span>{formatSignedNumber(hiddenTotal)}</span>
+          <strong>{hasOperatorBreakdown ? "แรงปะทะ" : "ธาตุแฝง"}</strong>
+          <span>{formatSignedNumber(hasOperatorBreakdown ? relationTotal : hiddenTotal)}</span>
         </span>
         <span className="strength-equation__term strength-equation__term--penalty">
-          <strong>แรงกระทบ</strong>
-          <span>{formatSignedNumber(-penaltyTotal)}</span>
+          <strong>{hasOperatorBreakdown ? "แรงเสริมเก่า" : "แรงกระทบ"}</strong>
+          <span>{formatSignedNumber(hasOperatorBreakdown ? 0 : -penaltyTotal)}</span>
         </span>
         <span className="strength-equation__result">
           <strong>รวม</strong>
@@ -191,58 +215,88 @@ export function StrengthScoreBreakdown({
       {hasBreakdown ? (
         <div className="strength-breakdown__grid">
           <article className="strength-breakdown__panel">
-            <h4>แรงจากก้านฟ้าที่มองเห็น</h4>
+            <h4>แรงจากตำแหน่งที่มองเห็น</h4>
             {visibleContributions.length > 0 ? (
               <dl className="strength-breakdown__list">
                 {visibleContributions.map((entry) => (
-                  <div key={`${entry.label}-${entry.stem}`} className="strength-breakdown__row">
-                    <dt>{`${entry.label} · ${entry.stem}`}</dt>
+                  <div key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__row">
+                    <dt>{`${entry.label} · ${entry.symbol}`}</dt>
                     <dd>{formatSignedNumber(entry.weight)}</dd>
                   </div>
                 ))}
               </dl>
             ) : (
-              <p className="strength-breakdown__empty">trace รอบนี้ไม่ได้ส่งน้ำหนักก้านฟ้าที่มองเห็นเพิ่มเข้ามา</p>
+              <p className="strength-breakdown__empty">trace รอบนี้ไม่ได้ส่งน้ำหนักตำแหน่งหลักเพิ่มเข้ามา</p>
             )}
           </article>
 
           <article className="strength-breakdown__panel">
-            <h4>แรงจากธาตุแฝง</h4>
-            {hiddenContributions.length > 0 ? (
+            <h4>{hasOperatorBreakdown ? "แรงเสริมจากโซนเชี่ยงแซ" : "แรงจากธาตุแฝง"}</h4>
+            {middleEntries.length > 0 ? (
               <dl className="strength-breakdown__list">
-                {hiddenContributions.map((entry) => (
-                  <div key={`${entry.label}-${entry.stem}`} className="strength-breakdown__row">
-                    <dt>{`${entry.label} · ${entry.stem}`}</dt>
+                {middleEntries.map((entry) => (
+                  <div key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__row">
+                    <dt>{`${entry.label} · ${entry.symbol}`}</dt>
                     <dd>{formatSignedNumber(entry.weight)}</dd>
                   </div>
                 ))}
               </dl>
             ) : (
-              <p className="strength-breakdown__empty">trace รอบนี้ไม่ได้ส่งธาตุแฝงที่มีผลต่อคะแนนพลังเพิ่มเข้ามา</p>
+              <p className="strength-breakdown__empty">
+                {hasOperatorBreakdown
+                  ? "trace รอบนี้ไม่ได้ส่งโซนเชี่ยงแซที่เพิ่มคะแนนเข้ามา"
+                  : "trace รอบนี้ไม่ได้ส่งธาตุแฝงที่มีผลต่อคะแนนพลังเพิ่มเข้ามา"}
+              </p>
             )}
           </article>
 
           <article className="strength-breakdown__panel strength-breakdown__panel--wide">
-            <h4>แรงหักและตัวตั้งต้น</h4>
+            <h4>{hasOperatorBreakdown ? "แรงปะทะและตัวตั้งต้น" : "แรงหักและตัวตั้งต้น"}</h4>
             <dl className="strength-breakdown__list">
               <div className="strength-breakdown__row">
                 <dt>คะแนนตั้งต้นของระบบ</dt>
                 <dd>{formatPlainNumber(baseOffset)}</dd>
               </div>
-              <div className="strength-breakdown__row">
-                <dt>น้ำหนักฤดูกาลและ 12 เชี่ยงแซ</dt>
-                <dd>{formatSignedNumber(stageContribution)}</dd>
-              </div>
-              {penalties.length > 0 ? penalties.map((entry) => (
-                <div key={entry.label} className="strength-breakdown__row">
-                  <dt>{entry.label}</dt>
-                  <dd>{formatSignedNumber(-entry.value)}</dd>
-                </div>
-              )) : (
-                <div className="strength-breakdown__row">
-                  <dt>แรงชง/เฮ้ง/ไห่/ผั่ว</dt>
-                  <dd>{formatSignedNumber(0)}</dd>
-                </div>
+              {hasOperatorBreakdown ? (
+                <>
+                  <div className="strength-breakdown__row">
+                    <dt>น้ำหนักตำแหน่งก้านและกิ่ง</dt>
+                    <dd>{formatSignedNumber(visibleTotal)}</dd>
+                  </div>
+                  <div className="strength-breakdown__row">
+                    <dt>แรงเสริมจากโซนเชี่ยงแซ</dt>
+                    <dd>{formatSignedNumber(qiTotal)}</dd>
+                  </div>
+                  {relationAdjustments.length > 0 ? relationAdjustments.map((entry) => (
+                    <div key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__row">
+                      <dt>{`${entry.label} · ${entry.symbol}`}</dt>
+                      <dd>{formatSignedNumber(entry.weight)}</dd>
+                    </div>
+                  )) : (
+                    <div className="strength-breakdown__row">
+                      <dt>แรงปะทะคงเหลือ</dt>
+                      <dd>{formatSignedNumber(0)}</dd>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="strength-breakdown__row">
+                    <dt>น้ำหนักฤดูกาลและ 12 เชี่ยงแซ</dt>
+                    <dd>{formatSignedNumber(stageContribution)}</dd>
+                  </div>
+                  {penalties.length > 0 ? penalties.map((entry) => (
+                    <div key={entry.label} className="strength-breakdown__row">
+                      <dt>{entry.label}</dt>
+                      <dd>{formatSignedNumber(-entry.value)}</dd>
+                    </div>
+                  )) : (
+                    <div className="strength-breakdown__row">
+                      <dt>แรงชง/เฮ้ง/ไห่/ผั่ว</dt>
+                      <dd>{formatSignedNumber(0)}</dd>
+                    </div>
+                  )}
+                </>
               )}
             </dl>
           </article>

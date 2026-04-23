@@ -65,6 +65,12 @@ export const RawInputSchema = z.object({
   timezone: z.string().trim().min(1).optional(),
 });
 
+export const AgeSnapshotSchema = z.object({
+  referenceDate: z.string().trim().min(1),
+  thaiAge: z.number().int().nonnegative(),
+  chineseAge: z.number().int().positive(),
+});
+
 export const ElementMetaphorSchema = z.object({
   element: z.string().trim().min(1),
   metaphor: z.string().trim().min(1),
@@ -208,6 +214,7 @@ export const CalculatedStateSchema = z.object({
     day: PillarValueSchema,
     hour: PillarValueSchema,
   }),
+  ageSnapshot: AgeSnapshotSchema.optional(),
   mingGong: PillarValueSchema.optional(),
   daYun: z.array(DaYunPillarSchema).default([]),
   liuNian: PillarValueSchema.optional(),
@@ -308,6 +315,7 @@ export type DaYunPillarValue = z.infer<typeof DaYunPillarSchema>;
 export type ShenShaValue = z.infer<typeof ShenShaSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;
 export type RawInputValue = z.infer<typeof RawInputSchema>;
+export type AgeSnapshotValue = z.infer<typeof AgeSnapshotSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
 export type SupportedElementValue = z.infer<typeof SupportedElementSchema>;
 export type ElementCountsValue = z.infer<typeof ElementCountsSchema>;

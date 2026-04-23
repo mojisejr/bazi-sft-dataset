@@ -10,6 +10,7 @@ import {
 import {
   CalculatedStateSchema,
   RawInputSchema,
+  type AgeSnapshotValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import {
@@ -55,6 +56,31 @@ export type {
   BaziKnowledgeRepository,
   BaziStructuralState,
 } from "@/lib/bazi/symbolic-engine.types";
+
+function buildAgeSnapshot(
+  birthContext: ReturnType<typeof normalizeBirthContext>,
+  currentReferenceSolar: ReturnType<typeof buildCurrentReferenceSolar>,
+): AgeSnapshotValue {
+  const birthYear = birthContext.solar.getYear();
+  const birthMonth = birthContext.solar.getMonth();
+  const birthDay = birthContext.solar.getDay();
+  const currentYear = currentReferenceSolar.getYear();
+  const currentMonth = currentReferenceSolar.getMonth();
+  const currentDay = currentReferenceSolar.getDay();
+  const hasReachedBirthday = currentMonth > birthMonth
+    || (currentMonth === birthMonth && currentDay >= birthDay);
+  const thaiAge = Math.max(currentYear - birthYear - (hasReachedBirthday ? 0 : 1), 0);
+
+  return {
+    referenceDate: [
+      currentYear,
+      String(currentMonth).padStart(2, "0"),
+      String(currentDay).padStart(2, "0"),
+    ].join("-"),
+    thaiAge,
+    chineseAge: thaiAge + 1,
+  };
+}
 
 export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
   const rawInput = RawInputSchema.parse(payload);
@@ -180,6 +206,7 @@ export async function calculateBaziChart(
   const structuralState = calculateBaziStructuralState(rawInput);
   const pillars = structuralState.fourPillars;
   const dayMasterStem = structuralState.dayMaster;
+  const ageSnapshot = buildAgeSnapshot(birthContext, currentReferenceSolar);
   const mingGong = buildOrthodoxMingGongValue(birthContext);
   const daYunState = buildDaYunState(eightChar, rawInput.gender, currentYear);
   const currentDaYunEntry = eightChar
@@ -231,6 +258,7 @@ export async function calculateBaziChart(
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: pillars,
+    ageSnapshot,
     mingGong: mingGong.value,
     daYun: daYunState,
     liuNian,
