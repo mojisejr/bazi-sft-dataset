@@ -89,7 +89,7 @@ describe("calculateBaziChart", () => {
     );
 
     expect(result.dayMaster).toBe("己");
-    expect(result.strengthScore).toBe(3.51);
+    expect(result.strengthScore).toBe(3.75);
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.twelveQi.dayBranch).toBe("帝旺");
@@ -104,7 +104,7 @@ describe("calculateBaziChart", () => {
         TRACE_STEP_KEYS.mingGong.finalize,
       ],
     });
-    expect(result.explainable.strengthScore?.value).toBe(3.51);
+    expect(result.explainable.strengthScore?.value).toBe(3.75);
     expect(result.explainable.strengthScore?.trace).toMatchObject({
       engine: "orthodox-override",
       ruleName: "StrengthScore_WeightedSeasonalSupport",
@@ -252,7 +252,7 @@ describe("calculateBaziChart", () => {
     expect(result.explainable.strengthScore?.trace?.rawVariables).toMatchObject({
       dayMasterStem: "己",
       monthBranchSeasonalFactor: 1,
-      result: 3.51,
+      result: 3.75,
     });
     expect(Array.isArray(result.explainable.strengthScore?.trace?.rawVariables?.visibleContributions)).toBe(true);
     expect(result.elementAnalysis.totalCounts).toEqual({

@@ -23,6 +23,11 @@ import {
   HONG_KONG_TIMEZONE,
   MING_GONG_ZHONG_QI_BY_MONTH_BRANCH,
 } from "@/lib/bazi/symbolic-engine.constants";
+import {
+  OPERATOR_LAGNA_BRANCH_NUMBERS,
+  lookupOperatorLagnaPillar,
+  resolveOperatorLagnaTermBase,
+} from "@/lib/bazi/constants";
 import type {
   DaYunLike,
   EightCharLike,
@@ -107,6 +112,31 @@ function getNextMonthBranch(branch: string) {
   return LunarUtil.MONTH_ZHI[nextIndex] ?? branch;
 }
 
+function getOperatorLagnaBranchNumber(branch: string) {
+  const branchNumber = OPERATOR_LAGNA_BRANCH_NUMBERS[
+    branch as keyof typeof OPERATOR_LAGNA_BRANCH_NUMBERS
+  ];
+
+  if (!branchNumber) {
+    throw new Error(`Unsupported operator lagna branch number: ${branch}`);
+  }
+
+  return branchNumber;
+}
+
+function getOperatorLagnaBranchByNumber(branchNumber: number) {
+  const normalizedBranchNumber = ((branchNumber - 1 + 12) % 12) + 1;
+  const match = Object.entries(OPERATOR_LAGNA_BRANCH_NUMBERS).find(
+    ([, value]) => value === normalizedBranchNumber,
+  );
+
+  if (!match) {
+    throw new Error(`Unsupported operator lagna result number: ${branchNumber}`);
+  }
+
+  return match[0];
+}
+
 function getAdjustedMingGongMonthAdjustment(
   monthBranch: string,
   birthAtHongKong: string,
@@ -126,7 +156,10 @@ function getAdjustedMingGongMonthAdjustment(
     };
   }
 
-  const boundaryAt = jieQiTable[zhongQiName]?.toYmdHms?.();
+  const rawBoundaryAt = jieQiTable[zhongQiName]?.toYmdHms?.();
+  const boundaryAt = rawBoundaryAt
+    ? resolveNearestSolarTermBoundary(rawBoundaryAt, birthAtHongKong)
+    : null;
   const isPastZhongQi = Boolean(boundaryAt && birthAtHongKong >= boundaryAt);
 
   return {
@@ -138,11 +171,48 @@ function getAdjustedMingGongMonthAdjustment(
   };
 }
 
+function resolveNearestSolarTermBoundary(boundaryAt: string, birthAtHongKong: string) {
+  const [birthDate, birthTime] = birthAtHongKong.split(" ");
+  const [boundaryDate, boundaryTime] = boundaryAt.split(" ");
+
+  if (!birthDate || !birthTime || !boundaryDate || !boundaryTime) {
+    return boundaryAt;
+  }
+
+  const birthParts = parseDateTimeParts(birthDate, birthTime);
+  const boundaryParts = parseDateTimeParts(boundaryDate, boundaryTime);
+  const candidateYears = [birthParts.year - 1, birthParts.year, birthParts.year + 1];
+
+  const candidates = candidateYears.map((year) => {
+    const candidate = formatDateTimeParts({
+      year,
+      month: boundaryParts.month,
+      day: boundaryParts.day,
+      hour: boundaryParts.hour,
+      minute: boundaryParts.minute,
+      second: boundaryParts.second,
+    });
+
+    return {
+      candidate,
+      distance: Math.abs(
+        zonedDateTimeToUtc(
+          parseDateTimeParts(...candidate.split(" ") as [string, string]),
+          HONG_KONG_TIMEZONE,
+        ).getTime() - zonedDateTimeToUtc(birthParts, HONG_KONG_TIMEZONE).getTime(),
+      ),
+    };
+  });
+
+  return candidates.sort((left, right) => left.distance - right.distance)[0]?.candidate ?? boundaryAt;
+}
+
 export function buildOrthodoxMingGongValue(
   birthContext: NormalizedBirthContext,
 ): ExplainableValue<PillarValue> {
   const lunar = birthContext.solar.getLunar() as LunarLike;
   const eightChar = lunar.getEightChar();
+  const yearStem = splitGanZhi(eightChar.getYear()).stem;
   const monthBranch = splitGanZhi(eightChar.getMonth()).branch;
   const timeBranch = splitGanZhi(eightChar.getTime()).branch;
   const monthAdjustment = getAdjustedMingGongMonthAdjustment(
@@ -150,21 +220,24 @@ export function buildOrthodoxMingGongValue(
     birthContext.birthAtHongKong,
     lunar.getJieQiTable(),
   );
-  const monthZhiIndex = getMonthBranchIndex(monthAdjustment.adjustedMonthBranch);
-  const timeZhiIndex = getMonthBranchIndex(timeBranch);
-  let offset = monthZhiIndex + timeZhiIndex;
+  const monthZhiIndex = getOperatorLagnaBranchNumber(monthBranch);
+  const timeZhiIndex = getOperatorLagnaBranchNumber(timeBranch);
+  const total = monthZhiIndex + timeZhiIndex;
+  const termBase = resolveOperatorLagnaTermBase(total);
 
-  offset = (offset >= 14 ? 26 : 14) - offset;
-
-  let ganIndex = (lunar.getYearGanIndexExact() + 1) * 2 + offset;
-
-  while (ganIndex > 10) {
-    ganIndex -= 10;
+  if (!termBase) {
+    throw new Error(`Unsupported operator lagna branch total: ${total}`);
   }
 
-  const value = buildDerivedPillarValue(
-    `${LunarUtil.GAN[ganIndex]}${LunarUtil.MONTH_ZHI[offset]}`,
-  );
+  let offset = termBase - total;
+
+  if (monthAdjustment.isPastZhongQi) {
+    offset -= 1;
+  }
+
+  const lagnaBranch = getOperatorLagnaBranchByNumber(offset);
+  const resultPillar = lookupOperatorLagnaPillar(yearStem, lagnaBranch);
+  const value = buildDerivedPillarValue(resultPillar);
 
   const trace: CalculationTraceValue = {
     engine: "orthodox-override",
@@ -185,8 +258,11 @@ export function buildOrthodoxMingGongValue(
       isPastZhongQi: monthAdjustment.isPastZhongQi,
       monthZhiIndex,
       timeZhiIndex,
+      total,
+      termBase,
       offset,
-      ganIndex,
+      yearStem,
+      lagnaBranch,
       result: `${value.stem}${value.branch}`,
     },
   };
