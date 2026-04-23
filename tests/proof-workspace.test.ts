@@ -41,7 +41,6 @@ function createProofRecord() {
         day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
         hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
       },
-      mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
       dayMaster: "己",
       strengthScore: 3.07,
       tenGods: {
@@ -208,9 +207,6 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("ชื่อลูกค้า");
     expect(html).toContain("สมบัติ");
     expect(html).toContain("แกนบุคลิกสำหรับงานตรวจ");
-    expect(html).toContain("ผลลัพธ์เสาลัคนา");
-    expect(html).toContain("壬寅");
-    expect(html).toContain('data-review-lagna="available"');
     expect(html).toContain('data-core-persona="available"');
     expect(html).toContain('data-seasonal-metaphor="available"');
     expect(html).toContain('data-element-analysis="available"');
@@ -221,9 +217,7 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("มีราก");
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
-    expect(html).toContain("แผนผังกำลังดิถีสำหรับงานตรวจ");
-    expect(html).toContain("Ground Truth Sync");
-    expect(html).toContain('data-strength-mode="review"');
+    expect(html).toContain("สมการคะแนนพลังสำหรับงานตรวจ");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");

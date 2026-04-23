@@ -308,8 +308,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("Ming Gong");
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("ดูวิธีคำนวณลัคนา");
-    expect(html).toContain("ดูวิธีคำนวณกำลังดิถี");
-    expect(html).toContain('data-explainable-open="false"');
+    expect(html).toContain("ดูวิธีคำนวณคะแนนพลัง");
     expect(html).toContain("แกนบุคลิกพื้นฐาน");
     expect(html).toContain('data-core-persona="available"');
     expect(html).toContain('data-seasonal-metaphor="available"');
@@ -324,12 +323,10 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
     expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
-    expect(html).toContain("แผนผังกำลังดิถี");
-    expect(html).toContain("ดิถีอ่อน");
-    expect(html).toContain("แรงหนุนจากตำแหน่งหลัก");
+    expect(html).toContain("สมการคะแนนพลัง");
+    expect(html).toContain("แรงจากตำแหน่งที่มองเห็น");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain("แรงเสริมจากโซนเชี่ยงแซ");
-    expect(html).toContain('data-strength-band="weak"');
     expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
