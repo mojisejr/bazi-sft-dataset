@@ -295,6 +295,10 @@ textarea {
   gap: 12px;
 }
 
+.proof-pill-strip--review {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .proof-pill-chip {
   display: grid;
   gap: 4px;
@@ -335,6 +339,26 @@ textarea {
 
 .proof-pillar-card strong {
   font-size: 1.18rem;
+}
+
+.proof-friction-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 251, 244, 0.9);
+  border: 1px solid rgba(188, 154, 101, 0.18);
+}
+
+.proof-friction-card--conflict {
+  background: rgba(255, 238, 236, 0.94);
+  border-color: rgba(173, 54, 45, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(173, 54, 45, 0.08);
+}
+
+.proof-friction-card h4 {
+  margin: 0;
+  font-size: 1.02rem;
 }
 
 .proof-guidance-list {
@@ -707,6 +731,109 @@ textarea {
   min-height: 44px;
 }
 
+.operator-dashboard {
+  display: grid;
+  gap: 18px;
+}
+
+.operator-orbit {
+  display: grid;
+  gap: 18px;
+  background:
+    radial-gradient(circle at top right, rgba(188, 228, 213, 0.32), transparent 38%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(246, 237, 227, 0.92));
+}
+
+.operator-orbit__core {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.orbit-card {
+  display: grid;
+  gap: 12px;
+  align-content: space-between;
+  min-height: 190px;
+  padding: 18px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(110, 79, 48, 0.1);
+  box-shadow: 0 16px 36px rgba(118, 83, 45, 0.08);
+}
+
+.orbit-card h3,
+.pillar-ribbon-card__code,
+.strength-meter__score {
+  margin: 0;
+  font-size: clamp(1.85rem, 1.5rem + 1vw, 2.6rem);
+  line-height: 1;
+}
+
+.orbit-card--strength {
+  background:
+    radial-gradient(circle at top, rgba(174, 238, 213, 0.4), transparent 56%),
+    linear-gradient(180deg, rgba(244, 255, 250, 0.96), rgba(228, 244, 235, 0.9));
+}
+
+.orbit-card--lagna {
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(252, 242, 228, 0.9));
+}
+
+.orbit-card--flow {
+  background: linear-gradient(180deg, rgba(251, 248, 255, 0.98), rgba(241, 235, 246, 0.9));
+}
+
+.pillar-ribbon-section,
+.movement-panel,
+.detail-cluster {
+  display: grid;
+  gap: 16px;
+}
+
+.pillar-ribbon {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pillar-ribbon-card {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(110, 79, 48, 0.08);
+}
+
+.pillar-ribbon-card__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pillar-ribbon-card__label {
+  font-weight: 700;
+}
+
+.movement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.operator-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.detail-cluster--wide {
+  grid-column: 1 / -1;
+}
+
 .report-zone {
   display: grid;
   gap: 20px;
@@ -766,6 +893,28 @@ textarea {
   color: var(--accent);
   font-size: 0.84rem;
   font-weight: 700;
+}
+
+.explainable-node {
+  display: grid;
+  gap: 10px;
+}
+
+.explainable-sheet {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.92);
+  border: 1px solid rgba(159, 83, 32, 0.14);
+  box-shadow: 0 16px 32px rgba(100, 72, 42, 0.08);
+}
+
+.explainable-sheet__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .explainable-modal-root {
@@ -978,6 +1127,117 @@ textarea {
   font-size: 0.88rem;
 }
 
+.strength-meter {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.92), transparent 70%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 240, 232, 0.92));
+  border: 1px solid rgba(110, 79, 48, 0.1);
+}
+
+.strength-meter__hero {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.strength-meter__label {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.strength-meter__rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.strength-meter__stop {
+  display: grid;
+  gap: 10px;
+}
+
+.strength-meter__stop-line {
+  display: block;
+  min-height: 12px;
+  border-radius: 999px;
+  background: rgba(110, 79, 48, 0.12);
+}
+
+.strength-meter__stop-copy {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.strength-meter__stop--past .strength-meter__stop-line {
+  background: rgba(159, 83, 32, 0.35);
+}
+
+.strength-meter__stop--active .strength-meter__stop-line {
+  min-height: 16px;
+  box-shadow: 0 0 0 4px rgba(188, 228, 213, 0.22);
+}
+
+.strength-breakdown[data-strength-band="very-weak"] .strength-meter__stop--active .strength-meter__stop-line,
+.strength-breakdown[data-strength-band="weak"] .strength-meter__stop--active .strength-meter__stop-line {
+  background: linear-gradient(90deg, rgba(214, 105, 79, 0.98), rgba(184, 62, 45, 0.92));
+}
+
+.strength-breakdown[data-strength-band="balanced"] .strength-meter__stop--active .strength-meter__stop-line {
+  background: linear-gradient(90deg, rgba(116, 202, 159, 0.98), rgba(74, 177, 136, 0.92));
+}
+
+.strength-breakdown[data-strength-band="strong"] .strength-meter__stop--active .strength-meter__stop-line,
+.strength-breakdown[data-strength-band="very-strong"] .strength-meter__stop--active .strength-meter__stop-line {
+  background: linear-gradient(90deg, rgba(213, 165, 74, 0.98), rgba(193, 126, 41, 0.92));
+}
+
+.strength-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.strength-flow__node {
+  flex: 1 1 140px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(110, 79, 48, 0.08);
+}
+
+.strength-flow__node--support {
+  background: rgba(248, 242, 231, 0.88);
+}
+
+.strength-flow__node--friction {
+  background: rgba(255, 242, 238, 0.88);
+}
+
+.strength-flow__node--result {
+  background: rgba(241, 250, 244, 0.92);
+}
+
+.strength-flow__node-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.strength-flow__arrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 .dayun-track {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -1082,11 +1342,18 @@ textarea {
 }
 
 @media (max-width: 1180px) {
+  .operator-orbit__core,
+  .operator-insight-grid,
   .destiny-pillar-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .dynamic-luck-grid {
+  .pillar-ribbon {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dynamic-luck-grid,
+  .movement-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -1127,10 +1394,36 @@ textarea {
     display: grid;
   }
 
+  .operator-orbit__core,
+  .pillar-ribbon,
+  .operator-insight-grid,
   .destiny-pillar-grid,
   .dayun-track,
   .transient-shen-sha-list {
     grid-template-columns: 1fr;
+  }
+
+  .identity-strip,
+  .identity-strip--compact,
+  .proof-pill-strip,
+  .proof-pill-strip--review,
+  .proof-pillars-grid,
+  .strength-meter__rail {
+    grid-template-columns: 1fr;
+  }
+
+  .strength-flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .strength-flow__arrow {
+    align-self: center;
+    transform: rotate(90deg);
+  }
+
+  .explainable-sheet__header {
+    display: grid;
   }
 
   .explainable-modal {
@@ -1505,6 +1798,33 @@ textarea {
 .strength-breakdown__empty {
   margin: 0;
   color: var(--muted);
+}
+
+.strength-breakdown__signal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.strength-breakdown__signal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(110, 79, 48, 0.08);
+}
+
+.strength-breakdown__signal span {
+  color: var(--text);
+}
+
+.strength-breakdown__signal strong {
+  white-space: nowrap;
 }
 
 .core-persona {

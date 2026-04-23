@@ -122,6 +122,11 @@ function createProofRecord() {
           },
         ],
       },
+      mingGong: {
+        stem: "壬",
+        branch: "寅",
+        hiddenStems: ["甲", "丙", "戊"],
+      },
       daYun: [],
       shenSha: [],
       explainable: {
@@ -160,6 +165,7 @@ function createProofRecord() {
     },
     annotationData: DraftAnnotationDataSchema.parse({
       version: "1.6",
+      reviewSummary: "AI ประเมินกำลังดิถีว่า ดวงแข็ง แต่ยังต้องให้ซินแสตรวจทวน",
       dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
         thought_process: dimensionName === "chart_foundation" ? "AI draft reason" : "",
@@ -207,6 +213,9 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("ชื่อลูกค้า");
     expect(html).toContain("สมบัติ");
     expect(html).toContain("แกนบุคลิกสำหรับงานตรวจ");
+    expect(html).toContain("แดชบอร์ดตรวจทาน");
+    expect(html).toContain("เสาลัคนา");
+    expect(html).toContain("壬寅");
     expect(html).toContain('data-core-persona="available"');
     expect(html).toContain('data-seasonal-metaphor="available"');
     expect(html).toContain('data-element-analysis="available"');
@@ -217,9 +226,11 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("มีราก");
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
-    expect(html).toContain("สมการคะแนนพลังสำหรับงานตรวจ");
+    expect(html).toContain("แผนผังกำลังดิถีสำหรับงานตรวจ");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain('data-strength-breakdown="available"');
+    expect(html).toContain('data-proof-friction="conflict"');
+    expect(html).toContain("AI ประเมินกำลังดิถีไม่ตรงกับ ground truth");
     expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");
     expect(html).toContain("ตีกลับงาน AI");
     expect(html).toContain("อนุมัติและปิดงาน");

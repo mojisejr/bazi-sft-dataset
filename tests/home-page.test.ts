@@ -41,7 +41,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("workspace mode switch");
     expect(html).not.toContain("เลือกโหมดการทำงาน");
     expect(html).not.toContain("เริ่มจาก manual add หรือ proof queue ได้ทันที");
-    expect(html).toContain("ตั้งข้อมูลเพื่อเปิด 3 โซนของรายงานให้ครบ");
+    expect(html).toContain("ตั้งข้อมูลเพื่อเปิดแกนดวงและจังหวะการเดินของเคสนี้");
     expect(html).toContain("คำนวณภาพรวมดวง");
     expect(html).toContain("ปี พ.ศ.");
     expect(html).toContain("เลือกปี พ.ศ.");
@@ -301,14 +301,16 @@ describe("BaziTrainerWorkspace", () => {
 
     expect(html).toContain("ภาพรวมพร้อมอ่าน");
     expect(html).toContain('data-form-locked="true"');
-    expect(html).toContain("Static Destiny");
-    expect(html).toContain("Dynamic Luck");
+    expect(html).toContain("เริ่มจากแกนดวง แล้วค่อยกางรายละเอียดที่ต้องใช้ตัดสินใจ");
+    expect(html).toContain("ดูวิธีคำนวณกำลังดิถี");
+    expect(html).toContain("5 เสาหลัก");
+    expect(html).toContain("ดูก้านและกิ่งก่อน โดยไม่กางธาตุแฝงให้รกสายตา");
+    expect(html).toContain("การเคลื่อนของดวง");
+    expect(html).toContain("วัยจร 5 ปี");
     expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");
-    expect(html).toContain("Deep Analysis");
-    expect(html).toContain("Ming Gong");
     expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).toContain("ดูวิธีคำนวณลัคนา");
-    expect(html).toContain("ดูวิธีคำนวณคะแนนพลัง");
+    expect(html).not.toContain("ดูวิธีคำนวณคะแนนพลัง");
     expect(html).toContain("แกนบุคลิกพื้นฐาน");
     expect(html).toContain('data-core-persona="available"');
     expect(html).toContain('data-seasonal-metaphor="available"');
@@ -323,10 +325,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
     expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
-    expect(html).toContain("สมการคะแนนพลัง");
-    expect(html).toContain("แรงจากตำแหน่งที่มองเห็น");
+    expect(html).toContain("แผนผังกำลังดิถี");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
-    expect(html).toContain("แรงเสริมจากโซนเชี่ยงแซ");
     expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
@@ -338,8 +338,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Asia/Hong_Kong");
     expect(html).toContain("己");
     expect(html).toContain("壬寅");
-    expect(html).toContain("ปีจรปัจจุบัน");
-    expect(html).toContain("วัยจร 10 ปี");
+    expect(html).toContain("ปีจร");
+    expect(html).not.toContain("วัยจร 10 ปี");
     expect(html).toContain('data-current-luck-symbol="巳"');
     expect(html).toContain("ช่วงอายุ 31-35 · ราศีล่าง");
     expect(html).toContain("รอบวัยจร 26-35 · 乙巳");
@@ -352,6 +352,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain(
       "Builds influence patiently, then turns preparation into visible results when timing opens.",
     );
+    expect(html).not.toContain("Static Destiny");
+    expect(html).not.toContain("Dynamic Luck");
+    expect(html).not.toContain("Deep Analysis");
 
     expect(html.indexOf("16-20")).toBeLessThan(html.indexOf("6-10"));
   });

@@ -26,6 +26,10 @@ import {
 } from "@/lib/bazi/trainer-workspace";
 import { CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
+import {
+  classifyOperatorStrengthScore,
+  OPERATOR_STRENGTH_CLASS_BANDS,
+} from "@/lib/bazi/constants/operator-strength";
 
 type ProofWorkspaceProps = {
   record: ProofDatasetRecord;
@@ -154,6 +158,37 @@ function getSaveMessage(
   return "แก้ไขข้อความได้ทันที จากนั้นค่อยเลือกอนุมัติหรือตีกลับพร้อมเหตุผล";
 }
 
+function formatPillarCode(stem?: string, branch?: string) {
+  if (!stem || !branch) {
+    return "-";
+  }
+
+  return `${stem}${branch}`;
+}
+
+function extractAiStrengthClaim(annotationData: StoredAnnotationDataValue | null) {
+  const draftText = [
+    annotationData?.reviewSummary,
+    annotationData?.sinsaeProofNote,
+    ...(annotationData?.dimensions.flatMap((dimension) => [
+      dimension.thought_process,
+      dimension.final_prediction,
+      ...(dimension.supporting_signals ?? []),
+      dimension.confidence_note,
+    ]) ?? []),
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ");
+
+  if (!draftText) {
+    return null;
+  }
+
+  return OPERATOR_STRENGTH_CLASS_BANDS.find((band) => (
+    draftText.includes(band.displayLabel) || draftText.includes(band.label)
+  )) ?? null;
+}
+
 export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: ProofWorkspaceProps) {
   const router = useRouter();
   const [dimensions, setDimensions] = useState<ProofDimensionDraftState>(() =>
@@ -178,6 +213,13 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     annotationSummary.completeCount === REQUIRED_ANNOTATION_DIMENSION_NAMES.length
     && sinsaeProofNote.trim().length > 0;
   const canReject = sinsaeProofNote.trim().length > 0;
+  const strengthBand = classifyOperatorStrengthScore(record.calculatedState.strengthScore);
+  const aiStrengthClaim = extractAiStrengthClaim(record.annotationData);
+  const hasStrengthConflict = aiStrengthClaim ? aiStrengthClaim.id !== strengthBand.id : false;
+  const mingGongCode = formatPillarCode(
+    record.calculatedState.mingGong?.stem,
+    record.calculatedState.mingGong?.branch,
+  );
 
   function updateDimension(
     dimensionName: AnnotationDimensionName,
@@ -304,20 +346,47 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
 
           <section className="surface inset-card proof-summary-card">
             <div>
-              <p className="section-kicker">แกนดวงสำหรับอ่านเร็ว</p>
-              <h3>สรุปหลักที่ต้องเห็นก่อนแก้คำทำนาย</h3>
+              <p className="section-kicker">แดชบอร์ดตรวจทาน</p>
+              <h3>หยิบค่าจริงขึ้นมาก่อน แล้วค่อยเทียบกับ draft ของ AI</h3>
             </div>
 
-            <div className="proof-pill-strip">
+            <div className="proof-pill-strip proof-pill-strip--review">
               <div className="proof-pill-chip">
                 <span>ดิถี</span>
                 <strong>{record.calculatedState.dayMaster}</strong>
               </div>
               <div className="proof-pill-chip">
-                <span>คะแนนพลัง</span>
+                <span>เสาลัคนา</span>
+                <strong>{mingGongCode}</strong>
+              </div>
+              <div className="proof-pill-chip">
+                <span>กำลังดิถี</span>
                 <strong>{formatScore(record.calculatedState.strengthScore)}</strong>
               </div>
             </div>
+
+            <section
+              className={`proof-friction-card${hasStrengthConflict ? " proof-friction-card--conflict" : ""}`}
+              data-proof-friction={hasStrengthConflict ? "conflict" : aiStrengthClaim ? "aligned" : "missing"}
+            >
+              <div>
+                <p className="section-kicker">Ground Truth Check</p>
+                <h4>
+                  {hasStrengthConflict
+                    ? "AI ประเมินกำลังดิถีไม่ตรงกับ ground truth"
+                    : aiStrengthClaim
+                      ? "ระดับกำลังดิถีใน draft สอดคล้องกับ ground truth"
+                      : "ยังไม่มีค่าระดับกำลังดิถีจาก AI ให้เทียบโดยตรง"}
+                </h4>
+              </div>
+              <p className="metric-copy">
+                {hasStrengthConflict
+                  ? `AI พูดถึงระดับ ${aiStrengthClaim?.displayLabel} แต่ผลจริงของดวงนี้คือ ${strengthBand.displayLabel}`
+                  : aiStrengthClaim
+                    ? `AI พูดถึงระดับ ${aiStrengthClaim.displayLabel} และตรงกับผลจริงของเคสนี้`
+                    : `ผลจริงของเคสนี้คือ ${strengthBand.displayLabel} ส่วนข้อความ draft ยังไม่ได้ระบุระดับไว้ชัดพอ`}
+              </p>
+            </section>
 
             <CorePersonaSurface
               persona={record.calculatedState.sixtyJiaziCorePersona}
@@ -335,7 +404,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                   <article key={column.key} className="proof-pillar-card">
                     <span>{column.label}</span>
                     <strong>{`${pillar.stem}${pillar.branch}`}</strong>
-                    <small>{pillar.hiddenStems?.join(" · ") ?? "-"}</small>
+                    <small>ดูเสาหลักก่อน แล้วค่อยเปิดคำอธิบายเมื่อต้องไล่ logic</small>
                   </article>
                 );
               })}
@@ -344,7 +413,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
             <StrengthScoreBreakdown
               score={record.calculatedState.strengthScore}
               trace={record.calculatedState.explainable.strengthScore?.trace}
-              title="สมการคะแนนพลังสำหรับงานตรวจ"
+              title="แผนผังกำลังดิถีสำหรับงานตรวจ"
             />
           </section>
 
