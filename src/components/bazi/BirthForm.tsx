@@ -6,6 +6,7 @@ import {
   BIRTH_HOUR_OPTIONS,
   BIRTH_MINUTE_OPTIONS,
   BUDDHIST_ERA_YEAR_OPTIONS,
+  formatThaiBirthMoment,
   THAI_PROVINCE_OPTIONS,
   THAI_MONTH_OPTIONS,
   getBirthDayOptions,
@@ -14,9 +15,11 @@ import {
   type ResetActionCopy,
   type SubmissionState,
 } from "@/lib/bazi/trainer-workspace";
+import type { RawInputValue } from "@/lib/bazi/schema-types";
 
 type BirthFormProps = {
   formState: FormState;
+  submittedInput: RawInputValue | null;
   isSessionLocked: boolean;
   submissionState: SubmissionState;
   resetActionCopy: ResetActionCopy;
@@ -27,6 +30,7 @@ type BirthFormProps = {
 
 export function BirthForm({
   formState,
+  submittedInput,
   isSessionLocked,
   submissionState,
   resetActionCopy,
@@ -35,6 +39,69 @@ export function BirthForm({
   onReset,
 }: BirthFormProps) {
   const dayOptions = getBirthDayOptions(formState.birthMonth, formState.birthYearBe);
+
+  function getGenderCopy(value: string | undefined) {
+    if (value === "female") {
+      return "หญิง";
+    }
+
+    if (value === "male") {
+      return "ชาย";
+    }
+
+    if (value === "other") {
+      return "อื่นๆ";
+    }
+
+    return "รอข้อมูล";
+  }
+
+  if (isSessionLocked) {
+    return (
+      <section className="case-rail" aria-label="case rail" data-case-rail="true">
+        <div className="case-rail__header">
+          <div>
+            <p className="section-kicker">เคสนี้</p>
+            <h2>พร้อมอ่านดวง</h2>
+          </div>
+          <p className="section-note">ข้อมูลตั้งต้นถูกล็อกไว้เพื่อกัน record ปนกันระหว่างการอ่านและเขียนคำพยากรณ์</p>
+        </div>
+
+        <dl className="case-rail__list">
+          <div className="case-rail__row">
+            <dt>วันเวลาเกิด</dt>
+            <dd>{formatThaiBirthMoment(submittedInput)}</dd>
+          </div>
+          <div className="case-rail__row">
+            <dt>เพศ</dt>
+            <dd>{getGenderCopy(submittedInput?.gender)}</dd>
+          </div>
+          <div className="case-rail__row">
+            <dt>จังหวัด</dt>
+            <dd>{submittedInput?.province ?? "รอข้อมูล"}</dd>
+          </div>
+        </dl>
+
+        <div className="case-rail__actions">
+          <button
+            className={
+              resetActionCopy.tone === "primary"
+                ? "primary-action"
+                : "secondary-action secondary-action--warning"
+            }
+            type="button"
+            onClick={onReset}
+          >
+            {resetActionCopy.label}
+          </button>
+        </div>
+
+        <p className="form-lock-note case-rail__note" aria-live="polite">
+          {resetActionCopy.detail}
+        </p>
+      </section>
+    );
+  }
 
   return (
     <>
@@ -183,38 +250,18 @@ export function BirthForm({
         </fieldset>
 
         <div className="form-actions">
-          {isSessionLocked ? (
-            <button
-              className={
-                resetActionCopy.tone === "primary"
-                  ? "primary-action"
-                  : "secondary-action secondary-action--warning"
-              }
-              type="button"
-              onClick={onReset}
-            >
-              {resetActionCopy.label}
-            </button>
-          ) : (
-            <button
-              className="primary-action"
-              type="submit"
-              disabled={submissionState === "submitting"}
-            >
-              {submissionState === "submitting" ? "กำลังคำนวณ..." : "คำนวณภาพรวมดวง"}
-            </button>
-          )}
+          <button
+            className="primary-action"
+            type="submit"
+            disabled={submissionState === "submitting"}
+          >
+            {submissionState === "submitting" ? "กำลังคำนวณ..." : "คำนวณภาพรวมดวง"}
+          </button>
         </div>
 
         <p className="form-footnote">
           ข้อมูลวันเกิดจะเลือกเป็น พ.ศ. เพื่อให้กรอกง่ายขึ้น เวลาเกิดใช้ระบบ 24 ชั่วโมง และระบบจะคำนวณด้วยเวลาประเทศไทยร่วมกับปฏิทินสุริยคติแบบไทยให้อัตโนมัติ
         </p>
-
-        {isSessionLocked ? (
-          <p className="form-lock-note" aria-live="polite">
-            {resetActionCopy.detail}
-          </p>
-        ) : null}
       </form>
     </>
   );

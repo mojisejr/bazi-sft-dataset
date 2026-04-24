@@ -223,10 +223,11 @@ export function BaziTrainerWorkspace({
       </section>
 
       {activeWorkspace === "manual" && (
-        <>
+        <div className={`manual-workspace${calculatedState ? " manual-workspace--ready" : ""}`}>
           <section className="surface intake-stage">
             <BirthForm
               formState={formState}
+              submittedInput={submittedInput}
               isSessionLocked={isSessionLocked}
               submissionState={submissionState}
               resetActionCopy={resetActionCopy}
@@ -237,10 +238,7 @@ export function BaziTrainerWorkspace({
           </section>
 
           <section className="workspace-stack">
-            <CalculatedBoard
-              submittedInput={submittedInput}
-              calculatedState={calculatedState}
-            />
+            <CalculatedBoard calculatedState={calculatedState} />
 
             {calculatedState && (
               <div className="mx-auto w-full max-w-4xl px-4 pb-8 pt-4">
@@ -265,7 +263,7 @@ export function BaziTrainerWorkspace({
               </div>
             )}
           </section>
-        </>
+        </div>
       )}
 
       {activeWorkspace === "queue" && (

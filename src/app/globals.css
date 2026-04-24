@@ -379,6 +379,15 @@ textarea {
 }
 
 @media (min-width: 1080px) {
+  .manual-workspace--ready {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+  }
+
+  .manual-workspace--ready .intake-stage {
+    position: sticky;
+    top: 24px;
+  }
+
   .proof-layout {
     grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
     align-items: start;
@@ -387,6 +396,14 @@ textarea {
   .proof-sidebar {
     position: sticky;
     top: 24px;
+  }
+
+  .reading-primary-grid {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  }
+
+  .reading-secondary-grid {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
   }
 }
 
@@ -676,8 +693,65 @@ textarea {
   gap: 24px;
 }
 
+.manual-workspace {
+  display: grid;
+  gap: 24px;
+}
+
+.manual-workspace--ready {
+  align-items: start;
+}
+
 .intake-stage {
   padding: 24px;
+}
+
+.case-rail {
+  display: grid;
+  gap: 18px;
+}
+
+.case-rail__header {
+  display: grid;
+  gap: 10px;
+}
+
+.case-rail__list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+}
+
+.case-rail__row {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(110, 79, 48, 0.08);
+}
+
+.case-rail__row dt,
+.case-rail__row dd {
+  margin: 0;
+}
+
+.case-rail__row dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.case-rail__row dd {
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.case-rail__actions {
+  display: flex;
+}
+
+.case-rail__note {
+  margin: 0;
 }
 
 .engine-stack,
@@ -734,6 +808,21 @@ textarea {
 .operator-dashboard {
   display: grid;
   gap: 18px;
+}
+
+.reading-canvas {
+  display: grid;
+  gap: 18px;
+}
+
+.reading-toolbar {
+  margin-bottom: 0;
+}
+
+.reading-primary-grid,
+.reading-secondary-grid {
+  display: grid;
+  gap: 16px;
 }
 
 .operator-orbit {
@@ -832,6 +921,23 @@ textarea {
 
 .detail-cluster--wide {
   grid-column: 1 / -1;
+}
+
+.reference-shelf {
+  display: grid;
+  gap: 16px;
+}
+
+.reference-shelf__grid {
+  display: grid;
+  gap: 14px;
+}
+
+.detail-cluster--nested {
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .report-zone {
@@ -1342,6 +1448,8 @@ textarea {
 }
 
 @media (max-width: 1180px) {
+  .reading-primary-grid,
+  .reading-secondary-grid,
   .operator-orbit__core,
   .operator-insight-grid,
   .destiny-pillar-grid {
@@ -1359,6 +1467,10 @@ textarea {
 }
 
 @media (max-width: 760px) {
+  .manual-workspace--ready {
+    grid-template-columns: 1fr;
+  }
+
   .workspace-switch-shell {
     padding-inline: 12px;
   }

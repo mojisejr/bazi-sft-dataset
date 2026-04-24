@@ -299,17 +299,16 @@ describe("BaziTrainerWorkspace", () => {
       }),
     );
 
-    expect(html).toContain("ภาพรวมพร้อมอ่าน");
-    expect(html).toContain('data-form-locked="true"');
-    expect(html).toContain("เริ่มจากแกนดวง แล้วค่อยกางรายละเอียดที่ต้องใช้ตัดสินใจ");
-    expect(html).toContain("ดูวิธีคำนวณกำลังดิถี");
+    expect(html).toContain("พร้อมอ่านดวง");
+    expect(html).toContain('data-case-rail="true"');
+    expect(html).toContain("อ่านจาก 5 เสาหลักก่อน แล้วค่อยไล่กำลังดิถี วัยจร และแกนบุคลิก");
+    expect(html).toContain("ดูวิธีคำนวณ");
     expect(html).toContain("5 เสาหลัก");
-    expect(html).toContain("ดูก้านและกิ่งก่อน โดยไม่กางธาตุแฝงให้รกสายตา");
-    expect(html).toContain("การเคลื่อนของดวง");
-    expect(html).toContain("วัยจร 5 ปี");
+    expect(html).toContain("เริ่มจากโครงดวงก่อน แล้วค่อยเปิดข้อมูลรองตามลำดับ");
+    expect(html).toContain("วัยจร");
+    expect(html).toContain("timeline วัยจร");
     expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");
-    expect(html).toContain("ตัวอย่างรายงาน (Print DNA)");
-    expect(html).toContain("ดูวิธีคำนวณลัคนา");
+    expect(html).toContain("พิมพ์รายงาน");
     expect(html).not.toContain("ดูวิธีคำนวณคะแนนพลัง");
     expect(html).toContain("แกนบุคลิกพื้นฐาน");
     expect(html).toContain('data-core-persona="available"');
@@ -328,30 +327,32 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("แผนผังกำลังดิถี");
     expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain('data-strength-breakdown="available"');
-    expect(html).toContain("สมุดวิเคราะห์ 15 มิติ");
+    expect(html).toContain("ข้อมูลอ้างอิงเพิ่มเติม");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("พูดด้วยเสียง");
     expect(html).toContain("Complete Annotation");
     expect(html).not.toContain("Accept Annotation");
     expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
-    expect(html).toContain("Asia/Bangkok");
     expect(html).not.toContain("Asia/Hong_Kong");
+    expect(html).not.toContain("Asia/Bangkok");
     expect(html).toContain("己");
     expect(html).toContain("壬寅");
     expect(html).toContain("ปีจร");
     expect(html).not.toContain("วัยจร 10 ปี");
     expect(html).toContain('data-current-luck-symbol="巳"');
-    expect(html).toContain("ช่วงอายุ 31-35 · ราศีล่าง");
+    expect(html).toContain("ก้าวปัจจุบัน 31-35 · ราศีล่าง");
     expect(html).toContain("รอบวัยจร 26-35 · 乙巳");
     expect(html).toContain('data-dayun-direction="rtl"');
     expect(html).toContain("26-30");
     expect(html).toContain("31-35");
     expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("3.07");
+    expect(html).toContain("หญิง");
     expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");
     expect(html).toContain(
       "Builds influence patiently, then turns preparation into visible results when timing opens.",
     );
+    expect(html).not.toContain("ตัวอย่างรายงาน (Print DNA)");
     expect(html).not.toContain("Static Destiny");
     expect(html).not.toContain("Dynamic Luck");
     expect(html).not.toContain("Deep Analysis");
