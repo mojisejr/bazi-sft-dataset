@@ -324,6 +324,19 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     }
   }
 
+  const proofNoteField = (variantClassName: string) => (
+    <label className={`field proof-dock__field ${variantClassName}`}>
+      <span>บันทึกของซินแส</span>
+      <textarea
+        name="sinsae-proof-note"
+        rows={4}
+        value={sinsaeProofNote}
+        placeholder="สรุปเหตุผลที่อนุมัติหรืออธิบายว่าทำไมจึงตีกลับงาน AI"
+        onChange={(event) => setSinsaeProofNote(event.target.value)}
+      />
+    </label>
+  );
+
   return (
     <section className="workspace-stack">
       <section className="surface inset-card proof-hero-card">
@@ -620,12 +633,20 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
         </div>
       </div>
 
+      <section className="surface inset-card proof-note-card proof-note-card--mobile">
+        <div>
+          <p className="section-kicker">Proof Note</p>
+          <h3>เขียน note ให้จบก่อนค่อยกดปุ่มจาก dock ด้านล่าง</h3>
+        </div>
+        {proofNoteField("proof-note-card__field")}
+      </section>
+
       <section className="proof-dock" aria-label="proof decision dock">
         <div className="proof-dock__surface surface">
           <div className="proof-dock__header">
             <div>
               <p className="section-kicker">Decision Dock</p>
-              <h3>เขียน note แล้วค่อยอนุมัติหรือตีกลับจาก dock เดียว</h3>
+              <h3>เช็ก note แล้วค่อยอนุมัติหรือตีกลับจาก dock ด้านล่าง</h3>
             </div>
             <p className={`save-indicator save-indicator--${saveState} proof-dock__status`} aria-live="polite">
               {getSaveMessage(saveState, saveErrorMessage, lastSavedAt, activeAction)}
@@ -633,16 +654,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           </div>
 
           <div className="proof-dock__grid">
-            <label className="field proof-dock__field">
-              <span>บันทึกของซินแส</span>
-              <textarea
-                name="sinsae-proof-note"
-                rows={4}
-                value={sinsaeProofNote}
-                placeholder="สรุปเหตุผลที่อนุมัติหรืออธิบายว่าทำไมจึงตีกลับงาน AI"
-                onChange={(event) => setSinsaeProofNote(event.target.value)}
-              />
-            </label>
+            {proofNoteField("proof-note-card__field proof-note-card__field--desktop")}
 
             <div className="proof-dock__side">
               <div className="proof-dock__quick-actions">

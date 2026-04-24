@@ -224,7 +224,9 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("เปิดแผงคำนวณ");
     expect(html).toContain("เปิดข้อมูลเคส");
     expect(html).toContain("Decision Dock");
-    expect(html).toContain("เขียน note แล้วค่อยอนุมัติหรือตีกลับจาก dock เดียว");
+    expect(html).toContain("เช็ก note แล้วค่อยอนุมัติหรือตีกลับจาก dock ด้านล่าง");
+    expect(html).toContain("Proof Note");
+    expect(html).toContain("เขียน note ให้จบก่อนค่อยกดปุ่มจาก dock ด้านล่าง");
     expect(html).toContain("เสาลัคนา");
     expect(html).toContain("壬寅");
     expect(html).toContain('data-proof-friction="conflict"');

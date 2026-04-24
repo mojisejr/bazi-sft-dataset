@@ -266,6 +266,19 @@ textarea {
   padding-bottom: clamp(290px, 34vw, 360px);
 }
 
+.proof-note-card--mobile {
+  display: none;
+}
+
+.proof-note-card__field {
+  display: grid;
+  gap: 10px;
+}
+
+.proof-note-card__field textarea {
+  min-height: 160px;
+}
+
 .proof-sidebar,
 .proof-main {
   display: grid;
@@ -2772,6 +2785,19 @@ textarea {
     display: grid;
   }
 
+  .proof-layout {
+    padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .proof-note-card--mobile {
+    display: grid;
+    scroll-margin-bottom: calc(148px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .proof-note-card__field--desktop {
+    display: none;
+  }
+
   .proof-dock {
     padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
   }
@@ -2790,6 +2816,10 @@ textarea {
   .proof-dock__status {
     max-width: none;
     text-align: left;
+  }
+
+  .proof-dock__grid {
+    gap: 14px;
   }
 }
 
