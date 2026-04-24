@@ -7,9 +7,10 @@ import type {
   PillarValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
-import { CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
+import { CorePersonaDetailContent, CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
+import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 import { ExplainableNode } from "@/components/bazi/ExplainableNode";
-import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
+import { StrengthBreakdownDetailContent, StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 import {
   tenGodRows,
   twelveQiRows,
@@ -18,6 +19,8 @@ import {
 type CalculatedBoardProps = {
   calculatedState: CalculatedStateValue | null;
 };
+
+type ReadingDetailPanel = "strength" | "luck" | "persona" | "reference" | null;
 
 type StaticDestinyColumn = {
   key: string;
@@ -86,8 +89,7 @@ function getRelatedShenShaEntries(
 }
 
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
-  const [isLuckTimelineOpen, setIsLuckTimelineOpen] = useState(false);
-  const [isReferenceShelfOpen, setIsReferenceShelfOpen] = useState(false);
+  const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
 
   function handlePrint() {
     window.print();
@@ -150,6 +152,41 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
       ? formatDaYunCycleCode(currentDaYun)
       : null;
   const ageSnapshotLabel = formatAgeSnapshot(calculatedState?.ageSnapshot);
+  const referenceSummary = "10 เทพ • 12 เชี่ยงแซ • ดาวเด่น • คำเปรียบเปรย • Trace";
+  const isStrengthDetailOpen = activeDetailPanel === "strength";
+  const isLuckDetailOpen = activeDetailPanel === "luck";
+  const isPersonaDetailOpen = activeDetailPanel === "persona";
+  const isReferenceDetailOpen = activeDetailPanel === "reference";
+
+  const detailOverlayMeta = activeDetailPanel === "strength"
+    ? {
+      kicker: "Strength Detail",
+      title: "รายละเอียดกำลังดิถี",
+      summary: calculatedState ? `คะแนน ${calculatedState.strengthScore.toFixed(2)} • เปิดสมการและแรงหนุน/แรงเสียดสีใน plane เดียว` : undefined,
+    }
+    : activeDetailPanel === "luck"
+      ? {
+        kicker: "Luck Timeline",
+        title: "timeline วัยจร",
+        summary: currentDaYun
+          ? `รอบหลัก ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
+          : "เปิดรายละเอียดรอบหลัก ก้าวปัจจุบัน และ timeline ใน layer เดียว",
+      }
+      : activeDetailPanel === "persona"
+        ? {
+          kicker: "Persona Detail",
+          title: "บริบทธาตุและบุคลิก",
+          summary: calculatedState?.seasonalInteraction
+            ? `${calculatedState.seasonalInteraction.metaphor} • เปิดบริบทธาตุและหมายเหตุเชิงกฎโดยไม่ดัน reading card`
+            : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎใน layer แยก",
+        }
+        : activeDetailPanel === "reference"
+          ? {
+            kicker: "Reference Mode",
+            title: "ข้อมูลอ้างอิงเพิ่มเติม",
+            summary: referenceSummary,
+          }
+          : null;
 
   return (
     <article className="surface engine-column">
@@ -216,13 +253,17 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               score={calculatedState.strengthScore}
               trace={calculatedState.explainable.strengthScore?.trace}
               title="แผนผังกำลังดิถี"
+              detailMode="overlay"
+              detailOpen={isStrengthDetailOpen}
+              onDetailToggle={() => setActiveDetailPanel("strength")}
+              detailTriggerLabel="เปิดรายละเอียดกำลังดิถี"
             />
 
             <section
               className="surface inset-card movement-panel"
               aria-label="luck module"
               data-reading-block="D"
-              data-luck-timeline-open={isLuckTimelineOpen ? "true" : "false"}
+              data-luck-timeline-open={isLuckDetailOpen ? "true" : "false"}
             >
               <div className="section-heading section-heading--compact">
                 <div>
@@ -283,60 +324,12 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 <button
                   type="button"
                   className="secondary-action movement-panel__toggle"
-                  aria-expanded={isLuckTimelineOpen}
-                  onClick={() => setIsLuckTimelineOpen((current) => !current)}
+                  aria-haspopup="dialog"
+                  onClick={() => setActiveDetailPanel("luck")}
                 >
-                  {isLuckTimelineOpen ? "ซ่อน timeline วัยจร" : "ดู timeline วัยจร"}
+                  เปิด timeline วัยจร
                 </button>
               </div>
-
-              {isLuckTimelineOpen ? (
-                <>
-                  <div className="section-heading section-heading--compact">
-                    <div>
-                      <p className="section-kicker">timeline วัยจร</p>
-                      <h4>ไล่อ่านย้อนหลังและมองรอบปัจจุบันในแนวเดียวกัน</h4>
-                    </div>
-                  </div>
-
-                  <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction="rtl">
-                    {daYunTrackEntries.map((entry) => (
-                      <article
-                        key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}
-                        className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
-                      >
-                        <span className="dayun-card__cycle">
-                          {formatDaYunAgeRange(entry.startAge, entry.endAge)}
-                        </span>
-                        {entry.upperPhase && entry.lowerPhase ? (
-                          <div className="dayun-card__phase-stack">
-                            {[entry.upperPhase, entry.lowerPhase].map((phase) => (
-                              <section
-                                key={`${entry.startAge}-${entry.endAge}-${phase.source}`}
-                                className={`dayun-card__phase${phase.isCurrent ? " dayun-card__phase--current" : ""}`}
-                              >
-                                <span className="dayun-card__phase-age">
-                                  {formatDaYunAgeRange(phase.startAge, phase.endAge)}
-                                </span>
-                                <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
-                                <span className="dayun-card__phase-label">
-                                  {formatDaYunPhaseSource(phase.source)}
-                                </span>
-                              </section>
-                            ))}
-                          </div>
-                        ) : (
-                          <>
-                            <strong className="dayun-card__code">{formatDaYunCycleCode(entry)}</strong>
-                            <span className="dayun-card__label">{entry.isCurrent ? "รอบปัจจุบัน" : "รอบทางเดิน"}</span>
-                          </>
-                        )}
-                        <span className="dayun-card__label">{formatDaYunCycleCode(entry)}</span>
-                      </article>
-                    ))}
-                  </div>
-                </>
-              ) : null}
             </section>
           </div>
 
@@ -347,13 +340,17 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               seasonalInteraction={calculatedState.seasonalInteraction}
               title="แกนบุคลิกพื้นฐาน"
               kicker="ภาพตีความพื้นดวง"
+              detailMode="overlay"
+              detailOpen={isPersonaDetailOpen}
+              onDetailToggle={() => setActiveDetailPanel("persona")}
+              detailTriggerLabel="เปิดบริบทธาตุ"
             />
 
             <section
               className="surface inset-card reference-shelf"
               aria-label="reference shelf"
               data-reading-block="F"
-              data-reference-shelf-open={isReferenceShelfOpen ? "true" : "false"}
+              data-reference-shelf-open={isReferenceDetailOpen ? "true" : "false"}
             >
               <div className="section-heading section-heading--compact">
                 <div>
@@ -362,19 +359,133 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 </div>
               </div>
 
+              <p className="section-note">{referenceSummary}</p>
+
               <div className="reference-shelf__actions">
                 <button
                   type="button"
                   className="secondary-action reference-shelf__toggle"
-                  aria-expanded={isReferenceShelfOpen}
-                  onClick={() => setIsReferenceShelfOpen((current) => !current)}
+                  aria-haspopup="dialog"
+                  onClick={() => setActiveDetailPanel("reference")}
                 >
-                  {isReferenceShelfOpen ? "ซ่อนข้อมูลอ้างอิงเพิ่มเติม" : "ดูข้อมูลอ้างอิงเพิ่มเติม"}
+                  เข้าสู่โหมดอ้างอิง
                 </button>
               </div>
+            </section>
+          </div>
 
-              {isReferenceShelfOpen ? (
-                <div className="reference-shelf__grid">
+          <DetailOverlay
+            isOpen={activeDetailPanel !== null}
+            title={detailOverlayMeta?.title ?? "รายละเอียดเพิ่มเติม"}
+            kicker={detailOverlayMeta?.kicker}
+            summary={detailOverlayMeta?.summary}
+            onClose={() => setActiveDetailPanel(null)}
+          >
+            {activeDetailPanel === "strength" ? (
+              <StrengthBreakdownDetailContent
+                score={calculatedState.strengthScore}
+                trace={calculatedState.explainable.strengthScore?.trace}
+              />
+            ) : null}
+
+            {activeDetailPanel === "luck" ? (
+              <>
+                <div className="movement-grid">
+                  <article className="annual-energy-card">
+                    <p className="section-kicker">ปีจร</p>
+                    <h4>{formatPillarCode(calculatedState.liuNian)}</h4>
+                    <p className="metric-copy">
+                      {calculatedState.liuNian
+                        ? `ก้าน ${calculatedState.liuNian.stem} · กิ่ง ${calculatedState.liuNian.branch}`
+                        : "ยังไม่มีปีจรสำหรับเคสนี้"}
+                    </p>
+                    <div className="shen-sha-cluster shen-sha-cluster--compact">
+                      {liuNianShenSha.length > 0 ? (
+                        liuNianShenSha.map((entry) => (
+                          <article
+                            key={`overlay-liu-nian-${entry.starName}`}
+                            className="shen-sha-chip"
+                            title={entry.meaning}
+                          >
+                            <strong>{entry.starName}</strong>
+                            <span>{entry.meaning}</span>
+                          </article>
+                        ))
+                      ) : (
+                        <span className="shen-sha-empty">ยังไม่มีดาวจรเพิ่มเติม</span>
+                      )}
+                    </div>
+                  </article>
+
+                  <article className="current-luck-card">
+                    <p className="section-kicker">รอบหลัก</p>
+                    <h4 data-current-luck-symbol={currentDaYunDisplay ?? undefined}>
+                      {currentDaYunDisplay ?? "ยังไม่พบวัยจรปัจจุบัน"}
+                    </h4>
+                    <p className="metric-copy">
+                      {currentDaYun
+                        ? `รอบวัยจร ${formatDaYunAgeRange(currentDaYun.startAge, currentDaYun.endAge)} · ${formatDaYunCycleCode(currentDaYun)}`
+                        : "ยังไม่พบรอบวัยจรของเคสนี้"}
+                    </p>
+                    {currentDaYunPhase ? (
+                      <p className="current-luck-card__cycle">
+                        {`ก้าวปัจจุบัน ${formatDaYunAgeRange(currentDaYunPhase.startAge, currentDaYunPhase.endAge)} · ${formatDaYunPhaseSource(currentDaYunPhase.source)}`}
+                      </p>
+                    ) : null}
+                    {ageSnapshotLabel ? (
+                      <p className="current-luck-card__cycle">{ageSnapshotLabel}</p>
+                    ) : null}
+                  </article>
+                </div>
+
+                <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction="rtl">
+                  {daYunTrackEntries.map((entry) => (
+                    <article
+                      key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}
+                      className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
+                    >
+                      <span className="dayun-card__cycle">
+                        {formatDaYunAgeRange(entry.startAge, entry.endAge)}
+                      </span>
+                      {entry.upperPhase && entry.lowerPhase ? (
+                        <div className="dayun-card__phase-stack">
+                          {[entry.upperPhase, entry.lowerPhase].map((phase) => (
+                            <section
+                              key={`${entry.startAge}-${entry.endAge}-${phase.source}`}
+                              className={`dayun-card__phase${phase.isCurrent ? " dayun-card__phase--current" : ""}`}
+                            >
+                              <span className="dayun-card__phase-age">
+                                {formatDaYunAgeRange(phase.startAge, phase.endAge)}
+                              </span>
+                              <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
+                              <span className="dayun-card__phase-label">
+                                {formatDaYunPhaseSource(phase.source)}
+                              </span>
+                            </section>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <strong className="dayun-card__code">{formatDaYunCycleCode(entry)}</strong>
+                          <span className="dayun-card__label">{entry.isCurrent ? "รอบปัจจุบัน" : "รอบทางเดิน"}</span>
+                        </>
+                      )}
+                      <span className="dayun-card__label">{formatDaYunCycleCode(entry)}</span>
+                    </article>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            {activeDetailPanel === "persona" ? (
+              <CorePersonaDetailContent
+                persona={calculatedState.sixtyJiaziCorePersona}
+                elementAnalysis={calculatedState.elementAnalysis}
+              />
+            ) : null}
+
+            {activeDetailPanel === "reference" ? (
+              <div className="reference-shelf__grid">
                 <section className="detail-cluster detail-cluster--nested">
                   <div className="section-heading section-heading--compact">
                     <div>
@@ -476,10 +587,9 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                     </div>
                   ) : null}
                 </section>
-                </div>
-              ) : null}
-            </section>
-          </div>
+              </div>
+            ) : null}
+          </DetailOverlay>
         </div>
       ) : (
         <section className="surface inset-card empty-state">

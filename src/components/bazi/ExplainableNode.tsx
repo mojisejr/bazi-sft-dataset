@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 
 import type { CalculationTraceValue } from "@/lib/bazi/schema-types";
+import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 import {
   formatCalculationTrace,
   formatDeveloperTraceSnapshot,
@@ -42,31 +43,14 @@ export function ExplainableNode({
         {isOpen ? "ซ่อนวิธีคำนวณ" : buttonLabel}
       </button>
 
-      {isOpen ? (
-        <section
-          id={headingId}
-          className="explainable-sheet"
-          aria-label={title}
-          aria-hidden={isOpen ? "false" : "true"}
-        >
-          <div className="explainable-sheet__header">
-            <div>
-              <p className="section-kicker">คำอธิบายวิธีคำนวณ</p>
-              <h3>{title}</h3>
-            </div>
-
-            <button
-              type="button"
-              className="explainable-close"
-              aria-label="ปิดคำอธิบาย"
-              onClick={() => setIsOpen(false)}
-            >
-              ปิด
-            </button>
-          </div>
-
-          <p className="metric-copy explainable-summary">{formattedTrace.summary}</p>
-
+      <DetailOverlay
+        isOpen={isOpen}
+        title={title}
+        kicker="คำอธิบายวิธีคำนวณ"
+        summary={formattedTrace.summary}
+        onClose={() => setIsOpen(false)}
+      >
+        <section id={headingId} aria-label={title} aria-hidden={isOpen ? "false" : "true"}>
           <ol className="explainable-step-list">
             {formattedTrace.steps.map((step) => (
               <li key={step}>{step}</li>
@@ -83,7 +67,7 @@ export function ExplainableNode({
             </details>
           ) : null}
         </section>
-      ) : null}
+      </DetailOverlay>
     </div>
   );
 }

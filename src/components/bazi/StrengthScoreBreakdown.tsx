@@ -11,6 +11,10 @@ type StrengthScoreBreakdownProps = {
   trace: CalculationTraceValue | undefined;
   title?: string;
   defaultDetailOpen?: boolean;
+  detailMode?: "inline" | "overlay";
+  detailOpen?: boolean;
+  onDetailToggle?: () => void;
+  detailTriggerLabel?: string;
 };
 
 type StrengthContributionItem = {
@@ -22,6 +26,28 @@ type StrengthContributionItem = {
 type StrengthPenaltyItem = {
   label: string;
   value: number;
+};
+
+type StrengthBreakdownModel = {
+  hasBreakdown: boolean;
+  hasOperatorBreakdown: boolean;
+  baseOffset: number;
+  penalties: StrengthPenaltyItem[];
+  penaltyTotal: number;
+  primaryFriction: StrengthContributionItem[];
+  primarySupports: StrengthContributionItem[];
+  qiAdjustments: StrengthContributionItem[];
+  qiTotal: number;
+  relationAdjustments: StrengthContributionItem[];
+  relationTotal: number;
+  scoreBand: ReturnType<typeof classifyOperatorStrengthScore>;
+  scoreBandIndex: number;
+  stageContribution: number;
+  summaryCopy: string;
+  visibleContributions: StrengthContributionItem[];
+  visibleTotal: number;
+  hiddenContributions: StrengthContributionItem[];
+  hiddenTotal: number;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -147,13 +173,10 @@ function toPenaltyItems(value: unknown) {
   });
 }
 
-export function StrengthScoreBreakdown({
-  score,
-  trace,
-  title = "แผนผังกำลังดิถี",
-  defaultDetailOpen = false,
-}: StrengthScoreBreakdownProps) {
-  const [isDetailOpen, setIsDetailOpen] = useState(defaultDetailOpen);
+function buildStrengthBreakdownModel(
+  score: number,
+  trace: CalculationTraceValue | undefined,
+): StrengthBreakdownModel {
   const rawVariables = getRawVariables(trace);
   const visibleContributions = toContributionItems(rawVariables?.visibleContributions);
   const qiAdjustments = toContributionItems(rawVariables?.qiAdjustments);
@@ -197,12 +220,171 @@ export function StrengthScoreBreakdown({
       : "ยังไม่พบแรงฉุดเด่น",
   ].join(" · ");
 
+  return {
+    hasBreakdown,
+    hasOperatorBreakdown,
+    baseOffset,
+    penalties,
+    penaltyTotal,
+    primaryFriction,
+    primarySupports,
+    qiAdjustments,
+    qiTotal,
+    relationAdjustments,
+    relationTotal,
+    scoreBand,
+    scoreBandIndex,
+    stageContribution,
+    summaryCopy,
+    visibleContributions,
+    visibleTotal,
+    hiddenContributions,
+    hiddenTotal,
+  };
+}
+
+type StrengthBreakdownDetailContentProps = {
+  score: number;
+  trace: CalculationTraceValue | undefined;
+};
+
+export function StrengthBreakdownDetailContent({
+  score,
+  trace,
+}: StrengthBreakdownDetailContentProps) {
+  const model = buildStrengthBreakdownModel(score, trace);
+
+  if (!model.hasBreakdown) {
+    return (
+      <p className="strength-breakdown__empty">
+        trace ของคะแนนพลังรอบนี้ยังไม่พอสำหรับแตกเป็นสมการละเอียด แต่คะแนนรวมยังแสดงได้ตามผลคำนวณหลัก
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <div className="strength-flow" aria-label="strength node flow">
+        <article className="strength-flow__node">
+          <span className="strength-flow__node-label">ฐานตั้งต้น</span>
+          <strong>{formatPlainNumber(model.baseOffset)}</strong>
+        </article>
+        <span className="strength-flow__arrow" aria-hidden="true">→</span>
+        <article className="strength-flow__node strength-flow__node--support">
+          <span className="strength-flow__node-label">ตำแหน่งหลัก</span>
+          <strong>{formatSignedNumber(model.hasOperatorBreakdown ? model.visibleTotal : model.stageContribution)}</strong>
+        </article>
+        <span className="strength-flow__arrow" aria-hidden="true">→</span>
+        <article className="strength-flow__node strength-flow__node--support">
+          <span className="strength-flow__node-label">
+            {model.hasOperatorBreakdown ? "โซนเชี่ยงแซ" : "ธาตุแฝง"}
+          </span>
+          <strong>{formatSignedNumber(model.hasOperatorBreakdown ? model.qiTotal : model.hiddenTotal)}</strong>
+        </article>
+        <span className="strength-flow__arrow" aria-hidden="true">→</span>
+        <article className="strength-flow__node strength-flow__node--friction">
+          <span className="strength-flow__node-label">
+            {model.hasOperatorBreakdown ? "แรงปะทะ" : "แรงกระทบ"}
+          </span>
+          <strong>{formatSignedNumber(model.hasOperatorBreakdown ? model.relationTotal : -model.penaltyTotal)}</strong>
+        </article>
+        <span className="strength-flow__arrow" aria-hidden="true">→</span>
+        <article className="strength-flow__node strength-flow__node--result">
+          <span className="strength-flow__node-label">ผลรวม</span>
+          <strong>{formatPlainNumber(score)}</strong>
+        </article>
+      </div>
+
+      <div className="strength-breakdown__grid strength-breakdown__grid--phase6">
+        <article className="strength-breakdown__panel">
+          <h4>แรงที่หนุนดิถี</h4>
+          {model.primarySupports.length > 0 ? (
+            <ul className="strength-breakdown__signal-list">
+              {model.primarySupports.map((entry) => (
+                <li key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__signal">
+                  <span>{`${entry.label} · ${entry.symbol}`}</span>
+                  <strong>{formatSignedNumber(entry.weight)}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="strength-breakdown__empty">trace รอบนี้ไม่ได้ส่งแรงหนุนที่ใช้แตกออกมาเพิ่ม</p>
+          )}
+        </article>
+
+        <article className="strength-breakdown__panel">
+          <h4>แรงที่ฉุดหรือเสียดสี</h4>
+          {model.primaryFriction.length > 0 ? (
+            <ul className="strength-breakdown__signal-list">
+              {model.primaryFriction.map((entry) => (
+                <li key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__signal">
+                  <span>{`${entry.label}${entry.symbol !== "-" ? ` · ${entry.symbol}` : ""}`}</span>
+                  <strong>{formatSignedNumber(entry.weight)}</strong>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="strength-breakdown__empty">รอบนี้ยังไม่พบแรงปะทะที่หักคะแนนอย่างมีนัยสำคัญ</p>
+          )}
+        </article>
+
+        <article className="strength-breakdown__panel strength-breakdown__panel--wide">
+          <h4>สรุปสมการที่ใช้กับรอบนี้</h4>
+          <dl className="strength-breakdown__list">
+            <div className="strength-breakdown__row">
+              <dt>คะแนนตั้งต้นของระบบ</dt>
+              <dd>{formatPlainNumber(model.baseOffset)}</dd>
+            </div>
+            <div className="strength-breakdown__row">
+              <dt>{model.hasOperatorBreakdown ? "น้ำหนักตำแหน่งก้านและกิ่ง" : "น้ำหนักฤดูกาลและ 12 เชี่ยงแซ"}</dt>
+              <dd>{formatSignedNumber(model.hasOperatorBreakdown ? model.visibleTotal : model.stageContribution)}</dd>
+            </div>
+            <div className="strength-breakdown__row">
+              <dt>{model.hasOperatorBreakdown ? "แรงเสริมจากโซนเชี่ยงแซ" : "แรงจากธาตุแฝง"}</dt>
+              <dd>{formatSignedNumber(model.hasOperatorBreakdown ? model.qiTotal : model.hiddenTotal)}</dd>
+            </div>
+            <div className="strength-breakdown__row">
+              <dt>{model.hasOperatorBreakdown ? "แรงปะทะคงเหลือ" : "แรงชง/เฮ้ง/ไห่/ผั่ว"}</dt>
+              <dd>{formatSignedNumber(model.hasOperatorBreakdown ? model.relationTotal : -model.penaltyTotal)}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+    </>
+  );
+}
+
+export function StrengthScoreBreakdown({
+  score,
+  trace,
+  title = "แผนผังกำลังดิถี",
+  defaultDetailOpen = false,
+  detailMode = "inline",
+  detailOpen,
+  onDetailToggle,
+  detailTriggerLabel,
+}: StrengthScoreBreakdownProps) {
+  const [inlineDetailOpen, setInlineDetailOpen] = useState(defaultDetailOpen);
+  const model = buildStrengthBreakdownModel(score, trace);
+  const isOverlayMode = detailMode === "overlay";
+  const isDetailOpen = isOverlayMode ? Boolean(detailOpen) : (detailOpen ?? inlineDetailOpen);
+  const triggerLabel = detailTriggerLabel ?? (isOverlayMode ? "เปิดรายละเอียดกำลังดิถี" : "ดูรายละเอียดกำลังดิถี");
+
+  function handleDetailToggle() {
+    if (onDetailToggle) {
+      onDetailToggle();
+      return;
+    }
+
+    setInlineDetailOpen((current) => !current);
+  }
+
   return (
     <section
       className="surface inset-card strength-breakdown"
       aria-label={title}
-      data-strength-breakdown={hasBreakdown ? "available" : "missing"}
-      data-strength-band={scoreBand.id}
+      data-strength-breakdown={model.hasBreakdown ? "available" : "missing"}
+      data-strength-band={model.scoreBand.id}
       data-strength-detail-open={isDetailOpen ? "true" : "false"}
     >
       <div className="section-heading section-heading--compact">
@@ -216,14 +398,14 @@ export function StrengthScoreBreakdown({
       <div className="strength-meter" aria-label="ระดับกำลังดิถี 5 ระดับ">
         <div className="strength-meter__hero">
           <strong className="strength-meter__score">{formatPlainNumber(score)}</strong>
-          <span className="strength-meter__label">{scoreBand.displayLabel}</span>
-          <p className="metric-copy strength-meter__summary">{summaryCopy}</p>
+          <span className="strength-meter__label">{model.scoreBand.displayLabel}</span>
+          <p className="metric-copy strength-meter__summary">{model.summaryCopy}</p>
         </div>
 
         <ol className="strength-meter__rail">
           {OPERATOR_STRENGTH_CLASS_BANDS.map((band, index) => {
-            const isActive = band.id === scoreBand.id;
-            const isPast = index < scoreBandIndex;
+            const isActive = band.id === model.scoreBand.id;
+            const isPast = index < model.scoreBandIndex;
 
             return (
               <li
@@ -237,110 +419,24 @@ export function StrengthScoreBreakdown({
           })}
         </ol>
 
-        {hasBreakdown ? (
+        {model.hasBreakdown ? (
           <div className="strength-breakdown__actions">
             <button
               type="button"
               className="secondary-action strength-breakdown__toggle"
-              aria-expanded={isDetailOpen}
-              onClick={() => setIsDetailOpen((current) => !current)}
+              aria-expanded={isOverlayMode ? undefined : isDetailOpen}
+              aria-haspopup={isOverlayMode ? "dialog" : undefined}
+              onClick={handleDetailToggle}
             >
-              {isDetailOpen ? "ซ่อนรายละเอียดกำลังดิถี" : "ดูรายละเอียดกำลังดิถี"}
+              {isOverlayMode ? triggerLabel : (isDetailOpen ? "ซ่อนรายละเอียดกำลังดิถี" : triggerLabel)}
             </button>
           </div>
         ) : null}
       </div>
 
-      {hasBreakdown && isDetailOpen ? (
-        <div className="strength-flow" aria-label="strength node flow">
-          <article className="strength-flow__node">
-            <span className="strength-flow__node-label">ฐานตั้งต้น</span>
-            <strong>{formatPlainNumber(baseOffset)}</strong>
-          </article>
-          <span className="strength-flow__arrow" aria-hidden="true">→</span>
-          <article className="strength-flow__node strength-flow__node--support">
-            <span className="strength-flow__node-label">ตำแหน่งหลัก</span>
-            <strong>{formatSignedNumber(hasOperatorBreakdown ? visibleTotal : stageContribution)}</strong>
-          </article>
-          <span className="strength-flow__arrow" aria-hidden="true">→</span>
-          <article className="strength-flow__node strength-flow__node--support">
-            <span className="strength-flow__node-label">
-              {hasOperatorBreakdown ? "โซนเชี่ยงแซ" : "ธาตุแฝง"}
-            </span>
-            <strong>{formatSignedNumber(hasOperatorBreakdown ? qiTotal : hiddenTotal)}</strong>
-          </article>
-          <span className="strength-flow__arrow" aria-hidden="true">→</span>
-          <article className="strength-flow__node strength-flow__node--friction">
-            <span className="strength-flow__node-label">
-              {hasOperatorBreakdown ? "แรงปะทะ" : "แรงกระทบ"}
-            </span>
-            <strong>{formatSignedNumber(hasOperatorBreakdown ? relationTotal : -penaltyTotal)}</strong>
-          </article>
-          <span className="strength-flow__arrow" aria-hidden="true">→</span>
-          <article className="strength-flow__node strength-flow__node--result">
-            <span className="strength-flow__node-label">ผลรวม</span>
-            <strong>{formatPlainNumber(score)}</strong>
-          </article>
-        </div>
-      ) : null}
-
-      {hasBreakdown && isDetailOpen ? (
-        <div className="strength-breakdown__grid strength-breakdown__grid--phase6">
-          <article className="strength-breakdown__panel">
-            <h4>แรงที่หนุนดิถี</h4>
-            {primarySupports.length > 0 ? (
-              <ul className="strength-breakdown__signal-list">
-                {primarySupports.map((entry) => (
-                  <li key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__signal">
-                    <span>{`${entry.label} · ${entry.symbol}`}</span>
-                    <strong>{formatSignedNumber(entry.weight)}</strong>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="strength-breakdown__empty">trace รอบนี้ไม่ได้ส่งแรงหนุนที่ใช้แตกออกมาเพิ่ม</p>
-            )}
-          </article>
-
-          <article className="strength-breakdown__panel">
-            <h4>แรงที่ฉุดหรือเสียดสี</h4>
-            {primaryFriction.length > 0 ? (
-              <ul className="strength-breakdown__signal-list">
-                {primaryFriction.map((entry) => (
-                  <li key={`${entry.label}-${entry.symbol}`} className="strength-breakdown__signal">
-                    <span>{`${entry.label}${entry.symbol !== "-" ? ` · ${entry.symbol}` : ""}`}</span>
-                    <strong>{formatSignedNumber(entry.weight)}</strong>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="strength-breakdown__empty">รอบนี้ยังไม่พบแรงปะทะที่หักคะแนนอย่างมีนัยสำคัญ</p>
-            )}
-          </article>
-
-          <article className="strength-breakdown__panel strength-breakdown__panel--wide">
-            <h4>สรุปสมการที่ใช้กับรอบนี้</h4>
-            <dl className="strength-breakdown__list">
-              <div className="strength-breakdown__row">
-                <dt>คะแนนตั้งต้นของระบบ</dt>
-                <dd>{formatPlainNumber(baseOffset)}</dd>
-              </div>
-              <div className="strength-breakdown__row">
-                <dt>{hasOperatorBreakdown ? "น้ำหนักตำแหน่งก้านและกิ่ง" : "น้ำหนักฤดูกาลและ 12 เชี่ยงแซ"}</dt>
-                <dd>{formatSignedNumber(hasOperatorBreakdown ? visibleTotal : stageContribution)}</dd>
-              </div>
-              <div className="strength-breakdown__row">
-                <dt>{hasOperatorBreakdown ? "แรงเสริมจากโซนเชี่ยงแซ" : "แรงจากธาตุแฝง"}</dt>
-                <dd>{formatSignedNumber(hasOperatorBreakdown ? qiTotal : hiddenTotal)}</dd>
-              </div>
-              <div className="strength-breakdown__row">
-                <dt>{hasOperatorBreakdown ? "แรงปะทะคงเหลือ" : "แรงชง/เฮ้ง/ไห่/ผั่ว"}</dt>
-                <dd>{formatSignedNumber(hasOperatorBreakdown ? relationTotal : -penaltyTotal)}</dd>
-              </div>
-            </dl>
-          </article>
-        </div>
-      ) : !hasBreakdown ? (
+      {!isOverlayMode && model.hasBreakdown && isDetailOpen ? (
+        <StrengthBreakdownDetailContent score={score} trace={trace} />
+      ) : !model.hasBreakdown ? (
         <p className="strength-breakdown__empty">
           trace ของคะแนนพลังรอบนี้ยังไม่พอสำหรับแตกเป็นสมการละเอียด แต่คะแนนรวมยังแสดงได้ตามผลคำนวณหลัก
         </p>
