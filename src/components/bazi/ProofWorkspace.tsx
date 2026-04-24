@@ -394,6 +394,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
               seasonalInteraction={record.calculatedState.seasonalInteraction}
               title="แกนบุคลิกสำหรับงานตรวจ"
               kicker="Core Persona For Review"
+              enableDetailToggle={false}
             />
 
             <div className="proof-pillars-grid" aria-label="proof record pillars">

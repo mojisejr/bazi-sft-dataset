@@ -312,18 +312,16 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("ดูวิธีคำนวณคะแนนพลัง");
     expect(html).toContain("แกนบุคลิกพื้นฐาน");
     expect(html).toContain('data-core-persona="available"');
+    expect(html).toContain('data-core-persona-detail-open="false"');
     expect(html).toContain('data-seasonal-metaphor="available"');
-    expect(html).toContain('data-element-analysis="available"');
     expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
     expect(html).toContain("ธาตุนำ ดิน");
     expect(html).toContain("ธาตุนำ ทอง");
-    expect(html).toContain("ดุลธาตุและกำลังธาตุ");
-    expect(html).toContain("กำลังเด่น");
-    expect(html).toContain("มีราก");
-    expect(html).toContain("ฤดูหนุนสูง");
     expect(html).toContain("โทนธาตุ fire");
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
-    expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
+    expect(html).toContain("ดูรายละเอียดธาตุและบริบท");
+    expect(html).not.toContain("ดุลธาตุและกำลังธาตุ");
+    expect(html).not.toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
     expect(html).toContain("แผนผังกำลังดิถี");
     expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain('data-strength-detail-open="false"');
@@ -331,9 +329,15 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("แรงที่หนุนดิถี");
     expect(html).not.toContain("คะแนนตั้งต้นของระบบ");
     expect(html).toContain("ข้อมูลอ้างอิงเพิ่มเติม");
+    expect(html).toContain('data-reference-shelf-open="false"');
+    expect(html).toContain("ดูข้อมูลอ้างอิงเพิ่มเติม");
+    expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
+    expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("พูดด้วยเสียง");
-    expect(html).toContain("Complete Annotation");
+    expect(html).toContain("เริ่มเขียนคำพยากรณ์");
+    expect(html).toContain("เมื่ออ่านภาพรวมด้านบนจบแล้ว ค่อยเข้าสู่ 15 มิติ");
+    expect(html).toContain("ปิดงานคำพยากรณ์");
     expect(html).not.toContain("Accept Annotation");
     expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
     expect(html).not.toContain("Asia/Hong_Kong");
@@ -349,10 +353,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain('data-dayun-direction="rtl"');
     expect(html).not.toContain("16-20");
     expect(html).not.toContain("6-10");
-    expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("3.07");
     expect(html).toContain("หญิง");
-    expect(html).toContain("fertile cultivated soil that nurtures, absorbs, and organizes");
+    expect(html).not.toContain("fertile cultivated soil that nurtures, absorbs, and organizes");
     expect(html).toContain(
       "Builds influence patiently, then turns preparation into visible results when timing opens.",
     );
@@ -360,6 +363,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Static Destiny");
     expect(html).not.toContain("Dynamic Luck");
     expect(html).not.toContain("Deep Analysis");
+    expect(html).not.toContain("Complete Annotation");
 
     expect(html).not.toContain("จังหวะที่กำลังเดิน");
   });

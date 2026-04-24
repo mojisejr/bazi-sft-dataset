@@ -761,6 +761,18 @@ textarea {
   gap: 18px;
 }
 
+.annotation-stage__lead {
+  display: grid;
+  gap: 8px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(110, 79, 48, 0.14);
+}
+
+.annotation-stage__lead h3,
+.annotation-stage__lead p {
+  margin: 0;
+}
+
 .input-form-shell {
   margin: 0;
   padding: 0;
@@ -926,6 +938,16 @@ textarea {
 .reference-shelf {
   display: grid;
   gap: 16px;
+}
+
+.reference-shelf__actions,
+.core-persona__actions {
+  display: flex;
+}
+
+.reference-shelf__toggle,
+.core-persona__toggle {
+  min-height: 42px;
 }
 
 .reference-shelf__grid {
@@ -1527,6 +1549,7 @@ textarea {
 
   .operator-orbit__core,
   .pillar-ribbon,
+  .reading-secondary-grid,
   .operator-insight-grid,
   .destiny-pillar-grid,
   .dayun-track,

@@ -87,6 +87,7 @@ function getRelatedShenShaEntries(
 
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const [isLuckTimelineOpen, setIsLuckTimelineOpen] = useState(false);
+  const [isReferenceShelfOpen, setIsReferenceShelfOpen] = useState(false);
 
   function handlePrint() {
     window.print();
@@ -348,7 +349,12 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               kicker="ภาพตีความพื้นดวง"
             />
 
-            <section className="surface inset-card reference-shelf" aria-label="reference shelf" data-reading-block="F">
+            <section
+              className="surface inset-card reference-shelf"
+              aria-label="reference shelf"
+              data-reading-block="F"
+              data-reference-shelf-open={isReferenceShelfOpen ? "true" : "false"}
+            >
               <div className="section-heading section-heading--compact">
                 <div>
                   <p className="section-kicker">ข้อมูลอ้างอิงเพิ่มเติม</p>
@@ -356,7 +362,19 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 </div>
               </div>
 
-              <div className="reference-shelf__grid">
+              <div className="reference-shelf__actions">
+                <button
+                  type="button"
+                  className="secondary-action reference-shelf__toggle"
+                  aria-expanded={isReferenceShelfOpen}
+                  onClick={() => setIsReferenceShelfOpen((current) => !current)}
+                >
+                  {isReferenceShelfOpen ? "ซ่อนข้อมูลอ้างอิงเพิ่มเติม" : "ดูข้อมูลอ้างอิงเพิ่มเติม"}
+                </button>
+              </div>
+
+              {isReferenceShelfOpen ? (
+                <div className="reference-shelf__grid">
                 <section className="detail-cluster detail-cluster--nested">
                   <div className="section-heading section-heading--compact">
                     <div>
@@ -458,7 +476,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                     </div>
                   ) : null}
                 </section>
-              </div>
+                </div>
+              ) : null}
             </section>
           </div>
         </div>

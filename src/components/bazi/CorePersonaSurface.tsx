@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
 import {
   getElementStrengthBadges,
@@ -11,6 +15,8 @@ type CorePersonaSurfaceProps = {
   seasonalInteraction?: CalculatedStateValue["seasonalInteraction"];
   title?: string;
   kicker?: string;
+  defaultDetailsOpen?: boolean;
+  enableDetailToggle?: boolean;
 };
 
 export function CorePersonaSurface({
@@ -19,7 +25,10 @@ export function CorePersonaSurface({
   seasonalInteraction,
   title = "แกนบุคลิกพื้นฐาน",
   kicker = "60 Jiazi Core Persona",
+  defaultDetailsOpen = false,
+  enableDetailToggle = true,
 }: CorePersonaSurfaceProps) {
+  const [isDetailOpen, setIsDetailOpen] = useState(defaultDetailsOpen);
   const dominantElements = elementAnalysis?.dominantElements ?? [];
   const missingElements = elementAnalysis?.missingElements ?? [];
   const totalCounts = elementAnalysis?.totalCounts;
@@ -29,11 +38,18 @@ export function CorePersonaSurface({
   const localizedPrecedenceNotes = persona?.precedenceNoteSignals?.length
     ? localizeContextRuleNotes(persona.precedenceNoteSignals, persona.precedenceNotes)
     : (persona?.precedenceNotes ?? []);
+  const hasDetailSections = Boolean(
+    totalCounts
+    || persona?.semanticNotes.length
+    || localizedPrecedenceNotes.length,
+  );
+  const showDetailedPanels = enableDetailToggle ? isDetailOpen : true;
 
   return (
     <section
       className="surface inset-card core-persona"
       data-core-persona={persona ? "available" : "missing"}
+      data-core-persona-detail-open={showDetailedPanels ? "true" : "false"}
     >
       <div className="section-heading section-heading--compact">
         <div>
@@ -82,78 +98,95 @@ export function CorePersonaSurface({
         </div>
       ) : null}
 
-      {totalCounts ? (
-        <article className="core-persona__panel" data-element-analysis="available">
-          <h4>ดุลธาตุและกำลังธาตุ</h4>
-          <div className="core-persona__element-grid">
-            {FIVE_ELEMENT_ORDER.map((element) => {
-              const elementStrength = elementStrengthMap.get(element);
+      {hasDetailSections && enableDetailToggle ? (
+        <div className="core-persona__actions">
+          <button
+            type="button"
+            className="secondary-action core-persona__toggle"
+            aria-expanded={showDetailedPanels}
+            onClick={() => setIsDetailOpen((current) => !current)}
+          >
+            {showDetailedPanels ? "ซ่อนรายละเอียดธาตุและบริบท" : "ดูรายละเอียดธาตุและบริบท"}
+          </button>
+        </div>
+      ) : null}
 
-              return (
-                <div key={element} className="core-persona__element-card">
-                  <div className="core-persona__element-card-header">
-                    <span>{ELEMENT_LABELS_TH[element]}</span>
-                    <strong>{totalCounts[element]}</strong>
-                  </div>
-                  {elementStrength ? (
-                    <div className="core-persona__strength-badges" data-element-strengths="available">
-                      {getElementStrengthBadges(elementStrength).map((badge) => (
-                        <span
-                          key={`${element}-${badge}`}
-                          className={`core-persona__strength-badge core-persona__strength-badge--${elementStrength.strength}`}
-                        >
-                          {badge}
-                        </span>
-                      ))}
+      {showDetailedPanels ? (
+        <>
+          {totalCounts ? (
+            <article className="core-persona__panel" data-element-analysis="available">
+              <h4>ดุลธาตุและกำลังธาตุ</h4>
+              <div className="core-persona__element-grid">
+                {FIVE_ELEMENT_ORDER.map((element) => {
+                  const elementStrength = elementStrengthMap.get(element);
+
+                  return (
+                    <div key={element} className="core-persona__element-card">
+                      <div className="core-persona__element-card-header">
+                        <span>{ELEMENT_LABELS_TH[element]}</span>
+                        <strong>{totalCounts[element]}</strong>
+                      </div>
+                      {elementStrength ? (
+                        <div className="core-persona__strength-badges" data-element-strengths="available">
+                          {getElementStrengthBadges(elementStrength).map((badge) => (
+                            <span
+                              key={`${element}-${badge}`}
+                              className={`core-persona__strength-badge core-persona__strength-badge--${elementStrength.strength}`}
+                            >
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-          <div className="core-persona__analysis-summary">
-            <p>{`ธาตุนำ: ${dominantElements.length > 0 ? dominantElements.map((element) => ELEMENT_LABELS_TH[element]).join(" · ") : "ยังไม่ชัด"}`}</p>
-            <p>{`ธาตุขาด: ${missingElements.length > 0 ? missingElements.map((element) => ELEMENT_LABELS_TH[element]).join(" · ") : "ไม่มี"}`}</p>
-          </div>
-        </article>
-      ) : (
-        <article className="core-persona__panel" data-element-analysis="missing">
-          <h4>ดุลธาตุและกำลังธาตุ</h4>
-          <p className="core-persona__empty">รอบนี้ engine ยังไม่ได้สรุปการกระจายธาตุเข้ามา</p>
-        </article>
-      )}
-
-      <div className="core-persona__grid">
-        <article className="core-persona__panel">
-          <h4>สัญญาณหลักของบุคลิก</h4>
-          {persona?.semanticNotes.length ? (
-            <ul className="core-persona__list">
-              {persona.semanticNotes.map((note) => (
-                <li key={note}>{note}</li>
-              ))}
-            </ul>
+                  );
+                })}
+              </div>
+              <div className="core-persona__analysis-summary">
+                <p>{`ธาตุนำ: ${dominantElements.length > 0 ? dominantElements.map((element) => ELEMENT_LABELS_TH[element]).join(" · ") : "ยังไม่ชัด"}`}</p>
+                <p>{`ธาตุขาด: ${missingElements.length > 0 ? missingElements.map((element) => ELEMENT_LABELS_TH[element]).join(" · ") : "ไม่มี"}`}</p>
+              </div>
+            </article>
           ) : (
-            <p className="core-persona__empty">
-              engine รอบนี้ยังไม่ได้ส่ง semantic notes เพิ่มเติมจาก canonical persona
-            </p>
+            <article className="core-persona__panel" data-element-analysis="missing">
+              <h4>ดุลธาตุและกำลังธาตุ</h4>
+              <p className="core-persona__empty">รอบนี้ engine ยังไม่ได้สรุปการกระจายธาตุเข้ามา</p>
+            </article>
           )}
-        </article>
 
-        <article className="core-persona__panel">
-          <h4>หมายเหตุเชิงกฎและบริบท</h4>
-          {localizedPrecedenceNotes.length ? (
-            <ul className="core-persona__list">
-              {localizedPrecedenceNotes.map((note, index) => (
-                <li key={`${index}-${note}`}>{note}</li>
-              ))}
-            </ul>
-          ) : (
-            <p className="core-persona__empty">
-              ไม่มี precedence note เพิ่มเติมจาก canonical source ในรอบนี้
-            </p>
-          )}
-        </article>
-      </div>
+          <div className="core-persona__grid">
+            <article className="core-persona__panel">
+              <h4>สัญญาณหลักของบุคลิก</h4>
+              {persona?.semanticNotes.length ? (
+                <ul className="core-persona__list">
+                  {persona.semanticNotes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="core-persona__empty">
+                  engine รอบนี้ยังไม่ได้ส่ง semantic notes เพิ่มเติมจาก canonical persona
+                </p>
+              )}
+            </article>
+
+            <article className="core-persona__panel">
+              <h4>หมายเหตุเชิงกฎและบริบท</h4>
+              {localizedPrecedenceNotes.length ? (
+                <ul className="core-persona__list">
+                  {localizedPrecedenceNotes.map((note, index) => (
+                    <li key={`${index}-${note}`}>{note}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="core-persona__empty">
+                  ไม่มี precedence note เพิ่มเติมจาก canonical source ในรอบนี้
+                </p>
+              )}
+            </article>
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }

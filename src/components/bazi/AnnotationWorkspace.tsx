@@ -152,6 +152,14 @@ export function AnnotationWorkspace({
 
   return (
     <section className="annotation-stage">
+      <div className="annotation-stage__lead">
+        <p className="section-kicker">เริ่มเขียนคำพยากรณ์</p>
+        <h3>เมื่ออ่านภาพรวมด้านบนจบแล้ว ค่อยเข้าสู่ 15 มิติ</h3>
+        <p className="annotation-intro">
+          ส่วนด้านบนคือ reading zone สำหรับจับโครงดวง ส่วนจากนี้คือ writing zone ที่ค่อย ๆ แปลง insight ให้เป็นคำพยากรณ์พร้อมส่งต่อ
+        </p>
+      </div>
+
       <div className="surface inset-card annotation-summary-card">
         <div>
           <p className="section-kicker">สมุดวิเคราะห์ 15 มิติ</p>
@@ -180,13 +188,13 @@ export function AnnotationWorkspace({
           <p className={`save-indicator save-indicator--${saveState}`} aria-live="polite">
             {saveState === "saving"
               ? datasetStatus === "reviewed"
-                ? "กำลังปิด annotation ชุดนี้..."
-                : "Auto-saving..."
+                ? "กำลังปิดงานคำพยากรณ์ชุดนี้..."
+                : "กำลังบันทึกความคืบหน้า..."
               : saveState === "error"
                 ? saveErrorMessage ?? "บันทึกไม่สำเร็จ ลองแก้ไขแล้ว blur อีกครั้ง"
                 : datasetStatus === "reviewed"
-                  ? `Annotation reviewed แล้ว • ${formatSaveTimestamp(lastSavedAt)}`
-                  : `Auto-saved • ${formatSaveTimestamp(lastSavedAt)}`}
+                  ? `ปิดงานคำพยากรณ์แล้ว • ${formatSaveTimestamp(lastSavedAt)}`
+                  : `บันทึกความคืบหน้าแล้ว • ${formatSaveTimestamp(lastSavedAt)}`}
           </p>
 
           <button
@@ -200,10 +208,10 @@ export function AnnotationWorkspace({
             }
           >
             {datasetStatus === "reviewed"
-              ? "Reviewed แล้ว"
+              ? "ปิดงานแล้ว"
               : saveState === "saving"
                 ? "กำลังบันทึก..."
-                : "Complete Annotation"}
+                : "ปิดงานคำพยากรณ์"}
           </button>
         </div>
       </div>
