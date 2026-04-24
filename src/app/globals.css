@@ -1233,6 +1233,17 @@ textarea {
   font-size: 0.88rem;
 }
 
+.movement-panel__actions,
+.strength-breakdown__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.movement-panel__toggle,
+.strength-breakdown__toggle {
+  min-height: 42px;
+}
+
 .strength-meter {
   display: grid;
   gap: 16px;
@@ -1253,6 +1264,10 @@ textarea {
 .strength-meter__label {
   color: var(--accent);
   font-weight: 700;
+}
+
+.strength-meter__summary {
+  margin: 0;
 }
 
 .strength-meter__rail {
@@ -1468,6 +1483,10 @@ textarea {
 
 @media (max-width: 760px) {
   .manual-workspace--ready {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-primary-grid {
     grid-template-columns: 1fr;
   }
 

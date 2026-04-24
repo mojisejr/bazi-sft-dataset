@@ -306,7 +306,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("5 เสาหลัก");
     expect(html).toContain("เริ่มจากโครงดวงก่อน แล้วค่อยเปิดข้อมูลรองตามลำดับ");
     expect(html).toContain("วัยจร");
-    expect(html).toContain("timeline วัยจร");
+    expect(html).toContain("ดู timeline วัยจร");
     expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");
     expect(html).toContain("พิมพ์รายงาน");
     expect(html).not.toContain("ดูวิธีคำนวณคะแนนพลัง");
@@ -325,8 +325,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("12 เชี่ยงแซ 帝旺");
     expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
     expect(html).toContain("แผนผังกำลังดิถี");
-    expect(html).toContain("ก้านฟ้าเดือน · 戊");
     expect(html).toContain('data-strength-breakdown="available"');
+    expect(html).toContain('data-strength-detail-open="false"');
+    expect(html).toContain("ดูรายละเอียดกำลังดิถี");
+    expect(html).not.toContain("แรงที่หนุนดิถี");
+    expect(html).not.toContain("คะแนนตั้งต้นของระบบ");
     expect(html).toContain("ข้อมูลอ้างอิงเพิ่มเติม");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("พูดด้วยเสียง");
@@ -340,11 +343,12 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ปีจร");
     expect(html).not.toContain("วัยจร 10 ปี");
     expect(html).toContain('data-current-luck-symbol="巳"');
+    expect(html).toContain('data-luck-timeline-open="false"');
     expect(html).toContain("ก้าวปัจจุบัน 31-35 · ราศีล่าง");
     expect(html).toContain("รอบวัยจร 26-35 · 乙巳");
-    expect(html).toContain('data-dayun-direction="rtl"');
-    expect(html).toContain("26-30");
-    expect(html).toContain("31-35");
+    expect(html).not.toContain('data-dayun-direction="rtl"');
+    expect(html).not.toContain("16-20");
+    expect(html).not.toContain("6-10");
     expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("3.07");
     expect(html).toContain("หญิง");
@@ -357,7 +361,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Dynamic Luck");
     expect(html).not.toContain("Deep Analysis");
 
-    expect(html.indexOf("16-20")).toBeLessThan(html.indexOf("6-10"));
+    expect(html).not.toContain("จังหวะที่กำลังเดิน");
   });
 
   test("restores the queue workspace when the URL asks for workspace=queue", () => {

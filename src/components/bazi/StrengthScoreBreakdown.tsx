@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type { CalculationTraceValue } from "@/lib/bazi/schema-types";
 import {
   classifyOperatorStrengthScore,
@@ -8,6 +10,7 @@ type StrengthScoreBreakdownProps = {
   score: number;
   trace: CalculationTraceValue | undefined;
   title?: string;
+  defaultDetailOpen?: boolean;
 };
 
 type StrengthContributionItem = {
@@ -148,7 +151,9 @@ export function StrengthScoreBreakdown({
   score,
   trace,
   title = "แผนผังกำลังดิถี",
+  defaultDetailOpen = false,
 }: StrengthScoreBreakdownProps) {
+  const [isDetailOpen, setIsDetailOpen] = useState(defaultDetailOpen);
   const rawVariables = getRawVariables(trace);
   const visibleContributions = toContributionItems(rawVariables?.visibleContributions);
   const qiAdjustments = toContributionItems(rawVariables?.qiAdjustments);
@@ -183,6 +188,14 @@ export function StrengthScoreBreakdown({
       symbol: "-",
       weight: -entry.value,
     }));
+  const summaryCopy = [
+    primarySupports.length > 0
+      ? `แรงหนุนเด่น ${primarySupports.length} จุด`
+      : "ยังไม่พบแรงหนุนที่ต้องขยาย",
+    primaryFriction.length > 0
+      ? `แรงเสียดสี ${primaryFriction.length} จุด`
+      : "ยังไม่พบแรงฉุดเด่น",
+  ].join(" · ");
 
   return (
     <section
@@ -190,6 +203,7 @@ export function StrengthScoreBreakdown({
       aria-label={title}
       data-strength-breakdown={hasBreakdown ? "available" : "missing"}
       data-strength-band={scoreBand.id}
+      data-strength-detail-open={isDetailOpen ? "true" : "false"}
     >
       <div className="section-heading section-heading--compact">
         <div>
@@ -203,6 +217,7 @@ export function StrengthScoreBreakdown({
         <div className="strength-meter__hero">
           <strong className="strength-meter__score">{formatPlainNumber(score)}</strong>
           <span className="strength-meter__label">{scoreBand.displayLabel}</span>
+          <p className="metric-copy strength-meter__summary">{summaryCopy}</p>
         </div>
 
         <ol className="strength-meter__rail">
@@ -221,9 +236,22 @@ export function StrengthScoreBreakdown({
             );
           })}
         </ol>
+
+        {hasBreakdown ? (
+          <div className="strength-breakdown__actions">
+            <button
+              type="button"
+              className="secondary-action strength-breakdown__toggle"
+              aria-expanded={isDetailOpen}
+              onClick={() => setIsDetailOpen((current) => !current)}
+            >
+              {isDetailOpen ? "ซ่อนรายละเอียดกำลังดิถี" : "ดูรายละเอียดกำลังดิถี"}
+            </button>
+          </div>
+        ) : null}
       </div>
 
-      {hasBreakdown ? (
+      {hasBreakdown && isDetailOpen ? (
         <div className="strength-flow" aria-label="strength node flow">
           <article className="strength-flow__node">
             <span className="strength-flow__node-label">ฐานตั้งต้น</span>
@@ -256,7 +284,7 @@ export function StrengthScoreBreakdown({
         </div>
       ) : null}
 
-      {hasBreakdown ? (
+      {hasBreakdown && isDetailOpen ? (
         <div className="strength-breakdown__grid strength-breakdown__grid--phase6">
           <article className="strength-breakdown__panel">
             <h4>แรงที่หนุนดิถี</h4>
@@ -312,11 +340,11 @@ export function StrengthScoreBreakdown({
             </dl>
           </article>
         </div>
-      ) : (
+      ) : !hasBreakdown ? (
         <p className="strength-breakdown__empty">
           trace ของคะแนนพลังรอบนี้ยังไม่พอสำหรับแตกเป็นสมการละเอียด แต่คะแนนรวมยังแสดงได้ตามผลคำนวณหลัก
         </p>
-      )}
+      ) : null}
     </section>
   );
 }

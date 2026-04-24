@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import type {
   CalculatedStateValue,
   DaYunPhaseValue,
@@ -84,6 +86,8 @@ function getRelatedShenShaEntries(
 }
 
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
+  const [isLuckTimelineOpen, setIsLuckTimelineOpen] = useState(false);
+
   function handlePrint() {
     window.print();
   }
@@ -213,7 +217,12 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               title="แผนผังกำลังดิถี"
             />
 
-            <section className="surface inset-card movement-panel" aria-label="luck module" data-reading-block="D">
+            <section
+              className="surface inset-card movement-panel"
+              aria-label="luck module"
+              data-reading-block="D"
+              data-luck-timeline-open={isLuckTimelineOpen ? "true" : "false"}
+            >
               <div className="section-heading section-heading--compact">
                 <div>
                   <p className="section-kicker">วัยจร</p>
@@ -269,49 +278,64 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 </article>
               </div>
 
-              <div className="section-heading section-heading--compact">
-                <div>
-                  <p className="section-kicker">timeline วัยจร</p>
-                  <h4>ไล่อ่านย้อนหลังและมองรอบปัจจุบันในแนวเดียวกัน</h4>
-                </div>
+              <div className="movement-panel__actions">
+                <button
+                  type="button"
+                  className="secondary-action movement-panel__toggle"
+                  aria-expanded={isLuckTimelineOpen}
+                  onClick={() => setIsLuckTimelineOpen((current) => !current)}
+                >
+                  {isLuckTimelineOpen ? "ซ่อน timeline วัยจร" : "ดู timeline วัยจร"}
+                </button>
               </div>
 
-              <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction="rtl">
-                {daYunTrackEntries.map((entry) => (
-                  <article
-                    key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}
-                    className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
-                  >
-                    <span className="dayun-card__cycle">
-                      {formatDaYunAgeRange(entry.startAge, entry.endAge)}
-                    </span>
-                    {entry.upperPhase && entry.lowerPhase ? (
-                      <div className="dayun-card__phase-stack">
-                        {[entry.upperPhase, entry.lowerPhase].map((phase) => (
-                          <section
-                            key={`${entry.startAge}-${entry.endAge}-${phase.source}`}
-                            className={`dayun-card__phase${phase.isCurrent ? " dayun-card__phase--current" : ""}`}
-                          >
-                            <span className="dayun-card__phase-age">
-                              {formatDaYunAgeRange(phase.startAge, phase.endAge)}
-                            </span>
-                            <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
-                            <span className="dayun-card__phase-label">
-                              {formatDaYunPhaseSource(phase.source)}
-                            </span>
-                          </section>
-                        ))}
-                      </div>
-                    ) : (
-                      <>
-                        <strong className="dayun-card__code">{formatDaYunCycleCode(entry)}</strong>
-                        <span className="dayun-card__label">{entry.isCurrent ? "รอบปัจจุบัน" : "รอบทางเดิน"}</span>
-                      </>
-                    )}
-                    <span className="dayun-card__label">{formatDaYunCycleCode(entry)}</span>
-                  </article>
-                ))}
-              </div>
+              {isLuckTimelineOpen ? (
+                <>
+                  <div className="section-heading section-heading--compact">
+                    <div>
+                      <p className="section-kicker">timeline วัยจร</p>
+                      <h4>ไล่อ่านย้อนหลังและมองรอบปัจจุบันในแนวเดียวกัน</h4>
+                    </div>
+                  </div>
+
+                  <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction="rtl">
+                    {daYunTrackEntries.map((entry) => (
+                      <article
+                        key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}
+                        className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
+                      >
+                        <span className="dayun-card__cycle">
+                          {formatDaYunAgeRange(entry.startAge, entry.endAge)}
+                        </span>
+                        {entry.upperPhase && entry.lowerPhase ? (
+                          <div className="dayun-card__phase-stack">
+                            {[entry.upperPhase, entry.lowerPhase].map((phase) => (
+                              <section
+                                key={`${entry.startAge}-${entry.endAge}-${phase.source}`}
+                                className={`dayun-card__phase${phase.isCurrent ? " dayun-card__phase--current" : ""}`}
+                              >
+                                <span className="dayun-card__phase-age">
+                                  {formatDaYunAgeRange(phase.startAge, phase.endAge)}
+                                </span>
+                                <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
+                                <span className="dayun-card__phase-label">
+                                  {formatDaYunPhaseSource(phase.source)}
+                                </span>
+                              </section>
+                            ))}
+                          </div>
+                        ) : (
+                          <>
+                            <strong className="dayun-card__code">{formatDaYunCycleCode(entry)}</strong>
+                            <span className="dayun-card__label">{entry.isCurrent ? "รอบปัจจุบัน" : "รอบทางเดิน"}</span>
+                          </>
+                        )}
+                        <span className="dayun-card__label">{formatDaYunCycleCode(entry)}</span>
+                      </article>
+                    ))}
+                  </div>
+                </>
+              ) : null}
             </section>
           </div>
 

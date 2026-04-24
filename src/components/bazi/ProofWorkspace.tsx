@@ -414,6 +414,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
               score={record.calculatedState.strengthScore}
               trace={record.calculatedState.explainable.strengthScore?.trace}
               title="แผนผังกำลังดิถีสำหรับงานตรวจ"
+              defaultDetailOpen
             />
           </section>
 
