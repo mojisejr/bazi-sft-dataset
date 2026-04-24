@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { ZodError, z } from "zod";
 
-import { createDbClient } from "@/db/client";
+import { createDbClient, createDbSqlClient } from "@/db/client";
 import { baziDatasetRecords } from "@/db/schema";
 import {
   mergeDatasetRecordMetadata,
@@ -65,6 +65,18 @@ export type PendingDraftDatasetRecord = {
   updatedAt: string;
 };
 
+type PendingDraftDatasetRecordRow = {
+  id: string;
+  birth_date: string;
+  birth_time: string;
+  day_master: string;
+  intent_domain: string;
+  customer_name: string | null;
+  annotator_id: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type ProofDatasetRecord = {
   id: string;
   rawInput: RawInputValue;
@@ -77,6 +89,8 @@ export type ProofDatasetRecord = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ActiveDraftProofRecordSummary = Pick<ProofDatasetRecord, "id" | "metadata">;
 
 export const ProofDatasetRequestSchema = z
   .object({
@@ -128,6 +142,34 @@ export type DatasetDraftListRepository = {
 export type DatasetProofLookupRepository = {
   getRecordById: (recordId: string) => Promise<ProofDatasetRecord | null>;
 };
+
+type ProofDatasetRecordRow = {
+  id: string;
+  raw_input: RawInputValue;
+  calculated_state: CalculatedStateValue;
+  intent_domain: string;
+  annotation_data: StoredAnnotationDataValue | null;
+  status: ProofDatasetRecord["status"];
+  annotator_id: string | null;
+  metadata: DatasetRecordMetadataValue;
+  created_at: string;
+  updated_at: string;
+};
+
+function mapProofDatasetRecordRow(record: ProofDatasetRecordRow): ProofDatasetRecord {
+  return {
+    id: record.id,
+    rawInput: record.raw_input,
+    calculatedState: record.calculated_state,
+    intentDomain: record.intent_domain,
+    annotationData: record.annotation_data,
+    status: record.status,
+    annotatorId: record.annotator_id,
+    metadata: record.metadata,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
+  };
+}
 
 export function createDbDatasetRecordRepository(
   databaseUrl?: string,
@@ -213,43 +255,52 @@ export function createDbDatasetRecordRepository(
         );
     },
     async listDraftRecords(filters = {}) {
-      const db = createDbClient(databaseUrl);
-      const whereClause = filters.campaignLabel
-        ? and(
-            eq(baziDatasetRecords.status, "draft"),
-            sql<boolean>`coalesce(${baziDatasetRecords.metadata} -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'`,
-            sql<boolean>`${baziDatasetRecords.metadata} -> 'generation' ->> 'queueBatchId' = ${filters.campaignLabel}`,
-          )
-        : and(
-            eq(baziDatasetRecords.status, "draft"),
-            sql<boolean>`coalesce(${baziDatasetRecords.metadata} -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'`,
-          );
-      const records = await db
-        .select({
-          id: baziDatasetRecords.id,
-          birthDate: sql<string>`${baziDatasetRecords.rawInput} ->> 'birthDate'`,
-          birthTime: sql<string>`${baziDatasetRecords.rawInput} ->> 'birthTime'`,
-          dayMaster: sql<string>`${baziDatasetRecords.calculatedState} ->> 'dayMaster'`,
-          intentDomain: baziDatasetRecords.intentDomain,
-          customerName: sql<string | null>`${baziDatasetRecords.metadata} ->> 'customerName'`,
-          annotatorId: baziDatasetRecords.annotatorId,
-          createdAt: baziDatasetRecords.createdAt,
-          updatedAt: baziDatasetRecords.updatedAt,
-        })
-        .from(baziDatasetRecords)
-        .where(whereClause)
-        .orderBy(desc(baziDatasetRecords.updatedAt));
+      const db = createDbSqlClient(databaseUrl);
+      const records = (filters.campaignLabel
+        ? await db`
+            select
+              id,
+              raw_input ->> 'birthDate' as birth_date,
+              raw_input ->> 'birthTime' as birth_time,
+              calculated_state ->> 'dayMaster' as day_master,
+              intent_domain,
+              metadata ->> 'customerName' as customer_name,
+              annotator_id,
+              created_at,
+              updated_at
+            from bazi_dataset_records
+            where status = 'draft'
+              and coalesce(metadata -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'
+              and metadata -> 'generation' ->> 'queueBatchId' = ${filters.campaignLabel}
+            order by updated_at desc
+          `
+        : await db`
+            select
+              id,
+              raw_input ->> 'birthDate' as birth_date,
+              raw_input ->> 'birthTime' as birth_time,
+              calculated_state ->> 'dayMaster' as day_master,
+              intent_domain,
+              metadata ->> 'customerName' as customer_name,
+              annotator_id,
+              created_at,
+              updated_at
+            from bazi_dataset_records
+            where status = 'draft'
+              and coalesce(metadata -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'
+            order by updated_at desc
+          `) as PendingDraftDatasetRecordRow[];
 
       return records.map((record) => ({
         id: record.id,
-        birthDate: record.birthDate,
-        birthTime: record.birthTime,
-        dayMaster: record.dayMaster,
-        intentDomain: record.intentDomain,
-        customerName: record.customerName,
-        annotatorId: record.annotatorId,
-        createdAt: record.createdAt.toISOString(),
-        updatedAt: record.updatedAt.toISOString(),
+        birthDate: record.birth_date,
+        birthTime: record.birth_time,
+        dayMaster: record.day_master,
+        intentDomain: record.intent_domain,
+        customerName: record.customer_name,
+        annotatorId: record.annotator_id,
+        createdAt: record.created_at,
+        updatedAt: record.updated_at,
       }));
     },
     async getRecordById(recordId) {
@@ -363,80 +414,52 @@ export async function findLatestDatasetRecordForRawInput(
   rawInput: RawInputValue,
   databaseUrl?: string,
 ): Promise<ProofDatasetRecord | null> {
-  const db = createDbClient(databaseUrl);
-  const [record] = await db
-    .select({
-      id: baziDatasetRecords.id,
-      rawInput: baziDatasetRecords.rawInput,
-      calculatedState: baziDatasetRecords.calculatedState,
-      intentDomain: baziDatasetRecords.intentDomain,
-      annotationData: baziDatasetRecords.annotationData,
-      status: baziDatasetRecords.status,
-      annotatorId: baziDatasetRecords.annotatorId,
-      metadata: baziDatasetRecords.metadata,
-      createdAt: baziDatasetRecords.createdAt,
-      updatedAt: baziDatasetRecords.updatedAt,
-    })
-    .from(baziDatasetRecords)
-    .where(eq(baziDatasetRecords.rawInput, rawInput))
-    .orderBy(desc(baziDatasetRecords.updatedAt))
-    .limit(1);
+  const db = createDbSqlClient(databaseUrl);
+  const [record] = (await db`
+    select
+      id,
+      raw_input,
+      calculated_state,
+      intent_domain,
+      annotation_data,
+      status,
+      annotator_id,
+      metadata,
+      created_at,
+      updated_at
+    from bazi_dataset_records
+    where raw_input = ${JSON.stringify(rawInput)}::jsonb
+    order by updated_at desc
+    limit 1
+  `) as ProofDatasetRecordRow[];
 
   if (!record) {
     return null;
   }
 
-  return {
-    id: record.id,
-    rawInput: record.rawInput,
-    calculatedState: record.calculatedState,
-    intentDomain: record.intentDomain,
-    annotationData: record.annotationData,
-    status: record.status,
-    annotatorId: record.annotatorId,
-    metadata: record.metadata,
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
-  };
+  return mapProofDatasetRecordRow(record);
 }
 
 export async function listActiveDraftProofRecords(
   databaseUrl?: string,
-): Promise<ProofDatasetRecord[]> {
-  const db = createDbClient(databaseUrl);
-  const records = await db
-    .select({
-      id: baziDatasetRecords.id,
-      rawInput: baziDatasetRecords.rawInput,
-      calculatedState: baziDatasetRecords.calculatedState,
-      intentDomain: baziDatasetRecords.intentDomain,
-      annotationData: baziDatasetRecords.annotationData,
-      status: baziDatasetRecords.status,
-      annotatorId: baziDatasetRecords.annotatorId,
-      metadata: baziDatasetRecords.metadata,
-      createdAt: baziDatasetRecords.createdAt,
-      updatedAt: baziDatasetRecords.updatedAt,
-    })
-    .from(baziDatasetRecords)
-    .where(
-      and(
-        eq(baziDatasetRecords.status, "draft"),
-        sql<boolean>`coalesce(${baziDatasetRecords.metadata} -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'`,
-      ),
-    )
-    .orderBy(desc(baziDatasetRecords.updatedAt));
+): Promise<ActiveDraftProofRecordSummary[]> {
+  const db = createDbSqlClient(databaseUrl);
+  const records = (await db`
+    select
+      id,
+      metadata
+    from bazi_dataset_records
+    where status = 'draft'
+      and coalesce(metadata -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'
+    order by updated_at desc
+  `) as Array<{
+    id: string;
+    metadata: DatasetRecordMetadataValue;
+  }>;
 
   return records.map((record) => ({
     id: record.id,
-    rawInput: record.rawInput,
-    calculatedState: record.calculatedState,
-    intentDomain: record.intentDomain,
-    annotationData: record.annotationData,
-    status: record.status,
-    annotatorId: record.annotatorId,
     metadata: record.metadata,
-    createdAt: record.createdAt.toISOString(),
-    updatedAt: record.updatedAt.toISOString(),
   }));
 }
 

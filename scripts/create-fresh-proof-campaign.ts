@@ -20,6 +20,7 @@ import {
 import {
   createDbDatasetRecordRepository,
   findLatestDatasetRecordForRawInput,
+  getProofDatasetRecord,
   listActiveDraftProofRecords,
   type ProofDatasetRecord,
 } from "../src/lib/bazi/dataset-records";
@@ -56,6 +57,11 @@ const DEFAULT_RECEIPT_PATH = path.resolve(
   "output/fresh_proof_campaign.receipt.json",
 );
 
+const DEFAULT_CURATED_INPUT_PATH = path.resolve(
+  process.cwd(),
+  "../../.tmp/p-pol/Mootech AI/example-cases-3-cleaned.csv",
+);
+
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quiet: true });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
 
@@ -77,7 +83,7 @@ function sleep(milliseconds: number) {
 
 function parseCliOptions(argv: string[]): CliOptions {
   const options: CliOptions = {
-    input: "",
+    input: DEFAULT_CURATED_INPUT_PATH,
     campaignLabel: "",
     output: DEFAULT_OUTPUT_PATH,
     receipt: DEFAULT_RECEIPT_PATH,
@@ -88,7 +94,7 @@ function parseCliOptions(argv: string[]): CliOptions {
     requestDelayMs: 10_000,
     limit: undefined,
     dryRun: false,
-    excludeTestCases: false,
+    excludeTestCases: true,
     promptVersion: undefined,
     promptHash: undefined,
     referencePackVersion: undefined,
@@ -192,10 +198,6 @@ function parseCliOptions(argv: string[]): CliOptions {
     if (argument === "--dry-run") {
       options.dryRun = true;
     }
-  }
-
-  if (!options.input) {
-    throw new Error("--input-csv is required. Example: npm run dataset:fresh-campaign -- --input-csv ../cases.csv --campaign-label fresh-2026-04-24 --dry-run");
   }
 
   if (!options.campaignLabel) {
@@ -311,6 +313,18 @@ async function main() {
         status: entry.status,
         selected: false,
         reason: entry.reason,
+      });
+      continue;
+    }
+
+    if (entry.existingRecord?.metadata.generation?.queueBatchId === options.campaignLabel) {
+      outputEntries.push({
+        sourceRow: entry.importedCase.sourceRow,
+        name: entry.importedCase.name,
+        recordId: entry.existingRecord.id,
+        status: "already_in_campaign",
+        selected: false,
+        reason: "existing-record-already-tagged-for-current-campaign",
       });
       continue;
     }
@@ -441,17 +455,19 @@ async function main() {
 
   if (failedCount === 0) {
     for (const legacyRecord of legacyDraftTargets) {
-      if (!legacyRecord.annotationData) {
+      const fullLegacyRecord = await getProofDatasetRecord(legacyRecord.id);
+
+      if (!fullLegacyRecord?.annotationData) {
         continue;
       }
 
       const payload: SaveDatasetRequest = {
-        recordId: legacyRecord.id,
-        rawInput: legacyRecord.rawInput,
-        calculatedState: legacyRecord.calculatedState,
-        annotationData: legacyRecord.annotationData,
+        recordId: fullLegacyRecord.id,
+        rawInput: fullLegacyRecord.rawInput,
+        calculatedState: fullLegacyRecord.calculatedState,
+        annotationData: fullLegacyRecord.annotationData,
         status: "draft",
-        metadata: mergeDatasetRecordMetadata(legacyRecord.metadata, {
+        metadata: mergeDatasetRecordMetadata(fullLegacyRecord.metadata, {
           reviewLifecycle: {
             state: "superseded",
             staleReason: "fresh-campaign-reset",
@@ -460,7 +476,7 @@ async function main() {
         }),
       };
 
-      await datasetRepository.saveRecord(payload, legacyRecord.annotatorId ?? options.annotator);
+      await datasetRepository.saveRecord(payload, fullLegacyRecord.annotatorId ?? options.annotator);
       deprecatedLegacyTargetCount += 1;
     }
   }

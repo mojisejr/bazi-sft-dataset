@@ -4,7 +4,10 @@ import {
   type DatasetRecordMetadataValue,
 } from "@/lib/bazi/dataset-metadata";
 import type { ImportedBaziCase } from "@/lib/bazi/csv-case-loader";
-import type { ProofDatasetRecord } from "@/lib/bazi/dataset-records";
+import type {
+  ActiveDraftProofRecordSummary,
+  ProofDatasetRecord,
+} from "@/lib/bazi/dataset-records";
 
 const TEST_CASE_PATTERN = /test|sample|demo|dummy|mock|ตัวอย่าง|ทดลอง|ทดสอบ|เทส/i;
 
@@ -102,7 +105,7 @@ export function buildFreshProofCampaignPlan(
 }
 
 export function countLegacyDraftTargetsForFreshCampaign(
-  activeDraftRecords: ProofDatasetRecord[],
+  activeDraftRecords: ActiveDraftProofRecordSummary[],
   planEntries: FreshProofCampaignPlanEntry[],
   campaignLabel: string,
 ) {
