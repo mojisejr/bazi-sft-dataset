@@ -230,7 +230,7 @@ export function CorePersonaSurface({
         <div className="core-persona__actions">
           <button
             type="button"
-            className="secondary-action core-persona__toggle"
+            className="secondary-action detail-trigger-action core-persona__toggle"
             aria-expanded={isOverlayMode ? undefined : showDetailedPanels}
             aria-haspopup={isOverlayMode ? "dialog" : undefined}
             onClick={handleDetailToggle}

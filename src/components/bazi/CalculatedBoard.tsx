@@ -152,7 +152,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
       ? formatDaYunCycleCode(currentDaYun)
       : null;
   const ageSnapshotLabel = formatAgeSnapshot(calculatedState?.ageSnapshot);
-  const referenceSummary = "10 เทพ • 12 เชี่ยงแซ • ดาวเด่น • คำเปรียบเปรย • Trace";
+  const referenceSummaryItems = ["10 เทพ", "12 เชี่ยงแซ", "ดาวเด่น", "คำเปรียบเปรย", "Trace"];
+  const referenceSummary = referenceSummaryItems.join(" • ");
   const isStrengthDetailOpen = activeDetailPanel === "strength";
   const isLuckDetailOpen = activeDetailPanel === "luck";
   const isPersonaDetailOpen = activeDetailPanel === "persona";
@@ -323,7 +324,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               <div className="movement-panel__actions">
                 <button
                   type="button"
-                  className="secondary-action movement-panel__toggle"
+                  className="secondary-action detail-trigger-action movement-panel__toggle"
                   aria-haspopup="dialog"
                   onClick={() => setActiveDetailPanel("luck")}
                 >
@@ -333,46 +334,52 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
             </section>
           </div>
 
-          <div className="reading-secondary-grid">
-            <CorePersonaSurface
-              persona={calculatedState.sixtyJiaziCorePersona}
-              elementAnalysis={calculatedState.elementAnalysis}
-              seasonalInteraction={calculatedState.seasonalInteraction}
-              title="แกนบุคลิกพื้นฐาน"
-              kicker="ภาพตีความพื้นดวง"
-              detailMode="overlay"
-              detailOpen={isPersonaDetailOpen}
-              onDetailToggle={() => setActiveDetailPanel("persona")}
-              detailTriggerLabel="เปิดบริบทธาตุ"
-            />
+          <CorePersonaSurface
+            persona={calculatedState.sixtyJiaziCorePersona}
+            elementAnalysis={calculatedState.elementAnalysis}
+            seasonalInteraction={calculatedState.seasonalInteraction}
+            title="แกนบุคลิกพื้นฐาน"
+            kicker="ภาพตีความพื้นดวง"
+            detailMode="overlay"
+            detailOpen={isPersonaDetailOpen}
+            onDetailToggle={() => setActiveDetailPanel("persona")}
+            detailTriggerLabel="เปิดบริบทธาตุ"
+          />
 
-            <section
-              className="surface inset-card reference-shelf"
-              aria-label="reference shelf"
-              data-reading-block="F"
-              data-reference-shelf-open={isReferenceDetailOpen ? "true" : "false"}
-            >
-              <div className="section-heading section-heading--compact">
-                <div>
-                  <p className="section-kicker">ข้อมูลอ้างอิงเพิ่มเติม</p>
-                  <h3>เปิดเมื่ออยากเช็กข้อมูลเชิงลึก ไม่จำเป็นต้องอ่านก่อนทุกครั้ง</h3>
-                </div>
+          <section
+            className="surface inset-card reference-shelf reference-shelf--stacked"
+            aria-label="reference shelf"
+            data-reading-block="F"
+            data-reference-shelf-open={isReferenceDetailOpen ? "true" : "false"}
+          >
+            <div className="section-heading section-heading--compact">
+              <div>
+                <p className="section-kicker">ข้อมูลอ้างอิงเพิ่มเติม</p>
+                <h3>เก็บฐานอ้างอิงไว้ใต้แกนบุคลิก เปิดเมื่ออยากเช็กเชิงลึกเท่านั้น</h3>
               </div>
+            </div>
 
-              <p className="section-note">{referenceSummary}</p>
+            <div className="reference-shelf__teaser" aria-label="reference preview">
+              {referenceSummaryItems.map((item) => (
+                <span key={item} className="reference-shelf__pill">{item}</span>
+              ))}
+            </div>
 
-              <div className="reference-shelf__actions">
-                <button
-                  type="button"
-                  className="secondary-action reference-shelf__toggle"
-                  aria-haspopup="dialog"
-                  onClick={() => setActiveDetailPanel("reference")}
-                >
-                  เข้าสู่โหมดอ้างอิง
-                </button>
-              </div>
-            </section>
-          </div>
+            <p className="section-note">
+              {`summary path จบที่แกนบุคลิกก่อน แล้วค่อยเปิด ${referenceSummary} ใน detail plane เดียว`}
+            </p>
+
+            <div className="reference-shelf__actions">
+              <button
+                type="button"
+                className="secondary-action detail-trigger-action reference-shelf__toggle"
+                aria-haspopup="dialog"
+                onClick={() => setActiveDetailPanel("reference")}
+              >
+                เข้าสู่โหมดอ้างอิง
+              </button>
+            </div>
+          </section>
 
           <DetailOverlay
             isOpen={activeDetailPanel !== null}

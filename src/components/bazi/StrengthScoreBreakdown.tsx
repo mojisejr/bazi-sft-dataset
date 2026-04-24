@@ -423,7 +423,7 @@ export function StrengthScoreBreakdown({
           <div className="strength-breakdown__actions">
             <button
               type="button"
-              className="secondary-action strength-breakdown__toggle"
+              className="secondary-action detail-trigger-action strength-breakdown__toggle"
               aria-expanded={isOverlayMode ? undefined : isDetailOpen}
               aria-haspopup={isOverlayMode ? "dialog" : undefined}
               onClick={handleDetailToggle}

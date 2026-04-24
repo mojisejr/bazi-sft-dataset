@@ -331,6 +331,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain('aria-label="Da Yun track"');
     expect(html).toContain("ข้อมูลอ้างอิงเพิ่มเติม");
     expect(html).toContain('data-reference-shelf-open="false"');
+    expect(html).toContain('aria-label="reference preview"');
     expect(html).toContain("เข้าสู่โหมดอ้างอิง");
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
     expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
@@ -367,6 +368,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Complete Annotation");
 
     expect(html).not.toContain("จังหวะที่กำลังเดิน");
+    expect(html.indexOf("แกนบุคลิกพื้นฐาน")).toBeLessThan(html.indexOf("ข้อมูลอ้างอิงเพิ่มเติม"));
+    expect(html.indexOf("ข้อมูลอ้างอิงเพิ่มเติม")).toBeLessThan(html.indexOf("เริ่มเขียนคำพยากรณ์"));
   });
 
   test("restores the queue workspace when the URL asks for workspace=queue", () => {
