@@ -348,6 +348,61 @@ export async function findExistingDraftOrReviewedDatasetRecord(
   };
 }
 
+type ListDatasetRecordsForRegenerationFilters = {
+  sourceFile?: string;
+  batch?: string;
+};
+
+export async function listDatasetRecordsForRegeneration(
+  filters: ListDatasetRecordsForRegenerationFilters = {},
+  databaseUrl?: string,
+): Promise<ProofDatasetRecord[]> {
+  const db = createDbClient(databaseUrl);
+  const baseQuery = db
+    .select({
+      id: baziDatasetRecords.id,
+      rawInput: baziDatasetRecords.rawInput,
+      calculatedState: baziDatasetRecords.calculatedState,
+      intentDomain: baziDatasetRecords.intentDomain,
+      annotationData: baziDatasetRecords.annotationData,
+      status: baziDatasetRecords.status,
+      annotatorId: baziDatasetRecords.annotatorId,
+      metadata: baziDatasetRecords.metadata,
+      createdAt: baziDatasetRecords.createdAt,
+      updatedAt: baziDatasetRecords.updatedAt,
+    })
+    .from(baziDatasetRecords)
+    .orderBy(desc(baziDatasetRecords.updatedAt));
+
+  const whereClause = filters.sourceFile && filters.batch
+    ? and(
+        sql<boolean>`${baziDatasetRecords.metadata} ->> 'sourceFile' = ${filters.sourceFile}`,
+        sql<boolean>`${baziDatasetRecords.metadata} -> 'generation' ->> 'queueBatchId' = ${filters.batch}`,
+      )
+    : filters.sourceFile
+      ? sql<boolean>`${baziDatasetRecords.metadata} ->> 'sourceFile' = ${filters.sourceFile}`
+      : filters.batch
+        ? sql<boolean>`${baziDatasetRecords.metadata} -> 'generation' ->> 'queueBatchId' = ${filters.batch}`
+        : undefined;
+
+  const records = whereClause
+    ? await baseQuery.where(whereClause)
+    : await baseQuery;
+
+  return records.map((record) => ({
+    id: record.id,
+    rawInput: record.rawInput,
+    calculatedState: record.calculatedState,
+    intentDomain: record.intentDomain,
+    annotationData: record.annotationData,
+    status: record.status,
+    annotatorId: record.annotatorId,
+    metadata: record.metadata,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  }));
+}
+
 type SaveDatasetHandlerOptions = {
   repository?: DatasetRecordRepository;
   authenticate: SaveDatasetAuthenticate;

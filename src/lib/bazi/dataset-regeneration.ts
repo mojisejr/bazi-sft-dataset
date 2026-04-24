@@ -62,6 +62,39 @@ export type DatasetRevisionAction =
       reason: "exported-records-are-immutable";
     };
 
+export type DatasetRegenerationPlanEntryStatus =
+  | "rewrite_draft"
+  | "cloned_revision"
+  | "skipped_exported"
+  | "skipped_clean";
+
+export type DatasetRegenerationPlanEntry<
+  T extends DatasetRegenerationRecord = DatasetRegenerationRecord,
+> = {
+  record: T;
+  status: DatasetRegenerationPlanEntryStatus;
+  selected: boolean;
+  staleReasons: DatasetStaleReason[];
+  reason: string;
+};
+
+export type DatasetRegenerationPlanOptions = {
+  fingerprint: DatasetGenerationFingerprint;
+  onlyStale?: boolean;
+  includeReviewedAsRevision?: boolean;
+  limit?: number;
+};
+
+export type DatasetRegenerationReceipt = {
+  totalCandidates: number;
+  selectedCount: number;
+  rewrittenCount: number;
+  clonedRevisionCount: number;
+  skippedExportedCount: number;
+  skippedCleanCount: number;
+  failedCount: number;
+};
+
 function createEmptyDraftAnnotationData(): StoredAnnotationDataValue {
   return {
     version: "1.6",
@@ -112,6 +145,10 @@ function normalizeDraftAnnotationData(
 function isSupersededMetadata(metadata: DatasetRecordMetadataValue): boolean {
   return Boolean(metadata.revision?.supersededByRecordId)
     || metadata.reviewLifecycle?.state === "superseded";
+}
+
+function createRawInputKey(rawInput: RawInputValue) {
+  return JSON.stringify(rawInput);
 }
 
 export function collectDatasetStaleReasons(
@@ -223,6 +260,26 @@ export function createRevisionDraftMetadata(
   });
 }
 
+export function createActiveDraftMetadata(
+  existingRecord: Pick<DatasetRegenerationRecord, "id" | "metadata">,
+  nextGeneration: DatasetGenerationProvenanceValue,
+): DatasetRecordMetadataValue {
+  return mergeDatasetRecordMetadata(existingRecord.metadata, {
+    generation: nextGeneration,
+    revision: {
+      revisionRootRecordId:
+        existingRecord.metadata.revision?.revisionRootRecordId ?? existingRecord.id,
+      latestEffectiveRecordId: existingRecord.id,
+      supersededByRecordId: undefined,
+    },
+    reviewLifecycle: {
+      state: "active",
+      staleReason: undefined,
+      staleAt: undefined,
+    },
+  });
+}
+
 export function createSupersededDatasetMetadata(
   metadata: DatasetRecordMetadataValue,
   supersededByRecordId: string,
@@ -275,4 +332,109 @@ export function resolveLatestEffectiveDatasetRecord<T extends DatasetRegeneratio
   return [...rankedRecords].sort((left, right) =>
     right.updatedAt.localeCompare(left.updatedAt),
   )[0] ?? null;
+}
+
+export function buildDatasetRegenerationPlan<
+  T extends DatasetRegenerationRecord,
+>(
+  records: T[],
+  options: DatasetRegenerationPlanOptions,
+): DatasetRegenerationPlanEntry<T>[] {
+  const groupedRecords = new Map<string, T[]>();
+
+  for (const record of records) {
+    const key = createRawInputKey(record.rawInput);
+    const currentGroup = groupedRecords.get(key) ?? [];
+    currentGroup.push(record);
+    groupedRecords.set(key, currentGroup);
+  }
+
+  const candidateRecords = [...groupedRecords.values()]
+    .map((group) => resolveLatestEffectiveDatasetRecord(group) ?? group[0])
+    .filter((record): record is T => record !== null);
+  const limitedCandidates = options.limit
+    ? candidateRecords.slice(0, options.limit)
+    : candidateRecords;
+
+  return limitedCandidates.map((record) => {
+    const staleReasons = collectDatasetStaleReasons(record.metadata, options.fingerprint);
+    const revisionAction = resolveDatasetRevisionAction(record);
+
+    if (revisionAction.action === "skip-exported") {
+      return {
+        record,
+        status: "skipped_exported",
+        selected: false,
+        staleReasons,
+        reason: revisionAction.reason,
+      };
+    }
+
+    if (options.onlyStale && staleReasons.length === 0) {
+      return {
+        record,
+        status: "skipped_clean",
+        selected: false,
+        staleReasons,
+        reason: "not-stale-under-current-fingerprint",
+      };
+    }
+
+    if (
+      revisionAction.action === "clone-revision"
+      && record.status !== "draft"
+      && !options.includeReviewedAsRevision
+    ) {
+      return {
+        record,
+        status: "skipped_clean",
+        selected: false,
+        staleReasons,
+        reason: "historical-record-needs-include-reviewed-as-revision",
+      };
+    }
+
+    if (revisionAction.action === "rewrite-draft") {
+      return {
+        record,
+        status: "rewrite_draft",
+        selected: true,
+        staleReasons,
+        reason: revisionAction.reason,
+      };
+    }
+
+    if (revisionAction.action === "clone-revision") {
+      return {
+        record,
+        status: "cloned_revision",
+        selected: true,
+        staleReasons,
+        reason: revisionAction.reason,
+      };
+    }
+
+    return {
+      record,
+      status: "skipped_clean",
+      selected: false,
+      staleReasons,
+      reason: "no-regeneration-action",
+    };
+  });
+}
+
+export function createDatasetRegenerationReceipt(
+  entries: DatasetRegenerationPlanEntry[],
+  failedCount = 0,
+): DatasetRegenerationReceipt {
+  return {
+    totalCandidates: entries.length,
+    selectedCount: entries.filter((entry) => entry.selected).length,
+    rewrittenCount: entries.filter((entry) => entry.status === "rewrite_draft").length,
+    clonedRevisionCount: entries.filter((entry) => entry.status === "cloned_revision").length,
+    skippedExportedCount: entries.filter((entry) => entry.status === "skipped_exported").length,
+    skippedCleanCount: entries.filter((entry) => entry.status === "skipped_clean").length,
+    failedCount,
+  };
 }
