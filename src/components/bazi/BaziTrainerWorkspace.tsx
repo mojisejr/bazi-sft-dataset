@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
   getAnnotationDraftContentState,
@@ -45,6 +45,21 @@ function getWorkspaceStatusCopy(
   return statusCopy;
 }
 
+function getCampaignLabel(searchParams: URLSearchParams) {
+  const candidate = searchParams.get("campaign")?.trim();
+  return candidate ? candidate : undefined;
+}
+
+function buildQueueWorkspaceUrl(pathname: string, campaignLabel?: string) {
+  const params = new URLSearchParams({ workspace: "queue" });
+
+  if (campaignLabel) {
+    params.set("campaign", campaignLabel);
+  }
+
+  return `${pathname}?${params.toString()}`;
+}
+
 export function BaziTrainerWorkspace({
   initialFormState,
   initialSubmittedInput = null,
@@ -54,6 +69,7 @@ export function BaziTrainerWorkspace({
 }: BaziTrainerWorkspaceClientProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceMode>(initialWorkspace);
   const [pendingDraftRecords, setPendingDraftRecords] = useState<PendingDraftDatasetRecord[]>([]);
   const [pendingQueueReloadToken, setPendingQueueReloadToken] = useState(0);
@@ -116,6 +132,7 @@ export function BaziTrainerWorkspace({
   const workspaceStatusCopy = getWorkspaceStatusCopy(activeWorkspace, statusCopy);
   const isSessionLocked = Boolean(calculatedState);
   const resetActionCopy = getResetActionCopy(datasetStatus);
+  const campaignLabel = getCampaignLabel(searchParams);
 
   useEffect(() => {
     setActiveWorkspace(initialWorkspace);
@@ -124,7 +141,9 @@ export function BaziTrainerWorkspace({
   function handleWorkspaceChange(nextWorkspace: WorkspaceMode) {
     setActiveWorkspace(nextWorkspace);
 
-    const nextUrl = nextWorkspace === "queue" ? `${pathname}?workspace=queue` : pathname;
+    const nextUrl = nextWorkspace === "queue"
+      ? buildQueueWorkspaceUrl(pathname, campaignLabel)
+      : pathname;
 
     router.replace(nextUrl, { scroll: false });
   }
@@ -142,7 +161,10 @@ export function BaziTrainerWorkspace({
       setPendingQueueError(null);
 
       try {
-        const response = await fetch("/api/dataset/drafts", {
+        const queueUrl = campaignLabel
+          ? `/api/dataset/drafts?campaign=${encodeURIComponent(campaignLabel)}`
+          : "/api/dataset/drafts";
+        const response = await fetch(queueUrl, {
           method: "GET",
           headers: {
             accept: "application/json",
@@ -182,7 +204,7 @@ export function BaziTrainerWorkspace({
       isActive = false;
       controller.abort();
     };
-  }, [activeWorkspace, pendingQueueReloadToken]);
+  }, [activeWorkspace, campaignLabel, pendingQueueReloadToken]);
 
   return (
     <main className="trainer-page">
@@ -269,7 +291,11 @@ export function BaziTrainerWorkspace({
       {activeWorkspace === "queue" && (
         <section className="workspace-stack px-4 pb-10 pt-2">
           {pendingQueueState === "ready" ? (
-            <PendingDraftQueue records={pendingDraftRecords} returnToPath="/?workspace=queue" />
+            <PendingDraftQueue
+              records={pendingDraftRecords}
+              campaignLabel={campaignLabel}
+              returnToPath={buildQueueWorkspaceUrl(pathname, campaignLabel)}
+            />
           ) : (
             <div className="surface inset-card message-card">
               <p className="section-kicker">Proof Queue Workspace</p>

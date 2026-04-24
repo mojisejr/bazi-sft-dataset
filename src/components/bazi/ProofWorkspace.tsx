@@ -123,6 +123,36 @@ function getStatusBadgeCopy(status: ProofDatasetRecord["status"]) {
   }
 }
 
+function getReviewStateCopy(
+  state: "active" | "stale" | "needs-reproof" | "superseded" | undefined,
+) {
+  switch (state) {
+    case "stale":
+      return "ต้องตรวจซ้ำ";
+    case "needs-reproof":
+      return "ต้อง re-proof";
+    case "superseded":
+      return "ถูกแทนแล้ว";
+    default:
+      return "active";
+  }
+}
+
+function getLineageSummary(record: ProofDatasetRecord) {
+  if (record.metadata.revision?.supersedesRecordId) {
+    return "record นี้เป็น revision ใหม่ที่เปิดมาตรวจแทนเคสเดิม";
+  }
+
+  if (
+    record.metadata.revision?.latestEffectiveRecordId
+    && record.metadata.revision.latestEffectiveRecordId !== record.id
+  ) {
+    return "คิวนี้มี record ตัวใหม่กว่าสำหรับใช้ตรวจต่อแล้ว";
+  }
+
+  return "record นี้ยังเป็นเป้าหมาย active ของคิวปัจจุบัน";
+}
+
 function getSaveMessage(
   saveState: ProofSaveState,
   saveErrorMessage: string | null,
@@ -341,6 +371,32 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                 <dt>รหัสรายการ</dt>
                 <dd>{record.id}</dd>
               </div>
+              {record.metadata.generation?.queueBatchId ? (
+                <div className="pending-metadata-row">
+                  <dt>campaign</dt>
+                  <dd>{record.metadata.generation.queueBatchId}</dd>
+                </div>
+              ) : null}
+              <div className="pending-metadata-row">
+                <dt>สถานะคิว</dt>
+                <dd>{getReviewStateCopy(record.metadata.reviewLifecycle?.state)}</dd>
+              </div>
+              <div className="pending-metadata-row">
+                <dt>lineage</dt>
+                <dd>{getLineageSummary(record)}</dd>
+              </div>
+              {record.metadata.reviewLifecycle?.staleReason ? (
+                <div className="pending-metadata-row">
+                  <dt>เหตุผลที่ต้องตรวจซ้ำ</dt>
+                  <dd>{record.metadata.reviewLifecycle.staleReason}</dd>
+                </div>
+              ) : null}
+              {record.metadata.caseNote ? (
+                <div className="pending-metadata-row">
+                  <dt>หมายเหตุเคส</dt>
+                  <dd>{record.metadata.caseNote}</dd>
+                </div>
+              ) : null}
             </dl>
           </section>
 

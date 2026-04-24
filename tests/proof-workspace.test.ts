@@ -160,8 +160,18 @@ function createProofRecord() {
     intentDomain: "general",
     metadata: {
       customerName: "สมบัติ",
+      caseNote: "เสียชีวิต",
       sourceFile: "/tmp/example-cases.csv",
       sourceRow: 2,
+      generation: {
+        queueBatchId: "fresh-2026-04-24",
+      },
+      reviewLifecycle: {
+        state: "active",
+      },
+      revision: {
+        latestEffectiveRecordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
+      },
     },
     annotationData: DraftAnnotationDataSchema.parse({
       version: "1.6",
@@ -212,6 +222,13 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("/?workspace=queue");
     expect(html).toContain("ชื่อลูกค้า");
     expect(html).toContain("สมบัติ");
+    expect(html).toContain("campaign");
+    expect(html).toContain("fresh-2026-04-24");
+    expect(html).toContain("สถานะคิว");
+    expect(html).toContain("active");
+    expect(html).toContain("record นี้ยังเป็นเป้าหมาย active ของคิวปัจจุบัน");
+    expect(html).toContain("หมายเหตุเคส");
+    expect(html).toContain("เสียชีวิต");
     expect(html).toContain("แกนบุคลิกสำหรับงานตรวจ");
     expect(html).toContain("แดชบอร์ดตรวจทาน");
     expect(html).toContain("เสาลัคนา");
@@ -285,11 +302,12 @@ describe("createSaveProofDatasetHandler", () => {
       expect.objectContaining({
         recordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",
         status: "reviewed",
-        metadata: {
+        metadata: expect.objectContaining({
           customerName: "สมบัติ",
+          caseNote: "เสียชีวิต",
           sourceFile: "/tmp/example-cases.csv",
           sourceRow: 2,
-        },
+        }),
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );
@@ -336,11 +354,12 @@ describe("createSaveProofDatasetHandler", () => {
     expect(repository.saveRecord).toHaveBeenCalledWith(
       expect.objectContaining({
         status: "rejected",
-        metadata: {
+        metadata: expect.objectContaining({
           customerName: "สมบัติ",
+          caseNote: "เสียชีวิต",
           sourceFile: "/tmp/example-cases.csv",
           sourceRow: 2,
-        },
+        }),
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );
@@ -391,11 +410,12 @@ describe("createSaveProofDatasetHandler", () => {
         rawInput: legacyRecord.rawInput,
         calculatedState: legacyRecord.calculatedState,
         status: "reviewed",
-        metadata: {
+        metadata: expect.objectContaining({
           customerName: "สมบัติ",
+          caseNote: "เสียชีวิต",
           sourceFile: "/tmp/example-cases.csv",
           sourceRow: 2,
-        },
+        }),
       }),
       "user_2v1Jq0iM5JmXgK8A0k7R8rQ8T5R",
     );

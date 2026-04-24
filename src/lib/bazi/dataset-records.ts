@@ -60,6 +60,13 @@ export type PendingDraftDatasetRecord = {
   dayMaster: string;
   intentDomain: string;
   customerName: string | null;
+  caseNote: string | null;
+  queueBatchId: string | null;
+  reviewState: "active" | "stale" | "needs-reproof" | "superseded" | null;
+  staleReason: string | null;
+  supersedesRecordId: string | null;
+  latestEffectiveRecordId: string | null;
+  sourceRow: number | null;
   annotatorId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -72,6 +79,13 @@ type PendingDraftDatasetRecordRow = {
   day_master: string;
   intent_domain: string;
   customer_name: string | null;
+  case_note: string | null;
+  queue_batch_id: string | null;
+  review_state: PendingDraftDatasetRecord["reviewState"];
+  stale_reason: string | null;
+  supersedes_record_id: string | null;
+  latest_effective_record_id: string | null;
+  source_row: string | null;
   annotator_id: string | null;
   created_at: string;
   updated_at: string;
@@ -265,6 +279,13 @@ export function createDbDatasetRecordRepository(
               calculated_state ->> 'dayMaster' as day_master,
               intent_domain,
               metadata ->> 'customerName' as customer_name,
+              metadata ->> 'caseNote' as case_note,
+              metadata -> 'generation' ->> 'queueBatchId' as queue_batch_id,
+              metadata -> 'reviewLifecycle' ->> 'state' as review_state,
+              metadata -> 'reviewLifecycle' ->> 'staleReason' as stale_reason,
+              metadata -> 'revision' ->> 'supersedesRecordId' as supersedes_record_id,
+              metadata -> 'revision' ->> 'latestEffectiveRecordId' as latest_effective_record_id,
+              metadata ->> 'sourceRow' as source_row,
               annotator_id,
               created_at,
               updated_at
@@ -282,6 +303,13 @@ export function createDbDatasetRecordRepository(
               calculated_state ->> 'dayMaster' as day_master,
               intent_domain,
               metadata ->> 'customerName' as customer_name,
+              metadata ->> 'caseNote' as case_note,
+              metadata -> 'generation' ->> 'queueBatchId' as queue_batch_id,
+              metadata -> 'reviewLifecycle' ->> 'state' as review_state,
+              metadata -> 'reviewLifecycle' ->> 'staleReason' as stale_reason,
+              metadata -> 'revision' ->> 'supersedesRecordId' as supersedes_record_id,
+              metadata -> 'revision' ->> 'latestEffectiveRecordId' as latest_effective_record_id,
+              metadata ->> 'sourceRow' as source_row,
               annotator_id,
               created_at,
               updated_at
@@ -298,6 +326,13 @@ export function createDbDatasetRecordRepository(
         dayMaster: record.day_master,
         intentDomain: record.intent_domain,
         customerName: record.customer_name,
+        caseNote: record.case_note,
+        queueBatchId: record.queue_batch_id,
+        reviewState: record.review_state,
+        staleReason: record.stale_reason,
+        supersedesRecordId: record.supersedes_record_id,
+        latestEffectiveRecordId: record.latest_effective_record_id,
+        sourceRow: record.source_row ? Number(record.source_row) : null,
         annotatorId: record.annotator_id,
         createdAt: record.created_at,
         updatedAt: record.updated_at,

@@ -12,19 +12,40 @@ export const pendingQueueStatusCopy = {
     "หน้านี้แสดงเคสที่ AI generate เข้ามาแล้วในสถานะ draft เพื่อให้เปิดเข้าสู่ proofing workspace ได้ทันที",
 } as const;
 
-export default async function PendingPage() {
+type PendingPageProps = {
+  searchParams?: Promise<{
+    campaign?: string;
+  }>;
+};
+
+function createPendingReturnPath(campaignLabel?: string) {
+  if (!campaignLabel) {
+    return "/pending";
+  }
+
+  const params = new URLSearchParams({ campaign: campaignLabel });
+  return `/pending?${params.toString()}`;
+}
+
+export default async function PendingPage({ searchParams }: PendingPageProps) {
   const { userId } = await auth();
 
   if (!userId) {
     redirect("/sign-in");
   }
 
-  const records = await listDraftDatasetRecords();
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const campaignLabel = resolvedSearchParams?.campaign?.trim() || undefined;
+  const records = await listDraftDatasetRecords({ campaignLabel });
 
   return (
     <main className="trainer-page">
       <SystemHeader statusCopy={pendingQueueStatusCopy} />
-      <PendingDraftQueue records={records} returnToPath="/pending" />
+      <PendingDraftQueue
+        records={records}
+        campaignLabel={campaignLabel}
+        returnToPath={createPendingReturnPath(campaignLabel)}
+      />
     </main>
   );
 }

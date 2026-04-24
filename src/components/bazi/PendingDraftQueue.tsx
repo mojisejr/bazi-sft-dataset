@@ -5,7 +5,33 @@ import type { PendingDraftDatasetRecord } from "@/lib/bazi/dataset-records";
 type PendingDraftQueueProps = {
   records: PendingDraftDatasetRecord[];
   returnToPath?: string;
+  campaignLabel?: string;
 };
+
+function getReviewStateCopy(state: PendingDraftDatasetRecord["reviewState"]) {
+  switch (state) {
+    case "stale":
+      return "ต้องตรวจซ้ำ";
+    case "needs-reproof":
+      return "ต้อง re-proof";
+    case "superseded":
+      return "ถูกแทนแล้ว";
+    default:
+      return "active";
+  }
+}
+
+function getLineageCopy(record: PendingDraftDatasetRecord) {
+  if (record.supersedesRecordId) {
+    return "revision ใหม่จากเคสเดิม";
+  }
+
+  if (record.latestEffectiveRecordId && record.latestEffectiveRecordId !== record.id) {
+    return "มีเป้าหมายตรวจตัวล่าสุดแล้ว";
+  }
+
+  return "ต้นฉบับของคิวรอบนี้";
+}
 
 function formatThaiBirthMoment(birthDate: string, birthTime: string) {
   const [yearText = "", monthText = "", dayText = ""] = birthDate.split("-");
@@ -50,16 +76,29 @@ function getAnnotatorBadge(annotatorId: string | null) {
 export function PendingDraftQueue({
   records,
   returnToPath = "/pending",
+  campaignLabel,
 }: PendingDraftQueueProps) {
+  const activeCount = records.filter((record) => !record.reviewState || record.reviewState === "active").length;
+  const staleCount = records.filter((record) => record.reviewState === "stale").length;
+  const reproofCount = records.filter((record) => record.reviewState === "needs-reproof").length;
+
   return (
     <section className="workspace-stack">
       <section className="surface inset-card message-card pending-hero-card">
         <p className="section-kicker">Phase 4</p>
         <h2>Pending Queue สำหรับรอตรวจทาน</h2>
         <p>
-          หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเลือกเคสที่ AI สร้างไว้แล้ว
-          แล้วเปิดเข้าไปตรวจทานและปิดงานได้ทันทีโดยไม่ต้องไล่เปิดทีละ card ใหญ่
+          หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเห็นกองงาน active,
+          ตรวจ state ของคิว และเปิดเข้า proof ของเป้าหมายล่าสุดได้ทันที
         </p>
+        <div className="pending-hero-card__meta">
+          <span className="pending-badge pending-badge--domain">
+            {campaignLabel ? `campaign ${campaignLabel}` : "ทุก campaign ที่ยัง active"}
+          </span>
+          <span className="pending-badge pending-badge--ai">active {activeCount}</span>
+          <span className="pending-badge pending-badge--domain">ต้องตรวจซ้ำ {staleCount}</span>
+          <span className="pending-badge pending-badge--domain">ต้อง re-proof {reproofCount}</span>
+        </div>
       </section>
 
       {records.length === 0 ? (
@@ -77,7 +116,11 @@ export function PendingDraftQueue({
               <p className="section-kicker">Draft Queue</p>
               <h3>เลือกเคสแล้วเข้าไปตรวจได้ทันที</h3>
             </div>
-            <p className="pending-list__summary">ตอนนี้มี {records.length} เคสในคิวรอตรวจ</p>
+            <p className="pending-list__summary">
+              {campaignLabel
+                ? `กำลังเปิดคิว ${campaignLabel} อยู่ มี ${records.length} เคสพร้อมตรวจ`
+                : `ตอนนี้มี ${records.length} เคสในคิวรอตรวจ`}
+            </p>
           </div>
 
           <div className="pending-list__table-head" aria-hidden="true">
@@ -99,12 +142,22 @@ export function PendingDraftQueue({
                   <span className="pending-badge pending-badge--domain">
                     {record.intentDomain}
                   </span>
+                  <span className="pending-badge pending-badge--domain">
+                    {getReviewStateCopy(record.reviewState)}
+                  </span>
+                  {record.queueBatchId ? (
+                    <span className="pending-badge pending-badge--domain">{record.queueBatchId}</span>
+                  ) : null}
                 </div>
 
                 <div className="pending-row__identity">
                   <strong>{record.customerName ?? record.id.slice(0, 8)}</strong>
                   {record.customerName ? <span>Record Key {record.id.slice(0, 8)}</span> : null}
                   <span>Record ID {record.id}</span>
+                  <span>{getLineageCopy(record)}</span>
+                  {record.sourceRow ? <span>แถวที่ {record.sourceRow} จากไฟล์ต้นทาง</span> : null}
+                  {record.caseNote ? <span>หมายเหตุเคส: {record.caseNote}</span> : null}
+                  {record.staleReason ? <span>เหตุผลที่ต้องตรวจซ้ำ: {record.staleReason}</span> : null}
                 </div>
               </div>
 

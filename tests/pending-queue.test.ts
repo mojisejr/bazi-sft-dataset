@@ -27,20 +27,33 @@ describe("PendingDraftQueue", () => {
             dayMaster: "己",
             intentDomain: "love",
             customerName: "สมบัติ",
+            caseNote: "เสียชีวิต",
+            queueBatchId: "fresh-2026-04-24",
+            reviewState: "active",
+            staleReason: null,
+            supersedesRecordId: null,
+            latestEffectiveRecordId: "d5a591e2-7a5e-4f43-9819-c65a8a3eef87",
+            sourceRow: 12,
             annotatorId: "agent_gpt4o",
             createdAt: "2026-04-17T00:00:00.000Z",
             updatedAt: "2026-04-17T01:00:00.000Z",
           },
         ],
+        campaignLabel: "fresh-2026-04-24",
       }),
     );
 
     expect(html).toContain("Pending Queue สำหรับรอตรวจทาน");
-    expect(html).toContain("ตอนนี้มี 1 เคสในคิวรอตรวจ");
+    expect(html).toContain("กำลังเปิดคิว fresh-2026-04-24 อยู่ มี 1 เคสพร้อมตรวจ");
+    expect(html).toContain("campaign fresh-2026-04-24");
     expect(html).toContain("AI Generated");
     expect(html).toContain("สมบัติ");
     expect(html).toContain("ดิถี 己");
     expect(html).toContain("love");
+    expect(html).toContain("active");
+    expect(html).toContain("ต้นฉบับของคิวรอบนี้");
+    expect(html).toContain("แถวที่ 12 จากไฟล์ต้นทาง");
+    expect(html).toContain("หมายเหตุเคส: เสียชีวิต");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).toContain("ตรวจเคส");
     expect(html).toContain("d5a591e2-7a5e-4f43-9819-c65a8a3eef87");
@@ -66,6 +79,13 @@ describe("listDraftDatasetRecords", () => {
           dayMaster: "己",
           intentDomain: "general",
           customerName: "KD",
+          caseNote: null,
+          queueBatchId: "fresh-2026-04-24",
+          reviewState: "active",
+          staleReason: null,
+          supersedesRecordId: null,
+          latestEffectiveRecordId: "record-1",
+          sourceRow: 1,
           annotatorId: "agent_gpt4o",
           createdAt: "2026-04-17T00:00:00.000Z",
           updatedAt: "2026-04-17T01:00:00.000Z",
@@ -81,6 +101,13 @@ describe("listDraftDatasetRecords", () => {
         dayMaster: "己",
         intentDomain: "general",
         customerName: "KD",
+        caseNote: null,
+        queueBatchId: "fresh-2026-04-24",
+        reviewState: "active",
+        staleReason: null,
+        supersedesRecordId: null,
+        latestEffectiveRecordId: "record-1",
+        sourceRow: 1,
         annotatorId: "agent_gpt4o",
         createdAt: "2026-04-17T00:00:00.000Z",
         updatedAt: "2026-04-17T01:00:00.000Z",
@@ -101,6 +128,13 @@ describe("createListDraftDatasetRecordsHandler", () => {
           dayMaster: "己",
           intentDomain: "general",
           customerName: "KD",
+          caseNote: null,
+          queueBatchId: "fresh-2026-04-24",
+          reviewState: "active",
+          staleReason: null,
+          supersedesRecordId: null,
+          latestEffectiveRecordId: "record-1",
+          sourceRow: 1,
           annotatorId: "agent_gpt4o",
           createdAt: "2026-04-17T00:00:00.000Z",
           updatedAt: "2026-04-17T01:00:00.000Z",
@@ -124,6 +158,13 @@ describe("createListDraftDatasetRecordsHandler", () => {
         dayMaster: "己",
         intentDomain: "general",
         customerName: "KD",
+        caseNote: null,
+        queueBatchId: "fresh-2026-04-24",
+        reviewState: "active",
+        staleReason: null,
+        supersedesRecordId: null,
+        latestEffectiveRecordId: "record-1",
+        sourceRow: 1,
         annotatorId: "agent_gpt4o",
         createdAt: "2026-04-17T00:00:00.000Z",
         updatedAt: "2026-04-17T01:00:00.000Z",
