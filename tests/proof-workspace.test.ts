@@ -218,6 +218,7 @@ describe("ProofWorkspace", () => {
     );
 
     expect(html).toContain("หน้าตรวจทานคำทำนาย AI");
+    expect(html).toContain("เปิดข้อมูลเคสแบบเต็ม");
     expect(html).toContain("กลับไปคิวรอตรวจ");
     expect(html).toContain("/?workspace=queue");
     expect(html).toContain("ชื่อลูกค้า");

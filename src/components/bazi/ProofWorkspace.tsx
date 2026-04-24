@@ -24,7 +24,9 @@ import {
   formatThaiBirthMoment,
   reportPillarColumns,
 } from "@/lib/bazi/trainer-workspace";
+import { CaseContextSheet } from "@/components/bazi/CaseContextSheet";
 import { CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
+import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 import {
   classifyOperatorStrengthScore,
@@ -221,6 +223,7 @@ function extractAiStrengthClaim(annotationData: StoredAnnotationDataValue | null
 
 export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: ProofWorkspaceProps) {
   const router = useRouter();
+  const [isCaseContextOpen, setIsCaseContextOpen] = useState(false);
   const [dimensions, setDimensions] = useState<ProofDimensionDraftState>(() =>
     createProofDimensions(record.annotationData),
   );
@@ -250,6 +253,8 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     record.calculatedState.mingGong?.stem,
     record.calculatedState.mingGong?.branch,
   );
+  const queueStateCopy = getReviewStateCopy(record.metadata.reviewLifecycle?.state);
+  const lineageSummary = getLineageSummary(record);
 
   function updateDimension(
     dimensionName: AnnotationDimensionName,
@@ -331,11 +336,47 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           </p>
         </div>
         <div className="message-card__actions">
+          <button
+            type="button"
+            className="secondary-action"
+            onClick={() => setIsCaseContextOpen(true)}
+          >
+            เปิดข้อมูลเคสแบบเต็ม
+          </button>
           <Link className="secondary-action pending-link" href={returnToPath}>
             กลับไปคิวรอตรวจ
           </Link>
         </div>
       </section>
+
+      <DetailOverlay
+        isOpen={isCaseContextOpen}
+        title={record.metadata.customerName ?? `Record ${record.id.slice(0, 8)}`}
+        kicker="Expanded Case Context"
+        summary="เปิดข้อมูลเคสใน reading sheet ที่กว้างขึ้นเพื่ออ่าน context ก่อนกลับไปตรวจทาน draft ต่อ"
+        closeLabel="กลับสู่หน้าตรวจ"
+        onClose={() => setIsCaseContextOpen(false)}
+      >
+        <CaseContextSheet
+          customerName={record.metadata.customerName}
+          recordId={record.id}
+          birthMoment={formatThaiBirthMoment(record.rawInput)}
+          province={record.rawInput.province}
+          intentDomain={record.intentDomain}
+          campaignLabel={record.metadata.generation?.queueBatchId}
+          queueStateLabel={queueStateCopy}
+          lineageSummary={lineageSummary}
+          sourceRow={record.metadata.sourceRow}
+          caseNote={record.metadata.caseNote}
+          staleReason={record.metadata.reviewLifecycle?.staleReason}
+          truthAnchors={[
+            { label: "ดิถี", value: record.calculatedState.dayMaster },
+            { label: "เสาลัคนา", value: mingGongCode },
+            { label: "กำลังดิถี", value: formatScore(record.calculatedState.strengthScore) },
+          ]}
+          summaryNote="ถือสามค่านี้ไว้ก่อนกลับไปไล่ reasoning ของ AI เพื่อไม่ให้ lost in wording ระหว่างการ proof"
+        />
+      </DetailOverlay>
 
       <div className="proof-layout">
         <aside className="proof-sidebar">
@@ -379,11 +420,11 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
               ) : null}
               <div className="pending-metadata-row">
                 <dt>สถานะคิว</dt>
-                <dd>{getReviewStateCopy(record.metadata.reviewLifecycle?.state)}</dd>
+                <dd>{queueStateCopy}</dd>
               </div>
               <div className="pending-metadata-row">
                 <dt>lineage</dt>
-                <dd>{getLineageSummary(record)}</dd>
+                <dd>{lineageSummary}</dd>
               </div>
               {record.metadata.reviewLifecycle?.staleReason ? (
                 <div className="pending-metadata-row">
@@ -398,6 +439,16 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                 </div>
               ) : null}
             </dl>
+
+            <div className="message-card__actions">
+              <button
+                type="button"
+                className="secondary-action pending-link"
+                onClick={() => setIsCaseContextOpen(true)}
+              >
+                ขยายข้อมูลเคสให้อ่านเต็ม
+              </button>
+            </div>
           </section>
 
           <section className="surface inset-card proof-summary-card">

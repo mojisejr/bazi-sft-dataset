@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { QueueCasePreviewButton } from "@/components/bazi/QueueCasePreviewButton";
 import type { PendingDraftDatasetRecord } from "@/lib/bazi/dataset-records";
 
 type PendingDraftQueueProps = {
@@ -134,6 +135,14 @@ export function PendingDraftQueue({
           <div className="pending-list__rows">
           {records.map((record) => (
             <article key={record.id} className="pending-row">
+              {(() => {
+                const reviewStateCopy = getReviewStateCopy(record.reviewState);
+                const lineageCopy = getLineageCopy(record);
+                const birthMoment = formatThaiBirthMoment(record.birthDate, record.birthTime);
+                const proofHref = `/proof/${record.id}?returnTo=${encodeURIComponent(returnToPath)}`;
+
+                return (
+                  <>
               <div className="pending-row__case">
                 <div className="pending-row__badges">
                   <span className="pending-badge pending-badge--ai">
@@ -143,7 +152,7 @@ export function PendingDraftQueue({
                     {record.intentDomain}
                   </span>
                   <span className="pending-badge pending-badge--domain">
-                    {getReviewStateCopy(record.reviewState)}
+                    {reviewStateCopy}
                   </span>
                   {record.queueBatchId ? (
                     <span className="pending-badge pending-badge--domain">{record.queueBatchId}</span>
@@ -154,14 +163,14 @@ export function PendingDraftQueue({
                   <strong>{record.customerName ?? record.id.slice(0, 8)}</strong>
                   {record.customerName ? <span>Record Key {record.id.slice(0, 8)}</span> : null}
                   <span>Record ID {record.id}</span>
-                  <span>{getLineageCopy(record)}</span>
+                  <span>{lineageCopy}</span>
                   {record.sourceRow ? <span>แถวที่ {record.sourceRow} จากไฟล์ต้นทาง</span> : null}
                   {record.caseNote ? <span>หมายเหตุเคส: {record.caseNote}</span> : null}
                   {record.staleReason ? <span>เหตุผลที่ต้องตรวจซ้ำ: {record.staleReason}</span> : null}
                 </div>
               </div>
 
-              <div className="pending-row__birth">{formatThaiBirthMoment(record.birthDate, record.birthTime)}</div>
+              <div className="pending-row__birth">{birthMoment}</div>
 
               <div className="pending-row__scope">
                 <strong>ดิถี {record.dayMaster}</strong>
@@ -170,19 +179,30 @@ export function PendingDraftQueue({
 
               <div className="pending-row__updated">{formatUpdatedAt(record.updatedAt)}</div>
 
-              <div className="pending-row__action">
+              <div className="pending-row__action pending-row__action--stack">
+                <QueueCasePreviewButton
+                  customerName={record.customerName}
+                  recordId={record.id}
+                  birthMoment={birthMoment}
+                  intentDomain={record.intentDomain}
+                  campaignLabel={record.queueBatchId ?? campaignLabel}
+                  queueStateLabel={reviewStateCopy}
+                  lineageSummary={lineageCopy}
+                  sourceRow={record.sourceRow}
+                  caseNote={record.caseNote}
+                  staleReason={record.staleReason}
+                  proofHref={proofHref}
+                />
                 <Link
                   className="secondary-action pending-link"
-                  href={{
-                    pathname: `/proof/${record.id}`,
-                    query: {
-                      returnTo: returnToPath,
-                    },
-                  }}
+                  href={proofHref}
                 >
                   ตรวจเคส
                 </Link>
               </div>
+                  </>
+                );
+              })()}
             </article>
           ))}
           </div>

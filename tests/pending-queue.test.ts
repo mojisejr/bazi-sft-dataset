@@ -55,6 +55,7 @@ describe("PendingDraftQueue", () => {
     expect(html).toContain("แถวที่ 12 จากไฟล์ต้นทาง");
     expect(html).toContain("หมายเหตุเคส: เสียชีวิต");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
+    expect(html).toContain("อ่านก่อนตรวจ");
     expect(html).toContain("ตรวจเคส");
     expect(html).toContain("d5a591e2-7a5e-4f43-9819-c65a8a3eef87");
     expect(html).toContain("returnTo=%2F%3Fworkspace%3Dqueue");
