@@ -208,6 +208,11 @@ export const baziElementInteractions = pgTable("bazi_element_interactions", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+/**
+ * @deprecated Runtime twelve-qi stage calculation now derives from orthodox
+ * `lunar-javascript` math. Keep this table only as a temporary rollback/audit
+ * surface until the production drop migration is approved.
+ */
 export const baziTwelveQiStages = pgTable("bazi_twelve_qi_stages", {
   id: uuid("id").defaultRandom().primaryKey(),
   sourcePath: text("source_path").notNull(),

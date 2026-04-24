@@ -164,13 +164,6 @@ export type SolarTermBoundaryContext = {
   next: SolarTermBoundaryRecord | null;
 };
 
-export type TwelveQiStageRecord = {
-  stageNameChinese: string;
-  stageNameThai: string;
-  dayMaster: string;
-  branch: string;
-};
-
 export type SixtyJiaziPersonaRecord = {
   dayMasterChinese: string;
   branchChinese: string;
@@ -193,7 +186,6 @@ export type DomainMatrixRecord = {
 
 export type BaziKnowledgeRepository = {
   findSolarTermBoundaryContext(birthAtHongKong: string): Promise<SolarTermBoundaryContext>;
-  findTwelveQiStage(dayMasterChinese: string, branchChinese: string): Promise<TwelveQiStageRecord | null>;
   findSixtyJiaziPersona(dayMasterChinese: string, branchChinese: string): Promise<SixtyJiaziPersonaRecord | null>;
   findDomainMatrixRows(domain: MatrixDomain): Promise<DomainMatrixRecord[]>;
 };

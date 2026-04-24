@@ -1,4 +1,3 @@
-import { Solar, Lunar } from "lunar-javascript";
 import { createDbClient } from "./src/db/client";
 import { baziTwelveQiStages } from "./src/db/schema";
 import { eq } from "drizzle-orm";

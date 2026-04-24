@@ -5,7 +5,6 @@ import {
   baziDomainMatrices,
   baziSixtyJiaziNarratives,
   baziTimeSolarTerms,
-  baziTwelveQiStages,
 } from "@/db/schema";
 import {
   CalculatedStateSchema,
@@ -132,26 +131,6 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
       };
     },
 
-    async findTwelveQiStage(dayMasterChinese, branchChinese) {
-      const [stage] = await db
-        .select({
-          stageNameChinese: baziTwelveQiStages.stageNameChinese,
-          stageNameThai: baziTwelveQiStages.stageNameThai,
-          dayMaster: baziTwelveQiStages.dayMaster,
-          branch: baziTwelveQiStages.branch,
-        })
-        .from(baziTwelveQiStages)
-        .where(
-          and(
-            eq(baziTwelveQiStages.dayMaster, dayMasterChinese),
-            eq(baziTwelveQiStages.branch, branchChinese),
-          ),
-        )
-        .limit(1);
-
-      return stage ?? null;
-    },
-
     async findSixtyJiaziPersona(dayMasterChinese, branchChinese) {
       const [persona] = await db
         .select({
@@ -215,21 +194,17 @@ export async function calculateBaziChart(
     .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
   const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
   const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
-  const [yearStage, monthStage, dayStage, hourStage, persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
-    repository.findTwelveQiStage(dayMasterStem, pillars.year.branch),
-    repository.findTwelveQiStage(dayMasterStem, pillars.month.branch),
-    repository.findTwelveQiStage(dayMasterStem, pillars.day.branch),
-    repository.findTwelveQiStage(dayMasterStem, pillars.hour.branch),
+  const [persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
     repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
     repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
     repository.findDomainMatrixRows("love"),
     repository.findDomainMatrixRows("work"),
   ]);
   const twelveQiState = {
-    yearBranch: yearStage?.stageNameChinese ?? eightChar.getYearDiShi(),
-    monthBranch: monthStage?.stageNameChinese ?? eightChar.getMonthDiShi(),
-    dayBranch: dayStage?.stageNameChinese ?? eightChar.getDayDiShi(),
-    hourBranch: hourStage?.stageNameChinese ?? eightChar.getTimeDiShi(),
+    yearBranch: eightChar.getYearDiShi(),
+    monthBranch: eightChar.getMonthDiShi(),
+    dayBranch: eightChar.getDayDiShi(),
+    hourBranch: eightChar.getTimeDiShi(),
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
   const elementAnalysis = buildElementAnalysis(pillars);

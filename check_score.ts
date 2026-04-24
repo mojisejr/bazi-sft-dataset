@@ -17,7 +17,7 @@ async function main() {
   console.log("Score:", result.strengthScore);
   console.log("Stems:", result.fourPillars.year.stem, result.fourPillars.month.stem, result.fourPillars.day.stem, result.fourPillars.hour.stem);
   console.log("Branches:", result.fourPillars.year.branch, result.fourPillars.month.branch, result.fourPillars.day.branch, result.fourPillars.hour.branch);
-  console.log("Trace:", JSON.stringify(result.strengthTrace, null, 2));
+  console.log("Trace:", JSON.stringify(result.explainable.strengthScore?.trace ?? null, null, 2));
 }
 
 main().catch(console.error);

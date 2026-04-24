@@ -30,20 +30,6 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
     "癸",
   ];
 
-  const stages = new Map<string, Awaited<ReturnType<BaziKnowledgeRepository["findTwelveQiStage"]>>>(
-    [
-      ["戊|卯", { stageNameChinese: "沐浴", stageNameThai: "หมกยก", dayMaster: "戊", branch: "卯" }],
-      ["戊|丑", { stageNameChinese: "养", stageNameThai: "เอี้ยง", dayMaster: "戊", branch: "丑" }],
-      ["戊|戌", { stageNameChinese: "墓", stageNameThai: "หมอ", dayMaster: "戊", branch: "戌" }],
-      ["戊|申", { stageNameChinese: "病", stageNameThai: "แป่", dayMaster: "戊", branch: "申" }],
-      ["戊|辰", { stageNameChinese: "冠带", stageNameThai: "กวงตั่ว", dayMaster: "戊", branch: "辰" }],
-      ["戊|寅", { stageNameChinese: "长生", stageNameThai: "เชี่ยงแซ", dayMaster: "戊", branch: "寅" }],
-      ["己|申", { stageNameChinese: "沐浴", stageNameThai: "หมกยก", dayMaster: "己", branch: "申" }],
-      ["己|巳", { stageNameChinese: "帝旺", stageNameThai: "ตี้อ๋วง", dayMaster: "己", branch: "巳" }],
-      ["己|未", { stageNameChinese: "冠带", stageNameThai: "กวงตั่ว", dayMaster: "己", branch: "未" }],
-    ] as const,
-  );
-
   const personas = new Map<string, Awaited<ReturnType<BaziKnowledgeRepository["findSixtyJiaziPersona"]>>>(
     [
       [
@@ -183,9 +169,6 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
           boundaryAt: "1992-08-23 04:00:00",
         },
       };
-    },
-    async findTwelveQiStage(dayMasterChinese, branchChinese) {
-      return stages.get(`${dayMasterChinese}|${branchChinese}`) ?? null;
     },
     async findSixtyJiaziPersona(dayMasterChinese, branchChinese) {
       return personas.get(`${dayMasterChinese}|${branchChinese}`) ?? null;

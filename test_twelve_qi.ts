@@ -1,9 +1,9 @@
-import { EightChar, Lunar } from 'lunar-javascript';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Lunar } = require("lunar-javascript");
 
 // สร้างดวง 2018-12-08 17:13
 const lunar = Lunar.fromDate(new Date('2018-12-08T17:13:00'));
 const bazi = lunar.getEightChar();
-const jia = "甲"; // ไม้กะ
 
 // เช็คสถานะ 12 เชี่ยงแซ ตามหลักการคำนวณมาตรฐาน (ดาราศาสตร์จีน)
 console.log("=== Orthodox 12 Qi Stages for 甲 (Jia) ===");

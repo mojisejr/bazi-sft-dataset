@@ -14,7 +14,7 @@ function normalizeDerivedRecord(record: Record<string, string>) {
 describe("calculateBaziChart ground-truth fixtures", () => {
   const repository = createTestKnowledgeRepository();
 
-  test("enters red state for the sinsae phase 1 fixture before the engine refactor", async () => {
+  test("locks the sinsae phase 1 fixture at 4.5 under orthodox twelve qi math", async () => {
     const result = await calculateBaziChart(
       RawInputSchema.parse({
         birthDate: "2018-12-08",
