@@ -46,8 +46,34 @@ type CsvCaseLoaderOptions = {
 export type ImportedBaziCase = {
   sourceRow: number;
   name: string;
+  note?: string;
   rawInput: RawInputValue;
 };
+
+function extractOptionalCaseNote(record: Record<string, unknown>) {
+  const knownHeaders = new Set(Object.values(CSV_HEADERS));
+  const noteEntries = Object.entries(record).filter(
+    (entry): entry is [string, string] => {
+      const [header, value] = entry;
+
+      if (typeof value !== "string") {
+        return false;
+      }
+
+      const normalizedHeader = header.trim();
+
+      return !knownHeaders.has(normalizedHeader as (typeof CSV_HEADERS)[keyof typeof CSV_HEADERS])
+        && value.trim().length > 0;
+    },
+  );
+  const noteValues = noteEntries.map(([, value]) => value.trim());
+
+  if (noteValues.length === 0) {
+    return undefined;
+  }
+
+  return noteValues.join(" | ");
+}
 
 function getRequiredField(record: Record<string, unknown>, header: string, rowNumber: number) {
   const rawValue = record[header];
@@ -156,6 +182,7 @@ function buildImportedCase(
   return {
     sourceRow: rowNumber,
     name,
+    note: extractOptionalCaseNote(record),
     rawInput: RawInputSchema.parse({
       birthDate: `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
       birthTime: normalizeBirthTime(birthTime, rowNumber),

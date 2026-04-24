@@ -10,11 +10,13 @@ describe("dataset metadata contract", () => {
     expect(
       createDatasetRecordMetadata({
         customerName: "สมบัติ",
+        caseNote: "เสียชีวิต",
         sourceFile: "/tmp/example-cases.csv",
         sourceRow: 2,
       }),
     ).toEqual({
       customerName: "สมบัติ",
+      caseNote: "เสียชีวิต",
       sourceFile: "/tmp/example-cases.csv",
       sourceRow: 2,
     });
@@ -67,6 +69,7 @@ describe("dataset metadata contract", () => {
       mergeDatasetRecordMetadata(
         {
           customerName: "สมบัติ",
+          caseNote: "เสียชีวิต",
           sourceFile: "/tmp/example-cases.csv",
           generation: {
             source: "csv",
@@ -84,6 +87,7 @@ describe("dataset metadata contract", () => {
       ),
     ).toEqual({
       customerName: "สมบัติ",
+      caseNote: "เสียชีวิต",
       sourceFile: "/tmp/example-cases.csv",
       generation: {
         source: "csv",

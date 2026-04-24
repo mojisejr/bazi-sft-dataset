@@ -43,6 +43,7 @@ export const DatasetReviewLifecycleSchema = z.object({
 
 export const DatasetRecordMetadataSchema = z.object({
   customerName: z.string().trim().min(1).optional(),
+  caseNote: z.string().trim().min(1).optional(),
   sourceFile: z.string().trim().min(1).optional(),
   sourceRow: z.number().int().positive().optional(),
   generation: DatasetGenerationProvenanceSchema.optional(),

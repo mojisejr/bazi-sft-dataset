@@ -13,6 +13,10 @@ const SAMPLE_CSV = `ชื่อ,วันที่เกิด,เดือน�
 KD,12,พฤศจิกายน,2522,6:00,หญิง
 `;
 
+const SAMPLE_CSV_WITH_NOTE = `ชื่อ,วันที่เกิด,เดือนเกิด,ปีเกิด,เวลาที่เกิด,เพศ,
+สามีชลรดา,3,พฤษภาคม,2515,14:06,ชาย,เสียชีวิต
+`;
+
 describe("csv case loader helpers", () => {
   test("normalizes Thai month labels and Buddhist Era years", () => {
     expect(normalizeThaiMonth("มกราคม")).toBe(1);
@@ -68,6 +72,12 @@ describe("parseThaiBaziCasesCsv", () => {
 
     expect(entry?.rawInput.province).toBe("Chiang Mai");
     expect(entry?.rawInput.timezone).toBe("Asia/Hong_Kong");
+  });
+
+  test("captures optional trailing notes from the curated CSV", () => {
+    const [entry] = parseThaiBaziCasesCsv(SAMPLE_CSV_WITH_NOTE);
+
+    expect(entry?.note).toBe("เสียชีวิต");
   });
 
   test("throws when the day does not exist in the converted Gregorian month", () => {

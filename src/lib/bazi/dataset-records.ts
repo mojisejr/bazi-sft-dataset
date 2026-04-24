@@ -122,7 +122,7 @@ export type DatasetDraftPurgeRepository = {
 };
 
 export type DatasetDraftListRepository = {
-  listDraftRecords: () => Promise<PendingDraftDatasetRecord[]>;
+  listDraftRecords: (filters?: { campaignLabel?: string }) => Promise<PendingDraftDatasetRecord[]>;
 };
 
 export type DatasetProofLookupRepository = {
@@ -212,8 +212,18 @@ export function createDbDatasetRecordRepository(
           ),
         );
     },
-    async listDraftRecords() {
+    async listDraftRecords(filters = {}) {
       const db = createDbClient(databaseUrl);
+      const whereClause = filters.campaignLabel
+        ? and(
+            eq(baziDatasetRecords.status, "draft"),
+            sql<boolean>`coalesce(${baziDatasetRecords.metadata} -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'`,
+            sql<boolean>`${baziDatasetRecords.metadata} -> 'generation' ->> 'queueBatchId' = ${filters.campaignLabel}`,
+          )
+        : and(
+            eq(baziDatasetRecords.status, "draft"),
+            sql<boolean>`coalesce(${baziDatasetRecords.metadata} -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'`,
+          );
       const records = await db
         .select({
           id: baziDatasetRecords.id,
@@ -227,7 +237,7 @@ export function createDbDatasetRecordRepository(
           updatedAt: baziDatasetRecords.updatedAt,
         })
         .from(baziDatasetRecords)
-        .where(eq(baziDatasetRecords.status, "draft"))
+        .where(whereClause)
         .orderBy(desc(baziDatasetRecords.updatedAt));
 
       return records.map((record) => ({
@@ -283,6 +293,7 @@ export function createDbDatasetRecordRepository(
 
 type ListDraftDatasetRecordsOptions = {
   repository?: DatasetDraftListRepository;
+  campaignLabel?: string;
 };
 
 export async function listDraftDatasetRecords(
@@ -290,7 +301,7 @@ export async function listDraftDatasetRecords(
 ) {
   const repository = options.repository ?? createDbDatasetRecordRepository();
 
-  return repository.listDraftRecords();
+  return repository.listDraftRecords({ campaignLabel: options.campaignLabel });
 }
 
 type GetProofDatasetRecordOptions = {
@@ -346,6 +357,87 @@ export async function findExistingDraftOrReviewedDatasetRecord(
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
+}
+
+export async function findLatestDatasetRecordForRawInput(
+  rawInput: RawInputValue,
+  databaseUrl?: string,
+): Promise<ProofDatasetRecord | null> {
+  const db = createDbClient(databaseUrl);
+  const [record] = await db
+    .select({
+      id: baziDatasetRecords.id,
+      rawInput: baziDatasetRecords.rawInput,
+      calculatedState: baziDatasetRecords.calculatedState,
+      intentDomain: baziDatasetRecords.intentDomain,
+      annotationData: baziDatasetRecords.annotationData,
+      status: baziDatasetRecords.status,
+      annotatorId: baziDatasetRecords.annotatorId,
+      metadata: baziDatasetRecords.metadata,
+      createdAt: baziDatasetRecords.createdAt,
+      updatedAt: baziDatasetRecords.updatedAt,
+    })
+    .from(baziDatasetRecords)
+    .where(eq(baziDatasetRecords.rawInput, rawInput))
+    .orderBy(desc(baziDatasetRecords.updatedAt))
+    .limit(1);
+
+  if (!record) {
+    return null;
+  }
+
+  return {
+    id: record.id,
+    rawInput: record.rawInput,
+    calculatedState: record.calculatedState,
+    intentDomain: record.intentDomain,
+    annotationData: record.annotationData,
+    status: record.status,
+    annotatorId: record.annotatorId,
+    metadata: record.metadata,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+export async function listActiveDraftProofRecords(
+  databaseUrl?: string,
+): Promise<ProofDatasetRecord[]> {
+  const db = createDbClient(databaseUrl);
+  const records = await db
+    .select({
+      id: baziDatasetRecords.id,
+      rawInput: baziDatasetRecords.rawInput,
+      calculatedState: baziDatasetRecords.calculatedState,
+      intentDomain: baziDatasetRecords.intentDomain,
+      annotationData: baziDatasetRecords.annotationData,
+      status: baziDatasetRecords.status,
+      annotatorId: baziDatasetRecords.annotatorId,
+      metadata: baziDatasetRecords.metadata,
+      createdAt: baziDatasetRecords.createdAt,
+      updatedAt: baziDatasetRecords.updatedAt,
+    })
+    .from(baziDatasetRecords)
+    .where(
+      and(
+        eq(baziDatasetRecords.status, "draft"),
+        sql<boolean>`coalesce(${baziDatasetRecords.metadata} -> 'reviewLifecycle' ->> 'state', '') <> 'superseded'`,
+      ),
+    )
+    .orderBy(desc(baziDatasetRecords.updatedAt));
+
+  return records.map((record) => ({
+    id: record.id,
+    rawInput: record.rawInput,
+    calculatedState: record.calculatedState,
+    intentDomain: record.intentDomain,
+    annotationData: record.annotationData,
+    status: record.status,
+    annotatorId: record.annotatorId,
+    metadata: record.metadata,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  }));
 }
 
 type ListDatasetRecordsForRegenerationFilters = {
@@ -513,7 +605,7 @@ export function createPurgeDatasetDraftsHandler(
 export function createListDraftDatasetRecordsHandler(
   options: ListDraftDatasetRecordsHandlerOptions,
 ) {
-  return async function GET() {
+  return async function GET(request: Request) {
     try {
       const authResult = await options.authenticate();
       const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
@@ -528,7 +620,9 @@ export function createListDraftDatasetRecordsHandler(
       }
 
       const repository = options.repository ?? createDbDatasetRecordRepository();
-      const records = await repository.listDraftRecords();
+      const requestUrl = new URL(request.url);
+      const campaignLabel = requestUrl.searchParams.get("campaign")?.trim() || undefined;
+      const records = await repository.listDraftRecords({ campaignLabel });
 
       return Response.json(records, { status: 200 });
     } catch (error) {

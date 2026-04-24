@@ -56,7 +56,7 @@ describe("PendingDraftQueue", () => {
 });
 
 describe("listDraftDatasetRecords", () => {
-  test("delegates draft listing to the repository seam", async () => {
+  test("delegates draft listing to the repository seam with optional campaign filter", async () => {
     const repository: DatasetDraftListRepository = {
       listDraftRecords: vi.fn().mockResolvedValue([
         {
@@ -73,7 +73,7 @@ describe("listDraftDatasetRecords", () => {
       ]),
     };
 
-    await expect(listDraftDatasetRecords({ repository })).resolves.toEqual([
+    await expect(listDraftDatasetRecords({ repository, campaignLabel: "fresh-2026-04-24" })).resolves.toEqual([
       {
         id: "record-1",
         birthDate: "1992-08-21",
@@ -86,7 +86,7 @@ describe("listDraftDatasetRecords", () => {
         updatedAt: "2026-04-17T01:00:00.000Z",
       },
     ]);
-    expect(repository.listDraftRecords).toHaveBeenCalledTimes(1);
+    expect(repository.listDraftRecords).toHaveBeenCalledWith({ campaignLabel: "fresh-2026-04-24" });
   });
 });
 
@@ -113,7 +113,7 @@ describe("createListDraftDatasetRecordsHandler", () => {
     });
     const handler = createListDraftDatasetRecordsHandler({ repository, authenticate });
 
-    const response = await handler();
+    const response = await handler(new Request("https://example.test/api/dataset/drafts?campaign=fresh-2026-04-24"));
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual([
@@ -129,7 +129,7 @@ describe("createListDraftDatasetRecordsHandler", () => {
         updatedAt: "2026-04-17T01:00:00.000Z",
       },
     ]);
-    expect(repository.listDraftRecords).toHaveBeenCalledTimes(1);
+    expect(repository.listDraftRecords).toHaveBeenCalledWith({ campaignLabel: "fresh-2026-04-24" });
   });
 
   test("rejects unauthenticated draft listing requests with 401", async () => {
@@ -142,7 +142,7 @@ describe("createListDraftDatasetRecordsHandler", () => {
     });
     const handler = createListDraftDatasetRecordsHandler({ repository, authenticate });
 
-    const response = await handler();
+    const response = await handler(new Request("https://example.test/api/dataset/drafts"));
 
     expect(response.status).toBe(401);
     expect(await response.json()).toEqual({
