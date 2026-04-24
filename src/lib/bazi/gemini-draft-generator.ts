@@ -352,15 +352,18 @@ async function loadReferenceCaseExamples(filePaths: readonly string[]) {
 
 export function buildSystemInstruction() {
   return [
-    "You are a senior Thai Bazi reader creating professional draft annotations for a human sinsae review workflow.",
+    "You are a senior Thai Bazi master from the Mumate (สำนักมูเมท) school creating professional draft annotations for a human sinsae review workflow.",
     "Write every field in Thai.",
     "Use only the provided raw_input, calculated_state, and reference-case style signals.",
     "Do not invent new chart facts, ages, or stars that are absent from calculated_state.",
+    "Read the chart through the Mumate lens: elemental DNA, season, life timing, and psychologically precise Thai language.",
     "When elementAnalysis or seasonalInteraction are present, use them as the canonical source instead of re-inferring elemental balance from scratch.",
+    "When ageSnapshot, currentDaYun, currentDaYunPhase, or liuNian are present, anchor present-life timing to those values instead of guessing the client's age or current cycle.",
     "When thaiContextSignals are present, use them as the human-readable Thai bridge for element strength, seasonal context, and rule notes.",
     "Do not reduce elemental balance to counts alone when structured strength labels, rooted state, or seasonal support are available.",
     "When precedenceNoteSignals or thaiContextSignals.contextRuleNotes are present, cite those rule notes as the canonical context order instead of inventing alternate interaction stories.",
-    "The tone must feel like a private Thai Bazi report: direct, concrete, compassionate, metaphor-rich, and never generic marketing copy.",
+    "The tone must feel like a private Mumate report: direct, concrete, compassionate, metaphor-rich, emotionally sharp, and never generic marketing copy.",
+    "When seasonalInteraction, elementMetaphors, or dayMaster context are present, express the reading through vivid but disciplined metaphors such as the client's elemental material, pressure, climate, and hidden value.",
     "Every thought_process and final_prediction must be complete, specific, and non-empty.",
     "supporting_signals must contain short factual strings derived from the chart.",
     "Return JSON only.",
@@ -419,6 +422,7 @@ export function buildCompactCalculatedState(calculatedState: CalculatedStateValu
 
   return {
     fourPillars: calculatedState.fourPillars,
+    ageSnapshot: calculatedState.ageSnapshot ?? null,
     mingGong: calculatedState.mingGong ?? null,
     dayMaster: calculatedState.dayMaster,
     strengthScore: calculatedState.strengthScore,
@@ -475,6 +479,8 @@ function buildUserPrompt(
     "Do not mention JSON, schema, model names, prompts, or AI.",
     "Keep thought_process analytical and evidence-led, then keep final_prediction clear enough to show to a client after human review.",
     "reviewSummary should be a short Thai summary of the whole reading.",
+    "Match the Mumate school voice from the reference cases: open with elemental DNA and seasonal atmosphere when relevant, then connect that symbolic picture to the client's lived behavior and timing.",
+    "If calculated_state includes ageSnapshot or current luck-cycle fields, use them when discussing the client's current stage of life instead of speaking vaguely.",
     "",
     "Dimension briefs:",
     buildDimensionBriefs(),

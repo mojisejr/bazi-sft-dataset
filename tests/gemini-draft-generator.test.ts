@@ -109,6 +109,11 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
       },
     ],
   },
+  ageSnapshot: {
+    thaiAge: 45,
+    chineseAge: 46,
+    referenceDate: "2026-04-24",
+  },
 });
 
 describe("gemini draft generator helpers", () => {
@@ -176,6 +181,12 @@ describe("gemini draft generator helpers", () => {
   test("builds compact state with Thai context signals for Gemini", () => {
     const compact = buildCompactCalculatedState(SAMPLE_CALCULATED_STATE);
 
+    expect(compact.ageSnapshot).toEqual({
+      thaiAge: 45,
+      chineseAge: 46,
+      referenceDate: "2026-04-24",
+    });
+
     expect(compact.thaiContextSignals).toEqual(
       expect.objectContaining({
         seasonalInteraction: {
@@ -221,6 +232,8 @@ describe("gemini draft generator helpers", () => {
   test("system instruction tells Gemini to trust Thai context signals over count-only intuition", () => {
     const instruction = buildSystemInstruction();
 
+    expect(instruction).toContain("Mumate");
+    expect(instruction).toContain("ageSnapshot");
     expect(instruction).toContain("thaiContextSignals");
     expect(instruction).toContain("Do not reduce elemental balance to counts alone");
     expect(instruction).toContain("precedenceNoteSignals");
