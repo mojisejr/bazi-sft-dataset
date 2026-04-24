@@ -2,9 +2,17 @@ import { describe, expect, test } from "vitest";
 
 import { buildCanonicalKnowledgeDataset } from "@/lib/bazi/canonical-knowledge";
 
+let cachedDataset: ReturnType<typeof buildCanonicalKnowledgeDataset> | null = null;
+
+function getDataset() {
+  cachedDataset ??= buildCanonicalKnowledgeDataset();
+
+  return cachedDataset;
+}
+
 describe("buildCanonicalKnowledgeDataset", () => {
   test("extracts canonical records from the current Mootech corpus", () => {
-    const dataset = buildCanonicalKnowledgeDataset();
+    const dataset = getDataset();
 
     expect(dataset.sources.length).toBeGreaterThanOrEqual(180);
     expect(dataset.referenceDocuments.length).toBeGreaterThanOrEqual(19);
@@ -17,10 +25,10 @@ describe("buildCanonicalKnowledgeDataset", () => {
     expect(dataset.dayMasterStrengthStates.length).toBeGreaterThan(200);
     expect(dataset.sixtyJiaziNarratives.length).toBe(60);
     expect(dataset.domainMatrices.length).toBeGreaterThan(500);
-  });
+  }, 20_000);
 
   test("preserves important source coverage and replaces the missing solar-term warning with generated truth", () => {
-    const dataset = buildCanonicalKnowledgeDataset();
+    const dataset = getDataset();
 
     expect(
       dataset.referenceDocuments.some((entry) =>

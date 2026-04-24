@@ -3,7 +3,10 @@ import { ZodError, z } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziDatasetRecords } from "@/db/schema";
-import { type DatasetRecordMetadataValue } from "@/lib/bazi/dataset-metadata";
+import {
+  mergeDatasetRecordMetadata,
+  type DatasetRecordMetadataValue,
+} from "@/lib/bazi/dataset-metadata";
 import { collectCalculatedStateIntegrityIssues } from "@/lib/bazi/calculated-state-integrity";
 import {
   BaseSaveDatasetRequestSchema,
@@ -135,13 +138,31 @@ export function createDbDatasetRecordRepository(
   return {
     async saveRecord(input, annotatorId) {
       const db = createDbClient(databaseUrl);
+      let metadata = input.metadata;
+
+      if (input.recordId && input.metadata) {
+        const [existingRecord] = await db
+          .select({
+            metadata: baziDatasetRecords.metadata,
+          })
+          .from(baziDatasetRecords)
+          .where(eq(baziDatasetRecords.id, input.recordId))
+          .limit(1);
+
+        if (!existingRecord) {
+          throw new Error(`Dataset record ${input.recordId} was not found.`);
+        }
+
+        metadata = mergeDatasetRecordMetadata(existingRecord.metadata, input.metadata);
+      }
+
       const values = {
         rawInput: input.rawInput,
         calculatedState: input.calculatedState,
         annotationData: input.annotationData,
         status: input.status,
         annotatorId,
-        ...(input.metadata ? { metadata: input.metadata } : {}),
+        ...(metadata ? { metadata } : {}),
       };
 
       if (input.recordId) {
