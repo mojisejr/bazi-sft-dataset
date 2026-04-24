@@ -161,29 +161,29 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
 
   const detailOverlayMeta = activeDetailPanel === "strength"
     ? {
-      kicker: "Strength Detail",
+      kicker: "กำลังดิถี",
       title: "รายละเอียดกำลังดิถี",
-      summary: calculatedState ? `คะแนน ${calculatedState.strengthScore.toFixed(2)} • เปิดสมการและแรงหนุน/แรงเสียดสีใน plane เดียว` : undefined,
+      summary: calculatedState ? `คะแนน ${calculatedState.strengthScore.toFixed(2)} • เปิดสมการและแรงหนุน/แรงเสียดสีในชั้นเดียว` : undefined,
     }
     : activeDetailPanel === "luck"
       ? {
-        kicker: "Luck Timeline",
+        kicker: "วัยจร",
         title: "timeline วัยจร",
         summary: currentDaYun
           ? `รอบหลัก ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
-          : "เปิดรายละเอียดรอบหลัก ก้าวปัจจุบัน และ timeline ใน layer เดียว",
+          : "เปิดรายละเอียดรอบหลัก ก้าวปัจจุบัน และ timeline ในชั้นเดียว",
       }
       : activeDetailPanel === "persona"
         ? {
-          kicker: "Persona Detail",
+          kicker: "บริบทธาตุ",
           title: "บริบทธาตุและบุคลิก",
           summary: calculatedState?.seasonalInteraction
-            ? `${calculatedState.seasonalInteraction.metaphor} • เปิดบริบทธาตุและหมายเหตุเชิงกฎโดยไม่ดัน reading card`
-            : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎใน layer แยก",
+            ? `${calculatedState.seasonalInteraction.metaphor} • เปิดบริบทธาตุและหมายเหตุเชิงกฎโดยไม่ดันการ์ดหลัก`
+            : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎในชั้นแยก",
         }
         : activeDetailPanel === "reference"
           ? {
-            kicker: "Reference Mode",
+            kicker: "โหมดอ้างอิง",
             title: "ข้อมูลอ้างอิงเพิ่มเติม",
             summary: referenceSummary,
           }
@@ -366,7 +366,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
             </div>
 
             <p className="section-note">
-              {`summary path จบที่แกนบุคลิกก่อน แล้วค่อยเปิด ${referenceSummary} ใน detail plane เดียว`}
+              {`อ่านแกนบุคลิกให้จบก่อน แล้วค่อยเปิด ${referenceSummary} ในชั้นอ้างอิงเดียว`}
             </p>
 
             <div className="reference-shelf__actions">
