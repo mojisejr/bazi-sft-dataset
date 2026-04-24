@@ -10,6 +10,7 @@ type DetailOverlayProps = {
   summary?: string;
   footer?: ReactNode;
   closeLabel?: string;
+  panelClassName?: string;
   onClose: () => void;
   children: ReactNode;
 };
@@ -21,6 +22,7 @@ export function DetailOverlay({
   summary,
   footer,
   closeLabel = "ปิด",
+  panelClassName,
   onClose,
   children,
 }: DetailOverlayProps) {
@@ -61,7 +63,7 @@ export function DetailOverlay({
         onClick={onClose}
       />
       <section
-        className="explainable-modal"
+        className={`explainable-modal${panelClassName ? ` ${panelClassName}` : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}

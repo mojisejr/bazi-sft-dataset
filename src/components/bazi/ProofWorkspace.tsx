@@ -22,12 +22,10 @@ import {
 import {
   formatScore,
   formatThaiBirthMoment,
-  reportPillarColumns,
 } from "@/lib/bazi/trainer-workspace";
+import { CalculatedBoard } from "@/components/bazi/CalculatedBoard";
 import { CaseContextSheet } from "@/components/bazi/CaseContextSheet";
-import { CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
-import { StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
 import {
   classifyOperatorStrengthScore,
   OPERATOR_STRENGTH_CLASS_BANDS,
@@ -224,6 +222,7 @@ function extractAiStrengthClaim(annotationData: StoredAnnotationDataValue | null
 export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: ProofWorkspaceProps) {
   const router = useRouter();
   const [isCaseContextOpen, setIsCaseContextOpen] = useState(false);
+  const [isCalculationOpen, setIsCalculationOpen] = useState(false);
   const [dimensions, setDimensions] = useState<ProofDimensionDraftState>(() =>
     createProofDimensions(record.annotationData),
   );
@@ -378,83 +377,23 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
         />
       </DetailOverlay>
 
-      <div className="proof-layout">
-        <aside className="proof-sidebar">
+      <DetailOverlay
+        isOpen={isCalculationOpen}
+        title="Calculation Board สำหรับงาน proof"
+        kicker="Proof Calculation Drawer"
+        summary="เปิดแผงคำนวณแบบเต็มเพื่อเช็กโครงดวง กำลังดิถี และข้อมูลอ้างอิง โดยไม่พา canvas หลักหลุดจากตำแหน่งที่กำลังแก้"
+        closeLabel="กลับสู่ canvas"
+        panelClassName="explainable-modal--wide"
+        onClose={() => setIsCalculationOpen(false)}
+      >
+        <div className="proof-drawer-stack">
           <section className="surface inset-card proof-summary-card">
             <div className="proof-summary-card__header">
               <div>
-                <p className="section-kicker">ข้อมูลเคส</p>
-                <h3>รายละเอียดที่ใช้ประกอบการตรวจ</h3>
+                <p className="section-kicker">Quick Truth Anchors</p>
+                <h3>ถือค่าหลักไว้ก่อน แล้วค่อยไล่ reasoning ในแผงคำนวณ</h3>
               </div>
               <span className="proof-status-badge">{getStatusBadgeCopy(record.status)}</span>
-            </div>
-
-            <dl className="pending-metadata-list proof-meta-list">
-              {record.metadata.customerName ? (
-                <div className="pending-metadata-row">
-                  <dt>ชื่อลูกค้า</dt>
-                  <dd>{record.metadata.customerName}</dd>
-                </div>
-              ) : null}
-              <div className="pending-metadata-row">
-                <dt>วันเวลาเกิด</dt>
-                <dd>{formatThaiBirthMoment(record.rawInput)}</dd>
-              </div>
-              <div className="pending-metadata-row">
-                <dt>จังหวัดเกิด</dt>
-                <dd>{record.rawInput.province}</dd>
-              </div>
-              <div className="pending-metadata-row">
-                <dt>ขอบเขตคำถาม</dt>
-                <dd>{record.intentDomain}</dd>
-              </div>
-              <div className="pending-metadata-row">
-                <dt>รหัสรายการ</dt>
-                <dd>{record.id}</dd>
-              </div>
-              {record.metadata.generation?.queueBatchId ? (
-                <div className="pending-metadata-row">
-                  <dt>campaign</dt>
-                  <dd>{record.metadata.generation.queueBatchId}</dd>
-                </div>
-              ) : null}
-              <div className="pending-metadata-row">
-                <dt>สถานะคิว</dt>
-                <dd>{queueStateCopy}</dd>
-              </div>
-              <div className="pending-metadata-row">
-                <dt>lineage</dt>
-                <dd>{lineageSummary}</dd>
-              </div>
-              {record.metadata.reviewLifecycle?.staleReason ? (
-                <div className="pending-metadata-row">
-                  <dt>เหตุผลที่ต้องตรวจซ้ำ</dt>
-                  <dd>{record.metadata.reviewLifecycle.staleReason}</dd>
-                </div>
-              ) : null}
-              {record.metadata.caseNote ? (
-                <div className="pending-metadata-row">
-                  <dt>หมายเหตุเคส</dt>
-                  <dd>{record.metadata.caseNote}</dd>
-                </div>
-              ) : null}
-            </dl>
-
-            <div className="message-card__actions">
-              <button
-                type="button"
-                className="secondary-action pending-link"
-                onClick={() => setIsCaseContextOpen(true)}
-              >
-                ขยายข้อมูลเคสให้อ่านเต็ม
-              </button>
-            </div>
-          </section>
-
-          <section className="surface inset-card proof-summary-card">
-            <div>
-              <p className="section-kicker">แดชบอร์ดตรวจทาน</p>
-              <h3>หยิบค่าจริงขึ้นมาก่อน แล้วค่อยเทียบกับ draft ของ AI</h3>
             </div>
 
             <div className="proof-pill-strip proof-pill-strip--review">
@@ -495,48 +434,26 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
               </p>
             </section>
 
-            <CorePersonaSurface
-              persona={record.calculatedState.sixtyJiaziCorePersona}
-              elementAnalysis={record.calculatedState.elementAnalysis}
-              seasonalInteraction={record.calculatedState.seasonalInteraction}
-              title="แกนบุคลิกสำหรับงานตรวจ"
-              kicker="Core Persona For Review"
-              enableDetailToggle={false}
-            />
-
-            <div className="proof-pillars-grid" aria-label="proof record pillars">
-              {reportPillarColumns.map((column) => {
-                const pillar = record.calculatedState.fourPillars[column.key];
-
-                return (
-                  <article key={column.key} className="proof-pillar-card">
-                    <span>{column.label}</span>
-                    <strong>{`${pillar.stem}${pillar.branch}`}</strong>
-                    <small>ดูเสาหลักก่อน แล้วค่อยเปิดคำอธิบายเมื่อต้องไล่ logic</small>
-                  </article>
-                );
-              })}
+            <div className="message-card__actions">
+              <button
+                type="button"
+                className="secondary-action pending-link"
+                onClick={() => {
+                  setIsCalculationOpen(false);
+                  setIsCaseContextOpen(true);
+                }}
+              >
+                เปิดข้อมูลเคสคู่ขนาน
+              </button>
             </div>
-
-            <StrengthScoreBreakdown
-              score={record.calculatedState.strengthScore}
-              trace={record.calculatedState.explainable.strengthScore?.trace}
-              title="แผนผังกำลังดิถีสำหรับงานตรวจ"
-              defaultDetailOpen
-            />
           </section>
 
-          <section className="surface inset-card proof-summary-card">
-            <p className="section-kicker">เงื่อนไขการปิดงาน</p>
-            <ul className="workflow-list proof-guidance-list">
-              <li>อนุมัติได้เมื่อครบทั้ง 15 มิติและมีเหตุผลประกอบการตัดสินใจ</li>
-              <li>ตีกลับได้ทันทีหาก logic ของ AI ผิด แต่ต้องบอกเหตุผลให้ชัด</li>
-              <li>ถ้ายังไม่พร้อมปิดงาน สามารถบันทึกความคืบหน้าไว้ก่อน</li>
-            </ul>
-          </section>
-        </aside>
+          <CalculatedBoard calculatedState={record.calculatedState} />
+        </div>
+      </DetailOverlay>
 
-        <div className="proof-main">
+      <div className="proof-layout">
+        <div className="proof-main proof-main--single">
           <section className="surface inset-card annotation-summary-card">
             <div>
               <p className="section-kicker">ความคืบหน้าการตรวจ</p>
@@ -561,6 +478,57 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
             <p className={`save-indicator save-indicator--${saveState}`} aria-live="polite">
               {getSaveMessage(saveState, saveErrorMessage, lastSavedAt, activeAction)}
             </p>
+
+            <div className="proof-pill-strip proof-pill-strip--review">
+              <div className="proof-pill-chip">
+                <span>ดิถี</span>
+                <strong>{record.calculatedState.dayMaster}</strong>
+              </div>
+              <div className="proof-pill-chip">
+                <span>เสาลัคนา</span>
+                <strong>{mingGongCode}</strong>
+              </div>
+              <div className="proof-pill-chip">
+                <span>กำลังดิถี</span>
+                <strong>{formatScore(record.calculatedState.strengthScore)}</strong>
+              </div>
+            </div>
+
+            <p className="metric-copy">
+              ถือสามค่านี้ไว้เป็น anchor หลัก แล้วใช้ปุ่มใน dock เพื่อเปิด calculation board หรือข้อมูลเคสเมื่อจำเป็น
+            </p>
+          </section>
+
+          <section
+            className={`surface inset-card proof-friction-card${hasStrengthConflict ? " proof-friction-card--conflict" : ""}`}
+            data-proof-friction={hasStrengthConflict ? "conflict" : aiStrengthClaim ? "aligned" : "missing"}
+          >
+            <div>
+              <p className="section-kicker">Ground Truth Check</p>
+              <h4>
+                {hasStrengthConflict
+                  ? "AI ประเมินกำลังดิถีไม่ตรงกับ ground truth"
+                  : aiStrengthClaim
+                    ? "ระดับกำลังดิถีใน draft สอดคล้องกับ ground truth"
+                    : "ยังไม่มีค่าระดับกำลังดิถีจาก AI ให้เทียบโดยตรง"}
+              </h4>
+            </div>
+            <p className="metric-copy">
+              {hasStrengthConflict
+                ? `AI พูดถึงระดับ ${aiStrengthClaim?.displayLabel} แต่ผลจริงของดวงนี้คือ ${strengthBand.displayLabel}`
+                : aiStrengthClaim
+                  ? `AI พูดถึงระดับ ${aiStrengthClaim.displayLabel} และตรงกับผลจริงของเคสนี้`
+                  : `ผลจริงของเคสนี้คือ ${strengthBand.displayLabel} ส่วนข้อความ draft ยังไม่ได้ระบุระดับไว้ชัดพอ`}
+            </p>
+          </section>
+
+          <section className="surface inset-card proof-summary-card">
+            <p className="section-kicker">เงื่อนไขการปิดงาน</p>
+            <ul className="workflow-list proof-guidance-list">
+              <li>อนุมัติได้เมื่อครบทั้ง 15 มิติและมีเหตุผลประกอบการตัดสินใจ</li>
+              <li>ตีกลับได้ทันทีหาก logic ของ AI ผิด แต่ต้องบอกเหตุผลให้ชัด</li>
+              <li>ถ้ายังไม่พร้อมปิดงาน สามารถบันทึกความคืบหน้าไว้ก่อน</li>
+            </ul>
           </section>
 
           <div className="accordion-list">
@@ -649,65 +617,84 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
               );
             })}
           </div>
+        </div>
+      </div>
 
-          <section className="surface inset-card proof-note-card">
+      <section className="proof-dock" aria-label="proof decision dock">
+        <div className="proof-dock__surface surface">
+          <div className="proof-dock__header">
             <div>
-              <p className="section-kicker">เหตุผลประกอบการตัดสินใจ</p>
-              <h3>ส่วนนี้จำเป็นทั้งตอนอนุมัติและตอนตีกลับ</h3>
-              <p className="annotation-intro">
-                อธิบายให้ชัดว่าคุณแก้อะไร เห็นอะไรผิด หรือยืนยันเพราะอะไร เพื่อให้ record นี้มีร่องรอยการตรวจที่ใช้งานต่อได้จริง
-              </p>
+              <p className="section-kicker">Decision Dock</p>
+              <h3>เขียน note แล้วค่อยอนุมัติหรือตีกลับจาก dock เดียว</h3>
             </div>
+            <p className={`save-indicator save-indicator--${saveState} proof-dock__status`} aria-live="polite">
+              {getSaveMessage(saveState, saveErrorMessage, lastSavedAt, activeAction)}
+            </p>
+          </div>
 
-            <label className="field">
+          <div className="proof-dock__grid">
+            <label className="field proof-dock__field">
               <span>บันทึกของซินแส</span>
               <textarea
                 name="sinsae-proof-note"
-                rows={5}
+                rows={4}
                 value={sinsaeProofNote}
                 placeholder="สรุปเหตุผลที่อนุมัติหรืออธิบายว่าทำไมจึงตีกลับงาน AI"
                 onChange={(event) => setSinsaeProofNote(event.target.value)}
               />
             </label>
-          </section>
 
-          <section className="surface inset-card proof-actions-card">
-            <div>
-              <p className="section-kicker">ปิดงาน</p>
-              <h3>เลือกทางออกของ record นี้</h3>
+            <div className="proof-dock__side">
+              <div className="proof-dock__quick-actions">
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => setIsCalculationOpen(true)}
+                >
+                  เปิดแผงคำนวณ
+                </button>
+
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => setIsCaseContextOpen(true)}
+                >
+                  เปิดข้อมูลเคส
+                </button>
+              </div>
+
+              <div className="proof-action-group proof-action-group--dock">
+                <button
+                  type="button"
+                  className="secondary-action"
+                  onClick={() => void handleSubmit("draft")}
+                  disabled={saveState === "saving"}
+                >
+                  บันทึกความคืบหน้าไว้ก่อน
+                </button>
+
+                <button
+                  type="button"
+                  className="secondary-action secondary-action--warning"
+                  onClick={() => void handleSubmit("rejected")}
+                  disabled={saveState === "saving" || !canReject}
+                >
+                  ตีกลับงาน AI
+                </button>
+
+                <button
+                  type="button"
+                  className="primary-action proof-primary-action"
+                  onClick={() => void handleSubmit("reviewed")}
+                  disabled={saveState === "saving" || !canApprove}
+                >
+                  อนุมัติและปิดงาน
+                </button>
+              </div>
             </div>
-
-            <div className="proof-action-group">
-              <button
-                type="button"
-                className="secondary-action"
-                onClick={() => void handleSubmit("draft")}
-                disabled={saveState === "saving"}
-              >
-                บันทึกความคืบหน้าไว้ก่อน
-              </button>
-
-              <button
-                type="button"
-                className="secondary-action secondary-action--warning"
-                onClick={() => void handleSubmit("rejected")}
-                disabled={saveState === "saving" || !canReject}
-              >
-                ตีกลับงาน AI
-              </button>
-
-              <button
-                type="button"
-                className="primary-action proof-primary-action"
-                onClick={() => void handleSubmit("reviewed")}
-                disabled={saveState === "saving" || !canApprove}
-              >
-                อนุมัติและปิดงาน
-              </button>
-            </div>
-          </section>
+          </div>
         </div>
-      </div>
+      </section>
     </section>
   );
 }

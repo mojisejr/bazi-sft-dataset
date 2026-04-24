@@ -209,7 +209,7 @@ function createLegacyEncodedProofRecord() {
 }
 
 describe("ProofWorkspace", () => {
-  test("renders mobile-friendly proof controls with human-readable labels", () => {
+  test("renders single-column proof canvas with floating dock controls and no sidebar", () => {
     const html = renderToStaticMarkup(
       createElement(ProofWorkspace, {
         record: createProofRecord(),
@@ -221,37 +221,20 @@ describe("ProofWorkspace", () => {
     expect(html).toContain("เปิดข้อมูลเคสแบบเต็ม");
     expect(html).toContain("กลับไปคิวรอตรวจ");
     expect(html).toContain("/?workspace=queue");
-    expect(html).toContain("ชื่อลูกค้า");
-    expect(html).toContain("สมบัติ");
-    expect(html).toContain("campaign");
-    expect(html).toContain("fresh-2026-04-24");
-    expect(html).toContain("สถานะคิว");
-    expect(html).toContain("active");
-    expect(html).toContain("record นี้ยังเป็นเป้าหมาย active ของคิวปัจจุบัน");
-    expect(html).toContain("หมายเหตุเคส");
-    expect(html).toContain("เสียชีวิต");
-    expect(html).toContain("แกนบุคลิกสำหรับงานตรวจ");
-    expect(html).toContain("แดชบอร์ดตรวจทาน");
+    expect(html).toContain("เปิดแผงคำนวณ");
+    expect(html).toContain("เปิดข้อมูลเคส");
+    expect(html).toContain("Decision Dock");
+    expect(html).toContain("เขียน note แล้วค่อยอนุมัติหรือตีกลับจาก dock เดียว");
     expect(html).toContain("เสาลัคนา");
     expect(html).toContain("壬寅");
-    expect(html).toContain('data-core-persona="available"');
-    expect(html).toContain('data-seasonal-metaphor="available"');
-    expect(html).toContain('data-element-analysis="available"');
-    expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
-    expect(html).toContain("ธาตุนำ ดิน");
-    expect(html).toContain("ดุลธาตุและกำลังธาตุ");
-    expect(html).toContain("กำลังเด่น");
-    expect(html).toContain("มีราก");
-    expect(html).toContain("โทนธาตุ fire");
-    expect(html).toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
-    expect(html).toContain("แผนผังกำลังดิถีสำหรับงานตรวจ");
-    expect(html).toContain("ก้านฟ้าเดือน · 戊");
-    expect(html).toContain('data-strength-breakdown="available"');
     expect(html).toContain('data-proof-friction="conflict"');
     expect(html).toContain("AI ประเมินกำลังดิถีไม่ตรงกับ ground truth");
     expect(html).toContain("บันทึกความคืบหน้าไว้ก่อน");
     expect(html).toContain("ตีกลับงาน AI");
     expect(html).toContain("อนุมัติและปิดงาน");
+    expect(html).toContain("proof decision dock");
+    expect(html).not.toContain("proof-sidebar");
+    expect(html).not.toContain("รายละเอียดที่ใช้ประกอบการตรวจ");
     expect(html).not.toContain("proofing hook");
     expect(html).not.toContain("Accept Annotation");
   });

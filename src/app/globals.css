@@ -262,13 +262,19 @@ textarea {
 
 .proof-layout {
   display: grid;
-  gap: 20px;
+  gap: 24px;
+  padding-bottom: clamp(290px, 34vw, 360px);
 }
 
 .proof-sidebar,
 .proof-main {
   display: grid;
   gap: 18px;
+}
+
+.proof-main--single {
+  width: min(100%, 920px);
+  margin: 0 auto;
 }
 
 .proof-summary-card__header {
@@ -384,22 +390,82 @@ textarea {
   width: 100%;
 }
 
+.proof-drawer-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.proof-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 24;
+  padding: 0 18px calc(18px + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+
+.proof-dock__surface {
+  width: min(100%, 1080px);
+  margin: 0 auto;
+  padding: 18px;
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 253, 249, 0.94), rgba(255, 246, 235, 0.92)),
+    rgba(255, 251, 245, 0.9);
+  box-shadow:
+    0 26px 80px rgba(76, 48, 27, 0.18),
+    0 12px 30px rgba(159, 83, 32, 0.14);
+  border-color: rgba(159, 83, 32, 0.16);
+  pointer-events: auto;
+}
+
+.proof-dock__header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.proof-dock__status {
+  max-width: 360px;
+  text-align: right;
+}
+
+.proof-dock__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.proof-dock__field {
+  display: grid;
+  gap: 10px;
+}
+
+.proof-dock__field textarea {
+  min-height: 120px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.proof-dock__side {
+  display: grid;
+  gap: 12px;
+}
+
+.proof-dock__quick-actions,
+.proof-action-group--dock {
+  display: grid;
+  gap: 10px;
+}
+
 @media (min-width: 1080px) {
   .manual-workspace--ready {
     grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
   }
 
   .manual-workspace--ready .intake-stage {
-    position: sticky;
-    top: 24px;
-  }
-
-  .proof-layout {
-    grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .proof-sidebar {
     position: sticky;
     top: 24px;
   }
@@ -1109,6 +1175,11 @@ textarea {
   background: rgba(255, 248, 239, 0.98);
   border: 1px solid rgba(110, 79, 48, 0.12);
   box-shadow: 0 -24px 60px rgba(32, 21, 15, 0.18);
+}
+
+.explainable-modal--wide {
+  width: min(100%, 1120px);
+  max-height: min(88vh, 920px);
 }
 
 .explainable-modal__header {
@@ -2699,6 +2770,26 @@ textarea {
 
   .proof-summary-card__header {
     display: grid;
+  }
+
+  .proof-dock {
+    padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .proof-dock__surface {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .proof-dock__header,
+  .proof-dock__grid {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .proof-dock__status {
+    max-width: none;
+    text-align: left;
   }
 }
 
