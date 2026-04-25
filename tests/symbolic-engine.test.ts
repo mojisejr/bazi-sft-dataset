@@ -189,7 +189,7 @@ describe("calculateBaziChart", () => {
     );
     expect(result.dayMasterStrengthProfile).toMatchObject({
       dayMaster: "己",
-      strengthState: "ดวงอ่อน",
+      strengthState: "อ่อนแอ",
       narrative: expect.stringContaining("ดิถีดินหยินกำลังอ่อน"),
     });
     expect(result.sixtyJiaziCorePersona).toMatchObject({

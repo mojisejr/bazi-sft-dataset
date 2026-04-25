@@ -83,6 +83,20 @@ function buildAgeSnapshot(
   };
 }
 
+const DAY_MASTER_STRENGTH_STATE_LOOKUP = {
+  "อ่อนเกินไป": "อ่อนแอ",
+  "ดวงอ่อน": "อ่อนแอ",
+  "สมดุล": "แข็งแรง/สมดุล",
+  "ดวงแข็ง": "แข็งแรง/สมดุล",
+  "แข็งเกินไป": "แข็งแรงมากเกินไป",
+} as const;
+
+function normalizeDayMasterStrengthState(strengthState: string) {
+  return DAY_MASTER_STRENGTH_STATE_LOOKUP[
+    strengthState as keyof typeof DAY_MASTER_STRENGTH_STATE_LOOKUP
+  ] ?? strengthState;
+}
+
 export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
@@ -259,8 +273,9 @@ export async function calculateBaziChart(
     interactionResolution,
   );
   const currentStrengthBand = classifyOperatorStrengthScore(strengthScore.value);
+  const normalizedStrengthState = normalizeDayMasterStrengthState(currentStrengthBand.label);
   const [dayMasterStrengthProfile, persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
-    repository.findDayMasterStrengthProfile(dayMasterStem, currentStrengthBand.label),
+    repository.findDayMasterStrengthProfile(dayMasterStem, normalizedStrengthState),
     repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
     repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
     repository.findDomainMatrixRows("love"),

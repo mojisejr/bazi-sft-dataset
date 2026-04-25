@@ -57,20 +57,20 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
 
   const dayMasterStrengthProfiles = new Map<string, Awaited<ReturnType<BaziKnowledgeRepository["findDayMasterStrengthProfile"]>>>([
     [
-      "己|ดวงอ่อน",
+      "己|อ่อนแอ",
       {
         dayMaster: "己",
-        strengthState: "ดวงอ่อน",
+        strengthState: "อ่อนแอ",
         narrative: "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี",
         qiLabel: "帝旺",
         scoreText: "3.75",
       },
     ],
     [
-      "戊|สมดุล",
+      "戊|แข็งแรง/สมดุล",
       {
         dayMaster: "戊",
-        strengthState: "สมดุล",
+        strengthState: "แข็งแรง/สมดุล",
         narrative: "ดิถีดินหยางค่อนข้างสมดุล รับทั้งภาระและโอกาสได้เมื่อบริบทไม่เหวี่ยงเกินไป",
         qiLabel: "养",
         scoreText: "4.50",
