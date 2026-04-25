@@ -60,12 +60,14 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       hourStem: "正财",
       hourBranch: "七杀,偏印",
     });
-    expect(normalizeDerivedRecord(result.twelveQi)).toEqual({
-      yearBranch: "病",
-      monthBranch: "临官",
-      dayBranch: "绝",
-      hourBranch: "病",
-    });
+    expect(normalizeDerivedRecord(result.twelveQi)).toEqual(
+      expect.objectContaining({
+        yearBranch: "病",
+        monthBranch: "临官",
+        dayBranch: "绝",
+        hourBranch: "病",
+      }),
+    );
     expect(result.elementAnalysis.totalCounts).toEqual({
       wood: 2,
       fire: 4,
@@ -91,14 +93,9 @@ describe("calculateBaziChart ground-truth fixtures", () => {
     );
     expect(result.elementAnalysis.dominantElements).toEqual(["fire"]);
     expect(result.elementAnalysis.missingElements).toEqual(["water"]);
-    expect(result.seasonalInteraction).toMatchObject({
-      dayMasterStem: "辛",
-      monthBranch: "酉",
-      season: "autumn",
-      phase: "peak",
-      seasonLabel: "ฤดูใบไม้ร่วง",
-      metaphor: "โลหะประณีตในฤดูใบไม้ร่วง",
-    });
+    expect(result.seasonalInteraction).toBeUndefined();
+    expect(result.twelveQi.currentDaYunBranch).toBeTruthy();
+    expect(result.twelveQi.currentLiuNianBranch).toBeTruthy();
   });
 
   test("matches expert case2 and rejects the OCR-hallucinated day pillar", async () => {
@@ -132,12 +129,14 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       hourStem: "偏印",
       hourBranch: "七杀",
     });
-    expect(normalizeDerivedRecord(result.twelveQi)).toEqual({
-      yearBranch: "长生",
-      monthBranch: "病",
-      dayBranch: "墓",
-      hourBranch: "病",
-    });
+    expect(normalizeDerivedRecord(result.twelveQi)).toEqual(
+      expect.objectContaining({
+        yearBranch: "长生",
+        monthBranch: "病",
+        dayBranch: "墓",
+        hourBranch: "病",
+      }),
+    );
     expect(result.elementAnalysis.totalCounts).toEqual({
       wood: 2,
       fire: 1,
@@ -163,13 +162,8 @@ describe("calculateBaziChart ground-truth fixtures", () => {
     );
     expect(result.elementAnalysis.dominantElements).toEqual(["metal"]);
     expect(result.elementAnalysis.missingElements).toEqual([]);
-    expect(result.seasonalInteraction).toMatchObject({
-      dayMasterStem: "己",
-      monthBranch: "卯",
-      season: "spring",
-      phase: "peak",
-      seasonLabel: "ฤดูใบไม้ผลิ",
-      metaphor: "ดินเพาะปลูกในฤดูใบไม้ผลิ",
-    });
+    expect(result.seasonalInteraction).toBeUndefined();
+    expect(result.twelveQi.currentDaYunBranch).toBeTruthy();
+    expect(result.twelveQi.currentLiuNianBranch).toBeTruthy();
   });
 });

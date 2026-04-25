@@ -63,8 +63,8 @@ describe("orthodox twelve qi reference proof", () => {
           next: null,
         };
       },
-      async findTwelveQiStage() {
-        throw new Error("repository twelve qi lookup should not be called");
+      async findDayMasterStrengthProfile() {
+        return null;
       },
       async findSixtyJiaziPersona() {
         return null;
@@ -76,12 +76,16 @@ describe("orthodox twelve qi reference proof", () => {
 
     const result = await calculateBaziChart(rawInput, repository);
 
-    expect(result.twelveQi).toEqual({
-      yearBranch: "养",
-      monthBranch: "沐浴",
-      dayBranch: "养",
-      hourBranch: "胎",
-    });
+    expect(result.twelveQi).toEqual(
+      expect.objectContaining({
+        yearBranch: "养",
+        monthBranch: "沐浴",
+        dayBranch: "养",
+        hourBranch: "胎",
+      }),
+    );
+    expect(result.twelveQi.currentDaYunBranch).toBeTruthy();
+    expect(result.twelveQi.currentLiuNianBranch).toBeTruthy();
     expect(result.strengthScore).toBe(4.5);
   });
 });

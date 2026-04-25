@@ -172,6 +172,14 @@ export type SixtyJiaziPersonaRecord = {
   combinedNarrative: string | null;
 };
 
+export type DayMasterStrengthProfileRecord = {
+  dayMaster: string;
+  strengthState: string;
+  narrative: string;
+  qiLabel: string | null;
+  scoreText: string | null;
+};
+
 export type DomainMatrixRecord = {
   domain: MatrixDomain;
   sourceVariant: string;
@@ -186,6 +194,7 @@ export type DomainMatrixRecord = {
 
 export type BaziKnowledgeRepository = {
   findSolarTermBoundaryContext(birthAtHongKong: string): Promise<SolarTermBoundaryContext>;
+  findDayMasterStrengthProfile(dayMasterChinese: string, strengthState: string): Promise<DayMasterStrengthProfileRecord | null>;
   findSixtyJiaziPersona(dayMasterChinese: string, branchChinese: string): Promise<SixtyJiaziPersonaRecord | null>;
   findDomainMatrixRows(domain: MatrixDomain): Promise<DomainMatrixRecord[]>;
 };

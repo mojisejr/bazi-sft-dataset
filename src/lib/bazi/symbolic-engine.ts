@@ -2,10 +2,12 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import {
+  baziDayMasterStrengthStates,
   baziDomainMatrices,
   baziSixtyJiaziNarratives,
   baziTimeSolarTerms,
 } from "@/db/schema";
+import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import {
   CalculatedStateSchema,
   RawInputSchema,
@@ -20,6 +22,7 @@ import {
   buildPillarValue,
   normalizeBirthContext,
   normalizeGenderForYun,
+  resolveTwelveQiStage,
 } from "@/lib/bazi/symbolic-engine.birth";
 export { HONG_KONG_TIMEZONE } from "@/lib/bazi/symbolic-engine.constants";
 import {
@@ -45,7 +48,6 @@ import {
 } from "@/lib/bazi/symbolic-engine.strength";
 import {
   buildElementAnalysis,
-  buildSeasonalInteraction,
 } from "@/lib/bazi/symbolic-engine.seasonal";
 import type {
   BaziKnowledgeRepository,
@@ -152,6 +154,38 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
       return persona ?? null;
     },
 
+    async findDayMasterStrengthProfile(dayMasterChinese, strengthState) {
+      const [profile] = await db
+        .select({
+          dayMaster: baziDayMasterStrengthStates.dayMasterChinese,
+          strengthState: baziDayMasterStrengthStates.strengthState,
+          narrative: baziDayMasterStrengthStates.narrativeSummary,
+          qiLabel: baziDayMasterStrengthStates.qiLabel,
+          scoreText: baziDayMasterStrengthStates.scoreText,
+        })
+        .from(baziDayMasterStrengthStates)
+        .where(
+          and(
+            eq(baziDayMasterStrengthStates.dayMasterChinese, dayMasterChinese),
+            eq(baziDayMasterStrengthStates.strengthState, strengthState),
+          ),
+        )
+        .orderBy(asc(baziDayMasterStrengthStates.rowOrder))
+        .limit(1);
+
+      if (!profile?.dayMaster || !profile.strengthState || !profile.narrative) {
+        return null;
+      }
+
+      return {
+        dayMaster: profile.dayMaster,
+        strengthState: profile.strengthState,
+        narrative: profile.narrative,
+        qiLabel: profile.qiLabel,
+        scoreText: profile.scoreText,
+      };
+    },
+
     async findDomainMatrixRows(domain) {
       return db
         .select({
@@ -187,28 +221,32 @@ export async function calculateBaziChart(
   const dayMasterStem = structuralState.dayMaster;
   const ageSnapshot = buildAgeSnapshot(birthContext, currentReferenceSolar);
   const mingGong = buildOrthodoxMingGongValue(birthContext);
-  const daYunState = buildDaYunState(eightChar, rawInput.gender, currentYear);
+  const daYunState = buildDaYunState(
+    birthContext,
+    rawInput.gender,
+    ageSnapshot.thaiAge,
+    currentYear,
+  );
   const currentDaYunEntry = eightChar
     .getYun(normalizeGenderForYun(rawInput.gender))
     .getDaYun()
     .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
   const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
   const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
-  const [persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
-    repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
-    repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
-    repository.findDomainMatrixRows("love"),
-    repository.findDomainMatrixRows("work"),
-  ]);
   const twelveQiState = {
     yearBranch: eightChar.getYearDiShi(),
     monthBranch: eightChar.getMonthDiShi(),
     dayBranch: eightChar.getDayDiShi(),
     hourBranch: eightChar.getTimeDiShi(),
+    ...(currentDaYunPillar
+      ? { currentDaYunBranch: resolveTwelveQiStage(dayMasterStem, currentDaYunPillar.branch) }
+      : {}),
+    ...(liuNian?.branch
+      ? { currentLiuNianBranch: resolveTwelveQiStage(dayMasterStem, liuNian.branch) }
+      : {}),
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
   const elementAnalysis = buildElementAnalysis(pillars);
-  const seasonalInteraction = buildSeasonalInteraction(dayMasterStem, pillars.month.branch);
   const strengthScore = buildStrengthScoreExplainable(
     dayMasterStem,
     pillars,
@@ -220,6 +258,14 @@ export async function calculateBaziChart(
     },
     interactionResolution,
   );
+  const currentStrengthBand = classifyOperatorStrengthScore(strengthScore.value);
+  const [dayMasterStrengthProfile, persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
+    repository.findDayMasterStrengthProfile(dayMasterStem, currentStrengthBand.label),
+    repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
+    repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
+    repository.findDomainMatrixRows("love"),
+    repository.findDomainMatrixRows("work"),
+  ]);
   const compatibilityMatrixProfiles = buildCompatibilityMatrixProfiles(dayMasterStem, [
     ...loveMatrixRows,
     ...workMatrixRows,
@@ -259,7 +305,15 @@ export async function calculateBaziChart(
     twelveQi: twelveQiState,
     elementMetaphors: buildElementMetaphors(dayMasterStem),
     elementAnalysis,
-    seasonalInteraction,
+    dayMasterStrengthProfile: dayMasterStrengthProfile
+      ? {
+          dayMaster: dayMasterStrengthProfile.dayMaster,
+          strengthState: dayMasterStrengthProfile.strengthState,
+          narrative: dayMasterStrengthProfile.narrative,
+          qiLabel: dayMasterStrengthProfile.qiLabel ?? undefined,
+          scoreText: dayMasterStrengthProfile.scoreText ?? undefined,
+        }
+      : undefined,
     explainable: {
       mingGong,
       strengthScore,

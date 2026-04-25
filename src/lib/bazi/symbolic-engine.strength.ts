@@ -338,6 +338,7 @@ export function buildStrengthScoreExplainable(
       rawVariables: {
         dayMasterStem,
         stages,
+        monthBranchTwelveQiStage: stages.month,
         activeCombinations: interactionResolution.activeCombinations,
         activeClashes: interactionResolution.activeClashes,
         activePunishments: interactionResolution.activePunishments,

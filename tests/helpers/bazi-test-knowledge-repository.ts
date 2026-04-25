@@ -55,6 +55,29 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
     ] as const,
   );
 
+  const dayMasterStrengthProfiles = new Map<string, Awaited<ReturnType<BaziKnowledgeRepository["findDayMasterStrengthProfile"]>>>([
+    [
+      "己|ดวงอ่อน",
+      {
+        dayMaster: "己",
+        strengthState: "ดวงอ่อน",
+        narrative: "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี",
+        qiLabel: "帝旺",
+        scoreText: "3.75",
+      },
+    ],
+    [
+      "戊|สมดุล",
+      {
+        dayMaster: "戊",
+        strengthState: "สมดุล",
+        narrative: "ดิถีดินหยางค่อนข้างสมดุล รับทั้งภาระและโอกาสได้เมื่อบริบทไม่เหวี่ยงเกินไป",
+        qiLabel: "养",
+        scoreText: "4.50",
+      },
+    ],
+  ]);
+
   const matrices = {
     love: [
       {
@@ -172,6 +195,9 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
     },
     async findSixtyJiaziPersona(dayMasterChinese, branchChinese) {
       return personas.get(`${dayMasterChinese}|${branchChinese}`) ?? null;
+    },
+    async findDayMasterStrengthProfile(dayMasterChinese, strengthState) {
+      return dayMasterStrengthProfiles.get(`${dayMasterChinese}|${strengthState}`) ?? null;
     },
     async findDomainMatrixRows(domain) {
       return matrices[domain];

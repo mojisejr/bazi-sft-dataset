@@ -99,32 +99,32 @@ describe("BaziTrainerWorkspace", () => {
       mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
       daYun: [
         {
-          startAge: 6,
-          endAge: 15,
+          startAge: 4,
+          endAge: 13,
           stem: "丁",
           branch: "未",
-          upperPhase: { startAge: 6, endAge: 10, symbol: "丁", source: "stem" },
-          lowerPhase: { startAge: 11, endAge: 15, symbol: "未", source: "branch" },
+          upperPhase: { startAge: 4, endAge: 8, symbol: "丁", source: "stem" },
+          lowerPhase: { startAge: 9, endAge: 13, symbol: "未", source: "branch" },
         },
         {
-          startAge: 16,
-          endAge: 25,
+          startAge: 14,
+          endAge: 23,
           stem: "丙",
           branch: "午",
-          upperPhase: { startAge: 16, endAge: 20, symbol: "丙", source: "stem" },
-          lowerPhase: { startAge: 21, endAge: 25, symbol: "午", source: "branch" },
+          upperPhase: { startAge: 14, endAge: 18, symbol: "丙", source: "stem" },
+          lowerPhase: { startAge: 19, endAge: 23, symbol: "午", source: "branch" },
         },
         {
-          startAge: 26,
-          endAge: 35,
+          startAge: 24,
+          endAge: 33,
           stem: "乙",
           branch: "巳",
           isCurrent: true,
           currentPhase: "lower",
-          upperPhase: { startAge: 26, endAge: 30, symbol: "乙", source: "stem" },
+          upperPhase: { startAge: 24, endAge: 28, symbol: "乙", source: "stem" },
           lowerPhase: {
-            startAge: 31,
-            endAge: 35,
+            startAge: 29,
+            endAge: 33,
             symbol: "巳",
             source: "branch",
             isCurrent: true,
@@ -161,6 +161,8 @@ describe("BaziTrainerWorkspace", () => {
         monthBranch: "沐浴",
         dayBranch: "帝旺",
         hourBranch: "冠带",
+        currentDaYunBranch: "帝旺",
+        currentLiuNianBranch: "临官",
       },
       elementMetaphors: [
         {
@@ -204,14 +206,12 @@ describe("BaziTrainerWorkspace", () => {
           { element: "water", rooted: true, seasonalSupport: "seasonal-support", strength: "balanced" },
         ],
       },
-      seasonalInteraction: {
-        dayMasterStem: "己",
-        dayMasterElement: "earth",
-        monthBranch: "申",
-        season: "autumn",
-        phase: "early",
-        seasonLabel: "ต้นฤดูใบไม้ร่วง",
-        metaphor: "ดินเพาะปลูกในต้นฤดูใบไม้ร่วง",
+      dayMasterStrengthProfile: {
+        dayMaster: "己",
+        strengthState: "ดวงอ่อน",
+        narrative: "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี",
+        qiLabel: "帝旺",
+        scoreText: "3.07",
       },
       sixtyJiaziCorePersona: {
         code: "己巳",
@@ -314,8 +314,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("แกนบุคลิกพื้นฐาน");
     expect(html).toContain('data-core-persona="available"');
     expect(html).toContain('data-core-persona-detail-open="false"');
-    expect(html).toContain('data-seasonal-metaphor="available"');
-    expect(html).toContain("ดินเพาะปลูกในต้นฤดูใบไม้ร่วง");
+    expect(html).toContain("นิสัยพื้นฐาน 1.1");
+    expect(html).toContain("ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี");
+    expect(html).toContain("นิสัยวันเกิด 1.2");
     expect(html).toContain("ธาตุนำ ดิน");
     expect(html).toContain("ธาตุนำ ทอง");
     expect(html).toContain("โทนธาตุ fire");
@@ -330,10 +331,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("แรงที่หนุนดิถี");
     expect(html).not.toContain("คะแนนตั้งต้นของระบบ");
     expect(html).not.toContain('aria-label="Da Yun track"');
-    expect(html).toContain("ข้อมูลอ้างอิงเพิ่มเติม");
-    expect(html).toContain('data-reference-shelf-open="false"');
-    expect(html).toContain('aria-label="reference preview"');
-    expect(html).toContain("เข้าสู่โหมดอ้างอิง");
+    expect(html).not.toContain("ข้อมูลอ้างอิงเพิ่มเติม");
+    expect(html).toContain("ดิถี vs วัยจร");
+    expect(html).toContain("ดิถี vs ปีจร");
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
     expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
@@ -351,8 +351,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("วัยจร 10 ปี");
     expect(html).toContain('data-current-luck-symbol="巳"');
     expect(html).toContain('data-luck-timeline-open="false"');
-    expect(html).toContain("ก้าวปัจจุบัน 31-35 · ราศีล่าง");
-    expect(html).toContain("รอบวัยจร 26-35 · 乙巳");
+    expect(html).toContain("ก้าวปัจจุบัน 29-33 · ราศีล่าง");
+    expect(html).toContain("รอบวัยจร 24-33 · 乙巳");
     expect(html).not.toContain('data-dayun-direction="rtl"');
     expect(html).not.toContain("16-20");
     expect(html).not.toContain("6-10");
@@ -369,8 +369,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Complete Annotation");
 
     expect(html).not.toContain("จังหวะที่กำลังเดิน");
-    expect(html.indexOf("แกนบุคลิกพื้นฐาน")).toBeLessThan(html.indexOf("ข้อมูลอ้างอิงเพิ่มเติม"));
-    expect(html.indexOf("ข้อมูลอ้างอิงเพิ่มเติม")).toBeLessThan(html.indexOf("เริ่มเขียนคำพยากรณ์"));
+    expect(html.indexOf("แกนบุคลิกพื้นฐาน")).toBeLessThan(html.indexOf("เริ่มเขียนคำพยากรณ์"));
   });
 
   test("restores the queue workspace when the URL asks for workspace=queue", () => {

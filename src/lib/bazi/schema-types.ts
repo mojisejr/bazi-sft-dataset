@@ -187,6 +187,14 @@ export const SixtyJiaziCorePersonaSchema = z.object({
   precedenceNoteSignals: z.array(ContextRuleNoteSchema).default([]),
 });
 
+export const DayMasterStrengthProfileSchema = z.object({
+  dayMaster: z.string().trim().min(1),
+  strengthState: z.string().trim().min(1),
+  narrative: z.string().trim().min(1),
+  qiLabel: z.string().trim().min(1).optional(),
+  scoreText: z.string().trim().min(1).optional(),
+});
+
 export const CompatibilityMatrixEntrySchema = z.object({
   code: z.string().trim().min(1),
   label: z.string().trim().min(1),
@@ -233,6 +241,7 @@ export const CalculatedStateSchema = z.object({
     elementStrengths: [],
   }),
   seasonalInteraction: SeasonalInteractionSchema.optional(),
+  dayMasterStrengthProfile: DayMasterStrengthProfileSchema.optional(),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
   explainable: CalculatedStateExplainableSchema.default({}),
@@ -318,6 +327,7 @@ export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type AgeSnapshotValue = z.infer<typeof AgeSnapshotSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
 export type SupportedElementValue = z.infer<typeof SupportedElementSchema>;
+export type DayMasterStrengthProfileValue = z.infer<typeof DayMasterStrengthProfileSchema>;
 export type ElementCountsValue = z.infer<typeof ElementCountsSchema>;
 export type ElementSeasonalSupportValue = z.infer<typeof ElementSeasonalSupportSchema>;
 export type ElementStrengthLevelValue = z.infer<typeof ElementStrengthLevelSchema>;

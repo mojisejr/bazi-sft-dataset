@@ -10,9 +10,9 @@ import {
 import { ELEMENT_LABELS_TH, FIVE_ELEMENT_ORDER } from "@/lib/bazi/symbolic-engine.constants";
 
 type CorePersonaSurfaceProps = {
+  dayMasterStrengthProfile?: CalculatedStateValue["dayMasterStrengthProfile"];
   persona: CalculatedStateValue["sixtyJiaziCorePersona"];
   elementAnalysis?: CalculatedStateValue["elementAnalysis"];
-  seasonalInteraction?: CalculatedStateValue["seasonalInteraction"];
   title?: string;
   kicker?: string;
   defaultDetailsOpen?: boolean;
@@ -143,9 +143,9 @@ export function CorePersonaDetailContent({
 }
 
 export function CorePersonaSurface({
+  dayMasterStrengthProfile,
   persona,
   elementAnalysis,
-  seasonalInteraction,
   title = "แกนบุคลิกพื้นฐาน",
   kicker = "60 Jiazi Core Persona",
   defaultDetailsOpen = false,
@@ -186,31 +186,33 @@ export function CorePersonaSurface({
         </div>
       </div>
 
-      {seasonalInteraction ? (
-        <article className="core-persona__seasonal" data-seasonal-metaphor="available">
-          <p className="core-persona__eyebrow">อุปมาเชิงฤดูกาล</p>
-          <h4>{seasonalInteraction.metaphor}</h4>
-          <p className="core-persona__seasonal-copy">
-            {`ดิถี ${seasonalInteraction.dayMasterStem} เจอเดือน ${seasonalInteraction.monthBranch} ใน${seasonalInteraction.seasonLabel}`}
-          </p>
-        </article>
-      ) : (
-        <article className="core-persona__seasonal" data-seasonal-metaphor="missing">
-          <p className="core-persona__eyebrow">อุปมาเชิงฤดูกาล</p>
-          <p className="core-persona__empty">รอบนี้ engine ยังไม่ได้ส่ง seasonal interaction เข้ามา</p>
-        </article>
-      )}
+      <div className="core-persona__grid">
+        {dayMasterStrengthProfile ? (
+          <article className="core-persona__panel" data-basic-character="available">
+            <p className="core-persona__eyebrow">นิสัยพื้นฐาน 1.1</p>
+            <h4>{dayMasterStrengthProfile.strengthState}</h4>
+            <p className="core-persona__narrative">{dayMasterStrengthProfile.narrative}</p>
+          </article>
+        ) : (
+          <article className="core-persona__panel" data-basic-character="missing">
+            <p className="core-persona__eyebrow">นิสัยพื้นฐาน 1.1</p>
+            <p className="core-persona__empty">รอบนี้ engine ยังไม่ส่งคำอธิบายตามดิถีและสถานะความแข็งอ่อนเข้ามา</p>
+          </article>
+        )}
 
-      {persona ? (
-        <div className="core-persona__hero">
-          <p className="core-persona__code">{persona.code}</p>
-          <p className="core-persona__narrative">{persona.narrative}</p>
-        </div>
-      ) : (
-        <p className="core-persona__empty">
-          รอบนี้ engine ยังไม่ส่ง core persona เข้ามา จึงยังไม่สามารถเปิดกล่องนิสัยพื้นฐานให้ได้
-        </p>
-      )}
+        {persona ? (
+          <article className="core-persona__panel" data-day-pillar-character="available">
+            <p className="core-persona__eyebrow">นิสัยวันเกิด 1.2</p>
+            <p className="core-persona__code">{persona.code}</p>
+            <p className="core-persona__narrative">{persona.narrative}</p>
+          </article>
+        ) : (
+          <article className="core-persona__panel" data-day-pillar-character="missing">
+            <p className="core-persona__eyebrow">นิสัยวันเกิด 1.2</p>
+            <p className="core-persona__empty">รอบนี้ engine ยังไม่ส่งคำอธิบาย 60 กะจื่อของวันเกิดเข้ามา</p>
+          </article>
+        )}
+      </div>
 
       {(persona?.elementTone || persona?.twelveQiLabel || model.dominantElements.length > 0) ? (
         <div className="core-persona__chips">

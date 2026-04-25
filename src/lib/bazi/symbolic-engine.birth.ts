@@ -35,6 +35,7 @@ import type {
   LunarConstructor,
   MingGongMonthAdjustment,
   NormalizedBirthContext,
+  SolarInstance,
   SolarConstructor,
 } from "@/lib/bazi/symbolic-engine.types";
 
@@ -46,6 +47,9 @@ const { Lunar, Solar, LunarUtil } = require("lunar-javascript") as {
   LunarUtil: {
     GAN: string[];
     MONTH_ZHI: string[];
+    ZHI: string[];
+    CHANG_SHENG: string[];
+    CHANG_SHENG_OFFSET: Record<string, number>;
   };
 };
 
@@ -54,6 +58,56 @@ type LunarLike = {
   getJieQiTable(): Record<string, JieQiSolarLike>;
   getYearGanIndexExact(): number;
 };
+
+function buildSolarDateTimeString(solar: SolarInstance) {
+  return formatDateTimeParts({
+    year: solar.getYear(),
+    month: solar.getMonth(),
+    day: solar.getDay(),
+    hour: solar.getHour(),
+    minute: solar.getMinute(),
+    second: 0,
+  });
+}
+
+function diffDateOnlyDays(leftDate: string, rightDate: string) {
+  const left = new Date(`${leftDate}T00:00:00.000Z`);
+  const right = new Date(`${rightDate}T00:00:00.000Z`);
+
+  return Math.abs(Math.round((left.getTime() - right.getTime()) / 86_400_000));
+}
+
+function isForwardDaYunDirection(lunar: LunarLike, gender: string) {
+  const isYangYearStem = lunar.getYearGanIndexExact() % 2 === 0;
+
+  return normalizeGenderForYun(gender) === 1 ? isYangYearStem : !isYangYearStem;
+}
+
+function resolveManualDaYunStartAge(
+  solar: SolarInstance,
+  gender: string,
+) {
+  const lunar = solar.getLunar() as LunarLike;
+  const birthAtLocal = buildSolarDateTimeString(solar);
+  const boundaries = Object.values(lunar.getJieQiTable())
+    .map((entry) => entry.toYmdHms())
+    .filter((entry) => entry.trim().length > 0)
+    .sort((left, right) => left.localeCompare(right));
+  const targetBoundary = isForwardDaYunDirection(lunar, gender)
+    ? boundaries.find((entry) => entry > birthAtLocal)
+    : [...boundaries].reverse().find((entry) => entry <= birthAtLocal);
+
+  if (!targetBoundary) {
+    return 0;
+  }
+
+  return Math.floor(
+    diffDateOnlyDays(
+      birthAtLocal.split(" ")[0] ?? "",
+      targetBoundary.split(" ")[0] ?? "",
+    ) / 3,
+  );
+}
 
 export function splitGanZhi(value: string) {
   const [stem = "", branch = ""] = Array.from(value);
@@ -83,6 +137,28 @@ export function buildPillarValue(
     branch,
     hiddenStems: normalizeHiddenStems(hiddenStemValue),
   };
+}
+
+export function resolveTwelveQiStage(dayMasterStem: string, branch: string) {
+  const dayGanIndex = LunarUtil.GAN.indexOf(dayMasterStem) - 1;
+  const branchIndex = LunarUtil.ZHI.indexOf(branch) - 1;
+  const offset = LunarUtil.CHANG_SHENG_OFFSET[dayMasterStem];
+
+  if (dayGanIndex < 0 || branchIndex < 0 || offset === undefined) {
+    throw new Error(`Unsupported twelve qi lookup for ${dayMasterStem}${branch}`);
+  }
+
+  let stageIndex = offset + (dayGanIndex % 2 === 0 ? branchIndex : -branchIndex);
+
+  if (stageIndex >= 12) {
+    stageIndex -= 12;
+  }
+
+  if (stageIndex < 0) {
+    stageIndex += 12;
+  }
+
+  return LunarUtil.CHANG_SHENG[stageIndex] ?? "";
 }
 
 function buildDerivedPillarValue(pillarText: string): PillarValue {
@@ -306,28 +382,36 @@ export function buildCurrentReferenceSolar(now = new Date()) {
 }
 
 export function buildDaYunState(
-  eightChar: EightCharLike,
+  birthContext: NormalizedBirthContext,
   gender: string,
+  currentAge: number,
   currentYear: number,
 ) {
+  const eightChar = birthContext.solar.getLunar().getEightChar();
+  const initialStartAge = resolveManualDaYunStartAge(birthContext.solar, gender);
+
   return eightChar
     .getYun(normalizeGenderForYun(gender))
     .getDaYun()
     .filter((entry) => entry.getGanZhi().trim().length > 0)
-    .map((entry) => {
+    .map((entry, index) => {
       const { stem, branch } = splitGanZhi(entry.getGanZhi());
       const currentLiuNian = entry
         .getLiuNian()
         .find((liuNian) => liuNian.getYear() === currentYear);
-      const isCurrent = Boolean(currentLiuNian);
-      const startAge = entry.getStartAge();
-      const endAge = entry.getEndAge();
-      const upperPhaseEndAge = Math.min(startAge + 4, endAge);
-      const lowerPhaseStartAge = Math.min(upperPhaseEndAge + 1, endAge);
-      const currentPhase = currentLiuNian?.getAge() !== undefined
-        ? currentLiuNian.getAge() <= upperPhaseEndAge
+      const startAge = initialStartAge + (index * 10);
+      const endAge = startAge + 9;
+      const upperPhaseEndAge = startAge + 4;
+      const lowerPhaseStartAge = startAge + 5;
+      const isCurrent = currentAge >= startAge && currentAge <= endAge;
+      const currentPhase = isCurrent
+        ? currentAge <= upperPhaseEndAge
           ? "upper"
           : "lower"
+        : currentLiuNian?.getAge() !== undefined
+          ? currentLiuNian.getAge() <= upperPhaseEndAge
+            ? "upper"
+            : "lower"
         : undefined;
 
       return {

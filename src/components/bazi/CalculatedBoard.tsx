@@ -11,16 +11,12 @@ import { CorePersonaDetailContent, CorePersonaSurface } from "@/components/bazi/
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 import { ExplainableNode } from "@/components/bazi/ExplainableNode";
 import { StrengthBreakdownDetailContent, StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
-import {
-  tenGodRows,
-  twelveQiRows,
-} from "@/lib/bazi/trainer-workspace";
 
 type CalculatedBoardProps = {
   calculatedState: CalculatedStateValue | null;
 };
 
-type ReadingDetailPanel = "strength" | "luck" | "persona" | "reference" | null;
+type ReadingDetailPanel = "strength" | "luck" | "persona" | null;
 
 type StaticDestinyColumn = {
   key: string;
@@ -88,6 +84,15 @@ function getRelatedShenShaEntries(
   return entries.filter((entry) => entry.relatedPillar === relatedPillar);
 }
 
+const twelveQiInteractionRows = [
+  { key: "yearBranch", label: "ดิถี vs ปี" },
+  { key: "monthBranch", label: "ดิถี vs เดือน" },
+  { key: "dayBranch", label: "ดิถี vs วัน" },
+  { key: "hourBranch", label: "ดิถี vs เวลา" },
+  { key: "currentDaYunBranch", label: "ดิถี vs วัยจร" },
+  { key: "currentLiuNianBranch", label: "ดิถี vs ปีจร" },
+] as const;
+
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
 
@@ -129,17 +134,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
         },
       ]
     : [];
-  const staticDestinyLabels = new Set(
-    staticDestinyColumns.map((column) => column.relatedPillar),
-  );
-  const staticShenSha = calculatedState
-    ? calculatedState.shenSha.filter((entry) => staticDestinyLabels.has(entry.relatedPillar))
-    : [];
-  const transientShenSha = calculatedState
-    ? calculatedState.shenSha.filter(
-        (entry) => !staticDestinyLabels.has(entry.relatedPillar),
-      )
-    : [];
   const liuNianShenSha = calculatedState
     ? getRelatedShenShaEntries(calculatedState.shenSha, "ปีจร")
     : [];
@@ -152,12 +146,9 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
       ? formatDaYunCycleCode(currentDaYun)
       : null;
   const ageSnapshotLabel = formatAgeSnapshot(calculatedState?.ageSnapshot);
-  const referenceSummaryItems = ["10 เทพ", "12 เชี่ยงแซ", "ดาวเด่น", "คำเปรียบเปรย", "Trace"];
-  const referenceSummary = referenceSummaryItems.join(" • ");
   const isStrengthDetailOpen = activeDetailPanel === "strength";
   const isLuckDetailOpen = activeDetailPanel === "luck";
   const isPersonaDetailOpen = activeDetailPanel === "persona";
-  const isReferenceDetailOpen = activeDetailPanel === "reference";
 
   const detailOverlayMeta = activeDetailPanel === "strength"
     ? {
@@ -177,16 +168,10 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
         ? {
           kicker: "บริบทธาตุ",
           title: "บริบทธาตุและบุคลิก",
-          summary: calculatedState?.seasonalInteraction
-            ? `${calculatedState.seasonalInteraction.metaphor} • เปิดบริบทธาตุและหมายเหตุเชิงกฎโดยไม่ดันการ์ดหลัก`
+        summary: calculatedState?.dayMasterStrengthProfile
+            ? `${calculatedState.dayMasterStrengthProfile.strengthState} • เปิดดุลธาตุและหมายเหตุเชิงกฎในชั้นแยก`
             : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎในชั้นแยก",
         }
-        : activeDetailPanel === "reference"
-          ? {
-            kicker: "โหมดอ้างอิง",
-            title: "ข้อมูลอ้างอิงเพิ่มเติม",
-            summary: referenceSummary,
-          }
           : null;
 
   return (
@@ -321,6 +306,24 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 </article>
               </div>
 
+              <section className="detail-cluster detail-cluster--nested" aria-label="twelve qi interactions">
+                <div className="section-heading section-heading--compact">
+                  <div>
+                    <p className="section-kicker">12 เชี่ยงแซ</p>
+                    <h4>ดูความสัมพันธ์ของดิถีกับเสาหลัก วัยจร และปีจรในบล็อกเดียว</h4>
+                  </div>
+                </div>
+
+                <dl className="detail-list">
+                  {twelveQiInteractionRows.map((item) => (
+                    <div key={item.key} className="detail-list-row">
+                      <dt>{item.label}</dt>
+                      <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
+
               <div className="movement-panel__actions">
                 <button
                   type="button"
@@ -335,9 +338,9 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           </div>
 
           <CorePersonaSurface
+            dayMasterStrengthProfile={calculatedState.dayMasterStrengthProfile}
             persona={calculatedState.sixtyJiaziCorePersona}
             elementAnalysis={calculatedState.elementAnalysis}
-            seasonalInteraction={calculatedState.seasonalInteraction}
             title="แกนบุคลิกพื้นฐาน"
             kicker="ภาพตีความพื้นดวง"
             detailMode="overlay"
@@ -345,41 +348,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
             onDetailToggle={() => setActiveDetailPanel("persona")}
             detailTriggerLabel="เปิดบริบทธาตุ"
           />
-
-          <section
-            className="surface inset-card reference-shelf reference-shelf--stacked"
-            aria-label="reference shelf"
-            data-reading-block="F"
-            data-reference-shelf-open={isReferenceDetailOpen ? "true" : "false"}
-          >
-            <div className="section-heading section-heading--compact">
-              <div>
-                <p className="section-kicker">ข้อมูลอ้างอิงเพิ่มเติม</p>
-                <h3>เก็บฐานอ้างอิงไว้ใต้แกนบุคลิก เปิดเมื่ออยากเช็กเชิงลึกเท่านั้น</h3>
-              </div>
-            </div>
-
-            <div className="reference-shelf__teaser" aria-label="reference preview">
-              {referenceSummaryItems.map((item) => (
-                <span key={item} className="reference-shelf__pill">{item}</span>
-              ))}
-            </div>
-
-            <p className="section-note">
-              {`อ่านแกนบุคลิกให้จบก่อน แล้วค่อยเปิด ${referenceSummary} ในชั้นอ้างอิงเดียว`}
-            </p>
-
-            <div className="reference-shelf__actions">
-              <button
-                type="button"
-                className="secondary-action detail-trigger-action reference-shelf__toggle"
-                aria-haspopup="dialog"
-                onClick={() => setActiveDetailPanel("reference")}
-              >
-                เข้าสู่โหมดอ้างอิง
-              </button>
-            </div>
-          </section>
 
           <DetailOverlay
             isOpen={activeDetailPanel !== null}
@@ -481,6 +449,24 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                     </article>
                   ))}
                 </div>
+
+                <section className="detail-cluster detail-cluster--nested">
+                  <div className="section-heading section-heading--compact">
+                    <div>
+                      <p className="section-kicker">12 เชี่ยงแซ</p>
+                      <h4>แกะจังหวะดิถีกับเสาหลัก วัยจร และปีจรในมุมเดียว</h4>
+                    </div>
+                  </div>
+
+                  <dl className="detail-list">
+                    {twelveQiInteractionRows.map((item) => (
+                      <div key={item.key} className="detail-list-row">
+                        <dt>{item.label}</dt>
+                        <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
               </>
             ) : null}
 
@@ -489,112 +475,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 persona={calculatedState.sixtyJiaziCorePersona}
                 elementAnalysis={calculatedState.elementAnalysis}
               />
-            ) : null}
-
-            {activeDetailPanel === "reference" ? (
-              <div className="reference-shelf__grid">
-                <section className="detail-cluster detail-cluster--nested">
-                  <div className="section-heading section-heading--compact">
-                    <div>
-                      <p className="section-kicker">10 เทพ</p>
-                      <h4>ความสัมพันธ์ที่ต้องใช้ตีความต่อ</h4>
-                    </div>
-                  </div>
-
-                  <dl className="detail-list">
-                    {tenGodRows.map((item) => (
-                      <div key={item.key} className="detail-list-row">
-                        <dt>{item.label}</dt>
-                        <dd>{calculatedState.tenGods[item.key] ?? "-"}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-
-                <section className="detail-cluster detail-cluster--nested">
-                  <div className="section-heading section-heading--compact">
-                    <div>
-                      <p className="section-kicker">12 เชี่ยงแซ</p>
-                      <h4>ภาวะธาตุในแต่ละเสาที่ใช้คุมจังหวะการอ่าน</h4>
-                    </div>
-                  </div>
-
-                  <dl className="detail-list">
-                    {twelveQiRows.map((item) => (
-                      <div key={item.key} className="detail-list-row">
-                        <dt>{item.label}</dt>
-                        <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
-
-                <section className="detail-cluster detail-cluster--nested detail-cluster--wide">
-                  <div className="section-heading section-heading--compact">
-                    <div>
-                      <p className="section-kicker">ดาวเด่นและคำเปรียบเปรย</p>
-                      <h4>ใช้เมื่ออยากตรวจข้อมูลเสริมของเสาหลักและดาวประกอบ</h4>
-                    </div>
-                  </div>
-
-                  <div className="metaphor-list">
-                    {calculatedState.elementMetaphors.map((item) => (
-                      <article key={`${item.element}-${item.metaphor}`} className="metaphor-card">
-                        <strong>{item.element}</strong>
-                        <p>{item.metaphor}</p>
-                      </article>
-                    ))}
-                  </div>
-
-                  {staticShenSha.length > 0 ? (
-                    <div className="transient-shen-sha-panel">
-                      <div className="section-heading section-heading--compact">
-                        <div>
-                          <p className="section-kicker">ดาวเด่นพื้นดวง</p>
-                          <h4>ดาวที่ผูกกับเสาหลักโดยตรง</h4>
-                        </div>
-                      </div>
-
-                      <div className="transient-shen-sha-list">
-                        {staticShenSha.map((entry) => (
-                          <article
-                            key={`static-${entry.relatedPillar}-${entry.starName}`}
-                            className="transient-shen-sha-card"
-                          >
-                            <strong>{entry.starName}</strong>
-                            <span>{entry.relatedPillar}</span>
-                            <p>{entry.meaning}</p>
-                          </article>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {transientShenSha.length > 0 ? (
-                    <div className="transient-shen-sha-panel">
-                      <div className="section-heading section-heading--compact">
-                        <div>
-                          <p className="section-kicker">ดาวประกอบที่ต้องเห็น</p>
-                          <h4>Shen Sha ที่ไม่ผูกกับเสาหลัก</h4>
-                        </div>
-                      </div>
-
-                      <div className="transient-shen-sha-list">
-                        {transientShenSha.map((entry) => (
-                          <article
-                            key={`transient-${entry.relatedPillar}-${entry.starName}`}
-                            className="transient-shen-sha-card"
-                          >
-                            <strong>{entry.starName}</strong>
-                            <span>{entry.relatedPillar}</span>
-                            <p>{entry.meaning}</p>
-                          </article>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </section>
-              </div>
             ) : null}
           </DetailOverlay>
         </div>

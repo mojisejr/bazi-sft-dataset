@@ -121,46 +121,56 @@ describe("calculateBaziChart", () => {
     });
     expect(result.daYun).toHaveLength(9);
     expect(result.daYun[0]).toMatchObject({
-      startAge: 6,
-      endAge: 15,
+      startAge: 4,
+      endAge: 13,
       stem: "丁",
       branch: "未",
       upperPhase: {
-        startAge: 6,
-        endAge: 10,
+        startAge: 4,
+        endAge: 8,
         symbol: "丁",
         source: "stem",
       },
       lowerPhase: {
-        startAge: 11,
-        endAge: 15,
+        startAge: 9,
+        endAge: 13,
         symbol: "未",
         source: "branch",
       },
     });
     expect(result.daYun.find((entry) => entry.isCurrent)).toMatchObject({
-      startAge: 26,
-      endAge: 35,
+      startAge: 24,
+      endAge: 33,
       stem: "乙",
       branch: "巳",
       isCurrent: true,
       currentPhase: "lower",
       upperPhase: {
-        startAge: 26,
-        endAge: 30,
+        startAge: 24,
+        endAge: 28,
         symbol: "乙",
         source: "stem",
         isCurrent: false,
       },
       lowerPhase: {
-        startAge: 31,
-        endAge: 35,
+        startAge: 29,
+        endAge: 33,
         symbol: "巳",
         source: "branch",
         isCurrent: true,
       },
     });
     expect(result.liuNian).toMatchObject({ stem: "丙", branch: "午" });
+    expect(result.twelveQi).toEqual(
+      expect.objectContaining({
+        yearBranch: "沐浴",
+        monthBranch: "沐浴",
+        dayBranch: "帝旺",
+        hourBranch: "冠带",
+        currentDaYunBranch: "帝旺",
+        currentLiuNianBranch: "临官",
+      }),
+    );
     expect(result.shenSha).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -177,6 +187,11 @@ describe("calculateBaziChart", () => {
         }),
       ]),
     );
+    expect(result.dayMasterStrengthProfile).toMatchObject({
+      dayMaster: "己",
+      strengthState: "ดวงอ่อน",
+      narrative: expect.stringContaining("ดิถีดินหยินกำลังอ่อน"),
+    });
     expect(result.sixtyJiaziCorePersona).toMatchObject({
       code: "己巳",
       narrative:
@@ -256,6 +271,7 @@ describe("calculateBaziChart", () => {
     ]);
     expect(result.explainable.strengthScore?.trace?.rawVariables).toMatchObject({
       dayMasterStem: "己",
+      monthBranchTwelveQiStage: "沐浴",
       qiAdjustments: expect.any(Array),
       relationAdjustments: expect.any(Array),
       result: 3.75,
@@ -285,14 +301,7 @@ describe("calculateBaziChart", () => {
         }),
       ]),
     );
-    expect(result.seasonalInteraction).toMatchObject({
-      dayMasterStem: "己",
-      monthBranch: "申",
-      season: "autumn",
-      phase: "early",
-      seasonLabel: "ต้นฤดูใบไม้ร่วง",
-      metaphor: "ดินเพาะปลูกในต้นฤดูใบไม้ร่วง",
-    });
+    expect(result.seasonalInteraction).toBeUndefined();
   });
 
   test("keeps historical Bangkok births on fixed regional offsets instead of political DST", async () => {
