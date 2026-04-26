@@ -190,6 +190,10 @@ export const SixtyJiaziCorePersonaSchema = z.object({
 export const DayMasterStrengthProfileSchema = z.object({
   dayMaster: z.string().trim().min(1),
   strengthState: z.string().trim().min(1),
+  sourceState: z.string().trim().min(1).optional(),
+  lookupState: z.string().trim().min(1).optional(),
+  displayBand: z.string().trim().min(1).optional(),
+  displayLabel: z.string().trim().min(1).optional(),
   narrative: z.string().trim().min(1),
   qiLabel: z.string().trim().min(1).optional(),
   scoreText: z.string().trim().min(1).optional(),

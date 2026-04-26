@@ -7,7 +7,6 @@ import {
   baziSixtyJiaziNarratives,
   baziTimeSolarTerms,
 } from "@/db/schema";
-import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import {
   CalculatedStateSchema,
   RawInputSchema,
@@ -47,6 +46,10 @@ import {
   buildStrengthScoreExplainable,
 } from "@/lib/bazi/symbolic-engine.strength";
 import {
+  buildDayMasterStrengthVocabulary,
+  resolveCanonicalDayMasterStrengthState,
+} from "@/lib/bazi/strength-state-vocabulary";
+import {
   buildElementAnalysis,
 } from "@/lib/bazi/symbolic-engine.seasonal";
 import type {
@@ -81,20 +84,6 @@ function buildAgeSnapshot(
     thaiAge,
     chineseAge: thaiAge + 1,
   };
-}
-
-const DAY_MASTER_STRENGTH_STATE_LOOKUP = {
-  "อ่อนเกินไป": "อ่อนแอ",
-  "ดวงอ่อน": "อ่อนแอ",
-  "สมดุล": "แข็งแรง/สมดุล",
-  "ดวงแข็ง": "แข็งแรง/สมดุล",
-  "แข็งเกินไป": "แข็งแรงมากเกินไป",
-} as const;
-
-function normalizeDayMasterStrengthState(strengthState: string) {
-  return DAY_MASTER_STRENGTH_STATE_LOOKUP[
-    strengthState as keyof typeof DAY_MASTER_STRENGTH_STATE_LOOKUP
-  ] ?? strengthState;
 }
 
 export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
@@ -168,7 +157,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
       return persona ?? null;
     },
 
-    async findDayMasterStrengthProfile(dayMasterChinese, strengthState) {
+    async findDayMasterStrengthProfile(dayMasterChinese, strengthState, strengthScore) {
       const [profile] = await db
         .select({
           dayMaster: baziDayMasterStrengthStates.dayMasterChinese,
@@ -176,6 +165,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
           narrative: baziDayMasterStrengthStates.narrativeSummary,
           qiLabel: baziDayMasterStrengthStates.qiLabel,
           scoreText: baziDayMasterStrengthStates.scoreText,
+          rowOrder: baziDayMasterStrengthStates.rowOrder,
         })
         .from(baziDayMasterStrengthStates)
         .where(
@@ -188,13 +178,90 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
         .limit(1);
 
       if (!profile?.dayMaster || !profile.strengthState || !profile.narrative) {
-        return null;
+        const fallbackRows = await db
+          .select({
+            dayMaster: baziDayMasterStrengthStates.dayMasterChinese,
+            strengthState: baziDayMasterStrengthStates.strengthState,
+            narrative: baziDayMasterStrengthStates.narrativeSummary,
+            qiLabel: baziDayMasterStrengthStates.qiLabel,
+            scoreText: baziDayMasterStrengthStates.scoreText,
+            rowOrder: baziDayMasterStrengthStates.rowOrder,
+          })
+          .from(baziDayMasterStrengthStates)
+          .where(
+            and(
+              eq(baziDayMasterStrengthStates.dayMasterChinese, dayMasterChinese),
+              sql`${baziDayMasterStrengthStates.narrativeSummary} is not null and trim(${baziDayMasterStrengthStates.narrativeSummary}) <> ''`,
+            ),
+          )
+          .orderBy(asc(baziDayMasterStrengthStates.rowOrder));
+
+        const fallbackProfile = fallbackRows
+          .flatMap((row) => {
+            const sourceResolution = resolveCanonicalDayMasterStrengthState(row.strengthState);
+            const scoreResolution = sourceResolution
+              ? null
+              : resolveCanonicalDayMasterStrengthState(row.scoreText);
+            const resolution = sourceResolution ?? scoreResolution;
+
+            if (!row.dayMaster || !row.narrative || !resolution || resolution.lookupState !== strengthState) {
+              return [];
+            }
+
+            const numericCandidate = row.strengthState?.trim() ?? row.scoreText?.trim() ?? "";
+            const scoreDelta = typeof strengthScore === "number" && /^[0-9]+(?:\.[0-9]+)?$/.test(numericCandidate)
+              ? Math.abs(Number.parseFloat(numericCandidate) - strengthScore)
+              : Number.POSITIVE_INFINITY;
+            const resolutionRank = resolution.matchKind === "canonical"
+              ? 0
+              : resolution.matchKind === "alias"
+                ? 1
+                : resolution.matchKind === "numeric"
+                  ? 2
+                  : 3;
+
+            return [{
+              ...row,
+              lookupState: resolution.lookupState,
+              sourceState: resolution.sourceState,
+              resolutionRank,
+              scoreDelta,
+            }];
+          })
+          .sort((left, right) => (
+            left.resolutionRank - right.resolutionRank
+            || left.scoreDelta - right.scoreDelta
+            || left.rowOrder - right.rowOrder
+          ))[0];
+
+        if (!fallbackProfile) {
+          return null;
+        }
+
+        if (!fallbackProfile.dayMaster || !fallbackProfile.narrative) {
+          return null;
+        }
+
+        return {
+          dayMaster: fallbackProfile.dayMaster,
+          strengthState,
+          sourceState: fallbackProfile.sourceState,
+          lookupState: fallbackProfile.lookupState,
+          narrative: fallbackProfile.narrative,
+          qiLabel: fallbackProfile.qiLabel,
+          scoreText: fallbackProfile.scoreText,
+        };
       }
 
+      const dayMaster = profile.dayMaster;
+      const narrative = profile.narrative;
+
       return {
-        dayMaster: profile.dayMaster,
-        strengthState: profile.strengthState,
-        narrative: profile.narrative,
+        dayMaster,
+        strengthState,
+        sourceState: profile.strengthState,
+        lookupState: strengthState,
+        narrative,
         qiLabel: profile.qiLabel,
         scoreText: profile.scoreText,
       };
@@ -272,10 +339,9 @@ export async function calculateBaziChart(
     },
     interactionResolution,
   );
-  const currentStrengthBand = classifyOperatorStrengthScore(strengthScore.value);
-  const normalizedStrengthState = normalizeDayMasterStrengthState(currentStrengthBand.label);
+  const strengthVocabulary = buildDayMasterStrengthVocabulary(strengthScore.value);
   const [dayMasterStrengthProfile, persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
-    repository.findDayMasterStrengthProfile(dayMasterStem, normalizedStrengthState),
+    repository.findDayMasterStrengthProfile(dayMasterStem, strengthVocabulary.lookupState, strengthScore.value),
     repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
     repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
     repository.findDomainMatrixRows("love"),
@@ -323,7 +389,11 @@ export async function calculateBaziChart(
     dayMasterStrengthProfile: dayMasterStrengthProfile
       ? {
           dayMaster: dayMasterStrengthProfile.dayMaster,
-          strengthState: dayMasterStrengthProfile.strengthState,
+          strengthState: dayMasterStrengthProfile.lookupState,
+          sourceState: dayMasterStrengthProfile.sourceState ?? undefined,
+          lookupState: dayMasterStrengthProfile.lookupState,
+          displayBand: strengthVocabulary.displayBand,
+          displayLabel: strengthVocabulary.displayLabel,
           narrative: dayMasterStrengthProfile.narrative,
           qiLabel: dayMasterStrengthProfile.qiLabel ?? undefined,
           scoreText: dayMasterStrengthProfile.scoreText ?? undefined,

@@ -169,7 +169,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           kicker: "บริบทธาตุ",
           title: "บริบทธาตุและบุคลิก",
         summary: calculatedState?.dayMasterStrengthProfile
-            ? `${calculatedState.dayMasterStrengthProfile.strengthState} • เปิดดุลธาตุและหมายเหตุเชิงกฎในชั้นแยก`
+            ? `${calculatedState.dayMasterStrengthProfile.displayLabel ?? calculatedState.dayMasterStrengthProfile.displayBand ?? calculatedState.dayMasterStrengthProfile.strengthState} • เปิดดุลธาตุและหมายเหตุเชิงกฎในชั้นแยก`
             : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎในชั้นแยก",
         }
           : null;
@@ -340,6 +340,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           <CorePersonaSurface
             dayMasterStrengthProfile={calculatedState.dayMasterStrengthProfile}
             persona={calculatedState.sixtyJiaziCorePersona}
+            twelveQi={calculatedState.twelveQi}
             elementAnalysis={calculatedState.elementAnalysis}
             title="แกนบุคลิกพื้นฐาน"
             kicker="ภาพตีความพื้นดวง"

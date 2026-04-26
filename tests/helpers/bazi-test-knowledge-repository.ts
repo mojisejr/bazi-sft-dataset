@@ -61,6 +61,8 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
       {
         dayMaster: "己",
         strengthState: "อ่อนแอ",
+        sourceState: "อ่อนแอ",
+        lookupState: "อ่อนแอ",
         narrative: "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี",
         qiLabel: "帝旺",
         scoreText: "3.75",
@@ -71,6 +73,8 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
       {
         dayMaster: "戊",
         strengthState: "แข็งแรง/สมดุล",
+        sourceState: "แข็งแรง/สมดุล",
+        lookupState: "แข็งแรง/สมดุล",
         narrative: "ดิถีดินหยางค่อนข้างสมดุล รับทั้งภาระและโอกาสได้เมื่อบริบทไม่เหวี่ยงเกินไป",
         qiLabel: "养",
         scoreText: "4.50",

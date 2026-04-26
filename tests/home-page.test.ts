@@ -208,7 +208,11 @@ describe("BaziTrainerWorkspace", () => {
       },
       dayMasterStrengthProfile: {
         dayMaster: "己",
-        strengthState: "ดวงอ่อน",
+        strengthState: "อ่อนแอ",
+        sourceState: "อ่อนแอ",
+        lookupState: "อ่อนแอ",
+        displayBand: "ดวงอ่อน",
+        displayLabel: "ดิถีอ่อน",
         narrative: "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี",
         qiLabel: "帝旺",
         scoreText: "3.07",
@@ -315,8 +319,12 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain('data-core-persona="available"');
     expect(html).toContain('data-core-persona-detail-open="false"');
     expect(html).toContain("นิสัยพื้นฐาน 1.1");
+    expect(html).toContain("ดิถีอ่อน");
     expect(html).toContain("ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี");
     expect(html).toContain("นิสัยวันเกิด 1.2");
+    expect(html).toContain("หลักฐาน 12 เชี่ยงแซ 1.3");
+    expect(html).toContain("ดิถี vs เดือน");
+    expect(html).toContain("ดิถี vs วัยจร");
     expect(html).toContain("ธาตุนำ ดิน");
     expect(html).toContain("ธาตุนำ ทอง");
     expect(html).toContain("โทนธาตุ fire");

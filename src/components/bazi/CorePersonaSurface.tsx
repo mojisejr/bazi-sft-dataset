@@ -12,6 +12,7 @@ import { ELEMENT_LABELS_TH, FIVE_ELEMENT_ORDER } from "@/lib/bazi/symbolic-engin
 type CorePersonaSurfaceProps = {
   dayMasterStrengthProfile?: CalculatedStateValue["dayMasterStrengthProfile"];
   persona: CalculatedStateValue["sixtyJiaziCorePersona"];
+  twelveQi?: CalculatedStateValue["twelveQi"];
   elementAnalysis?: CalculatedStateValue["elementAnalysis"];
   title?: string;
   kicker?: string;
@@ -27,6 +28,19 @@ type CorePersonaDetailContentProps = {
   persona: CalculatedStateValue["sixtyJiaziCorePersona"];
   elementAnalysis?: CalculatedStateValue["elementAnalysis"];
 };
+
+function buildTwelveQiEvidenceRows(twelveQi?: CalculatedStateValue["twelveQi"]) {
+  if (!twelveQi) {
+    return [] as Array<{ label: string; value: string }>;
+  }
+
+  return [
+    { label: "ดิถี vs เดือน", value: twelveQi.monthBranch ?? "-" },
+    { label: "ดิถี vs วัน", value: twelveQi.dayBranch ?? "-" },
+    { label: "ดิถี vs วัยจร", value: twelveQi.currentDaYunBranch ?? "-" },
+    { label: "ดิถี vs ปีจร", value: twelveQi.currentLiuNianBranch ?? "-" },
+  ];
+}
 
 function buildCorePersonaDetailModel(
   persona: CalculatedStateValue["sixtyJiaziCorePersona"],
@@ -145,6 +159,7 @@ export function CorePersonaDetailContent({
 export function CorePersonaSurface({
   dayMasterStrengthProfile,
   persona,
+  twelveQi,
   elementAnalysis,
   title = "แกนบุคลิกพื้นฐาน",
   kicker = "60 Jiazi Core Persona",
@@ -163,6 +178,16 @@ export function CorePersonaSurface({
     : (isOverlayMode ? Boolean(detailOpen) : (detailOpen ?? inlineDetailOpen));
   const showDetailedPanels = enableDetailToggle ? (!isOverlayMode && isDetailVisible) : true;
   const triggerLabel = detailTriggerLabel ?? (isOverlayMode ? "เปิดบริบทธาตุ" : "ดูรายละเอียดธาตุและบริบท");
+  const evidenceRows = buildTwelveQiEvidenceRows(twelveQi);
+  const strengthHeadline = dayMasterStrengthProfile?.displayLabel
+    ?? dayMasterStrengthProfile?.displayBand
+    ?? dayMasterStrengthProfile?.strengthState;
+  const strengthStateMeta = dayMasterStrengthProfile?.sourceState
+    && dayMasterStrengthProfile.sourceState !== dayMasterStrengthProfile.strengthState
+    ? `source ${dayMasterStrengthProfile.sourceState} → lookup ${dayMasterStrengthProfile.strengthState}`
+    : dayMasterStrengthProfile?.qiLabel
+      ? `qi อ้างอิง ${dayMasterStrengthProfile.qiLabel}`
+      : null;
 
   function handleDetailToggle() {
     if (onDetailToggle) {
@@ -190,7 +215,10 @@ export function CorePersonaSurface({
         {dayMasterStrengthProfile ? (
           <article className="core-persona__panel" data-basic-character="available">
             <p className="core-persona__eyebrow">นิสัยพื้นฐาน 1.1</p>
-            <h4>{dayMasterStrengthProfile.strengthState}</h4>
+            <h4>{strengthHeadline}</h4>
+            {strengthStateMeta ? (
+              <p className="core-persona__state-meta">{strengthStateMeta}</p>
+            ) : null}
             <p className="core-persona__narrative">{dayMasterStrengthProfile.narrative}</p>
           </article>
         ) : (
@@ -212,6 +240,34 @@ export function CorePersonaSurface({
             <p className="core-persona__empty">รอบนี้ engine ยังไม่ส่งคำอธิบาย 60 กะจื่อของวันเกิดเข้ามา</p>
           </article>
         )}
+
+        <article
+          className="core-persona__panel core-persona__panel--full"
+          data-twelve-qi-evidence={evidenceRows.length > 0 ? "available" : "missing"}
+        >
+          <p className="core-persona__eyebrow">หลักฐาน 12 เชี่ยงแซ 1.3</p>
+          <h4>ใช้ชั้น 12 เชี่ยงแซอธิบายว่าบุคลิกและกำลังดิถีเปิดหรือหดในบริบทไหน</h4>
+          {(dayMasterStrengthProfile?.qiLabel || persona?.twelveQiLabel) ? (
+            <p className="core-persona__state-meta">
+              {[
+                dayMasterStrengthProfile?.qiLabel ? `แรงกำลังอ้างอิง ${dayMasterStrengthProfile.qiLabel}` : null,
+                persona?.twelveQiLabel ? `โทนกะจื่อวัน ${persona.twelveQiLabel}` : null,
+              ].filter(Boolean).join(" • ")}
+            </p>
+          ) : null}
+          {evidenceRows.length > 0 ? (
+            <dl className="core-persona__evidence-list">
+              {evidenceRows.map((row) => (
+                <div key={row.label} className="core-persona__evidence-row">
+                  <dt>{row.label}</dt>
+                  <dd>{row.value}</dd>
+                </div>
+              ))}
+            </dl>
+          ) : (
+            <p className="core-persona__empty">รอบนี้ engine ยังไม่ส่ง 12 เชี่ยงแซที่ใช้เป็น evidence layer เข้ามา</p>
+          )}
+        </article>
       </div>
 
       {(persona?.elementTone || persona?.twelveQiLabel || model.dominantElements.length > 0) ? (
