@@ -8,6 +8,7 @@ import type {
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
 import { CorePersonaDetailContent, CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
+import { CompatibilitySurface } from "@/components/bazi/CompatibilitySurface";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 import { ExplainableNode } from "@/components/bazi/ExplainableNode";
 import { StrengthBreakdownDetailContent, StrengthScoreBreakdown } from "@/components/bazi/StrengthScoreBreakdown";
@@ -350,6 +351,10 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
             detailTriggerLabel="เปิดบริบทธาตุ"
           />
 
+          <CompatibilitySurface
+            profiles={calculatedState.compatibilityMatrixProfiles}
+          />
+
           <DetailOverlay
             isOpen={activeDetailPanel !== null}
             title={detailOverlayMeta?.title ?? "รายละเอียดเพิ่มเติม"}
@@ -414,7 +419,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                   </article>
                 </div>
 
-                <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction="rtl">
+                <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction={calculatedState?.isForwardDirection === false ? "rtl" : "ltr"}>
                   {daYunTrackEntries.map((entry) => (
                     <article
                       key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}

@@ -77,7 +77,7 @@ function diffDateOnlyDays(leftDate: string, rightDate: string) {
   return Math.abs(Math.round((left.getTime() - right.getTime()) / 86_400_000));
 }
 
-function isForwardDaYunDirection(lunar: LunarLike, gender: string) {
+export function isForwardDaYunDirection(lunar: LunarLike, gender: string) {
   const isYangYearStem = lunar.getYearGanIndexExact() % 2 === 0;
 
   return normalizeGenderForYun(gender) === 1 ? isYangYearStem : !isYangYearStem;

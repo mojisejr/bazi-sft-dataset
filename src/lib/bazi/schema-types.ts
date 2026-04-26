@@ -180,6 +180,8 @@ export const ExplainableNumberSchema = createExplainableValueSchema(z.number().f
 export const SixtyJiaziCorePersonaSchema = z.object({
   code: z.string().trim().min(1),
   narrative: z.string().trim().min(1),
+  heavenNarrative: z.string().trim().min(1).optional(),
+  earthNarrative: z.string().trim().min(1).optional(),
   elementTone: z.string().trim().min(1).optional(),
   twelveQiLabel: z.string().trim().min(1).optional(),
   semanticNotes: z.array(z.string().trim().min(1)).default([]),
@@ -195,6 +197,7 @@ export const DayMasterStrengthProfileSchema = z.object({
   displayBand: z.string().trim().min(1).optional(),
   displayLabel: z.string().trim().min(1).optional(),
   narrative: z.string().trim().min(1),
+  narrativeReason: z.string().trim().min(1).optional(),
   qiLabel: z.string().trim().min(1).optional(),
   scoreText: z.string().trim().min(1).optional(),
 });
@@ -248,6 +251,7 @@ export const CalculatedStateSchema = z.object({
   dayMasterStrengthProfile: DayMasterStrengthProfileSchema.optional(),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
+  isForwardDirection: z.boolean().optional(),
   explainable: CalculatedStateExplainableSchema.default({}),
 });
 

@@ -220,6 +220,9 @@ export function CorePersonaSurface({
               <p className="core-persona__state-meta">{strengthStateMeta}</p>
             ) : null}
             <p className="core-persona__narrative">{dayMasterStrengthProfile.narrative}</p>
+            {dayMasterStrengthProfile.narrativeReason ? (
+              <p className="core-persona__reason">{dayMasterStrengthProfile.narrativeReason}</p>
+            ) : null}
           </article>
         ) : (
           <article className="core-persona__panel" data-basic-character="missing">
@@ -233,6 +236,22 @@ export function CorePersonaSurface({
             <p className="core-persona__eyebrow">นิสัยวันเกิด 1.2</p>
             <p className="core-persona__code">{persona.code}</p>
             <p className="core-persona__narrative">{persona.narrative}</p>
+            {persona.heavenNarrative || persona.earthNarrative ? (
+              <div className="core-persona__subnarratives">
+                {persona.heavenNarrative ? (
+                  <p className="core-persona__subnarrative">
+                    <span className="core-persona__subnarrative-label">ฟ้า</span>
+                    {persona.heavenNarrative}
+                  </p>
+                ) : null}
+                {persona.earthNarrative ? (
+                  <p className="core-persona__subnarrative">
+                    <span className="core-persona__subnarrative-label">ดิน</span>
+                    {persona.earthNarrative}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </article>
         ) : (
           <article className="core-persona__panel" data-day-pillar-character="missing">

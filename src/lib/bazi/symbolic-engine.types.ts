@@ -169,6 +169,8 @@ export type SixtyJiaziPersonaRecord = {
   branchChinese: string;
   elementTone: string | null;
   twelveQiLabel: string | null;
+  dayMasterNarrative: string | null;
+  branchNarrative: string | null;
   combinedNarrative: string | null;
 };
 

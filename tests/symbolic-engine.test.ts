@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { createCalculateBaziHandler } from "@/app/api/bazi/calculate/route";
 import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
+import { isForwardDaYunDirection } from "@/lib/bazi/symbolic-engine.birth";
 import {
   calculateBaziChart,
   resolveBranchInteractionEffects,
@@ -499,5 +500,35 @@ describe("createCalculateBaziHandler", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+});
+
+describe("isForwardDaYunDirection", () => {
+  function mockLunar(yearGanIndex: number) {
+    return { getYearGanIndexExact: () => yearGanIndex };
+  }
+
+  test("male + Yang year stem (甲=index 0) → forward", () => {
+    expect(isForwardDaYunDirection(mockLunar(0), "male")).toBe(true);
+  });
+
+  test("male + Yin year stem (乙=index 1) → backward", () => {
+    expect(isForwardDaYunDirection(mockLunar(1), "male")).toBe(false);
+  });
+
+  test("female + Yang year stem (丙=index 2) → backward", () => {
+    expect(isForwardDaYunDirection(mockLunar(2), "female")).toBe(false);
+  });
+
+  test("female + Yin year stem (丁=index 3) → forward", () => {
+    expect(isForwardDaYunDirection(mockLunar(3), "female")).toBe(true);
+  });
+
+  test("male + Yang year stem (庚=index 6) → forward", () => {
+    expect(isForwardDaYunDirection(mockLunar(6), "male")).toBe(true);
+  });
+
+  test("female + Yin year stem (癸=index 9) → forward", () => {
+    expect(isForwardDaYunDirection(mockLunar(9), "female")).toBe(true);
   });
 });

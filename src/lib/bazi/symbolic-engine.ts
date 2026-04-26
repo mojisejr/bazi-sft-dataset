@@ -19,11 +19,16 @@ import {
   buildLiuNianState,
   buildOrthodoxMingGongValue,
   buildPillarValue,
+  isForwardDaYunDirection,
   normalizeBirthContext,
   normalizeGenderForYun,
   resolveTwelveQiStage,
 } from "@/lib/bazi/symbolic-engine.birth";
 export { HONG_KONG_TIMEZONE } from "@/lib/bazi/symbolic-engine.constants";
+import {
+  ELEMENT_LABELS_TH,
+  STEM_TO_ELEMENT,
+} from "@/lib/bazi/symbolic-engine.constants";
 import {
   resolveBranchInteractionEffects,
 } from "@/lib/bazi/symbolic-engine.interactions";
@@ -60,6 +65,33 @@ export type {
   BaziKnowledgeRepository,
   BaziStructuralState,
 } from "@/lib/bazi/symbolic-engine.types";
+
+function buildNarrativeReason(
+  dayMasterStem: string,
+  strengthScoreValue: number,
+  twelveQiMonthBranch: string | null,
+  displayLabel: string | undefined,
+): string {
+  const element = STEM_TO_ELEMENT[dayMasterStem as keyof typeof STEM_TO_ELEMENT];
+  const elementLabel = element ? ELEMENT_LABELS_TH[element] : dayMasterStem;
+  const strengthLabel = displayLabel ?? (strengthScoreValue >= 4 ? "แข็งแรง" : strengthScoreValue >= 3 ? "สมดุล" : "อ่อน");
+  const stageLabel = twelveQiMonthBranch ?? "";
+
+  const parts: string[] = [];
+  parts.push(`ดิถี${elementLabel} ${strengthLabel}`);
+
+  if (stageLabel) {
+    parts.push(`เพราะได้ชั้น ${stageLabel} จากเดือนเกิด`);
+  }
+
+  if (strengthScoreValue >= 4) {
+    parts.push("มีแรงหนุนจากฤดูและสาขาที่ส่งเสริมมากกว่าหักล้าง");
+  } else if (strengthScoreValue < 3) {
+    parts.push("ต้องอาศัยแรงหนุนจากภายนอกจึงจะออกผลดี");
+  }
+
+  return parts.join(" ");
+}
 
 function buildAgeSnapshot(
   birthContext: ReturnType<typeof normalizeBirthContext>,
@@ -143,6 +175,8 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
           branchChinese: baziSixtyJiaziNarratives.branchChinese,
           elementTone: baziSixtyJiaziNarratives.elementTone,
           twelveQiLabel: baziSixtyJiaziNarratives.twelveQiLabel,
+          dayMasterNarrative: baziSixtyJiaziNarratives.dayMasterNarrative,
+          branchNarrative: baziSixtyJiaziNarratives.branchNarrative,
           combinedNarrative: baziSixtyJiaziNarratives.combinedNarrative,
         })
         .from(baziSixtyJiaziNarratives)
@@ -293,7 +327,9 @@ export async function calculateBaziChart(
 ) {
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
-  const eightChar = birthContext.solar.getLunar().getEightChar();
+  const lunar = birthContext.solar.getLunar();
+  const eightChar = lunar.getEightChar();
+  const forwardDirection = isForwardDaYunDirection(lunar as Parameters<typeof isForwardDaYunDirection>[0], rawInput.gender);
   const currentReferenceSolar = buildCurrentReferenceSolar();
   const currentReferenceEightChar = currentReferenceSolar.getLunar().getEightChar();
   const currentYear = currentReferenceSolar.getYear();
@@ -395,6 +431,12 @@ export async function calculateBaziChart(
           displayBand: strengthVocabulary.displayBand,
           displayLabel: strengthVocabulary.displayLabel,
           narrative: dayMasterStrengthProfile.narrative,
+          narrativeReason: buildNarrativeReason(
+            dayMasterStem,
+            strengthScore.value,
+            twelveQiState.monthBranch,
+            strengthVocabulary.displayLabel,
+          ),
           qiLabel: dayMasterStrengthProfile.qiLabel ?? undefined,
           scoreText: dayMasterStrengthProfile.scoreText ?? undefined,
         }
@@ -407,6 +449,8 @@ export async function calculateBaziChart(
       ? {
           code: `${pillars.day.stem}${pillars.day.branch}`,
           narrative: persona.combinedNarrative,
+          heavenNarrative: persona.dayMasterNarrative ?? undefined,
+          earthNarrative: persona.branchNarrative ?? undefined,
           elementTone: persona.elementTone ?? undefined,
           twelveQiLabel: persona.twelveQiLabel
             ? normalizeCorpusBranchSymbol(persona.twelveQiLabel)
@@ -419,6 +463,7 @@ export async function calculateBaziChart(
         }
       : undefined,
     compatibilityMatrixProfiles,
+    isForwardDirection: forwardDirection,
   });
 
   return calculatedState;
