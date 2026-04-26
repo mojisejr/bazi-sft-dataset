@@ -262,7 +262,7 @@ export function BaziTrainerWorkspace({
           <section className="workspace-stack">
             <CalculatedBoard calculatedState={calculatedState} />
 
-            {calculatedState && (
+            {false && calculatedState && (
               <div className="mx-auto w-full max-w-4xl px-4 pb-8 pt-4">
                 <AnnotationWorkspace
                   hasCalculatedState={Boolean(calculatedState)}

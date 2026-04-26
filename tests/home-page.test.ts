@@ -345,10 +345,10 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
     expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
-    expect(html).toContain("พูดด้วยเสียง");
-    expect(html).toContain("เริ่มเขียนคำพยากรณ์");
-    expect(html).toContain("เมื่ออ่านภาพรวมด้านบนจบแล้ว ค่อยเข้าสู่ 15 มิติ");
-    expect(html).toContain("ปิดงานคำพยากรณ์");
+    expect(html).not.toContain("พูดด้วยเสียง");
+    expect(html).not.toContain("เริ่มเขียนคำพยากรณ์");
+    expect(html).not.toContain("เมื่ออ่านภาพรวมด้านบนจบแล้ว ค่อยเข้าสู่ 15 มิติ");
+    expect(html).not.toContain("ปิดงานคำพยากรณ์");
     expect(html).not.toContain("Accept Annotation");
     expect(html).toContain("ล้างข้อมูลเพื่อผูกดวงใหม่");
     expect(html).not.toContain("Asia/Hong_Kong");
@@ -377,7 +377,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Complete Annotation");
 
     expect(html).not.toContain("จังหวะที่กำลังเดิน");
-    expect(html.indexOf("แกนบุคลิกพื้นฐาน")).toBeLessThan(html.indexOf("เริ่มเขียนคำพยากรณ์"));
+    expect(html).toContain("แกนบุคลิกพื้นฐาน");
   });
 
   test("restores the queue workspace when the URL asks for workspace=queue", () => {

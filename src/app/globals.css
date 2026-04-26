@@ -1651,9 +1651,9 @@ textarea {
   }
 
   .workspace-switch__rail {
-    grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding: 6px;
   }
 
   .workspace-switch__backdrop {
@@ -1662,10 +1662,18 @@ textarea {
 
   .workspace-switch__option {
     width: 100%;
-    min-height: 56px;
-    padding-inline: 16px;
-    font-size: 0.95rem;
-    gap: 10px;
+    min-height: 52px;
+    padding-inline: 10px;
+    font-size: 0.88rem;
+    gap: 6px;
+  }
+
+  .workspace-switch__icon {
+    font-size: 1rem;
+  }
+
+  .workspace-switch__label {
+    white-space: nowrap;
   }
 
   .zone-heading {
