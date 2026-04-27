@@ -953,7 +953,6 @@ textarea {
 }
 
 .orbit-card h3,
-.pillar-ribbon-card__code,
 .strength-meter__score {
   margin: 0;
   font-size: clamp(1.85rem, 1.5rem + 1vw, 2.6rem);

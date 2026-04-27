@@ -360,7 +360,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("Asia/Hong_Kong");
     expect(html).not.toContain("Asia/Bangkok");
     expect(html).toContain("己");
-    expect(html).toContain("壬寅");
+    expect(html).toContain("壬 (น้ำ)");
+    expect(html).toContain("寅 (ขาล)");
+    expect(html).not.toContain('class="pillar-ribbon-card__code"');
     expect(html).toContain("ปีจร");
     expect(html).not.toContain("วัยจร 10 ปี");
     expect(html).toContain('data-current-luck-symbol="巳"');

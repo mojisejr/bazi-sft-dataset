@@ -234,7 +234,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                     </div>
                     <div className="pillar-ribbon-card__identity">
                       <span className="pillar-ribbon-card__ten-god">{column.pillar?.tenGod ?? "-"}</span>
-                      <strong className="pillar-ribbon-card__code">{formatPillarCode(column.pillar)}</strong>
                     </div>
                     <div className="destiny-glyph-stack">
                       <div className="destiny-glyph-shell destiny-glyph-shell--stem">
