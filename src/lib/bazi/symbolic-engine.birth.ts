@@ -22,6 +22,7 @@ import {
   DEFAULT_INPUT_TIMEZONE,
   HONG_KONG_TIMEZONE,
   MING_GONG_ZHONG_QI_BY_MONTH_BRANCH,
+  TWELVE_QI_LABELS_TH,
 } from "@/lib/bazi/symbolic-engine.constants";
 import {
   OPERATOR_LAGNA_BRANCH_NUMBERS,
@@ -158,7 +159,8 @@ export function resolveTwelveQiStage(dayMasterStem: string, branch: string) {
     stageIndex += 12;
   }
 
-  return LunarUtil.CHANG_SHENG[stageIndex] ?? "";
+  const rawStage = LunarUtil.CHANG_SHENG[stageIndex] ?? "";
+  return TWELVE_QI_LABELS_TH[rawStage as keyof typeof TWELVE_QI_LABELS_TH] ?? rawStage;
 }
 
 function buildDerivedPillarValue(pillarText: string): PillarValue {

@@ -42,6 +42,36 @@ export const ELEMENT_LABELS_TH = {
   water: "น้ำ",
 } as const;
 
+export const BRANCH_LABELS_TH = {
+  子: "ชวด",
+  丑: "ฉลู",
+  寅: "ขาล",
+  卯: "เถาะ",
+  辰: "มะโรง",
+  巳: "มะเส็ง",
+  午: "มะเมีย",
+  未: "มะแม",
+  申: "วอก",
+  酉: "ระกา",
+  戌: "จอ",
+  亥: "กุน",
+} as const;
+
+export const TWELVE_QI_LABELS_TH = {
+  长生: "เชียงแซ",
+  沐浴: "หมกยก",
+  冠带: "กวงตั่ว",
+  临官: "ลิ้มกัว",
+  帝旺: "ตี้อ้วง",
+  衰: "ซวย",
+  病: "ปัง",
+  死: "ซี้",
+  墓: "หมั่ว",
+  绝: "จ๊วก",
+  胎: "ไท",
+  养: "เอี้ยง",
+} as const;
+
 export const STEM_TO_ELEMENT = {
   甲: "wood",
   乙: "wood",
