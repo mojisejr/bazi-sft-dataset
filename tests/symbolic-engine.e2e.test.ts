@@ -44,7 +44,7 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       repository,
     );
 
-    expect(result.fourPillars).toEqual({
+    expect(result.fourPillars).toMatchObject({
       year: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
       month: { stem: "丁", branch: "酉", hiddenStems: ["辛"] },
       day: { stem: "辛", branch: "卯", hiddenStems: ["乙"] },
@@ -59,13 +59,14 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       dayBranch: "偏财",
       hourStem: "正财",
       hourBranch: "七杀,偏印",
+      mingGongStem: "比肩",
     });
     expect(normalizeDerivedRecord(result.twelveQi)).toEqual(
       expect.objectContaining({
-        yearBranch: "病",
-        monthBranch: "临官",
-        dayBranch: "绝",
-        hourBranch: "病",
+        yearBranch: "ปัง",
+        monthBranch: "ลิ้มกัว",
+        dayBranch: "จ๊วก",
+        hourBranch: "ปัง",
       }),
     );
     expect(result.elementAnalysis.totalCounts).toEqual({
@@ -111,7 +112,7 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       repository,
     );
 
-    expect(result.fourPillars).toEqual({
+    expect(result.fourPillars).toMatchObject({
       year: { stem: "辛", branch: "酉", hiddenStems: ["辛"] },
       month: { stem: "辛", branch: "卯", hiddenStems: ["乙"] },
       day: { stem: "己", branch: "丑", hiddenStems: ["己", "癸", "辛"] },
@@ -128,13 +129,14 @@ describe("calculateBaziChart ground-truth fixtures", () => {
       dayBranch: "比肩,偏财,食神",
       hourStem: "偏印",
       hourBranch: "七杀",
+      mingGongStem: "比肩",
     });
     expect(normalizeDerivedRecord(result.twelveQi)).toEqual(
       expect.objectContaining({
-        yearBranch: "长生",
-        monthBranch: "病",
-        dayBranch: "墓",
-        hourBranch: "病",
+        yearBranch: "เชียงแซ",
+        monthBranch: "ปัง",
+        dayBranch: "หมั่ว",
+        hourBranch: "ปัง",
       }),
     );
     expect(result.elementAnalysis.totalCounts).toEqual({

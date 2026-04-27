@@ -34,6 +34,14 @@ function formatPillarCode(pillar: PillarValue | undefined) {
   return `${pillar.stem}${pillar.branch}`;
 }
 
+function formatGlyphWithTranslation(symbol: string | undefined, translation: string | undefined) {
+  if (!symbol) {
+    return "-";
+  }
+
+  return translation ? `${symbol} (${translation})` : symbol;
+}
+
 function formatDaYunAgeRange(startAge: number, endAge: number) {
   return `${startAge}-${endAge}`;
 }
@@ -224,10 +232,29 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                         />
                       ) : null}
                     </div>
-                    <strong className="pillar-ribbon-card__code">{formatPillarCode(column.pillar)}</strong>
+                    <div className="pillar-ribbon-card__identity">
+                      <span className="pillar-ribbon-card__ten-god">{column.pillar?.tenGod ?? "-"}</span>
+                      <strong className="pillar-ribbon-card__code">{formatPillarCode(column.pillar)}</strong>
+                    </div>
                     <div className="destiny-glyph-stack">
-                      <span className="destiny-glyph destiny-glyph--stem">{column.pillar?.stem ?? "-"}</span>
-                      <span className="destiny-glyph destiny-glyph--branch">{column.pillar?.branch ?? "-"}</span>
+                      <div className="destiny-glyph-shell destiny-glyph-shell--stem">
+                        <span className="destiny-glyph destiny-glyph--stem">{column.pillar?.stem ?? "-"}</span>
+                        <span className="destiny-glyph-caption">
+                          {formatGlyphWithTranslation(column.pillar?.stem, column.pillar?.stemTranslation)}
+                        </span>
+                      </div>
+                      <span className="pillar-stage-chip pillar-stage-chip--sitting">
+                        {column.pillar?.sittingStage ?? "-"}
+                      </span>
+                      <div className="destiny-glyph-shell destiny-glyph-shell--branch">
+                        <span className="destiny-glyph destiny-glyph--branch">{column.pillar?.branch ?? "-"}</span>
+                        <span className="destiny-glyph-caption">
+                          {formatGlyphWithTranslation(column.pillar?.branch, column.pillar?.branchTranslation)}
+                        </span>
+                      </div>
+                      <span className="pillar-stage-chip pillar-stage-chip--looking">
+                        {column.pillar?.lookingStage ?? "-"}
+                      </span>
                     </div>
                   </article>
                 );

@@ -57,6 +57,13 @@ import {
 import {
   buildElementAnalysis,
 } from "@/lib/bazi/symbolic-engine.seasonal";
+import {
+  getBranchTranslation,
+  getStemElementTranslation,
+  localizeTwelveQiLabel,
+  resolveDisplayTwelveQiStage,
+  resolveTenGodForStem,
+} from "@/lib/bazi/pillar-display";
 import type {
   BaziKnowledgeRepository,
   BaziStructuralState,
@@ -115,6 +122,24 @@ function buildAgeSnapshot(
     ].join("-"),
     thaiAge,
     chineseAge: thaiAge + 1,
+  };
+}
+
+function enrichPillar(
+  pillar: BaziStructuralState["fourPillars"][keyof BaziStructuralState["fourPillars"]],
+  options: {
+    dayMasterStem: string;
+    stemTenGod?: string;
+    lookingStage?: string;
+  },
+) {
+  return {
+    ...pillar,
+    tenGod: options.stemTenGod,
+    stemTranslation: getStemElementTranslation(pillar.stem) ?? undefined,
+    branchTranslation: getBranchTranslation(pillar.branch) ?? undefined,
+    sittingStage: resolveDisplayTwelveQiStage(pillar.stem, pillar.branch) || undefined,
+    lookingStage: options.lookingStage ? localizeTwelveQiLabel(options.lookingStage) : undefined,
   };
 }
 
@@ -350,11 +375,12 @@ export async function calculateBaziChart(
     .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
   const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
   const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
-  const twelveQiState = {
+  const canonicalTwelveQiState = {
     yearBranch: eightChar.getYearDiShi(),
     monthBranch: eightChar.getMonthDiShi(),
     dayBranch: eightChar.getDayDiShi(),
     hourBranch: eightChar.getTimeDiShi(),
+    mingGongBranch: resolveTwelveQiStage(dayMasterStem, mingGong.value.branch),
     ...(currentDaYunPillar
       ? { currentDaYunBranch: resolveTwelveQiStage(dayMasterStem, currentDaYunPillar.branch) }
       : {}),
@@ -362,16 +388,49 @@ export async function calculateBaziChart(
       ? { currentLiuNianBranch: resolveTwelveQiStage(dayMasterStem, liuNian.branch) }
       : {}),
   };
+  const twelveQiState = Object.fromEntries(
+    Object.entries(canonicalTwelveQiState).map(([key, value]) => [key, localizeTwelveQiLabel(value)]),
+  );
+  const enrichedPillars = {
+    year: enrichPillar(pillars.year, {
+      dayMasterStem,
+      stemTenGod: eightChar.getYearShiShenGan(),
+      lookingStage: canonicalTwelveQiState.yearBranch,
+    }),
+    month: enrichPillar(pillars.month, {
+      dayMasterStem,
+      stemTenGod: eightChar.getMonthShiShenGan(),
+      lookingStage: canonicalTwelveQiState.monthBranch,
+    }),
+    day: enrichPillar(pillars.day, {
+      dayMasterStem,
+      stemTenGod: "ดิถี",
+      lookingStage: canonicalTwelveQiState.dayBranch,
+    }),
+    hour: enrichPillar(pillars.hour, {
+      dayMasterStem,
+      stemTenGod: eightChar.getTimeShiShenGan(),
+      lookingStage: canonicalTwelveQiState.hourBranch,
+    }),
+  };
+  const enrichedMingGong = {
+    ...mingGong.value,
+    tenGod: resolveTenGodForStem(dayMasterStem, mingGong.value.stem) || undefined,
+    stemTranslation: getStemElementTranslation(mingGong.value.stem) ?? undefined,
+    branchTranslation: getBranchTranslation(mingGong.value.branch) ?? undefined,
+    sittingStage: resolveDisplayTwelveQiStage(mingGong.value.stem, mingGong.value.branch) || undefined,
+    lookingStage: localizeTwelveQiLabel(canonicalTwelveQiState.mingGongBranch) || undefined,
+  };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
   const elementAnalysis = buildElementAnalysis(pillars);
   const strengthScore = buildStrengthScoreExplainable(
     dayMasterStem,
     pillars,
     {
-      year: twelveQiState.yearBranch,
-      month: twelveQiState.monthBranch,
-      day: twelveQiState.dayBranch,
-      hour: twelveQiState.hourBranch,
+      year: canonicalTwelveQiState.yearBranch,
+      month: canonicalTwelveQiState.monthBranch,
+      day: canonicalTwelveQiState.dayBranch,
+      hour: canonicalTwelveQiState.hourBranch,
     },
     interactionResolution,
   );
@@ -395,9 +454,9 @@ export async function calculateBaziChart(
   );
 
   const calculatedState = CalculatedStateSchema.parse({
-    fourPillars: pillars,
+    fourPillars: enrichedPillars,
     ageSnapshot,
-    mingGong: mingGong.value,
+    mingGong: enrichedMingGong,
     daYun: daYunState,
     liuNian,
     shenSha: buildShenShaState({
@@ -418,6 +477,7 @@ export async function calculateBaziChart(
       dayBranch: String(eightChar.getDayShiShenZhi()),
       hourStem: eightChar.getTimeShiShenGan(),
       hourBranch: String(eightChar.getTimeShiShenZhi()),
+      mingGongStem: enrichedMingGong.tenGod ?? "",
     },
     twelveQi: twelveQiState,
     elementMetaphors: buildElementMetaphors(dayMasterStem),

@@ -98,8 +98,16 @@ describe("calculateBaziChart", () => {
     });
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
-    expect(result.twelveQi.dayBranch).toBe("帝旺");
+    expect(result.tenGods.mingGongStem).toBe("正财");
+    expect(result.twelveQi.dayBranch).toBe("ตี้อ้วง");
     expect(result.mingGong).toMatchObject({ stem: "壬", branch: "寅" });
+    expect(result.mingGong).toMatchObject({
+      tenGod: "正财",
+      stemTranslation: "น้ำ",
+      branchTranslation: "ขาล",
+      sittingStage: "ปัง",
+      lookingStage: "ซี้",
+    });
     expect(result.explainable.mingGong?.value).toMatchObject({ stem: "壬", branch: "寅" });
     expect(result.explainable.mingGong?.trace).toMatchObject({
       engine: "orthodox-override",
@@ -164,14 +172,29 @@ describe("calculateBaziChart", () => {
     expect(result.liuNian).toMatchObject({ stem: "丙", branch: "午" });
     expect(result.twelveQi).toEqual(
       expect.objectContaining({
-        yearBranch: "沐浴",
-        monthBranch: "沐浴",
-        dayBranch: "帝旺",
-        hourBranch: "冠带",
-        currentDaYunBranch: "帝旺",
-        currentLiuNianBranch: "临官",
+        yearBranch: "หมกยก",
+        monthBranch: "หมกยก",
+        dayBranch: "ตี้อ้วง",
+        hourBranch: "กวงตั่ว",
+        mingGongBranch: "ซี้",
+        currentDaYunBranch: "ตี้อ้วง",
+        currentLiuNianBranch: "ลิ้มกัว",
       }),
     );
+    expect(result.fourPillars.year).toMatchObject({
+      tenGod: "正财",
+      stemTranslation: "น้ำ",
+      branchTranslation: "วอก",
+      sittingStage: "เชียงแซ",
+      lookingStage: "หมกยก",
+    });
+    expect(result.fourPillars.day).toMatchObject({
+      tenGod: "ดิถี",
+      stemTranslation: "ดิน",
+      branchTranslation: "มะเส็ง",
+      sittingStage: "ตี้อ้วง",
+      lookingStage: "ตี้อ้วง",
+    });
     expect(result.shenSha).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -356,7 +379,7 @@ describe("calculateBaziChart", () => {
     expect(`${result.fourPillars.hour.stem}${result.fourPillars.hour.branch}`).toBe("丙辰");
     expect(`${result.fourPillars.hour.stem}${result.fourPillars.hour.branch}`).not.toBe("丁巳");
     expect(result.tenGods.hourStem).toBe("偏印");
-    expect(result.twelveQi.hourBranch).toBe("冠带");
+    expect(result.twelveQi.hourBranch).toBe("กวงตั่ว");
   });
 
   test("uses Zhong Qi month rollover when deriving Ming Gong for orthodox fixtures", async () => {

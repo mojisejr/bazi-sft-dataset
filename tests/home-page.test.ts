@@ -86,17 +86,17 @@ describe("BaziTrainerWorkspace", () => {
   test("renders calculated chart data in the engine column", () => {
     const initialCalculatedState = CalculatedStateSchema.parse({
       fourPillars: {
-        year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
-        month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
-        day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
-        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+        year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"], tenGod: "正财", stemTranslation: "น้ำ", branchTranslation: "วอก", sittingStage: "ลิ้มกัว", lookingStage: "หมกยก" },
+        month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"], tenGod: "劫财", stemTranslation: "ดิน", branchTranslation: "วอก", sittingStage: "ปัง", lookingStage: "หมกยก" },
+        day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"], tenGod: "ดิถี", stemTranslation: "ดิน", branchTranslation: "มะเส็ง", sittingStage: "ตี้อ้วง", lookingStage: "ตี้อ้วง" },
+        hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"], tenGod: "食神", stemTranslation: "ทอง", branchTranslation: "มะแม", sittingStage: "เอี้ยง", lookingStage: "กวงตั่ว" },
       },
       ageSnapshot: {
         referenceDate: "2026-06-15",
         thaiAge: 33,
         chineseAge: 34,
       },
-      mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
+      mingGong: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"], tenGod: "正财", stemTranslation: "น้ำ", branchTranslation: "ขาล", sittingStage: "ลิ้มกัว", lookingStage: "หมกยก" },
       daYun: [
         {
           startAge: 4,
@@ -157,12 +157,13 @@ describe("BaziTrainerWorkspace", () => {
         hourBranch: "比肩,偏印,七杀",
       },
       twelveQi: {
-        yearBranch: "沐浴",
-        monthBranch: "沐浴",
-        dayBranch: "帝旺",
-        hourBranch: "冠带",
-        currentDaYunBranch: "帝旺",
-        currentLiuNianBranch: "临官",
+        yearBranch: "หมกยก",
+        monthBranch: "หมกยก",
+        dayBranch: "ตี้อ้วง",
+        hourBranch: "กวงตั่ว",
+        mingGongBranch: "หมกยก",
+        currentDaYunBranch: "ตี้อ้วง",
+        currentLiuNianBranch: "ลิ้มกัว",
       },
       elementMetaphors: [
         {
@@ -310,6 +311,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ดูวิธีคำนวณ");
     expect(html).toContain("5 เสาหลัก");
     expect(html).toContain("เริ่มจากโครงดวงก่อน แล้วค่อยเปิดข้อมูลรองตามลำดับ");
+    expect(html).toContain("ดิถี");
+    expect(html).toContain("壬 (น้ำ)");
+    expect(html).toContain("寅 (ขาล)");
+    expect(html).toContain("ตี้อ้วง");
+    expect(html).toContain("ลิ้มกัว");
     expect(html).toContain("วัยจร");
     expect(html).toContain("เปิด timeline วัยจร");
     expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");

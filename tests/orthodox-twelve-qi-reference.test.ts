@@ -78,10 +78,10 @@ describe("orthodox twelve qi reference proof", () => {
 
     expect(result.twelveQi).toEqual(
       expect.objectContaining({
-        yearBranch: "养",
-        monthBranch: "沐浴",
-        dayBranch: "养",
-        hourBranch: "胎",
+        yearBranch: "เอี้ยง",
+        monthBranch: "หมกยก",
+        dayBranch: "เอี้ยง",
+        hourBranch: "ไท",
       }),
     );
     expect(result.twelveQi.currentDaYunBranch).toBeTruthy();
