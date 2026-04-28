@@ -46,6 +46,10 @@ function hasVisibleTopStage(pillar: PillarValue | undefined) {
   return Boolean(pillar?.upperStageDisplay);
 }
 
+function hasVisibleSittingStage(pillar: PillarValue | undefined) {
+  return Boolean(pillar?.sittingStage);
+}
+
 function formatDaYunAgeRange(startAge: number, endAge: number) {
   return `${startAge}-${endAge}`;
 }
@@ -225,7 +229,12 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                   : undefined;
 
                 return (
-                  <article key={column.key} className="pillar-ribbon-card">
+                  <article
+                    key={column.key}
+                    className={`pillar-ribbon-card${column.key === "day" ? " pillar-ribbon-card--day-master" : ""}`}
+                    data-pillar-key={column.key}
+                    data-day-master-column={column.key === "day" ? "true" : undefined}
+                  >
                     <div className="pillar-ribbon-card__header">
                       <span className="pillar-ribbon-card__label">{column.label}</span>
                       {explainableTrace ? (
@@ -237,16 +246,34 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                       ) : null}
                     </div>
                     <div className="destiny-glyph-stack">
-                      {hasVisibleTopStage(column.pillar) ? (
-                        <span className="pillar-stage-chip pillar-stage-chip--upper">
-                          {column.pillar?.upperStageDisplay}
-                        </span>
-                      ) : null}
+                      <div className="pillar-stage-slot pillar-stage-slot--upper">
+                        {column.key === "day" ? (
+                          <span className="pillar-day-master-tag">ดิถี</span>
+                        ) : hasVisibleTopStage(column.pillar) ? (
+                          <span className="pillar-stage-chip pillar-stage-chip--upper">
+                            {column.pillar?.upperStageDisplay}
+                          </span>
+                        ) : (
+                          <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
+                        )}
+                      </div>
                       <div className="destiny-glyph-shell destiny-glyph-shell--stem">
                         <span className="destiny-glyph destiny-glyph--stem">{column.pillar?.stem ?? "-"}</span>
                         <span className="destiny-glyph-caption">
                           {formatGlyphWithTranslation(column.pillar?.stem, column.pillar?.stemTranslation)}
                         </span>
+                      </div>
+                      <div className="pillar-stage-slot pillar-stage-slot--middle">
+                        {hasVisibleSittingStage(column.pillar) ? (
+                          <span
+                            className="pillar-stage-chip pillar-stage-chip--sitting"
+                            aria-label={`${column.label} เชี่ยงแซกลาง`}
+                          >
+                            {column.pillar?.sittingStage}
+                          </span>
+                        ) : (
+                          <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
+                        )}
                       </div>
                       <div className="destiny-glyph-shell destiny-glyph-shell--branch">
                         <span className="destiny-glyph destiny-glyph--branch">{column.pillar?.branch ?? "-"}</span>
@@ -254,11 +281,15 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                           {formatGlyphWithTranslation(column.pillar?.branch, column.pillar?.branchTranslation)}
                         </span>
                       </div>
-                      {column.pillar?.lowerStageDisplay ? (
-                        <span className="pillar-stage-chip pillar-stage-chip--lower">
-                          {column.pillar.lowerStageDisplay}
-                        </span>
-                      ) : null}
+                      <div className="pillar-stage-slot pillar-stage-slot--lower">
+                        {column.pillar?.lowerStageDisplay ? (
+                          <span className="pillar-stage-chip pillar-stage-chip--lower">
+                            {column.pillar.lowerStageDisplay}
+                          </span>
+                        ) : (
+                          <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
+                        )}
+                      </div>
                     </div>
                   </article>
                 );

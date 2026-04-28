@@ -1008,6 +1008,10 @@ textarea {
   font-weight: 700;
 }
 
+.pillar-ribbon-card--day-master .pillar-ribbon-card__label {
+  color: var(--accent);
+}
+
 .movement-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1264,13 +1268,30 @@ textarea {
 
 .destiny-glyph-stack {
   display: grid;
+  grid-template-rows: minmax(34px, auto) auto minmax(34px, auto) auto minmax(34px, auto);
   gap: 10px;
   justify-items: center;
+  align-content: start;
   padding: 14px 0;
   border-radius: 20px;
   background:
     radial-gradient(circle at top, rgba(255, 244, 230, 0.85), transparent 55%),
     rgba(255, 255, 255, 0.78);
+}
+
+.pillar-stage-slot {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  min-height: 34px;
+}
+
+.pillar-stage-slot__placeholder {
+  display: inline-flex;
+  min-width: 74px;
+  min-height: 34px;
+  visibility: hidden;
 }
 
 .destiny-glyph-shell {
@@ -1337,6 +1358,21 @@ textarea {
   background: linear-gradient(180deg, rgba(211, 246, 232, 0.96), rgba(185, 231, 215, 0.92));
   border: 1px solid rgba(53, 133, 107, 0.18);
   color: #16624b;
+}
+
+.pillar-day-master-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 240, 222, 0.98), rgba(247, 220, 191, 0.92));
+  border: 1px solid rgba(159, 83, 32, 0.16);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .pillar-metadata-list {

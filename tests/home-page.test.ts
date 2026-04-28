@@ -315,6 +315,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("寅 (ขาล)");
     expect(html).toContain("ตี้อ๋วง");
     expect(html).toContain("ลิ่มกัว");
+    expect(html).toContain('data-day-master-column="true"');
+    expect(html).toContain("pillar-day-master-tag");
+    expect(html).toContain("วัน เชี่ยงแซกลาง");
+    expect(html).toContain("เดือน เชี่ยงแซกลาง");
+    expect(html).toContain("ปี เชี่ยงแซกลาง");
     expect(html).toContain("เชี่ยงแซ/ลิ่มกัว");
     expect(html).toContain("ตี้อ๋วง/ตี้อ๋วง");
     expect(html).not.toContain("正财");
