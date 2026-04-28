@@ -38,7 +38,7 @@ describe("Phase 2 operator constants", () => {
       hourMonthStemZone: 0.25,
       yearZone: 0.25,
     });
-    expect(OPERATOR_GOOD_QI_LABELS).toContain("ตี้อ้วง");
+    expect(OPERATOR_GOOD_QI_LABELS).toContain("ตี้อ๋วง");
     expect(OPERATOR_BAD_QI_LABELS).toContain("ซวย");
   });
 

@@ -63,10 +63,10 @@ describe("calculateBaziChart ground-truth fixtures", () => {
     });
     expect(normalizeDerivedRecord(result.twelveQi)).toEqual(
       expect.objectContaining({
-        yearBranch: "ปัง",
-        monthBranch: "ลิ้มกัว",
-        dayBranch: "จ๊วก",
-        hourBranch: "ปัง",
+        yearBranch: "แป่",
+        monthBranch: "ลิ่มกัว",
+        dayBranch: "เจ๊าะ",
+        hourBranch: "แป่",
       }),
     );
     expect(result.elementAnalysis.totalCounts).toEqual({
@@ -133,10 +133,10 @@ describe("calculateBaziChart ground-truth fixtures", () => {
     });
     expect(normalizeDerivedRecord(result.twelveQi)).toEqual(
       expect.objectContaining({
-        yearBranch: "เชียงแซ",
-        monthBranch: "ปัง",
-        dayBranch: "หมั่ว",
-        hourBranch: "ปัง",
+        yearBranch: "เชี่ยงแซ",
+        monthBranch: "แป่",
+        dayBranch: "หมอ",
+        hourBranch: "แป่",
       }),
     );
     expect(result.elementAnalysis.totalCounts).toEqual({

@@ -99,14 +99,14 @@ describe("calculateBaziChart", () => {
     expect(result.tenGods.monthStem).toBe("劫财");
     expect(result.tenGods.hourStem).toBe("食神");
     expect(result.tenGods.mingGongStem).toBe("正财");
-    expect(result.twelveQi.dayBranch).toBe("ตี้อ้วง");
+    expect(result.twelveQi.dayBranch).toBe("ตี้อ๋วง");
     expect(result.mingGong).toMatchObject({ stem: "壬", branch: "寅" });
     expect(result.mingGong).toMatchObject({
       tenGod: "正财",
       stemTranslation: "น้ำ",
       branchTranslation: "ขาล",
-      sittingStage: "ปัง",
-      lookingStage: "ซี้",
+      sittingStage: "แป่",
+      lookingStage: "ซี่",
     });
     expect(result.explainable.mingGong?.value).toMatchObject({ stem: "壬", branch: "寅" });
     expect(result.explainable.mingGong?.trace).toMatchObject({
@@ -174,26 +174,30 @@ describe("calculateBaziChart", () => {
       expect.objectContaining({
         yearBranch: "หมกยก",
         monthBranch: "หมกยก",
-        dayBranch: "ตี้อ้วง",
+        dayBranch: "ตี้อ๋วง",
         hourBranch: "กวงตั่ว",
-        mingGongBranch: "ซี้",
-        currentDaYunBranch: "ตี้อ้วง",
-        currentLiuNianBranch: "ลิ้มกัว",
+        mingGongBranch: "ซี่",
+        currentDaYunBranch: "ตี้อ๋วง",
+        currentLiuNianBranch: "ลิ่มกัว",
       }),
     );
     expect(result.fourPillars.year).toMatchObject({
       tenGod: "正财",
       stemTranslation: "น้ำ",
       branchTranslation: "วอก",
-      sittingStage: "เชียงแซ",
+      sittingStage: "เชี่ยงแซ",
       lookingStage: "หมกยก",
+      upperStageDisplay: "หมกยก/เชี่ยงแซ",
+      lowerStageDisplay: "หมกยก/เชี่ยงแซ",
     });
     expect(result.fourPillars.day).toMatchObject({
       tenGod: "ดิถี",
       stemTranslation: "ดิน",
       branchTranslation: "มะเส็ง",
-      sittingStage: "ตี้อ้วง",
-      lookingStage: "ตี้อ้วง",
+      sittingStage: "ตี้อ๋วง",
+      lookingStage: "ตี้อ๋วง",
+      upperStageDisplay: undefined,
+      lowerStageDisplay: "ตี้อ๋วง/ตี้อ๋วง",
     });
     expect(result.shenSha).toEqual(
       expect.arrayContaining([

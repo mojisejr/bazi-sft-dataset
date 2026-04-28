@@ -81,7 +81,7 @@ describe("orthodox twelve qi reference proof", () => {
         yearBranch: "เอี้ยง",
         monthBranch: "หมกยก",
         dayBranch: "เอี้ยง",
-        hourBranch: "ไท",
+        hourBranch: "ทอ",
       }),
     );
     expect(result.twelveQi.currentDaYunBranch).toBeTruthy();

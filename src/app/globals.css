@@ -1008,25 +1008,6 @@ textarea {
   font-weight: 700;
 }
 
-.pillar-ribbon-card__identity {
-  display: grid;
-  gap: 6px;
-}
-
-.pillar-ribbon-card__ten-god {
-  display: inline-flex;
-  align-items: center;
-  justify-self: start;
-  min-height: 28px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(110, 79, 48, 0.08);
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
 .movement-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1346,10 +1327,16 @@ textarea {
   color: #16624b;
 }
 
-.pillar-stage-chip--looking {
+.pillar-stage-chip--upper {
   background: linear-gradient(180deg, rgba(240, 226, 255, 0.96), rgba(227, 207, 255, 0.92));
   border: 1px solid rgba(118, 87, 173, 0.18);
   color: #6a3dad;
+}
+
+.pillar-stage-chip--lower {
+  background: linear-gradient(180deg, rgba(211, 246, 232, 0.96), rgba(185, 231, 215, 0.92));
+  border: 1px solid rgba(53, 133, 107, 0.18);
+  color: #16624b;
 }
 
 .pillar-metadata-list {

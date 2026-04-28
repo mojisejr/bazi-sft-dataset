@@ -59,6 +59,28 @@ export function resolveDisplayTwelveQiStage(stem: string, branch: string) {
   return localizeTwelveQiLabel(resolveCanonicalTwelveQiStage(stem, branch));
 }
 
+export function resolveStemReferenceBranch(targetStem: string) {
+  return BRANCH_ORDER.find((branch) => resolveCanonicalTwelveQiStage(targetStem, branch) === "长生") ?? "";
+}
+
+export function resolveDisplayStemPairStage(dayMasterStem: string, targetStem: string) {
+  const referenceBranch = resolveStemReferenceBranch(targetStem);
+
+  if (!referenceBranch) {
+    return "";
+  }
+
+  return resolveDisplayTwelveQiStage(dayMasterStem, referenceBranch);
+}
+
+export function formatStagePair(primary?: string, context?: string) {
+  if (primary && context) {
+    return `${primary}/${context}`;
+  }
+
+  return primary ?? context ?? "";
+}
+
 export function resolveTenGodForStem(dayMasterStem: string, targetStem: string) {
   const dayMasterElement = STEM_TO_ELEMENT[dayMasterStem as keyof typeof STEM_TO_ELEMENT];
   const targetElement = STEM_TO_ELEMENT[targetStem as keyof typeof STEM_TO_ELEMENT];

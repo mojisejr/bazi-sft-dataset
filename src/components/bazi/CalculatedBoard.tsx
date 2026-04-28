@@ -42,6 +42,10 @@ function formatGlyphWithTranslation(symbol: string | undefined, translation: str
   return translation ? `${symbol} (${translation})` : symbol;
 }
 
+function hasVisibleTopStage(pillar: PillarValue | undefined) {
+  return Boolean(pillar?.upperStageDisplay);
+}
+
 function formatDaYunAgeRange(startAge: number, endAge: number) {
   return `${startAge}-${endAge}`;
 }
@@ -190,7 +194,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           <div className="section-heading board-heading reading-toolbar">
             <div>
               <p className="section-kicker">ภาพรวมดวงจีน</p>
-              <h2>อ่านจาก 5 เสาหลักก่อน แล้วค่อยไล่กำลังดิถี วัยจร และแกนบุคลิก</h2>
+              <h2>อ่านจากพื้นดวงก่อน แล้วค่อยไล่กำลังดิถี วัยจร และแกนบุคลิก</h2>
             </div>
             <div className="board-actions">
               <p className="section-note board-section-note">
@@ -209,7 +213,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           <section className="surface inset-card pillar-ribbon-section" aria-label="five pillar strip" data-reading-block="B">
             <div className="section-heading section-heading--compact">
               <div>
-                <p className="section-kicker">5 เสาหลัก</p>
+                <p className="section-kicker">พื้นดวง</p>
                 <h3>เริ่มจากโครงดวงก่อน แล้วค่อยเปิดข้อมูลรองตามลำดับ</h3>
               </div>
             </div>
@@ -232,28 +236,29 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                         />
                       ) : null}
                     </div>
-                    <div className="pillar-ribbon-card__identity">
-                      <span className="pillar-ribbon-card__ten-god">{column.pillar?.tenGod ?? "-"}</span>
-                    </div>
                     <div className="destiny-glyph-stack">
+                      {hasVisibleTopStage(column.pillar) ? (
+                        <span className="pillar-stage-chip pillar-stage-chip--upper">
+                          {column.pillar?.upperStageDisplay}
+                        </span>
+                      ) : null}
                       <div className="destiny-glyph-shell destiny-glyph-shell--stem">
                         <span className="destiny-glyph destiny-glyph--stem">{column.pillar?.stem ?? "-"}</span>
                         <span className="destiny-glyph-caption">
                           {formatGlyphWithTranslation(column.pillar?.stem, column.pillar?.stemTranslation)}
                         </span>
                       </div>
-                      <span className="pillar-stage-chip pillar-stage-chip--sitting">
-                        {column.pillar?.sittingStage ?? "-"}
-                      </span>
                       <div className="destiny-glyph-shell destiny-glyph-shell--branch">
                         <span className="destiny-glyph destiny-glyph--branch">{column.pillar?.branch ?? "-"}</span>
                         <span className="destiny-glyph-caption">
                           {formatGlyphWithTranslation(column.pillar?.branch, column.pillar?.branchTranslation)}
                         </span>
                       </div>
-                      <span className="pillar-stage-chip pillar-stage-chip--looking">
-                        {column.pillar?.lookingStage ?? "-"}
-                      </span>
+                      {column.pillar?.lowerStageDisplay ? (
+                        <span className="pillar-stage-chip pillar-stage-chip--lower">
+                          {column.pillar.lowerStageDisplay}
+                        </span>
+                      ) : null}
                     </div>
                   </article>
                 );

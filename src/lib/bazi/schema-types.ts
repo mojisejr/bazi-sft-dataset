@@ -34,6 +34,12 @@ export const PillarValueSchema = z.object({
   branchTranslation: z.string().trim().min(1).optional(),
   sittingStage: z.string().trim().min(1).optional(),
   lookingStage: z.string().trim().min(1).optional(),
+  upperStagePrimary: z.string().trim().min(1).optional(),
+  upperStageContext: z.string().trim().min(1).optional(),
+  upperStageDisplay: z.string().trim().min(1).optional(),
+  lowerStagePrimary: z.string().trim().min(1).optional(),
+  lowerStageContext: z.string().trim().min(1).optional(),
+  lowerStageDisplay: z.string().trim().min(1).optional(),
 });
 
 export const DaYunPhaseSchema = z.object({

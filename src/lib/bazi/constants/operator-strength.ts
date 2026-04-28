@@ -106,7 +106,7 @@ export const OPERATOR_FAVORABLE_BRANCHES = Object.fromEntries(
   ]),
 ) as Readonly<Record<SupportedElement, string[]>>;
 
-export const OPERATOR_GOOD_QI_LABELS = ["กวงตั่ว", "ลิ่มกัว", "ตี้อ้วง", "ทอ", "เอี้ยง"] as const;
+export const OPERATOR_GOOD_QI_LABELS = ["กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "ทอ", "เอี้ยง"] as const;
 
 export const OPERATOR_BAD_QI_LABELS = ["หมกยก", "ซวย", "แป่", "ซี่", "เจ๊าะ"] as const;
 

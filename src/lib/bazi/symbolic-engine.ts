@@ -58,7 +58,9 @@ import {
   buildElementAnalysis,
 } from "@/lib/bazi/symbolic-engine.seasonal";
 import {
+  formatStagePair,
   getBranchTranslation,
+  resolveDisplayStemPairStage,
   getStemElementTranslation,
   localizeTwelveQiLabel,
   resolveDisplayTwelveQiStage,
@@ -131,15 +133,28 @@ function enrichPillar(
     dayMasterStem: string;
     stemTenGod?: string;
     lookingStage?: string;
+    hideUpperStage?: boolean;
   },
 ) {
+  const sittingStage = resolveDisplayTwelveQiStage(pillar.stem, pillar.branch) || undefined;
+  const upperStagePrimary = options.hideUpperStage
+    ? undefined
+    : resolveDisplayStemPairStage(options.dayMasterStem, pillar.stem) || undefined;
+  const lowerStagePrimary = options.lookingStage ? localizeTwelveQiLabel(options.lookingStage) : undefined;
+
   return {
     ...pillar,
     tenGod: options.stemTenGod,
     stemTranslation: getStemElementTranslation(pillar.stem) ?? undefined,
     branchTranslation: getBranchTranslation(pillar.branch) ?? undefined,
-    sittingStage: resolveDisplayTwelveQiStage(pillar.stem, pillar.branch) || undefined,
-    lookingStage: options.lookingStage ? localizeTwelveQiLabel(options.lookingStage) : undefined,
+    sittingStage,
+    lookingStage: lowerStagePrimary,
+    upperStagePrimary,
+    upperStageContext: upperStagePrimary ? sittingStage : undefined,
+    upperStageDisplay: upperStagePrimary ? formatStagePair(upperStagePrimary, sittingStage) : undefined,
+    lowerStagePrimary,
+    lowerStageContext: lowerStagePrimary ? sittingStage : undefined,
+    lowerStageDisplay: lowerStagePrimary ? formatStagePair(lowerStagePrimary, sittingStage) : undefined,
   };
 }
 
@@ -406,6 +421,7 @@ export async function calculateBaziChart(
       dayMasterStem,
       stemTenGod: "ดิถี",
       lookingStage: canonicalTwelveQiState.dayBranch,
+      hideUpperStage: true,
     }),
     hour: enrichPillar(pillars.hour, {
       dayMasterStem,
