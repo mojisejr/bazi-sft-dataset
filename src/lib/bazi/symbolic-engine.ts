@@ -158,6 +158,17 @@ function enrichPillar(
   };
 }
 
+function buildDynamicLuckStageDisplays(
+  dayMasterStem: string,
+  targetStem: string,
+  targetBranch: string,
+) {
+  return {
+    upperStageDisplay: resolveDisplayStemPairStage(dayMasterStem, targetStem) || undefined,
+    lowerStageDisplay: resolveDisplayTwelveQiStage(dayMasterStem, targetBranch) || undefined,
+  };
+}
+
 export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
@@ -390,6 +401,32 @@ export async function calculateBaziChart(
     .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
   const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
   const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
+  const enrichedDaYunState = daYunState.map((entry) => {
+    const dynamicDisplays = buildDynamicLuckStageDisplays(dayMasterStem, entry.stem, entry.branch);
+
+    return {
+      ...entry,
+      ...dynamicDisplays,
+      upperPhase: entry.upperPhase
+        ? {
+            ...entry.upperPhase,
+            twelveQiDisplay: dynamicDisplays.upperStageDisplay,
+          }
+        : undefined,
+      lowerPhase: entry.lowerPhase
+        ? {
+            ...entry.lowerPhase,
+            twelveQiDisplay: dynamicDisplays.lowerStageDisplay,
+          }
+        : undefined,
+    };
+  });
+  const enrichedLiuNian = liuNian
+    ? {
+        ...liuNian,
+        ...buildDynamicLuckStageDisplays(dayMasterStem, liuNian.stem, liuNian.branch),
+      }
+    : undefined;
   const canonicalTwelveQiState = {
     yearBranch: eightChar.getYearDiShi(),
     monthBranch: eightChar.getMonthDiShi(),
@@ -473,13 +510,13 @@ export async function calculateBaziChart(
     fourPillars: enrichedPillars,
     ageSnapshot,
     mingGong: enrichedMingGong,
-    daYun: daYunState,
-    liuNian,
+    daYun: enrichedDaYunState,
+    liuNian: enrichedLiuNian,
     shenSha: buildShenShaState({
       pillars,
       dayMasterStem,
       mingGong: mingGong.value,
-      liuNian,
+      liuNian: enrichedLiuNian,
       currentDaYun: currentDaYunPillar,
     }),
     dayMaster: dayMasterStem,

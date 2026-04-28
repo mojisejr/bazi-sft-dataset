@@ -26,6 +26,12 @@ type StaticDestinyColumn = {
   pillar: PillarValue | undefined;
 };
 
+type DynamicLuckBadgeItem = {
+  key: string;
+  label: string;
+  value: string;
+};
+
 function formatPillarCode(pillar: PillarValue | undefined) {
   if (!pillar) {
     return "-";
@@ -101,14 +107,45 @@ function getRelatedShenShaEntries(
   return entries.filter((entry) => entry.relatedPillar === relatedPillar);
 }
 
-const twelveQiInteractionRows = [
-  { key: "yearBranch", label: "ดิถี vs ปี" },
-  { key: "monthBranch", label: "ดิถี vs เดือน" },
-  { key: "dayBranch", label: "ดิถี vs วัน" },
-  { key: "hourBranch", label: "ดิถี vs เวลา" },
-  { key: "currentDaYunBranch", label: "ดิถี vs วัยจร" },
-  { key: "currentLiuNianBranch", label: "ดิถี vs ปีจร" },
-] as const;
+function buildDynamicLuckBadges(
+  pillar: Pick<PillarValue, "upperStageDisplay" | "lowerStageDisplay"> | Pick<DaYunPillarValue, "upperStageDisplay" | "lowerStageDisplay"> | undefined,
+  keyPrefix: string,
+): DynamicLuckBadgeItem[] {
+  const items: DynamicLuckBadgeItem[] = [];
+
+  if (pillar?.upperStageDisplay) {
+    items.push({
+      key: `${keyPrefix}-upper`,
+      label: "ราศีบน",
+      value: pillar.upperStageDisplay,
+    });
+  }
+
+  if (pillar?.lowerStageDisplay) {
+    items.push({
+      key: `${keyPrefix}-lower`,
+      label: "ราศีล่าง",
+      value: pillar.lowerStageDisplay,
+    });
+  }
+
+  return items;
+}
+
+function buildDaYunPhaseBadges(
+  phase: DaYunPhaseValue | undefined,
+  keyPrefix: string,
+): DynamicLuckBadgeItem[] {
+  if (!phase?.twelveQiDisplay) {
+    return [];
+  }
+
+  return [{
+    key: `${keyPrefix}-${phase.source}`,
+    label: phase.source === "stem" ? "ราศีบน" : "ราศีล่าง",
+    value: phase.twelveQiDisplay,
+  }];
+}
 
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
@@ -162,6 +199,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
     : currentDaYun
       ? formatDaYunCycleCode(currentDaYun)
       : null;
+  const liuNianBadges = buildDynamicLuckBadges(calculatedState?.liuNian, "liu-nian");
+  const currentDaYunBadges = buildDynamicLuckBadges(currentDaYun ?? undefined, "current-dayun");
   const ageSnapshotLabel = formatAgeSnapshot(calculatedState?.ageSnapshot);
   const isStrengthDetailOpen = activeDetailPanel === "strength";
   const isLuckDetailOpen = activeDetailPanel === "luck";
@@ -175,11 +214,11 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
     }
     : activeDetailPanel === "luck"
       ? {
-        kicker: "วัยจร",
-        title: "timeline วัยจร",
+        kicker: "ถนนชีวิต",
+        title: "ถนนชีวิต",
         summary: currentDaYun
           ? `รอบหลัก ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
-          : "เปิดรายละเอียดรอบหลัก ก้าวปัจจุบัน และ timeline ในชั้นเดียว",
+          : "เปิดรายละเอียดรอบหลัก ก้าวปัจจุบัน และช่วงทางเดินในชั้นเดียว",
       }
       : activeDetailPanel === "persona"
         ? {
@@ -317,7 +356,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               <div className="section-heading section-heading--compact">
                 <div>
                   <p className="section-kicker">วัยจร</p>
-                  <h3>ดูรอบหลัก ก้าวปัจจุบัน และปีจรในโมดูลเดียว</h3>
+                  <h3>ดูรอบหลัก ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว</h3>
                 </div>
               </div>
 
@@ -330,6 +369,16 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                       ? `ก้าน ${calculatedState.liuNian.stem} · กิ่ง ${calculatedState.liuNian.branch}`
                       : "ยังไม่มีปีจรสำหรับเคสนี้"}
                   </p>
+                  {liuNianBadges.length > 0 ? (
+                    <div className="dynamic-luck-badge-list" aria-label="ปีจร 12 เชี่ยงแซ">
+                      {liuNianBadges.map((badge) => (
+                        <article key={badge.key} className="dynamic-luck-badge">
+                          <span className="dynamic-luck-badge__label">{badge.label}</span>
+                          <strong className="dynamic-luck-badge__value">{badge.value}</strong>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
                   <div className="shen-sha-cluster shen-sha-cluster--compact">
                     {liuNianShenSha.length > 0 ? (
                       liuNianShenSha.map((entry) => (
@@ -363,29 +412,21 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                       {`ก้าวปัจจุบัน ${formatDaYunAgeRange(currentDaYunPhase.startAge, currentDaYunPhase.endAge)} · ${formatDaYunPhaseSource(currentDaYunPhase.source)}`}
                     </p>
                   ) : null}
+                  {currentDaYunBadges.length > 0 ? (
+                    <div className="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ">
+                      {currentDaYunBadges.map((badge) => (
+                        <article key={badge.key} className="dynamic-luck-badge">
+                          <span className="dynamic-luck-badge__label">{badge.label}</span>
+                          <strong className="dynamic-luck-badge__value">{badge.value}</strong>
+                        </article>
+                      ))}
+                    </div>
+                  ) : null}
                   {ageSnapshotLabel ? (
                     <p className="current-luck-card__cycle">{ageSnapshotLabel}</p>
                   ) : null}
                 </article>
               </div>
-
-              <section className="detail-cluster detail-cluster--nested" aria-label="twelve qi interactions">
-                <div className="section-heading section-heading--compact">
-                  <div>
-                    <p className="section-kicker">12 เชี่ยงแซ</p>
-                    <h4>ดูความสัมพันธ์ของดิถีกับเสาหลัก วัยจร และปีจรในบล็อกเดียว</h4>
-                  </div>
-                </div>
-
-                <dl className="detail-list">
-                  {twelveQiInteractionRows.map((item) => (
-                    <div key={item.key} className="detail-list-row">
-                      <dt>{item.label}</dt>
-                      <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
 
               <div className="movement-panel__actions">
                 <button
@@ -394,7 +435,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                   aria-haspopup="dialog"
                   onClick={() => setActiveDetailPanel("luck")}
                 >
-                  เปิด timeline วัยจร
+                  เปิดถนนชีวิต
                 </button>
               </div>
             </section>
@@ -442,6 +483,16 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                         ? `ก้าน ${calculatedState.liuNian.stem} · กิ่ง ${calculatedState.liuNian.branch}`
                         : "ยังไม่มีปีจรสำหรับเคสนี้"}
                     </p>
+                    {liuNianBadges.length > 0 ? (
+                      <div className="dynamic-luck-badge-list" aria-label="ปีจร 12 เชี่ยงแซ">
+                        {liuNianBadges.map((badge) => (
+                          <article key={`overlay-${badge.key}`} className="dynamic-luck-badge">
+                            <span className="dynamic-luck-badge__label">{badge.label}</span>
+                            <strong className="dynamic-luck-badge__value">{badge.value}</strong>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
                     <div className="shen-sha-cluster shen-sha-cluster--compact">
                       {liuNianShenSha.length > 0 ? (
                         liuNianShenSha.map((entry) => (
@@ -475,6 +526,16 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                         {`ก้าวปัจจุบัน ${formatDaYunAgeRange(currentDaYunPhase.startAge, currentDaYunPhase.endAge)} · ${formatDaYunPhaseSource(currentDaYunPhase.source)}`}
                       </p>
                     ) : null}
+                    {currentDaYunBadges.length > 0 ? (
+                      <div className="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ">
+                        {currentDaYunBadges.map((badge) => (
+                          <article key={`overlay-${badge.key}`} className="dynamic-luck-badge">
+                            <span className="dynamic-luck-badge__label">{badge.label}</span>
+                            <strong className="dynamic-luck-badge__value">{badge.value}</strong>
+                          </article>
+                        ))}
+                      </div>
+                    ) : null}
                     {ageSnapshotLabel ? (
                       <p className="current-luck-card__cycle">{ageSnapshotLabel}</p>
                     ) : null}
@@ -504,6 +565,12 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                               <span className="dayun-card__phase-label">
                                 {formatDaYunPhaseSource(phase.source)}
                               </span>
+                              {buildDaYunPhaseBadges(phase, `${entry.startAge}-${entry.endAge}`).map((badge) => (
+                                <article key={badge.key} className="dynamic-luck-badge dynamic-luck-badge--phase">
+                                  <span className="dynamic-luck-badge__label">{badge.label}</span>
+                                  <strong className="dynamic-luck-badge__value">{badge.value}</strong>
+                                </article>
+                              ))}
                             </section>
                           ))}
                         </div>
@@ -517,24 +584,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                     </article>
                   ))}
                 </div>
-
-                <section className="detail-cluster detail-cluster--nested">
-                  <div className="section-heading section-heading--compact">
-                    <div>
-                      <p className="section-kicker">12 เชี่ยงแซ</p>
-                      <h4>แกะจังหวะดิถีกับเสาหลัก วัยจร และปีจรในมุมเดียว</h4>
-                    </div>
-                  </div>
-
-                  <dl className="detail-list">
-                    {twelveQiInteractionRows.map((item) => (
-                      <div key={item.key} className="detail-list-row">
-                        <dt>{item.label}</dt>
-                        <dd>{calculatedState.twelveQi[item.key] ?? "-"}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                </section>
               </>
             ) : null}
 

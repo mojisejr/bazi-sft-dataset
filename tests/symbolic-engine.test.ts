@@ -2,6 +2,10 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import { createCalculateBaziHandler } from "@/app/api/bazi/calculate/route";
 import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
+import {
+  resolveDisplayStemPairStage,
+  resolveDisplayTwelveQiStage,
+} from "@/lib/bazi/pillar-display";
 import { isForwardDaYunDirection } from "@/lib/bazi/symbolic-engine.birth";
 import {
   calculateBaziChart,
@@ -134,17 +138,21 @@ describe("calculateBaziChart", () => {
       endAge: 13,
       stem: "丁",
       branch: "未",
+      upperStageDisplay: resolveDisplayStemPairStage("己", "丁"),
+      lowerStageDisplay: resolveDisplayTwelveQiStage("己", "未"),
       upperPhase: {
         startAge: 4,
         endAge: 8,
         symbol: "丁",
         source: "stem",
+        twelveQiDisplay: resolveDisplayStemPairStage("己", "丁"),
       },
       lowerPhase: {
         startAge: 9,
         endAge: 13,
         symbol: "未",
         source: "branch",
+        twelveQiDisplay: resolveDisplayTwelveQiStage("己", "未"),
       },
     });
     expect(result.daYun.find((entry) => entry.isCurrent)).toMatchObject({
@@ -154,11 +162,14 @@ describe("calculateBaziChart", () => {
       branch: "巳",
       isCurrent: true,
       currentPhase: "lower",
+      upperStageDisplay: resolveDisplayStemPairStage("己", "乙"),
+      lowerStageDisplay: resolveDisplayTwelveQiStage("己", "巳"),
       upperPhase: {
         startAge: 24,
         endAge: 28,
         symbol: "乙",
         source: "stem",
+        twelveQiDisplay: resolveDisplayStemPairStage("己", "乙"),
         isCurrent: false,
       },
       lowerPhase: {
@@ -166,10 +177,16 @@ describe("calculateBaziChart", () => {
         endAge: 33,
         symbol: "巳",
         source: "branch",
+        twelveQiDisplay: resolveDisplayTwelveQiStage("己", "巳"),
         isCurrent: true,
       },
     });
-    expect(result.liuNian).toMatchObject({ stem: "丙", branch: "午" });
+    expect(result.liuNian).toMatchObject({
+      stem: "丙",
+      branch: "午",
+      upperStageDisplay: resolveDisplayStemPairStage("己", "丙"),
+      lowerStageDisplay: resolveDisplayTwelveQiStage("己", "午"),
+    });
     expect(result.twelveQi).toEqual(
       expect.objectContaining({
         yearBranch: "หมกยก",

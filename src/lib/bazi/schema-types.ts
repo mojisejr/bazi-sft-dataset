@@ -47,6 +47,7 @@ export const DaYunPhaseSchema = z.object({
   endAge: z.number().int().nonnegative(),
   symbol: z.string().trim().min(1),
   source: z.enum(["stem", "branch"]),
+  twelveQiDisplay: z.string().trim().min(1).optional(),
   isCurrent: z.boolean().optional(),
 });
 
@@ -57,6 +58,8 @@ export const DaYunPillarSchema = z.object({
   branch: z.string().trim().min(1),
   isCurrent: z.boolean().optional(),
   currentPhase: z.enum(["upper", "lower"]).optional(),
+  upperStageDisplay: z.string().trim().min(1).optional(),
+  lowerStageDisplay: z.string().trim().min(1).optional(),
   upperPhase: DaYunPhaseSchema.optional(),
   lowerPhase: DaYunPhaseSchema.optional(),
 });

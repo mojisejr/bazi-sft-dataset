@@ -103,16 +103,20 @@ describe("BaziTrainerWorkspace", () => {
           endAge: 13,
           stem: "丁",
           branch: "未",
-          upperPhase: { startAge: 4, endAge: 8, symbol: "丁", source: "stem" },
-          lowerPhase: { startAge: 9, endAge: 13, symbol: "未", source: "branch" },
+          upperStageDisplay: "กวงตั่ว",
+          lowerStageDisplay: "เอี้ยง",
+          upperPhase: { startAge: 4, endAge: 8, symbol: "丁", source: "stem", twelveQiDisplay: "กวงตั่ว" },
+          lowerPhase: { startAge: 9, endAge: 13, symbol: "未", source: "branch", twelveQiDisplay: "เอี้ยง" },
         },
         {
           startAge: 14,
           endAge: 23,
           stem: "丙",
           branch: "午",
-          upperPhase: { startAge: 14, endAge: 18, symbol: "丙", source: "stem" },
-          lowerPhase: { startAge: 19, endAge: 23, symbol: "午", source: "branch" },
+          upperStageDisplay: "เจี๋ยง",
+          lowerStageDisplay: "ลิ้ม官",
+          upperPhase: { startAge: 14, endAge: 18, symbol: "丙", source: "stem", twelveQiDisplay: "เจี๋ยง" },
+          lowerPhase: { startAge: 19, endAge: 23, symbol: "午", source: "branch", twelveQiDisplay: "ลิ้ม官" },
         },
         {
           startAge: 24,
@@ -121,17 +125,26 @@ describe("BaziTrainerWorkspace", () => {
           branch: "巳",
           isCurrent: true,
           currentPhase: "lower",
-          upperPhase: { startAge: 24, endAge: 28, symbol: "乙", source: "stem" },
+          upperStageDisplay: "เชี่ยงแซ",
+          lowerStageDisplay: "ตี้อ๋วง",
+          upperPhase: { startAge: 24, endAge: 28, symbol: "乙", source: "stem", twelveQiDisplay: "เชี่ยงแซ" },
           lowerPhase: {
             startAge: 29,
             endAge: 33,
             symbol: "巳",
             source: "branch",
+            twelveQiDisplay: "ตี้อ๋วง",
             isCurrent: true,
           },
         },
       ],
-      liuNian: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
+      liuNian: {
+        stem: "丙",
+        branch: "午",
+        hiddenStems: ["丁", "己"],
+        upperStageDisplay: "เจี๋ยง",
+        lowerStageDisplay: "ลิ่มกัว",
+      },
       shenSha: [
         {
           starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
@@ -326,7 +339,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("劫财");
     expect(html).not.toContain("食神");
     expect(html).toContain("วัยจร");
-    expect(html).toContain("เปิด timeline วัยจร");
+    expect(html).toContain("ดูรอบหลัก ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว");
+    expect(html).toContain("เปิดถนนชีวิต");
     expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");
     expect(html).toContain("พิมพ์รายงาน");
     expect(html).not.toContain("ดูวิธีคำนวณคะแนนพลัง");
@@ -355,8 +369,13 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("คะแนนตั้งต้นของระบบ");
     expect(html).not.toContain('aria-label="Da Yun track"');
     expect(html).not.toContain("ข้อมูลอ้างอิงเพิ่มเติม");
-    expect(html).toContain("ดิถี vs วัยจร");
-    expect(html).toContain("ดิถี vs ปีจร");
+    expect(html).not.toContain("ดูความสัมพันธ์ของดิถีกับเสาหลัก วัยจร และปีจรในบล็อกเดียว");
+    expect(html).not.toContain("แกะจังหวะดิถีกับเสาหลัก วัยจร และปีจรในมุมเดียว");
+    expect(html).not.toContain('aria-label="twelve qi interactions"');
+    expect(html).toContain("dynamic-luck-badge-list");
+    expect(html).toContain("เชี่ยงแซ");
+    expect(html).toContain("ตี้อ๋วง");
+    expect(html).toContain("เจี๋ยง");
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
     expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
