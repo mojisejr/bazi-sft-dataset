@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
+import { Surface } from "@/components/bazi/primitives/Surface";
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
 
 type CompatibilitySurfaceProps = {
@@ -39,15 +41,12 @@ export function CompatibilitySurface({
 
   if (profiles.length === 0) {
     return (
-      <section className="surface inset-card compatibility-surface" data-compatibility="empty">
-        <div className="section-heading section-heading--compact">
-          <p className="section-kicker">{kicker}</p>
-          <h3>{title}</h3>
-        </div>
+      <Surface as="section" inset className="compatibility-surface" data-compatibility="empty">
+        <SectionHeading kicker={kicker} title={title} compact />
         <p className="compatibility-surface__empty">
           รอบนี้ engine ยังไม่ส่งข้อมูลสมพงษ์เข้ามา
         </p>
-      </section>
+      </Surface>
     );
   }
 
@@ -73,11 +72,8 @@ export function CompatibilitySurface({
   const hasResults = matchedEntries.some((m) => m.entry !== null);
 
   return (
-    <section className="surface inset-card compatibility-surface" data-compatibility={selectedBranch ? "matched" : "available"}>
-      <div className="section-heading section-heading--compact">
-        <p className="section-kicker">{kicker}</p>
-        <h3>{title}</h3>
-      </div>
+    <Surface as="section" inset className="compatibility-surface" data-compatibility={selectedBranch ? "matched" : "available"}>
+      <SectionHeading kicker={kicker} title={title} compact />
 
       <label className="compatibility-surface__selector">
         <span className="compatibility-surface__selector-label">อีกฝ่ายเกิดปี</span>
@@ -121,6 +117,6 @@ export function CompatibilitySurface({
           เลือกปีเกิดอีกฝ่ายเพื่อดูสมพงษ์
         </p>
       )}
-    </section>
+    </Surface>
   );
 }

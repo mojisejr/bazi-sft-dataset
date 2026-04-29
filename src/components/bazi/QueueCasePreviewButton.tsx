@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 
+import { ActionButton, ActionLink } from "@/components/bazi/primitives/Action";
 import { CaseContextSheet } from "@/components/bazi/CaseContextSheet";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 
@@ -37,13 +37,9 @@ export function QueueCasePreviewButton({
 
   return (
     <>
-      <button
-        type="button"
-        className="secondary-action pending-link"
-        onClick={() => setIsOpen(true)}
-      >
+      <ActionButton type="button" className="pending-link" onClick={() => setIsOpen(true)}>
         อ่านก่อนตรวจ
-      </button>
+      </ActionButton>
 
       <DetailOverlay
         isOpen={isOpen}
@@ -54,16 +50,8 @@ export function QueueCasePreviewButton({
         onClose={() => setIsOpen(false)}
         footer={(
           <div className="message-card__actions">
-            <button
-              type="button"
-              className="secondary-action"
-              onClick={() => setIsOpen(false)}
-            >
-              กลับสู่คิว
-            </button>
-            <Link className="primary-action pending-link" href={proofHref}>
-              ตรวจเคสนี้ต่อ
-            </Link>
+            <ActionButton type="button" onClick={() => setIsOpen(false)}>กลับสู่คิว</ActionButton>
+            <ActionLink tone="primary" className="pending-link" href={proofHref}>ตรวจเคสนี้ต่อ</ActionLink>
           </div>
         )}
       >

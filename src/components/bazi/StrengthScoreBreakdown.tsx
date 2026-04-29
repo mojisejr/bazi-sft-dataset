@@ -1,5 +1,8 @@
 import { useState } from "react";
 
+import { ActionButton } from "@/components/bazi/primitives/Action";
+import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
+import { Surface } from "@/components/bazi/primitives/Surface";
 import type { CalculationTraceValue } from "@/lib/bazi/schema-types";
 import {
   classifyOperatorStrengthScore,
@@ -382,20 +385,21 @@ export function StrengthScoreBreakdown({
   }
 
   return (
-    <section
-      className={`surface inset-card strength-breakdown${className ? ` ${className}` : ""}`}
+    <Surface
+      as="section"
+      inset
+      className={`strength-breakdown${className ? ` ${className}` : ""}`}
       aria-label={title}
       data-strength-breakdown={model.hasBreakdown ? "available" : "missing"}
       data-strength-band={model.scoreBand.id}
       data-strength-detail-open={isDetailOpen ? "true" : "false"}
     >
-      <div className="section-heading section-heading--compact">
-        <div>
-          <p className="section-kicker">กำลังดิถี</p>
-          <h3>{title}</h3>
-          <p className="section-note">อ่านระดับพลังจากแถบก่อน แล้วค่อยไล่ต้นทางของคะแนนผ่านแผนผังเดียว</p>
-        </div>
-      </div>
+      <SectionHeading
+        kicker="กำลังดิถี"
+        title={title}
+        compact
+        note="อ่านระดับพลังจากแถบก่อน แล้วค่อยไล่ต้นทางของคะแนนผ่านแผนผังเดียว"
+      />
 
       <div className="strength-meter" aria-label="ระดับกำลังดิถี 5 ระดับ">
         <div className="strength-meter__hero">
@@ -423,7 +427,7 @@ export function StrengthScoreBreakdown({
 
         {model.hasBreakdown ? (
           <div className="strength-breakdown__actions">
-            <button
+            <ActionButton
               type="button"
               className="secondary-action detail-trigger-action strength-breakdown__toggle"
               aria-expanded={isOverlayMode ? undefined : isDetailOpen}
@@ -431,7 +435,7 @@ export function StrengthScoreBreakdown({
               onClick={handleDetailToggle}
             >
               {isOverlayMode ? triggerLabel : (isDetailOpen ? "ซ่อนรายละเอียดกำลังดิถี" : triggerLabel)}
-            </button>
+            </ActionButton>
           </div>
         ) : null}
       </div>
@@ -443,6 +447,6 @@ export function StrengthScoreBreakdown({
           trace ของคะแนนพลังรอบนี้ยังไม่พอสำหรับแตกเป็นสมการละเอียด แต่คะแนนรวมยังแสดงได้ตามผลคำนวณหลัก
         </p>
       ) : null}
-    </section>
+    </Surface>
   );
 }

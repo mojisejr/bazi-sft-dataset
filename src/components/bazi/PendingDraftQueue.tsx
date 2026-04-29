@@ -1,6 +1,8 @@
-import Link from "next/link";
-
+import { ActionLink } from "@/components/bazi/primitives/Action";
+import { Badge } from "@/components/bazi/primitives/Badge";
 import { QueueCasePreviewButton } from "@/components/bazi/QueueCasePreviewButton";
+import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
+import { Surface } from "@/components/bazi/primitives/Surface";
 import type { PendingDraftDatasetRecord } from "@/lib/bazi/dataset-records";
 
 type PendingDraftQueueProps = {
@@ -85,38 +87,33 @@ export function PendingDraftQueue({
 
   return (
     <section className="workspace-stack">
-      <section className="surface inset-card message-card pending-hero-card">
-        <p className="section-kicker">Phase 4</p>
-        <h2>Pending Queue สำหรับรอตรวจทาน</h2>
-        <p>
-          หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเห็นกองงาน active,
-          ตรวจ state ของคิว และเปิดเข้า proof ของเป้าหมายล่าสุดได้ทันที
-        </p>
+      <Surface as="section" inset className="message-card pending-hero-card">
+        <SectionHeading
+          kicker="Phase 4"
+          title="Pending Queue สำหรับรอตรวจทาน"
+          titleLevel="h2"
+          note="หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเห็นกองงาน active, ตรวจ state ของคิว และเปิดเข้า proof ของเป้าหมายล่าสุดได้ทันที"
+        />
         <div className="pending-hero-card__meta">
-          <span className="pending-badge pending-badge--domain">
-            {campaignLabel ? `campaign ${campaignLabel}` : "ทุก campaign ที่ยัง active"}
-          </span>
-          <span className="pending-badge pending-badge--ai">active {activeCount}</span>
-          <span className="pending-badge pending-badge--domain">ต้องตรวจซ้ำ {staleCount}</span>
-          <span className="pending-badge pending-badge--domain">ต้อง re-proof {reproofCount}</span>
+          <Badge>{campaignLabel ? `campaign ${campaignLabel}` : "ทุก campaign ที่ยัง active"}</Badge>
+          <Badge tone="ai">active {activeCount}</Badge>
+          <Badge>ต้องตรวจซ้ำ {staleCount}</Badge>
+          <Badge>ต้อง re-proof {reproofCount}</Badge>
         </div>
-      </section>
+      </Surface>
 
       {records.length === 0 ? (
-        <section className="surface inset-card empty-state pending-empty-state">
+        <Surface as="section" inset className="empty-state pending-empty-state">
           <p className="section-kicker">Draft Queue</p>
           <h3>ยังไม่มี draft record ในคิว</h3>
           <p>
             เมื่อ script generation และ import เข้ามาเป็น `draft` แล้ว รายการจะมาโผล่ที่หน้านี้ทันที
           </p>
-        </section>
+        </Surface>
       ) : (
-        <section className="surface inset-card pending-list" aria-label="draft pending queue">
+        <Surface as="section" inset className="pending-list" aria-label="draft pending queue">
           <div className="pending-list__header">
-            <div>
-              <p className="section-kicker">Draft Queue</p>
-              <h3>เลือกเคสแล้วเข้าไปตรวจได้ทันที</h3>
-            </div>
+            <SectionHeading kicker="Draft Queue" title="เลือกเคสแล้วเข้าไปตรวจได้ทันที" compact />
             <p className="pending-list__summary">
               {campaignLabel
                 ? `กำลังเปิดคิว ${campaignLabel} อยู่ มี ${records.length} เคสพร้อมตรวจ`
@@ -145,17 +142,11 @@ export function PendingDraftQueue({
                   <>
               <div className="pending-row__case">
                 <div className="pending-row__badges">
-                  <span className="pending-badge pending-badge--ai">
-                    {getAnnotatorBadge(record.annotatorId)}
-                  </span>
-                  <span className="pending-badge pending-badge--domain">
-                    {record.intentDomain}
-                  </span>
-                  <span className="pending-badge pending-badge--domain">
-                    {reviewStateCopy}
-                  </span>
+                  <Badge tone="ai">{getAnnotatorBadge(record.annotatorId)}</Badge>
+                  <Badge>{record.intentDomain}</Badge>
+                  <Badge>{reviewStateCopy}</Badge>
                   {record.queueBatchId ? (
-                    <span className="pending-badge pending-badge--domain">{record.queueBatchId}</span>
+                    <Badge>{record.queueBatchId}</Badge>
                   ) : null}
                 </div>
 
@@ -193,12 +184,7 @@ export function PendingDraftQueue({
                   staleReason={record.staleReason}
                   proofHref={proofHref}
                 />
-                <Link
-                  className="secondary-action pending-link"
-                  href={proofHref}
-                >
-                  ตรวจเคส
-                </Link>
+                <ActionLink className="pending-link" href={proofHref}>ตรวจเคส</ActionLink>
               </div>
                   </>
                 );
@@ -206,7 +192,7 @@ export function PendingDraftQueue({
             </article>
           ))}
           </div>
-        </section>
+        </Surface>
       )}
     </section>
   );

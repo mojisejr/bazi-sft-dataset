@@ -2,6 +2,8 @@
 
 import { UserButton } from "@clerk/nextjs";
 
+import { StatusChip } from "@/components/bazi/primitives/StatusChip";
+import { Surface } from "@/components/bazi/primitives/Surface";
 import type { StatusCopy } from "@/lib/bazi/trainer-workspace";
 
 type SystemHeaderProps = {
@@ -10,7 +12,7 @@ type SystemHeaderProps = {
 
 export function SystemHeader({ statusCopy }: SystemHeaderProps) {
   return (
-    <section className="surface trainer-header">
+    <Surface as="section" className="trainer-header">
       <div className="brand-lockup">
         <p className="brand-mark">Bazi Trainer</p>
         <h1>Bazi Trainer that makes ซินแส ซินแส !</h1>
@@ -38,13 +40,10 @@ export function SystemHeader({ statusCopy }: SystemHeaderProps) {
         </div>
 
         <div className="status-stack">
-          <div className={`status-chip status-chip--${statusCopy.tone}`}>
-            <span className="status-dot" aria-hidden="true" />
-            {statusCopy.label}
-          </div>
+          <StatusChip tone={statusCopy.tone}>{statusCopy.label}</StatusChip>
           <p className="status-detail">{statusCopy.detail}</p>
         </div>
       </div>
-    </section>
+    </Surface>
   );
 }

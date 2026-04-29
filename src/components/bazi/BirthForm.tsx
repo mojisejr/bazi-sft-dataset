@@ -2,6 +2,8 @@
 
 import type { ChangeEvent, FormEvent } from "react";
 
+import { ActionButton } from "@/components/bazi/primitives/Action";
+import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import {
   BIRTH_HOUR_OPTIONS,
   BIRTH_MINUTE_OPTIONS,
@@ -83,17 +85,14 @@ export function BirthForm({
         </dl>
 
         <div className="case-rail__actions">
-          <button
-            className={
-              resetActionCopy.tone === "primary"
-                ? "primary-action"
-                : "secondary-action secondary-action--warning"
-            }
+          <ActionButton
+            tone={resetActionCopy.tone === "primary" ? "primary" : "secondary"}
+            warning={resetActionCopy.tone !== "primary"}
             type="button"
             onClick={onReset}
           >
             {resetActionCopy.label}
-          </button>
+          </ActionButton>
         </div>
 
         <p className="form-lock-note case-rail__note" aria-live="polite">
@@ -105,13 +104,12 @@ export function BirthForm({
 
   return (
     <>
-      <div className="section-heading">
-        <div>
-          <p className="section-kicker">เริ่มต้นงาน</p>
-          <h2>ตั้งข้อมูลก่อนอ่านดวง</h2>
-        </div>
-        <p className="section-note">ลำดับการทำงานถูกย่อให้สั้นและชัด เพื่อให้ใช้ได้คล่องโดยไม่ต้องคิดเยอะ</p>
-      </div>
+      <SectionHeading
+        kicker="เริ่มต้นงาน"
+        title="ตั้งข้อมูลก่อนอ่านดวง"
+        titleLevel="h2"
+        note="ลำดับการทำงานถูกย่อให้สั้นและชัด เพื่อให้ใช้ได้คล่องโดยไม่ต้องคิดเยอะ"
+      />
 
       <ol className="workflow-list">
         {workflowSteps.map((step) => (
@@ -250,13 +248,13 @@ export function BirthForm({
         </fieldset>
 
         <div className="form-actions">
-          <button
-            className="primary-action"
+          <ActionButton
+            tone="primary"
             type="submit"
             disabled={submissionState === "submitting"}
           >
             {submissionState === "submitting" ? "กำลังคำนวณ..." : "คำนวณภาพรวมดวง"}
-          </button>
+          </ActionButton>
         </div>
 
         <p className="form-footnote">
