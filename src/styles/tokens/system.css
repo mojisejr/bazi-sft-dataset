@@ -1,0 +1,50 @@
+:root {
+  color-scheme: light;
+  --color-canvas: var(--ref-color-sand-100);
+  --color-text-primary: var(--ref-color-ink-900);
+  --color-text-muted: var(--ref-color-earth-700);
+  --color-accent: var(--ref-color-copper-400);
+  --color-success: var(--ref-color-moss-600);
+  --color-danger: var(--ref-color-clay-600);
+  --surface-panel: var(--ref-color-ivory-200);
+  --surface-panel-strong: var(--ref-color-ivory-300);
+  --surface-raised: var(--ref-color-ivory-330);
+  --surface-raised-soft: var(--ref-color-ivory-320);
+  --surface-raised-strong: var(--ref-color-ivory-360);
+  --surface-line-soft: var(--ref-line-soft);
+  --surface-line-muted: var(--ref-line-muted);
+  --surface-line-softer: var(--ref-line-softer);
+  --surface-line-emphasis: var(--ref-line-emphasis);
+  --surface-shadow-soft: var(--ref-shadow-soft);
+  --surface-accent-soft: var(--ref-accent-soft);
+  --surface-accent-soft-strong: var(--ref-accent-soft-strong);
+  --surface-success-soft: var(--ref-success-soft);
+  --surface-success-line: var(--ref-success-line);
+  --surface-accent-line: var(--ref-accent-line);
+  --surface-accent-line-strong: var(--ref-accent-line-strong);
+  --app-bg-layer-1: var(--ref-bg-glow-left);
+  --app-bg-layer-2: var(--ref-bg-glow-right);
+  --app-bg-layer-3: linear-gradient(180deg, var(--ref-color-sand-150) 0%, var(--color-canvas) 45%, var(--ref-color-sand-050) 100%);
+  --font-body: var(--ref-font-serif);
+  --radius-panel: var(--ref-radius-panel);
+  --blur-panel: var(--ref-blur-panel);
+  --shadow-panel: var(--ref-shadow-panel);
+  --layout-page-max-width: var(--ref-layout-max-width);
+  --layout-page-inline: var(--ref-space-page-inline);
+  --layout-page-top: var(--ref-space-page-top);
+  --layout-page-bottom: var(--ref-space-page-bottom);
+  --layout-page-gap: var(--ref-space-page-gap);
+
+  /* Legacy aliases kept during Phase 2 so feature classes can migrate without breaking. */
+  --background: var(--color-canvas);
+  --panel: var(--surface-panel);
+  --panel-strong: var(--surface-panel-strong);
+  --text: var(--color-text-primary);
+  --muted: var(--color-text-muted);
+  --border: var(--surface-line-soft);
+  --accent: var(--color-accent);
+  --accent-soft: var(--surface-accent-soft);
+  --shadow: var(--surface-shadow-soft);
+  --success: var(--color-success);
+  --danger: var(--color-danger);
+}
