@@ -28,7 +28,7 @@ type StaticDestinyColumn = {
 
 type DynamicLuckBadgeItem = {
   key: string;
-  label: string;
+  label?: string;
   value: string;
 };
 
@@ -110,21 +110,26 @@ function getRelatedShenShaEntries(
 function buildDynamicLuckBadges(
   pillar: Pick<PillarValue, "upperStageDisplay" | "lowerStageDisplay"> | Pick<DaYunPillarValue, "upperStageDisplay" | "lowerStageDisplay"> | undefined,
   keyPrefix: string,
+  options?: {
+    sources?: Array<DaYunPhaseValue["source"]>;
+    includeLabels?: boolean;
+  },
 ): DynamicLuckBadgeItem[] {
+  const includeLabels = options?.includeLabels ?? true;
   const items: DynamicLuckBadgeItem[] = [];
 
-  if (pillar?.upperStageDisplay) {
+  if (pillar?.upperStageDisplay && (!options?.sources || options.sources.includes("stem"))) {
     items.push({
       key: `${keyPrefix}-upper`,
-      label: "ราศีบน",
+      label: includeLabels ? "ราศีบน" : undefined,
       value: pillar.upperStageDisplay,
     });
   }
 
-  if (pillar?.lowerStageDisplay) {
+  if (pillar?.lowerStageDisplay && (!options?.sources || options.sources.includes("branch"))) {
     items.push({
       key: `${keyPrefix}-lower`,
-      label: "ราศีล่าง",
+      label: includeLabels ? "ราศีล่าง" : undefined,
       value: pillar.lowerStageDisplay,
     });
   }
@@ -142,7 +147,6 @@ function buildDaYunPhaseBadges(
 
   return [{
     key: `${keyPrefix}-${phase.source}`,
-    label: phase.source === "stem" ? "ราศีบน" : "ราศีล่าง",
     value: phase.twelveQiDisplay,
   }];
 }
@@ -200,7 +204,10 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
       ? formatDaYunCycleCode(currentDaYun)
       : null;
   const liuNianBadges = buildDynamicLuckBadges(calculatedState?.liuNian, "liu-nian");
-  const currentDaYunBadges = buildDynamicLuckBadges(currentDaYun ?? undefined, "current-dayun");
+  const currentDaYunBadges = buildDynamicLuckBadges(currentDaYun ?? undefined, "current-dayun", {
+    sources: currentDaYunPhase ? [currentDaYunPhase.source] : undefined,
+    includeLabels: false,
+  });
   const ageSnapshotLabel = formatAgeSnapshot(calculatedState?.ageSnapshot);
   const isStrengthDetailOpen = activeDetailPanel === "strength";
   const isLuckDetailOpen = activeDetailPanel === "luck";
@@ -415,8 +422,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                   {currentDaYunBadges.length > 0 ? (
                     <div className="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ">
                       {currentDaYunBadges.map((badge) => (
-                        <article key={badge.key} className="dynamic-luck-badge">
-                          <span className="dynamic-luck-badge__label">{badge.label}</span>
+                        <article key={badge.key} className={`dynamic-luck-badge${badge.label ? "" : " dynamic-luck-badge--value-only"}`}>
+                          {badge.label ? <span className="dynamic-luck-badge__label">{badge.label}</span> : null}
                           <strong className="dynamic-luck-badge__value">{badge.value}</strong>
                         </article>
                       ))}
@@ -487,7 +494,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                       <div className="dynamic-luck-badge-list" aria-label="ปีจร 12 เชี่ยงแซ">
                         {liuNianBadges.map((badge) => (
                           <article key={`overlay-${badge.key}`} className="dynamic-luck-badge">
-                            <span className="dynamic-luck-badge__label">{badge.label}</span>
+                            {badge.label ? <span className="dynamic-luck-badge__label">{badge.label}</span> : null}
                             <strong className="dynamic-luck-badge__value">{badge.value}</strong>
                           </article>
                         ))}
@@ -529,8 +536,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                     {currentDaYunBadges.length > 0 ? (
                       <div className="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ">
                         {currentDaYunBadges.map((badge) => (
-                          <article key={`overlay-${badge.key}`} className="dynamic-luck-badge">
-                            <span className="dynamic-luck-badge__label">{badge.label}</span>
+                            <article key={`overlay-${badge.key}`} className={`dynamic-luck-badge${badge.label ? "" : " dynamic-luck-badge--value-only"}`}>
+                              {badge.label ? <span className="dynamic-luck-badge__label">{badge.label}</span> : null}
                             <strong className="dynamic-luck-badge__value">{badge.value}</strong>
                           </article>
                         ))}
@@ -566,8 +573,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                                 {formatDaYunPhaseSource(phase.source)}
                               </span>
                               {buildDaYunPhaseBadges(phase, `${entry.startAge}-${entry.endAge}`).map((badge) => (
-                                <article key={badge.key} className="dynamic-luck-badge dynamic-luck-badge--phase">
-                                  <span className="dynamic-luck-badge__label">{badge.label}</span>
+                                <article key={badge.key} className="dynamic-luck-badge dynamic-luck-badge--phase dynamic-luck-badge--value-only">
+                                  {badge.label ? <span className="dynamic-luck-badge__label">{badge.label}</span> : null}
                                   <strong className="dynamic-luck-badge__value">{badge.value}</strong>
                                 </article>
                               ))}

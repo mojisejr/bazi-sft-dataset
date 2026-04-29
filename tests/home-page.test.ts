@@ -373,9 +373,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("แกะจังหวะดิถีกับเสาหลัก วัยจร และปีจรในมุมเดียว");
     expect(html).not.toContain('aria-label="twelve qi interactions"');
     expect(html).toContain("dynamic-luck-badge-list");
+    expect(html).toContain("dynamic-luck-badge--value-only");
     expect(html).toContain("เชี่ยงแซ");
     expect(html).toContain("ตี้อ๋วง");
     expect(html).toContain("เจี๋ยง");
+    expect(html).not.toContain('<div class="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ"><article class="dynamic-luck-badge"><span class="dynamic-luck-badge__label">ราศีบน</span>');
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
     expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
