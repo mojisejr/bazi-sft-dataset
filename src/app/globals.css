@@ -484,7 +484,7 @@ textarea {
   }
 
   .reading-primary-grid {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    grid-template-columns: 1fr;
   }
 
   .reading-secondary-grid {
@@ -2130,6 +2130,27 @@ textarea {
 .strength-breakdown {
   display: grid;
   gap: 16px;
+}
+
+.strength-breakdown--compact {
+  gap: 14px;
+}
+
+.strength-breakdown--compact .section-heading {
+  gap: 6px;
+}
+
+.strength-breakdown--compact .strength-meter {
+  gap: 12px;
+  padding: 14px;
+}
+
+.strength-breakdown--compact .strength-meter__score {
+  font-size: clamp(1.55rem, 1.25rem + 0.8vw, 2.2rem);
+}
+
+.strength-breakdown--compact .strength-meter__summary {
+  max-width: 60ch;
 }
 
 .strength-equation {

@@ -344,16 +344,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           </section>
 
           <div className="reading-primary-grid">
-            <StrengthScoreBreakdown
-              score={calculatedState.strengthScore}
-              trace={calculatedState.explainable.strengthScore?.trace}
-              title="แผนผังกำลังดิถี"
-              detailMode="overlay"
-              detailOpen={isStrengthDetailOpen}
-              onDetailToggle={() => setActiveDetailPanel("strength")}
-              detailTriggerLabel="เปิดรายละเอียดกำลังดิถี"
-            />
-
             <section
               className="surface inset-card movement-panel"
               aria-label="luck module"
@@ -446,6 +436,17 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 </button>
               </div>
             </section>
+
+            <StrengthScoreBreakdown
+              score={calculatedState.strengthScore}
+              trace={calculatedState.explainable.strengthScore?.trace}
+              title="แผนผังกำลังดิถี"
+              detailMode="overlay"
+              detailOpen={isStrengthDetailOpen}
+              onDetailToggle={() => setActiveDetailPanel("strength")}
+              detailTriggerLabel="เปิดรายละเอียดกำลังดิถี"
+              className="strength-breakdown--compact"
+            />
           </div>
 
           <CorePersonaSurface

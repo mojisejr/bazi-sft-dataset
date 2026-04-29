@@ -15,6 +15,7 @@ type StrengthScoreBreakdownProps = {
   detailOpen?: boolean;
   onDetailToggle?: () => void;
   detailTriggerLabel?: string;
+  className?: string;
 };
 
 type StrengthContributionItem = {
@@ -363,6 +364,7 @@ export function StrengthScoreBreakdown({
   detailOpen,
   onDetailToggle,
   detailTriggerLabel,
+  className,
 }: StrengthScoreBreakdownProps) {
   const [inlineDetailOpen, setInlineDetailOpen] = useState(defaultDetailOpen);
   const model = buildStrengthBreakdownModel(score, trace);
@@ -381,7 +383,7 @@ export function StrengthScoreBreakdown({
 
   return (
     <section
-      className="surface inset-card strength-breakdown"
+      className={`surface inset-card strength-breakdown${className ? ` ${className}` : ""}`}
       aria-label={title}
       data-strength-breakdown={model.hasBreakdown ? "available" : "missing"}
       data-strength-band={model.scoreBand.id}

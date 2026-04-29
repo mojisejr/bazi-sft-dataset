@@ -363,7 +363,9 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("ดุลธาตุและกำลังธาตุ");
     expect(html).not.toContain("ควรตรวจเคสคาบเกี่ยวด้วยมืออีกครั้ง");
     expect(html).toContain("แผนผังกำลังดิถี");
+    expect(html.indexOf("วัยจร")).toBeLessThan(html.indexOf("แผนผังกำลังดิถี"));
     expect(html).toContain('data-strength-breakdown="available"');
+    expect(html).toContain("strength-breakdown--compact");
     expect(html).toContain('data-strength-detail-open="false"');
     expect(html).toContain("เปิดรายละเอียดกำลังดิถี");
     expect(html).not.toContain("แรงที่หนุนดิถี");
