@@ -1018,6 +1018,10 @@ textarea {
   gap: 14px;
 }
 
+.movement-grid > * {
+  min-width: 0;
+}
+
 .operator-insight-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1446,10 +1450,12 @@ textarea {
 .current-luck-card {
   display: grid;
   gap: 12px;
+  min-width: 0;
   padding: 18px;
   border-radius: 24px;
   background: rgba(255, 250, 242, 0.88);
   border: 1px solid rgba(159, 83, 32, 0.12);
+  overflow: hidden;
 }
 
 .annual-energy-card h4,
@@ -1469,12 +1475,14 @@ textarea {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .dynamic-luck-badge {
   display: grid;
   gap: 4px;
   align-content: start;
+  min-width: 0;
   padding: 10px 12px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(241, 232, 255, 0.96), rgba(228, 214, 255, 0.92));
@@ -1491,11 +1499,13 @@ textarea {
   font-size: 0.76rem;
   font-weight: 800;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .dynamic-luck-badge__value {
   font-size: 0.92rem;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .movement-panel__actions,
@@ -1746,7 +1756,7 @@ textarea {
   }
 
   .dynamic-luck-badge-list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
   }
 }
 

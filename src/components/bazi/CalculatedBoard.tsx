@@ -224,8 +224,8 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
         kicker: "ถนนชีวิต",
         title: "ถนนชีวิต",
         summary: currentDaYun
-          ? `รอบหลัก ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
-          : "เปิดรายละเอียดรอบหลัก ก้าวปัจจุบัน และช่วงทางเดินในชั้นเดียว",
+          ? `ช่วงที่กำลังเดิน ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
+          : "เปิดรายละเอียดช่วงที่กำลังเดิน ก้าวปัจจุบัน และช่วงทางเดินในชั้นเดียว",
       }
       : activeDetailPanel === "persona"
         ? {
@@ -363,7 +363,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               <div className="section-heading section-heading--compact">
                 <div>
                   <p className="section-kicker">วัยจร</p>
-                  <h3>ดูรอบหลัก ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว</h3>
+                  <h3>ดูช่วงที่กำลังเดิน ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว</h3>
                 </div>
               </div>
 
@@ -405,7 +405,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 </article>
 
                 <article className="current-luck-card">
-                  <p className="section-kicker">รอบหลัก</p>
+                  <p className="section-kicker">ช่วงที่กำลังเดิน</p>
                   <h4 data-current-luck-symbol={currentDaYunDisplay ?? undefined}>
                     {currentDaYunDisplay ?? "ยังไม่พบวัยจรปัจจุบัน"}
                   </h4>
@@ -519,7 +519,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                   </article>
 
                   <article className="current-luck-card">
-                    <p className="section-kicker">รอบหลัก</p>
+                    <p className="section-kicker">ช่วงที่กำลังเดิน</p>
                     <h4 data-current-luck-symbol={currentDaYunDisplay ?? undefined}>
                       {currentDaYunDisplay ?? "ยังไม่พบวัยจรปัจจุบัน"}
                     </h4>

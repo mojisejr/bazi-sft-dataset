@@ -339,7 +339,8 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("劫财");
     expect(html).not.toContain("食神");
     expect(html).toContain("วัยจร");
-    expect(html).toContain("ดูรอบหลัก ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว");
+    expect(html).toContain("ดูช่วงที่กำลังเดิน ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว");
+    expect(html).toContain("ช่วงที่กำลังเดิน");
     expect(html).toContain("เปิดถนนชีวิต");
     expect(html).toContain("อายุไทย 33 · อายุจีน 34 (อ้างอิง 2026-06-15)");
     expect(html).toContain("พิมพ์รายงาน");
