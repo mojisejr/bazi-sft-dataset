@@ -9,6 +9,14 @@
 ## 2. 🗺️ Key Landmarks (The Territory)
 *   `src/db/`:
     *   `schema.ts`: Drizzle Schema Definition (Single Source of Truth สำหรับ Database)
+*   `src/styles/`:
+    *   `tokens/reference.css`: reference tokens สำหรับ raw visual values และ brand material
+    *   `tokens/system.css`: semantic tokens สำหรับ surface, line, state, text roles
+    *   `foundation.css`: app-wide base rules และ shell defaults
+    *   `primitives.css`: reusable structural recipes เช่น surface, section heading, action, badge, field, case rail
+    *   `bazi-spillover.css`: migration inventory สำหรับ selector ที่ยังเป็น feature-local หรือยังไม่ reusable พอจะ promote ขึ้น primitive layer
+*   `src/components/bazi/primitives/`:
+    *   React primitive layer สำหรับ `Surface`, `SectionHeading`, `Action`, `Badge`, `StatusChip` และ helper ที่ reusable ข้ามหลาย surface
 *   `src/lib/bazi/`:
     *   `schema-types.ts`: Zod Contracts สำหรับ 15-Dimension Annotation, Raw Input, และ Calculated State (Single Source of Truth สำหรับ API และ UI)
     *   `symbolic-engine.ts`: Phase 2 service layer สำหรับผูกดวง, ดึง canonical knowledge, และสร้าง `calculated_state`
@@ -24,6 +32,8 @@
     *   SQL Migrations ที่ generate ออกมาแบบ Deterministic
 *   `tests/`:
     *   ชุดทดสอบสำหรับการทำ Hard Gate ในแต่ละ Phase อย่างเคร่งครัด
+*   `docs/oracle-ui-exemplar.md`:
+    *   Canonical frontend layer map ของ Bazi ที่อธิบายว่า token, foundation, primitive, feature, และ spillover ต้องอยู่ตรงไหน
 
 ## 3. 🔄 Data Flow (The Pulse)
 1. **Human/UI** -> (Raw Input) -> `POST /api/bazi/calculate`
@@ -41,3 +51,4 @@
 *   **Timezone Normalization**: เวลาสารทใน canonical tables ถูกเก็บเป็น HKT แต่หลักเวลาในดวงต้องยึด local time ของผู้เกิด -> *Solution*: ผูก 4 เสาจาก local time ก่อน แล้วค่อยแปลง timestamp เดียวกันไปเทียบ HKT boundary สำหรับ context เพิ่มเติมเท่านั้น
 *   **Dataset Privacy**: งาน export training data ไม่ควรโผล่บน UI ของซินแส -> *Solution*: ย้าย phase 4 ไปเป็น headless local script และ ignore generated output artifacts ใน repo
 *   **Agent Draft Integrity**: AI draft ห้ามสร้าง calculated state เองและห้าม bypass human proof note ตอน review -> *Solution*: บังคับ symbolic-engine-first queue, จำกัด skill contract, และ require `sinsaeProofNote` เมื่อ record เปลี่ยนเป็น `reviewed`
+*   **Style Ownership Drift**: ถ้า selector ใหม่ถูกโยนลง global/spillover โดยไม่ classify ก่อน สถาปัตยกรรม frontend จะย้อนกลับไปเป็นกองเดียว -> *Solution*: ใช้ layer map ใน `docs/oracle-ui-exemplar.md` เป็นกฎตัดสินก่อนเพิ่ม style ใหม่ทุกครั้ง
