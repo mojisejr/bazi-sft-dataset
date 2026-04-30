@@ -9,8 +9,6 @@ import type {
   PillarValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
-import { buildBaseChartRouteDetail, type BaseChartRouteDetail } from "@/lib/bazi/base-chart-chamber";
-import { BaseChartReactionChamber } from "@/components/bazi/BaseChartReactionChamber";
 import { CorePersonaDetailContent, CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { CompatibilitySurface } from "@/components/bazi/CompatibilitySurface";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
@@ -34,6 +32,14 @@ type DynamicLuckBadgeItem = {
   key: string;
   label?: string;
   value: string;
+};
+
+type RouteDetail = {
+  kicker: string;
+  title: string;
+  summary: string;
+  explanation: string;
+  details: BaseChartDetailItemValue[];
 };
 
 function formatPillarCode(pillar: PillarValue | undefined) {
@@ -155,6 +161,26 @@ function buildDaYunPhaseBadges(
   }];
 }
 
+function buildRouteDetail(
+  columnLabel: string,
+  stageLabel: string,
+  value: string,
+  pillar: PillarValue | undefined,
+): RouteDetail {
+  return {
+    kicker: "route",
+    title: `${columnLabel} · ${stageLabel}`,
+    summary: `${stageLabel}ของ${columnLabel}แสดงค่า ${value}`,
+    explanation: "ชั้น route ใช้บอกคุณภาพของเส้นทางในพื้นดวงก่อนอ่านบทบาทต่อดิถีและปฏิกิริยาระหว่างตัวในดวง",
+    details: [
+      { label: "ฐาน", value: columnLabel },
+      { label: "ชั้น", value: stageLabel },
+      { label: "ค่า", value },
+      { label: "เสา", value: pillar ? `${pillar.stem}${pillar.branch}` : "-" },
+    ],
+  };
+}
+
 function formatBadgeParticipants(badge: BaseChartReactionBadgeValue) {
   return badge.participants
     .map((participant) => {
@@ -192,7 +218,7 @@ function ReactionDetailContent({
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
   const [activeReactionBadge, setActiveReactionBadge] = useState<BaseChartReactionBadgeValue | null>(null);
-  const [activeRouteDetail, setActiveRouteDetail] = useState<BaseChartRouteDetail | null>(null);
+  const [activeRouteDetail, setActiveRouteDetail] = useState<RouteDetail | null>(null);
 
   function handlePrint() {
     window.print();
@@ -358,7 +384,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                           <button
                             type="button"
                             className="pillar-stage-chip pillar-stage-chip--upper pillar-stage-chip-button"
-                            onClick={() => setActiveRouteDetail(buildBaseChartRouteDetail(column.label, "ชั้นบน", column.pillar?.upperStageDisplay ?? "-", column.pillar))}
+                            onClick={() => setActiveRouteDetail(buildRouteDetail(column.label, "ชั้นบน", column.pillar?.upperStageDisplay ?? "-", column.pillar))}
                           >
                             {column.pillar?.upperStageDisplay}
                           </button>
@@ -378,7 +404,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                             type="button"
                             className="pillar-stage-chip pillar-stage-chip--sitting pillar-stage-chip-button"
                             aria-label={`${column.label} เชี่ยงแซกลาง`}
-                            onClick={() => setActiveRouteDetail(buildBaseChartRouteDetail(column.label, "ชั้นกลาง", column.pillar?.sittingStage ?? "-", column.pillar))}
+                            onClick={() => setActiveRouteDetail(buildRouteDetail(column.label, "ชั้นกลาง", column.pillar?.sittingStage ?? "-", column.pillar))}
                           >
                             {column.pillar?.sittingStage}
                           </button>
@@ -397,7 +423,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                           <button
                             type="button"
                             className="pillar-stage-chip pillar-stage-chip--lower pillar-stage-chip-button"
-                            onClick={() => setActiveRouteDetail(buildBaseChartRouteDetail(column.label, "ชั้นล่าง", column.pillar?.lowerStageDisplay ?? "-", column.pillar))}
+                            onClick={() => setActiveRouteDetail(buildRouteDetail(column.label, "ชั้นล่าง", column.pillar?.lowerStageDisplay ?? "-", column.pillar))}
                           >
                             {column.pillar.lowerStageDisplay}
                           </button>
@@ -413,11 +439,68 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           </section>
 
           {baseChartReading ? (
-            <BaseChartReactionChamber
-              calculatedState={calculatedState}
-              onOpenReactionBadge={setActiveReactionBadge}
-              onOpenRouteDetail={setActiveRouteDetail}
-            />
+            <section className="surface inset-card base-chart-reading-section" aria-label="base chart reaction workspace" data-reading-block="C">
+              <div className="section-heading section-heading--compact base-chart-reading-section__header">
+                <div>
+                  <p className="section-kicker">zone พื้นดวง</p>
+                  <h3>จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว</h3>
+                </div>
+                {baseChartReading.readingOrderSteps.length > 0 ? (
+                  <div className="base-chart-reading-order" aria-label="ลำดับการอ่านพื้นดวง">
+                    {baseChartReading.readingOrderSteps.map((step) => (
+                      <span key={step} className="base-chart-reading-order__step">{step}</span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="base-chart-reading-grid">
+                {baseChartReading.groups.map((group) => (
+                  <article key={group.key} className={`base-chart-reading-group base-chart-reading-group--${group.family}`}>
+                    <header className="base-chart-reading-group__header">
+                      <div>
+                        <p className="section-kicker">{group.title}</p>
+                        {group.description ? <p className="metric-copy">{group.description}</p> : null}
+                      </div>
+                      <span className="base-chart-reading-group__count">{group.badges.length}</span>
+                    </header>
+
+                    {group.badges.length > 0 ? (
+                      <div className="base-chart-badge-cloud">
+                        {group.badges.map((badge) => (
+                          <button
+                            key={badge.id}
+                            type="button"
+                            className={`base-chart-badge base-chart-badge--${badge.family} base-chart-badge--${badge.status}`}
+                            aria-haspopup="dialog"
+                            onClick={() => setActiveReactionBadge(badge)}
+                          >
+                            <span className="base-chart-badge__title">{badge.label}</span>
+                            <span className="base-chart-badge__meaning">{badge.meaningShort}</span>
+                            {badge.participants.length > 0 ? (
+                              <span className="base-chart-badge__participants">{formatBadgeParticipants(badge)}</span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="base-chart-reading-empty">ยังไม่มีรายการในชั้นนี้สำหรับดวงนี้</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+
+              {baseChartReading.legendItems.length > 0 ? (
+                <dl className="base-chart-legend">
+                  {baseChartReading.legendItems.map((item) => (
+                    <div key={`${item.label}-${item.value}`} className="base-chart-legend__item">
+                      <dt>{item.label}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
+            </section>
           ) : null}
 
           <div className="reading-primary-grid">
