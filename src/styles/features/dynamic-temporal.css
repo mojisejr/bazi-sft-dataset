@@ -1,0 +1,569 @@
+.destiny-glyph-stack {
+  display: grid;
+  grid-template-rows: minmax(34px, auto) auto minmax(34px, auto) auto minmax(34px, auto);
+  gap: 10px;
+  justify-items: center;
+  align-content: start;
+  padding: 14px 0;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top, rgba(255, 244, 230, 0.85), transparent 55%),
+    var(--surface-raised-strong);
+}
+
+.pillar-stage-slot {
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  width: 100%;
+  min-height: 34px;
+}
+
+.pillar-stage-slot__placeholder {
+  display: inline-flex;
+  min-width: 74px;
+  min-height: 34px;
+  visibility: hidden;
+}
+
+.destiny-glyph-shell {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  width: 100%;
+}
+
+.destiny-glyph-caption {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.destiny-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  min-height: 72px;
+  border-radius: 22px;
+  font-size: 2rem;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.48);
+}
+
+.destiny-glyph--stem {
+  background: var(--surface-accent-soft-strong);
+}
+
+.destiny-glyph--branch {
+  background: rgba(83, 52, 27, 0.08);
+}
+
+.pillar-stage-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.pillar-stage-chip--sitting {
+  background: linear-gradient(180deg, rgba(211, 246, 232, 0.96), rgba(185, 231, 215, 0.92));
+  border: 1px solid rgba(53, 133, 107, 0.18);
+  color: #16624b;
+}
+
+.pillar-stage-chip--upper {
+  background: linear-gradient(180deg, rgba(240, 226, 255, 0.96), rgba(227, 207, 255, 0.92));
+  border: 1px solid rgba(118, 87, 173, 0.18);
+  color: #6a3dad;
+}
+
+.pillar-stage-chip--lower {
+  background: linear-gradient(180deg, rgba(211, 246, 232, 0.96), rgba(185, 231, 215, 0.92));
+  border: 1px solid rgba(53, 133, 107, 0.18);
+  color: #16624b;
+}
+
+.pillar-day-master-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 240, 222, 0.98), rgba(247, 220, 191, 0.92));
+  border: 1px solid var(--surface-accent-line);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pillar-metadata-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.pillar-metadata-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pillar-metadata-row dt,
+.pillar-metadata-row dd {
+  margin: 0;
+}
+
+.pillar-metadata-row dt {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.pillar-metadata-row dd {
+  text-align: right;
+  font-weight: 700;
+}
+
+.shen-sha-cluster {
+  display: grid;
+  gap: 8px;
+}
+
+.shen-sha-cluster--compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.shen-sha-chip {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(159, 83, 32, 0.1);
+}
+
+.shen-sha-chip strong {
+  font-size: 0.92rem;
+}
+
+.shen-sha-chip span,
+.shen-sha-empty,
+.transient-shen-sha-card p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.shen-sha-empty {
+  font-size: 0.88rem;
+}
+
+.dynamic-luck-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(260px, 0.9fr);
+  gap: 16px;
+}
+
+.annual-energy-card,
+.current-luck-card {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px;
+  border-radius: 24px;
+  background: rgba(255, 250, 242, 0.88);
+  border: 1px solid var(--surface-accent-soft-strong);
+  overflow: hidden;
+}
+
+.annual-energy-card h4,
+.current-luck-card h4,
+.transient-shen-sha-panel h4 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.current-luck-card__cycle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.dynamic-luck-badge-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.dynamic-luck-badge {
+  display: grid;
+  gap: 4px;
+  align-content: start;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(241, 232, 255, 0.96), rgba(228, 214, 255, 0.92));
+  border: 1px solid rgba(118, 87, 173, 0.16);
+  color: #5f3b99;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.44);
+}
+
+.dynamic-luck-badge--phase {
+  padding: 9px 10px;
+}
+
+.dynamic-luck-badge__label {
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.dynamic-luck-badge__value {
+  font-size: 0.92rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.movement-panel__actions,
+.strength-breakdown__actions {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.movement-panel__toggle,
+.strength-breakdown__toggle {
+  min-height: 42px;
+}
+
+.strength-meter {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.92), transparent 70%),
+    linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(248, 240, 232, 0.92));
+  border: 1px solid var(--surface-line-muted);
+}
+
+.strength-meter__hero {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.strength-meter__label {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.strength-meter__summary {
+  margin: 0;
+}
+
+.strength-meter__rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.strength-meter__stop {
+  display: grid;
+  gap: 10px;
+}
+
+.strength-meter__stop-line {
+  display: block;
+  min-height: 12px;
+  border-radius: 999px;
+  background: var(--surface-line-soft);
+}
+
+.strength-meter__stop-copy {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.strength-meter__stop--past .strength-meter__stop-line {
+  background: rgba(159, 83, 32, 0.35);
+}
+
+.strength-meter__stop--active .strength-meter__stop-line {
+  min-height: 16px;
+  box-shadow: 0 0 0 4px rgba(188, 228, 213, 0.22);
+}
+
+.strength-breakdown[data-strength-band="very-weak"] .strength-meter__stop--active .strength-meter__stop-line,
+.strength-breakdown[data-strength-band="weak"] .strength-meter__stop--active .strength-meter__stop-line {
+  background: linear-gradient(90deg, rgba(214, 105, 79, 0.98), rgba(184, 62, 45, 0.92));
+}
+
+.strength-breakdown[data-strength-band="balanced"] .strength-meter__stop--active .strength-meter__stop-line {
+  background: linear-gradient(90deg, rgba(116, 202, 159, 0.98), rgba(74, 177, 136, 0.92));
+}
+
+.strength-breakdown[data-strength-band="strong"] .strength-meter__stop--active .strength-meter__stop-line,
+.strength-breakdown[data-strength-band="very-strong"] .strength-meter__stop--active .strength-meter__stop-line {
+  background: linear-gradient(90deg, rgba(213, 165, 74, 0.98), rgba(193, 126, 41, 0.92));
+}
+
+.strength-flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.strength-flow__node {
+  flex: 1 1 140px;
+  display: grid;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--surface-line-softer);
+}
+
+.strength-flow__node--support {
+  background: rgba(248, 242, 231, 0.88);
+}
+
+.strength-flow__node--friction {
+  background: rgba(255, 242, 238, 0.88);
+}
+
+.strength-flow__node--result {
+  background: rgba(241, 250, 244, 0.92);
+}
+
+.strength-flow__node-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.strength-flow__arrow {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dayun-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.dayun-section {
+  display: grid;
+  gap: 12px;
+}
+
+.dayun-card {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid var(--surface-line-muted);
+}
+
+.dayun-card--current {
+  background: linear-gradient(180deg, var(--surface-accent-line), rgba(255, 250, 242, 0.94));
+  border-color: rgba(159, 83, 32, 0.24);
+}
+
+.dayun-card__cycle {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.dayun-card__phase-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.dayun-card__phase {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--surface-raised-strong);
+  border: 1px solid var(--surface-line-softer);
+}
+
+.dayun-card__phase--current {
+  background: var(--surface-accent-soft-strong);
+  border-color: rgba(159, 83, 32, 0.22);
+}
+
+.dayun-card__phase-age {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.dayun-card__phase-symbol {
+  font-size: 1.65rem;
+}
+
+.dayun-card__age,
+.dayun-card__label,
+.dayun-card__phase-label,
+.transient-shen-sha-card span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.dayun-card__code {
+  font-size: 1.5rem;
+}
+
+.transient-shen-sha-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.transient-shen-sha-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.transient-shen-sha-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid var(--surface-line-muted);
+}
+
+.transient-shen-sha-card strong {
+  font-size: 0.96rem;
+}
+
+.transient-shen-sha-card p {
+  margin: 0;
+}
+
+.print-report-header {
+  display: none;
+}
+
+@media (max-width: 1180px) {
+  .reading-primary-grid,
+  .reading-secondary-grid,
+  .operator-orbit__core,
+  .operator-insight-grid,
+  .destiny-pillar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pillar-ribbon {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .dynamic-luck-grid,
+  .movement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dynamic-luck-badge-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .manual-workspace--ready {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-primary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-switch-shell {
+    padding-inline: 12px;
+  }
+
+  .workspace-switch__backdrop {
+    inset: 8px 10px;
+  }
+
+  .workspace-switch__option {
+    width: 100%;
+    min-height: 52px;
+    padding-inline: 10px;
+    font-size: 0.88rem;
+    gap: 6px;
+  }
+
+  .workspace-switch__icon {
+    font-size: 1rem;
+  }
+
+  .workspace-switch__label {
+    white-space: nowrap;
+  }
+
+  .zone-heading {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .operator-orbit__core,
+  .pillar-ribbon,
+  .reading-secondary-grid,
+  .operator-insight-grid,
+  .destiny-pillar-grid,
+  .dayun-track,
+  .transient-shen-sha-list {
+    grid-template-columns: 1fr;
+  }
+
+  .identity-strip,
+  .identity-strip--compact,
+  .proof-pill-strip,
+  .proof-pill-strip--review,
+  .proof-pillars-grid,
+  .strength-meter__rail {
+    grid-template-columns: 1fr;
+  }
+
+  .strength-flow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .strength-flow__arrow {
+    align-self: center;
+    transform: rotate(90deg);
+  }
+
+  .explainable-sheet__header {
+    display: grid;
+  }
+
+  .explainable-modal {
+    width: 100%;
+  }
+
+  .dynamic-luck-badge-list {
+    grid-template-columns: 1fr;
+  }
+}

@@ -67,8 +67,11 @@ Phase 4 turns those implementation results into a contributor-readable reference
   - Bazi-specific flows and composition
   - domain sequencing and content hierarchy
   - feature-local layout decisions that are not yet reusable across multiple surfaces
+- Supporting CSS path:
+  - `src/styles/features/`
 - Rule:
   - feature components should compose tokens and primitives instead of owning raw visual constants directly
+  - stable feature-local selectors should be grouped by feature family instead of accumulating in one global stylesheet
 
 ### 6. Spillover
 
@@ -79,6 +82,7 @@ Phase 4 turns those implementation results into a contributor-readable reference
 - Rule:
   - this file is allowed, but it is not the target architecture
   - do not add new shared structural families here if they already belong in primitives
+  - do not use this file as the default destination for new feature CSS once a clear feature-local file exists under `src/styles/features/`
 
 ## Where To Put A Change
 
@@ -88,7 +92,7 @@ Phase 4 turns those implementation results into a contributor-readable reference
 | semantic role like surface, line, accent, success | `src/styles/tokens/system.css` | meaning layer |
 | body/app-shell defaults | `src/styles/foundation.css` | global baseline |
 | a reusable panel/button/badge/heading/form structure | `src/styles/primitives.css` and/or `src/components/bazi/primitives/` | shared UI grammar |
-| a Bazi-only screen composition detail | the relevant file under `src/components/bazi/` | feature ownership |
+| a Bazi-only screen composition detail | the relevant file under `src/components/bazi/` and/or the matching file in `src/styles/features/` | feature ownership |
 | a not-yet-reusable legacy selector | `src/styles/bazi-spillover.css` | temporary migration holding area |
 
 ## Current Canonical Examples
@@ -140,3 +144,14 @@ If none are true yet, keep it feature-local and document the constraint instead 
 ## Migration Note
 
 The existence of `bazi-spillover.css` is not a failure. It is an explicit record of what has not yet earned promotion. The failure mode is letting it silently become the default destination for new shared UI structure.
+
+Current feature-local CSS families live under `src/styles/features/`:
+
+- `pending-proof.css`
+- `workspace-shell.css`
+- `reading-insights.css`
+- `dynamic-temporal.css`
+- `classic-report.css`
+- `persona-strength.css`
+- `annotation-voice.css`
+- `print-compat.css`

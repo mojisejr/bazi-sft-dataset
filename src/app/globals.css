@@ -2,4 +2,12 @@
 @import "../styles/tokens/system.css";
 @import "../styles/foundation.css";
 @import "../styles/primitives.css";
+@import "../styles/features/pending-proof.css";
+@import "../styles/features/workspace-shell.css";
+@import "../styles/features/reading-insights.css";
+@import "../styles/features/dynamic-temporal.css";
+@import "../styles/features/classic-report.css";
+@import "../styles/features/persona-strength.css";
+@import "../styles/features/annotation-voice.css";
+@import "../styles/features/print-compat.css";
 @import "../styles/bazi-spillover.css";

@@ -1,0 +1,259 @@
+.classic-report {
+  display: grid;
+  gap: 22px;
+}
+
+.classic-report__header {
+  display: grid;
+  gap: 14px;
+}
+
+.classic-report__summary {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(1.15rem, 1rem + 0.55vw, 1.6rem);
+  font-weight: 700;
+}
+
+.classic-report__body {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.26fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.classic-report__aside {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-height: 100%;
+  padding: 18px;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(255, 245, 235, 0.9));
+  border: 1px solid var(--surface-accent-soft);
+}
+
+.classic-report__aside strong {
+  font-size: clamp(1.6rem, 1.3rem + 0.9vw, 2.3rem);
+}
+
+.classic-report__aside p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.classic-report__aside-kicker {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.classic-pillars {
+  display: grid;
+  gap: 14px;
+}
+
+.classic-pillars__labels,
+.classic-pillars__row,
+.classic-pillars__hidden {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.classic-pillars__label,
+.classic-pillars__glyph,
+.classic-pillars__hidden-cell {
+  display: grid;
+  place-items: center;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--surface-line-muted);
+  text-align: center;
+}
+
+.classic-pillars__label {
+  min-height: 52px;
+  padding: 10px 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.classic-pillars__glyph {
+  min-height: 108px;
+  padding: 14px 12px;
+  font-size: clamp(2rem, 1.6rem + 1vw, 3rem);
+  font-weight: 700;
+}
+
+.classic-pillars__hidden-cell {
+  gap: 8px;
+  align-content: start;
+  min-height: 92px;
+  padding: 14px 12px;
+}
+
+.classic-pillars__hidden-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.print-summary-note {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.section-note {
+  margin: 0;
+  max-width: 28ch;
+  text-align: right;
+}
+
+.identity-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.identity-strip--compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 0;
+}
+
+.identity-strip > div {
+  padding: 16px;
+}
+
+.identity-label {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.pillar-table {
+  display: grid;
+  gap: 10px;
+}
+
+.pillar-row {
+  display: grid;
+  grid-template-columns: 92px repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pillar-label,
+.pillar-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 54px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid var(--surface-line-softer);
+  text-align: center;
+}
+
+.pillar-label {
+  justify-content: flex-start;
+  background: transparent;
+  border: 0;
+  padding-left: 0;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.pillar-cell--header {
+  font-weight: 700;
+}
+
+.pillar-cell--stacked {
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.spotlight-grid,
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.highlight-card {
+  display: grid;
+  gap: 4px;
+}
+
+.highlight-card--wide {
+  grid-column: 1 / -1;
+}
+
+.highlight-card h3 {
+  font-size: clamp(1.6rem, 1.2rem + 1vw, 2.2rem);
+}
+
+.metric-copy {
+  margin: 0;
+}
+
+.detail-list {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.detail-list-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--surface-line-softer);
+}
+
+.detail-list-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.detail-list dt,
+.detail-list dd {
+  margin: 0;
+}
+
+.detail-list dt {
+  color: var(--muted);
+}
+
+.detail-list dd {
+  text-align: right;
+  font-weight: 700;
+}
+
+.metaphor-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.metaphor-card {
+  padding: 16px;
+}
+
+.metaphor-card strong {
+  display: block;
+  margin-bottom: 8px;
+  text-transform: capitalize;
+}
+
+.metaphor-card p,
+.message-card p,
+.empty-state p {
+  margin: 0;
+}

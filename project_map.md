@@ -14,7 +14,8 @@
     *   `tokens/system.css`: semantic tokens สำหรับ surface, line, state, text roles
     *   `foundation.css`: app-wide base rules และ shell defaults
     *   `primitives.css`: reusable structural recipes เช่น surface, section heading, action, badge, field, case rail
-    *   `bazi-spillover.css`: migration inventory สำหรับ selector ที่ยังเป็น feature-local หรือยังไม่ reusable พอจะ promote ขึ้น primitive layer
+    *   `features/`: feature-local CSS ownership สำหรับ stable selector families เช่น pending/proof, workspace shell, reading insights, classic report, annotation/voice, และ print/compatibility
+    *   `bazi-spillover.css`: residual migration inventory เท่านั้น สำหรับ selector ที่ยังไม่มี home ที่พิสูจน์แล้ว
 *   `src/components/bazi/primitives/`:
     *   React primitive layer สำหรับ `Surface`, `SectionHeading`, `Action`, `Badge`, `StatusChip` และ helper ที่ reusable ข้ามหลาย surface
 *   `src/lib/bazi/`:
