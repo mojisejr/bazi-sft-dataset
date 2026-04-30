@@ -12,33 +12,84 @@ type ChamberPillarNodeProps = {
 export function ChamberPillarNode({ data, selected }: ChamberPillarNodeProps) {
   const focalClass = data.isFocal ? " chamber-node-pillar--focal" : "";
   const selectedClass = selected ? " chamber-node-pillar--selected" : "";
+  const modeClass = ` chamber-node-pillar--${data.displayMode}`;
+  const upperSlot = data.stageSlots.find((slot) => slot.source === "upper");
+  const sittingSlot = data.stageSlots.find((slot) => slot.source === "sitting");
+  const lowerSlot = data.stageSlots.find((slot) => slot.source === "lower");
+
+  if (data.displayMode === "day-anchor") {
+    return (
+      <div className={`chamber-node-pillar${focalClass}${selectedClass}${modeClass}`}>
+        <Handle type="target" position={Position.Top} className="chamber-node-handle" />
+        <Handle type="target" position={Position.Left} className="chamber-node-handle" />
+        <Handle type="target" position={Position.Right} className="chamber-node-handle" />
+        <Handle type="target" position={Position.Bottom} className="chamber-node-handle" />
+        <Handle type="source" position={Position.Top} className="chamber-node-handle" />
+        <Handle type="source" position={Position.Left} className="chamber-node-handle" />
+        <Handle type="source" position={Position.Right} className="chamber-node-handle" />
+        <Handle type="source" position={Position.Bottom} className="chamber-node-handle" />
+
+        <p className="chamber-node-pillar__kicker">หลักวัน · ดิถี</p>
+        <div className="chamber-node-pillar__anchor-core">
+          <span className="chamber-node-pillar__stem">{data.stem}</span>
+          <span className="chamber-node-pillar__translation">{data.stemTranslation}</span>
+        </div>
+        <div className="chamber-node-pillar__anchor-branch">
+          <span className="chamber-node-pillar__branch">{data.branch}</span>
+          <span>{data.branchTranslation}</span>
+        </div>
+        {lowerSlot && (
+          <div className="chamber-stage-chip chamber-stage-chip--lower-only">
+            <dt>ราศีล่าง</dt>
+            <dd>{lowerSlot.value}</dd>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
-    <div className={`chamber-node-pillar${focalClass}${selectedClass}`}>
+    <div className={`chamber-node-pillar${focalClass}${selectedClass}${modeClass}`}>
+      <Handle type="target" position={Position.Top} className="chamber-node-handle" />
       <Handle type="target" position={Position.Left} className="chamber-node-handle" />
+      <Handle type="target" position={Position.Right} className="chamber-node-handle" />
+      <Handle type="target" position={Position.Bottom} className="chamber-node-handle" />
+      <Handle type="source" position={Position.Top} className="chamber-node-handle" />
       <Handle type="source" position={Position.Right} className="chamber-node-handle" />
+      <Handle type="source" position={Position.Left} className="chamber-node-handle" />
+      <Handle type="source" position={Position.Bottom} className="chamber-node-handle" />
 
       <p className="chamber-node-pillar__kicker">{data.pillarLabel}</p>
-      <div className="chamber-node-pillar__glyphs">
-        <span className="chamber-node-pillar__stem">{data.stem}</span>
-        <span className="chamber-node-pillar__branch">{data.branch}</span>
-      </div>
-      {(data.stemTranslation || data.branchTranslation) && (
-        <p className="chamber-node-pillar__translation">
-          {[data.stemTranslation, data.branchTranslation].filter(Boolean).join(" / ")}
-        </p>
-      )}
-
-      {data.stageSlots.length > 0 && (
-        <dl className="chamber-node-pillar__stages">
-          {data.stageSlots.slice(0, 3).map((slot) => (
-            <div key={`${slot.source}-${slot.value}`} className="chamber-stage-chip">
-              <dt>{slot.label}</dt>
-              <dd>{slot.value}</dd>
+      <dl className="chamber-node-pillar__ribbon-stack">
+        {upperSlot && (
+          <div className="chamber-stage-chip chamber-stage-chip--upper">
+            <dt>{upperSlot.label}</dt>
+            <dd>{upperSlot.value}</dd>
+          </div>
+        )}
+        <div className="chamber-node-pillar__glyph-block chamber-node-pillar__glyph-block--stem">
+          <span className="chamber-node-pillar__stem">{data.stem}</span>
+          <span>{data.stemTranslation}</span>
+        </div>
+        {sittingSlot && (
+          <div className="chamber-stage-chip chamber-stage-chip--sitting">
+            <dt>{sittingSlot.label}</dt>
+            <dd>{sittingSlot.value}</dd>
+          </div>
+        )}
+        <div className="chamber-node-pillar__glyph-block chamber-node-pillar__glyph-block--branch">
+          <span className="chamber-node-pillar__branch">{data.branch}</span>
+          <span>{data.branchTranslation}</span>
+        </div>
+        <div className="chamber-node-pillar__stage-row">
+          {lowerSlot && (
+            <div className="chamber-stage-chip chamber-stage-chip--lower">
+              <dt>{lowerSlot.label}</dt>
+              <dd>{lowerSlot.value}</dd>
             </div>
-          ))}
-        </dl>
-      )}
+          )}
+        </div>
+      </dl>
 
       {data.meaningSlots.length > 0 && (
         <div className="chamber-node-pillar__meaning" aria-label="ดิถีมอง">

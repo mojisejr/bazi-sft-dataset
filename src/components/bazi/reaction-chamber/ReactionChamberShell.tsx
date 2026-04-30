@@ -46,7 +46,7 @@ export function ReactionChamberShell() {
 
   const graph = useMemo(() => {
     if (!calculatedState) {
-      return { nodes: [], edges: [], hiddenSecondaryOverlays: [] };
+      return { nodes: [], edges: [], schoolClusters: [], hiddenSecondaryOverlays: [] };
     }
     return buildSemanticChamberGraph(calculatedState);
   }, [calculatedState]);

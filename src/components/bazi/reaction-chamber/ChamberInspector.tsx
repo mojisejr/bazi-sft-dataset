@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import type {
   BaseChartReactionBadgeValue,
 } from "@/lib/bazi/schema-types";
-import type { SemanticNode } from "@/lib/bazi/semantic-chamber-graph";
+import type { SemanticEdge, SemanticNode } from "@/lib/bazi/semantic-chamber-graph";
 
 import type { ChamberSelection } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 
@@ -127,14 +127,70 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
   );
 }
 
+function EdgeDetail({ edge }: { edge: SemanticEdge }) {
+  const badge = edge.data.badge;
+  const cluster = edge.data.schoolCluster;
+
+  return (
+    <div className="chamber-inspector__badge">
+      <p className="chamber-inspector__kicker">{badge.modal.family} · {badge.priority}</p>
+      <h3 className="chamber-inspector__title">{cluster?.title ?? badge.modal.title}</h3>
+      {cluster && <p className="chamber-inspector__summary">{cluster.humanSummary}</p>}
+      <p className="chamber-inspector__explanation">{badge.modal.explanation}</p>
+
+      <dl className="chamber-inspector__details">
+        {edge.data.sourceDetail && (
+          <div className="chamber-inspector__detail-row">
+            <dt>จาก</dt>
+            <dd>{edge.data.sourceDetail}</dd>
+          </div>
+        )}
+        {edge.data.targetDetail && (
+          <div className="chamber-inspector__detail-row">
+            <dt>ไปเทียบกับ</dt>
+            <dd>{edge.data.targetDetail}</dd>
+          </div>
+        )}
+        {cluster?.branchParticipantLabels.map((label) => (
+          <div key={label} className="chamber-inspector__detail-row">
+            <dt>ราศีล่าง</dt>
+            <dd>{label}</dd>
+          </div>
+        ))}
+        {cluster?.accentMarkerLabels.map((label) => (
+          <div key={label} className="chamber-inspector__detail-row">
+            <dt>ดาวประกอบ</dt>
+            <dd>{label}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {badge.modal.details.length > 0 && (
+        <dl className="chamber-inspector__details chamber-inspector__details--doctrine">
+          {badge.modal.details.map((detail) => (
+            <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
+              <dt>{detail.label}</dt>
+              <dd>{detail.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
+  );
+}
+
 function InspectorBody({ selection }: { selection: ChamberSelection }) {
   if (!selection) {
     return (
       <div className="chamber-inspector__placeholder">
-        <p className="chamber-inspector__kicker">ยังไม่ได้เลือกอะไร</p>
-        <p>เริ่มจากเสาเพื่อดูโครงสร้างพื้นดวงและดิถีมอง แล้วแตะเส้นหรือดาวหลักเพื่อเปิดความหมายเฉพาะจุดค่ะ</p>
+        <p className="chamber-inspector__kicker">แผนภาพปฏิกิริยา</p>
+        <p>ดิถีเป็นจุดกลางของการอ่าน เสารอบนอกคือพื้นที่ที่ดิถีใช้เทียบราศีบน ราศีล่าง เชี่ยงแซ และปฏิกิริยาที่เกิดขึ้นในดวงนี้</p>
       </div>
     );
+  }
+
+  if (selection.kind === "edge") {
+    return <EdgeDetail edge={selection.edge} />;
   }
 
   const badge = getBadgeFromSelection(selection);

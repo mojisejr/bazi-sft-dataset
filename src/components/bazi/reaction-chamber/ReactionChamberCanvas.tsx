@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background,
   Controls,
@@ -13,7 +13,6 @@ import {
   type EdgeMouseHandler,
   type OnSelectionChangeParams,
 } from "@xyflow/react";
-import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
 
 import "@xyflow/react/dist/style.css";
 
@@ -25,16 +24,6 @@ import type {
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
-
-const elk = new ELK();
-
-const ELK_OPTIONS: Record<string, string> = {
-  "elk.algorithm": "layered",
-  "elk.direction": "RIGHT",
-  "elk.layered.spacing.nodeNodeBetweenLayers": "120",
-  "elk.spacing.nodeNode": "70",
-  "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
-};
 
 const NODE_TYPES = {
   chamberPillar: ChamberPillarNode,
@@ -52,35 +41,10 @@ type ReactionChamberCanvasProps = {
   onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
 
-async function computeElkLayout(graph: SemanticChamberGraph): Promise<Map<string, { x: number; y: number }>> {
-  if (graph.nodes.length === 0) {
-    return new Map();
-  }
-
-  const elkNodes: ElkNode[] = graph.nodes.map((node) => ({
-    id: node.id,
-    width: node.width ?? 200,
-    height: node.height ?? 160,
-  }));
-
-  const elkEdges: ElkExtendedEdge[] = graph.edges.map((edge) => ({
-    id: edge.id,
-    sources: [edge.source],
-    targets: [edge.target],
-  }));
-
-  const layout = await elk.layout({
-    id: "chamber-root",
-    layoutOptions: ELK_OPTIONS,
-    children: elkNodes,
-    edges: elkEdges,
-  });
-
+function computeGraphLayout(graph: SemanticChamberGraph): Map<string, { x: number; y: number }> {
   const positionMap = new Map<string, { x: number; y: number }>();
-  layout.children?.forEach((child) => {
-    if (typeof child.x === "number" && typeof child.y === "number") {
-      positionMap.set(child.id, { x: child.x, y: child.y });
-    }
+  graph.nodes.forEach((node) => {
+    positionMap.set(node.id, node.position);
   });
 
   return positionMap;
@@ -121,50 +85,19 @@ function ReactionChamberCanvasInner({
   onSelectionChange,
   onNodeHover,
 }: ReactionChamberCanvasProps) {
-  const [layoutPositions, setLayoutPositions] = useState<Map<string, { x: number; y: number }>>(
-    () => new Map(),
-  );
-  const [layoutReady, setLayoutReady] = useState(false);
   const reactFlowInstance = useReactFlow();
   const focusFitRef = useRef(false);
 
-  useEffect(() => {
-    let isActive = true;
-
-    computeElkLayout(graph)
-      .then((positions) => {
-        if (!isActive) {
-          return;
-        }
-        setLayoutPositions(positions);
-        setLayoutReady(true);
-      })
-      .catch(() => {
-        if (!isActive) {
-          return;
-        }
-        // graceful fallback: use deterministic horizontal layout
-        const fallbackPositions = new Map<string, { x: number; y: number }>();
-        graph.nodes.forEach((node, index) => {
-          fallbackPositions.set(node.id, {
-            x: index * 280,
-            y: node.data.kind === "marker" ? 320 : 0,
-          });
-        });
-        setLayoutPositions(fallbackPositions);
-        setLayoutReady(true);
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [graph]);
-
+  const layoutPositions = useMemo(() => computeGraphLayout(graph), [graph]);
   const nodes = useMemo(() => toReactFlowNodes(graph, layoutPositions), [graph, layoutPositions]);
   const edges = useMemo(() => toReactFlowEdges(graph), [graph]);
 
   useEffect(() => {
-    if (!layoutReady || focusFitRef.current) {
+    focusFitRef.current = false;
+  }, [graph]);
+
+  useEffect(() => {
+    if (nodes.length === 0 || focusFitRef.current) {
       return;
     }
 
@@ -176,7 +109,7 @@ function ReactionChamberCanvasInner({
       reactFlowInstance.fitView({ padding: 0.25, duration: 400 });
       focusFitRef.current = true;
     }
-  }, [graph, layoutReady, reactFlowInstance]);
+  }, [graph, nodes.length, reactFlowInstance]);
 
   const handleSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {

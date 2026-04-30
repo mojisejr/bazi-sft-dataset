@@ -88,10 +88,11 @@ describe("buildSemanticChamberGraph", () => {
 
     expect(graph.nodes).toEqual([]);
     expect(graph.edges).toEqual([]);
+    expect(graph.schoolClusters).toEqual([]);
     expect(graph.hiddenSecondaryOverlays).toEqual([]);
   });
 
-  test("emits four semantic pillar nodes with stage slots and the day pillar focal", () => {
+  test("emits radial pillar nodes with outer full display and the day pillar as reduced focal anchor", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
 
     const pillarNodes = graph.nodes.filter((node) => node.type === "chamberPillar");
@@ -100,7 +101,13 @@ describe("buildSemanticChamberGraph", () => {
     const focal = pillarNodes.find((node) => node.data.kind === "pillar" && node.data.isFocal);
     expect(focal).toBeDefined();
     expect(focal?.id).toBe("pillar:day");
-    expect(focal?.data.kind === "pillar" ? focal.data.stageSlots.length : 0).toBeGreaterThan(0);
+    expect(focal?.data.kind === "pillar" ? focal.data.displayMode : null).toBe("day-anchor");
+    expect(focal?.data.kind === "pillar" ? focal.data.stageSlots.map((slot) => slot.source) : []).toEqual(["lower"]);
+
+    const hour = pillarNodes.find((node) => node.id === "pillar:hour");
+    expect(hour?.data.kind === "pillar" ? hour.data.displayMode : null).toBe("outer-full");
+    expect(hour?.data.kind === "pillar" ? hour.data.stageSlots.map((slot) => slot.source) : []).toEqual(["upper", "sitting", "lower"]);
+    expect(hour?.position.x).not.toBe(0);
   });
 
   test("promotes visible-tier shen-sha and keeps secondary overlays hidden by default", () => {
@@ -141,5 +148,16 @@ describe("buildSemanticChamberGraph", () => {
     const matchedEdge = graph.edges.find((edge) => edge.className?.includes("chamber-edge--"));
     expect(matchedEdge?.className).toMatch(/chamber-edge chamber-edge--/);
     expect(matchedEdge?.data.layer).toBeTruthy();
+  });
+
+  test("groups doctrine reactions into school clusters without losing source provenance", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    expect(graph.schoolClusters.length).toBeGreaterThan(0);
+
+    const reactionEdge = graph.edges.find((edge) => edge.data.layer === "inter-pillar-reaction");
+    expect(reactionEdge?.data.schoolCluster?.schoolLabel).toBeTruthy();
+    expect(reactionEdge?.data.sourceDetail).toContain("ราศีล่าง");
+    expect(reactionEdge?.data.targetDetail).toContain("ราศีล่าง");
   });
 });

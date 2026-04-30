@@ -145,7 +145,7 @@
 }
 
 .reaction-chamber-canvas .react-flow__edge-path {
-  stroke-width: 1.6;
+  stroke-width: 2.2;
 }
 
 .reaction-chamber-canvas .chamber-edge--daymaster .react-flow__edge-path {
@@ -175,7 +175,8 @@
 
 .reaction-chamber-canvas .react-flow__edge-text {
   fill: var(--chamber-text);
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .reaction-chamber-canvas .react-flow__edge-textbg {
@@ -185,22 +186,28 @@
 /* Pillar node */
 
 .chamber-node-pillar {
-  background: var(--chamber-panel);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--chamber-panel) 92%, transparent), var(--chamber-panel-soft)),
+    var(--chamber-panel);
   border: 1px solid var(--chamber-line);
-  border-radius: 18px;
-  padding: 14px 16px;
-  width: 260px;
+  border-radius: 28px;
+  padding: 16px 18px;
+  width: 270px;
   color: var(--chamber-text);
   box-shadow: var(--chamber-shadow);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
 }
 
 .chamber-node-pillar--focal {
   border-color: var(--chamber-line-strong);
-  box-shadow: 0 0 0 1px var(--chamber-line-strong) inset, var(--chamber-shadow);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 28%, var(--surface-accent-soft-strong), transparent 54%),
+    var(--chamber-panel-strong);
+  box-shadow: 0 0 0 1px var(--chamber-line-strong) inset, 0 18px 52px color-mix(in srgb, var(--color-accent) 24%, transparent);
 }
 
 .chamber-node-pillar--selected {
@@ -213,17 +220,19 @@
   font-size: 12px;
   letter-spacing: 0.18em;
   color: var(--chamber-muted);
+  text-align: center;
 }
 
-.chamber-node-pillar__glyphs {
-  display: flex;
-  align-items: baseline;
+.chamber-node-pillar__ribbon-stack {
+  margin: 0;
+  display: grid;
+  justify-items: center;
   gap: 8px;
 }
 
 .chamber-node-pillar__stem,
 .chamber-node-pillar__branch {
-  font-size: 28px;
+  font-size: 38px;
   font-weight: 600;
   line-height: 1;
 }
@@ -238,21 +247,45 @@
   color: var(--chamber-muted);
 }
 
-.chamber-node-pillar__stages {
-  margin: 2px 0 0;
+.chamber-node-pillar__glyph-block {
+  width: 88px;
+  min-height: 88px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  place-items: center;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 24px;
+  background: var(--surface-raised-soft);
+  box-shadow: inset 0 0 0 1px var(--surface-line-soft);
+}
+
+.chamber-node-pillar__glyph-block span:last-child,
+.chamber-node-pillar__anchor-branch span:last-child {
+  font-size: 12px;
+  color: var(--chamber-muted);
+}
+
+.chamber-node-pillar__glyph-block--branch {
+  background: color-mix(in srgb, var(--surface-success-soft) 70%, var(--surface-raised-soft));
+}
+
+.chamber-node-pillar__stage-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
 }
 
 .chamber-stage-chip {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 5px 7px;
-  border-radius: 10px;
-  background: var(--surface-raised-soft);
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-success-soft) 68%, var(--surface-raised-soft));
   border: 1px solid var(--chamber-line);
+  min-width: 76px;
+  text-align: center;
 }
 
 .chamber-stage-chip dt {
@@ -262,14 +295,53 @@
 
 .chamber-stage-chip dd {
   margin: 0;
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 600;
   color: var(--chamber-text);
+}
+
+.chamber-stage-chip--upper {
+  background: color-mix(in srgb, var(--surface-accent-soft) 75%, var(--surface-raised-soft));
+}
+
+.chamber-stage-chip--sitting {
+  background: color-mix(in srgb, var(--surface-success-soft) 78%, var(--surface-raised-soft));
+}
+
+.chamber-node-pillar--day-anchor {
+  width: 220px;
+  min-height: 220px;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  gap: 8px;
+}
+
+.chamber-node-pillar__anchor-core,
+.chamber-node-pillar__anchor-branch {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+}
+
+.chamber-node-pillar__anchor-core .chamber-node-pillar__stem {
+  font-size: 46px;
+}
+
+.chamber-node-pillar__anchor-branch {
+  padding-top: 2px;
+}
+
+.chamber-stage-chip--lower-only {
+  margin-top: 6px;
+  min-width: 120px;
 }
 
 .chamber-node-pillar__meaning {
   display: flex;
   flex-direction: column;
   gap: 5px;
+  align-items: center;
 }
 
 .chamber-node-pillar__meaning p {
@@ -327,9 +399,11 @@
 /* Marker node */
 
 .chamber-node-marker {
-  background: var(--chamber-panel-strong);
+  background:
+    radial-gradient(circle at top left, var(--surface-success-soft), transparent 58%),
+    var(--chamber-panel-strong);
   border: 1px solid var(--chamber-line-success);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 12px 14px;
   width: 200px;
   color: var(--chamber-text);
@@ -484,6 +558,11 @@
   gap: 8px 12px;
 }
 
+.chamber-inspector__details--doctrine {
+  padding-top: 10px;
+  border-top: 1px solid var(--chamber-line);
+}
+
 .chamber-inspector__stage-grid {
   display: flex;
   flex-direction: column;
@@ -617,6 +696,20 @@
 }
 
 @media (max-width: 900px) {
+  .chamber-node-pillar {
+    width: 235px;
+  }
+
+  .chamber-node-pillar--day-anchor {
+    width: 200px;
+    min-height: 200px;
+  }
+
+  .chamber-node-pillar__stem,
+  .chamber-node-pillar__branch {
+    font-size: 32px;
+  }
+
   .base-chart-reading-section__cta {
     width: 100%;
     justify-content: center;
