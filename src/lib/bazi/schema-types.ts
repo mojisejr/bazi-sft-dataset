@@ -231,6 +231,85 @@ export const CompatibilityMatrixProfileSchema = z.object({
   entries: z.array(CompatibilityMatrixEntrySchema).default([]),
 });
 
+export const BaseChartReadingBadgeFamilySchema = z.enum([
+  "route",
+  "role",
+  "interaction",
+  "marker",
+]);
+
+export const BaseChartReadingPrioritySchema = z.enum([
+  "primary",
+  "secondary",
+  "neutralized",
+]);
+
+export const BaseChartReadingStatusSchema = z.enum([
+  "active",
+  "supplementary",
+  "neutralized",
+]);
+
+export const BaseChartParticipantTypeSchema = z.enum([
+  "stem",
+  "branch",
+  "pillar",
+  "marker",
+]);
+
+export const BaseChartDetailItemSchema = z.object({
+  label: z.string().trim().min(1),
+  value: z.string().trim().min(1),
+});
+
+export const BaseChartParticipantSchema = z.object({
+  pillarKey: z.string().trim().min(1).optional(),
+  pillarLabel: z.string().trim().min(1).optional(),
+  type: BaseChartParticipantTypeSchema,
+  symbol: z.string().trim().min(1),
+  translation: z.string().trim().min(1).optional(),
+});
+
+export const BaseChartModalContentSchema = z.object({
+  title: z.string().trim().min(1),
+  family: BaseChartReadingBadgeFamilySchema,
+  summary: z.string().trim().min(1),
+  explanation: z.string().trim().min(1),
+  readingOrderHint: z.string().trim().min(1),
+  details: z.array(BaseChartDetailItemSchema).default([]),
+});
+
+export const BaseChartReactionBadgeSchema = z.object({
+  id: z.string().trim().min(1),
+  family: BaseChartReadingBadgeFamilySchema,
+  label: z.string().trim().min(1),
+  shortLabel: z.string().trim().min(1).optional(),
+  priority: BaseChartReadingPrioritySchema,
+  status: BaseChartReadingStatusSchema,
+  meaningShort: z.string().trim().min(1),
+  schoolLabel: z.string().trim().min(1).optional(),
+  participants: z.array(BaseChartParticipantSchema).default([]),
+  modal: BaseChartModalContentSchema,
+});
+
+export const BaseChartReactionGroupSchema = z.object({
+  key: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional(),
+  family: BaseChartReadingBadgeFamilySchema,
+  badges: z.array(BaseChartReactionBadgeSchema).default([]),
+});
+
+export const BaseChartReadingSchema = z.object({
+  roleBadges: z.array(BaseChartReactionBadgeSchema).default([]),
+  stemInteractionBadges: z.array(BaseChartReactionBadgeSchema).default([]),
+  branchInteractionBadges: z.array(BaseChartReactionBadgeSchema).default([]),
+  markerBadges: z.array(BaseChartReactionBadgeSchema).default([]),
+  groups: z.array(BaseChartReactionGroupSchema).default([]),
+  legendItems: z.array(BaseChartDetailItemSchema).default([]),
+  readingOrderSteps: z.array(z.string().trim().min(1)).default([]),
+});
+
 export const CalculatedStateExplainableSchema = z.object({
   mingGong: ExplainablePillarValueSchema.optional(),
   strengthScore: ExplainableNumberSchema.optional(),
@@ -264,6 +343,7 @@ export const CalculatedStateSchema = z.object({
   seasonalInteraction: SeasonalInteractionSchema.optional(),
   dayMasterStrengthProfile: DayMasterStrengthProfileSchema.optional(),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
+  baseChartReading: BaseChartReadingSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
   isForwardDirection: z.boolean().optional(),
   explainable: CalculatedStateExplainableSchema.default({}),
@@ -374,3 +454,13 @@ export type StoredAnnotationDataValue =
   | RejectedAnnotationDataValue;
 export type CompatibilityMatrixProfileValue = z.infer<typeof CompatibilityMatrixProfileSchema>;
 export type CalculatedStateExplainableValue = z.infer<typeof CalculatedStateExplainableSchema>;
+export type BaseChartReadingBadgeFamilyValue = z.infer<typeof BaseChartReadingBadgeFamilySchema>;
+export type BaseChartReadingPriorityValue = z.infer<typeof BaseChartReadingPrioritySchema>;
+export type BaseChartReadingStatusValue = z.infer<typeof BaseChartReadingStatusSchema>;
+export type BaseChartParticipantTypeValue = z.infer<typeof BaseChartParticipantTypeSchema>;
+export type BaseChartDetailItemValue = z.infer<typeof BaseChartDetailItemSchema>;
+export type BaseChartParticipantValue = z.infer<typeof BaseChartParticipantSchema>;
+export type BaseChartModalContentValue = z.infer<typeof BaseChartModalContentSchema>;
+export type BaseChartReactionBadgeValue = z.infer<typeof BaseChartReactionBadgeSchema>;
+export type BaseChartReactionGroupValue = z.infer<typeof BaseChartReactionGroupSchema>;
+export type BaseChartReadingValue = z.infer<typeof BaseChartReadingSchema>;

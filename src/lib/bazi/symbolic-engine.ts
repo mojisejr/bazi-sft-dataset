@@ -45,6 +45,7 @@ import {
   buildPrecedenceNoteSignals,
   buildSixtyJiaziSemanticNotes,
 } from "@/lib/bazi/symbolic-engine.persona";
+import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
 import { renderContextRuleNoteEnglish } from "@/lib/bazi/symbolic-engine.context-notes";
 import {
   buildElementMetaphors,
@@ -505,6 +506,19 @@ export async function calculateBaziChart(
     persona,
     interactionResolution,
   );
+  const shenSha = buildShenShaState({
+    pillars,
+    dayMasterStem,
+    mingGong: mingGong.value,
+    liuNian: enrichedLiuNian,
+    currentDaYun: currentDaYunPillar,
+  });
+  const baseChartReading = buildBaseChartReading({
+    dayMasterStem,
+    pillars: enrichedPillars,
+    shenSha,
+    precedenceSignals: precedenceNoteSignals,
+  });
 
   const calculatedState = CalculatedStateSchema.parse({
     fourPillars: enrichedPillars,
@@ -512,13 +526,7 @@ export async function calculateBaziChart(
     mingGong: enrichedMingGong,
     daYun: enrichedDaYunState,
     liuNian: enrichedLiuNian,
-    shenSha: buildShenShaState({
-      pillars,
-      dayMasterStem,
-      mingGong: mingGong.value,
-      liuNian: enrichedLiuNian,
-      currentDaYun: currentDaYunPillar,
-    }),
+    shenSha,
     dayMaster: dayMasterStem,
     strengthScore: strengthScore.value,
     tenGods: {
@@ -575,6 +583,7 @@ export async function calculateBaziChart(
           precedenceNoteSignals,
         }
       : undefined,
+    baseChartReading,
     compatibilityMatrixProfiles,
     isForwardDirection: forwardDirection,
   });

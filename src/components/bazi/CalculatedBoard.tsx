@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 import type {
+  BaseChartDetailItemValue,
+  BaseChartReactionBadgeValue,
   CalculatedStateValue,
   DaYunPhaseValue,
   DaYunPillarValue,
@@ -30,6 +32,14 @@ type DynamicLuckBadgeItem = {
   key: string;
   label?: string;
   value: string;
+};
+
+type RouteDetail = {
+  kicker: string;
+  title: string;
+  summary: string;
+  explanation: string;
+  details: BaseChartDetailItemValue[];
 };
 
 function formatPillarCode(pillar: PillarValue | undefined) {
@@ -151,11 +161,73 @@ function buildDaYunPhaseBadges(
   }];
 }
 
+function buildRouteDetail(
+  columnLabel: string,
+  stageLabel: string,
+  value: string,
+  pillar: PillarValue | undefined,
+): RouteDetail {
+  return {
+    kicker: "route",
+    title: `${columnLabel} · ${stageLabel}`,
+    summary: `${stageLabel}ของ${columnLabel}แสดงค่า ${value}`,
+    explanation: "ชั้น route ใช้บอกคุณภาพของเส้นทางในพื้นดวงก่อนอ่านบทบาทต่อดิถีและปฏิกิริยาระหว่างตัวในดวง",
+    details: [
+      { label: "ฐาน", value: columnLabel },
+      { label: "ชั้น", value: stageLabel },
+      { label: "ค่า", value },
+      { label: "เสา", value: pillar ? `${pillar.stem}${pillar.branch}` : "-" },
+    ],
+  };
+}
+
+function formatBadgeParticipants(badge: BaseChartReactionBadgeValue) {
+  return badge.participants
+    .map((participant) => {
+      const translation = participant.translation ? ` (${participant.translation})` : "";
+      return `${participant.pillarLabel ?? participant.type} · ${participant.symbol}${translation}`;
+    })
+    .join(" • ");
+}
+
+function ReactionDetailContent({
+  explanation,
+  details,
+  participantsLabel,
+}: {
+  explanation: string;
+  details: BaseChartDetailItemValue[];
+  participantsLabel?: string;
+}) {
+  return (
+    <section className="base-chart-detail-sheet">
+      <p className="metric-copy">{explanation}</p>
+      {participantsLabel ? <p className="base-chart-detail-sheet__participants">{participantsLabel}</p> : null}
+      <dl className="base-chart-detail-list">
+        {details.map((detail) => (
+          <div key={`${detail.label}-${detail.value}`} className="base-chart-detail-list__row">
+            <dt>{detail.label}</dt>
+            <dd>{detail.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
+  const [activeReactionBadge, setActiveReactionBadge] = useState<BaseChartReactionBadgeValue | null>(null);
+  const [activeRouteDetail, setActiveRouteDetail] = useState<RouteDetail | null>(null);
 
   function handlePrint() {
     window.print();
+  }
+
+  function closeAllDetailPanels() {
+    setActiveDetailPanel(null);
+    setActiveReactionBadge(null);
+    setActiveRouteDetail(null);
   }
 
   const staticDestinyColumns: StaticDestinyColumn[] = calculatedState
@@ -212,30 +284,43 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const isStrengthDetailOpen = activeDetailPanel === "strength";
   const isLuckDetailOpen = activeDetailPanel === "luck";
   const isPersonaDetailOpen = activeDetailPanel === "persona";
+  const baseChartReading = calculatedState?.baseChartReading;
 
-  const detailOverlayMeta = activeDetailPanel === "strength"
+  const detailOverlayMeta = activeReactionBadge
     ? {
-      kicker: "กำลังดิถี",
-      title: "รายละเอียดกำลังดิถี",
-      summary: calculatedState ? `คะแนน ${calculatedState.strengthScore.toFixed(2)} • เปิดสมการและแรงหนุน/แรงเสียดสีในชั้นเดียว` : undefined,
+      kicker: activeReactionBadge.modal.family,
+      title: activeReactionBadge.modal.title,
+      summary: activeReactionBadge.modal.summary,
     }
-    : activeDetailPanel === "luck"
+    : activeRouteDetail
       ? {
-        kicker: "ถนนชีวิต",
-        title: "ถนนชีวิต",
-        summary: currentDaYun
-          ? `ช่วงที่กำลังเดิน ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
-          : "เปิดรายละเอียดช่วงที่กำลังเดิน ก้าวปัจจุบัน และช่วงทางเดินในชั้นเดียว",
+        kicker: activeRouteDetail.kicker,
+        title: activeRouteDetail.title,
+        summary: activeRouteDetail.summary,
       }
-      : activeDetailPanel === "persona"
+      : activeDetailPanel === "strength"
         ? {
-          kicker: "บริบทธาตุ",
-          title: "บริบทธาตุและบุคลิก",
-        summary: calculatedState?.dayMasterStrengthProfile
-            ? `${calculatedState.dayMasterStrengthProfile.displayLabel ?? calculatedState.dayMasterStrengthProfile.displayBand ?? calculatedState.dayMasterStrengthProfile.strengthState} • เปิดดุลธาตุและหมายเหตุเชิงกฎในชั้นแยก`
-            : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎในชั้นแยก",
+          kicker: "กำลังดิถี",
+          title: "รายละเอียดกำลังดิถี",
+          summary: calculatedState ? `คะแนน ${calculatedState.strengthScore.toFixed(2)} • เปิดสมการและแรงหนุน/แรงเสียดสีในชั้นเดียว` : undefined,
         }
-          : null;
+        : activeDetailPanel === "luck"
+          ? {
+            kicker: "ถนนชีวิต",
+            title: "ถนนชีวิต",
+            summary: currentDaYun
+              ? `ช่วงที่กำลังเดิน ${formatDaYunCycleCode(currentDaYun)} • ก้าวปัจจุบัน ${currentDaYunDisplay ?? "ยังไม่พบ"}`
+              : "เปิดรายละเอียดช่วงที่กำลังเดิน ก้าวปัจจุบัน และช่วงทางเดินในชั้นเดียว",
+          }
+          : activeDetailPanel === "persona"
+            ? {
+              kicker: "บริบทธาตุ",
+              title: "บริบทธาตุและบุคลิก",
+              summary: calculatedState?.dayMasterStrengthProfile
+                ? `${calculatedState.dayMasterStrengthProfile.displayLabel ?? calculatedState.dayMasterStrengthProfile.displayBand ?? calculatedState.dayMasterStrengthProfile.strengthState} • เปิดดุลธาตุและหมายเหตุเชิงกฎในชั้นแยก`
+                : "เปิดรายละเอียดธาตุและหมายเหตุเชิงกฎในชั้นแยก",
+            }
+            : null;
 
   return (
     <article className="surface engine-column">
@@ -296,9 +381,13 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                         {column.key === "day" ? (
                           <span className="pillar-day-master-tag">ดิถี</span>
                         ) : hasVisibleTopStage(column.pillar) ? (
-                          <span className="pillar-stage-chip pillar-stage-chip--upper">
+                          <button
+                            type="button"
+                            className="pillar-stage-chip pillar-stage-chip--upper pillar-stage-chip-button"
+                            onClick={() => setActiveRouteDetail(buildRouteDetail(column.label, "ชั้นบน", column.pillar?.upperStageDisplay ?? "-", column.pillar))}
+                          >
                             {column.pillar?.upperStageDisplay}
-                          </span>
+                          </button>
                         ) : (
                           <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
                         )}
@@ -311,12 +400,14 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                       </div>
                       <div className="pillar-stage-slot pillar-stage-slot--middle">
                         {hasVisibleSittingStage(column.pillar) ? (
-                          <span
-                            className="pillar-stage-chip pillar-stage-chip--sitting"
+                          <button
+                            type="button"
+                            className="pillar-stage-chip pillar-stage-chip--sitting pillar-stage-chip-button"
                             aria-label={`${column.label} เชี่ยงแซกลาง`}
+                            onClick={() => setActiveRouteDetail(buildRouteDetail(column.label, "ชั้นกลาง", column.pillar?.sittingStage ?? "-", column.pillar))}
                           >
                             {column.pillar?.sittingStage}
-                          </span>
+                          </button>
                         ) : (
                           <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
                         )}
@@ -329,9 +420,13 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                       </div>
                       <div className="pillar-stage-slot pillar-stage-slot--lower">
                         {column.pillar?.lowerStageDisplay ? (
-                          <span className="pillar-stage-chip pillar-stage-chip--lower">
+                          <button
+                            type="button"
+                            className="pillar-stage-chip pillar-stage-chip--lower pillar-stage-chip-button"
+                            onClick={() => setActiveRouteDetail(buildRouteDetail(column.label, "ชั้นล่าง", column.pillar?.lowerStageDisplay ?? "-", column.pillar))}
+                          >
                             {column.pillar.lowerStageDisplay}
-                          </span>
+                          </button>
                         ) : (
                           <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
                         )}
@@ -342,6 +437,71 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
               })}
             </div>
           </section>
+
+          {baseChartReading ? (
+            <section className="surface inset-card base-chart-reading-section" aria-label="base chart reaction workspace" data-reading-block="C">
+              <div className="section-heading section-heading--compact base-chart-reading-section__header">
+                <div>
+                  <p className="section-kicker">zone พื้นดวง</p>
+                  <h3>จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว</h3>
+                </div>
+                {baseChartReading.readingOrderSteps.length > 0 ? (
+                  <div className="base-chart-reading-order" aria-label="ลำดับการอ่านพื้นดวง">
+                    {baseChartReading.readingOrderSteps.map((step) => (
+                      <span key={step} className="base-chart-reading-order__step">{step}</span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="base-chart-reading-grid">
+                {baseChartReading.groups.map((group) => (
+                  <article key={group.key} className={`base-chart-reading-group base-chart-reading-group--${group.family}`}>
+                    <header className="base-chart-reading-group__header">
+                      <div>
+                        <p className="section-kicker">{group.title}</p>
+                        {group.description ? <p className="metric-copy">{group.description}</p> : null}
+                      </div>
+                      <span className="base-chart-reading-group__count">{group.badges.length}</span>
+                    </header>
+
+                    {group.badges.length > 0 ? (
+                      <div className="base-chart-badge-cloud">
+                        {group.badges.map((badge) => (
+                          <button
+                            key={badge.id}
+                            type="button"
+                            className={`base-chart-badge base-chart-badge--${badge.family} base-chart-badge--${badge.status}`}
+                            aria-haspopup="dialog"
+                            onClick={() => setActiveReactionBadge(badge)}
+                          >
+                            <span className="base-chart-badge__title">{badge.label}</span>
+                            <span className="base-chart-badge__meaning">{badge.meaningShort}</span>
+                            {badge.participants.length > 0 ? (
+                              <span className="base-chart-badge__participants">{formatBadgeParticipants(badge)}</span>
+                            ) : null}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="base-chart-reading-empty">ยังไม่มีรายการในชั้นนี้สำหรับดวงนี้</p>
+                    )}
+                  </article>
+                ))}
+              </div>
+
+              {baseChartReading.legendItems.length > 0 ? (
+                <dl className="base-chart-legend">
+                  {baseChartReading.legendItems.map((item) => (
+                    <div key={`${item.label}-${item.value}`} className="base-chart-legend__item">
+                      <dt>{item.label}</dt>
+                      <dd>{item.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              ) : null}
+            </section>
+          ) : null}
 
           <div className="reading-primary-grid">
             <section
@@ -467,12 +627,27 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           />
 
           <DetailOverlay
-            isOpen={activeDetailPanel !== null}
+            isOpen={activeDetailPanel !== null || activeReactionBadge !== null || activeRouteDetail !== null}
             title={detailOverlayMeta?.title ?? "รายละเอียดเพิ่มเติม"}
             kicker={detailOverlayMeta?.kicker}
             summary={detailOverlayMeta?.summary}
-            onClose={() => setActiveDetailPanel(null)}
+            onClose={closeAllDetailPanels}
           >
+            {activeReactionBadge ? (
+              <ReactionDetailContent
+                explanation={activeReactionBadge.modal.explanation}
+                details={activeReactionBadge.modal.details}
+                participantsLabel={formatBadgeParticipants(activeReactionBadge)}
+              />
+            ) : null}
+
+            {activeRouteDetail ? (
+              <ReactionDetailContent
+                explanation={activeRouteDetail.explanation}
+                details={activeRouteDetail.details}
+              />
+            ) : null}
+
             {activeDetailPanel === "strength" ? (
               <StrengthBreakdownDetailContent
                 score={calculatedState.strengthScore}

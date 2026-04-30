@@ -252,6 +252,226 @@ describe("BaziTrainerWorkspace", () => {
           },
         ],
       },
+      baseChartReading: {
+        roleBadges: [
+          {
+            id: "year-stem-role",
+            family: "role",
+            label: "ปีบน · เจี้ยไช้",
+            shortLabel: "เจี้ยไช้",
+            priority: "secondary",
+            status: "active",
+            meaningShort: "ลาภที่เป็นระบบ การเงิน ทรัพย์ และผลประโยชน์ที่ต้องรักษา",
+            schoolLabel: "เจี้ยไช้",
+            participants: [
+              {
+                pillarKey: "year",
+                pillarLabel: "ปี",
+                type: "stem",
+                symbol: "壬",
+                translation: "น้ำ",
+              },
+            ],
+            modal: {
+              title: "ปีบน · เจี้ยไช้",
+              family: "role",
+              summary: "ราศีบนของปีทำหน้าที่แบบเจี้ยไช้เมื่อเทียบกับดิถี",
+              explanation: "ใช้เพื่ออ่านบทบาทของราศีบนเทียบกับดิถี",
+              readingOrderHint: "อ่านหลัง ribbon",
+              details: [
+                { label: "ราศีบน", value: "壬" },
+              ],
+            },
+          },
+        ],
+        stemInteractionBadges: [],
+        branchInteractionBadges: [
+          {
+            id: "branch-combination-month-year",
+            family: "interaction",
+            label: "ภาคี 申巳",
+            shortLabel: "申巳",
+            priority: "primary",
+            status: "active",
+            meaningShort: "คู่ที่ดึงเข้าหากันและเปลี่ยนแรงของพื้นดวง",
+            schoolLabel: "ภาคี",
+            participants: [
+              {
+                pillarKey: "month",
+                pillarLabel: "เดือน",
+                type: "branch",
+                symbol: "申",
+                translation: "วอก",
+              },
+              {
+                pillarKey: "day",
+                pillarLabel: "วัน",
+                type: "branch",
+                symbol: "巳",
+                translation: "มะเส็ง",
+              },
+            ],
+            modal: {
+              title: "ภาคี 申巳",
+              family: "interaction",
+              summary: "เดือนกับวันเกิดภาคีกัน",
+              explanation: "คู่ภาคีนี้เป็นแรงหลักของราศีล่าง",
+              readingOrderHint: "อ่านหลังบทบาทต่อดิถี",
+              details: [
+                { label: "คู่", value: "申 ↔ 巳" },
+              ],
+            },
+          },
+        ],
+        markerBadges: [
+          {
+            id: "marker-nobleman",
+            family: "marker",
+            label: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+            shortLabel: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+            priority: "secondary",
+            status: "active",
+            meaningShort: "มีผู้ใหญ่เข้ามาช่วยเมื่อจังหวะเปิด",
+            schoolLabel: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+            participants: [
+              {
+                pillarLabel: "ปี",
+                type: "marker",
+                symbol: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+              },
+            ],
+            modal: {
+              title: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+              family: "marker",
+              summary: "marker นี้อยู่ที่ปี",
+              explanation: "มีผู้ใหญ่เข้ามาช่วยเมื่อจังหวะเปิด",
+              readingOrderHint: "อ่านท้ายสุด",
+              details: [
+                { label: "ฐาน", value: "ปี" },
+              ],
+            },
+          },
+        ],
+        groups: [
+          {
+            key: "roles",
+            title: "บทบาทต่อดิถี",
+            description: "อ่านว่าแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
+            family: "role",
+            badges: [
+              {
+                id: "year-stem-role-group",
+                family: "role",
+                label: "ปีบน · เจี้ยไช้",
+                shortLabel: "เจี้ยไช้",
+                priority: "secondary",
+                status: "active",
+                meaningShort: "ลาภที่เป็นระบบ การเงิน ทรัพย์ และผลประโยชน์ที่ต้องรักษา",
+                schoolLabel: "เจี้ยไช้",
+                participants: [
+                  {
+                    pillarKey: "year",
+                    pillarLabel: "ปี",
+                    type: "stem",
+                    symbol: "壬",
+                    translation: "น้ำ",
+                  },
+                ],
+                modal: {
+                  title: "ปีบน · เจี้ยไช้",
+                  family: "role",
+                  summary: "ราศีบนของปีทำหน้าที่แบบเจี้ยไช้เมื่อเทียบกับดิถี",
+                  explanation: "ใช้เพื่ออ่านบทบาทของราศีบนเทียบกับดิถี",
+                  readingOrderHint: "อ่านหลัง ribbon",
+                  details: [
+                    { label: "ราศีบน", value: "壬" },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            key: "branch-interactions",
+            title: "ดิน-ดิน interactions",
+            description: "ภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่างในดวงกำเนิด",
+            family: "interaction",
+            badges: [
+              {
+                id: "branch-combination-month-year-group",
+                family: "interaction",
+                label: "ภาคี 申巳",
+                shortLabel: "申巳",
+                priority: "primary",
+                status: "active",
+                meaningShort: "คู่ที่ดึงเข้าหากันและเปลี่ยนแรงของพื้นดวง",
+                schoolLabel: "ภาคี",
+                participants: [
+                  {
+                    pillarKey: "month",
+                    pillarLabel: "เดือน",
+                    type: "branch",
+                    symbol: "申",
+                    translation: "วอก",
+                  },
+                ],
+                modal: {
+                  title: "ภาคี 申巳",
+                  family: "interaction",
+                  summary: "เดือนกับวันเกิดภาคีกัน",
+                  explanation: "คู่ภาคีนี้เป็นแรงหลักของราศีล่าง",
+                  readingOrderHint: "อ่านหลังบทบาทต่อดิถี",
+                  details: [
+                    { label: "คู่", value: "申 ↔ 巳" },
+                  ],
+                },
+              },
+            ],
+          },
+          {
+            key: "markers",
+            title: "ตัวประกอบพิเศษ",
+            description: "กุ้ยนั้งและ marker เสริม",
+            family: "marker",
+            badges: [
+              {
+                id: "marker-nobleman-group",
+                family: "marker",
+                label: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+                shortLabel: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+                priority: "secondary",
+                status: "active",
+                meaningShort: "มีผู้ใหญ่เข้ามาช่วยเมื่อจังหวะเปิด",
+                schoolLabel: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+                participants: [
+                  {
+                    pillarLabel: "ปี",
+                    type: "marker",
+                    symbol: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+                  },
+                ],
+                modal: {
+                  title: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+                  family: "marker",
+                  summary: "marker นี้อยู่ที่ปี",
+                  explanation: "มีผู้ใหญ่เข้ามาช่วยเมื่อจังหวะเปิด",
+                  readingOrderHint: "อ่านท้ายสุด",
+                  details: [
+                    { label: "ฐาน", value: "ปี" },
+                  ],
+                },
+              },
+            ],
+          },
+        ],
+        legendItems: [
+          { label: "role", value: "บทบาทต่อดิถี" },
+          { label: "interaction", value: "แรงที่กระทบกันในดวง" },
+        ],
+        readingOrderSteps: [
+          "เริ่มจากดิถีและ ribbon พื้นดวงก่อน",
+          "อ่านบทบาทต่อดิถีของตัวสำคัญ",
+        ],
+      },
       explainable: {
         mingGong: {
           value: { stem: "壬", branch: "寅", hiddenStems: ["甲", "丙", "戊"] },
@@ -338,6 +558,11 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("正财");
     expect(html).not.toContain("劫财");
     expect(html).not.toContain("食神");
+    expect(html).toContain("zone พื้นดวง");
+    expect(html).toContain("จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว");
+    expect(html).toContain("ปีบน · เจี้ยไช้");
+    expect(html).toContain("ภาคี 申巳");
+    expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("วัยจร");
     expect(html).toContain("ดูช่วงที่กำลังเดิน ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว");
     expect(html).toContain("ช่วงที่กำลังเดิน");
@@ -382,7 +607,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("เจี๋ยง");
     expect(html).not.toContain('<div class="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ"><article class="dynamic-luck-badge"><span class="dynamic-luck-badge__label">ราศีบน</span>');
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
-    expect(html).not.toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
+    expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).not.toContain("พูดด้วยเสียง");
     expect(html).not.toContain("เริ่มเขียนคำพยากรณ์");
