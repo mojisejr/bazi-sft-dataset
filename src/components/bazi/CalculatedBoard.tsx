@@ -3,7 +3,6 @@ import { useRouter } from "next/navigation";
 
 import type {
   BaseChartDetailItemValue,
-  BaseChartReactionBadgeValue,
   CalculatedStateValue,
   DaYunPhaseValue,
   DaYunPillarValue,
@@ -182,28 +181,16 @@ function buildRouteDetail(
   };
 }
 
-function formatBadgeParticipants(badge: BaseChartReactionBadgeValue) {
-  return badge.participants
-    .map((participant) => {
-      const translation = participant.translation ? ` (${participant.translation})` : "";
-      return `${participant.pillarLabel ?? participant.type} · ${participant.symbol}${translation}`;
-    })
-    .join(" • ");
-}
-
 function ReactionDetailContent({
   explanation,
   details,
-  participantsLabel,
 }: {
   explanation: string;
   details: BaseChartDetailItemValue[];
-  participantsLabel?: string;
 }) {
   return (
     <section className="base-chart-detail-sheet">
       <p className="metric-copy">{explanation}</p>
-      {participantsLabel ? <p className="base-chart-detail-sheet__participants">{participantsLabel}</p> : null}
       <dl className="base-chart-detail-list">
         {details.map((detail) => (
           <div key={`${detail.label}-${detail.value}`} className="base-chart-detail-list__row">
@@ -219,7 +206,6 @@ function ReactionDetailContent({
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const router = useRouter();
   const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
-  const [activeReactionBadge, setActiveReactionBadge] = useState<BaseChartReactionBadgeValue | null>(null);
   const [activeRouteDetail, setActiveRouteDetail] = useState<RouteDetail | null>(null);
 
   function handlePrint() {
@@ -235,7 +221,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
 
   function closeAllDetailPanels() {
     setActiveDetailPanel(null);
-    setActiveReactionBadge(null);
     setActiveRouteDetail(null);
   }
 
@@ -293,15 +278,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
   const isStrengthDetailOpen = activeDetailPanel === "strength";
   const isLuckDetailOpen = activeDetailPanel === "luck";
   const isPersonaDetailOpen = activeDetailPanel === "persona";
-  const baseChartReading = calculatedState?.baseChartReading;
-
-  const detailOverlayMeta = activeReactionBadge
-    ? {
-      kicker: activeReactionBadge.modal.family,
-      title: activeReactionBadge.modal.title,
-      summary: activeReactionBadge.modal.summary,
-    }
-    : activeRouteDetail
+  const detailOverlayMeta = activeRouteDetail
       ? {
         kicker: activeRouteDetail.kicker,
         title: activeRouteDetail.title,
@@ -355,7 +332,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           </div>
 
           <section className="surface inset-card pillar-ribbon-section" aria-label="five pillar strip" data-reading-block="B">
-            <div className="section-heading section-heading--compact">
+            <div className="section-heading section-heading--compact pillar-ribbon-section__header">
               <div>
                 <p className="section-kicker">พื้นดวง</p>
                 <h3>เริ่มจากโครงดวงก่อน แล้วค่อยเปิดข้อมูลรองตามลำดับ</h3>
@@ -408,7 +385,9 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                         </span>
                       </div>
                       <div className="pillar-stage-slot pillar-stage-slot--middle">
-                        {hasVisibleSittingStage(column.pillar) ? (
+                        {column.key === "day" ? (
+                          <span className="pillar-stage-slot__placeholder" aria-hidden="true" />
+                        ) : hasVisibleSittingStage(column.pillar) ? (
                           <button
                             type="button"
                             className="pillar-stage-chip pillar-stage-chip--sitting pillar-stage-chip-button"
@@ -445,81 +424,18 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 );
               })}
             </div>
+
+            <div className="pillar-ribbon-section__actions">
+              <button
+                type="button"
+                className="secondary-action detail-trigger-action pillar-ribbon-section__cta"
+                onClick={handleOpenReactionChamber}
+              >
+                เปิดแผนภาพปฏิกิริยา
+                <span className="pillar-ribbon-section__cta-arrow" aria-hidden>→</span>
+              </button>
+            </div>
           </section>
-
-          {baseChartReading ? (
-            <section className="surface inset-card base-chart-reading-section" aria-label="base chart reaction workspace" data-reading-block="C">
-              <div className="section-heading section-heading--compact base-chart-reading-section__header">
-                <div>
-                  <p className="section-kicker">zone พื้นดวง</p>
-                  <h3>จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว</h3>
-                  <button
-                    type="button"
-                    className="base-chart-reading-section__cta"
-                    onClick={handleOpenReactionChamber}
-                  >
-                    เปิดแผนภาพปฏิกิริยา
-                    <span className="base-chart-reading-section__cta-arrow" aria-hidden>→</span>
-                  </button>
-                  <p className="base-chart-reading-section__cta-supporting">เปิดมุมมองเต็มจอ ลากย้ายและซูมเพื่อตรวจสอบความสัมพันธ์ระหว่างเสาได้ค่ะ</p>
-                </div>
-                {baseChartReading.readingOrderSteps.length > 0 ? (
-                  <div className="base-chart-reading-order" aria-label="ลำดับการอ่านพื้นดวง">
-                    {baseChartReading.readingOrderSteps.map((step) => (
-                      <span key={step} className="base-chart-reading-order__step">{step}</span>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="base-chart-reading-grid">
-                {baseChartReading.groups.map((group) => (
-                  <article key={group.key} className={`base-chart-reading-group base-chart-reading-group--${group.family}`}>
-                    <header className="base-chart-reading-group__header">
-                      <div>
-                        <p className="section-kicker">{group.title}</p>
-                        {group.description ? <p className="metric-copy">{group.description}</p> : null}
-                      </div>
-                      <span className="base-chart-reading-group__count">{group.badges.length}</span>
-                    </header>
-
-                    {group.badges.length > 0 ? (
-                      <div className="base-chart-badge-cloud">
-                        {group.badges.map((badge) => (
-                          <button
-                            key={badge.id}
-                            type="button"
-                            className={`base-chart-badge base-chart-badge--${badge.family} base-chart-badge--${badge.status}`}
-                            aria-haspopup="dialog"
-                            onClick={() => setActiveReactionBadge(badge)}
-                          >
-                            <span className="base-chart-badge__title">{badge.label}</span>
-                            <span className="base-chart-badge__meaning">{badge.meaningShort}</span>
-                            {badge.participants.length > 0 ? (
-                              <span className="base-chart-badge__participants">{formatBadgeParticipants(badge)}</span>
-                            ) : null}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="base-chart-reading-empty">ยังไม่มีรายการในชั้นนี้สำหรับดวงนี้</p>
-                    )}
-                  </article>
-                ))}
-              </div>
-
-              {baseChartReading.legendItems.length > 0 ? (
-                <dl className="base-chart-legend">
-                  {baseChartReading.legendItems.map((item) => (
-                    <div key={`${item.label}-${item.value}`} className="base-chart-legend__item">
-                      <dt>{item.label}</dt>
-                      <dd>{item.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              ) : null}
-            </section>
-          ) : null}
 
           <div className="reading-primary-grid">
             <section
@@ -645,20 +561,12 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
           />
 
           <DetailOverlay
-            isOpen={activeDetailPanel !== null || activeReactionBadge !== null || activeRouteDetail !== null}
+            isOpen={activeDetailPanel !== null || activeRouteDetail !== null}
             title={detailOverlayMeta?.title ?? "รายละเอียดเพิ่มเติม"}
             kicker={detailOverlayMeta?.kicker}
             summary={detailOverlayMeta?.summary}
             onClose={closeAllDetailPanels}
           >
-            {activeReactionBadge ? (
-              <ReactionDetailContent
-                explanation={activeReactionBadge.modal.explanation}
-                details={activeReactionBadge.modal.details}
-                participantsLabel={formatBadgeParticipants(activeReactionBadge)}
-              />
-            ) : null}
-
             {activeRouteDetail ? (
               <ReactionDetailContent
                 explanation={activeRouteDetail.explanation}

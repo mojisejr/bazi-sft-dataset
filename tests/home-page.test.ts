@@ -550,7 +550,7 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("ลิ่มกัว");
     expect(html).toContain('data-day-master-column="true"');
     expect(html).toContain("pillar-day-master-tag");
-    expect(html).toContain("วัน เชี่ยงแซกลาง");
+    expect(html).not.toContain("วัน เชี่ยงแซกลาง");
     expect(html).toContain("เดือน เชี่ยงแซกลาง");
     expect(html).toContain("ปี เชี่ยงแซกลาง");
     expect(html).toContain("เชี่ยงแซ/ลิ่มกัว");
@@ -558,11 +558,12 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("正财");
     expect(html).not.toContain("劫财");
     expect(html).not.toContain("食神");
-    expect(html).toContain("zone พื้นดวง");
-    expect(html).toContain("จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว");
-    expect(html).toContain("ปีบน · เจี้ยไช้");
-    expect(html).toContain("ภาคี 申巳");
-    expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
+    expect(html).toContain("เปิดแผนภาพปฏิกิริยา");
+    expect(html).toContain("pillar-ribbon-section__cta");
+    expect(html).not.toContain("zone พื้นดวง");
+    expect(html).not.toContain("จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว");
+    expect(html).not.toContain("ปีบน · เจี้ยไช้");
+    expect(html).not.toContain("ภาคี 申巳");
     expect(html).toContain("วัยจร");
     expect(html).toContain("ดูช่วงที่กำลังเดิน ก้าวปัจจุบัน และปีจรบนถนนชีวิตเดียว");
     expect(html).toContain("ช่วงที่กำลังเดิน");
@@ -607,7 +608,6 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("เจี๋ยง");
     expect(html).not.toContain('<div class="dynamic-luck-badge-list" aria-label="รอบหลัก 12 เชี่ยงแซ"><article class="dynamic-luck-badge"><span class="dynamic-luck-badge__label">ราศีบน</span>');
     expect(html).not.toContain("ความสัมพันธ์ที่ต้องใช้ตีความต่อ");
-    expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("เกิดวันที่ 21 สิงหาคม พ.ศ.2535 เวลา 14.35 น.");
     expect(html).not.toContain("พูดด้วยเสียง");
     expect(html).not.toContain("เริ่มเขียนคำพยากรณ์");

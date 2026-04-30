@@ -52,6 +52,24 @@
   gap: 16px;
 }
 
+.pillar-ribbon-section__actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: -2px;
+}
+
+.pillar-ribbon-section__cta {
+  gap: 8px;
+  min-height: 42px;
+  background: linear-gradient(135deg, rgba(255, 250, 242, 0.96), rgba(247, 232, 214, 0.9));
+}
+
+.pillar-ribbon-section__cta-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .pillar-ribbon {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -136,6 +154,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+}
+
+@media (max-width: 760px) {
+  .pillar-ribbon-section__actions,
+  .pillar-ribbon-section__cta {
+    width: 100%;
+  }
 }
 
 .reference-shelf__pill {
