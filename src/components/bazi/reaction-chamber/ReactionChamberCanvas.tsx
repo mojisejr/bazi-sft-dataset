@@ -1,0 +1,269 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Background,
+  Controls,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  type Edge,
+  type Node,
+  type NodeMouseHandler,
+  type EdgeMouseHandler,
+  type OnSelectionChangeParams,
+} from "@xyflow/react";
+import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.js";
+
+import "@xyflow/react/dist/style.css";
+
+import type {
+  ChamberEdge,
+  ChamberGraph,
+  ChamberNode,
+} from "@/lib/bazi/base-chart-chamber-graph";
+
+import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
+import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
+
+const elk = new ELK();
+
+const ELK_OPTIONS: Record<string, string> = {
+  "elk.algorithm": "layered",
+  "elk.direction": "RIGHT",
+  "elk.layered.spacing.nodeNodeBetweenLayers": "120",
+  "elk.spacing.nodeNode": "70",
+  "elk.layered.nodePlacement.strategy": "BRANDES_KOEPF",
+};
+
+const NODE_TYPES = {
+  chamberPillar: ChamberPillarNode,
+  chamberMarker: ChamberMarkerNode,
+};
+
+type ChamberSelection =
+  | { kind: "node"; node: ChamberNode }
+  | { kind: "edge"; edge: ChamberEdge }
+  | null;
+
+type ReactionChamberCanvasProps = {
+  graph: ChamberGraph;
+  onSelectionChange?: (selection: ChamberSelection) => void;
+  onNodeHover?: (node: ChamberNode | null, event?: React.MouseEvent) => void;
+};
+
+async function computeElkLayout(graph: ChamberGraph): Promise<Map<string, { x: number; y: number }>> {
+  if (graph.nodes.length === 0) {
+    return new Map();
+  }
+
+  const elkNodes: ElkNode[] = graph.nodes.map((node) => ({
+    id: node.id,
+    width: node.width ?? 200,
+    height: node.height ?? 160,
+  }));
+
+  const elkEdges: ElkExtendedEdge[] = graph.edges.map((edge) => ({
+    id: edge.id,
+    sources: [edge.source],
+    targets: [edge.target],
+  }));
+
+  const layout = await elk.layout({
+    id: "chamber-root",
+    layoutOptions: ELK_OPTIONS,
+    children: elkNodes,
+    edges: elkEdges,
+  });
+
+  const positionMap = new Map<string, { x: number; y: number }>();
+  layout.children?.forEach((child) => {
+    if (typeof child.x === "number" && typeof child.y === "number") {
+      positionMap.set(child.id, { x: child.x, y: child.y });
+    }
+  });
+
+  return positionMap;
+}
+
+function toReactFlowNodes(graph: ChamberGraph, positions: Map<string, { x: number; y: number }>): Node[] {
+  return graph.nodes.map((node) => {
+    const layoutPosition = positions.get(node.id);
+    const fallbackPosition = node.position;
+
+    return {
+      id: node.id,
+      type: node.type,
+      data: node.data as unknown as Record<string, unknown>,
+      position: layoutPosition ?? fallbackPosition,
+      draggable: false,
+      selectable: true,
+    } satisfies Node;
+  });
+}
+
+function toReactFlowEdges(graph: ChamberGraph): Edge[] {
+  return graph.edges.map((edge) => ({
+    id: edge.id,
+    source: edge.source,
+    target: edge.target,
+    label: edge.label,
+    className: edge.className,
+    data: edge.data as unknown as Record<string, unknown>,
+    selectable: true,
+    focusable: true,
+    type: "default",
+  } satisfies Edge));
+}
+
+function ReactionChamberCanvasInner({
+  graph,
+  onSelectionChange,
+  onNodeHover,
+}: ReactionChamberCanvasProps) {
+  const [layoutPositions, setLayoutPositions] = useState<Map<string, { x: number; y: number }>>(
+    () => new Map(),
+  );
+  const [layoutReady, setLayoutReady] = useState(false);
+  const reactFlowInstance = useReactFlow();
+  const focusFitRef = useRef(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    computeElkLayout(graph)
+      .then((positions) => {
+        if (!isActive) {
+          return;
+        }
+        setLayoutPositions(positions);
+        setLayoutReady(true);
+      })
+      .catch(() => {
+        if (!isActive) {
+          return;
+        }
+        // graceful fallback: use deterministic horizontal layout
+        const fallbackPositions = new Map<string, { x: number; y: number }>();
+        graph.nodes.forEach((node, index) => {
+          fallbackPositions.set(node.id, {
+            x: index * 280,
+            y: node.data.kind === "marker" ? 320 : 0,
+          });
+        });
+        setLayoutPositions(fallbackPositions);
+        setLayoutReady(true);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [graph]);
+
+  const nodes = useMemo(() => toReactFlowNodes(graph, layoutPositions), [graph, layoutPositions]);
+  const edges = useMemo(() => toReactFlowEdges(graph), [graph]);
+
+  useEffect(() => {
+    if (!layoutReady || focusFitRef.current) {
+      return;
+    }
+
+    const focalNode = graph.nodes.find(
+      (node) => node.data.kind === "pillar" && node.data.isFocal,
+    );
+
+    if (focalNode) {
+      reactFlowInstance.fitView({ padding: 0.25, duration: 400 });
+      focusFitRef.current = true;
+    }
+  }, [graph, layoutReady, reactFlowInstance]);
+
+  const handleSelectionChange = useCallback(
+    (params: OnSelectionChangeParams) => {
+      if (!onSelectionChange) {
+        return;
+      }
+
+      if (params.nodes.length > 0) {
+        const selectedNode = graph.nodes.find((node) => node.id === params.nodes[0].id);
+        if (selectedNode) {
+          onSelectionChange({ kind: "node", node: selectedNode });
+          return;
+        }
+      }
+
+      if (params.edges.length > 0) {
+        const selectedEdge = graph.edges.find((edge) => edge.id === params.edges[0].id);
+        if (selectedEdge) {
+          onSelectionChange({ kind: "edge", edge: selectedEdge });
+          return;
+        }
+      }
+
+      onSelectionChange(null);
+    },
+    [graph, onSelectionChange],
+  );
+
+  const handleNodeMouseEnter: NodeMouseHandler = useCallback(
+    (event, node) => {
+      if (!onNodeHover) {
+        return;
+      }
+      const matchedNode = graph.nodes.find((candidate) => candidate.id === node.id);
+      if (matchedNode) {
+        onNodeHover(matchedNode, event as unknown as React.MouseEvent);
+      }
+    },
+    [graph, onNodeHover],
+  );
+
+  const handleNodeMouseLeave: NodeMouseHandler = useCallback(() => {
+    if (onNodeHover) {
+      onNodeHover(null);
+    }
+  }, [onNodeHover]);
+
+  const handleEdgeClick: EdgeMouseHandler = useCallback(
+    (_event, edge) => {
+      if (!onSelectionChange) {
+        return;
+      }
+      const matched = graph.edges.find((candidate) => candidate.id === edge.id);
+      if (matched) {
+        onSelectionChange({ kind: "edge", edge: matched });
+      }
+    },
+    [graph, onSelectionChange],
+  );
+
+  return (
+    <div className="reaction-chamber-canvas">
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        nodeTypes={NODE_TYPES}
+        fitView
+        fitViewOptions={{ padding: 0.25 }}
+        minZoom={0.4}
+        maxZoom={1.6}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable
+        proOptions={{ hideAttribution: true }}
+        onSelectionChange={handleSelectionChange}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
+        onEdgeClick={handleEdgeClick}
+      >
+        <Background gap={28} size={1} />
+        <Controls position="bottom-right" showInteractive={false} />
+      </ReactFlow>
+    </div>
+  );
+}
+
+export type { ChamberSelection };
+
+export const ReactionChamberCanvas = ReactionChamberCanvasInner;
+export { ReactFlowProvider };

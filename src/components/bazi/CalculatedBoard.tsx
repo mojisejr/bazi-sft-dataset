@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import type {
   BaseChartDetailItemValue,
@@ -9,6 +10,7 @@ import type {
   PillarValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
+import { seedChamberSession } from "@/lib/bazi/chamber-session-store";
 import { CorePersonaDetailContent, CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { CompatibilitySurface } from "@/components/bazi/CompatibilitySurface";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
@@ -216,12 +218,21 @@ function ReactionDetailContent({
 }
 
 export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
+  const router = useRouter();
   const [activeDetailPanel, setActiveDetailPanel] = useState<ReadingDetailPanel>(null);
   const [activeReactionBadge, setActiveReactionBadge] = useState<BaseChartReactionBadgeValue | null>(null);
   const [activeRouteDetail, setActiveRouteDetail] = useState<RouteDetail | null>(null);
 
   function handlePrint() {
     window.print();
+  }
+
+  function handleOpenReactionChamber() {
+    if (!calculatedState) {
+      return;
+    }
+    seedChamberSession({ submittedInput: null, calculatedState });
+    router.push("/reaction-chamber");
   }
 
   function closeAllDetailPanels() {
@@ -444,6 +455,15 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                 <div>
                   <p className="section-kicker">zone พื้นดวง</p>
                   <h3>จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว</h3>
+                  <button
+                    type="button"
+                    className="base-chart-reading-section__cta"
+                    onClick={handleOpenReactionChamber}
+                  >
+                    เปิดแผนภาพปฏิกิริยา
+                    <span className="base-chart-reading-section__cta-arrow" aria-hidden>→</span>
+                  </button>
+                  <p className="base-chart-reading-section__cta-supporting">เปิดมุมมองเต็มจอ ลากย้ายและซูมเพื่อตรวจสอบความสัมพันธ์ระหว่างเสาได้ค่ะ</p>
                 </div>
                 {baseChartReading.readingOrderSteps.length > 0 ? (
                   <div className="base-chart-reading-order" aria-label="ลำดับการอ่านพื้นดวง">

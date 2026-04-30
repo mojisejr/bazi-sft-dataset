@@ -1,0 +1,536 @@
+/* Reaction Chamber: fullscreen feature surface for แผนภาพปฏิกิริยา */
+
+.reaction-chamber-shell {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-app, #0b0d12);
+  color: var(--text-primary, #f3f4f6);
+  z-index: 30;
+  overflow: hidden;
+}
+
+.reaction-chamber-shell--empty {
+  position: static;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.reaction-chamber-shell__empty-card {
+  max-width: 480px;
+  padding: 28px 32px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+/* Command bar */
+
+.chamber-command-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  backdrop-filter: blur(14px);
+}
+
+.chamber-command-bar__back {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: inherit;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 200ms ease;
+}
+
+.chamber-command-bar__back:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.chamber-command-bar__title {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.chamber-command-bar__viewport-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chamber-command-bar__action {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.chamber-command-bar__action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Viewport row layout */
+
+.reaction-chamber-shell__viewport {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.reaction-chamber-canvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background:
+    radial-gradient(1100px 600px at 30% 30%, rgba(120, 95, 255, 0.12), transparent 60%),
+    radial-gradient(900px 500px at 70% 70%, rgba(255, 161, 95, 0.08), transparent 60%),
+    var(--surface-canvas, #0a0c11);
+}
+
+/* React Flow overrides */
+
+.reaction-chamber-canvas .react-flow__background {
+  opacity: 0.55;
+}
+
+.reaction-chamber-canvas .react-flow__controls {
+  background: rgba(20, 24, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.reaction-chamber-canvas .react-flow__controls-button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.reaction-chamber-canvas .react-flow__edge-path {
+  stroke-width: 1.6;
+}
+
+.reaction-chamber-canvas .chamber-edge--role .react-flow__edge-path,
+.reaction-chamber-canvas .chamber-edge--interaction .react-flow__edge-path {
+  stroke: rgba(180, 210, 255, 0.7);
+}
+
+.reaction-chamber-canvas .chamber-edge--marker .react-flow__edge-path {
+  stroke: rgba(255, 200, 140, 0.7);
+  stroke-dasharray: 4 4;
+}
+
+.reaction-chamber-canvas .chamber-edge--neutralized .react-flow__edge-path {
+  stroke: rgba(180, 180, 180, 0.45);
+  stroke-dasharray: 6 6;
+}
+
+.reaction-chamber-canvas .chamber-edge--supplementary .react-flow__edge-path {
+  stroke: rgba(180, 180, 180, 0.55);
+}
+
+.reaction-chamber-canvas .react-flow__edge-text {
+  fill: rgba(245, 245, 245, 0.95);
+  font-size: 11px;
+}
+
+.reaction-chamber-canvas .react-flow__edge-textbg {
+  fill: rgba(15, 18, 24, 0.85);
+}
+
+/* Pillar node */
+
+.chamber-node-pillar {
+  background: rgba(20, 24, 32, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  padding: 14px 16px;
+  width: 220px;
+  color: rgba(245, 245, 245, 0.95);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.chamber-node-pillar--focal {
+  border-color: rgba(140, 110, 255, 0.6);
+  box-shadow: 0 22px 60px rgba(94, 60, 220, 0.4), 0 0 0 1px rgba(140, 110, 255, 0.3) inset;
+}
+
+.chamber-node-pillar--selected {
+  border-color: rgba(255, 220, 130, 0.8);
+  box-shadow: 0 22px 60px rgba(220, 170, 60, 0.32), 0 0 0 1px rgba(255, 220, 130, 0.45) inset;
+}
+
+.chamber-node-pillar__kicker {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.chamber-node-pillar__glyphs {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.chamber-node-pillar__stem,
+.chamber-node-pillar__branch {
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.chamber-node-pillar__branch {
+  color: rgba(255, 220, 180, 0.95);
+}
+
+.chamber-node-pillar__translation {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.chamber-node-pillar__roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chamber-role-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chamber-role-chip--neutralized {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.chamber-role-chip--more {
+  opacity: 0.7;
+}
+
+.chamber-node-handle {
+  background: rgba(255, 255, 255, 0.5);
+  width: 6px;
+  height: 6px;
+  border: none;
+}
+
+/* Marker node */
+
+.chamber-node-marker {
+  background: rgba(28, 22, 36, 0.85);
+  border: 1px solid rgba(255, 200, 140, 0.25);
+  border-radius: 14px;
+  padding: 12px 14px;
+  width: 200px;
+  color: rgba(255, 240, 220, 0.95);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transition: border-color 200ms ease;
+}
+
+.chamber-node-marker--selected {
+  border-color: rgba(255, 220, 140, 0.8);
+}
+
+.chamber-node-marker__kicker {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  color: rgba(255, 200, 140, 0.7);
+}
+
+.chamber-node-marker__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.chamber-node-marker__meaning {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.45;
+}
+
+/* Inspector */
+
+.chamber-inspector {
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 16, 22, 0.92);
+  border-left: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(245, 245, 245, 0.92);
+}
+
+.chamber-inspector--docked {
+  width: 360px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chamber-inspector--sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  border-left: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  z-index: 35;
+  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.chamber-inspector__sheet-grip {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 10px auto 4px;
+}
+
+.chamber-inspector__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.chamber-inspector__head-kicker {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chamber-inspector__close {
+  appearance: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: inherit;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chamber-inspector__scroll {
+  overflow-y: auto;
+  padding: 16px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chamber-inspector__placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.chamber-inspector__kicker {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.chamber-inspector__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chamber-inspector__school {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 220, 180, 0.85);
+}
+
+.chamber-inspector__summary,
+.chamber-inspector__explanation {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.chamber-inspector__reading-order {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(180, 210, 255, 0.85);
+}
+
+.chamber-inspector__details {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.chamber-inspector__detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chamber-inspector__detail-row dt {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.1em;
+}
+
+.chamber-inspector__detail-row dd {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.chamber-inspector__participants ul,
+.chamber-inspector__roles ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chamber-inspector__roles li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.chamber-inspector__role-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.chamber-inspector__role-chip--neutralized {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.chamber-inspector__role-meaning {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.chamber-inspector__section-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.chamber-inspector__pillar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chamber-inspector__glyphs {
+  display: flex;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.chamber-inspector__translation {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.chamber-inspector__empty {
+  margin: 0;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* CTA in zone พื้นดวง on home page */
+
+.base-chart-reading-section__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(120, 95, 255, 0.18), rgba(255, 161, 95, 0.18));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.base-chart-reading-section__cta:hover {
+  transform: translateY(-1px);
+  border-color: rgba(140, 110, 255, 0.55);
+  box-shadow: 0 14px 28px rgba(94, 60, 220, 0.25);
+}
+
+.base-chart-reading-section__cta-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.base-chart-reading-section__cta-supporting {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+@media (max-width: 900px) {
+  .base-chart-reading-section__cta {
+    width: 100%;
+    justify-content: center;
+  }
+}
