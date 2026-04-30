@@ -145,23 +145,32 @@
 }
 
 .reaction-chamber-canvas .react-flow__edge-path {
-  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.1;
 }
 
 .reaction-chamber-canvas .chamber-edge--daymaster .react-flow__edge-path {
   stroke: var(--chamber-accent);
-  stroke-width: 2;
+  stroke-width: 1.2;
+  opacity: 0.28;
+}
+
+.reaction-chamber-canvas .chamber-edge--guide .react-flow__edge-path {
+  stroke-dasharray: 2 8;
 }
 
 .reaction-chamber-canvas .chamber-edge--reaction .react-flow__edge-path,
 .reaction-chamber-canvas .chamber-edge--interaction .react-flow__edge-path {
   stroke: var(--chamber-line-strong);
+  stroke-width: 2.8;
 }
 
 .reaction-chamber-canvas .chamber-edge--overlay .react-flow__edge-path,
 .reaction-chamber-canvas .chamber-edge--marker .react-flow__edge-path {
   stroke: var(--chamber-line-success);
-  stroke-dasharray: 4 4;
+  stroke-dasharray: 5 8;
+  stroke-width: 2.2;
 }
 
 .reaction-chamber-canvas .chamber-edge--neutralized .react-flow__edge-path {
@@ -180,7 +189,9 @@
 }
 
 .reaction-chamber-canvas .react-flow__edge-textbg {
-  fill: var(--chamber-panel);
+  fill: var(--chamber-panel-strong);
+  stroke: var(--chamber-line);
+  stroke-width: 1px;
 }
 
 /* Pillar node */
@@ -190,15 +201,19 @@
     linear-gradient(180deg, color-mix(in srgb, var(--chamber-panel) 92%, transparent), var(--chamber-panel-soft)),
     var(--chamber-panel);
   border: 1px solid var(--chamber-line);
-  border-radius: 28px;
-  padding: 16px 18px;
-  width: 270px;
+  border-radius: 24px;
+  padding: 13px 14px;
+  width: 230px;
   color: var(--chamber-text);
   box-shadow: var(--chamber-shadow);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 7px;
   transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.chamber-node-pillar--outer-full {
+  min-height: 286px;
 }
 
 .chamber-node-pillar--focal {
@@ -227,12 +242,12 @@
   margin: 0;
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .chamber-node-pillar__stem,
 .chamber-node-pillar__branch {
-  font-size: 38px;
+  font-size: 33px;
   font-weight: 600;
   line-height: 1;
 }
@@ -248,13 +263,13 @@
 }
 
 .chamber-node-pillar__glyph-block {
-  width: 88px;
-  min-height: 88px;
+  width: 74px;
+  min-height: 74px;
   display: grid;
   place-items: center;
   gap: 2px;
   padding: 10px;
-  border-radius: 24px;
+  border-radius: 20px;
   background: var(--surface-raised-soft);
   box-shadow: inset 0 0 0 1px var(--surface-line-soft);
 }
@@ -280,7 +295,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 6px 9px;
+  padding: 5px 8px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--surface-success-soft) 68%, var(--surface-raised-soft));
   border: 1px solid var(--chamber-line);
@@ -309,12 +324,13 @@
 }
 
 .chamber-node-pillar--day-anchor {
-  width: 220px;
-  min-height: 220px;
+  width: 190px;
+  min-height: 190px;
   align-items: center;
   justify-content: center;
-  padding: 22px;
+  padding: 18px;
   gap: 8px;
+  z-index: 3;
 }
 
 .chamber-node-pillar__anchor-core,
@@ -325,7 +341,7 @@
 }
 
 .chamber-node-pillar__anchor-core .chamber-node-pillar__stem {
-  font-size: 46px;
+  font-size: 42px;
 }
 
 .chamber-node-pillar__anchor-branch {
@@ -391,9 +407,10 @@
 
 .chamber-node-handle {
   background: var(--chamber-line-strong);
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border: none;
+  opacity: 0;
 }
 
 /* Marker node */
@@ -406,6 +423,7 @@
   border-radius: 18px;
   padding: 12px 14px;
   width: 200px;
+  transform: translateY(-12px);
   color: var(--chamber-text);
   box-shadow: var(--chamber-shadow);
   display: flex;

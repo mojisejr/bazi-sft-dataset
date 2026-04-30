@@ -71,12 +71,15 @@ function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
     id: edge.id,
     source: edge.source,
     target: edge.target,
+    sourceHandle: edge.sourceHandle,
+    targetHandle: edge.targetHandle,
     label: edge.label,
     className: edge.className,
     data: edge.data as unknown as Record<string, unknown>,
     selectable: true,
     focusable: true,
-    type: "default",
+    type: "smoothstep",
+    zIndex: edge.data.layer === "inter-pillar-reaction" ? 20 : edge.data.layer === "shen-sha-overlay" ? 18 : 6,
   } satisfies Edge));
 }
 
@@ -106,7 +109,7 @@ function ReactionChamberCanvasInner({
     );
 
     if (focalNode) {
-      reactFlowInstance.fitView({ padding: 0.25, duration: 400 });
+      reactFlowInstance.fitView({ padding: 0.14, duration: 400 });
       focusFitRef.current = true;
     }
   }, [graph, nodes.length, reactFlowInstance]);
@@ -177,8 +180,8 @@ function ReactionChamberCanvasInner({
         edges={edges}
         nodeTypes={NODE_TYPES}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
-        minZoom={0.4}
+        fitViewOptions={{ padding: 0.14 }}
+        minZoom={0.55}
         maxZoom={1.6}
         nodesDraggable={false}
         nodesConnectable={false}

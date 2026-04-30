@@ -20,14 +20,14 @@ export function ChamberPillarNode({ data, selected }: ChamberPillarNodeProps) {
   if (data.displayMode === "day-anchor") {
     return (
       <div className={`chamber-node-pillar${focalClass}${selectedClass}${modeClass}`}>
-        <Handle type="target" position={Position.Top} className="chamber-node-handle" />
-        <Handle type="target" position={Position.Left} className="chamber-node-handle" />
-        <Handle type="target" position={Position.Right} className="chamber-node-handle" />
-        <Handle type="target" position={Position.Bottom} className="chamber-node-handle" />
-        <Handle type="source" position={Position.Top} className="chamber-node-handle" />
-        <Handle type="source" position={Position.Left} className="chamber-node-handle" />
-        <Handle type="source" position={Position.Right} className="chamber-node-handle" />
-        <Handle type="source" position={Position.Bottom} className="chamber-node-handle" />
+        <Handle id="top" type="target" position={Position.Top} className="chamber-node-handle" />
+        <Handle id="left" type="target" position={Position.Left} className="chamber-node-handle" />
+        <Handle id="right" type="target" position={Position.Right} className="chamber-node-handle" />
+        <Handle id="bottom" type="target" position={Position.Bottom} className="chamber-node-handle" />
+        <Handle id="top" type="source" position={Position.Top} className="chamber-node-handle" />
+        <Handle id="left" type="source" position={Position.Left} className="chamber-node-handle" />
+        <Handle id="right" type="source" position={Position.Right} className="chamber-node-handle" />
+        <Handle id="bottom" type="source" position={Position.Bottom} className="chamber-node-handle" />
 
         <p className="chamber-node-pillar__kicker">หลักวัน · ดิถี</p>
         <div className="chamber-node-pillar__anchor-core">
@@ -50,14 +50,14 @@ export function ChamberPillarNode({ data, selected }: ChamberPillarNodeProps) {
 
   return (
     <div className={`chamber-node-pillar${focalClass}${selectedClass}${modeClass}`}>
-      <Handle type="target" position={Position.Top} className="chamber-node-handle" />
-      <Handle type="target" position={Position.Left} className="chamber-node-handle" />
-      <Handle type="target" position={Position.Right} className="chamber-node-handle" />
-      <Handle type="target" position={Position.Bottom} className="chamber-node-handle" />
-      <Handle type="source" position={Position.Top} className="chamber-node-handle" />
-      <Handle type="source" position={Position.Right} className="chamber-node-handle" />
-      <Handle type="source" position={Position.Left} className="chamber-node-handle" />
-      <Handle type="source" position={Position.Bottom} className="chamber-node-handle" />
+      <Handle id="top" type="target" position={Position.Top} className="chamber-node-handle" />
+      <Handle id="left" type="target" position={Position.Left} className="chamber-node-handle" />
+      <Handle id="right" type="target" position={Position.Right} className="chamber-node-handle" />
+      <Handle id="bottom" type="target" position={Position.Bottom} className="chamber-node-handle" />
+      <Handle id="top" type="source" position={Position.Top} className="chamber-node-handle" />
+      <Handle id="right" type="source" position={Position.Right} className="chamber-node-handle" />
+      <Handle id="left" type="source" position={Position.Left} className="chamber-node-handle" />
+      <Handle id="bottom" type="source" position={Position.Bottom} className="chamber-node-handle" />
 
       <p className="chamber-node-pillar__kicker">{data.pillarLabel}</p>
       <dl className="chamber-node-pillar__ribbon-stack">

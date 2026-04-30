@@ -82,6 +82,8 @@ export type SemanticEdge = {
   id: string;
   source: string;
   target: string;
+  sourceHandle?: string;
+  targetHandle?: string;
   data: SemanticEdgeData;
   label?: string;
   className?: string;
@@ -128,17 +130,24 @@ const PILLAR_LABEL_REVERSE: Record<string, SemanticPillarKey> = {
 };
 
 const RADIAL_POSITIONS: Record<SemanticPillarKey, { x: number; y: number }> = {
-  year: { x: 440, y: 20 },
-  month: { x: 40, y: 320 },
-  day: { x: 460, y: 330 },
-  hour: { x: 880, y: 320 },
+  year: { x: 417, y: -21 },
+  month: { x: 43, y: 320 },
+  day: { x: 450, y: 430 },
+  hour: { x: 857, y: 320 },
 };
 
 const MARKER_OFFSETS: Partial<Record<SemanticPillarKey, { x: number; y: number }>> = {
-  year: { x: 280, y: 20 },
-  month: { x: 20, y: 300 },
-  day: { x: 650, y: 540 },
-  hour: { x: 1040, y: 300 },
+  year: { x: 736, y: 34 },
+  month: { x: 43, y: 672 },
+  day: { x: 714, y: 661 },
+  hour: { x: 1121, y: 441 },
+};
+
+const PILLAR_HANDLE_BY_TARGET: Record<SemanticPillarKey, Partial<Record<SemanticPillarKey, string>>> = {
+  year: { month: "left", day: "bottom", hour: "right" },
+  month: { year: "top", day: "right", hour: "bottom" },
+  day: { year: "top", month: "left", hour: "right" },
+  hour: { year: "top", month: "bottom", day: "left" },
 };
 
 function pillarNodeId(pillarKey: SemanticPillarKey): string {
@@ -147,6 +156,10 @@ function pillarNodeId(pillarKey: SemanticPillarKey): string {
 
 function markerNodeId(badge: BaseChartReactionBadgeValue): string {
   return `marker:${badge.id}`;
+}
+
+function resolveEdgeHandle(from: SemanticPillarKey, to: SemanticPillarKey): string {
+  return PILLAR_HANDLE_BY_TARGET[from][to] ?? "right";
 }
 
 function resolvePillarKeyFromString(candidate: string | undefined): SemanticPillarKey | null {
@@ -341,7 +354,7 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
       data,
       position: RADIAL_POSITIONS[pillarKey],
       width: pillarKey === "day" ? 220 : 270,
-      height: pillarKey === "day" ? 220 : 340,
+      height: pillarKey === "day" ? 220 : 360,
     } satisfies SemanticNode;
   });
 }
@@ -419,6 +432,8 @@ function buildDaymasterRelationEdges(roleBadges: BaseChartReactionBadgeValue[]):
         id: `daymaster:${badge.id}`,
         source: pillarNodeId("day"),
         target: pillarNodeId(targetPillarKey),
+        sourceHandle: resolveEdgeHandle("day", targetPillarKey),
+        targetHandle: resolveEdgeHandle(targetPillarKey, "day"),
         data: {
           layer: "daymaster-meaning",
           badge,
@@ -427,8 +442,7 @@ function buildDaymasterRelationEdges(roleBadges: BaseChartReactionBadgeValue[]):
           sourceDetail: "ดิถี · จุดอ้างอิง",
           targetDetail: formatParticipantForGraph(participant),
         },
-        label: badge.shortLabel ?? badge.schoolLabel ?? badge.label,
-        className: `chamber-edge chamber-edge--daymaster chamber-edge--${badge.status}`,
+        className: `chamber-edge chamber-edge--daymaster chamber-edge--guide chamber-edge--${badge.status}`,
     });
   });
 
@@ -461,6 +475,8 @@ function buildInteractionEdges(
         id: `reaction:${badge.id}:${index}`,
         source: pillarNodeId(source.pillarKey),
         target: pillarNodeId(target.pillarKey),
+        sourceHandle: resolveEdgeHandle(source.pillarKey, target.pillarKey),
+        targetHandle: resolveEdgeHandle(target.pillarKey, source.pillarKey),
         data: {
           layer: "inter-pillar-reaction",
           badge,
@@ -498,6 +514,8 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
         id: `overlay:${badge.id}`,
         source: pillarNodeId(attachedPillarKey),
         target: markerNodeId(badge),
+        sourceHandle: attachedPillarKey === "hour" ? "right" : "bottom",
+        targetHandle: "left",
         data: {
           layer: "shen-sha-overlay",
           badge,

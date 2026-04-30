@@ -108,6 +108,11 @@ describe("buildSemanticChamberGraph", () => {
     expect(hour?.data.kind === "pillar" ? hour.data.displayMode : null).toBe("outer-full");
     expect(hour?.data.kind === "pillar" ? hour.data.stageSlots.map((slot) => slot.source) : []).toEqual(["upper", "sitting", "lower"]);
     expect(hour?.position.x).not.toBe(0);
+
+    const year = pillarNodes.find((node) => node.id === "pillar:year");
+    const month = pillarNodes.find((node) => node.id === "pillar:month");
+    expect(focal && year ? focal.position.y - year.position.y : 0).toBeGreaterThanOrEqual(440);
+    expect(hour && month ? hour.position.x - month.position.x : 0).toBeGreaterThanOrEqual(800);
   });
 
   test("promotes visible-tier shen-sha and keeps secondary overlays hidden by default", () => {
@@ -127,6 +132,8 @@ describe("buildSemanticChamberGraph", () => {
     expect(daymasterEdges.length).toBeGreaterThan(0);
     expect(daymasterEdges[0].source).toBe("pillar:day");
     expect(daymasterEdges[0].className).toContain("chamber-edge--daymaster");
+    expect(daymasterEdges[0].className).toContain("chamber-edge--guide");
+    expect(daymasterEdges[0].label).toBeUndefined();
   });
 
   test("produces doctrine-layer interaction edges connecting at least two pillar nodes", () => {
@@ -159,5 +166,7 @@ describe("buildSemanticChamberGraph", () => {
     expect(reactionEdge?.data.schoolCluster?.schoolLabel).toBeTruthy();
     expect(reactionEdge?.data.sourceDetail).toContain("ราศีล่าง");
     expect(reactionEdge?.data.targetDetail).toContain("ราศีล่าง");
+    expect(reactionEdge?.sourceHandle).toBeTruthy();
+    expect(reactionEdge?.targetHandle).toBeTruthy();
   });
 });
