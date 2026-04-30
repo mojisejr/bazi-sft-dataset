@@ -2,10 +2,10 @@
 
 import { Handle, Position } from "@xyflow/react";
 
-import type { ChamberMarkerNodeData } from "@/lib/bazi/base-chart-chamber-graph";
+import type { SemanticMarkerNodeData } from "@/lib/bazi/semantic-chamber-graph";
 
 type ChamberMarkerNodeProps = {
-  data: ChamberMarkerNodeData;
+  data: SemanticMarkerNodeData;
   selected?: boolean;
 };
 
@@ -16,8 +16,8 @@ export function ChamberMarkerNode({ data, selected }: ChamberMarkerNodeProps) {
     <div className={`chamber-node-marker${selectedClass}`}>
       <Handle type="target" position={Position.Left} className="chamber-node-handle" />
 
-      <p className="chamber-node-marker__kicker">ตัวประกอบพิเศษ</p>
-      <p className="chamber-node-marker__title">{data.badge.shortLabel ?? data.badge.label}</p>
+      <p className="chamber-node-marker__kicker">ตัวประกอบพิเศษ · ชั้นหลัก</p>
+      <p className="chamber-node-marker__title">{data.displayLabel}</p>
       <p className="chamber-node-marker__meaning">{data.badge.meaningShort}</p>
     </div>
   );

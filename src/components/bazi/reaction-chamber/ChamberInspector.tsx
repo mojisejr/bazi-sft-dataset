@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "motion/react";
 import type {
   BaseChartReactionBadgeValue,
 } from "@/lib/bazi/schema-types";
-import type { ChamberNode } from "@/lib/bazi/base-chart-chamber-graph";
+import type { SemanticNode } from "@/lib/bazi/semantic-chamber-graph";
 
 import type { ChamberSelection } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 
@@ -31,7 +31,7 @@ function getBadgeFromSelection(selection: ChamberSelection): BaseChartReactionBa
   return null;
 }
 
-function PillarSummary({ node }: { node: ChamberNode }) {
+function PillarSummary({ node }: { node: SemanticNode }) {
   if (node.data.kind !== "pillar") {
     return null;
   }
@@ -50,16 +50,30 @@ function PillarSummary({ node }: { node: ChamberNode }) {
           {[data.stemTranslation, data.branchTranslation].filter(Boolean).join(" / ")}
         </p>
       )}
-      {data.roleBadges.length > 0 ? (
+      {data.stageSlots.length > 0 && (
+        <div className="chamber-inspector__stage-grid">
+          <p className="chamber-inspector__section-title">โครงสร้างพื้นดวง</p>
+          <dl>
+            {data.stageSlots.map((slot) => (
+              <div key={`${slot.source}-${slot.value}`} className="chamber-inspector__detail-row">
+                <dt>{slot.label}</dt>
+                <dd>{slot.value}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+
+      {data.meaningSlots.length > 0 ? (
         <div className="chamber-inspector__roles">
-          <p className="chamber-inspector__section-title">บทบาทของเสาในดวง</p>
+          <p className="chamber-inspector__section-title">ดิถีมองเสานี้</p>
           <ul>
-            {data.roleBadges.map((badge) => (
-              <li key={badge.id}>
-                <span className={`chamber-inspector__role-chip chamber-inspector__role-chip--${badge.status}`}>
-                  {badge.shortLabel ?? badge.label}
+            {data.meaningSlots.map((slot) => (
+              <li key={slot.badge.id}>
+                <span className={`chamber-inspector__role-chip chamber-inspector__role-chip--${slot.badge.status}`}>
+                  {slot.source === "stem" ? "ราศีบน" : "ราศีล่าง"} · {slot.relationLabel}
                 </span>
-                <span className="chamber-inspector__role-meaning">{badge.meaningShort}</span>
+                <span className="chamber-inspector__role-meaning">{slot.meaningShort}</span>
               </li>
             ))}
           </ul>
@@ -118,7 +132,7 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
     return (
       <div className="chamber-inspector__placeholder">
         <p className="chamber-inspector__kicker">ยังไม่ได้เลือกอะไร</p>
-        <p>แตะเสา ดวงดาว หรือเส้นปฏิกิริยา เพื่อดูความหมายตามตำราค่ะ</p>
+        <p>เริ่มจากเสาเพื่อดูโครงสร้างพื้นดวงและดิถีมอง แล้วแตะเส้นหรือดาวหลักเพื่อเปิดความหมายเฉพาะจุดค่ะ</p>
       </div>
     );
   }

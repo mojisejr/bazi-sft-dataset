@@ -18,10 +18,10 @@ import ELK, { type ElkExtendedEdge, type ElkNode } from "elkjs/lib/elk.bundled.j
 import "@xyflow/react/dist/style.css";
 
 import type {
-  ChamberEdge,
-  ChamberGraph,
-  ChamberNode,
-} from "@/lib/bazi/base-chart-chamber-graph";
+  SemanticEdge,
+  SemanticChamberGraph,
+  SemanticNode,
+} from "@/lib/bazi/semantic-chamber-graph";
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
@@ -42,17 +42,17 @@ const NODE_TYPES = {
 };
 
 type ChamberSelection =
-  | { kind: "node"; node: ChamberNode }
-  | { kind: "edge"; edge: ChamberEdge }
+  | { kind: "node"; node: SemanticNode }
+  | { kind: "edge"; edge: SemanticEdge }
   | null;
 
 type ReactionChamberCanvasProps = {
-  graph: ChamberGraph;
+  graph: SemanticChamberGraph;
   onSelectionChange?: (selection: ChamberSelection) => void;
-  onNodeHover?: (node: ChamberNode | null, event?: React.MouseEvent) => void;
+  onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
 
-async function computeElkLayout(graph: ChamberGraph): Promise<Map<string, { x: number; y: number }>> {
+async function computeElkLayout(graph: SemanticChamberGraph): Promise<Map<string, { x: number; y: number }>> {
   if (graph.nodes.length === 0) {
     return new Map();
   }
@@ -86,7 +86,7 @@ async function computeElkLayout(graph: ChamberGraph): Promise<Map<string, { x: n
   return positionMap;
 }
 
-function toReactFlowNodes(graph: ChamberGraph, positions: Map<string, { x: number; y: number }>): Node[] {
+function toReactFlowNodes(graph: SemanticChamberGraph, positions: Map<string, { x: number; y: number }>): Node[] {
   return graph.nodes.map((node) => {
     const layoutPosition = positions.get(node.id);
     const fallbackPosition = node.position;
@@ -102,7 +102,7 @@ function toReactFlowNodes(graph: ChamberGraph, positions: Map<string, { x: numbe
   });
 }
 
-function toReactFlowEdges(graph: ChamberGraph): Edge[] {
+function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
   return graph.edges.map((edge) => ({
     id: edge.id,
     source: edge.source,

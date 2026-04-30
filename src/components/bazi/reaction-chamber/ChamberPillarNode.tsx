@@ -2,10 +2,10 @@
 
 import { Handle, Position } from "@xyflow/react";
 
-import type { ChamberPillarNodeData } from "@/lib/bazi/base-chart-chamber-graph";
+import type { SemanticPillarNodeData } from "@/lib/bazi/semantic-chamber-graph";
 
 type ChamberPillarNodeProps = {
-  data: ChamberPillarNodeData;
+  data: SemanticPillarNodeData;
   selected?: boolean;
 };
 
@@ -29,17 +29,29 @@ export function ChamberPillarNode({ data, selected }: ChamberPillarNodeProps) {
         </p>
       )}
 
-      {data.roleBadges.length > 0 && (
-        <ul className="chamber-node-pillar__roles">
-          {data.roleBadges.slice(0, 3).map((badge) => (
-            <li key={badge.id} className={`chamber-role-chip chamber-role-chip--${badge.status}`}>
-              {badge.shortLabel ?? badge.label}
-            </li>
+      {data.stageSlots.length > 0 && (
+        <dl className="chamber-node-pillar__stages">
+          {data.stageSlots.slice(0, 3).map((slot) => (
+            <div key={`${slot.source}-${slot.value}`} className="chamber-stage-chip">
+              <dt>{slot.label}</dt>
+              <dd>{slot.value}</dd>
+            </div>
           ))}
-          {data.roleBadges.length > 3 && (
-            <li className="chamber-role-chip chamber-role-chip--more">+{data.roleBadges.length - 3}</li>
-          )}
-        </ul>
+        </dl>
+      )}
+
+      {data.meaningSlots.length > 0 && (
+        <div className="chamber-node-pillar__meaning" aria-label="ดิถีมอง">
+          <p>ดิถีมอง</p>
+          <ul>
+            {data.meaningSlots.slice(0, 4).map((slot) => (
+              <li key={slot.badge.id} className={`chamber-role-chip chamber-role-chip--${slot.badge.status}`}>
+                <span>{slot.source === "stem" ? "บน" : "ล่าง"}</span>
+                <strong>{slot.relationLabel}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

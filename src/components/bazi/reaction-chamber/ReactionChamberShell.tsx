@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { buildChamberGraphFromCalculatedState } from "@/lib/bazi/base-chart-chamber-graph";
+import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 import { useBaziWorkspaceSessionStore } from "@/lib/bazi/bazi-session-store";
 
 import {
@@ -46,9 +46,9 @@ export function ReactionChamberShell() {
 
   const graph = useMemo(() => {
     if (!calculatedState) {
-      return { nodes: [], edges: [] };
+      return { nodes: [], edges: [], hiddenSecondaryOverlays: [] };
     }
-    return buildChamberGraphFromCalculatedState(calculatedState);
+    return buildSemanticChamberGraph(calculatedState);
   }, [calculatedState]);
 
   if (!calculatedState) {
