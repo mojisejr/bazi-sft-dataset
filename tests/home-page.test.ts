@@ -558,9 +558,10 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).not.toContain("正财");
     expect(html).not.toContain("劫财");
     expect(html).not.toContain("食神");
-    expect(html).toContain("zone พื้นดวง");
-    expect(html).toContain("จับซิ้ง ปฏิกิริยา และตัวประกอบพิเศษของดวงกำเนิดอยู่ในชั้นเดียว");
-    expect(html).toContain("ปีบน · เจี้ยไช้");
+    expect(html).toContain("Reaction Chamber");
+    expect(html).toContain("ปฏิกิริยาพื้นดวง");
+    expect(html).toContain('data-selected-kind="edge"');
+    expect(html).toContain("reaction chamber inspector");
     expect(html).toContain("ภาคี 申巳");
     expect(html).toContain("ขุนนาง/อุปถัมภ์ (天乙贵人)");
     expect(html).toContain("วัยจร");
