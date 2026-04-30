@@ -527,13 +527,17 @@
   }
 
   .operator-orbit__core,
-  .pillar-ribbon,
   .reading-secondary-grid,
   .operator-insight-grid,
   .destiny-pillar-grid,
   .dayun-track,
   .transient-shen-sha-list {
     grid-template-columns: 1fr;
+  }
+
+  .pillar-ribbon {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
   }
 
   .identity-strip,
@@ -564,6 +568,12 @@
   }
 
   .dynamic-luck-badge-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .pillar-ribbon {
     grid-template-columns: 1fr;
   }
 }
