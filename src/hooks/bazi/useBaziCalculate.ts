@@ -1,21 +1,21 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { type ChangeEvent, type FormEvent } from "react";
 
 import {
   CalculatedStateSchema,
-  type CalculatedStateValue,
-  type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import {
-  applyFormFieldChange,
   buildPayload,
   createDefaultFormState,
   normalizeErrorMessage,
   type BaziTrainerWorkspaceProps,
-  type FormState,
-  type SubmissionState,
 } from "@/lib/bazi/trainer-workspace";
+import {
+  getBaziWorkspaceSessionState,
+  seedBaziWorkspaceSession,
+  useBaziWorkspaceSessionStore,
+} from "@/lib/bazi/bazi-session-store";
 
 type SubmitCalculationOptions = {
   onBeforeApplyResult?: () => void;
@@ -27,42 +27,77 @@ export function useBaziCalculate({
   initialCalculatedState = null,
   initialSubmissionState = "idle",
 }: BaziTrainerWorkspaceProps) {
-  const [formState, setFormState] = useState<FormState>(
-    initialFormState ?? createDefaultFormState(),
-  );
-  const [submittedInput, setSubmittedInput] = useState<RawInputValue | null>(
-    initialSubmittedInput,
-  );
-  const [calculatedState, setCalculatedState] = useState<CalculatedStateValue | null>(
-    initialCalculatedState,
-  );
-  const [submissionState, setSubmissionState] = useState<SubmissionState>(
-    initialSubmissionState,
-  );
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const hasExplicitInitialState =
+    Boolean(initialFormState) ||
+    Boolean(initialSubmittedInput) ||
+    Boolean(initialCalculatedState) ||
+    initialSubmissionState !== "idle";
+
+  if (hasExplicitInitialState) {
+    const defaultFormState = createDefaultFormState();
+    const nextFormState = initialFormState ?? defaultFormState;
+    const currentSession = getBaziWorkspaceSessionState();
+    const shouldHydrate =
+      JSON.stringify(currentSession.formState) !== JSON.stringify(nextFormState) ||
+      currentSession.submittedInput !== initialSubmittedInput ||
+      currentSession.calculatedState !== initialCalculatedState ||
+      currentSession.submissionState !== initialSubmissionState ||
+      currentSession.errorMessage !== null;
+
+    if (shouldHydrate) {
+      seedBaziWorkspaceSession({
+        formState: nextFormState,
+        submittedInput: initialSubmittedInput,
+        calculatedState: initialCalculatedState,
+        submissionState: initialSubmissionState,
+        errorMessage: null,
+      });
+    }
+  }
+
+  const formState = useBaziWorkspaceSessionStore((state) => state.formState);
+  const submittedInput = useBaziWorkspaceSessionStore((state) => state.submittedInput);
+  const calculatedState = useBaziWorkspaceSessionStore((state) => state.calculatedState);
+  const submissionState = useBaziWorkspaceSessionStore((state) => state.submissionState);
+  const errorMessage = useBaziWorkspaceSessionStore((state) => state.errorMessage);
+  const updateFormField = useBaziWorkspaceSessionStore((state) => state.updateFormField);
+  const setSubmissionState = useBaziWorkspaceSessionStore((state) => state.setSubmissionState);
+  const setErrorMessage = useBaziWorkspaceSessionStore((state) => state.setErrorMessage);
+  const applyCalculationResult = useBaziWorkspaceSessionStore((state) => state.applyCalculationResult);
+  const resetSession = useBaziWorkspaceSessionStore((state) => state.resetSession);
+
+  const resolvedFormState = hasExplicitInitialState
+    ? initialFormState ?? formState
+    : formState;
+  const resolvedSubmittedInput = hasExplicitInitialState
+    ? initialSubmittedInput
+    : submittedInput;
+  const resolvedCalculatedState = hasExplicitInitialState
+    ? initialCalculatedState
+    : calculatedState;
+  const resolvedSubmissionState = hasExplicitInitialState
+    ? initialSubmissionState
+    : submissionState;
+  const resolvedErrorMessage = hasExplicitInitialState ? null : errorMessage;
 
   function handleFieldChange(
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) {
     const { name, value } = event.target;
 
-    setFormState((current) => applyFormFieldChange(current, name, value));
+    updateFormField(name, value);
   }
 
   function resetCalculationSession() {
-    setFormState(createDefaultFormState());
-    setCalculatedState(null);
-    setSubmittedInput(null);
-    setSubmissionState("idle");
-    setErrorMessage(null);
+    resetSession();
   }
 
   async function submitCalculation(options: SubmitCalculationOptions = {}) {
-    if (calculatedState || submissionState === "submitting") {
+    if (resolvedCalculatedState || resolvedSubmissionState === "submitting") {
       return;
     }
 
-    const payload = buildPayload(formState);
+    const payload = buildPayload(resolvedFormState);
 
     setSubmissionState("submitting");
     setErrorMessage(null);
@@ -88,9 +123,10 @@ export function useBaziCalculate({
       const parsedState = CalculatedStateSchema.parse(body.calculatedState);
 
       options.onBeforeApplyResult?.();
-      setCalculatedState(parsedState);
-      setSubmittedInput(payload);
-      setSubmissionState("ready");
+      applyCalculationResult({
+        submittedInput: payload,
+        calculatedState: parsedState,
+      });
     } catch (error) {
       setSubmissionState("error");
       setErrorMessage(normalizeErrorMessage(error));
@@ -106,11 +142,11 @@ export function useBaziCalculate({
   }
 
   return {
-    formState,
-    submittedInput,
-    calculatedState,
-    submissionState,
-    errorMessage,
+    formState: resolvedFormState,
+    submittedInput: resolvedSubmittedInput,
+    calculatedState: resolvedCalculatedState,
+    submissionState: resolvedSubmissionState,
+    errorMessage: resolvedErrorMessage,
     handleFieldChange,
     handleSubmit,
     resetCalculationSession,

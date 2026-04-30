@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { buildChamberGraphFromCalculatedState } from "@/lib/bazi/base-chart-chamber-graph";
-import { useChamberSessionStore } from "@/lib/bazi/chamber-session-store";
+import { useBaziWorkspaceSessionStore } from "@/lib/bazi/bazi-session-store";
 
 import {
   ReactionChamberCanvas,
@@ -34,24 +34,24 @@ function useViewportVariant(): "docked" | "sheet" {
 
 export function ReactionChamberShell() {
   const router = useRouter();
-  const session = useChamberSessionStore((state) => state.session);
+  const calculatedState = useBaziWorkspaceSessionStore((state) => state.calculatedState);
   const [selection, setSelection] = useState<ChamberSelection>(null);
   const variant = useViewportVariant();
 
   useEffect(() => {
-    if (!session) {
+    if (!calculatedState) {
       router.replace("/");
     }
-  }, [session, router]);
+  }, [calculatedState, router]);
 
   const graph = useMemo(() => {
-    if (!session) {
+    if (!calculatedState) {
       return { nodes: [], edges: [] };
     }
-    return buildChamberGraphFromCalculatedState(session.calculatedState);
-  }, [session]);
+    return buildChamberGraphFromCalculatedState(calculatedState);
+  }, [calculatedState]);
 
-  if (!session) {
+  if (!calculatedState) {
     return (
       <main className="reaction-chamber-shell reaction-chamber-shell--empty">
         <div className="reaction-chamber-shell__empty-card">
@@ -64,7 +64,7 @@ export function ReactionChamberShell() {
     );
   }
 
-  const dayMaster = session.calculatedState.dayMaster;
+  const dayMaster = calculatedState.dayMaster;
   const title = `แผนภาพปฏิกิริยา · ดิถี ${dayMaster}`;
 
   return (

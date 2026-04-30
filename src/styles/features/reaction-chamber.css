@@ -1,12 +1,30 @@
 /* Reaction Chamber: fullscreen feature surface for แผนภาพปฏิกิริยา */
 
 .reaction-chamber-shell {
+  --chamber-shell-bg:
+    var(--app-bg-layer-1),
+    var(--app-bg-layer-2),
+    linear-gradient(180deg, var(--surface-panel-strong) 0%, var(--color-canvas) 100%);
+  --chamber-canvas-bg:
+    radial-gradient(circle at top left, var(--surface-accent-soft-strong), transparent 26%),
+    radial-gradient(circle at bottom right, var(--surface-success-soft), transparent 24%),
+    linear-gradient(180deg, var(--ref-color-sand-150) 0%, var(--color-canvas) 100%);
+  --chamber-panel: var(--surface-panel-strong);
+  --chamber-panel-soft: var(--surface-raised-soft);
+  --chamber-panel-strong: var(--surface-raised-strong);
+  --chamber-line: var(--surface-line-soft);
+  --chamber-line-strong: var(--surface-accent-line-strong);
+  --chamber-line-success: var(--surface-success-line);
+  --chamber-text: var(--color-text-primary);
+  --chamber-muted: var(--color-text-muted);
+  --chamber-accent: var(--color-accent);
+  --chamber-shadow: var(--shadow-panel);
   position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: var(--surface-app, #0b0d12);
-  color: var(--text-primary, #f3f4f6);
+  background: var(--chamber-shell-bg);
+  color: var(--chamber-text);
   z-index: 30;
   overflow: hidden;
 }
@@ -24,8 +42,9 @@
   max-width: 480px;
   padding: 28px 32px;
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
+  box-shadow: var(--chamber-shadow);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -40,15 +59,15 @@
   align-items: center;
   gap: 16px;
   padding: 14px 22px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0));
+  border-bottom: 1px solid var(--chamber-line);
+  background: linear-gradient(180deg, var(--chamber-panel) 0%, var(--chamber-panel-soft) 100%);
   backdrop-filter: blur(14px);
 }
 
 .chamber-command-bar__back {
   appearance: none;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--chamber-panel-soft);
+  border: 1px solid var(--chamber-line);
   color: inherit;
   padding: 8px 14px;
   border-radius: 999px;
@@ -58,7 +77,7 @@
 }
 
 .chamber-command-bar__back:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--surface-accent-soft);
 }
 
 .chamber-command-bar__title {
@@ -66,7 +85,7 @@
   text-align: center;
   font-size: 15px;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chamber-muted);
 }
 
 .chamber-command-bar__viewport-actions {
@@ -76,9 +95,9 @@
 
 .chamber-command-bar__action {
   appearance: none;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--chamber-panel-soft);
   color: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--chamber-line);
   padding: 8px 12px;
   border-radius: 999px;
   cursor: pointer;
@@ -87,8 +106,8 @@
 }
 
 .chamber-command-bar__action:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.18);
+  background: var(--surface-accent-soft);
+  border-color: var(--chamber-line-strong);
 }
 
 /* Viewport row layout */
@@ -103,10 +122,7 @@
   flex: 1;
   min-width: 0;
   position: relative;
-  background:
-    radial-gradient(1100px 600px at 30% 30%, rgba(120, 95, 255, 0.12), transparent 60%),
-    radial-gradient(900px 500px at 70% 70%, rgba(255, 161, 95, 0.08), transparent 60%),
-    var(--surface-canvas, #0a0c11);
+  background: var(--chamber-canvas-bg);
 }
 
 /* React Flow overrides */
@@ -116,8 +132,8 @@
 }
 
 .reaction-chamber-canvas .react-flow__controls {
-  background: rgba(20, 24, 32, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -125,7 +141,7 @@
 .reaction-chamber-canvas .react-flow__controls-button {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chamber-text);
 }
 
 .reaction-chamber-canvas .react-flow__edge-path {
@@ -134,42 +150,42 @@
 
 .reaction-chamber-canvas .chamber-edge--role .react-flow__edge-path,
 .reaction-chamber-canvas .chamber-edge--interaction .react-flow__edge-path {
-  stroke: rgba(180, 210, 255, 0.7);
+  stroke: var(--chamber-line-strong);
 }
 
 .reaction-chamber-canvas .chamber-edge--marker .react-flow__edge-path {
-  stroke: rgba(255, 200, 140, 0.7);
+  stroke: var(--chamber-line-success);
   stroke-dasharray: 4 4;
 }
 
 .reaction-chamber-canvas .chamber-edge--neutralized .react-flow__edge-path {
-  stroke: rgba(180, 180, 180, 0.45);
+  stroke: var(--surface-line-muted);
   stroke-dasharray: 6 6;
 }
 
 .reaction-chamber-canvas .chamber-edge--supplementary .react-flow__edge-path {
-  stroke: rgba(180, 180, 180, 0.55);
+  stroke: var(--surface-line-emphasis);
 }
 
 .reaction-chamber-canvas .react-flow__edge-text {
-  fill: rgba(245, 245, 245, 0.95);
+  fill: var(--chamber-text);
   font-size: 11px;
 }
 
 .reaction-chamber-canvas .react-flow__edge-textbg {
-  fill: rgba(15, 18, 24, 0.85);
+  fill: var(--chamber-panel);
 }
 
 /* Pillar node */
 
 .chamber-node-pillar {
-  background: rgba(20, 24, 32, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
   border-radius: 18px;
   padding: 14px 16px;
   width: 220px;
-  color: rgba(245, 245, 245, 0.95);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -177,20 +193,20 @@
 }
 
 .chamber-node-pillar--focal {
-  border-color: rgba(140, 110, 255, 0.6);
-  box-shadow: 0 22px 60px rgba(94, 60, 220, 0.4), 0 0 0 1px rgba(140, 110, 255, 0.3) inset;
+  border-color: var(--chamber-line-strong);
+  box-shadow: 0 0 0 1px var(--chamber-line-strong) inset, var(--chamber-shadow);
 }
 
 .chamber-node-pillar--selected {
-  border-color: rgba(255, 220, 130, 0.8);
-  box-shadow: 0 22px 60px rgba(220, 170, 60, 0.32), 0 0 0 1px rgba(255, 220, 130, 0.45) inset;
+  border-color: var(--chamber-accent);
+  box-shadow: 0 0 0 1px var(--chamber-accent) inset, var(--chamber-shadow);
 }
 
 .chamber-node-pillar__kicker {
   margin: 0;
   font-size: 12px;
   letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--chamber-muted);
 }
 
 .chamber-node-pillar__glyphs {
@@ -207,13 +223,13 @@
 }
 
 .chamber-node-pillar__branch {
-  color: rgba(255, 220, 180, 0.95);
+  color: var(--chamber-accent);
 }
 
 .chamber-node-pillar__translation {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--chamber-muted);
 }
 
 .chamber-node-pillar__roles {
@@ -229,8 +245,8 @@
   padding: 3px 8px;
   border-radius: 999px;
   font-size: 11px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-accent-soft);
+  border: 1px solid var(--chamber-line);
 }
 
 .chamber-role-chip--neutralized {
@@ -243,7 +259,7 @@
 }
 
 .chamber-node-handle {
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--chamber-line-strong);
   width: 6px;
   height: 6px;
   border: none;
@@ -252,13 +268,13 @@
 /* Marker node */
 
 .chamber-node-marker {
-  background: rgba(28, 22, 36, 0.85);
-  border: 1px solid rgba(255, 200, 140, 0.25);
+  background: var(--chamber-panel-strong);
+  border: 1px solid var(--chamber-line-success);
   border-radius: 14px;
   padding: 12px 14px;
   width: 200px;
-  color: rgba(255, 240, 220, 0.95);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -266,14 +282,14 @@
 }
 
 .chamber-node-marker--selected {
-  border-color: rgba(255, 220, 140, 0.8);
+  border-color: var(--chamber-accent);
 }
 
 .chamber-node-marker__kicker {
   margin: 0;
   font-size: 10px;
   letter-spacing: 0.18em;
-  color: rgba(255, 200, 140, 0.7);
+  color: var(--color-success);
 }
 
 .chamber-node-marker__title {
@@ -285,7 +301,7 @@
 .chamber-node-marker__meaning {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--chamber-muted);
   line-height: 1.45;
 }
 
@@ -294,9 +310,9 @@
 .chamber-inspector {
   display: flex;
   flex-direction: column;
-  background: rgba(14, 16, 22, 0.92);
-  border-left: 1px solid rgba(255, 255, 255, 0.06);
-  color: rgba(245, 245, 245, 0.92);
+  background: var(--chamber-panel);
+  border-left: 1px solid var(--chamber-line);
+  color: var(--chamber-text);
 }
 
 .chamber-inspector--docked {
@@ -313,18 +329,18 @@
   right: 0;
   max-height: 70vh;
   border-left: none;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid var(--chamber-line);
   border-top-left-radius: 22px;
   border-top-right-radius: 22px;
   z-index: 35;
-  box-shadow: 0 -16px 40px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--chamber-shadow);
 }
 
 .chamber-inspector__sheet-grip {
   width: 44px;
   height: 4px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--surface-line-emphasis);
   margin: 10px auto 4px;
 }
 
@@ -333,20 +349,20 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--chamber-line);
 }
 
 .chamber-inspector__head-kicker {
   margin: 0;
   font-size: 11px;
   letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--chamber-muted);
 }
 
 .chamber-inspector__close {
   appearance: none;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--chamber-panel-soft);
+  border: 1px solid var(--chamber-line);
   color: inherit;
   border-radius: 999px;
   padding: 6px 12px;
@@ -366,14 +382,14 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--chamber-muted);
 }
 
 .chamber-inspector__kicker {
   margin: 0;
   font-size: 11px;
   letter-spacing: 0.18em;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--chamber-muted);
 }
 
 .chamber-inspector__title {
@@ -385,7 +401,7 @@
 .chamber-inspector__school {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 220, 180, 0.85);
+  color: var(--chamber-accent);
 }
 
 .chamber-inspector__summary,
@@ -393,13 +409,13 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--chamber-text);
 }
 
 .chamber-inspector__reading-order {
   margin: 0;
   font-size: 12px;
-  color: rgba(180, 210, 255, 0.85);
+  color: var(--chamber-accent);
 }
 
 .chamber-inspector__details {
@@ -417,14 +433,14 @@
 
 .chamber-inspector__detail-row dt {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--chamber-muted);
   letter-spacing: 0.1em;
 }
 
 .chamber-inspector__detail-row dd {
   margin: 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.92);
+  color: var(--chamber-text);
 }
 
 .chamber-inspector__participants ul,
@@ -446,8 +462,8 @@
 .chamber-inspector__role-chip {
   padding: 3px 8px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--surface-accent-soft);
+  border: 1px solid var(--chamber-line);
   font-size: 11px;
   white-space: nowrap;
 }
@@ -459,14 +475,14 @@
 
 .chamber-inspector__role-meaning {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  color: var(--chamber-muted);
 }
 
 .chamber-inspector__section-title {
   margin: 0 0 4px;
   font-size: 11px;
   letter-spacing: 0.16em;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--chamber-muted);
 }
 
 .chamber-inspector__pillar {
@@ -485,13 +501,13 @@
 .chamber-inspector__translation {
   margin: 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--chamber-muted);
 }
 
 .chamber-inspector__empty {
   margin: 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--chamber-muted);
 }
 
 /* CTA in zone พื้นดวง on home page */
@@ -502,8 +518,8 @@
   gap: 8px;
   padding: 8px 14px;
   border-radius: 999px;
-  background: linear-gradient(135deg, rgba(120, 95, 255, 0.18), rgba(255, 161, 95, 0.18));
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: linear-gradient(135deg, var(--surface-accent-soft-strong), var(--surface-accent-soft));
+  border: 1px solid var(--surface-accent-line);
   color: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -513,8 +529,8 @@
 
 .base-chart-reading-section__cta:hover {
   transform: translateY(-1px);
-  border-color: rgba(140, 110, 255, 0.55);
-  box-shadow: 0 14px 28px rgba(94, 60, 220, 0.25);
+  border-color: var(--surface-accent-line-strong);
+  box-shadow: var(--chamber-shadow);
 }
 
 .base-chart-reading-section__cta-arrow {
@@ -525,7 +541,7 @@
 .base-chart-reading-section__cta-supporting {
   margin: 6px 0 0;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--chamber-muted);
 }
 
 @media (max-width: 900px) {

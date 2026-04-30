@@ -10,7 +10,6 @@ import type {
   PillarValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
-import { seedChamberSession } from "@/lib/bazi/chamber-session-store";
 import { CorePersonaDetailContent, CorePersonaSurface } from "@/components/bazi/CorePersonaSurface";
 import { CompatibilitySurface } from "@/components/bazi/CompatibilitySurface";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
@@ -231,7 +230,6 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
     if (!calculatedState) {
       return;
     }
-    seedChamberSession({ submittedInput: null, calculatedState });
     router.push("/reaction-chamber");
   }
 
