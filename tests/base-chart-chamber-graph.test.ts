@@ -164,8 +164,8 @@ describe("buildSemanticChamberGraph", () => {
 
     const reactionEdge = graph.edges.find((edge) => edge.data.layer === "inter-pillar-reaction");
     expect(reactionEdge?.data.schoolCluster?.schoolLabel).toBeTruthy();
-    expect(reactionEdge?.data.sourceDetail).toContain("ราศีล่าง");
-    expect(reactionEdge?.data.targetDetail).toContain("ราศีล่าง");
+    expect(reactionEdge?.data.sourceDetail).toMatch(/ราศี(ล่าง|บน)/);
+    expect(reactionEdge?.data.targetDetail).toMatch(/ราศี(ล่าง|บน)/);
     expect(reactionEdge?.sourceHandle).toBeTruthy();
     expect(reactionEdge?.targetHandle).toBeTruthy();
   });

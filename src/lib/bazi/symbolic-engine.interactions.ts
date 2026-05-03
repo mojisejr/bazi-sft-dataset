@@ -4,7 +4,6 @@ import type {
 } from "@/lib/bazi/schema-types";
 
 import {
-  BRANCH_ORDER,
   CLASH_PAIRS,
   DESTRUCTION_PAIRS,
   HARM_PAIRS,
@@ -13,6 +12,7 @@ import {
   PUNISHMENT_TRIOS,
   SELF_PUNISHMENT_BRANCHES,
   SIX_COMBINATION_PAIRS,
+  normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type {
   BranchInteractionResolution,
@@ -28,17 +28,6 @@ import {
 
 export function uniqueStrings(values: string[]) {
   return Array.from(new Set(values));
-}
-
-function normalizeBranchPairKey(left: string, right: string) {
-  const leftIndex = BRANCH_ORDER.indexOf(left as (typeof BRANCH_ORDER)[number]);
-  const rightIndex = BRANCH_ORDER.indexOf(right as (typeof BRANCH_ORDER)[number]);
-
-  if (leftIndex === -1 || rightIndex === -1) {
-    return [left, right].sort().join("|");
-  }
-
-  return leftIndex <= rightIndex ? `${left}|${right}` : `${right}|${left}`;
 }
 
 function buildNormalizedBranchPairLabel(left: string, right: string) {

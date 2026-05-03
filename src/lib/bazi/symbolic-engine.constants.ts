@@ -236,6 +236,17 @@ export const TRAVELING_HORSE_BRANCH_BY_GROUP = {
   未: "巳",
 } as const;
 
+export function normalizeBranchPairKey(left: string, right: string): string {
+  const leftIndex = BRANCH_ORDER.indexOf(left as (typeof BRANCH_ORDER)[number]);
+  const rightIndex = BRANCH_ORDER.indexOf(right as (typeof BRANCH_ORDER)[number]);
+
+  if (leftIndex === -1 || rightIndex === -1) {
+    return [left, right].sort().join("|");
+  }
+
+  return leftIndex <= rightIndex ? `${left}|${right}` : `${right}|${left}`;
+}
+
 export const SIX_COMBINATION_PAIRS = new Set([
   "子|丑",
   "寅|亥",
@@ -290,6 +301,39 @@ export const STAGE_POSITION_WEIGHTS = {
 export const STAGE_WEIGHT_NORMALIZER = 2.5;
 export const BASE_STRENGTH_OFFSET = 0.75;
 export const MONTH_SEASONAL_CLASH_FACTOR = 0.6;
+
+export const STEM_COMBINATION_TRANSFORMS = new Map<string, string>([
+  ["己|甲", "土"],
+  ["乙|庚", "金"],
+  ["丙|辛", "水"],
+  ["丁|壬", "木"],
+  ["戊|癸", "火"],
+]);
+
+export const STEM_CLASH_PAIRS = new Set([
+  "戊|甲",
+  "壬|戊",
+  "丙|壬",
+  "丙|庚",
+  "庚|甲",
+  "乙|己",
+  "己|癸",
+  "丁|癸",
+  "丁|辛",
+  "乙|辛",
+]);
+
+export const INTERACTION_FAMILIES = [
+  "combination",
+  "clash",
+  "harm",
+  "destruction",
+  "punishment",
+  "stem-combination",
+  "stem-clash",
+] as const;
+
+export type InteractionFamily = (typeof INTERACTION_FAMILIES)[number];
 
 export const SHEN_SHA_COPY = {
   nobleman: {

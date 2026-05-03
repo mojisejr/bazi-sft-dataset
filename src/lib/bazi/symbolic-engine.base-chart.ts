@@ -17,6 +17,9 @@ import {
   PUNISHMENT_TRIOS,
   SELF_PUNISHMENT_BRANCHES,
   SIX_COMBINATION_PAIRS,
+  STEM_CLASH_PAIRS,
+  STEM_COMBINATION_TRANSFORMS,
+  normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
 import { renderContextRuleNoteThai } from "@/lib/bazi/context-dictionary";
 import { getStemElementTranslation, resolveTenGodForStem } from "@/lib/bazi/pillar-display";
@@ -106,10 +109,6 @@ const INTERACTION_META: Record<InteractionKind, { title: string; meaning: string
 
 function makeDetail(label: string, value: string): BaseChartDetailItemValue {
   return { label, value };
-}
-
-function normalizeBranchPairKey(left: string, right: string) {
-  return [left, right].sort().join("|");
 }
 
 function buildPairRecords(pillars: BaseChartPillars, relationKeys: Set<string>) {
@@ -291,37 +290,18 @@ function buildRoleBadge(dayMasterStem: string, pillarKey: BaseChartPillarKey, pi
 
 function buildStemInteractionBadges(pillars: BaseChartPillars) {
   const entries = Object.entries(pillars) as Array<[BaseChartPillarKey, PillarValue]>;
-  const combinationMap = new Map([
-    ["甲|己", "土"],
-    ["乙|庚", "金"],
-    ["丙|辛", "水"],
-    ["丁|壬", "木"],
-    ["戊|癸", "火"],
-  ]);
-  const clashMap = new Set([
-    "甲|戊",
-    "戊|壬",
-    "壬|丙",
-    "丙|庚",
-    "庚|甲",
-    "乙|己",
-    "己|癸",
-    "癸|丁",
-    "丁|辛",
-    "辛|乙",
-  ]);
   const badges: BaseChartReactionBadgeValue[] = [];
 
   for (let leftIndex = 0; leftIndex < entries.length - 1; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < entries.length; rightIndex += 1) {
       const [leftKey, leftPillar] = entries[leftIndex];
       const [rightKey, rightPillar] = entries[rightIndex];
-      const key = [leftPillar.stem, rightPillar.stem].sort().join("|");
+      const key = normalizeBranchPairKey(leftPillar.stem, rightPillar.stem);
       const leftLabel = PILLAR_LABELS[leftKey];
       const rightLabel = PILLAR_LABELS[rightKey];
 
-      if (combinationMap.has(key)) {
-        const transformTo = combinationMap.get(key) ?? "-";
+      if (STEM_COMBINATION_TRANSFORMS.has(key)) {
+        const transformTo = STEM_COMBINATION_TRANSFORMS.get(key) ?? "-";
         badges.push({
           id: `stem-combo-${leftKey}-${rightKey}`,
           family: "interaction",
@@ -350,7 +330,7 @@ function buildStemInteractionBadges(pillars: BaseChartPillars) {
         });
       }
 
-      if (clashMap.has(key)) {
+      if (STEM_CLASH_PAIRS.has(key)) {
         badges.push({
           id: `stem-clash-${leftKey}-${rightKey}`,
           family: "interaction",
