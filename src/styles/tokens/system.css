@@ -22,6 +22,13 @@
   --surface-success-line: var(--ref-success-line);
   --surface-accent-line: var(--ref-accent-line);
   --surface-accent-line-strong: var(--ref-accent-line-strong);
+  --edge-combination: var(--ref-edge-combination);
+  --edge-clash: var(--ref-edge-clash);
+  --edge-harm: var(--ref-edge-harm);
+  --edge-destruction: var(--ref-edge-destruction);
+  --edge-punishment: var(--ref-edge-punishment);
+  --edge-stem-combination: var(--ref-edge-stem-combination);
+  --edge-stem-clash: var(--ref-edge-stem-clash);
   --app-bg-layer-1: var(--ref-bg-glow-left);
   --app-bg-layer-2: var(--ref-bg-glow-right);
   --app-bg-layer-3: linear-gradient(180deg, var(--ref-color-sand-150) 0%, var(--color-canvas) 45%, var(--ref-color-sand-050) 100%);

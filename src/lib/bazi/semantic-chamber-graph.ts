@@ -449,6 +449,22 @@ function buildDaymasterRelationEdges(roleBadges: BaseChartReactionBadgeValue[]):
   return edges;
 }
 
+function normalizeSchoolToEdgeClass(schoolLabel: string | undefined): string {
+  if (!schoolLabel) return "";
+  const normalized = schoolLabel.toLowerCase().replace(/[^a-z\u0e00-\u0e7f]/g, "");
+  if (normalized.includes("ภาคี") || normalized.includes("ราศีบน")) return "school-pakhee";
+  if (normalized === "ชง") return "school-chong";
+  if (normalized === "ไห่") return "school-hai";
+  if (normalized === "ผั่ว") return "school-pua";
+  if (normalized === "เฮ้ง" || normalized === "เฮ้งคู่") return "school-heng";
+  if (normalized.includes("ซำเฮ้ง")) return "school-sam-heng";
+  if (normalized.includes("ฟ้าภาคี") || normalized.includes("ราศีบน")) return "school-faa-pakhee";
+  if (normalized.includes("ฟ้าพิฆาต") || normalized.includes("พิฆาตราศีบน")) return "school-faa-phikat";
+  if (normalized.includes("กุ้ยนั้ง") || normalized.includes("อุปถัมภ์")) return "school-nobleman";
+  if (normalized.includes("บุ่งเชียง") || normalized.includes("วิชาการ")) return "school-wenchang";
+  return "";
+}
+
 function buildInteractionEdges(
   badges: BaseChartReactionBadgeValue[],
   visibleMarkerBadges: BaseChartReactionBadgeValue[],
@@ -486,7 +502,12 @@ function buildInteractionEdges(
           targetDetail: formatParticipantForGraph(target.participant),
         },
         label: cluster.schoolLabel,
-        className: `chamber-edge chamber-edge--reaction chamber-edge--${badge.status}`,
+        className: [
+          "chamber-edge",
+          "chamber-edge--reaction",
+          `chamber-edge--${badge.status}`,
+          normalizeSchoolToEdgeClass(cluster.schoolLabel),
+        ].filter(Boolean).join(" "),
       });
     }
   });

@@ -19,6 +19,13 @@
   --chamber-muted: var(--color-text-muted);
   --chamber-accent: var(--color-accent);
   --chamber-shadow: var(--shadow-panel);
+  --chamber-edge-combination: var(--edge-combination);
+  --chamber-edge-clash: var(--edge-clash);
+  --chamber-edge-harm: var(--edge-harm);
+  --chamber-edge-destruction: var(--edge-destruction);
+  --chamber-edge-punishment: var(--edge-punishment);
+  --chamber-edge-stem-combination: var(--edge-stem-combination);
+  --chamber-edge-stem-clash: var(--edge-stem-clash);
   position: fixed;
   inset: 0;
   display: flex;
@@ -164,6 +171,54 @@
 .reaction-chamber-canvas .chamber-edge--interaction .react-flow__edge-path {
   stroke: var(--chamber-line-strong);
   stroke-width: 2.8;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-pakhee .react-flow__edge-path {
+  stroke: var(--chamber-edge-combination);
+  stroke-width: 2.8;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-chong .react-flow__edge-path {
+  stroke: var(--chamber-edge-clash);
+  stroke-width: 2.8;
+  stroke-dasharray: 6 4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-hai .react-flow__edge-path {
+  stroke: var(--chamber-edge-harm);
+  stroke-width: 2.4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-pua .react-flow__edge-path {
+  stroke: var(--chamber-edge-destruction);
+  stroke-width: 2.4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-heng .react-flow__edge-path {
+  stroke: var(--chamber-edge-punishment);
+  stroke-width: 2.4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-sam-heng .react-flow__edge-path {
+  stroke: var(--chamber-edge-punishment);
+  stroke-width: 2.4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-faa-pakhee .react-flow__edge-path {
+  stroke: var(--chamber-edge-stem-combination);
+  stroke-width: 2.4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-faa-phikat .react-flow__edge-path {
+  stroke: var(--chamber-edge-stem-clash);
+  stroke-width: 2.4;
+  stroke-dasharray: 6 4;
+}
+
+.reaction-chamber-canvas .chamber-edge--school-nobleman .react-flow__edge-path {
+  stroke: var(--chamber-edge-combination);
+  stroke-width: 2.2;
+  stroke-dasharray: 4 6;
 }
 
 .reaction-chamber-canvas .chamber-edge--overlay .react-flow__edge-path,

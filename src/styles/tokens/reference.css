@@ -18,6 +18,13 @@
   --ref-color-moss-600: #456a32;
   --ref-color-clay-600: #9a3c35;
   --ref-color-earth-700: #69594c;
+  --ref-edge-combination: #3b7dd8;
+  --ref-edge-clash: #c89b3c;
+  --ref-edge-harm: #c07a5a;
+  --ref-edge-destruction: #9a3c35;
+  --ref-edge-punishment: #456a32;
+  --ref-edge-stem-combination: #6a9fd8;
+  --ref-edge-stem-clash: #d87a6a;
   --ref-shadow-soft: rgba(76, 48, 27, 0.12);
   --ref-line-soft: rgba(110, 79, 48, 0.12);
   --ref-line-muted: rgba(110, 79, 48, 0.1);
