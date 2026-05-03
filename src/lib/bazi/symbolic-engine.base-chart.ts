@@ -21,6 +21,7 @@ import {
   STEM_COMBINATION_TRANSFORMS,
   normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
+import type { BranchInteractionResolution } from "@/lib/bazi/symbolic-engine.types";
 import { renderContextRuleNoteThai } from "@/lib/bazi/context-dictionary";
 import { getStemElementTranslation, resolveTenGodForStem } from "@/lib/bazi/pillar-display";
 
@@ -365,6 +366,7 @@ function buildStemInteractionBadges(pillars: BaseChartPillars) {
 
 function buildBranchInteractionBadges(
   pillars: BaseChartPillars,
+  resolution: BranchInteractionResolution,
   precedenceSignals: ContextRuleNoteValue[],
 ) {
   const combinationPairs = buildPairRecords(pillars, SIX_COMBINATION_PAIRS);
@@ -372,13 +374,14 @@ function buildBranchInteractionBadges(
   const harmPairs = buildPairRecords(pillars, HARM_PAIRS);
   const destructionPairs = buildPairRecords(pillars, DESTRUCTION_PAIRS);
   const punishmentRecords = buildPunishmentRecords(pillars);
-  const combinationKeys = new Set(
-    combinationPairs.flatMap((pair) => [pair.leftKey, pair.rightKey]),
-  );
-  const neutralizedClashes = clashPairs.filter((pair) => combinationKeys.has(pair.leftKey) || combinationKeys.has(pair.rightKey));
-  const activeClashes = clashPairs.filter((pair) => !neutralizedClashes.includes(pair));
+  const neutralizedLabels = new Set(resolution.neutralizedClashes);
+  const activeClashLabels = new Set(resolution.activeClashes);
+  const activePunishmentLabels = new Set(resolution.activePunishments);
+  const activeClashes = clashPairs.filter((pair) => activeClashLabels.has(pair.label));
+  const neutralizedClashes = clashPairs.filter((pair) => neutralizedLabels.has(pair.label));
+  const activePunishments = punishmentRecords.filter((record) => activePunishmentLabels.has(record.label));
+  const combinationKeys = new Set(combinationPairs.flatMap((pair) => [pair.leftKey, pair.rightKey]));
   const activeClashKeys = new Set(activeClashes.flatMap((pair) => [pair.leftKey, pair.rightKey]));
-  const activePunishments = punishmentRecords.filter((record) => !record.keys.some((key) => combinationKeys.has(key) || activeClashKeys.has(key)));
   const badges: BaseChartReactionBadgeValue[] = [];
 
   const pushPairBadge = (kind: Exclude<InteractionKind, "punishment">, pair: PairRecord, status: "active" | "supplementary" | "neutralized") => {
@@ -496,9 +499,10 @@ export function buildBaseChartReading(args: {
   dayMasterStem: string;
   pillars: BaseChartPillars;
   shenSha: ShenShaValue[];
+  resolution: BranchInteractionResolution;
   precedenceSignals: ContextRuleNoteValue[];
 }) : BaseChartReadingValue {
-  const { dayMasterStem, pillars, shenSha, precedenceSignals } = args;
+  const { dayMasterStem, pillars, shenSha, resolution, precedenceSignals } = args;
   const roleBadges = (Object.entries(pillars) as Array<[BaseChartPillarKey, PillarValue]>)
     .flatMap(([pillarKey, pillar]) => {
       const stemBadge = buildRoleBadge(dayMasterStem, pillarKey, pillar, "stem");
@@ -506,7 +510,7 @@ export function buildBaseChartReading(args: {
       return [stemBadge, branchBadge].filter((badge): badge is BaseChartReactionBadgeValue => Boolean(badge));
     });
   const stemInteractionBadges = buildStemInteractionBadges(pillars);
-  const branchInteractionBadges = buildBranchInteractionBadges(pillars, precedenceSignals);
+  const branchInteractionBadges = buildBranchInteractionBadges(pillars, resolution, precedenceSignals);
   const markerBadges = buildMarkerBadges(
     shenSha.filter((entry) => ["ปี", "เดือน", "วัน", "ยาม"].includes(entry.relatedPillar)),
   );

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import type { PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
+import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 
 const samplePillars: Record<"year" | "month" | "day" | "hour", PillarValue> = {
   year: {
@@ -46,11 +47,13 @@ const sampleMarkers: ShenShaValue[] = [{
 
 describe("buildBaseChartReading", () => {
   test("builds role badges and neutralizes clashes that lose to combinations", () => {
+    const resolution = resolveBranchInteractionEffects(samplePillars);
     const reading = buildBaseChartReading({
       dayMasterStem: "己",
       pillars: samplePillars,
       shenSha: sampleMarkers,
-      precedenceSignals: [],
+      resolution,
+      precedenceSignals: resolution.precedenceSignals,
     });
 
     expect(reading.roleBadges.length).toBeGreaterThanOrEqual(6);

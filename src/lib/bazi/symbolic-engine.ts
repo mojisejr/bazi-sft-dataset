@@ -517,6 +517,7 @@ export async function calculateBaziChart(
     dayMasterStem,
     pillars: enrichedPillars,
     shenSha,
+    resolution: interactionResolution,
     precedenceSignals: precedenceNoteSignals,
   });
 
