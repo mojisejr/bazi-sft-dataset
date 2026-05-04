@@ -12,6 +12,7 @@ import {
   PUNISHMENT_TRIOS,
   SELF_PUNISHMENT_BRANCHES,
   SIX_COMBINATION_PAIRS,
+  STEM_BRANCH_DESTRUCTION_PAIRS,
   normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type {
@@ -65,7 +66,7 @@ function buildPairInteractions(
   return interactions;
 }
 
-function buildPunishmentInteractions(pillars: CalculatedStateValue["fourPillars"]) {
+export function buildPunishmentInteractions(pillars: CalculatedStateValue["fourPillars"]) {
   const entries = Object.entries(pillars) as Array<[PillarKey, PillarValue]>;
   const interactions: MultiBranchInteraction[] = [];
 
@@ -99,6 +100,27 @@ function buildPunishmentInteractions(pillars: CalculatedStateValue["fourPillars"
         pillars: matches.map(([pillarKey]) => pillarKey),
         branches: matches.map(([, value]) => value.branch),
         label: `${branch}${branch}`,
+      });
+    }
+  }
+
+  return interactions;
+}
+
+function buildIntraPillarDestruction(pillars: CalculatedStateValue["fourPillars"]) {
+  const entries = Object.entries(pillars) as Array<[PillarKey, PillarValue]>;
+  const interactions: PairInteraction[] = [];
+
+  for (const [pillarKey, pillar] of entries) {
+    const key = `${pillar.stem}|${pillar.branch}`;
+
+    if (STEM_BRANCH_DESTRUCTION_PAIRS.has(key)) {
+      interactions.push({
+        leftPillar: pillarKey,
+        rightPillar: pillarKey,
+        leftBranch: pillar.stem,
+        rightBranch: pillar.branch,
+        label: `${pillar.stem}${pillar.branch}`,
       });
     }
   }
@@ -201,6 +223,8 @@ export function resolveBranchInteractionEffects(
     precedenceSignals.map((signal) => renderContextRuleNoteEnglish(signal)),
   );
 
+  const intraPillarDestructions = buildIntraPillarDestruction(pillars);
+
   return {
     activeCombinations: uniqueStrings(combinations.map((interaction) => interaction.label)),
     neutralizedClashes: uniqueStrings(neutralizedClashes.map((interaction) => interaction.label)),
@@ -208,6 +232,7 @@ export function resolveBranchInteractionEffects(
     activePunishments: uniqueStrings(activePunishments.map((interaction) => interaction.label)),
     activeHarms: uniqueStrings(harms.map((interaction) => interaction.label)),
     activeDestructions: uniqueStrings(destructions.map((interaction) => interaction.label)),
+    intraPillarDestructions: uniqueStrings(intraPillarDestructions.map((interaction) => interaction.label)),
     monthBranchSeasonalFactor,
     precedenceNotes,
     precedenceSignals,

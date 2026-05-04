@@ -17,6 +17,7 @@ import {
   PUNISHMENT_TRIOS,
   SELF_PUNISHMENT_BRANCHES,
   SIX_COMBINATION_PAIRS,
+  STEM_BRANCH_DESTRUCTION_PAIRS,
   STEM_CLASH_PAIRS,
   STEM_COMBINATION_TRANSFORMS,
   normalizeBranchPairKey,
@@ -131,7 +132,7 @@ function buildPairRecords(pillars: BaseChartPillars, relationKeys: Set<string>) 
         rightKey,
         leftPillar,
         rightPillar,
-        label: `${leftPillar.branch}${rightPillar.branch}`,
+        label: pairKey.replace("|", ""),
       });
     }
   }
@@ -462,6 +463,54 @@ function buildBranchInteractionBadges(
       },
     });
   });
+
+  for (const [pillarKey, pillar] of Object.entries(pillars) as Array<[BaseChartPillarKey, PillarValue]>) {
+    const key = `${pillar.stem}|${pillar.branch}`;
+
+    if (STEM_BRANCH_DESTRUCTION_PAIRS.has(key)) {
+      const pillarLabel = PILLAR_LABELS[pillarKey];
+      const label = `${pillar.stem}${pillar.branch}`;
+
+      badges.push({
+        id: `intra-destruction-${pillarKey}`,
+        family: "interaction",
+        label: `ผั่ว ${label}`,
+        shortLabel: label,
+        priority: "secondary",
+        status: "active",
+        meaningShort: `ราศีบนผั่วราศีล่างในฐาน${pillarLabel} ทำให้เกิดความเสียหายในจุดนั้น`,
+        schoolLabel: "ผั่ว",
+        participants: [
+          {
+            pillarKey,
+            pillarLabel,
+            type: "stem",
+            symbol: pillar.stem,
+            translation: pillar.stemTranslation,
+          },
+          {
+            pillarKey,
+            pillarLabel,
+            type: "branch",
+            symbol: pillar.branch,
+            translation: BRANCH_LABELS_TH[pillar.branch as keyof typeof BRANCH_LABELS_TH],
+          },
+        ],
+        modal: {
+          title: `ผั่ว ${label}`,
+          family: "interaction",
+          summary: `ราศีบน${pillar.stem} ผั่วราศีล่าง${pillar.branch} ในฐาน${pillarLabel}`,
+          explanation: "ราศีบนทำร้ายราศีล่างในฐานเดียวกัน ทำให้เกิดความเสียหายหรือรั่วไหลในจุดนั้น",
+          readingOrderHint: "ผั่วเป็นแรงรอง เหมือนกับไห่และเฮ้ง ควรอ่านหลังจากเข้าใจภาคีและชงแล้ว",
+          details: [
+            makeDetail("ราศีบน", pillar.stem),
+            makeDetail("ราศีล่าง", pillar.branch),
+            makeDetail("ฐาน", pillarLabel),
+          ],
+        },
+      });
+    }
+  }
 
   return badges;
 }

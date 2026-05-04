@@ -116,6 +116,7 @@ export type BranchInteractionResolution = {
   activePunishments: string[];
   activeHarms: string[];
   activeDestructions: string[];
+  intraPillarDestructions: string[];
   monthBranchSeasonalFactor: number;
   precedenceNotes: string[];
   precedenceSignals: ContextRuleNoteValue[];

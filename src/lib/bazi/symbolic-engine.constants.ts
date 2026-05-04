@@ -282,11 +282,39 @@ export const DESTRUCTION_PAIRS = new Set([
   "寅|亥",
 ]);
 
+export const STEM_BRANCH_DESTRUCTION_PAIRS = new Set([
+  "甲|午",
+  "乙|巳",
+  "丙|辰",
+  "丁|卯",
+  "戊|寅",
+  "己|丑",
+  "己|亥",
+  "庚|子",
+  "庚|戌",
+  "辛|酉",
+  "壬|申",
+  "癸|未",
+]);
+
 export const PUNISHMENT_PAIR_KEYS = new Set(["子|卯"]);
 
 export const PUNISHMENT_TRIOS = [
-  ["丑", "未", "戌"],
+  // พาหะ group
   ["寅", "巳", "申"],
+  ["巳", "申", "亥"],
+  ["申", "亥", "寅"],
+  ["亥", "寅", "巳"],
+  // แม่ธาตุ group
+  ["子", "卯", "午"],
+  ["卯", "午", "酉"],
+  ["午", "酉", "子"],
+  ["酉", "子", "卯"],
+  // ธาตุดิน group
+  ["辰", "未", "戌"],
+  ["丑", "未", "戌"],
+  ["戌", "丑", "辰"],
+  ["丑", "辰", "未"],
 ] as const;
 
 export const SELF_PUNISHMENT_BRANCHES = new Set(["辰", "午", "酉", "亥"]);
