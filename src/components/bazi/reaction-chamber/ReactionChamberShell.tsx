@@ -13,6 +13,7 @@ import {
 } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 import { ChamberCommandBar } from "@/components/bazi/reaction-chamber/ChamberCommandBar";
 import { ChamberInspector } from "@/components/bazi/reaction-chamber/ChamberInspector";
+import { ChamberTenGodPanel } from "@/components/bazi/reaction-chamber/ChamberTenGodPanel";
 
 const MOBILE_BREAKPOINT_PX = 900;
 
@@ -66,6 +67,7 @@ export function ReactionChamberShell() {
 
   const dayMaster = calculatedState.dayMaster;
   const title = `แผนภาพปฏิกิริยา · ดิถี ${dayMaster}`;
+  const roleBadges = calculatedState.baseChartReading?.roleBadges ?? [];
 
   return (
     <ReactFlowProvider>
@@ -74,6 +76,7 @@ export function ReactionChamberShell() {
 
         <div className="reaction-chamber-shell__viewport">
           <ReactionChamberCanvas graph={graph} onSelectionChange={setSelection} />
+          <ChamberTenGodPanel roleBadges={roleBadges} />
           {variant === "docked" && (
             <ChamberInspector selection={selection} variant="docked" onClose={() => setSelection(null)} />
           )}
