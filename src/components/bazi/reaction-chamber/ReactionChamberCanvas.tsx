@@ -24,10 +24,14 @@ import type {
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
+import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemNode";
+import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
 
 const NODE_TYPES = {
   chamberPillar: ChamberPillarNode,
   chamberMarker: ChamberMarkerNode,
+  chamberStemNode: ChamberStemNode,
+  chamberBranchNode: ChamberBranchNode,
 };
 
 type ChamberSelection =

@@ -468,6 +468,128 @@
   opacity: 0;
 }
 
+/* Stem node */
+
+.chamber-stem-node {
+  background: var(--chamber-panel);
+  border: 2px solid var(--chamber-accent);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  position: relative;
+}
+
+.chamber-stem-node--focal {
+  border-width: 3px;
+  box-shadow: 0 0 0 2px var(--chamber-accent), var(--chamber-shadow);
+}
+
+.chamber-stem-node--selected {
+  box-shadow: 0 0 0 2px var(--chamber-accent), 0 0 12px rgba(159, 83, 32, 0.3);
+}
+
+.chamber-stem-node__glyph {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.chamber-stem-node__translation {
+  font-size: 10px;
+  color: var(--chamber-muted);
+  line-height: 1;
+}
+
+.chamber-stem-node__pillar {
+  font-size: 9px;
+  color: var(--chamber-muted);
+  letter-spacing: 0.1em;
+  position: absolute;
+  bottom: -18px;
+  white-space: nowrap;
+}
+
+.chamber-stem-node__ten-god {
+  font-size: 8px;
+  color: var(--chamber-accent);
+  position: absolute;
+  top: -16px;
+  white-space: nowrap;
+  background: var(--chamber-panel-soft);
+  padding: 1px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--chamber-line);
+}
+
+/* Branch node */
+
+.chamber-branch-node {
+  background: var(--chamber-panel-soft);
+  border: 2px solid var(--chamber-line);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  position: relative;
+}
+
+.chamber-branch-node--focal {
+  border-color: var(--chamber-accent);
+  border-width: 3px;
+}
+
+.chamber-branch-node--selected {
+  box-shadow: 0 0 0 2px var(--chamber-accent), 0 0 12px rgba(159, 83, 32, 0.3);
+}
+
+.chamber-branch-node__glyph {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.chamber-branch-node__translation {
+  font-size: 10px;
+  color: var(--chamber-muted);
+  line-height: 1;
+}
+
+.chamber-branch-node__pillar {
+  font-size: 9px;
+  color: var(--chamber-muted);
+  letter-spacing: 0.1em;
+  position: absolute;
+  bottom: -18px;
+  white-space: nowrap;
+}
+
+.chamber-branch-node__stage {
+  font-size: 8px;
+  color: var(--chamber-muted);
+  position: absolute;
+  top: -16px;
+  white-space: nowrap;
+  background: var(--chamber-panel-soft);
+  padding: 1px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--chamber-line);
+}
+
 /* Marker node */
 
 .chamber-node-marker {
