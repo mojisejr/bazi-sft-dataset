@@ -95,7 +95,7 @@ describe("buildSemanticChamberGraph", () => {
     expect(graph.hiddenSecondaryOverlays).toEqual([]);
   });
 
-  test("emits stem and branch nodes with the day stem as focal center", () => {
+  test("emits stem and branch nodes in a grid layout with day as focal center", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
 
     const stemNodes = graph.nodes.filter((node) => node.type === "chamberStemNode");
@@ -111,10 +111,32 @@ describe("buildSemanticChamberGraph", () => {
     const hourStem = stemNodes.find((node) => node.id === "stem:hour");
     expect(hourStem?.data.kind === "stem-node" ? hourStem.data.stem : null).toBe("丁");
 
-    const yearStem = stemNodes.find((node) => node.id === "stem:year");
-    const monthStem = stemNodes.find((node) => node.id === "stem:month");
-    expect(focalStem && yearStem ? Math.abs(focalStem.position.y - yearStem.position.y) : 0).toBeGreaterThan(0);
-    expect(hourStem && monthStem ? Math.abs(hourStem.position.x - monthStem.position.x) : 0).toBeGreaterThan(0);
+    const orderedPillars = ["hour", "day", "month", "year"];
+    const stemXValues = orderedPillars.map((key) => {
+      const node = stemNodes.find((n) => n.id === `stem:${key}`);
+      return node?.position.x ?? 0;
+    });
+    for (let i = 1; i < stemXValues.length; i++) {
+      expect(stemXValues[i]).toBeGreaterThan(stemXValues[i - 1]);
+    }
+
+    const branchXValues = orderedPillars.map((key) => {
+      const node = branchNodes.find((n) => n.id === `branch:${key}`);
+      return node?.position.x ?? 0;
+    });
+    for (let i = 1; i < branchXValues.length; i++) {
+      expect(branchXValues[i]).toBeGreaterThan(branchXValues[i - 1]);
+    }
+
+    for (const key of orderedPillars) {
+      const stemNode = stemNodes.find((n) => n.id === `stem:${key}`);
+      const branchNode = branchNodes.find((n) => n.id === `branch:${key}`);
+      expect(stemNode?.position.x).toBe(branchNode?.position.x);
+    }
+
+    const stemY = focalStem?.position.y ?? 0;
+    const focalBranch = branchNodes.find((n) => n.id === "branch:day");
+    expect(focalBranch?.position.y).toBeGreaterThan(stemY);
   });
 
   test("promotes visible-tier shen-sha and keeps secondary overlays hidden by default", () => {
@@ -157,6 +179,35 @@ describe("buildSemanticChamberGraph", () => {
     const matchedEdge = graph.edges.find((edge) => edge.className?.includes("chamber-edge--"));
     expect(matchedEdge?.className).toMatch(/chamber-edge chamber-edge--/);
     expect(matchedEdge?.data.layer).toBeTruthy();
+  });
+
+  test("all edges have explicit sourceHandle and targetHandle", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    for (const edge of graph.edges) {
+      expect(edge.sourceHandle).toBeDefined();
+      expect(edge.targetHandle).toBeDefined();
+      expect(edge.sourceHandle).toMatch(/^source-(top|bottom|left|right)$/);
+      expect(edge.targetHandle).toMatch(/^target-(top|bottom|left|right)$/);
+    }
+  });
+
+  test("stem edges use top handles and branch edges use bottom handles", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const stemEdges = graph.edges.filter((edge) => edge.source.startsWith("stem:"));
+    for (const edge of stemEdges) {
+      expect(edge.sourceHandle).toBe("source-top");
+      expect(edge.targetHandle).toBe("target-top");
+    }
+
+    const branchEdges = graph.edges.filter(
+      (edge) => edge.source.startsWith("branch:") && edge.data.layer === "inter-pillar-reaction",
+    );
+    for (const edge of branchEdges) {
+      expect(edge.sourceHandle).toBe("source-bottom");
+      expect(edge.targetHandle).toBe("target-bottom");
+    }
   });
 
   test("groups doctrine reactions into school clusters without losing source provenance", () => {

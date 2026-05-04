@@ -24,14 +24,14 @@ export function ChamberBranchNode({ data, selected }: ChamberBranchNodeProps) {
 
   return (
     <div className={`chamber-branch-node${focalClass}${selectedClass}`} style={{ borderColor: elementColor }}>
-      <Handle id="top" type="target" position={Position.Top} className="chamber-node-handle" />
-      <Handle id="left" type="target" position={Position.Left} className="chamber-node-handle" />
-      <Handle id="right" type="target" position={Position.Right} className="chamber-node-handle" />
-      <Handle id="bottom" type="target" position={Position.Bottom} className="chamber-node-handle" />
-      <Handle id="top" type="source" position={Position.Top} className="chamber-node-handle" />
-      <Handle id="left" type="source" position={Position.Left} className="chamber-node-handle" />
-      <Handle id="right" type="source" position={Position.Right} className="chamber-node-handle" />
-      <Handle id="bottom" type="source" position={Position.Bottom} className="chamber-node-handle" />
+      <Handle id="target-top" type="target" position={Position.Top} className="chamber-node-handle" />
+      <Handle id="target-left" type="target" position={Position.Left} className="chamber-node-handle" />
+      <Handle id="target-right" type="target" position={Position.Right} className="chamber-node-handle" />
+      <Handle id="target-bottom" type="target" position={Position.Bottom} className="chamber-node-handle" />
+      <Handle id="source-top" type="source" position={Position.Top} className="chamber-node-handle" />
+      <Handle id="source-left" type="source" position={Position.Left} className="chamber-node-handle" />
+      <Handle id="source-right" type="source" position={Position.Right} className="chamber-node-handle" />
+      <Handle id="source-bottom" type="source" position={Position.Bottom} className="chamber-node-handle" />
 
       <span className="chamber-branch-node__glyph" style={{ color: elementColor }}>{data.branch}</span>
       <span className="chamber-branch-node__translation">{data.branchTranslation ?? data.element}</span>

@@ -720,22 +720,21 @@
   }
 }
 
-/* Marker node */
+/* Marker node — compact badge */
 
 .chamber-node-marker {
-  background:
-    radial-gradient(circle at top left, var(--surface-success-soft), transparent 58%),
-    var(--chamber-panel-strong);
+  background: var(--chamber-panel);
   border: 1px solid var(--chamber-line-success);
-  border-radius: 18px;
-  padding: 12px 14px;
-  width: 200px;
-  transform: translateY(-12px);
+  border-radius: 999px;
+  padding: 4px 10px;
+  width: auto;
+  min-width: 60px;
+  max-width: 120px;
   color: var(--chamber-text);
   box-shadow: var(--chamber-shadow);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: center;
   transition: border-color 200ms ease;
 }
 
@@ -743,24 +742,13 @@
   border-color: var(--chamber-accent);
 }
 
-.chamber-node-marker__kicker {
+.chamber-node-marker__label {
   margin: 0;
   font-size: 10px;
-  letter-spacing: 0.18em;
-  color: var(--color-success);
-}
-
-.chamber-node-marker__title {
-  margin: 0;
-  font-size: 14px;
   font-weight: 600;
-}
-
-.chamber-node-marker__meaning {
-  margin: 0;
-  font-size: 12px;
-  color: var(--chamber-muted);
-  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Inspector */

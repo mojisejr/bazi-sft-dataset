@@ -169,57 +169,47 @@ const PILLAR_LABEL_REVERSE: Record<string, SemanticPillarKey> = {
 
 type NodePosition = { x: number; y: number };
 
-const STEM_NODE_RADIUS = 180;
-const BRANCH_NODE_RADIUS = 260;
-const MARKER_NODE_RADIUS = 320;
+const GRID_PILLAR_ORDER: SemanticPillarKey[] = ["hour", "day", "month", "year"];
+const GRID_COLUMN_SPACING = 180;
+const GRID_ROW_SPACING = 200;
+const GRID_ORIGIN_X = 100;
+const GRID_STEM_ROW_Y = 100;
+const GRID_BRANCH_ROW_Y = GRID_STEM_ROW_Y + GRID_ROW_SPACING;
+const GRID_MARKER_ROW_Y = GRID_BRANCH_ROW_Y + GRID_ROW_SPACING + 40;
+
+function gridColumnIndex(pillarKey: SemanticPillarKey): number {
+  return GRID_PILLAR_ORDER.indexOf(pillarKey);
+}
 
 function computeStemNodePositions(): Record<SemanticPillarKey, NodePosition> {
-  const angles: Record<SemanticPillarKey, number> = {
-    day: 0,
-    year: -Math.PI / 2,
-    month: Math.PI,
-    hour: Math.PI / 2,
-  };
   const positions: Partial<Record<SemanticPillarKey, NodePosition>> = {};
   for (const key of PILLAR_KEYS) {
-    const angle = angles[key];
+    const col = gridColumnIndex(key);
     positions[key] = {
-      x: 450 + STEM_NODE_RADIUS * Math.cos(angle) - 40,
-      y: 350 + STEM_NODE_RADIUS * Math.sin(angle) - 30,
+      x: GRID_ORIGIN_X + col * GRID_COLUMN_SPACING,
+      y: GRID_STEM_ROW_Y,
     };
   }
   return positions as Record<SemanticPillarKey, NodePosition>;
 }
 
 function computeBranchNodePositions(): Record<SemanticPillarKey, NodePosition> {
-  const angles: Record<SemanticPillarKey, number> = {
-    day: 0,
-    year: -Math.PI / 2,
-    month: Math.PI,
-    hour: Math.PI / 2,
-  };
   const positions: Partial<Record<SemanticPillarKey, NodePosition>> = {};
   for (const key of PILLAR_KEYS) {
-    const angle = angles[key] + Math.PI / 8;
+    const col = gridColumnIndex(key);
     positions[key] = {
-      x: 450 + BRANCH_NODE_RADIUS * Math.cos(angle) - 40,
-      y: 350 + BRANCH_NODE_RADIUS * Math.sin(angle) - 30,
+      x: GRID_ORIGIN_X + col * GRID_COLUMN_SPACING,
+      y: GRID_BRANCH_ROW_Y,
     };
   }
   return positions as Record<SemanticPillarKey, NodePosition>;
 }
 
 function computeMarkerPosition(pillarKey: SemanticPillarKey): NodePosition {
-  const angles: Record<SemanticPillarKey, number> = {
-    day: Math.PI / 6,
-    year: -Math.PI / 3,
-    month: Math.PI + Math.PI / 4,
-    hour: Math.PI / 2 + Math.PI / 6,
-  };
-  const angle = angles[pillarKey];
+  const col = gridColumnIndex(pillarKey);
   return {
-    x: 450 + MARKER_NODE_RADIUS * Math.cos(angle) - 60,
-    y: 350 + MARKER_NODE_RADIUS * Math.sin(angle) - 30,
+    x: GRID_ORIGIN_X + col * GRID_COLUMN_SPACING,
+    y: GRID_MARKER_ROW_Y,
   };
 }
 
@@ -461,8 +451,8 @@ function buildMarkerNodes(markerBadges: BaseChartReactionBadgeValue[]): Semantic
         type: "chamberMarker",
         data,
         position: markerPosition,
-        width: 240,
-        height: 130,
+        width: 90,
+        height: 32,
       } satisfies SemanticNode;
     });
 }
@@ -482,10 +472,15 @@ function buildDaymasterRelationEdges(roleBadges: BaseChartReactionBadgeValue[]):
     const sourceNodeId = isStem ? stemNodeId("day") : branchNodeId("day");
     const targetNodeId = isStem ? stemNodeId(targetPillarKey) : branchNodeId(targetPillarKey);
 
+    const sourceHandle = isStem ? "source-top" : "source-bottom";
+    const targetHandle = isStem ? "target-top" : "target-bottom";
+
     edges.push({
         id: `daymaster:${badge.id}`,
         source: sourceNodeId,
         target: targetNodeId,
+        sourceHandle,
+        targetHandle,
         data: {
           layer: "daymaster-meaning",
           badge,
@@ -543,10 +538,15 @@ function buildInteractionEdges(
       const sourceNodeId = isStem ? stemNodeId(source.pillarKey) : branchNodeId(source.pillarKey);
       const targetNodeId = isStem ? stemNodeId(target.pillarKey) : branchNodeId(target.pillarKey);
 
+      const sourceHandle = isStem ? "source-top" : "source-bottom";
+      const targetHandle = isStem ? "target-top" : "target-bottom";
+
       edges.push({
         id: `reaction:${badge.id}:${index}`,
         source: sourceNodeId,
         target: targetNodeId,
+        sourceHandle,
+        targetHandle,
         data: {
           layer: "inter-pillar-reaction",
           badge,
@@ -589,6 +589,8 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
         id: `overlay:${badge.id}`,
         source: branchNodeId(attachedPillarKey),
         target: markerNodeId(badge),
+        sourceHandle: "source-bottom",
+        targetHandle: "target-left",
         data: {
           layer: "shen-sha-overlay",
           badge,
