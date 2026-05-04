@@ -555,7 +555,7 @@ function buildInteractionEdges(
           sourceDetail: formatParticipantForGraph(source.participant),
           targetDetail: formatParticipantForGraph(target.participant),
         },
-        label: cluster.schoolLabel,
+        label: `${cluster.schoolLabel} ${badge.shortLabel ?? ""}`.trim(),
         className: [
           "chamber-edge",
           "chamber-edge--reaction",

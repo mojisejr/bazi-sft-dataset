@@ -239,14 +239,17 @@
 
 .reaction-chamber-canvas .react-flow__edge-text {
   fill: var(--chamber-text);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .reaction-chamber-canvas .react-flow__edge-textbg {
   fill: var(--chamber-panel-strong);
   stroke: var(--chamber-line);
   stroke-width: 1px;
+  rx: 6;
+  ry: 6;
 }
 
 /* Pillar node */
