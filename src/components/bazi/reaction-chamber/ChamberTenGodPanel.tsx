@@ -12,15 +12,25 @@ type TenGodCategory = {
 
 const TEN_GOD_CATEGORIES: Record<string, { label: string; description: string }> = {
   食神: { label: "ถ่ายเท", description: "แรงถ่ายเท การแสดงออก ผลงาน" },
+  เจี้ยซิ้ง: { label: "ถ่ายเท", description: "แรงถ่ายเท การแสดงออก ผลงาน" },
   伤官: { label: "ถ่ายเท", description: "แรงถ่ายเทต่างพลัง ความคิดคม" },
+  เซียกัว: { label: "ถ่ายเท", description: "แรงถ่ายเทต่างพลัง ความคิดคม" },
   偏财: { label: "โชคลาภ", description: "ลาภแบบพลิกเร็ว โอกาส เงินหมุน" },
+  เพียงไช้: { label: "โชคลาภ", description: "ลาภแบบพลิกเร็ว โอกาส เงินหมุน" },
   正财: { label: "โชคลาภ", description: "ลาภที่เป็นระบบ การเงิน ทรัพย์" },
+  เจี้ยไช้: { label: "โชคลาภ", description: "ลาภที่เป็นระบบ การเงิน ทรัพย์" },
   七杀: { label: "พิฆาต", description: "แรงกด แรงเสี่ยง อำนาจกดดัน" },
+  ชิกสัวะ: { label: "พิฆาต", description: "แรงกด แรงเสี่ยง อำนาจกดดัน" },
   正官: { label: "พิฆาต", description: "หน้าที่ ระเบียบ กติกา ตำแหน่ง" },
+  เจี้ยกัว: { label: "พิฆาต", description: "หน้าที่ ระเบียบ กติกา ตำแหน่ง" },
   正印: { label: "ส่งเสริม", description: "แรงหนุนตรง ผู้ใหญ่ ครู อุปถัมภ์" },
+  เจี้ยอิ่ง: { label: "ส่งเสริม", description: "แรงหนุนตรง ผู้ใหญ่ ครู อุปถัมภ์" },
   偏印: { label: "ส่งเสริม", description: "แรงหนุนเชิงเฉพาะทาง การคิด การศึกษา" },
+  เพียงอิ่ง: { label: "ส่งเสริม", description: "แรงหนุนเชิงเฉพาะทาง การคิด การศึกษา" },
   比肩: { label: "คู่ธาตุ", description: "พวกเดียวกัน การช่วยเหลือและการแย่งแรง" },
+  ปี่เกียง: { label: "คู่ธาตุ", description: "พวกเดียวกัน การช่วยเหลือและการแย่งแรง" },
   劫财: { label: "คู่ธาตุ", description: "คู่ธาตุต่างพลัง แรงแข่ง แรงแชร์" },
+  เกี๊ยบไช้: { label: "คู่ธาตุ", description: "คู่ธาตุต่างพลัง แรงแข่ง แรงแชร์" },
 };
 
 function groupBadgesByCategory(badges: BaseChartReactionBadgeValue[]): TenGodCategory[] {
