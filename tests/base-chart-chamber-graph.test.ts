@@ -192,21 +192,23 @@ describe("buildSemanticChamberGraph", () => {
     }
   });
 
-  test("stem edges use top handles and branch edges use bottom handles", () => {
+  test("edge handles follow multi-handle routing rules", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
 
     const stemEdges = graph.edges.filter((edge) => edge.source.startsWith("stem:"));
     for (const edge of stemEdges) {
-      expect(edge.sourceHandle).toBe("source-top");
-      expect(edge.targetHandle).toBe("target-top");
+      expect(edge.sourceHandle).toMatch(/^source-(top|left|right)$/);
+      expect(edge.targetHandle).toMatch(/^target-(top|left|right)$/);
     }
 
     const branchEdges = graph.edges.filter(
       (edge) => edge.source.startsWith("branch:") && edge.data.layer === "inter-pillar-reaction",
     );
     for (const edge of branchEdges) {
-      expect(edge.sourceHandle).toBe("source-bottom");
-      expect(edge.targetHandle).toBe("target-bottom");
+      // Branch edges may use top handles for far-span routing through the middle zone,
+      // or left/right handles for adjacent routing.
+      expect(edge.sourceHandle).toMatch(/^source-(top|bottom|left|right)$/);
+      expect(edge.targetHandle).toMatch(/^target-(top|bottom|left|right)$/);
     }
   });
 
@@ -219,5 +221,82 @@ describe("buildSemanticChamberGraph", () => {
     expect(reactionEdge?.data.schoolCluster?.schoolLabel).toBeTruthy();
     expect(reactionEdge?.data.sourceDetail).toMatch(/ราศี(ล่าง|บน)/);
     expect(reactionEdge?.data.targetDetail).toMatch(/ราศี(ล่าง|บน)/);
+  });
+
+  test("parallel edges get offset assignment", () => {
+    const state = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(state);
+
+    const reactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "inter-pillar-reaction",
+    );
+
+    const pairGroups = new Map<string, typeof reactionEdges>();
+    for (const edge of reactionEdges) {
+      const key = `${edge.source}->${edge.target}`;
+      const group = pairGroups.get(key);
+      if (group) {
+        group.push(edge);
+      } else {
+        pairGroups.set(key, [edge]);
+      }
+    }
+
+    for (const group of pairGroups.values()) {
+      if (group.length === 1) {
+        expect(group[0].data.parallelOffset).toBe(0);
+      } else {
+        for (let index = 0; index < group.length; index += 1) {
+          expect(group[index].data.parallelOffset).toBe(index * 10);
+        }
+      }
+    }
+  });
+
+  test("far-span branch edges use top handles for middle-zone arc routing", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const branchEdges = graph.edges.filter(
+      (edge) => edge.source.startsWith("branch:") && edge.data.layer === "inter-pillar-reaction",
+    );
+
+    // Find far-span edges (column delta >= 2, e.g. hour↔month, day↔year, hour↔year)
+    const farSpanEdges = branchEdges.filter((edge) => {
+      const sourceKey = edge.source.replace("branch:", "") as "hour" | "day" | "month" | "year";
+      const targetKey = edge.target.replace("branch:", "") as "hour" | "day" | "month" | "year";
+      const order = ["hour", "day", "month", "year"];
+      return Math.abs(order.indexOf(targetKey) - order.indexOf(sourceKey)) >= 2;
+    });
+
+    for (const edge of farSpanEdges) {
+      expect(edge.sourceHandle).toBe("source-top");
+      expect(edge.targetHandle).toBe("target-top");
+    }
+
+    // Adjacent branch edges should still use left/right handles
+    const adjacentEdges = branchEdges.filter((edge) => {
+      const sourceKey = edge.source.replace("branch:", "") as "hour" | "day" | "month" | "year";
+      const targetKey = edge.target.replace("branch:", "") as "hour" | "day" | "month" | "year";
+      const order = ["hour", "day", "month", "year"];
+      return Math.abs(order.indexOf(targetKey) - order.indexOf(sourceKey)) < 2;
+    });
+
+    for (const edge of adjacentEdges) {
+      expect(edge.sourceHandle).toMatch(/^source-(left|right)$/);
+      expect(edge.targetHandle).toMatch(/^target-(left|right)$/);
+    }
+  });
+
+  test("single edges have zero parallelOffset", () => {
+    const state = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(state);
+
+    const reactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "inter-pillar-reaction",
+    );
+
+    for (const edge of reactionEdges) {
+      expect(edge.data.parallelOffset).toBeGreaterThanOrEqual(0);
+    }
   });
 });

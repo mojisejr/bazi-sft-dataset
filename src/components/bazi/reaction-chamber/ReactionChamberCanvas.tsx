@@ -26,12 +26,18 @@ import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPil
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
 import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemNode";
 import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
+import { ChamberBezierEdge } from "@/components/bazi/reaction-chamber/ChamberSmoothStepEdge";
+import { ChamberEdgeLegend } from "@/components/bazi/reaction-chamber/ChamberEdgeLegend";
 
 const NODE_TYPES = {
   chamberPillar: ChamberPillarNode,
   chamberMarker: ChamberMarkerNode,
   chamberStemNode: ChamberStemNode,
   chamberBranchNode: ChamberBranchNode,
+};
+
+const EDGE_TYPES = {
+  chamberBezier: ChamberBezierEdge,
 };
 
 type ChamberSelection =
@@ -82,8 +88,9 @@ function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
     data: edge.data as unknown as Record<string, unknown>,
     selectable: true,
     focusable: true,
-    type: "smoothstep",
+    type: edge.data.layer === "inter-pillar-reaction" ? "chamberBezier" : "smoothstep",
     zIndex: edge.data.layer === "inter-pillar-reaction" ? 20 : edge.data.layer === "shen-sha-overlay" ? 18 : 6,
+    interactionWidth: edge.data.layer === "inter-pillar-reaction" ? 20 : 12,
   } satisfies Edge));
 }
 
@@ -183,6 +190,7 @@ function ReactionChamberCanvasInner({
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
         fitView
         fitViewOptions={{ padding: 0.14 }}
         minZoom={0.55}
@@ -199,6 +207,7 @@ function ReactionChamberCanvasInner({
         <Background gap={28} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
+      <ChamberEdgeLegend />
     </div>
   );
 }

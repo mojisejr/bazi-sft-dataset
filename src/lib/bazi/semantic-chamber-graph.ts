@@ -100,6 +100,9 @@ export type SemanticEdgeData = {
   schoolCluster: SemanticSchoolCluster | null;
   sourceDetail?: string;
   targetDetail?: string;
+  tier?: string;
+  parallelOffset?: number;
+  schoolLabel?: string;
 };
 
 export type SemanticEdge = {
@@ -512,6 +515,36 @@ function normalizeSchoolToEdgeClass(schoolLabel: string | undefined): string {
   return "";
 }
 
+function resolveInteractionHandles(
+  sourcePillarKey: SemanticPillarKey,
+  targetPillarKey: SemanticPillarKey,
+  isStem: boolean,
+): { sourceHandle: string; targetHandle: string } {
+  const sourceCol = gridColumnIndex(sourcePillarKey);
+  const targetCol = gridColumnIndex(targetPillarKey);
+  const delta = targetCol - sourceCol;
+
+  if (isStem) {
+    if (Math.abs(delta) >= 2) {
+      return { sourceHandle: "source-top", targetHandle: "target-top" };
+    }
+    if (delta < 0) {
+      return { sourceHandle: "source-left", targetHandle: "target-right" };
+    }
+    return { sourceHandle: "source-right", targetHandle: "target-left" };
+  }
+
+  // Far-span branch edges arc through the middle zone (above branch row)
+  // using top handles instead of bottom handles to avoid crossing nodes.
+  if (Math.abs(delta) >= 2) {
+    return { sourceHandle: "source-top", targetHandle: "target-top" };
+  }
+  if (delta < 0) {
+    return { sourceHandle: "source-left", targetHandle: "target-right" };
+  }
+  return { sourceHandle: "source-right", targetHandle: "target-left" };
+}
+
 function buildInteractionEdges(
   badges: BaseChartReactionBadgeValue[],
   visibleMarkerBadges: BaseChartReactionBadgeValue[],
@@ -538,8 +571,15 @@ function buildInteractionEdges(
       const sourceNodeId = isStem ? stemNodeId(source.pillarKey) : branchNodeId(source.pillarKey);
       const targetNodeId = isStem ? stemNodeId(target.pillarKey) : branchNodeId(target.pillarKey);
 
-      const sourceHandle = isStem ? "source-top" : "source-bottom";
-      const targetHandle = isStem ? "target-top" : "target-bottom";
+      const { sourceHandle, targetHandle } = resolveInteractionHandles(
+        source.pillarKey,
+        target.pillarKey,
+        isStem,
+      );
+
+      const tier = badge.tier;
+      const tierClass = tier ? `chamber-edge--tier-${tier}` : "";
+      const tierSuffix = tier === "secondary" ? " (รอง)" : tier === "tertiary" ? " (เสริม)" : "";
 
       edges.push({
         id: `reaction:${badge.id}:${index}`,
@@ -554,13 +594,16 @@ function buildInteractionEdges(
           schoolCluster: cluster,
           sourceDetail: formatParticipantForGraph(source.participant),
           targetDetail: formatParticipantForGraph(target.participant),
+          tier,
+          schoolLabel: cluster.schoolLabel,
         },
-        label: `${cluster.schoolLabel} ${badge.shortLabel ?? ""}`.trim(),
+        label: `${cluster.schoolLabel}${tierSuffix}`,
         className: [
           "chamber-edge",
           "chamber-edge--reaction",
           `chamber-edge--${badge.status}`,
           normalizeSchoolToEdgeClass(cluster.schoolLabel),
+          tierClass,
         ].filter(Boolean).join(" "),
       });
     }
@@ -606,6 +649,30 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
   return edges;
 }
 
+function assignParallelOffsets(edges: SemanticEdge[]): void {
+  const pairKey = (edge: SemanticEdge) => `${edge.source}->${edge.target}`;
+  const groups = new Map<string, SemanticEdge[]>();
+
+  for (const edge of edges) {
+    if (edge.data.layer !== "inter-pillar-reaction") continue;
+    edge.data.parallelOffset = 0;
+    const key = pairKey(edge);
+    const group = groups.get(key);
+    if (group) {
+      group.push(edge);
+    } else {
+      groups.set(key, [edge]);
+    }
+  }
+
+  for (const group of groups.values()) {
+    if (group.length <= 1) continue;
+    for (let index = 0; index < group.length; index += 1) {
+      group[index].data.parallelOffset = index * 10;
+    }
+  }
+}
+
 export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue): SemanticChamberGraph {
   const reading = calculatedState.baseChartReading;
 
@@ -619,7 +686,7 @@ export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue)
   const visibleMarkerNodes = buildMarkerNodes(reading.markerBadges);
   const hiddenSecondaryOverlays = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "secondary");
 
-  return {
+  const graph = {
     nodes: [...pillarNodes, ...visibleMarkerNodes],
     edges: [
       ...buildDaymasterRelationEdges(reading.roleBadges),
@@ -629,6 +696,10 @@ export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue)
     schoolClusters: interactionBadges.map((badge) => buildSchoolClusterForBadge(badge, visibleMarkerBadges)),
     hiddenSecondaryOverlays,
   };
+
+  assignParallelOffsets(graph.edges);
+
+  return graph;
 }
 
 export const __testing__ = {

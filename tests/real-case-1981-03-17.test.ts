@@ -74,7 +74,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
     expect(clashBadge!.status).toBe("active");
   });
 
-  test("detects ซำเฮ้ง 卯午酉 trio in resolution (suppressed by clash in this chart)", async () => {
+  test("detects ซำเฮ้ง 卯午酉 trio in resolution — NOT suppressed, tier is tertiary", async () => {
     const { resolveBranchInteractionEffects } = await import("@/lib/bazi/symbolic-engine.interactions");
     const resolution = resolveBranchInteractionEffects({
       year: { stem: "辛", branch: "酉", hiddenStems: [] },
@@ -83,9 +83,9 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
       hour: { stem: "己", branch: "巳", hiddenStems: [] },
     });
 
-    // The trio 卯午酉 is present but suppressed by the 卯酉 clash (clash outranks punishment)
-    expect(resolution.activePunishments).not.toContain("卯午酉");
+    expect(resolution.activePunishments).toContain("卯午酉");
     expect(resolution.activeClashes).toContain("卯酉");
+    expect(resolution.interactionTiers["punishment-卯午酉"]).toBe("tertiary");
   });
 
   test("detects ซำเฮ้ง 卯午酉 at raw interaction level", async () => {

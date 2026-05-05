@@ -237,6 +237,48 @@
   stroke: var(--surface-line-emphasis);
 }
 
+/* Tier 1 — แรงหลัก (primary) */
+
+.reaction-chamber-canvas .chamber-edge--tier-primary .react-flow__edge-path {
+  stroke-width: 2.8;
+  opacity: 1.0;
+}
+
+/* Tier 2 — แรงรอง (secondary) */
+
+.reaction-chamber-canvas .chamber-edge--tier-secondary .react-flow__edge-path {
+  stroke-width: 2.2;
+  stroke-dasharray: 4 4;
+  opacity: 0.85;
+}
+
+/* Tier 3 — แรงเสริม (tertiary) */
+
+.reaction-chamber-canvas .chamber-edge--tier-tertiary .react-flow__edge-path {
+  stroke-width: 1.6;
+  stroke-dasharray: 3 6;
+  opacity: 0.65;
+}
+
+/* Tier label styling */
+
+.reaction-chamber-canvas .chamber-edge--tier-secondary .react-flow__edge-text {
+  font-weight: 500;
+}
+
+.reaction-chamber-canvas .chamber-edge--tier-tertiary .react-flow__edge-text {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+/* Wenchang (บุ่งเชียง) edge — missing CSS rule fix */
+
+.reaction-chamber-canvas .chamber-edge--school-wenchang .react-flow__edge-path {
+  stroke: var(--chamber-edge-combination);
+  stroke-width: 2.2;
+  stroke-dasharray: 4 6;
+}
+
 .reaction-chamber-canvas .react-flow__edge-text {
   fill: var(--chamber-text);
   font-size: 11px;
@@ -250,6 +292,261 @@
   stroke-width: 1px;
   rx: 6;
   ry: 6;
+}
+
+/* Edge selection + hover highlight */
+
+.reaction-chamber-canvas .react-flow__edges:has(.chamber-edge--selected) .react-flow__edge:not(:has(.chamber-edge--selected)) .react-flow__edge-path {
+  opacity: 0.35;
+  transition: stroke-width 180ms ease, opacity 280ms ease, filter 180ms ease;
+}
+
+.reaction-chamber-canvas .chamber-edge--selected .react-flow__edge-path {
+  stroke-width: 4.0;
+  filter: drop-shadow(0 0 6px rgba(159, 83, 32, 0.35));
+  opacity: 1.0;
+}
+
+.reaction-chamber-canvas .chamber-edge--selected {
+  z-index: 30;
+}
+
+.reaction-chamber-canvas .react-flow__edge:hover .react-flow__edge-path,
+.reaction-chamber-canvas .chamber-edge--hovered .react-flow__edge-path {
+  filter: brightness(1.12);
+}
+
+.reaction-chamber-canvas .react-flow__edge .react-flow__edge-path {
+  transition: stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
+}
+
+/* Edge label pill badges */
+
+.chamber-edge-pill {
+  pointer-events: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  background: color-mix(in srgb, var(--chamber-panel-strong) 92%, transparent);
+  border: 1px solid var(--chamber-line);
+  box-shadow: 0 2px 8px rgba(76, 48, 27, 0.1);
+  backdrop-filter: blur(8px);
+  z-index: 25;
+}
+
+.chamber-edge-pill__label {
+  color: var(--chamber-text);
+}
+
+.chamber-edge-pill__tier {
+  font-weight: 400;
+  font-size: 9px;
+  color: var(--chamber-muted);
+}
+
+/* Pill badge accent colors by school */
+
+.reaction-chamber-canvas .chamber-edge--reaction .react-flow__edge-text,
+.reaction-chamber-canvas .chamber-edge--reaction .react-flow__edge-textbg {
+  display: none;
+}
+
+.chamber-edge-pill[data-school="ภาคี"],
+.chamber-edge-pill[data-school="ราศีบน"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-combination) 40%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-school="ชง"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-clash) 50%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-school="ไห่"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-harm) 45%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-school="ผั่ว"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-destruction) 50%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-school="เฮ้ง"],
+.chamber-edge-pill[data-school="ซำเฮ้ง"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-punishment) 45%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-school="ฟ้าภาคี"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-stem-combination) 45%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-school="ฟ้าพิฆาต"] {
+  border-color: color-mix(in srgb, var(--chamber-edge-stem-clash) 45%, var(--chamber-line));
+}
+
+/* Edge Legend */
+
+.chamber-edge-legend {
+  position: absolute;
+  bottom: 12px;
+  right: 52px;
+  z-index: 22;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: color-mix(in srgb, var(--chamber-panel-strong) 94%, transparent);
+  border: 1px solid var(--chamber-line);
+  border-radius: 14px;
+  box-shadow: 0 4px 16px rgba(76, 48, 27, 0.08);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+  min-width: 160px;
+  max-width: 260px;
+}
+
+.chamber-edge-legend__toggle {
+  appearance: none;
+  background: transparent;
+  border: none;
+  color: var(--chamber-muted);
+  padding: 8px 12px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  transition: color 150ms ease;
+}
+
+.chamber-edge-legend__toggle:hover {
+  color: var(--chamber-text);
+}
+
+.chamber-edge-legend__toggle-label {
+  pointer-events: none;
+}
+
+.chamber-edge-legend__body {
+  padding: 0 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chamber-edge-legend__section-title {
+  margin: 0;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--chamber-muted);
+  text-transform: none;
+}
+
+.chamber-edge-legend__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chamber-edge-legend__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+
+.chamber-edge-legend__sample {
+  flex-shrink: 0;
+}
+
+.chamber-edge-legend__line {
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+/* School colors for legend sample lines */
+
+.chamber-edge-legend__line--school-pakhee {
+  stroke: var(--chamber-edge-combination);
+}
+
+.chamber-edge-legend__line--school-chong {
+  stroke: var(--chamber-edge-clash);
+}
+
+.chamber-edge-legend__line--school-hai {
+  stroke: var(--chamber-edge-harm);
+}
+
+.chamber-edge-legend__line--school-pua {
+  stroke: var(--chamber-edge-destruction);
+}
+
+.chamber-edge-legend__line--school-heng {
+  stroke: var(--chamber-edge-punishment);
+}
+
+.chamber-edge-legend__line--school-sam-heng {
+  stroke: var(--chamber-edge-punishment);
+}
+
+.chamber-edge-legend__line--school-faa-pakhee {
+  stroke: var(--chamber-edge-stem-combination);
+}
+
+.chamber-edge-legend__line--school-faa-phikat {
+  stroke: var(--chamber-edge-stem-clash);
+}
+
+/* Tier sample lines */
+
+.chamber-edge-legend__line--tier-primary {
+  stroke: var(--chamber-line-strong);
+  stroke-width: 3.0;
+}
+
+.chamber-edge-legend__line--tier-secondary {
+  stroke: var(--chamber-line-strong);
+  stroke-width: 2.2;
+  opacity: 0.85;
+}
+
+.chamber-edge-legend__line--tier-tertiary {
+  stroke: var(--chamber-line-strong);
+  stroke-width: 1.6;
+  opacity: 0.65;
+}
+
+.chamber-edge-legend__label {
+  font-weight: 600;
+  color: var(--chamber-text);
+  min-width: 36px;
+}
+
+.chamber-edge-legend__desc {
+  font-weight: 400;
+  color: var(--chamber-muted);
+  font-size: 10px;
+}
+
+@media (max-width: 640px) {
+  .chamber-edge-legend {
+    bottom: 8px;
+    right: 8px;
+    left: 8px;
+    max-width: none;
+    min-width: 0;
+    border-radius: 12px;
+  }
+
+  .chamber-edge-legend__desc {
+    display: none;
+  }
 }
 
 /* Pillar node */

@@ -279,6 +279,12 @@ export const BaseChartModalContentSchema = z.object({
   details: z.array(BaseChartDetailItemSchema).default([]),
 });
 
+export const InteractionTierSchema = z.enum([
+  "primary",
+  "secondary",
+  "tertiary",
+]);
+
 export const BaseChartReactionBadgeSchema = z.object({
   id: z.string().trim().min(1),
   family: BaseChartReadingBadgeFamilySchema,
@@ -288,6 +294,7 @@ export const BaseChartReactionBadgeSchema = z.object({
   status: BaseChartReadingStatusSchema,
   meaningShort: z.string().trim().min(1),
   schoolLabel: z.string().trim().min(1).optional(),
+  tier: InteractionTierSchema.optional(),
   participants: z.array(BaseChartParticipantSchema).default([]),
   modal: BaseChartModalContentSchema,
 });
@@ -462,5 +469,6 @@ export type BaseChartDetailItemValue = z.infer<typeof BaseChartDetailItemSchema>
 export type BaseChartParticipantValue = z.infer<typeof BaseChartParticipantSchema>;
 export type BaseChartModalContentValue = z.infer<typeof BaseChartModalContentSchema>;
 export type BaseChartReactionBadgeValue = z.infer<typeof BaseChartReactionBadgeSchema>;
+export type InteractionTierValue = z.infer<typeof InteractionTierSchema>;
 export type BaseChartReactionGroupValue = z.infer<typeof BaseChartReactionGroupSchema>;
 export type BaseChartReadingValue = z.infer<typeof BaseChartReadingSchema>;

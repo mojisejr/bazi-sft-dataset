@@ -195,7 +195,7 @@ describe("Force-line coverage — 9 interaction families", () => {
   });
 
   describe("6. Punishment trio (ซำเฮ้ง)", () => {
-    test("寅巳申 trio is suppressed by internal 巳|申 combination (precedence)", () => {
+    test("寅巳申 trio is NOT suppressed — tier is tertiary", () => {
       const { resolution } = buildReading({
         year: ["甲", "寅"],
         month: ["乙", "巳"],
@@ -204,10 +204,11 @@ describe("Force-line coverage — 9 interaction families", () => {
       });
 
       expect(resolution.activeCombinations).toContain("巳申");
-      expect(resolution.activePunishments).not.toContain("寅巳申");
+      expect(resolution.activePunishments).toContain("寅巳申");
+      expect(resolution.interactionTiers["punishment-寅巳申"]).toBe("tertiary");
     });
 
-    test("丑未戌 trio is suppressed by internal 丑|未 clash (precedence)", () => {
+    test("丑未戌 trio is NOT suppressed — tier is tertiary", () => {
       const { resolution } = buildReading({
         year: ["甲", "丑"],
         month: ["乙", "未"],
@@ -216,11 +217,12 @@ describe("Force-line coverage — 9 interaction families", () => {
       });
 
       expect(resolution.activeClashes).toContain("丑未");
-      expect(resolution.activePunishments).not.toContain("丑未戌");
+      expect(resolution.activePunishments).toContain("丑未戌");
+      expect(resolution.interactionTiers["punishment-丑未戌"]).toBe("tertiary");
     });
 
-    test("trio badge still exists in reading even when suppressed by precedence", () => {
-      const { reading } = buildReading({
+    test("trio badge exists in reading as tertiary interaction", () => {
+      const { reading, resolution } = buildReading({
         year: ["甲", "丑"],
         month: ["乙", "未"],
         day: ["丙", "戌"],
@@ -230,7 +232,8 @@ describe("Force-line coverage — 9 interaction families", () => {
       const trioBadge = reading.branchInteractionBadges.find(
         (b) => b.schoolLabel === "เฮ้ง" && b.label.includes("丑未戌"),
       );
-      expect(trioBadge).toBeUndefined();
+      expect(trioBadge).toBeDefined();
+      expect(resolution.interactionTiers["punishment-丑未戌"]).toBe("tertiary");
     });
   });
 
@@ -332,7 +335,7 @@ describe("Precedence logic", () => {
     expect(resolution.activeClashes).toEqual([]);
   });
 
-  test("clash outranks punishment", () => {
+  test("punishment coexists with clash — tier is tertiary", () => {
     const { resolution } = buildReading({
       year: ["甲", "子"],
       month: ["乙", "午"],
@@ -341,7 +344,8 @@ describe("Precedence logic", () => {
     });
 
     expect(resolution.activeClashes).toContain("子午");
-    expect(resolution.activePunishments).not.toContain("子卯");
+    expect(resolution.activePunishments).toContain("子卯");
+    expect(resolution.interactionTiers["punishment-子卯"]).toBe("tertiary");
   });
 
   test("harm is supplementary when pillar is in active clash", () => {
@@ -357,5 +361,79 @@ describe("Precedence logic", () => {
     );
     expect(harmBadge).toBeDefined();
     expect(harmBadge!.status).toBe("supplementary");
+  });
+
+  describe("Interaction tier annotations", () => {
+    test("combination gets tier primary", () => {
+      const { resolution } = buildReading({
+        year: ["甲", "寅"],
+        month: ["乙", "亥"],
+        day: ["丙", "子"],
+        hour: ["丁", "丑"],
+      });
+
+      expect(resolution.activeCombinations).toContain("寅亥");
+      expect(resolution.interactionTiers["combination-寅亥"]).toBe("primary");
+    });
+
+    test("active clash gets tier primary", () => {
+      const { resolution } = buildReading({
+        year: ["甲", "子"],
+        month: ["乙", "午"],
+        day: ["丙", "寅"],
+        hour: ["丁", "巳"],
+      });
+
+      expect(resolution.activeClashes).toContain("子午");
+      expect(resolution.interactionTiers["clash-子午"]).toBe("primary");
+    });
+
+    test("neutralized clash gets tier secondary", () => {
+      const { resolution } = buildReading({
+        year: ["甲", "子"],
+        month: ["乙", "丑"],
+        day: ["丙", "午"],
+        hour: ["丁", "未"],
+      });
+
+      expect(resolution.neutralizedClashes).toContain("子午");
+      expect(resolution.interactionTiers["clash-子午"]).toBe("secondary");
+    });
+
+    test("harm gets tier secondary", () => {
+      const { resolution } = buildReading({
+        year: ["甲", "子"],
+        month: ["乙", "未"],
+        day: ["丙", "寅"],
+        hour: ["丁", "巳"],
+      });
+
+      expect(resolution.activeHarms).toContain("子未");
+      expect(resolution.interactionTiers["harm-子未"]).toBe("secondary");
+    });
+
+    test("destruction gets tier secondary", () => {
+      const { resolution } = buildReading({
+        year: ["甲", "子"],
+        month: ["乙", "酉"],
+        day: ["丙", "寅"],
+        hour: ["丁", "巳"],
+      });
+
+      expect(resolution.activeDestructions).toContain("子酉");
+      expect(resolution.interactionTiers["destruction-子酉"]).toBe("secondary");
+    });
+
+    test("all three tiers coexist in complex chart", () => {
+      const { resolution } = buildReading({
+        year: ["甲", "寅"],
+        month: ["乙", "巳"],
+        day: ["丙", "申"],
+        hour: ["丁", "子"],
+      });
+
+      expect(resolution.interactionTiers["combination-巳申"]).toBe("primary");
+      expect(resolution.interactionTiers["punishment-寅巳申"]).toBe("tertiary");
+    });
   });
 });

@@ -109,6 +109,8 @@ export type MultiBranchInteraction = {
   label: string;
 };
 
+export type InteractionTier = "primary" | "secondary" | "tertiary";
+
 export type BranchInteractionResolution = {
   activeCombinations: string[];
   neutralizedClashes: string[];
@@ -120,6 +122,7 @@ export type BranchInteractionResolution = {
   monthBranchSeasonalFactor: number;
   precedenceNotes: string[];
   precedenceSignals: ContextRuleNoteValue[];
+  interactionTiers: Record<string, InteractionTier>;
 };
 
 export type ReferencePillar = {

@@ -17,6 +17,7 @@ import {
 } from "@/lib/bazi/symbolic-engine.constants";
 import type {
   BranchInteractionResolution,
+  InteractionTier,
   MultiBranchInteraction,
   PairInteraction,
   PillarKey,
@@ -150,11 +151,14 @@ export function resolveBranchInteractionEffects(
   const activeClashPillars = new Set(
     activeClashes.flatMap((interaction) => [interaction.leftPillar, interaction.rightPillar]),
   );
-  const activePunishments = punishments.filter(
-    (interaction) =>
-      !interaction.pillars.some((pillarKey) => combinationPillars.has(pillarKey)) &&
-      !interaction.pillars.some((pillarKey) => activeClashPillars.has(pillarKey)),
-  );
+  const activePunishments = punishments;
+  const interactionTiers: Record<string, InteractionTier> = {};
+  combinations.forEach((i) => { interactionTiers[`combination-${i.label}`] = "primary"; });
+  activeClashes.forEach((i) => { interactionTiers[`clash-${i.label}`] = "primary"; });
+  neutralizedClashes.forEach((i) => { interactionTiers[`clash-${i.label}`] = "secondary"; });
+  harms.forEach((i) => { interactionTiers[`harm-${i.label}`] = "secondary"; });
+  destructions.forEach((i) => { interactionTiers[`destruction-${i.label}`] = "secondary"; });
+  punishments.forEach((i) => { interactionTiers[`punishment-${i.label}`] = "tertiary"; });
   const majorConflictPillars = new Set([...combinationPillars, ...activeClashPillars]);
   const monthBranchSeasonalFactor = activeClashes.some(
     (interaction) =>
@@ -236,5 +240,6 @@ export function resolveBranchInteractionEffects(
     monthBranchSeasonalFactor,
     precedenceNotes,
     precedenceSignals,
+    interactionTiers,
   };
 }

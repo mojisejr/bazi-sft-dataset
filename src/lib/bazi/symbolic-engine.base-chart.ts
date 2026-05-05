@@ -3,6 +3,7 @@ import type {
   BaseChartReadingValue,
   BaseChartReactionBadgeValue,
   ContextRuleNoteValue,
+  InteractionTierValue,
   PillarValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
@@ -385,6 +386,14 @@ function buildBranchInteractionBadges(
   const activeClashKeys = new Set(activeClashes.flatMap((pair) => [pair.leftKey, pair.rightKey]));
   const badges: BaseChartReactionBadgeValue[] = [];
 
+  const tierForKind = (kind: string, status: string): InteractionTierValue => {
+    if (kind === "punishment") return "tertiary";
+    if (status === "neutralized") return "secondary";
+    if (kind === "combination") return "primary";
+    if (kind === "clash" && status === "active") return "primary";
+    return "secondary";
+  };
+
   const pushPairBadge = (kind: Exclude<InteractionKind, "punishment">, pair: PairRecord, status: "active" | "supplementary" | "neutralized") => {
     const meta = INTERACTION_META[kind];
     const leftLabel = PILLAR_LABELS[pair.leftKey];
@@ -405,6 +414,7 @@ function buildBranchInteractionBadges(
       status,
       meaningShort: note ?? `${meta.meaning} เกิดขึ้นระหว่างฐาน ${leftLabel} และ ${rightLabel}`,
       schoolLabel: meta.title,
+      tier: tierForKind(kind, status),
       participants: [
         { pillarKey: pair.leftKey, pillarLabel: leftLabel, type: "branch", symbol: pair.leftPillar.branch, translation: BRANCH_LABELS_TH[pair.leftPillar.branch as keyof typeof BRANCH_LABELS_TH] },
         { pillarKey: pair.rightKey, pillarLabel: rightLabel, type: "branch", symbol: pair.rightPillar.branch, translation: BRANCH_LABELS_TH[pair.rightPillar.branch as keyof typeof BRANCH_LABELS_TH] },
@@ -442,6 +452,7 @@ function buildBranchInteractionBadges(
       status: "active",
       meaningShort: `ชุด ${record.label} เป็นแรงเฮ้งที่ยังทำงานอยู่ในฐาน ${bases}`,
       schoolLabel: "เฮ้ง",
+      tier: "tertiary",
       participants: record.keys.map((key, index) => ({
         pillarKey: key,
         pillarLabel: PILLAR_LABELS[key],
@@ -480,6 +491,7 @@ function buildBranchInteractionBadges(
         status: "active",
         meaningShort: `ราศีบนผั่วราศีล่างในฐาน${pillarLabel} ทำให้เกิดความเสียหายในจุดนั้น`,
         schoolLabel: "ผั่ว",
+        tier: "secondary",
         participants: [
           {
             pillarKey,
