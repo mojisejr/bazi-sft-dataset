@@ -30,8 +30,6 @@ const RF_INTERNAL = new Set([
   "hidden",
   "pathOptions",
   "interactionWidth",
-  "markerStart",
-  "markerEnd",
   "ariaLabel",
   "focusable",
   "updatable",
