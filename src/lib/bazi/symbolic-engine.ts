@@ -135,6 +135,7 @@ function enrichPillar(
     stemTenGod?: string;
     lookingStage?: string;
     hideUpperStage?: boolean;
+    hideLowerContext?: boolean;
   },
 ) {
   const sittingStage = resolveDisplayTwelveQiStage(pillar.stem, pillar.branch) || undefined;
@@ -155,7 +156,9 @@ function enrichPillar(
     upperStageDisplay: upperStagePrimary ? formatStagePair(upperStagePrimary, sittingStage) : undefined,
     lowerStagePrimary,
     lowerStageContext: lowerStagePrimary ? sittingStage : undefined,
-    lowerStageDisplay: lowerStagePrimary ? formatStagePair(lowerStagePrimary, sittingStage) : undefined,
+    lowerStageDisplay: options.hideLowerContext
+      ? lowerStagePrimary
+      : (lowerStagePrimary ? formatStagePair(lowerStagePrimary, sittingStage) : undefined),
   };
 }
 
@@ -460,6 +463,7 @@ export async function calculateBaziChart(
       stemTenGod: "ดิถี",
       lookingStage: canonicalTwelveQiState.dayBranch,
       hideUpperStage: true,
+      hideLowerContext: true,
     }),
     hour: enrichPillar(pillars.hour, {
       dayMasterStem,
@@ -467,13 +471,22 @@ export async function calculateBaziChart(
       lookingStage: canonicalTwelveQiState.hourBranch,
     }),
   };
+  const mingGongSittingStage = resolveDisplayTwelveQiStage(mingGong.value.stem, mingGong.value.branch) || undefined;
+  const mingGongUpperPrimary = resolveDisplayStemPairStage(dayMasterStem, mingGong.value.stem) || undefined;
+  const mingGongLowerPrimary = localizeTwelveQiLabel(canonicalTwelveQiState.mingGongBranch) || undefined;
   const enrichedMingGong = {
     ...mingGong.value,
     tenGod: resolveTenGodForStem(dayMasterStem, mingGong.value.stem) || undefined,
     stemTranslation: getStemElementTranslation(mingGong.value.stem) ?? undefined,
     branchTranslation: getBranchTranslation(mingGong.value.branch) ?? undefined,
-    sittingStage: resolveDisplayTwelveQiStage(mingGong.value.stem, mingGong.value.branch) || undefined,
-    lookingStage: localizeTwelveQiLabel(canonicalTwelveQiState.mingGongBranch) || undefined,
+    sittingStage: mingGongSittingStage,
+    lookingStage: mingGongLowerPrimary,
+    upperStagePrimary: mingGongUpperPrimary,
+    upperStageContext: mingGongUpperPrimary ? mingGongSittingStage : undefined,
+    upperStageDisplay: mingGongUpperPrimary ? formatStagePair(mingGongUpperPrimary, mingGongSittingStage) : undefined,
+    lowerStagePrimary: mingGongLowerPrimary,
+    lowerStageContext: mingGongLowerPrimary ? mingGongSittingStage : undefined,
+    lowerStageDisplay: mingGongLowerPrimary ? formatStagePair(mingGongLowerPrimary, mingGongSittingStage) : undefined,
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
   const elementAnalysis = buildElementAnalysis(pillars);

@@ -214,7 +214,7 @@ describe("calculateBaziChart", () => {
       sittingStage: "ตี้อ๋วง",
       lookingStage: "ตี้อ๋วง",
       upperStageDisplay: undefined,
-      lowerStageDisplay: "ตี้อ๋วง/ตี้อ๋วง",
+      lowerStageDisplay: "ตี้อ๋วง",
     });
     expect(result.shenSha).toEqual(
       expect.arrayContaining([

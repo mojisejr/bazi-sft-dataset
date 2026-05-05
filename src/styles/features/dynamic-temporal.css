@@ -87,9 +87,9 @@
 }
 
 .pillar-stage-chip--lower {
-  background: linear-gradient(180deg, rgba(211, 246, 232, 0.96), rgba(185, 231, 215, 0.92));
-  border: 1px solid rgba(53, 133, 107, 0.18);
-  color: #16624b;
+  background: linear-gradient(180deg, rgba(240, 226, 255, 0.96), rgba(227, 207, 255, 0.92));
+  border: 1px solid rgba(118, 87, 173, 0.18);
+  color: #6a3dad;
 }
 
 .pillar-day-master-tag {
