@@ -25,6 +25,11 @@
   --ref-edge-punishment: #456a32;
   --ref-edge-stem-combination: #6a9fd8;
   --ref-edge-stem-clash: #d87a6a;
+  --ref-element-wood: #4a7c59;
+  --ref-element-fire: #c45a3c;
+  --ref-element-earth: #b8a070;
+  --ref-element-metal: #a89050;
+  --ref-element-water: #5a8fa8;
   --ref-shadow-soft: rgba(76, 48, 27, 0.12);
   --ref-line-soft: rgba(110, 79, 48, 0.12);
   --ref-line-muted: rgba(110, 79, 48, 0.1);

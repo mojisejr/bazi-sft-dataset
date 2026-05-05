@@ -72,6 +72,22 @@ export const TWELVE_QI_LABELS_TH = {
   养: "เอี้ยง",
 } as const;
 
+export const ELEMENT_COLORS_TH: Record<string, string> = {
+  "ไม้": "#4a7c59",
+  "ไฟ": "#c45a3c",
+  "ดิน": "#b8a070",
+  "ทอง": "#a89050",
+  "น้ำ": "#5a8fa8",
+};
+
+export const ELEMENT_TH_TO_EN: Record<string, string> = {
+  "ไม้": "wood",
+  "ไฟ": "fire",
+  "ดิน": "earth",
+  "ทอง": "metal",
+  "น้ำ": "water",
+};
+
 export const STEM_TO_ELEMENT = {
   甲: "wood",
   乙: "wood",

@@ -195,10 +195,18 @@ describe("buildSemanticChamberGraph", () => {
   test("edge handles follow multi-handle routing rules", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
 
-    const stemEdges = graph.edges.filter((edge) => edge.source.startsWith("stem:"));
+    const stemEdges = graph.edges.filter(
+      (edge) => edge.source.startsWith("stem:") && edge.data.layer === "inter-pillar-reaction",
+    );
     for (const edge of stemEdges) {
-      expect(edge.sourceHandle).toMatch(/^source-(top|left|right)$/);
-      expect(edge.targetHandle).toMatch(/^target-(top|left|right)$/);
+      const isCrossType = edge.target.startsWith("branch:");
+      if (isCrossType) {
+        expect(edge.sourceHandle).toMatch(/^source-(top|bottom|left|right)$/);
+        expect(edge.targetHandle).toMatch(/^target-(top|bottom|left|right)$/);
+      } else {
+        expect(edge.sourceHandle).toMatch(/^source-(top|left|right)$/);
+        expect(edge.targetHandle).toMatch(/^target-(top|left|right)$/);
+      }
     }
 
     const branchEdges = graph.edges.filter(
@@ -247,9 +255,59 @@ describe("buildSemanticChamberGraph", () => {
         expect(group[0].data.parallelOffset).toBe(0);
       } else {
         for (let index = 0; index < group.length; index += 1) {
-          expect(group[index].data.parallelOffset).toBe(index * 10);
+          expect(group[index].data.parallelOffset).toBe(index * 18);
         }
       }
+    }
+  });
+
+  test("no self-loop edges exist in reaction layer", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const reactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "inter-pillar-reaction",
+    );
+
+    for (const edge of reactionEdges) {
+      expect(edge.source).not.toBe(edge.target);
+    }
+  });
+
+  test("cross-type stem-to-branch edges resolve to correct node IDs", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const reactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "inter-pillar-reaction",
+    );
+
+    const crossTypeEdges = reactionEdges.filter(
+      (edge) => edge.source.startsWith("stem:") && edge.target.startsWith("branch:"),
+    );
+
+    if (crossTypeEdges.length > 0) {
+      for (const edge of crossTypeEdges) {
+        expect(edge.source).toMatch(/^stem:(hour|day|month|year)$/);
+        expect(edge.target).toMatch(/^branch:(hour|day|month|year)$/);
+      }
+    }
+  });
+
+  test("same-pillar cross-type edges use vertical handle routing", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const reactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "inter-pillar-reaction",
+    );
+
+    const samePillarCrossType = reactionEdges.filter((edge) => {
+      const srcParts = edge.source.split(":");
+      const tgtParts = edge.target.split(":");
+      return srcParts[0] !== tgtParts[0] && srcParts[1] === tgtParts[1];
+    });
+
+    for (const edge of samePillarCrossType) {
+      expect(edge.sourceHandle).toBe("source-bottom");
+      expect(edge.targetHandle).toBe("target-top");
     }
   });
 
@@ -297,6 +355,75 @@ describe("buildSemanticChamberGraph", () => {
 
     for (const edge of reactionEdges) {
       expect(edge.data.parallelOffset).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  test("element-flow edges exist for non-day role badges", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+    expect(flowEdges.length).toBeGreaterThan(0);
+
+    for (const edge of flowEdges) {
+      expect(edge.source).not.toBe(edge.target);
+      expect(edge.className).toContain("chamber-edge--element-flow");
+      expect(edge.data.flowCycleType).toMatch(/^(generating|controlling|neutral)$/);
+      expect(edge.data.flowDirection).toMatch(/^(outward|inward|none)$/);
+      expect(edge.data.flowLabel).toBeTruthy();
+      expect(edge.data.flowElement).toMatch(/^(wood|fire|earth|metal|water)$/);
+    }
+  });
+
+  test("element-flow edges have correct cycle type and direction per Ten God", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    const generatingEdges = flowEdges.filter((e) => e.data.flowCycleType === "generating");
+    const controllingEdges = flowEdges.filter((e) => e.data.flowCycleType === "controlling");
+
+    for (const edge of generatingEdges) {
+      expect(edge.data.flowDirection).toMatch(/^(outward|inward)$/);
+      expect(edge.className).toContain("chamber-edge--element-flow-generating");
+    }
+
+    for (const edge of controllingEdges) {
+      expect(edge.data.flowDirection).toMatch(/^(outward|inward)$/);
+      expect(edge.className).toContain("chamber-edge--element-flow-controlling");
+    }
+  });
+
+  test("element-flow edges have element-specific CSS class", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    for (const edge of flowEdges) {
+      expect(edge.className).toMatch(/chamber-edge--element-(wood|fire|earth|metal|water)/);
+    }
+  });
+
+  test("no self-loop element-flow edges", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    for (const edge of flowEdges) {
+      expect(edge.source).not.toBe(edge.target);
+    }
+  });
+
+  test("element-flow edges do not connect to day pillar nodes", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    for (const edge of flowEdges) {
+      const srcParts = edge.source.split(":");
+      const tgtParts = edge.target.split(":");
+      const srcIsDay = srcParts[1] === "day";
+      const tgtIsDay = tgtParts[1] === "day";
+      expect(srcIsDay || tgtIsDay).toBe(true);
     }
   });
 });

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background,
   Controls,
+  MarkerType,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -77,21 +78,44 @@ function toReactFlowNodes(graph: SemanticChamberGraph, positions: Map<string, { 
 }
 
 function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
-  return graph.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    sourceHandle: edge.sourceHandle,
-    targetHandle: edge.targetHandle,
-    label: edge.label,
-    className: edge.className,
-    data: edge.data as unknown as Record<string, unknown>,
-    selectable: true,
-    focusable: true,
-    type: edge.data.layer === "inter-pillar-reaction" ? "chamberBezier" : "smoothstep",
-    zIndex: edge.data.layer === "inter-pillar-reaction" ? 20 : edge.data.layer === "shen-sha-overlay" ? 18 : 6,
-    interactionWidth: edge.data.layer === "inter-pillar-reaction" ? 20 : 12,
-  } satisfies Edge));
+  return graph.edges.map((edge) => {
+    const isReaction = edge.data.layer === "inter-pillar-reaction";
+    const isElementFlow = edge.data.layer === "element-flow";
+    const useBezier = isReaction || isElementFlow;
+    const flowDir = isElementFlow
+      ? (edge.data as unknown as { flowDirection?: string }).flowDirection
+      : undefined;
+
+    let zIndex = 6;
+    if (isElementFlow) zIndex = 10;
+    else if (edge.data.layer === "shen-sha-overlay") zIndex = 18;
+    else if (isReaction) zIndex = 20;
+
+    return {
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      sourceHandle: edge.sourceHandle,
+      targetHandle: edge.targetHandle,
+      label: edge.label,
+      className: edge.className,
+      data: edge.data as unknown as Record<string, unknown>,
+      selectable: true,
+      focusable: true,
+      type: useBezier ? "chamberBezier" : "smoothstep",
+      zIndex,
+      interactionWidth: isReaction ? 20 : 12,
+      ...(isReaction ? {
+        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
+      } : {}),
+      ...(isElementFlow && flowDir === "outward" ? {
+        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
+      } : {}),
+      ...(isElementFlow && flowDir === "inward" ? {
+        markerStart: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
+      } : {}),
+    } satisfies Edge;
+  });
 }
 
 function ReactionChamberCanvasInner({

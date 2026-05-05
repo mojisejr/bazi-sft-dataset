@@ -3,12 +3,14 @@ import type {
   BaseChartReactionBadgeValue,
   CalculatedStateValue,
 } from "@/lib/bazi/schema-types";
+import { ELEMENT_TH_TO_EN } from "@/lib/bazi/symbolic-engine.constants";
 
 export type SemanticPillarKey = "year" | "month" | "day" | "hour";
 
 export type SemanticGraphLayer =
   | "pillar-structure"
   | "daymaster-meaning"
+  | "element-flow"
   | "inter-pillar-reaction"
   | "shen-sha-overlay";
 
@@ -103,6 +105,10 @@ export type SemanticEdgeData = {
   tier?: string;
   parallelOffset?: number;
   schoolLabel?: string;
+  flowCycleType?: "generating" | "controlling" | "neutral";
+  flowDirection?: "outward" | "inward" | "none";
+  flowLabel?: string;
+  flowElement?: string;
 };
 
 export type SemanticEdge = {
@@ -155,6 +161,30 @@ const BRANCH_TO_ELEMENT: Record<string, string> = {
   子: "น้ำ", 丑: "ดิน", 寅: "ไม้", 卯: "ไม้",
   辰: "ดิน", 巳: "ไฟ", 午: "ไฟ", 未: "ดิน",
   申: "ทอง", 酉: "ทอง", 戌: "ดิน", 亥: "น้ำ",
+};
+
+type FlowCategory = "output" | "wealth" | "power" | "resource" | "companion";
+type FlowCycleType = "generating" | "controlling" | "neutral";
+type FlowDirection = "outward" | "inward" | "none";
+
+type TenGodFlowInfo = {
+  category: FlowCategory;
+  cycleType: FlowCycleType;
+  direction: FlowDirection;
+  label: string;
+};
+
+const TEN_GOD_FLOW_MAP: Record<string, TenGodFlowInfo> = {
+  เจี้ยซิ่ง: { category: "output", cycleType: "generating", direction: "outward", label: "ถ่ายเท" },
+  เซียกัว: { category: "output", cycleType: "generating", direction: "outward", label: "ถ่ายเท" },
+  เพียงไช้: { category: "wealth", cycleType: "controlling", direction: "outward", label: "โชคลาภ" },
+  เจี้ยไช้: { category: "wealth", cycleType: "controlling", direction: "outward", label: "โชคลาภ" },
+  เพียงอิ่ง: { category: "resource", cycleType: "generating", direction: "inward", label: "ส่งเสริม" },
+  เจี้ยอิ่ง: { category: "resource", cycleType: "generating", direction: "inward", label: "ส่งเสริม" },
+  ชิกสัวะ: { category: "power", cycleType: "controlling", direction: "inward", label: "พิฆาต" },
+  เจี้ยกัว: { category: "power", cycleType: "controlling", direction: "inward", label: "พิฆาต" },
+  ปี่เกียง: { category: "companion", cycleType: "neutral", direction: "none", label: "คู่ธาตุ" },
+  เกี๊ยบไช้: { category: "companion", cycleType: "neutral", direction: "none", label: "คู่ธาตุ" },
 };
 
 const PILLAR_LABEL_REVERSE: Record<string, SemanticPillarKey> = {
@@ -499,6 +529,85 @@ function buildDaymasterRelationEdges(roleBadges: BaseChartReactionBadgeValue[]):
   return edges;
 }
 
+function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): SemanticEdge[] {
+  const edges: SemanticEdge[] = [];
+
+  roleBadges.forEach((badge) => {
+    const participant = badge.participants[0];
+    const targetPillarKey = participant ? resolvePillarKeyFromBadgeParticipant(participant) : null;
+
+    if (!targetPillarKey || targetPillarKey === "day") {
+      return;
+    }
+
+    const flowInfo = TEN_GOD_FLOW_MAP[badge.schoolLabel ?? ""];
+    if (!flowInfo) {
+      return;
+    }
+
+    const isStem = participant.type === "stem";
+    const targetElementTH = isStem
+      ? (STEM_TO_ELEMENT[participant.symbol] ?? "ไม้")
+      : (BRANCH_TO_ELEMENT[participant.symbol] ?? "ไม้");
+    const targetElementEN = ELEMENT_TH_TO_EN[targetElementTH] ?? "wood";
+
+    const dayNodeId = isStem ? stemNodeId("day") : branchNodeId("day");
+    const targetNodeId = isStem ? stemNodeId(targetPillarKey) : branchNodeId(targetPillarKey);
+
+    let sourceHandle: string;
+    let targetHandle: string;
+    let source: string;
+    let target: string;
+
+    if (flowInfo.direction === "outward") {
+      source = dayNodeId;
+      target = targetNodeId;
+      sourceHandle = "source-top";
+      targetHandle = "target-top";
+    } else if (flowInfo.direction === "inward") {
+      source = targetNodeId;
+      target = dayNodeId;
+      sourceHandle = "source-top";
+      targetHandle = "target-bottom";
+    } else {
+      source = dayNodeId;
+      target = targetNodeId;
+      sourceHandle = "source-top";
+      targetHandle = "target-top";
+    }
+
+    const edgeClasses = [
+      "chamber-edge",
+      "chamber-edge--element-flow",
+      `chamber-edge--element-flow-${flowInfo.cycleType}`,
+      `chamber-edge--element-${targetElementEN}`,
+    ].join(" ");
+
+    edges.push({
+      id: `element-flow:${badge.id}`,
+      source,
+      target,
+      sourceHandle,
+      targetHandle,
+      data: {
+        layer: "element-flow",
+        badge,
+        readingOrder: 0,
+        schoolCluster: null,
+        sourceDetail: "ดิถี",
+        targetDetail: formatParticipantForGraph(participant),
+        flowCycleType: flowInfo.cycleType,
+        flowDirection: flowInfo.direction,
+        flowLabel: flowInfo.label,
+        flowElement: targetElementEN,
+      },
+      className: edgeClasses,
+    });
+  });
+
+  return edges;
+}
+
 function normalizeSchoolToEdgeClass(schoolLabel: string | undefined): string {
   if (!schoolLabel) return "";
   const normalized = schoolLabel.toLowerCase().replace(/[^a-z\u0e00-\u0e7f]/g, "");
@@ -518,13 +627,19 @@ function normalizeSchoolToEdgeClass(schoolLabel: string | undefined): string {
 function resolveInteractionHandles(
   sourcePillarKey: SemanticPillarKey,
   targetPillarKey: SemanticPillarKey,
-  isStem: boolean,
+  sourceIsStem: boolean,
+  targetIsStem: boolean,
 ): { sourceHandle: string; targetHandle: string } {
   const sourceCol = gridColumnIndex(sourcePillarKey);
   const targetCol = gridColumnIndex(targetPillarKey);
   const delta = targetCol - sourceCol;
+  const isCrossType = sourceIsStem !== targetIsStem;
 
-  if (isStem) {
+  if (isCrossType && delta === 0) {
+    return { sourceHandle: "source-bottom", targetHandle: "target-top" };
+  }
+
+  if (isCrossType) {
     if (Math.abs(delta) >= 2) {
       return { sourceHandle: "source-top", targetHandle: "target-top" };
     }
@@ -534,8 +649,16 @@ function resolveInteractionHandles(
     return { sourceHandle: "source-right", targetHandle: "target-left" };
   }
 
-  // Far-span branch edges arc through the middle zone (above branch row)
-  // using top handles instead of bottom handles to avoid crossing nodes.
+  if (sourceIsStem) {
+    if (Math.abs(delta) >= 2) {
+      return { sourceHandle: "source-top", targetHandle: "target-top" };
+    }
+    if (delta < 0) {
+      return { sourceHandle: "source-left", targetHandle: "target-right" };
+    }
+    return { sourceHandle: "source-right", targetHandle: "target-left" };
+  }
+
   if (Math.abs(delta) >= 2) {
     return { sourceHandle: "source-top", targetHandle: "target-top" };
   }
@@ -567,14 +690,16 @@ function buildInteractionEdges(
     for (let index = 1; index < graphParticipants.length; index += 1) {
       const source = graphParticipants[0];
       const target = graphParticipants[index];
-      const isStem = source.participant.type === "stem";
-      const sourceNodeId = isStem ? stemNodeId(source.pillarKey) : branchNodeId(source.pillarKey);
-      const targetNodeId = isStem ? stemNodeId(target.pillarKey) : branchNodeId(target.pillarKey);
+      const sourceIsStem = source.participant.type === "stem";
+      const targetIsStem = target.participant.type === "stem";
+      const sourceNodeId = sourceIsStem ? stemNodeId(source.pillarKey) : branchNodeId(source.pillarKey);
+      const targetNodeId = targetIsStem ? stemNodeId(target.pillarKey) : branchNodeId(target.pillarKey);
 
       const { sourceHandle, targetHandle } = resolveInteractionHandles(
         source.pillarKey,
         target.pillarKey,
-        isStem,
+        sourceIsStem,
+        targetIsStem,
       );
 
       const tier = badge.tier;
@@ -668,7 +793,7 @@ function assignParallelOffsets(edges: SemanticEdge[]): void {
   for (const group of groups.values()) {
     if (group.length <= 1) continue;
     for (let index = 0; index < group.length; index += 1) {
-      group[index].data.parallelOffset = index * 10;
+      group[index].data.parallelOffset = index * 18;
     }
   }
 }
@@ -690,6 +815,7 @@ export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue)
     nodes: [...pillarNodes, ...visibleMarkerNodes],
     edges: [
       ...buildDaymasterRelationEdges(reading.roleBadges),
+      ...buildElementFlowEdges(reading.roleBadges),
       ...buildInteractionEdges(interactionBadges, visibleMarkerBadges),
       ...buildOverlayEdges(reading.markerBadges),
     ],

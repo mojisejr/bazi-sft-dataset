@@ -3,14 +3,7 @@
 import { Handle, Position } from "@xyflow/react";
 
 import type { SemanticBranchNodeData } from "@/lib/bazi/semantic-chamber-graph";
-
-const ELEMENT_COLORS: Record<string, string> = {
-  "ไม้": "#4a7c59",
-  "ไฟ": "#c45a3c",
-  "ดิน": "#b8a070",
-  "ทอง": "#a89050",
-  "น้ำ": "#5a8fa8",
-};
+import { ELEMENT_COLORS_TH } from "@/lib/bazi/symbolic-engine.constants";
 
 type ChamberBranchNodeProps = {
   data: SemanticBranchNodeData;
@@ -20,7 +13,7 @@ type ChamberBranchNodeProps = {
 export function ChamberBranchNode({ data, selected }: ChamberBranchNodeProps) {
   const focalClass = data.isFocal ? " chamber-branch-node--focal" : "";
   const selectedClass = selected ? " chamber-branch-node--selected" : "";
-  const elementColor = ELEMENT_COLORS[data.element] ?? "#9f5320";
+  const elementColor = ELEMENT_COLORS_TH[data.element] ?? "#9f5320";
 
   return (
     <div className={`chamber-branch-node${focalClass}${selectedClass}`} style={{ borderColor: elementColor }}>

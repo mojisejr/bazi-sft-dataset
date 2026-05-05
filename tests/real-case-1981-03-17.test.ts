@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { RawInputSchema } from "@/lib/bazi/schema-types";
 import { calculateBaziChart } from "@/lib/bazi/symbolic-engine";
+import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
 
@@ -171,5 +172,81 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
       (b) => b.label.includes("กุ้ยนั้ง") || b.label.includes("天乙") || b.label.includes("ขุนนาง"),
     );
     expect(noblemanMarker).toBeUndefined();
+  });
+
+  test("element-flow: 甲(wood) → 己(earth) hour stem = wealth/controlling/outward", async () => {
+    const repository = createTestKnowledgeRepository();
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1981-03-17",
+        birthTime: "10:22",
+        gender: "male",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    const graph = buildSemanticChamberGraph(result);
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    const hourStemFlow = flowEdges.find((edge) =>
+      edge.id.includes("hour-stem-role"),
+    );
+    expect(hourStemFlow).toBeDefined();
+    expect(hourStemFlow!.data.flowCycleType).toBe("controlling");
+    expect(hourStemFlow!.data.flowDirection).toBe("outward");
+    expect(hourStemFlow!.data.flowLabel).toBe("โชคลาภ");
+    expect(hourStemFlow!.data.flowElement).toBe("earth");
+  });
+
+  test("element-flow: 辛(metal) year stem = power/controlling/inward (metal克wood)", async () => {
+    const repository = createTestKnowledgeRepository();
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1981-03-17",
+        birthTime: "10:22",
+        gender: "male",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    const graph = buildSemanticChamberGraph(result);
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    const yearStemFlow = flowEdges.find((edge) =>
+      edge.id.includes("year-stem-role"),
+    );
+    expect(yearStemFlow).toBeDefined();
+    expect(yearStemFlow!.data.flowCycleType).toBe("controlling");
+    expect(yearStemFlow!.data.flowDirection).toBe("inward");
+    expect(yearStemFlow!.data.flowLabel).toBe("พิฆาต");
+    expect(yearStemFlow!.data.flowElement).toBe("metal");
+  });
+
+  test("element-flow: no water flow edges (water absent from stems)", async () => {
+    const repository = createTestKnowledgeRepository();
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1981-03-17",
+        birthTime: "10:22",
+        gender: "male",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    const graph = buildSemanticChamberGraph(result);
+    const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
+
+    const stemFlowEdges = flowEdges.filter((edge) => edge.id.includes("-stem-role"));
+    const waterEdges = stemFlowEdges.filter((edge) => edge.data.flowElement === "water");
+    expect(waterEdges).toHaveLength(0);
   });
 });

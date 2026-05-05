@@ -1,10 +1,17 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, Position } from "@xyflow/react";
 import type { EdgeProps } from "@xyflow/react";
 
+type FlowCycleType = "generating" | "controlling" | "neutral";
+type FlowDirection = "outward" | "inward" | "none";
+
 type ChamberBezierEdgeData = {
   parallelOffset?: number;
   schoolLabel?: string;
   tier?: string;
+  flowCycleType?: FlowCycleType;
+  flowDirection?: FlowDirection;
+  flowLabel?: string;
+  flowElement?: string;
 };
 
 const RF_INTERNAL = new Set([
@@ -93,11 +100,13 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
     offset,
   );
 
+  const arcSpread = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 0.35 : 0;
+
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX: sx,
-    sourceY: sy,
+    sourceY: sy - arcSpread,
     targetX: tx,
-    targetY: ty,
+    targetY: ty + arcSpread,
     sourcePosition,
     targetPosition,
   });

@@ -26,6 +26,11 @@
   --chamber-edge-punishment: var(--edge-punishment);
   --chamber-edge-stem-combination: var(--edge-stem-combination);
   --chamber-edge-stem-clash: var(--edge-stem-clash);
+  --chamber-element-wood: var(--element-wood);
+  --chamber-element-fire: var(--element-fire);
+  --chamber-element-earth: var(--element-earth);
+  --chamber-element-metal: var(--element-metal);
+  --chamber-element-water: var(--element-water);
   position: fixed;
   inset: 0;
   display: flex;
@@ -157,6 +162,47 @@
   stroke-width: 2.1;
 }
 
+.reaction-chamber-canvas .react-flow__edge .react-flow__arrowhead {
+  fill: var(--chamber-line-strong);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-pakhee .react-flow__arrowhead {
+  fill: var(--chamber-edge-combination);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-chong .react-flow__arrowhead {
+  fill: var(--chamber-edge-clash);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-hai .react-flow__arrowhead {
+  fill: var(--chamber-edge-harm);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-pua .react-flow__arrowhead {
+  fill: var(--chamber-edge-destruction);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-heng .react-flow__arrowhead,
+.reaction-chamber-canvas .chamber-edge--school-sam-heng .react-flow__arrowhead {
+  fill: var(--chamber-edge-punishment);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-faa-pakhee .react-flow__arrowhead {
+  fill: var(--chamber-edge-stem-combination);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-faa-phikat .react-flow__arrowhead {
+  fill: var(--chamber-edge-stem-clash);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-nobleman .react-flow__arrowhead {
+  fill: var(--chamber-edge-combination);
+}
+
+.reaction-chamber-canvas .chamber-edge--school-wenchang .react-flow__arrowhead {
+  fill: var(--chamber-edge-combination);
+}
+
 .reaction-chamber-canvas .chamber-edge--daymaster .react-flow__edge-path {
   stroke: var(--chamber-accent);
   stroke-width: 1.2;
@@ -248,16 +294,18 @@
 
 .reaction-chamber-canvas .chamber-edge--tier-secondary .react-flow__edge-path {
   stroke-width: 2.2;
-  stroke-dasharray: 4 4;
+  stroke-dasharray: 8 4;
+  stroke-linecap: butt;
   opacity: 0.85;
 }
 
 /* Tier 3 — แรงเสริม (tertiary) */
 
 .reaction-chamber-canvas .chamber-edge--tier-tertiary .react-flow__edge-path {
-  stroke-width: 1.6;
-  stroke-dasharray: 3 6;
-  opacity: 0.65;
+  stroke-width: 1.2;
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+  opacity: 0.55;
 }
 
 /* Tier label styling */
@@ -277,6 +325,47 @@
   stroke: var(--chamber-edge-combination);
   stroke-width: 2.2;
   stroke-dasharray: 4 6;
+}
+
+/* Element Flow Layer (ทิศทางธาตุ) */
+
+.reaction-chamber-canvas .chamber-edge--element-flow .react-flow__edge-path {
+  stroke-width: 1.8;
+  opacity: 0.55;
+  transition: stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
+}
+
+.reaction-chamber-canvas .chamber-edge--element-flow-generating .react-flow__edge-path {
+  stroke-linecap: round;
+}
+
+.reaction-chamber-canvas .chamber-edge--element-flow-controlling .react-flow__edge-path {
+  stroke-dasharray: 6 3 2 3;
+  stroke-linecap: butt;
+}
+
+.reaction-chamber-canvas .chamber-edge--element-flow-neutral .react-flow__edge-path {
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+  opacity: 0.35;
+}
+
+.reaction-chamber-canvas .chamber-edge--element-wood .react-flow__edge-path { stroke: var(--chamber-element-wood); }
+.reaction-chamber-canvas .chamber-edge--element-fire .react-flow__edge-path { stroke: var(--chamber-element-fire); }
+.reaction-chamber-canvas .chamber-edge--element-earth .react-flow__edge-path { stroke: var(--chamber-element-earth); }
+.reaction-chamber-canvas .chamber-edge--element-metal .react-flow__edge-path { stroke: var(--chamber-element-metal); }
+.reaction-chamber-canvas .chamber-edge--element-water .react-flow__edge-path { stroke: var(--chamber-element-water); }
+
+.reaction-chamber-canvas .chamber-edge--element-wood .react-flow__arrowhead { fill: var(--chamber-element-wood); }
+.reaction-chamber-canvas .chamber-edge--element-fire .react-flow__arrowhead { fill: var(--chamber-element-fire); }
+.reaction-chamber-canvas .chamber-edge--element-earth .react-flow__arrowhead { fill: var(--chamber-element-earth); }
+.reaction-chamber-canvas .chamber-edge--element-metal .react-flow__arrowhead { fill: var(--chamber-element-metal); }
+.reaction-chamber-canvas .chamber-edge--element-water .react-flow__arrowhead { fill: var(--chamber-element-water); }
+
+.reaction-chamber-canvas .chamber-edge--element-flow.chamber-edge--selected .react-flow__edge-path {
+  stroke-width: 3.0;
+  opacity: 1.0;
+  filter: drop-shadow(0 0 4px rgba(159, 83, 32, 0.25));
 }
 
 .reaction-chamber-canvas .react-flow__edge-text {
@@ -348,6 +437,17 @@
   font-weight: 400;
   font-size: 9px;
   color: var(--chamber-muted);
+}
+
+.chamber-edge-pill[data-tier="secondary"] {
+  background: color-mix(in srgb, var(--chamber-accent) 8%, var(--chamber-panel-strong) 92%);
+  border-color: color-mix(in srgb, var(--chamber-accent) 25%, var(--chamber-line));
+}
+
+.chamber-edge-pill[data-tier="tertiary"] {
+  background: color-mix(in srgb, var(--chamber-muted) 6%, var(--chamber-panel-strong) 94%);
+  border-color: color-mix(in srgb, var(--chamber-muted) 20%, var(--chamber-line));
+  opacity: 0.78;
 }
 
 /* Pill badge accent colors by school */
@@ -511,15 +611,24 @@
 }
 
 .chamber-edge-legend__line--tier-secondary {
-  stroke: var(--chamber-line-strong);
+  stroke: color-mix(in srgb, var(--chamber-line-strong) 70%, var(--chamber-accent));
   stroke-width: 2.2;
+  stroke-dasharray: 8 4;
+  stroke-linecap: butt;
   opacity: 0.85;
 }
 
 .chamber-edge-legend__line--tier-tertiary {
-  stroke: var(--chamber-line-strong);
-  stroke-width: 1.6;
-  opacity: 0.65;
+  stroke: color-mix(in srgb, var(--chamber-line-strong) 40%, var(--chamber-muted));
+  stroke-width: 1.2;
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+
+.chamber-edge-legend__line--element-flow {
+  stroke-width: 1.8;
+  opacity: 0.6;
 }
 
 .chamber-edge-legend__label {

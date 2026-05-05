@@ -64,14 +64,38 @@ const TIER_ENTRIES: LegendEntry[] = [
   {
     schoolLabel: "แรงรอง",
     cssClass: "tier-secondary",
-    dashArray: "4 4",
+    dashArray: "8 4",
     description: "แรงรอง",
   },
   {
     schoolLabel: "แรงเสริม",
     cssClass: "tier-tertiary",
-    dashArray: "3 6",
+    dashArray: "2 6",
     description: "แรงเสริม",
+  },
+];
+
+type ElementFlowEntry = {
+  label: string;
+  cycleType: string;
+  dashArray?: string;
+  description: string;
+  colorVar: string;
+};
+
+const ELEMENT_FLOW_ENTRIES: ElementFlowEntry[] = [
+  {
+    label: "生 ผลิต",
+    cycleType: "generating",
+    description: "ถ่ายเท · ส่งเสริม",
+    colorVar: "var(--chamber-element-wood)",
+  },
+  {
+    label: "克 ควบคุม",
+    cycleType: "controlling",
+    dashArray: "6 3 2 3",
+    description: "โชคลาภ · พิฆาต",
+    colorVar: "var(--chamber-element-fire)",
   },
 ];
 
@@ -125,6 +149,26 @@ export function ChamberEdgeLegend() {
                     />
                   </svg>
                   <span className="chamber-edge-legend__label">{entry.schoolLabel}</span>
+                  <span className="chamber-edge-legend__desc">{entry.description}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="chamber-edge-legend__section">
+            <p className="chamber-edge-legend__section-title">ทิศทางธาตุ</p>
+            <ul className="chamber-edge-legend__list">
+              {ELEMENT_FLOW_ENTRIES.map((entry) => (
+                <li key={entry.cycleType} className="chamber-edge-legend__item">
+                  <svg className="chamber-edge-legend__sample" viewBox="0 0 32 8" width="32" height="8">
+                    <line
+                      x1="0" y1="4" x2="32" y2="4"
+                      className="chamber-edge-legend__line chamber-edge-legend__line--element-flow"
+                      strokeDasharray={entry.dashArray ?? "none"}
+                      stroke={entry.colorVar}
+                    />
+                  </svg>
+                  <span className="chamber-edge-legend__label">{entry.label}</span>
                   <span className="chamber-edge-legend__desc">{entry.description}</span>
                 </li>
               ))}
