@@ -30,6 +30,17 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
 
     const reading = result.baseChartReading;
     expect(reading).toBeDefined();
+    expect(reading!.strengthGate).toMatchObject({
+      title: "กำลังดิถี",
+      score: REAL_CASE_1993_11_24_GOLDEN_CONTRACT.strengthScore,
+    });
+    expect(reading!.schoolSections.map((section) => section.key)).toEqual([
+      "strength-gate",
+      "roles",
+      "stem-interactions",
+      "branch-interactions",
+      "markers",
+    ]);
 
     const stemClashes = reading!.stemInteractionBadges.filter(
       (badge) => badge.label === REAL_CASE_1993_11_24_GOLDEN_CONTRACT.expectedStemInteractions[0].label

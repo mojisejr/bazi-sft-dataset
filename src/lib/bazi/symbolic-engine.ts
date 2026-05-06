@@ -532,6 +532,26 @@ export async function calculateBaziChart(
     shenSha,
     resolution: interactionResolution,
     precedenceSignals: precedenceNoteSignals,
+    strengthScore: strengthScore.value,
+    dayMasterStrengthProfile: dayMasterStrengthProfile
+      ? {
+          dayMaster: dayMasterStrengthProfile.dayMaster,
+          strengthState: dayMasterStrengthProfile.lookupState,
+          sourceState: dayMasterStrengthProfile.sourceState ?? undefined,
+          lookupState: dayMasterStrengthProfile.lookupState,
+          displayBand: strengthVocabulary.displayBand,
+          displayLabel: strengthVocabulary.displayLabel,
+          narrative: dayMasterStrengthProfile.narrative,
+          narrativeReason: buildNarrativeReason(
+            dayMasterStem,
+            strengthScore.value,
+            twelveQiState.monthBranch,
+            strengthVocabulary.displayLabel,
+          ),
+          qiLabel: dayMasterStrengthProfile.qiLabel ?? undefined,
+          scoreText: dayMasterStrengthProfile.scoreText ?? undefined,
+        }
+      : undefined,
   });
 
   const calculatedState = CalculatedStateSchema.parse({

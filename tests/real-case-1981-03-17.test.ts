@@ -49,6 +49,14 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
     );
     expect(comboBadge).toBeDefined();
     expect(comboBadge!.status).toBe("active");
+    expect(reading!.strengthGate?.title).toBe("กำลังดิถี");
+    expect(reading!.schoolSections.map((section) => section.key)).toEqual([
+      "strength-gate",
+      "roles",
+      "stem-interactions",
+      "branch-interactions",
+      "markers",
+    ]);
   });
 
   test("detects branch clash 卯酉 (month + year)", async () => {

@@ -348,12 +348,33 @@ export const BaseChartReactionGroupSchema = z.object({
   badges: z.array(BaseChartReactionBadgeSchema).default([]),
 });
 
+export const BaseChartStrengthGateSchema = z.object({
+  title: z.string().trim().min(1),
+  summary: z.string().trim().min(1),
+  displayLabel: z.string().trim().min(1).optional(),
+  strengthState: z.string().trim().min(1).optional(),
+  qiLabel: z.string().trim().min(1).optional(),
+  scoreText: z.string().trim().min(1).optional(),
+  score: z.number().finite().optional(),
+  readingOrderHint: z.string().trim().min(1),
+});
+
+export const BaseChartSchoolSectionSchema = z.object({
+  key: z.string().trim().min(1),
+  title: z.string().trim().min(1),
+  description: z.string().trim().min(1).optional(),
+  readingOrder: z.number().int().positive(),
+  badges: z.array(BaseChartReactionBadgeSchema).default([]),
+});
+
 export const BaseChartReadingSchema = z.object({
   roleBadges: z.array(BaseChartReactionBadgeSchema).default([]),
   stemInteractionBadges: z.array(BaseChartReactionBadgeSchema).default([]),
   branchInteractionBadges: z.array(BaseChartReactionBadgeSchema).default([]),
   markerBadges: z.array(BaseChartReactionBadgeSchema).default([]),
   groups: z.array(BaseChartReactionGroupSchema).default([]),
+  strengthGate: BaseChartStrengthGateSchema.optional(),
+  schoolSections: z.array(BaseChartSchoolSectionSchema).default([]),
   legendItems: z.array(BaseChartDetailItemSchema).default([]),
   readingOrderSteps: z.array(z.string().trim().min(1)).default([]),
 });
@@ -513,4 +534,6 @@ export type BaseChartReactionSemanticValue = z.infer<typeof BaseChartReactionSem
 export type BaseChartReactionBadgeValue = z.infer<typeof BaseChartReactionBadgeSchema>;
 export type InteractionTierValue = z.infer<typeof InteractionTierSchema>;
 export type BaseChartReactionGroupValue = z.infer<typeof BaseChartReactionGroupSchema>;
+export type BaseChartStrengthGateValue = z.infer<typeof BaseChartStrengthGateSchema>;
+export type BaseChartSchoolSectionValue = z.infer<typeof BaseChartSchoolSectionSchema>;
 export type BaseChartReadingValue = z.infer<typeof BaseChartReadingSchema>;

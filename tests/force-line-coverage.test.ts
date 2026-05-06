@@ -37,6 +37,14 @@ function buildReading(config: Parameters<typeof makePillars>[0]) {
     shenSha: noMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
+    strengthScore: 3,
+    dayMasterStrengthProfile: {
+      dayMaster,
+      strengthState: "balanced",
+      displayLabel: "สมดุล",
+      narrative: "ใช้เป็นค่ากลางเพื่อบังคับ school reading order ใน test harness",
+      qiLabel: "ตี้อ๋วง",
+    },
   });
   return { reading, resolution, pillars };
 }

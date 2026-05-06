@@ -74,6 +74,14 @@ function buildStubCalculatedState(): CalculatedStateValue {
     shenSha: sampleMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
+    strengthScore: 3.07,
+    dayMasterStrengthProfile: {
+      dayMaster: "己",
+      strengthState: "balanced",
+      displayLabel: "สมดุล",
+      narrative: "ดิถีรับแรงและส่งแรงได้พอประมาณ",
+      qiLabel: "ตี้อ๋วง",
+    },
   });
 
   return {

@@ -2,7 +2,10 @@ import type {
   BaseChartDetailItemValue,
   BaseChartReadingValue,
   BaseChartReactionBadgeValue,
+  BaseChartSchoolSectionValue,
+  BaseChartStrengthGateValue,
   ContextRuleNoteValue,
+  DayMasterStrengthProfileValue,
   InteractionTierValue,
   PillarValue,
   ShenShaValue,
@@ -91,6 +94,94 @@ const INTERACTION_META: Record<InteractionKind, { title: string; meaning: string
 
 function makeDetail(label: string, value: string): BaseChartDetailItemValue {
   return { label, value };
+}
+
+function buildStrengthGate(
+  strengthScore: number | undefined,
+  dayMasterStrengthProfile: DayMasterStrengthProfileValue | undefined,
+): BaseChartStrengthGateValue | undefined {
+  if (typeof strengthScore !== "number" && !dayMasterStrengthProfile) {
+    return undefined;
+  }
+
+  const displayLabel = dayMasterStrengthProfile?.displayLabel ?? dayMasterStrengthProfile?.displayBand;
+  const strengthState = dayMasterStrengthProfile?.strengthState ?? dayMasterStrengthProfile?.lookupState;
+  const scoreText = typeof strengthScore === "number"
+    ? strengthScore.toFixed(2)
+    : dayMasterStrengthProfile?.scoreText;
+  const summaryParts = [
+    displayLabel,
+    strengthState,
+    dayMasterStrengthProfile?.qiLabel ? `อ้างอิง 12 เชี่ยงแซ ${dayMasterStrengthProfile.qiLabel}` : null,
+    dayMasterStrengthProfile?.narrative,
+  ].filter(Boolean);
+
+  return {
+    title: "กำลังดิถี",
+    summary: summaryParts.join(" • ") || "ใช้กำลังดิถีเป็นด่านแรกก่อนตีความ role, interaction และ marker",
+    displayLabel,
+    strengthState,
+    qiLabel: dayMasterStrengthProfile?.qiLabel,
+    scoreText,
+    score: strengthScore,
+    readingOrderHint: "อ่านกำลังดิถีก่อนเสมอ เพื่อรู้ว่าดิถีรับแรง ส่งแรง หรือถูกกดอยู่ในระดับไหน",
+  };
+}
+
+function buildSchoolSections(args: {
+  strengthGate?: BaseChartStrengthGateValue;
+  roleBadges: BaseChartReactionBadgeValue[];
+  stemInteractionBadges: BaseChartReactionBadgeValue[];
+  branchInteractionBadges: BaseChartReactionBadgeValue[];
+  markerBadges: BaseChartReactionBadgeValue[];
+}): BaseChartSchoolSectionValue[] {
+  const { strengthGate, roleBadges, stemInteractionBadges, branchInteractionBadges, markerBadges } = args;
+  const sections: BaseChartSchoolSectionValue[] = [];
+  let readingOrder = 1;
+
+  if (strengthGate) {
+    sections.push({
+      key: "strength-gate",
+      title: "กำลังดิถี",
+      description: strengthGate.summary,
+      readingOrder,
+      badges: [],
+    });
+    readingOrder += 1;
+  }
+
+  sections.push(
+    {
+      key: "roles",
+      title: "จับซิ้ง / บทบาทต่อดิถี",
+      description: "อ่านว่าราศีบนและฐานล่างแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
+      readingOrder,
+      badges: roleBadges,
+    },
+    {
+      key: "stem-interactions",
+      title: "ปฏิกิริยาชั้นฟ้า",
+      description: "ดูภาคีหรือพิฆาตของราศีบนก่อน เพื่อจับแรงหลักที่กระทบบนชั้นฟ้า",
+      readingOrder: readingOrder + 1,
+      badges: stemInteractionBadges,
+    },
+    {
+      key: "branch-interactions",
+      title: "ปฏิกิริยาชั้นดิน",
+      description: "อ่านภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่าง หลังจากเข้าใจชั้นฟ้าแล้ว",
+      readingOrder: readingOrder + 2,
+      badges: branchInteractionBadges,
+    },
+    {
+      key: "markers",
+      title: "ตัวประกอบพิเศษ",
+      description: "marker ใช้เสริมการอ่านท้ายสุด ไม่ใช่แกนหลักของการชี้ขาด",
+      readingOrder: readingOrder + 3,
+      badges: markerBadges,
+    },
+  );
+
+  return sections;
 }
 
 function buildPairRecords(pillars: BaseChartPillars, relationKeys: Set<string>) {
@@ -610,8 +701,18 @@ export function buildBaseChartReading(args: {
   shenSha: ShenShaValue[];
   resolution: BranchInteractionResolution;
   precedenceSignals: ContextRuleNoteValue[];
+  strengthScore?: number;
+  dayMasterStrengthProfile?: DayMasterStrengthProfileValue;
 }) : BaseChartReadingValue {
-  const { dayMasterStem, pillars, shenSha, resolution, precedenceSignals } = args;
+  const {
+    dayMasterStem,
+    pillars,
+    shenSha,
+    resolution,
+    precedenceSignals,
+    strengthScore,
+    dayMasterStrengthProfile,
+  } = args;
   const roleBadges = (Object.entries(pillars) as Array<[BaseChartPillarKey, PillarValue]>)
     .flatMap(([pillarKey, pillar]) => {
       const stemBadge = buildRoleBadge(dayMasterStem, pillarKey, pillar, "stem");
@@ -623,6 +724,14 @@ export function buildBaseChartReading(args: {
   const markerBadges = buildMarkerBadges(
     shenSha.filter((entry) => ["ปี", "เดือน", "วัน", "ยาม"].includes(entry.relatedPillar)),
   );
+  const strengthGate = buildStrengthGate(strengthScore, dayMasterStrengthProfile);
+  const schoolSections = buildSchoolSections({
+    strengthGate,
+    roleBadges,
+    stemInteractionBadges,
+    branchInteractionBadges,
+    markerBadges,
+  });
 
   return {
     roleBadges,
@@ -632,21 +741,21 @@ export function buildBaseChartReading(args: {
     groups: [
       {
         key: "roles",
-        title: "บทบาทต่อดิถี",
-        description: "อ่านว่าแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
+        title: "จับซิ้ง / บทบาทต่อดิถี",
+        description: "อ่านว่าราศีบนและฐานล่างแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
         family: "role",
         badges: roleBadges,
       },
       {
         key: "stem-interactions",
-        title: "ฟ้า-ฟ้า interactions",
-        description: "ภาคีหรือพิฆาตกันของราศีบนที่มองเห็นได้ตรง ๆ",
+        title: "ปฏิกิริยาชั้นฟ้า",
+        description: "ภาคีหรือพิฆาตกันของราศีบนที่ควรอ่านก่อนแรงรองอื่น",
         family: "interaction",
         badges: stemInteractionBadges,
       },
       {
         key: "branch-interactions",
-        title: "ดิน-ดิน interactions",
+        title: "ปฏิกิริยาชั้นดิน",
         description: "ภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่างในดวงกำเนิด",
         family: "interaction",
         badges: branchInteractionBadges,
@@ -659,7 +768,10 @@ export function buildBaseChartReading(args: {
         badges: markerBadges,
       },
     ],
+    strengthGate,
+    schoolSections,
     legendItems: [
+      makeDetail("strength", "กำลังดิถีเป็นด่านแรกก่อนอ่าน role และ interaction"),
       makeDetail("route", "ชั้นคุณภาพของเส้นทางผ่าน 12 เชี่ยงแซใน ribbon"),
       makeDetail("role", "บทบาทของตัวนั้นเมื่อเทียบกับดิถี"),
       makeDetail("interaction", "แรงที่ตัวในดวงกระทบหรือดึงกันเอง"),
@@ -667,8 +779,9 @@ export function buildBaseChartReading(args: {
     ],
     readingOrderSteps: [
       "เริ่มจากดิถีและ ribbon พื้นดวงก่อน",
-      "อ่านบทบาทต่อดิถีของตัวสำคัญ",
-      "อ่าน interaction ชั้นฟ้าและชั้นดินตามลำดับ",
+      "ล็อกกำลังดิถีให้ชัดก่อน ว่าดิถีแข็ง อ่อน หรือสมดุล",
+      "อ่านจับซิ้งและบทบาทต่อดิถีของตัวสำคัญ",
+      "อ่านปฏิกิริยาชั้นฟ้า แล้วค่อยลงชั้นดินตามลำดับ",
       "ดู marker พิเศษเป็นชั้นเสริมท้ายสุด",
     ],
   };
