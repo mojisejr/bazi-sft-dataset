@@ -129,6 +129,45 @@ export type SemanticChamberGraph = {
   hiddenSecondaryOverlays: BaseChartReactionBadgeValue[];
 };
 
+export function isFocalSemanticNode(node: SemanticNode): boolean {
+  return "isFocal" in node.data && Boolean(node.data.isFocal);
+}
+
+export function getSemanticDayFocusNodeIds(graph: SemanticChamberGraph): string[] {
+  const ids = graph.nodes
+    .filter((node) => {
+      if (!isFocalSemanticNode(node)) {
+        return false;
+      }
+
+      if (node.data.kind === "stem-node" || node.data.kind === "branch-node") {
+        return node.data.pillarKey === "day";
+      }
+
+      if (node.data.kind === "pillar") {
+        return node.data.pillarKey === "day";
+      }
+
+      return false;
+    })
+    .sort((left, right) => {
+      const priority = (node: SemanticNode) => {
+        if (node.data.kind === "stem-node") return 0;
+        if (node.data.kind === "branch-node") return 1;
+        return 2;
+      };
+
+      return priority(left) - priority(right);
+    })
+    .map((node) => node.id);
+
+  if (ids.length > 0) {
+    return ids;
+  }
+
+  return graph.nodes.some((node) => node.id === "pillar:day") ? ["pillar:day"] : [];
+}
+
 export type SemanticSchoolCluster = {
   id: string;
   schoolLabel: string;
@@ -348,15 +387,15 @@ function buildSchoolClusterForBadge(
   const schoolLabel = getPrimarySchoolLabel(badge);
   const sourcePillarKeys = getParticipantPillarKeys(badge);
   const sourcePillarSet = new Set(sourcePillarKeys);
-  const accentMarkerLabels = visibleMarkerBadges
+  const accentMarkerLabels = Array.from(new Set(visibleMarkerBadges
     .filter((marker) => {
       const markerPillarKeys = getParticipantPillarKeys(marker);
       return markerPillarKeys.some((pillarKey) => sourcePillarSet.has(pillarKey));
     })
-    .map(getOverlayDisplayLabel);
-  const branchParticipantLabels = badge.participants
+    .map(getOverlayDisplayLabel)));
+  const branchParticipantLabels = Array.from(new Set(badge.participants
     .filter((participant) => participant.type === "branch")
-    .map(formatParticipantForGraph);
+    .map(formatParticipantForGraph)));
   const humanSummary = getSchoolHumanSummary(schoolLabel);
 
   return {

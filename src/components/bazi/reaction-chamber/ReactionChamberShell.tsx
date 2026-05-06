@@ -72,7 +72,7 @@ export function ReactionChamberShell() {
   return (
     <ReactFlowProvider>
       <main className={`reaction-chamber-shell reaction-chamber-shell--${variant}`}>
-        <ChamberCommandBar title={title} onBack={() => router.push("/")} />
+        <ChamberCommandBar title={title} onBack={() => router.push("/")} graph={graph} />
 
         <div className="reaction-chamber-shell__viewport">
           <ReactionChamberCanvas graph={graph} onSelectionChange={setSelection} />

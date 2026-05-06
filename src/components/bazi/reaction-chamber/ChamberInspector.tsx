@@ -85,6 +85,40 @@ function PillarSummary({ node }: { node: SemanticNode }) {
   );
 }
 
+function SemanticNodeSummary({ node }: { node: SemanticNode }) {
+  if (node.data.kind !== "stem-node" && node.data.kind !== "branch-node") {
+    return null;
+  }
+
+  const symbol = node.data.kind === "stem-node" ? node.data.stem : node.data.branch;
+  const translation = node.data.kind === "stem-node"
+    ? (node.data.stemTranslation ?? node.data.element)
+    : (node.data.branchTranslation ?? node.data.element);
+  const semanticRole = node.data.kind === "stem-node" ? "ราศีบน" : "ราศีล่าง";
+  const detailLabel = node.data.kind === "stem-node" ? "จับซิ้ง" : "12 เชี่ยงแซ";
+  const detailValue = node.data.kind === "stem-node" ? (node.data.tenGod ?? "-") : (node.data.stageDisplay ?? "-");
+
+  return (
+    <div className="chamber-inspector__pillar">
+      <p className="chamber-inspector__kicker">{node.data.pillarLabel}{node.data.isFocal ? " · ดิถี" : ""}</p>
+      <div className="chamber-inspector__glyphs">
+        <span>{symbol}</span>
+      </div>
+      <p className="chamber-inspector__translation">{semanticRole} · {translation}</p>
+      <dl className="chamber-inspector__details">
+        <div className="chamber-inspector__detail-row">
+          <dt>ชั้นความหมาย</dt>
+          <dd>{semanticRole}</dd>
+        </div>
+        <div className="chamber-inspector__detail-row">
+          <dt>{detailLabel}</dt>
+          <dd>{detailValue}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
   return (
     <div className="chamber-inspector__badge">
@@ -200,6 +234,10 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
 
   if (selection.kind === "node" && selection.node.data.kind === "pillar") {
     return <PillarSummary node={selection.node} />;
+  }
+
+  if (selection.kind === "node" && (selection.node.data.kind === "stem-node" || selection.node.data.kind === "branch-node")) {
+    return <SemanticNodeSummary node={selection.node} />;
   }
 
   return null;

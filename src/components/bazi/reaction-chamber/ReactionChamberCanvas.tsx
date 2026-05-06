@@ -22,6 +22,7 @@ import type {
   SemanticChamberGraph,
   SemanticNode,
 } from "@/lib/bazi/semantic-chamber-graph";
+import { getSemanticDayFocusNodeIds } from "@/lib/bazi/semantic-chamber-graph";
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
@@ -139,9 +140,8 @@ function ReactionChamberCanvasInner({
       return;
     }
 
-    const focalNode = graph.nodes.find(
-      (node) => node.data.kind === "pillar" && node.data.isFocal,
-    );
+    const focusNodeIds = getSemanticDayFocusNodeIds(graph);
+    const focalNode = graph.nodes.find((node) => focusNodeIds.includes(node.id));
 
     if (focalNode) {
       reactFlowInstance.fitView({ padding: 0.14, duration: 400 });

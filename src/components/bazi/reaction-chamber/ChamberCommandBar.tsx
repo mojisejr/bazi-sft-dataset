@@ -2,12 +2,16 @@
 
 import { useReactFlow } from "@xyflow/react";
 
+import type { SemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
+import { getSemanticDayFocusNodeIds } from "@/lib/bazi/semantic-chamber-graph";
+
 type ChamberCommandBarProps = {
   title: string;
   onBack: () => void;
+  graph: SemanticChamberGraph;
 };
 
-function FocusFitButtons() {
+function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
   const reactFlowInstance = useReactFlow();
 
   function handleFitAll() {
@@ -15,9 +19,13 @@ function FocusFitButtons() {
   }
 
   function handleFocusDayPillar() {
-    const node = reactFlowInstance.getNode("pillar:day");
+    const focusableNodeIds = getSemanticDayFocusNodeIds(graph);
+    const node = focusableNodeIds
+      .map((nodeId) => reactFlowInstance.getNode(nodeId))
+      .find(Boolean);
+
     if (node) {
-      reactFlowInstance.setCenter(node.position.x + (node.width ?? 220) / 2, node.position.y + (node.height ?? 220) / 2, {
+      reactFlowInstance.setCenter(node.position.x + (node.width ?? 80) / 2, node.position.y + (node.height ?? 80) / 2, {
         zoom: 1.1,
         duration: 350,
       });
@@ -36,14 +44,14 @@ function FocusFitButtons() {
   );
 }
 
-export function ChamberCommandBar({ title, onBack }: ChamberCommandBarProps) {
+export function ChamberCommandBar({ title, onBack, graph }: ChamberCommandBarProps) {
   return (
     <header className="chamber-command-bar" aria-label="chamber command bar">
       <button type="button" onClick={onBack} className="chamber-command-bar__back" aria-label="กลับไปหน้าสรุป">
         ← กลับสรุปดวง
       </button>
       <p className="chamber-command-bar__title">{title}</p>
-      <FocusFitButtons />
+      <FocusFitButtons graph={graph} />
     </header>
   );
 }

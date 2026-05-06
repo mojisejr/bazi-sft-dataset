@@ -409,6 +409,16 @@
   transition: stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
 }
 
+.reaction-chamber-canvas .react-flow__nodes:has(.react-flow__node.selected) .react-flow__node:not(.selected) {
+  opacity: 0.52;
+  transition: opacity 180ms ease, transform 180ms ease, filter 180ms ease;
+}
+
+.reaction-chamber-canvas .react-flow__node.selected {
+  z-index: 24;
+  filter: saturate(1.02);
+}
+
 /* Edge label pill badges */
 
 .chamber-edge-pill {
@@ -903,6 +913,7 @@
 
 .chamber-stem-node--selected {
   box-shadow: 0 0 0 2px var(--chamber-accent), 0 0 12px rgba(159, 83, 32, 0.3);
+  transform: translateY(-2px) scale(1.02);
 }
 
 .chamber-stem-node__glyph {
@@ -964,6 +975,7 @@
 
 .chamber-branch-node--selected {
   box-shadow: 0 0 0 2px var(--chamber-accent), 0 0 12px rgba(159, 83, 32, 0.3);
+  transform: translateY(-2px) scale(1.02);
 }
 
 .chamber-branch-node__glyph {

@@ -2,7 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
 import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
-import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
+import {
+  buildSemanticChamberGraph,
+  getSemanticDayFocusNodeIds,
+  isFocalSemanticNode,
+} from "@/lib/bazi/semantic-chamber-graph";
 import type { CalculatedStateValue, PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
 
 const samplePillars: Record<"year" | "month" | "day" | "hour", PillarValue> = {
@@ -137,6 +141,19 @@ describe("buildSemanticChamberGraph", () => {
     const stemY = focalStem?.position.y ?? 0;
     const focalBranch = branchNodes.find((n) => n.id === "branch:day");
     expect(focalBranch?.position.y).toBeGreaterThan(stemY);
+  });
+
+  test("exposes semantic focus ids for the live day nodes", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    expect(getSemanticDayFocusNodeIds(graph)).toEqual(["stem:day", "branch:day"]);
+  });
+
+  test("marks only the live day stem and branch nodes as focal", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const focalNodeIds = graph.nodes.filter(isFocalSemanticNode).map((node) => node.id);
+    expect(focalNodeIds).toEqual(["stem:day", "branch:day"]);
   });
 
   test("promotes visible-tier shen-sha and keeps secondary overlays hidden by default", () => {
