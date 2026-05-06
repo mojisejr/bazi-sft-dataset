@@ -774,14 +774,30 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
   return edges;
 }
 
+function shouldOffsetLayer(layer: SemanticEdge["data"]["layer"]): boolean {
+  return layer === "inter-pillar-reaction";
+}
+
+function getOffsetGroupKey(edge: SemanticEdge): string {
+  return `${edge.source}->${edge.target}`;
+}
+
+function getOffsetStride(layer: SemanticEdge["data"]["layer"]): number {
+  if (layer === "inter-pillar-reaction") {
+    return 18;
+  }
+
+  return 0;
+}
+
 function assignParallelOffsets(edges: SemanticEdge[]): void {
-  const pairKey = (edge: SemanticEdge) => `${edge.source}->${edge.target}`;
   const groups = new Map<string, SemanticEdge[]>();
 
   for (const edge of edges) {
-    if (edge.data.layer !== "inter-pillar-reaction") continue;
     edge.data.parallelOffset = 0;
-    const key = pairKey(edge);
+    if (!shouldOffsetLayer(edge.data.layer)) continue;
+
+    const key = getOffsetGroupKey(edge);
     const group = groups.get(key);
     if (group) {
       group.push(edge);
@@ -792,8 +808,9 @@ function assignParallelOffsets(edges: SemanticEdge[]): void {
 
   for (const group of groups.values()) {
     if (group.length <= 1) continue;
+    const stride = getOffsetStride(group[0].data.layer);
     for (let index = 0; index < group.length; index += 1) {
-      group[index].data.parallelOffset = index * 18;
+      group[index].data.parallelOffset = index * stride;
     }
   }
 }
@@ -834,4 +851,7 @@ export const __testing__ = {
   resolvePillarKeyFromString,
   getOverlayTier,
   getOverlayDisplayLabel,
+  shouldOffsetLayer,
+  getOffsetGroupKey,
+  getOffsetStride,
 };

@@ -358,6 +358,70 @@ describe("buildSemanticChamberGraph", () => {
     }
   });
 
+  test("daymaster guide edges stay anchored with zero parallelOffset", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const daymasterEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "daymaster-meaning",
+    );
+
+    expect(daymasterEdges.length).toBeGreaterThan(0);
+    for (const edge of daymasterEdges) {
+      expect(edge.data.parallelOffset).toBe(0);
+    }
+  });
+
+  test("overlay edges stay anchored with zero parallelOffset", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const overlayEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "shen-sha-overlay",
+    );
+
+    expect(overlayEdges.length).toBeGreaterThan(0);
+    for (const edge of overlayEdges) {
+      expect(edge.data.parallelOffset).toBe(0);
+    }
+  });
+
+  test("non-reaction edges do not affect reaction offset grouping", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const reactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer === "inter-pillar-reaction",
+    );
+    const nonReactionEdges = graph.edges.filter(
+      (edge) => edge.data.layer !== "inter-pillar-reaction",
+    );
+
+    expect(nonReactionEdges.length).toBeGreaterThan(0);
+
+    const pairGroups = new Map<string, typeof reactionEdges>();
+    for (const edge of reactionEdges) {
+      const key = `${edge.source}->${edge.target}`;
+      const group = pairGroups.get(key);
+      if (group) {
+        group.push(edge);
+      } else {
+        pairGroups.set(key, [edge]);
+      }
+    }
+
+    for (const edge of nonReactionEdges) {
+      expect(edge.data.parallelOffset).toBe(0);
+    }
+
+    for (const group of pairGroups.values()) {
+      if (group.length <= 1) {
+        continue;
+      }
+
+      for (let index = 0; index < group.length; index += 1) {
+        expect(group[index].data.parallelOffset).toBe(index * 18);
+      }
+    }
+  });
+
   test("element-flow edges exist for non-day role badges", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
 
