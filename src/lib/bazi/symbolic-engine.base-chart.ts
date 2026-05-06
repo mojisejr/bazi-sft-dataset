@@ -114,6 +114,18 @@ function makeDetail(label: string, value: string): BaseChartDetailItemValue {
   return { label, value };
 }
 
+function resolveMarkerDoctrineKey(starName: string) {
+  if (starName.includes("天乙") || starName.includes("ขุนนาง") || starName.includes("กุ้ยนั้ง")) {
+    return { doctrineKey: "marker:nobleman", semanticKind: "marker-nobleman" as const };
+  }
+
+  if (starName.includes("文昌") || starName.includes("บุ่งเชียง") || starName.includes("วิชาการ")) {
+    return { doctrineKey: "marker:wenchang", semanticKind: "marker-wenchang" as const };
+  }
+
+  return { doctrineKey: "marker:generic", semanticKind: "marker-generic" as const };
+}
+
 function buildPairRecords(pillars: BaseChartPillars, relationKeys: Set<string>) {
   const entries = Object.entries(pillars) as Array<[BaseChartPillarKey, PillarValue]>;
   const pairs: PairRecord[] = [];
@@ -228,6 +240,10 @@ function buildRoleBadge(dayMasterStem: string, pillarKey: BaseChartPillarKey, pi
       status: "active",
       meaningShort: TEN_GOD_MEANING_SHORT[tenGod] ?? "บทบาทของราศีบนนี้เมื่อเทียบกับดิถี",
       schoolLabel,
+      doctrineKey: `ten-god:${tenGod}`,
+      semanticKind: "role-stem",
+      hierarchyLevel: "day-master",
+      readingOrder: 2,
       participants: [{
         pillarKey,
         pillarLabel,
@@ -269,6 +285,10 @@ function buildRoleBadge(dayMasterStem: string, pillarKey: BaseChartPillarKey, pi
     status: "active",
     meaningShort: `${TEN_GOD_MEANING_SHORT[branchRole.tenGod] ?? "บทบาทของราศีล่างนี้ต่อดิถี"} โดยอ่านผ่านราศีแฝงหลัก`,
     schoolLabel,
+    doctrineKey: `ten-god:${branchRole.tenGod}`,
+    semanticKind: "role-branch",
+    hierarchyLevel: "day-master",
+    readingOrder: 2,
     participants: [{
       pillarKey,
       pillarLabel,
@@ -314,6 +334,10 @@ function buildStemInteractionBadges(pillars: BaseChartPillars) {
           status: "active",
           meaningShort: `ราศีบน ${leftLabel}/${rightLabel} จับคู่ภาคีกันและมีแนวโน้มดึงแรงไปทางธาตุ ${transformTo}`,
           schoolLabel: "ภาคีราศีบน",
+          doctrineKey: "interaction:stem-combination",
+          semanticKind: "stem-combination",
+          hierarchyLevel: "interaction",
+          readingOrder: 3,
           participants: [
             { pillarKey: leftKey, pillarLabel: leftLabel, type: "stem", symbol: leftPillar.stem, translation: leftPillar.stemTranslation },
             { pillarKey: rightKey, pillarLabel: rightLabel, type: "stem", symbol: rightPillar.stem, translation: rightPillar.stemTranslation },
@@ -343,6 +367,10 @@ function buildStemInteractionBadges(pillars: BaseChartPillars) {
           status: "active",
           meaningShort: `ราศีบน ${leftLabel}/${rightLabel} มีแรงพิฆาตกันโดยตรง เป็นแรงชั้นฟ้าที่ควรอ่านก่อนแรงรอง`,
           schoolLabel: "พิฆาตราศีบน",
+          doctrineKey: "interaction:stem-clash",
+          semanticKind: "stem-clash",
+          hierarchyLevel: "interaction",
+          readingOrder: 3,
           participants: [
             { pillarKey: leftKey, pillarLabel: leftLabel, type: "stem", symbol: leftPillar.stem, translation: leftPillar.stemTranslation },
             { pillarKey: rightKey, pillarLabel: rightLabel, type: "stem", symbol: rightPillar.stem, translation: rightPillar.stemTranslation },
@@ -414,6 +442,16 @@ function buildBranchInteractionBadges(
       status,
       meaningShort: note ?? `${meta.meaning} เกิดขึ้นระหว่างฐาน ${leftLabel} และ ${rightLabel}`,
       schoolLabel: meta.title,
+      doctrineKey: `interaction:branch-${kind}`,
+      semanticKind: kind === "combination"
+        ? "branch-combination"
+        : kind === "clash"
+          ? "branch-clash"
+          : kind === "harm"
+            ? "branch-harm"
+            : "branch-destruction",
+      hierarchyLevel: "interaction",
+      readingOrder: 3,
       tier: tierForKind(kind, status),
       participants: [
         { pillarKey: pair.leftKey, pillarLabel: leftLabel, type: "branch", symbol: pair.leftPillar.branch, translation: BRANCH_LABELS_TH[pair.leftPillar.branch as keyof typeof BRANCH_LABELS_TH] },
@@ -452,6 +490,18 @@ function buildBranchInteractionBadges(
       status: "active",
       meaningShort: `ชุด ${record.label} เป็นแรงเฮ้งที่ยังทำงานอยู่ในฐาน ${bases}`,
       schoolLabel: "เฮ้ง",
+      doctrineKey: record.keys.length >= 3
+        ? "interaction:branch-punishment-trio"
+        : record.keys.length === 2 && record.branches[0] === record.branches[1]
+          ? "interaction:branch-punishment-self"
+          : "interaction:branch-punishment-pair",
+      semanticKind: record.keys.length >= 3
+        ? "branch-punishment-trio"
+        : record.keys.length === 2 && record.branches[0] === record.branches[1]
+          ? "branch-punishment-self"
+          : "branch-punishment-pair",
+      hierarchyLevel: "interaction",
+      readingOrder: 3,
       tier: "tertiary",
       participants: record.keys.map((key, index) => ({
         pillarKey: key,
@@ -491,6 +541,10 @@ function buildBranchInteractionBadges(
         status: "active",
         meaningShort: `ราศีบนผั่วราศีล่างในฐาน${pillarLabel} ทำให้เกิดความเสียหายในจุดนั้น`,
         schoolLabel: "ผั่ว",
+        doctrineKey: "interaction:intra-pillar-destruction",
+        semanticKind: "intra-pillar-destruction",
+        hierarchyLevel: "interaction",
+        readingOrder: 3,
         tier: "secondary",
         participants: [
           {
@@ -528,32 +582,40 @@ function buildBranchInteractionBadges(
 }
 
 function buildMarkerBadges(shenSha: ShenShaValue[]): BaseChartReactionBadgeValue[] {
-  return shenSha.map((entry, index) => ({
-    id: `marker-${index}-${entry.relatedPillar}`,
-    family: "marker" as const,
-    label: entry.starName,
-    shortLabel: entry.starName,
-    priority: "secondary" as const,
-    status: "active" as const,
-    meaningShort: entry.meaning,
-    schoolLabel: entry.starName,
-    participants: [{
-      pillarLabel: entry.relatedPillar,
-      type: "marker" as const,
-      symbol: entry.starName,
-    }],
-    modal: {
-      title: entry.starName,
+  return shenSha.map((entry, index) => {
+    const markerSemantics = resolveMarkerDoctrineKey(entry.starName);
+
+    return {
+      id: `marker-${index}-${entry.relatedPillar}`,
       family: "marker" as const,
-      summary: `${entry.starName} ปรากฏที่ ${entry.relatedPillar}`,
-      explanation: entry.meaning,
-      readingOrderHint: "marker ใช้เป็นชั้นเสริมหลังจากอ่าน role และ interaction หลักแล้ว",
-      details: [
-        makeDetail("ผูกกับฐาน", entry.relatedPillar),
-        makeDetail("ความหมาย", entry.meaning),
-      ],
-    },
-  }));
+      label: entry.starName,
+      shortLabel: entry.starName,
+      priority: "secondary" as const,
+      status: "active" as const,
+      meaningShort: entry.meaning,
+      schoolLabel: entry.starName,
+      doctrineKey: markerSemantics.doctrineKey,
+      semanticKind: markerSemantics.semanticKind,
+      hierarchyLevel: "overlay",
+      readingOrder: 4,
+      participants: [{
+        pillarLabel: entry.relatedPillar,
+        type: "marker" as const,
+        symbol: entry.starName,
+      }],
+      modal: {
+        title: entry.starName,
+        family: "marker" as const,
+        summary: `${entry.starName} ปรากฏที่ ${entry.relatedPillar}`,
+        explanation: entry.meaning,
+        readingOrderHint: "marker ใช้เป็นชั้นเสริมหลังจากอ่าน role และ interaction หลักแล้ว",
+        details: [
+          makeDetail("ผูกกับฐาน", entry.relatedPillar),
+          makeDetail("ความหมาย", entry.meaning),
+        ],
+      },
+    };
+  });
 }
 
 export function buildBaseChartReading(args: {
@@ -587,6 +649,8 @@ export function buildBaseChartReading(args: {
         title: "บทบาทต่อดิถี",
         description: "อ่านว่าแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
         family: "role",
+        hierarchyLevel: "day-master",
+        readingOrder: 2,
         badges: roleBadges,
       },
       {
@@ -594,6 +658,8 @@ export function buildBaseChartReading(args: {
         title: "ฟ้า-ฟ้า interactions",
         description: "ภาคีหรือพิฆาตกันของราศีบนที่มองเห็นได้ตรง ๆ",
         family: "interaction",
+        hierarchyLevel: "interaction",
+        readingOrder: 3,
         badges: stemInteractionBadges,
       },
       {
@@ -601,6 +667,8 @@ export function buildBaseChartReading(args: {
         title: "ดิน-ดิน interactions",
         description: "ภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่างในดวงกำเนิด",
         family: "interaction",
+        hierarchyLevel: "interaction",
+        readingOrder: 3,
         badges: branchInteractionBadges,
       },
       {
@@ -608,6 +676,8 @@ export function buildBaseChartReading(args: {
         title: "ตัวประกอบพิเศษ",
         description: "กุ้ยนั้ง บุ่งเชียง และ marker เชิงสัญลักษณ์ที่ใช้ประกอบการอ่าน",
         family: "marker",
+        hierarchyLevel: "overlay",
+        readingOrder: 4,
         badges: markerBadges,
       },
     ],

@@ -69,11 +69,30 @@ describe("buildBaseChartReading", () => {
         (badge) => badge.schoolLabel === "ชง" && badge.status === "neutralized",
       ),
     ).toBe(true);
+    expect(reading.roleBadges[0]).toMatchObject({
+      semanticKind: "role-stem",
+      hierarchyLevel: "day-master",
+      doctrineKey: expect.stringMatching(/^ten-god:/),
+      readingOrder: 2,
+    });
+    expect(reading.branchInteractionBadges.find((badge) => badge.schoolLabel === "ภาคี")).toMatchObject({
+      semanticKind: "branch-combination",
+      doctrineKey: "interaction:branch-combination",
+      hierarchyLevel: "interaction",
+      readingOrder: 3,
+    });
+    expect(reading.markerBadges[0]).toMatchObject({
+      semanticKind: "marker-nobleman",
+      doctrineKey: "marker:nobleman",
+      hierarchyLevel: "overlay",
+      readingOrder: 4,
+    });
     expect(reading.groups.map((group) => group.key)).toEqual([
       "roles",
       "stem-interactions",
       "branch-interactions",
       "markers",
     ]);
+    expect(reading.groups.map((group) => group.readingOrder)).toEqual([2, 3, 3, 4]);
   });
 });

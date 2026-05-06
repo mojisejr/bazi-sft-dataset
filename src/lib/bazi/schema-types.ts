@@ -250,6 +250,31 @@ export const BaseChartReadingStatusSchema = z.enum([
   "neutralized",
 ]);
 
+export const BaseChartSemanticKindSchema = z.enum([
+  "role-stem",
+  "role-branch",
+  "stem-combination",
+  "stem-clash",
+  "branch-combination",
+  "branch-clash",
+  "branch-harm",
+  "branch-destruction",
+  "branch-punishment-pair",
+  "branch-punishment-trio",
+  "branch-punishment-self",
+  "intra-pillar-destruction",
+  "marker-nobleman",
+  "marker-wenchang",
+  "marker-generic",
+]);
+
+export const BaseChartHierarchyLevelSchema = z.enum([
+  "foundation",
+  "day-master",
+  "interaction",
+  "overlay",
+]);
+
 export const BaseChartParticipantTypeSchema = z.enum([
   "stem",
   "branch",
@@ -294,6 +319,10 @@ export const BaseChartReactionBadgeSchema = z.object({
   status: BaseChartReadingStatusSchema,
   meaningShort: z.string().trim().min(1),
   schoolLabel: z.string().trim().min(1).optional(),
+  doctrineKey: z.string().trim().min(1).optional(),
+  semanticKind: BaseChartSemanticKindSchema.optional(),
+  hierarchyLevel: BaseChartHierarchyLevelSchema.optional(),
+  readingOrder: z.number().int().nonnegative().optional(),
   tier: InteractionTierSchema.optional(),
   participants: z.array(BaseChartParticipantSchema).default([]),
   modal: BaseChartModalContentSchema,
@@ -304,6 +333,8 @@ export const BaseChartReactionGroupSchema = z.object({
   title: z.string().trim().min(1),
   description: z.string().trim().min(1).optional(),
   family: BaseChartReadingBadgeFamilySchema,
+  hierarchyLevel: BaseChartHierarchyLevelSchema.optional(),
+  readingOrder: z.number().int().nonnegative().optional(),
   badges: z.array(BaseChartReactionBadgeSchema).default([]),
 });
 

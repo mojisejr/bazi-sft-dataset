@@ -214,16 +214,16 @@ type TenGodFlowInfo = {
 };
 
 const TEN_GOD_FLOW_MAP: Record<string, TenGodFlowInfo> = {
-  เจี้ยซิ่ง: { category: "output", cycleType: "generating", direction: "outward", label: "ถ่ายเท" },
-  เซียกัว: { category: "output", cycleType: "generating", direction: "outward", label: "ถ่ายเท" },
-  เพียงไช้: { category: "wealth", cycleType: "controlling", direction: "outward", label: "โชคลาภ" },
-  เจี้ยไช้: { category: "wealth", cycleType: "controlling", direction: "outward", label: "โชคลาภ" },
-  เพียงอิ่ง: { category: "resource", cycleType: "generating", direction: "inward", label: "ส่งเสริม" },
-  เจี้ยอิ่ง: { category: "resource", cycleType: "generating", direction: "inward", label: "ส่งเสริม" },
-  ชิกสัวะ: { category: "power", cycleType: "controlling", direction: "inward", label: "พิฆาต" },
-  เจี้ยกัว: { category: "power", cycleType: "controlling", direction: "inward", label: "พิฆาต" },
-  ปี่เกียง: { category: "companion", cycleType: "neutral", direction: "none", label: "คู่ธาตุ" },
-  เกี๊ยบไช้: { category: "companion", cycleType: "neutral", direction: "none", label: "คู่ธาตุ" },
+  食神: { category: "output", cycleType: "generating", direction: "outward", label: "ถ่ายเท" },
+  伤官: { category: "output", cycleType: "generating", direction: "outward", label: "ถ่ายเท" },
+  偏财: { category: "wealth", cycleType: "controlling", direction: "outward", label: "โชคลาภ" },
+  正财: { category: "wealth", cycleType: "controlling", direction: "outward", label: "โชคลาภ" },
+  偏印: { category: "resource", cycleType: "generating", direction: "inward", label: "ส่งเสริม" },
+  正印: { category: "resource", cycleType: "generating", direction: "inward", label: "ส่งเสริม" },
+  七杀: { category: "power", cycleType: "controlling", direction: "inward", label: "พิฆาต" },
+  正官: { category: "power", cycleType: "controlling", direction: "inward", label: "พิฆาต" },
+  比肩: { category: "companion", cycleType: "neutral", direction: "none", label: "คู่ธาตุ" },
+  劫财: { category: "companion", cycleType: "neutral", direction: "none", label: "คู่ธาตุ" },
 };
 
 const PILLAR_LABEL_REVERSE: Record<string, SemanticPillarKey> = {
@@ -345,35 +345,35 @@ function getParticipantPillarKeys(badge: BaseChartReactionBadgeValue): SemanticP
 }
 
 function getPrimarySchoolLabel(badge: BaseChartReactionBadgeValue): string {
-  if (badge.schoolLabel?.includes("เฮ้ง") && badge.participants.length >= 3) {
+  if (badge.semanticKind === "branch-punishment-trio") {
     return "ซำเฮ้ง";
   }
 
   return badge.schoolLabel ?? badge.shortLabel ?? badge.label;
 }
 
-function getSchoolHumanSummary(label: string): string {
-  if (label.includes("ชง")) {
+function getSchoolHumanSummary(badge: BaseChartReactionBadgeValue): string {
+  if (badge.doctrineKey === "interaction:branch-clash") {
     return "ปะทะ กระแทก ชน ทำให้เกิดการเปลี่ยนแปลง";
   }
-  if (label.includes("ไห่")) {
+  if (badge.doctrineKey === "interaction:branch-harm") {
     return "ให้ร้าย กล่าวโทษ กล่าวหา ต่อว่า";
   }
-  if (label.includes("เฮ้ง") || label.includes("ซำเฮ้ง")) {
-    return label.includes("ซำเฮ้ง")
+  if (badge.semanticKind === "branch-punishment-trio" || badge.doctrineKey === "interaction:branch-punishment-pair" || badge.doctrineKey === "interaction:branch-punishment-self") {
+    return badge.semanticKind === "branch-punishment-trio"
       ? "โต้เถียง วุ่นวาย ชวนทะเลาะวิวาท"
       : "ทำร้าย เบียดเบียน ให้โทษ";
   }
-  if (label.includes("ผั่ว")) {
+  if (badge.doctrineKey === "interaction:branch-destruction" || badge.doctrineKey === "interaction:intra-pillar-destruction") {
     return "ทำให้เสียหาย";
   }
-  if (label.includes("ภาคี")) {
+  if (badge.doctrineKey === "interaction:branch-combination" || badge.doctrineKey === "interaction:stem-combination") {
     return "เกี่ยวข้องกัน ดึงดูดกัน และอาจแปรธาตุ";
   }
-  if (label.includes("กุ้ยนั้ง") || label.includes("天乙") || label.includes("ขุนนาง")) {
+  if (badge.doctrineKey === "marker:nobleman") {
     return "แรงอุปถัมภ์ ผู้ใหญ่ช่วยเหลือ หรือมีคนค้ำชู";
   }
-  if (label.includes("บุ่งเชียง") || label.includes("文昌")) {
+  if (badge.doctrineKey === "marker:wenchang") {
     return "แรงของความคิด การเรียน การเขียน หรือชื่อเสียงจากความรู้";
   }
 
@@ -396,7 +396,7 @@ function buildSchoolClusterForBadge(
   const branchParticipantLabels = Array.from(new Set(badge.participants
     .filter((participant) => participant.type === "branch")
     .map(formatParticipantForGraph)));
-  const humanSummary = getSchoolHumanSummary(schoolLabel);
+  const humanSummary = getSchoolHumanSummary(badge);
 
   return {
     id: `cluster:${badge.id}`,
@@ -472,12 +472,11 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
 }
 
 function getOverlayTier(badge: BaseChartReactionBadgeValue): SemanticOverlayTier {
-  const text = `${badge.label} ${badge.shortLabel ?? ""} ${badge.schoolLabel ?? ""}`;
-  if (text.includes("天乙") || text.includes("ขุนนาง") || text.includes("กุ้ยนั้ง")) {
+  if (badge.doctrineKey === "marker:nobleman") {
     return "visible";
   }
 
-  if (text.includes("文昌") || text.includes("บุ่งเชียง") || text.includes("วิชาการ")) {
+  if (badge.doctrineKey === "marker:wenchang") {
     return "visible";
   }
 
@@ -485,12 +484,11 @@ function getOverlayTier(badge: BaseChartReactionBadgeValue): SemanticOverlayTier
 }
 
 function getOverlayDisplayLabel(badge: BaseChartReactionBadgeValue): string {
-  const text = `${badge.label} ${badge.shortLabel ?? ""} ${badge.schoolLabel ?? ""}`;
-  if (text.includes("天乙") || text.includes("ขุนนาง") || text.includes("กุ้ยนั้ง")) {
+  if (badge.doctrineKey === "marker:nobleman") {
     return "กุ้ยนั้ง/อุปถัมภ์ (天乙贵人)";
   }
 
-  if (text.includes("文昌") || text.includes("บุ่งเชียง") || text.includes("วิชาการ")) {
+  if (badge.doctrineKey === "marker:wenchang") {
     return "บุ่งเชียง/วิชาการ (文昌)";
   }
 
@@ -579,7 +577,10 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
       return;
     }
 
-    const flowInfo = TEN_GOD_FLOW_MAP[badge.schoolLabel ?? ""];
+    const tenGodKey = badge.doctrineKey?.startsWith("ten-god:")
+      ? badge.doctrineKey.slice("ten-god:".length)
+      : null;
+    const flowInfo = tenGodKey ? TEN_GOD_FLOW_MAP[tenGodKey] : null;
     if (!flowInfo) {
       return;
     }
@@ -647,7 +648,17 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
   return edges;
 }
 
-function normalizeSchoolToEdgeClass(schoolLabel: string | undefined): string {
+function normalizeSchoolToEdgeClass(schoolLabel: string | undefined, badge?: BaseChartReactionBadgeValue): string {
+  if (badge?.semanticKind === "stem-combination") return "school-faa-pakhee";
+  if (badge?.semanticKind === "stem-clash") return "school-faa-phikat";
+  if (badge?.semanticKind === "branch-combination") return "school-pakhee";
+  if (badge?.semanticKind === "branch-clash") return "school-chong";
+  if (badge?.semanticKind === "branch-harm") return "school-hai";
+  if (badge?.semanticKind === "branch-destruction" || badge?.semanticKind === "intra-pillar-destruction") return "school-pua";
+  if (badge?.semanticKind === "branch-punishment-pair" || badge?.semanticKind === "branch-punishment-self") return "school-heng";
+  if (badge?.semanticKind === "branch-punishment-trio") return "school-sam-heng";
+  if (badge?.semanticKind === "marker-nobleman") return "school-nobleman";
+  if (badge?.semanticKind === "marker-wenchang") return "school-wenchang";
   if (!schoolLabel) return "";
   const normalized = schoolLabel.toLowerCase().replace(/[^a-z\u0e00-\u0e7f]/g, "");
   if (normalized.includes("ภาคี") || normalized.includes("ราศีบน")) return "school-pakhee";
@@ -766,7 +777,7 @@ function buildInteractionEdges(
           "chamber-edge",
           "chamber-edge--reaction",
           `chamber-edge--${badge.status}`,
-          normalizeSchoolToEdgeClass(cluster.schoolLabel),
+          normalizeSchoolToEdgeClass(cluster.schoolLabel, badge),
           tierClass,
         ].filter(Boolean).join(" "),
       });
