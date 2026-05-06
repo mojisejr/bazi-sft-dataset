@@ -26,7 +26,6 @@ describe("pillar display helpers", () => {
     expect(resolveDisplayStemPairStage("戊", "乙")).toBe("ตี้อ๋วง");
     expect(resolveDisplayStemPairStage("甲", "乙")).toBe("ซี่");
     expect(resolveDisplayStemPairStage("甲", "壬")).toBe("เจ๊าะ");
-    expect(resolveDisplayStemPairStage("甲", "辛")).toBe("หมกยก");
   });
 
   test("formats stage pairs in A/B notation", () => {

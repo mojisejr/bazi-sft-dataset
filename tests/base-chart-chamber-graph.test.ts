@@ -74,14 +74,6 @@ function buildStubCalculatedState(): CalculatedStateValue {
     shenSha: sampleMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
-    strengthScore: 3.07,
-    dayMasterStrengthProfile: {
-      dayMaster: "己",
-      strengthState: "balanced",
-      displayLabel: "สมดุล",
-      narrative: "ดิถีรับแรงและส่งแรงได้พอประมาณ",
-      qiLabel: "ตี้อ๋วง",
-    },
   });
 
   return {
@@ -155,10 +147,6 @@ describe("buildSemanticChamberGraph", () => {
     expect(markerNodes[0].data.kind).toBe("marker");
     expect(markerNodes[0].data.kind === "marker" ? markerNodes[0].data.displayLabel : "").toContain("กุ้ยนั้ง");
     expect(graph.hiddenSecondaryOverlays.map((badge) => badge.label)).toContain("ดอกท้อ (桃花)");
-    expect(graph.hiddenSecondaryOverlays[0]?.semantic).toMatchObject({
-      overlayTier: "secondary",
-      sourceKind: "canonical-marker",
-    });
   });
 
   test("renders daymaster relation edges as first-class semantic relations", () => {
@@ -239,7 +227,6 @@ describe("buildSemanticChamberGraph", () => {
 
     const reactionEdge = graph.edges.find((edge) => edge.data.layer === "inter-pillar-reaction");
     expect(reactionEdge?.data.schoolCluster?.schoolLabel).toBeTruthy();
-    expect(reactionEdge?.data.badge.semantic?.sourceKind).toBe("interaction-outcome");
     expect(reactionEdge?.data.sourceDetail).toMatch(/ราศี(ล่าง|บน)/);
     expect(reactionEdge?.data.targetDetail).toMatch(/ราศี(ล่าง|บน)/);
   });
@@ -462,22 +449,12 @@ describe("buildSemanticChamberGraph", () => {
     for (const edge of generatingEdges) {
       expect(edge.data.flowDirection).toMatch(/^(outward|inward)$/);
       expect(edge.className).toContain("chamber-edge--element-flow-generating");
-      expect(edge.data.badge.semantic?.flowCycleType).toBe("generating");
     }
 
     for (const edge of controllingEdges) {
       expect(edge.data.flowDirection).toMatch(/^(outward|inward)$/);
       expect(edge.className).toContain("chamber-edge--element-flow-controlling");
-      expect(edge.data.badge.semantic?.flowCycleType).toBe("controlling");
     }
-  });
-
-  test("reaction edge classes come from typed semantic school keys", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
-
-    const reactionEdges = graph.edges.filter((edge) => edge.data.layer === "inter-pillar-reaction");
-    expect(reactionEdges.some((edge) => edge.className?.includes("school-pakhee"))).toBe(true);
-    expect(reactionEdges.some((edge) => edge.className?.includes("school-chong"))).toBe(true);
   });
 
   test("element-flow edges have element-specific CSS class", () => {

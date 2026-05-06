@@ -17,7 +17,6 @@ import {
 
 import "@xyflow/react/dist/style.css";
 
-import type { BaseChartDetailItemValue } from "@/lib/bazi/schema-types";
 import type {
   SemanticEdge,
   SemanticChamberGraph,
@@ -49,7 +48,6 @@ type ChamberSelection =
 
 type ReactionChamberCanvasProps = {
   graph: SemanticChamberGraph;
-  legendItems?: BaseChartDetailItemValue[];
   onSelectionChange?: (selection: ChamberSelection) => void;
   onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
@@ -122,7 +120,6 @@ function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
 
 function ReactionChamberCanvasInner({
   graph,
-  legendItems,
   onSelectionChange,
   onNodeHover,
 }: ReactionChamberCanvasProps) {
@@ -234,7 +231,7 @@ function ReactionChamberCanvasInner({
         <Background gap={28} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
-      <ChamberEdgeLegend legendItems={legendItems} />
+      <ChamberEdgeLegend />
     </div>
   );
 }

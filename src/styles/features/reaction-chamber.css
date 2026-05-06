@@ -76,21 +76,6 @@
   backdrop-filter: blur(14px);
 }
 
-.chamber-command-bar__heading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-}
-
-.chamber-command-bar__kicker {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  color: var(--chamber-muted);
-}
-
 .chamber-command-bar__back {
   appearance: none;
   background: var(--chamber-panel-soft);
@@ -110,27 +95,9 @@
 .chamber-command-bar__title {
   margin: 0;
   text-align: center;
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--chamber-text);
-}
-
-.chamber-command-bar__subtitle,
-.chamber-command-bar__summary {
-  margin: 0;
-  text-align: center;
+  font-size: 15px;
+  letter-spacing: 0.04em;
   color: var(--chamber-muted);
-}
-
-.chamber-command-bar__subtitle {
-  font-size: 13px;
-}
-
-.chamber-command-bar__summary {
-  font-size: 12px;
-  max-width: 640px;
-  line-height: 1.5;
 }
 
 .chamber-command-bar__viewport-actions {
@@ -163,179 +130,11 @@
   min-height: 0;
 }
 
-.reaction-chamber-shell__viewport--doctrine-first {
-  align-items: stretch;
-}
-
-.reaction-chamber-shell__doctrine {
-  width: min(420px, 42vw);
-  min-width: 320px;
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 18px;
-  overflow-y: auto;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--chamber-panel) 96%, transparent), var(--chamber-panel-soft));
-  border-right: 1px solid var(--chamber-line);
-}
-
-.reaction-chamber-shell__strength-gate,
-.reaction-chamber-shell__reading-order,
-.reaction-chamber-shell__lane-card,
-.reaction-chamber-shell__evidence-head {
-  background: var(--chamber-panel);
-  border: 1px solid var(--chamber-line);
-  border-radius: 20px;
-  box-shadow: var(--chamber-shadow);
-}
-
-.reaction-chamber-shell__strength-gate,
-.reaction-chamber-shell__reading-order,
-.reaction-chamber-shell__evidence-head {
-  padding: 16px 18px;
-}
-
-.reaction-chamber-shell__lane-kicker {
-  margin: 0 0 6px;
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  color: var(--chamber-muted);
-}
-
-.reaction-chamber-shell__strength-gate h2,
-.reaction-chamber-shell__evidence-head h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
-.reaction-chamber-shell__strength-gate p,
-.reaction-chamber-shell__evidence-head p {
-  margin: 6px 0 0;
-  font-size: 13px;
-  line-height: 1.55;
-  color: var(--chamber-muted);
-}
-
-.reaction-chamber-shell__strength-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.reaction-chamber-shell__strength-chip,
-.reaction-chamber-shell__strength-score {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--surface-accent-soft);
-  border: 1px solid var(--chamber-line);
-  font-size: 12px;
-}
-
-.reaction-chamber-shell__strength-hint {
-  color: var(--chamber-accent) !important;
-}
-
-.reaction-chamber-shell__reading-order ol {
-  margin: 0;
-  padding-left: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-size: 13px;
-  color: var(--chamber-text);
-}
-
-.reaction-chamber-shell__lane-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.reaction-chamber-shell__lane-card {
-  appearance: none;
-  width: 100%;
-  text-align: left;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
-}
-
-.reaction-chamber-shell__lane-card:hover,
-.reaction-chamber-shell__lane-card--active {
-  border-color: var(--chamber-line-strong);
-  transform: translateY(-1px);
-}
-
-.reaction-chamber-shell__lane-card--active {
-  box-shadow: 0 0 0 1px var(--chamber-line-strong) inset, var(--chamber-shadow);
-}
-
-.reaction-chamber-shell__lane-head {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px;
-  align-items: start;
-}
-
-.reaction-chamber-shell__lane-order {
-  display: inline-grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--surface-accent-soft);
-  border: 1px solid var(--chamber-line);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.reaction-chamber-shell__lane-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--chamber-text);
-}
-
-.reaction-chamber-shell__lane-description,
-.reaction-chamber-shell__lane-meta {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--chamber-muted);
-}
-
-.reaction-chamber-shell__lane-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.reaction-chamber-shell__evidence {
-  flex: 1;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
-  grid-template-rows: auto minmax(0, 1fr);
-}
-
-.reaction-chamber-shell__evidence-head {
-  grid-column: 1 / -1;
-  margin: 18px 18px 12px;
-}
-
 .reaction-chamber-canvas {
   flex: 1;
   min-width: 0;
   position: relative;
   background: var(--chamber-canvas-bg);
-  margin: 0 18px 18px 18px;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid var(--chamber-line);
 }
 
 /* React Flow overrides */
@@ -735,26 +534,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.chamber-edge-legend__doctrine-copy {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.chamber-edge-legend__doctrine-line {
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  font-size: 10px;
-  color: var(--chamber-muted);
-}
-
-.chamber-edge-legend__doctrine-line strong {
-  color: var(--chamber-text);
-  font-size: 11px;
 }
 
 .chamber-edge-legend__section-title {
@@ -1222,8 +1001,39 @@
 
 /* Ten God Panel */
 
+.chamber-ten-god-toggle {
+  position: absolute;
+  top: 60px;
+  left: 12px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
+  color: var(--chamber-text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 200ms ease, border-color 200ms ease;
+  backdrop-filter: blur(14px);
+}
+
+.chamber-ten-god-toggle:hover {
+  background: var(--surface-accent-soft);
+  border-color: var(--chamber-line-strong);
+}
+
 .chamber-ten-god-panel {
-  width: 100%;
+  position: absolute;
+  top: 100px;
+  left: 12px;
+  z-index: 10;
+  width: 240px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
   background: var(--chamber-panel);
   border: 1px solid var(--chamber-line);
   border-radius: 18px;
@@ -1235,24 +1045,15 @@
   gap: 12px;
 }
 
-.chamber-ten-god-panel__head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.chamber-ten-god-panel__kicker {
-  margin: 0;
-  font-size: 11px;
-  letter-spacing: 0.14em;
-  color: var(--chamber-muted);
-}
-
 .chamber-ten-god-panel__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
+  letter-spacing: 0.08em;
   color: var(--chamber-accent);
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--chamber-line);
 }
 
 .chamber-ten-god-panel__categories {
@@ -1305,6 +1106,26 @@
   font-weight: 500;
 }
 
+@media (max-width: 899px) {
+  .chamber-ten-god-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    max-height: 40vh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+  }
+
+  .chamber-ten-god-toggle {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+  }
+}
+
 /* Marker node — compact badge */
 
 .chamber-node-marker {
@@ -1351,7 +1172,6 @@
   flex-shrink: 0;
   height: 100%;
   overflow: hidden;
-  border-left: 1px solid var(--chamber-line);
 }
 
 .chamber-inspector--sheet {
@@ -1561,50 +1381,6 @@
 }
 
 @media (max-width: 900px) {
-  .chamber-command-bar {
-    grid-template-columns: 1fr;
-  }
-
-  .chamber-command-bar__back,
-  .chamber-command-bar__viewport-actions {
-    justify-self: stretch;
-  }
-
-  .chamber-command-bar__viewport-actions {
-    justify-content: center;
-  }
-
-  .reaction-chamber-shell {
-    position: static;
-    min-height: 100dvh;
-    overflow: visible;
-  }
-
-  .reaction-chamber-shell__viewport--doctrine-first {
-    flex-direction: column;
-  }
-
-  .reaction-chamber-shell__doctrine {
-    width: 100%;
-    min-width: 0;
-    border-right: none;
-    border-bottom: 1px solid var(--chamber-line);
-  }
-
-  .reaction-chamber-shell__evidence {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .reaction-chamber-shell__evidence-head {
-    margin: 16px;
-  }
-
-  .reaction-chamber-canvas {
-    min-height: 56dvh;
-    margin: 0 16px 16px;
-  }
-
   .chamber-node-pillar {
     width: 235px;
   }

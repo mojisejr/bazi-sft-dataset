@@ -352,13 +352,12 @@ describe("BaziTrainerWorkspace", () => {
             },
           },
         ],
-        groups: [],
-        schoolSections: [
+        groups: [
           {
             key: "roles",
-            title: "จับซิ้ง / บทบาทต่อดิถี",
+            title: "บทบาทต่อดิถี",
             description: "อ่านว่าแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
-            readingOrder: 1,
+            family: "role",
             badges: [
               {
                 id: "year-stem-role-group",
@@ -393,9 +392,9 @@ describe("BaziTrainerWorkspace", () => {
           },
           {
             key: "branch-interactions",
-            title: "ปฏิกิริยาชั้นดิน",
+            title: "ดิน-ดิน interactions",
             description: "ภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่างในดวงกำเนิด",
-            readingOrder: 2,
+            family: "interaction",
             badges: [
               {
                 id: "branch-combination-month-year-group",
@@ -432,7 +431,7 @@ describe("BaziTrainerWorkspace", () => {
             key: "markers",
             title: "ตัวประกอบพิเศษ",
             description: "กุ้ยนั้งและ marker เสริม",
-            readingOrder: 3,
+            family: "marker",
             badges: [
               {
                 id: "marker-nobleman-group",

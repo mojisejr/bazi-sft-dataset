@@ -37,14 +37,6 @@ function buildReading(config: Parameters<typeof makePillars>[0]) {
     shenSha: noMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
-    strengthScore: 3,
-    dayMasterStrengthProfile: {
-      dayMaster,
-      strengthState: "balanced",
-      displayLabel: "สมดุล",
-      narrative: "ใช้เป็นค่ากลางเพื่อบังคับ school reading order ใน test harness",
-      qiLabel: "ตี้อ๋วง",
-    },
   });
   return { reading, resolution, pillars };
 }
@@ -88,11 +80,6 @@ describe("Force-line coverage — 9 interaction families", () => {
       expect(comboBadge).toBeDefined();
       expect(comboBadge!.status).toBe("active");
       expect(comboBadge!.participants).toHaveLength(2);
-      expect(comboBadge!.semantic).toMatchObject({
-        kind: "interaction",
-        sourceKind: "interaction-outcome",
-        schoolKey: "pakhee",
-      });
     });
   });
 
@@ -247,10 +234,6 @@ describe("Force-line coverage — 9 interaction families", () => {
       );
       expect(trioBadge).toBeDefined();
       expect(resolution.interactionTiers["punishment-丑未戌"]).toBe("tertiary");
-      expect(trioBadge!.semantic).toMatchObject({
-        schoolKey: "sam-heng",
-        displayLabel: "ซำเฮ้ง",
-      });
     });
   });
 

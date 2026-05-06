@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import type { DayMasterStrengthProfileValue, PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
+import type { PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
 import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 
@@ -45,14 +45,6 @@ const sampleMarkers: ShenShaValue[] = [{
   meaning: "มีผู้ใหญ่เข้ามาช่วยเมื่อจังหวะเปิด",
 }];
 
-const sampleStrengthProfile: DayMasterStrengthProfileValue = {
-  dayMaster: "己",
-  strengthState: "balanced",
-  displayLabel: "สมดุล",
-  narrative: "ดิถีอยู่ในจุดที่รับแรงและส่งแรงได้พอประมาณ",
-  qiLabel: "ตี้อ๋วง",
-};
-
 describe("buildBaseChartReading", () => {
   test("builds role badges and neutralizes clashes that lose to combinations", () => {
     const resolution = resolveBranchInteractionEffects(samplePillars);
@@ -62,8 +54,6 @@ describe("buildBaseChartReading", () => {
       shenSha: sampleMarkers,
       resolution,
       precedenceSignals: resolution.precedenceSignals,
-      strengthScore: 3.25,
-      dayMasterStrengthProfile: sampleStrengthProfile,
     });
 
     expect(reading.roleBadges.length).toBeGreaterThanOrEqual(6);
@@ -79,48 +69,11 @@ describe("buildBaseChartReading", () => {
         (badge) => badge.schoolLabel === "ชง" && badge.status === "neutralized",
       ),
     ).toBe(true);
-    expect(reading.groups).toEqual([]);
-    expect(reading.strengthGate).toMatchObject({
-      title: "กำลังดิถี",
-      displayLabel: "สมดุล",
-      qiLabel: "ตี้อ๋วง",
-      score: 3.25,
-    });
-    expect(reading.schoolSections.map((section) => section.key)).toEqual([
-      "strength-gate",
+    expect(reading.groups.map((group) => group.key)).toEqual([
       "roles",
       "stem-interactions",
       "branch-interactions",
       "markers",
     ]);
-    expect(reading.schoolSections[1]).toMatchObject({
-      title: "จับซิ้ง / บทบาทต่อดิถี",
-      readingOrder: 2,
-    });
-    expect(reading.readingOrderSteps).toEqual([
-      "เริ่มจากดิถีและ ribbon พื้นดวงก่อน",
-      "ล็อกกำลังดิถีให้ชัดก่อน ว่าดิถีแข็ง อ่อน หรือสมดุล",
-      "อ่านจับซิ้งและบทบาทต่อดิถีของตัวสำคัญ",
-      "อ่านปฏิกิริยาชั้นฟ้า แล้วค่อยลงชั้นดินตามลำดับ",
-      "ดู marker พิเศษเป็นชั้นเสริมท้ายสุด",
-    ]);
-
-    const roleBadge = reading.roleBadges.find((badge) => badge.id === "year-stem-role");
-    expect(roleBadge?.semantic).toMatchObject({
-      kind: "role",
-      sourceKind: "doctrine-role",
-      schoolKey: "power",
-      flowCycleType: "controlling",
-      flowDirection: "inward",
-      flowLabel: "พิฆาต",
-    });
-
-    expect(reading.markerBadges[0]?.semantic).toMatchObject({
-      kind: "marker",
-      sourceKind: "canonical-marker",
-      schoolKey: "nobleman",
-      overlayTier: "visible",
-      displayLabel: "กุ้ยนั้ง/อุปถัมภ์ (天乙贵人)",
-    });
   });
 });
