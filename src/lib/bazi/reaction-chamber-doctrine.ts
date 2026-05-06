@@ -1,7 +1,6 @@
 import type {
   BaseChartDetailItemValue,
   BaseChartReactionBadgeValue,
-  BaseChartReactionGroupValue,
   BaseChartReadingValue,
   BaseChartStrengthGateValue,
 } from "@/lib/bazi/schema-types";
@@ -35,18 +34,6 @@ function buildPreviewLabels(badges: BaseChartReactionBadgeValue[]): string[] {
     .map((badge) => badge.shortLabel ?? badge.schoolLabel ?? badge.label);
 }
 
-function laneFromGroup(group: BaseChartReactionGroupValue, readingOrder: number): ReactionChamberDoctrineLane {
-  return {
-    key: group.key,
-    title: group.title,
-    description: group.description,
-    readingOrder,
-    badges: group.badges,
-    badgeCount: group.badges.length,
-    previewLabels: buildPreviewLabels(group.badges),
-  };
-}
-
 export function buildReactionChamberDoctrineModel(args: {
   dayMaster: string;
   reading?: BaseChartReadingValue;
@@ -56,23 +43,21 @@ export function buildReactionChamberDoctrineModel(args: {
   const strengthGate = reading?.strengthGate;
   const readingOrderSteps = reading?.readingOrderSteps ?? [];
   const legendItems = reading?.legendItems ?? [];
-  const lanes = reading?.schoolSections && reading.schoolSections.length > 0
-    ? reading.schoolSections.map((section) => {
-        const description = section.key === "markers" && hiddenSecondaryCount > 0
-          ? `${section.description ?? ""}${section.description ? " " : ""}มี semantic signal ซ่อนใน pane graph อีก ${hiddenSecondaryCount} รายการ`
-          : section.description;
+  const lanes = (reading?.schoolSections ?? []).map((section) => {
+    const description = section.key === "markers" && hiddenSecondaryCount > 0
+      ? `${section.description ?? ""}${section.description ? " " : ""}มี semantic signal ซ่อนใน pane graph อีก ${hiddenSecondaryCount} รายการ`
+      : section.description;
 
-        return {
-          key: section.key,
-          title: section.title,
-          description,
-          readingOrder: section.readingOrder,
-          badges: section.badges,
-          badgeCount: section.badges.length,
-          previewLabels: buildPreviewLabels(section.badges),
-        } satisfies ReactionChamberDoctrineLane;
-      })
-    : (reading?.groups ?? []).map((group, index) => laneFromGroup(group, index + 1));
+    return {
+      key: section.key,
+      title: section.title,
+      description,
+      readingOrder: section.readingOrder,
+      badges: section.badges,
+      badgeCount: section.badges.length,
+      previewLabels: buildPreviewLabels(section.badges),
+    } satisfies ReactionChamberDoctrineLane;
+  });
 
   const summary = strengthGate?.summary
     ? `เริ่มจาก${strengthGate.title} แล้วค่อยอ่านบทบาท ปฏิกิริยา และ marker โดยใช้กราฟเป็นหลักฐานยืนยัน`

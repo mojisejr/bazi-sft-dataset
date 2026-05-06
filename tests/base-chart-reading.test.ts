@@ -79,12 +79,7 @@ describe("buildBaseChartReading", () => {
         (badge) => badge.schoolLabel === "ชง" && badge.status === "neutralized",
       ),
     ).toBe(true);
-    expect(reading.groups.map((group) => group.key)).toEqual([
-      "roles",
-      "stem-interactions",
-      "branch-interactions",
-      "markers",
-    ]);
+    expect(reading.groups).toEqual([]);
     expect(reading.strengthGate).toMatchObject({
       title: "กำลังดิถี",
       displayLabel: "สมดุล",

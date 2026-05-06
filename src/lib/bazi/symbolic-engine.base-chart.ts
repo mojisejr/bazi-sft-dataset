@@ -738,36 +738,7 @@ export function buildBaseChartReading(args: {
     stemInteractionBadges,
     branchInteractionBadges,
     markerBadges,
-    groups: [
-      {
-        key: "roles",
-        title: "จับซิ้ง / บทบาทต่อดิถี",
-        description: "อ่านว่าราศีบนและฐานล่างแต่ละตัวทำหน้าที่แบบไหนเมื่อเทียบกับดิถี",
-        family: "role",
-        badges: roleBadges,
-      },
-      {
-        key: "stem-interactions",
-        title: "ปฏิกิริยาชั้นฟ้า",
-        description: "ภาคีหรือพิฆาตกันของราศีบนที่ควรอ่านก่อนแรงรองอื่น",
-        family: "interaction",
-        badges: stemInteractionBadges,
-      },
-      {
-        key: "branch-interactions",
-        title: "ปฏิกิริยาชั้นดิน",
-        description: "ภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่างในดวงกำเนิด",
-        family: "interaction",
-        badges: branchInteractionBadges,
-      },
-      {
-        key: "markers",
-        title: "ตัวประกอบพิเศษ",
-        description: "กุ้ยนั้ง บุ่งเชียง และ marker เชิงสัญลักษณ์ที่ใช้ประกอบการอ่าน",
-        family: "marker",
-        badges: markerBadges,
-      },
-    ],
+    groups: [],
     strengthGate,
     schoolSections,
     legendItems: [

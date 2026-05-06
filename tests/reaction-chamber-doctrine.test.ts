@@ -8,14 +8,7 @@ const reading = {
   stemInteractionBadges: [],
   branchInteractionBadges: [],
   markerBadges: [],
-  groups: [
-    {
-      key: "roles",
-      title: "บทบาทต่อดิถี",
-      family: "role",
-      badges: [],
-    },
-  ],
+  groups: [],
   strengthGate: {
     title: "กำลังดิถี",
     summary: "ดิถีอยู่ในจุดที่ต้องอ่านก่อน layer อื่น",
@@ -99,7 +92,7 @@ describe("buildReactionChamberDoctrineModel", () => {
     expect(doctrine.evidenceSummary).toContain("2 รายการ");
   });
 
-  test("falls back to legacy groups when schoolSections are absent", () => {
+  test("returns no doctrine lanes when schoolSections are absent", () => {
     const doctrine = buildReactionChamberDoctrineModel({
       dayMaster: "甲",
       reading: {
@@ -109,11 +102,6 @@ describe("buildReactionChamberDoctrineModel", () => {
       },
     });
 
-    expect(doctrine.lanes).toHaveLength(1);
-    expect(doctrine.lanes[0]).toMatchObject({
-      key: "roles",
-      title: "บทบาทต่อดิถี",
-      readingOrder: 1,
-    });
+    expect(doctrine.lanes).toHaveLength(0);
   });
 });
