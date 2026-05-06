@@ -775,13 +775,11 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
 }
 
 function assignParallelOffsets(edges: SemanticEdge[]): void {
-  const pairKey = (edge: SemanticEdge) => {
-    const ids = [edge.source, edge.target].sort();
-    return `${ids[0]}<->${ids[1]}`;
-  };
+  const pairKey = (edge: SemanticEdge) => `${edge.source}->${edge.target}`;
   const groups = new Map<string, SemanticEdge[]>();
 
   for (const edge of edges) {
+    if (edge.data.layer !== "inter-pillar-reaction") continue;
     edge.data.parallelOffset = 0;
     const key = pairKey(edge);
     const group = groups.get(key);
@@ -795,7 +793,7 @@ function assignParallelOffsets(edges: SemanticEdge[]): void {
   for (const group of groups.values()) {
     if (group.length <= 1) continue;
     for (let index = 0; index < group.length; index += 1) {
-      group[index].data.parallelOffset = index * 30;
+      group[index].data.parallelOffset = index * 18;
     }
   }
 }
