@@ -80,6 +80,11 @@ describe("Force-line coverage — 9 interaction families", () => {
       expect(comboBadge).toBeDefined();
       expect(comboBadge!.status).toBe("active");
       expect(comboBadge!.participants).toHaveLength(2);
+      expect(comboBadge!.semantic).toMatchObject({
+        kind: "interaction",
+        sourceKind: "interaction-outcome",
+        schoolKey: "pakhee",
+      });
     });
   });
 
@@ -234,6 +239,10 @@ describe("Force-line coverage — 9 interaction families", () => {
       );
       expect(trioBadge).toBeDefined();
       expect(resolution.interactionTiers["punishment-丑未戌"]).toBe("tertiary");
+      expect(trioBadge!.semantic).toMatchObject({
+        schoolKey: "sam-heng",
+        displayLabel: "ซำเฮ้ง",
+      });
     });
   });
 

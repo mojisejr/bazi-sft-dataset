@@ -279,6 +279,46 @@ export const BaseChartModalContentSchema = z.object({
   details: z.array(BaseChartDetailItemSchema).default([]),
 });
 
+export const BaseChartSemanticKindSchema = z.enum([
+  "role",
+  "interaction",
+  "marker",
+]);
+
+export const BaseChartSemanticOverlayTierSchema = z.enum([
+  "visible",
+  "secondary",
+]);
+
+export const BaseChartSemanticSourceKindSchema = z.enum([
+  "doctrine-role",
+  "interaction-outcome",
+  "canonical-marker",
+  "derived-signal",
+]);
+
+export const BaseChartSemanticFlowCategorySchema = z.enum([
+  "output",
+  "wealth",
+  "power",
+  "resource",
+  "companion",
+]);
+
+export const BaseChartReactionSemanticSchema = z.object({
+  kind: BaseChartSemanticKindSchema,
+  schoolKey: z.string().trim().min(1),
+  summary: z.string().trim().min(1),
+  schoolLabel: z.string().trim().min(1).optional(),
+  sourceKind: BaseChartSemanticSourceKindSchema.optional(),
+  overlayTier: BaseChartSemanticOverlayTierSchema.optional(),
+  displayLabel: z.string().trim().min(1).optional(),
+  flowCategory: BaseChartSemanticFlowCategorySchema.optional(),
+  flowCycleType: z.enum(["generating", "controlling", "neutral"]).optional(),
+  flowDirection: z.enum(["outward", "inward", "none"]).optional(),
+  flowLabel: z.string().trim().min(1).optional(),
+});
+
 export const InteractionTierSchema = z.enum([
   "primary",
   "secondary",
@@ -297,6 +337,7 @@ export const BaseChartReactionBadgeSchema = z.object({
   tier: InteractionTierSchema.optional(),
   participants: z.array(BaseChartParticipantSchema).default([]),
   modal: BaseChartModalContentSchema,
+  semantic: BaseChartReactionSemanticSchema.optional(),
 });
 
 export const BaseChartReactionGroupSchema = z.object({
@@ -468,6 +509,7 @@ export type BaseChartParticipantTypeValue = z.infer<typeof BaseChartParticipantT
 export type BaseChartDetailItemValue = z.infer<typeof BaseChartDetailItemSchema>;
 export type BaseChartParticipantValue = z.infer<typeof BaseChartParticipantSchema>;
 export type BaseChartModalContentValue = z.infer<typeof BaseChartModalContentSchema>;
+export type BaseChartReactionSemanticValue = z.infer<typeof BaseChartReactionSemanticSchema>;
 export type BaseChartReactionBadgeValue = z.infer<typeof BaseChartReactionBadgeSchema>;
 export type InteractionTierValue = z.infer<typeof InteractionTierSchema>;
 export type BaseChartReactionGroupValue = z.infer<typeof BaseChartReactionGroupSchema>;

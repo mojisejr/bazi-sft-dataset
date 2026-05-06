@@ -4,6 +4,7 @@ import type {
   CalculatedStateValue,
 } from "@/lib/bazi/schema-types";
 import { ELEMENT_TH_TO_EN } from "@/lib/bazi/symbolic-engine.constants";
+import { resolveSchoolEdgeClass } from "@/lib/bazi/symbolic-engine.reaction-resolver";
 
 export type SemanticPillarKey = "year" | "month" | "day" | "hour";
 
@@ -306,11 +307,11 @@ function getParticipantPillarKeys(badge: BaseChartReactionBadgeValue): SemanticP
 }
 
 function getPrimarySchoolLabel(badge: BaseChartReactionBadgeValue): string {
-  if (badge.schoolLabel?.includes("เฮ้ง") && badge.participants.length >= 3) {
-    return "ซำเฮ้ง";
-  }
-
-  return badge.schoolLabel ?? badge.shortLabel ?? badge.label;
+  return badge.semantic?.displayLabel
+    ?? badge.semantic?.schoolLabel
+    ?? badge.schoolLabel
+    ?? badge.shortLabel
+    ?? badge.label;
 }
 
 function getSchoolHumanSummary(label: string): string {
@@ -357,7 +358,7 @@ function buildSchoolClusterForBadge(
   const branchParticipantLabels = badge.participants
     .filter((participant) => participant.type === "branch")
     .map(formatParticipantForGraph);
-  const humanSummary = getSchoolHumanSummary(schoolLabel);
+  const humanSummary = badge.semantic?.summary ?? getSchoolHumanSummary(schoolLabel);
 
   return {
     id: `cluster:${badge.id}`,
@@ -433,29 +434,11 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
 }
 
 function getOverlayTier(badge: BaseChartReactionBadgeValue): SemanticOverlayTier {
-  const text = `${badge.label} ${badge.shortLabel ?? ""} ${badge.schoolLabel ?? ""}`;
-  if (text.includes("天乙") || text.includes("ขุนนาง") || text.includes("กุ้ยนั้ง")) {
-    return "visible";
-  }
-
-  if (text.includes("文昌") || text.includes("บุ่งเชียง") || text.includes("วิชาการ")) {
-    return "visible";
-  }
-
-  return "secondary";
+  return badge.semantic?.overlayTier ?? "secondary";
 }
 
 function getOverlayDisplayLabel(badge: BaseChartReactionBadgeValue): string {
-  const text = `${badge.label} ${badge.shortLabel ?? ""} ${badge.schoolLabel ?? ""}`;
-  if (text.includes("天乙") || text.includes("ขุนนาง") || text.includes("กุ้ยนั้ง")) {
-    return "กุ้ยนั้ง/อุปถัมภ์ (天乙贵人)";
-  }
-
-  if (text.includes("文昌") || text.includes("บุ่งเชียง") || text.includes("วิชาการ")) {
-    return "บุ่งเชียง/วิชาการ (文昌)";
-  }
-
-  return badge.shortLabel ?? badge.label;
+  return badge.semantic?.displayLabel ?? badge.shortLabel ?? badge.label;
 }
 
 function buildMarkerNodes(markerBadges: BaseChartReactionBadgeValue[]): SemanticNode[] {
@@ -540,7 +523,9 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
       return;
     }
 
-    const flowInfo = TEN_GOD_FLOW_MAP[badge.schoolLabel ?? ""];
+    const flowInfo = badge.semantic?.schoolLabel
+      ? TEN_GOD_FLOW_MAP[badge.semantic.schoolLabel]
+      : TEN_GOD_FLOW_MAP[badge.schoolLabel ?? ""];
     if (!flowInfo) {
       return;
     }
@@ -589,39 +574,23 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
       target,
       sourceHandle,
       targetHandle,
-      data: {
-        layer: "element-flow",
-        badge,
+        data: {
+          layer: "element-flow",
+          badge,
         readingOrder: 0,
         schoolCluster: null,
         sourceDetail: "ดิถี",
         targetDetail: formatParticipantForGraph(participant),
-        flowCycleType: flowInfo.cycleType,
-        flowDirection: flowInfo.direction,
-        flowLabel: flowInfo.label,
-        flowElement: targetElementEN,
-      },
+          flowCycleType: badge.semantic?.flowCycleType ?? flowInfo.cycleType,
+          flowDirection: badge.semantic?.flowDirection ?? flowInfo.direction,
+          flowLabel: badge.semantic?.flowLabel ?? flowInfo.label,
+          flowElement: targetElementEN,
+        },
       className: edgeClasses,
     });
   });
 
   return edges;
-}
-
-function normalizeSchoolToEdgeClass(schoolLabel: string | undefined): string {
-  if (!schoolLabel) return "";
-  const normalized = schoolLabel.toLowerCase().replace(/[^a-z\u0e00-\u0e7f]/g, "");
-  if (normalized.includes("ภาคี") || normalized.includes("ราศีบน")) return "school-pakhee";
-  if (normalized === "ชง") return "school-chong";
-  if (normalized === "ไห่") return "school-hai";
-  if (normalized === "ผั่ว") return "school-pua";
-  if (normalized === "เฮ้ง" || normalized === "เฮ้งคู่") return "school-heng";
-  if (normalized.includes("ซำเฮ้ง")) return "school-sam-heng";
-  if (normalized.includes("ฟ้าภาคี") || normalized.includes("ราศีบน")) return "school-faa-pakhee";
-  if (normalized.includes("ฟ้าพิฆาต") || normalized.includes("พิฆาตราศีบน")) return "school-faa-phikat";
-  if (normalized.includes("กุ้ยนั้ง") || normalized.includes("อุปถัมภ์")) return "school-nobleman";
-  if (normalized.includes("บุ่งเชียง") || normalized.includes("วิชาการ")) return "school-wenchang";
-  return "";
 }
 
 function resolveInteractionHandles(
@@ -727,7 +696,7 @@ function buildInteractionEdges(
           "chamber-edge",
           "chamber-edge--reaction",
           `chamber-edge--${badge.status}`,
-          normalizeSchoolToEdgeClass(cluster.schoolLabel),
+          resolveSchoolEdgeClass(badge.semantic?.schoolKey),
           tierClass,
         ].filter(Boolean).join(" "),
       });

@@ -75,5 +75,23 @@ describe("buildBaseChartReading", () => {
       "branch-interactions",
       "markers",
     ]);
+
+    const roleBadge = reading.roleBadges.find((badge) => badge.id === "year-stem-role");
+    expect(roleBadge?.semantic).toMatchObject({
+      kind: "role",
+      sourceKind: "doctrine-role",
+      schoolKey: "power",
+      flowCycleType: "controlling",
+      flowDirection: "inward",
+      flowLabel: "พิฆาต",
+    });
+
+    expect(reading.markerBadges[0]?.semantic).toMatchObject({
+      kind: "marker",
+      sourceKind: "canonical-marker",
+      schoolKey: "nobleman",
+      overlayTier: "visible",
+      displayLabel: "กุ้ยนั้ง/อุปถัมภ์ (天乙贵人)",
+    });
   });
 });
