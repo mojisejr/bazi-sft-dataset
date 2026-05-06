@@ -12,6 +12,8 @@ import type { ChamberSelection } from "@/components/bazi/reaction-chamber/Reacti
 type ChamberInspectorProps = {
   selection: ChamberSelection;
   variant: "docked" | "sheet";
+  title?: string;
+  summary?: string;
   onClose: () => void;
 };
 
@@ -179,12 +181,12 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
   );
 }
 
-function InspectorBody({ selection }: { selection: ChamberSelection }) {
+function InspectorBody({ selection, title, summary }: { selection: ChamberSelection; title?: string; summary?: string }) {
   if (!selection) {
     return (
       <div className="chamber-inspector__placeholder">
-        <p className="chamber-inspector__kicker">แผนภาพปฏิกิริยา</p>
-        <p>ดิถีเป็นจุดกลางของการอ่าน เสารอบนอกคือพื้นที่ที่ดิถีใช้เทียบราศีบน ราศีล่าง เชี่ยงแซ และปฏิกิริยาที่เกิดขึ้นในดวงนี้</p>
+        <p className="chamber-inspector__kicker">{title ?? "หลักฐานบนแผนภาพ"}</p>
+        <p>{summary ?? "ดิถีเป็นจุดกลางของการอ่าน เสารอบนอกคือพื้นที่ที่ดิถีใช้เทียบราศีบน ราศีล่าง เชี่ยงแซ และปฏิกิริยาที่เกิดขึ้นในดวงนี้"}</p>
       </div>
     );
   }
@@ -205,15 +207,15 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
   return null;
 }
 
-export function ChamberInspector({ selection, variant, onClose }: ChamberInspectorProps) {
+export function ChamberInspector({ selection, variant, title, summary, onClose }: ChamberInspectorProps) {
   if (variant === "docked") {
     return (
       <aside className="chamber-inspector chamber-inspector--docked" aria-label="chamber inspector">
         <div className="chamber-inspector__head">
-          <p className="chamber-inspector__head-kicker">รายละเอียดที่เลือก</p>
+          <p className="chamber-inspector__head-kicker">{title ?? "หลักฐานที่เลือก"}</p>
         </div>
         <div className="chamber-inspector__scroll">
-          <InspectorBody selection={selection} />
+          <InspectorBody selection={selection} title={title} summary={summary} />
         </div>
       </aside>
     );
@@ -232,7 +234,7 @@ export function ChamberInspector({ selection, variant, onClose }: ChamberInspect
         >
           <div className="chamber-inspector__sheet-grip" aria-hidden />
           <div className="chamber-inspector__head">
-            <p className="chamber-inspector__head-kicker">รายละเอียดที่เลือก</p>
+            <p className="chamber-inspector__head-kicker">{title ?? "หลักฐานที่เลือก"}</p>
             <button
               type="button"
               className="chamber-inspector__close"
@@ -243,7 +245,7 @@ export function ChamberInspector({ selection, variant, onClose }: ChamberInspect
             </button>
           </div>
           <div className="chamber-inspector__scroll">
-            <InspectorBody selection={selection} />
+            <InspectorBody selection={selection} title={title} summary={summary} />
           </div>
         </motion.aside>
       )}

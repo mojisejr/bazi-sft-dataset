@@ -3,7 +3,10 @@
 import { useReactFlow } from "@xyflow/react";
 
 type ChamberCommandBarProps = {
+  kicker?: string;
   title: string;
+  subtitle?: string;
+  summary?: string;
   onBack: () => void;
 };
 
@@ -36,13 +39,18 @@ function FocusFitButtons() {
   );
 }
 
-export function ChamberCommandBar({ title, onBack }: ChamberCommandBarProps) {
+export function ChamberCommandBar({ kicker, title, subtitle, summary, onBack }: ChamberCommandBarProps) {
   return (
     <header className="chamber-command-bar" aria-label="chamber command bar">
       <button type="button" onClick={onBack} className="chamber-command-bar__back" aria-label="กลับไปหน้าสรุป">
         ← กลับสรุปดวง
       </button>
-      <p className="chamber-command-bar__title">{title}</p>
+      <div className="chamber-command-bar__heading">
+        {kicker ? <p className="chamber-command-bar__kicker">{kicker}</p> : null}
+        <p className="chamber-command-bar__title">{title}</p>
+        {subtitle ? <p className="chamber-command-bar__subtitle">{subtitle}</p> : null}
+        {summary ? <p className="chamber-command-bar__summary">{summary}</p> : null}
+      </div>
       <FocusFitButtons />
     </header>
   );

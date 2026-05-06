@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import type { BaseChartDetailItemValue } from "@/lib/bazi/schema-types";
+
 type LegendEntry = {
   schoolLabel: string;
   cssClass: string;
@@ -99,7 +101,11 @@ const ELEMENT_FLOW_ENTRIES: ElementFlowEntry[] = [
   },
 ];
 
-export function ChamberEdgeLegend() {
+type ChamberEdgeLegendProps = {
+  legendItems?: BaseChartDetailItemValue[];
+};
+
+export function ChamberEdgeLegend({ legendItems = [] }: ChamberEdgeLegendProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -117,6 +123,19 @@ export function ChamberEdgeLegend() {
 
       {!collapsed && (
         <div className="chamber-edge-legend__body">
+          <div className="chamber-edge-legend__section">
+            {legendItems.length > 0 && (
+              <div className="chamber-edge-legend__doctrine-copy">
+                {legendItems.slice(0, 4).map((item) => (
+                  <p key={`${item.label}-${item.value}`} className="chamber-edge-legend__doctrine-line">
+                    <strong>{item.label}</strong>
+                    <span>{item.value}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="chamber-edge-legend__section">
             <p className="chamber-edge-legend__section-title">สำนักปฏิกิริยา</p>
             <ul className="chamber-edge-legend__list">

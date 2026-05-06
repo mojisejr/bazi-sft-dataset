@@ -1,7 +1,3 @@
-"use client";
-
-import { useState } from "react";
-
 import type { BaseChartReactionBadgeValue } from "@/lib/bazi/schema-types";
 
 type TenGodCategory = {
@@ -70,7 +66,6 @@ type ChamberTenGodPanelProps = {
 };
 
 export function ChamberTenGodPanel({ roleBadges }: ChamberTenGodPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
   const categories = groupBadgesByCategory(roleBadges);
 
   if (categories.length === 0) {
@@ -78,36 +73,26 @@ export function ChamberTenGodPanel({ roleBadges }: ChamberTenGodPanelProps) {
   }
 
   return (
-    <>
-      <button
-        className="chamber-ten-god-toggle"
-        onClick={() => setIsOpen(!isOpen)}
-        aria-label={isOpen ? "ซ่อน 10 เทพ" : "แสดง 10 เทพ"}
-        title={isOpen ? "ซ่อน 10 เทพ" : "10 เทพ"}
-      >
-        {isOpen ? "×" : "十"}
-      </button>
-
-      {isOpen && (
-        <div className="chamber-ten-god-panel">
-          <h3 className="chamber-ten-god-panel__title">10 เทพ</h3>
-          <div className="chamber-ten-god-panel__categories">
-            {categories.map((category) => (
-              <div key={category.label} className="chamber-ten-god-category">
-                <h4 className="chamber-ten-god-category__label">{category.label}</h4>
-                <p className="chamber-ten-god-category__description">{category.description}</p>
-                <ul className="chamber-ten-god-category__badges">
-                  {category.badges.map((badge) => (
-                    <li key={badge.id} className="chamber-ten-god-badge">
-                      <span className="chamber-ten-god-badge__label">{badge.shortLabel ?? badge.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+    <section className="chamber-ten-god-panel" aria-label="10 เทพ">
+      <div className="chamber-ten-god-panel__head">
+        <p className="chamber-ten-god-panel__kicker">บทบาทต่อดิถี</p>
+        <h3 className="chamber-ten-god-panel__title">หมวด 10 เทพ</h3>
+      </div>
+      <div className="chamber-ten-god-panel__categories">
+        {categories.map((category) => (
+          <div key={category.label} className="chamber-ten-god-category">
+            <h4 className="chamber-ten-god-category__label">{category.label}</h4>
+            <p className="chamber-ten-god-category__description">{category.description}</p>
+            <ul className="chamber-ten-god-category__badges">
+              {category.badges.map((badge) => (
+                <li key={badge.id} className="chamber-ten-god-badge">
+                  <span className="chamber-ten-god-badge__label">{badge.shortLabel ?? badge.label}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      )}
-    </>
+        ))}
+      </div>
+    </section>
   );
 }
