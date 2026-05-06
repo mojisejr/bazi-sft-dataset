@@ -235,13 +235,10 @@ describe("buildSemanticChamberGraph", () => {
     const state = buildStubCalculatedState();
     const graph = buildSemanticChamberGraph(state);
 
-    const reactionEdges = graph.edges.filter(
-      (edge) => edge.data.layer === "inter-pillar-reaction",
-    );
-
-    const pairGroups = new Map<string, typeof reactionEdges>();
-    for (const edge of reactionEdges) {
-      const key = `${edge.source}->${edge.target}`;
+    const pairGroups = new Map<string, typeof graph.edges>();
+    for (const edge of graph.edges) {
+      const ids = [edge.source, edge.target].sort();
+      const key = `${ids[0]}<->${ids[1]}`;
       const group = pairGroups.get(key);
       if (group) {
         group.push(edge);
@@ -255,7 +252,7 @@ describe("buildSemanticChamberGraph", () => {
         expect(group[0].data.parallelOffset).toBe(0);
       } else {
         for (let index = 0; index < group.length; index += 1) {
-          expect(group[index].data.parallelOffset).toBe(index * 18);
+          expect(group[index].data.parallelOffset).toBe(index * 30);
         }
       }
     }

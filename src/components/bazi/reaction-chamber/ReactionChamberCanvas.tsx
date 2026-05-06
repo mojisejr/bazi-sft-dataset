@@ -109,10 +109,10 @@ function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
         markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
       } : {}),
       ...(isElementFlow && flowDir === "outward" ? {
-        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
+        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
       } : {}),
       ...(isElementFlow && flowDir === "inward" ? {
-        markerStart: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
+        markerStart: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
       } : {}),
     } satisfies Edge;
   });
