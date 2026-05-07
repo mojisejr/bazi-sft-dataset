@@ -1,0 +1,377 @@
+/* Reaction Chamber node skins and handle ownership */
+
+.chamber-node-pillar {
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--chamber-panel) 92%, transparent), var(--chamber-panel-soft)),
+    var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
+  border-radius: 24px;
+  padding: 13px 14px;
+  width: 230px;
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+}
+
+.chamber-node-pillar--outer-full {
+  min-height: 286px;
+}
+
+.chamber-node-pillar--focal {
+  border-color: var(--chamber-line-strong);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 28%, var(--surface-accent-soft-strong), transparent 54%),
+    var(--chamber-panel-strong);
+  box-shadow: 0 0 0 1px var(--chamber-line-strong) inset, 0 18px 52px color-mix(in srgb, var(--color-accent) 24%, transparent);
+}
+
+.chamber-node-pillar--selected {
+  border-color: var(--chamber-accent);
+  box-shadow: 0 0 0 1px var(--chamber-accent) inset, var(--chamber-shadow);
+}
+
+.chamber-node-pillar__kicker {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--chamber-muted);
+  text-align: center;
+}
+
+.chamber-node-pillar__ribbon-stack {
+  margin: 0;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.chamber-node-pillar__stem,
+.chamber-node-pillar__branch {
+  font-size: 33px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.chamber-node-pillar__branch {
+  color: var(--chamber-accent);
+}
+
+.chamber-node-pillar__translation {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chamber-muted);
+}
+
+.chamber-node-pillar__glyph-block {
+  width: 74px;
+  min-height: 74px;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 10px;
+  border-radius: 20px;
+  background: var(--surface-raised-soft);
+  box-shadow: inset 0 0 0 1px var(--surface-line-soft);
+}
+
+.chamber-node-pillar__glyph-block span:last-child,
+.chamber-node-pillar__anchor-branch span:last-child {
+  font-size: 12px;
+  color: var(--chamber-muted);
+}
+
+.chamber-node-pillar__glyph-block--branch {
+  background: color-mix(in srgb, var(--surface-success-soft) 70%, var(--surface-raised-soft));
+}
+
+.chamber-node-pillar__stage-row {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+
+.chamber-stage-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-success-soft) 68%, var(--surface-raised-soft));
+  border: 1px solid var(--chamber-line);
+  min-width: 76px;
+  text-align: center;
+}
+
+.chamber-stage-chip dt {
+  color: var(--chamber-muted);
+  font-size: 10px;
+}
+
+.chamber-stage-chip dd {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chamber-text);
+}
+
+.chamber-stage-chip--upper {
+  background: color-mix(in srgb, var(--surface-accent-soft) 75%, var(--surface-raised-soft));
+}
+
+.chamber-stage-chip--sitting {
+  background: color-mix(in srgb, var(--surface-success-soft) 78%, var(--surface-raised-soft));
+}
+
+.chamber-node-pillar--day-anchor {
+  width: 190px;
+  min-height: 190px;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  gap: 8px;
+  z-index: 3;
+}
+
+.chamber-node-pillar__anchor-core,
+.chamber-node-pillar__anchor-branch {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+}
+
+.chamber-node-pillar__anchor-core .chamber-node-pillar__stem {
+  font-size: 42px;
+}
+
+.chamber-node-pillar__anchor-branch {
+  padding-top: 2px;
+}
+
+.chamber-stage-chip--lower-only {
+  margin-top: 6px;
+  min-width: 120px;
+}
+
+.chamber-node-pillar__meaning {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.chamber-node-pillar__meaning p {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--chamber-muted);
+}
+
+.chamber-node-pillar__meaning ul,
+.chamber-node-pillar__roles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chamber-role-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  background: var(--surface-accent-soft);
+  border: 1px solid var(--chamber-line);
+}
+
+.chamber-role-chip span {
+  color: var(--chamber-muted);
+}
+
+.chamber-role-chip strong {
+  font-weight: 600;
+}
+
+.chamber-role-chip--neutralized {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.chamber-role-chip--more {
+  opacity: 0.7;
+}
+
+.chamber-node-handle {
+  background: var(--chamber-line-strong);
+  width: 5px;
+  height: 5px;
+  border: none;
+  opacity: 0;
+}
+
+.chamber-stem-node {
+  background: var(--chamber-panel);
+  border: 2px solid var(--chamber-accent);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  position: relative;
+}
+
+.chamber-stem-node--focal {
+  border-width: 3px;
+  box-shadow: 0 0 0 2px var(--chamber-accent), var(--chamber-shadow);
+}
+
+.chamber-stem-node--selected {
+  box-shadow: 0 0 0 2px var(--chamber-accent), 0 0 12px rgba(159, 83, 32, 0.3);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.chamber-stem-node__glyph {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.chamber-stem-node__translation {
+  font-size: 10px;
+  color: var(--chamber-muted);
+  line-height: 1;
+}
+
+.chamber-stem-node__pillar {
+  font-size: 9px;
+  color: var(--chamber-muted);
+  letter-spacing: 0.1em;
+  position: absolute;
+  bottom: -18px;
+  white-space: nowrap;
+}
+
+.chamber-stem-node__ten-god {
+  font-size: 8px;
+  color: var(--chamber-accent);
+  position: absolute;
+  top: -16px;
+  white-space: nowrap;
+  background: var(--chamber-panel-soft);
+  padding: 1px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--chamber-line);
+}
+
+.chamber-branch-node {
+  background: var(--chamber-panel-soft);
+  border: 2px solid var(--chamber-line);
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
+  position: relative;
+}
+
+.chamber-branch-node--focal {
+  border-color: var(--chamber-accent);
+  border-width: 3px;
+}
+
+.chamber-branch-node--selected {
+  box-shadow: 0 0 0 2px var(--chamber-accent), 0 0 12px rgba(159, 83, 32, 0.3);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.chamber-branch-node__glyph {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.chamber-branch-node__translation {
+  font-size: 10px;
+  color: var(--chamber-muted);
+  line-height: 1;
+}
+
+.chamber-branch-node__pillar {
+  font-size: 9px;
+  color: var(--chamber-muted);
+  letter-spacing: 0.1em;
+  position: absolute;
+  bottom: -18px;
+  white-space: nowrap;
+}
+
+.chamber-branch-node__stage {
+  font-size: 8px;
+  color: var(--chamber-muted);
+  position: absolute;
+  top: -16px;
+  white-space: nowrap;
+  background: var(--chamber-panel-soft);
+  padding: 1px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--chamber-line);
+}
+
+.chamber-node-marker {
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line-success);
+  border-radius: 999px;
+  padding: 4px 10px;
+  width: auto;
+  min-width: 60px;
+  max-width: 120px;
+  color: var(--chamber-text);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 200ms ease;
+}
+
+.chamber-node-marker--selected {
+  border-color: var(--chamber-accent);
+}
+
+.chamber-node-marker__label {
+  margin: 0;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.reaction-chamber-canvas .react-flow__nodes:has(.react-flow__node.selected) .react-flow__node:not(.selected) {
+  opacity: 0.52;
+  transition: opacity 180ms ease, transform 180ms ease, filter 180ms ease;
+}
+
+.reaction-chamber-canvas .react-flow__node.selected {
+  z-index: 24;
+  filter: saturate(1.02);
+}

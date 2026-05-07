@@ -5,179 +5,27 @@ import type {
 } from "@/lib/bazi/schema-types";
 import { ELEMENT_TH_TO_EN } from "@/lib/bazi/symbolic-engine.constants";
 
-export type SemanticPillarKey = "year" | "month" | "day" | "hour";
+import {
+  type SemanticChamberGraph,
+  type SemanticEdge,
+  type SemanticNode,
+  type SemanticPillarKey,
+  type SemanticSchoolCluster,
+  type SemanticOverlayTier,
+  getSemanticDayFocusNodeIds,
+  isFocalSemanticNode,
+} from "@/lib/bazi/semantic-chamber-graph";
 
-export type SemanticGraphLayer =
-  | "pillar-structure"
-  | "daymaster-meaning"
-  | "element-flow"
-  | "inter-pillar-reaction"
-  | "shen-sha-overlay";
-
-export type SemanticOverlayTier = "visible" | "secondary";
-
-export type SemanticNodeKind = "pillar" | "marker" | "stem-node" | "branch-node";
-
-export type SemanticPillarDisplayMode = "day-anchor" | "outer-full";
-
-export type PillarStageSlot = {
-  label: string;
-  value: string;
-  source: "upper" | "sitting" | "lower";
+export type {
+  SemanticChamberGraph,
+  SemanticEdge,
+  SemanticNode,
+  SemanticPillarKey,
+  SemanticSchoolCluster,
+  SemanticOverlayTier,
 };
 
-export type PillarMeaningSlot = {
-  source: "stem" | "branch";
-  symbol: string;
-  translation?: string;
-  relationLabel: string;
-  meaningShort: string;
-  badge: BaseChartReactionBadgeValue;
-};
-
-export type SemanticPillarNodeData = {
-  kind: "pillar";
-  layer: "pillar-structure";
-  pillarKey: SemanticPillarKey;
-  pillarLabel: string;
-  displayMode: SemanticPillarDisplayMode;
-  stem: string;
-  branch: string;
-  stemTranslation?: string;
-  branchTranslation?: string;
-  isFocal: boolean;
-  stageSlots: PillarStageSlot[];
-  meaningSlots: PillarMeaningSlot[];
-};
-
-export type SemanticMarkerNodeData = {
-  kind: "marker";
-  layer: "shen-sha-overlay";
-  tier: SemanticOverlayTier;
-  badge: BaseChartReactionBadgeValue;
-  displayLabel: string;
-  attachedPillarKey: SemanticPillarKey | null;
-};
-
-export type SemanticStemNodeData = {
-  kind: "stem-node";
-  layer: "pillar-structure";
-  pillarKey: SemanticPillarKey;
-  pillarLabel: string;
-  stem: string;
-  stemTranslation?: string;
-  element: string;
-  isFocal: boolean;
-  tenGod?: string;
-};
-
-export type SemanticBranchNodeData = {
-  kind: "branch-node";
-  layer: "pillar-structure";
-  pillarKey: SemanticPillarKey;
-  pillarLabel: string;
-  branch: string;
-  branchTranslation?: string;
-  element: string;
-  isFocal: boolean;
-  tenGod?: string;
-  stageDisplay?: string;
-};
-
-export type SemanticNodeData = SemanticPillarNodeData | SemanticMarkerNodeData | SemanticStemNodeData | SemanticBranchNodeData;
-
-export type SemanticNode = {
-  id: string;
-  type: "chamberPillar" | "chamberMarker" | "chamberStemNode" | "chamberBranchNode";
-  data: SemanticNodeData;
-  position: { x: number; y: number };
-  width?: number;
-  height?: number;
-};
-
-export type SemanticEdgeData = {
-  layer: Exclude<SemanticGraphLayer, "pillar-structure">;
-  badge: BaseChartReactionBadgeValue;
-  readingOrder: number;
-  schoolCluster: SemanticSchoolCluster | null;
-  sourceDetail?: string;
-  targetDetail?: string;
-  tier?: string;
-  parallelOffset?: number;
-  schoolLabel?: string;
-  flowCycleType?: "generating" | "controlling" | "neutral";
-  flowDirection?: "outward" | "inward" | "none";
-  flowLabel?: string;
-  flowElement?: string;
-};
-
-export type SemanticEdge = {
-  id: string;
-  source: string;
-  target: string;
-  sourceHandle?: string;
-  targetHandle?: string;
-  data: SemanticEdgeData;
-  label?: string;
-  className?: string;
-};
-
-export type SemanticChamberGraph = {
-  nodes: SemanticNode[];
-  edges: SemanticEdge[];
-  schoolClusters: SemanticSchoolCluster[];
-  hiddenSecondaryOverlays: BaseChartReactionBadgeValue[];
-};
-
-export function isFocalSemanticNode(node: SemanticNode): boolean {
-  return "isFocal" in node.data && Boolean(node.data.isFocal);
-}
-
-export function getSemanticDayFocusNodeIds(graph: SemanticChamberGraph): string[] {
-  const ids = graph.nodes
-    .filter((node) => {
-      if (!isFocalSemanticNode(node)) {
-        return false;
-      }
-
-      if (node.data.kind === "stem-node" || node.data.kind === "branch-node") {
-        return node.data.pillarKey === "day";
-      }
-
-      if (node.data.kind === "pillar") {
-        return node.data.pillarKey === "day";
-      }
-
-      return false;
-    })
-    .sort((left, right) => {
-      const priority = (node: SemanticNode) => {
-        if (node.data.kind === "stem-node") return 0;
-        if (node.data.kind === "branch-node") return 1;
-        return 2;
-      };
-
-      return priority(left) - priority(right);
-    })
-    .map((node) => node.id);
-
-  if (ids.length > 0) {
-    return ids;
-  }
-
-  return graph.nodes.some((node) => node.id === "pillar:day") ? ["pillar:day"] : [];
-}
-
-export type SemanticSchoolCluster = {
-  id: string;
-  schoolLabel: string;
-  title: string;
-  humanSummary: string;
-  badgeIds: string[];
-  sourcePillarKeys: SemanticPillarKey[];
-  branchParticipantLabels: string[];
-  accentMarkerLabels: string[];
-};
+export { getSemanticDayFocusNodeIds, isFocalSemanticNode };
 
 const PILLAR_KEYS: SemanticPillarKey[] = ["year", "month", "day", "hour"];
 
@@ -239,52 +87,6 @@ const PILLAR_LABEL_REVERSE: Record<string, SemanticPillarKey> = {
   hour: "hour",
 };
 
-type NodePosition = { x: number; y: number };
-
-const GRID_PILLAR_ORDER: SemanticPillarKey[] = ["hour", "day", "month", "year"];
-const GRID_COLUMN_SPACING = 180;
-const GRID_ROW_SPACING = 200;
-const GRID_ORIGIN_X = 100;
-const GRID_STEM_ROW_Y = 100;
-const GRID_BRANCH_ROW_Y = GRID_STEM_ROW_Y + GRID_ROW_SPACING;
-const GRID_MARKER_ROW_Y = GRID_BRANCH_ROW_Y + GRID_ROW_SPACING + 40;
-
-function gridColumnIndex(pillarKey: SemanticPillarKey): number {
-  return GRID_PILLAR_ORDER.indexOf(pillarKey);
-}
-
-function computeStemNodePositions(): Record<SemanticPillarKey, NodePosition> {
-  const positions: Partial<Record<SemanticPillarKey, NodePosition>> = {};
-  for (const key of PILLAR_KEYS) {
-    const col = gridColumnIndex(key);
-    positions[key] = {
-      x: GRID_ORIGIN_X + col * GRID_COLUMN_SPACING,
-      y: GRID_STEM_ROW_Y,
-    };
-  }
-  return positions as Record<SemanticPillarKey, NodePosition>;
-}
-
-function computeBranchNodePositions(): Record<SemanticPillarKey, NodePosition> {
-  const positions: Partial<Record<SemanticPillarKey, NodePosition>> = {};
-  for (const key of PILLAR_KEYS) {
-    const col = gridColumnIndex(key);
-    positions[key] = {
-      x: GRID_ORIGIN_X + col * GRID_COLUMN_SPACING,
-      y: GRID_BRANCH_ROW_Y,
-    };
-  }
-  return positions as Record<SemanticPillarKey, NodePosition>;
-}
-
-function computeMarkerPosition(pillarKey: SemanticPillarKey): NodePosition {
-  const col = gridColumnIndex(pillarKey);
-  return {
-    x: GRID_ORIGIN_X + col * GRID_COLUMN_SPACING,
-    y: GRID_MARKER_ROW_Y,
-  };
-}
-
 function pillarNodeId(pillarKey: SemanticPillarKey): string {
   return `pillar:${pillarKey}`;
 }
@@ -335,9 +137,9 @@ function formatParticipantForGraph(participant: BaseChartParticipantValue): stri
 function getParticipantPillarKeys(badge: BaseChartReactionBadgeValue): SemanticPillarKey[] {
   const keys = new Set<SemanticPillarKey>();
   badge.participants.forEach((participant) => {
-    const pillarKey = resolvePillarKeyFromBadgeParticipant(participant);
-    if (pillarKey) {
-      keys.add(pillarKey);
+    const key = resolvePillarKeyFromBadgeParticipant(participant);
+    if (key) {
+      keys.add(key);
     }
   });
 
@@ -416,8 +218,6 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
     return [];
   }
 
-  const stemPositions = computeStemNodePositions();
-  const branchPositions = computeBranchNodePositions();
   const nodes: SemanticNode[] = [];
 
   for (const pillarKey of PILLAR_KEYS) {
@@ -442,7 +242,7 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
         isFocal,
         tenGod: stemTenGod,
       },
-      position: stemPositions[pillarKey],
+      position: { x: 0, y: 0 },
       width: 80,
       height: 80,
     } satisfies SemanticNode);
@@ -462,7 +262,7 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
         tenGod: undefined,
         stageDisplay: pillar.sittingStage ?? pillar.lowerStageDisplay,
       },
-      position: branchPositions[pillarKey],
+      position: { x: 0, y: 0 },
       width: 80,
       height: 80,
     } satisfies SemanticNode);
@@ -503,24 +303,18 @@ function buildMarkerNodes(markerBadges: BaseChartReactionBadgeValue[]): Semantic
         ? resolvePillarKeyFromBadgeParticipant(badge.participants[0])
         : null;
 
-      const markerPosition = attachedPillarKey
-        ? computeMarkerPosition(attachedPillarKey)
-        : { x: 640, y: 620 };
-
-      const data: SemanticMarkerNodeData = {
-        kind: "marker",
-        layer: "shen-sha-overlay",
-        tier: "visible",
-        badge,
-        displayLabel: getOverlayDisplayLabel(badge),
-        attachedPillarKey,
-      };
-
       return {
         id: markerNodeId(badge),
         type: "chamberMarker",
-        data,
-        position: markerPosition,
+        data: {
+          kind: "marker",
+          layer: "shen-sha-overlay",
+          tier: "visible",
+          badge,
+          displayLabel: getOverlayDisplayLabel(badge),
+          attachedPillarKey,
+        },
+        position: { x: 0, y: 0 },
         width: 90,
         height: 32,
       } satisfies SemanticNode;
@@ -674,53 +468,15 @@ function normalizeSchoolToEdgeClass(schoolLabel: string | undefined, badge?: Bas
   return "";
 }
 
-function resolveInteractionHandles(
-  sourcePillarKey: SemanticPillarKey,
-  targetPillarKey: SemanticPillarKey,
-  sourceIsStem: boolean,
-  targetIsStem: boolean,
-): { sourceHandle: string; targetHandle: string } {
-  const sourceCol = gridColumnIndex(sourcePillarKey);
-  const targetCol = gridColumnIndex(targetPillarKey);
-  const delta = targetCol - sourceCol;
-  const isCrossType = sourceIsStem !== targetIsStem;
-
-  if (isCrossType && delta === 0) {
-    return { sourceHandle: "source-bottom", targetHandle: "target-top" };
-  }
-
-  if (isCrossType) {
-    if (Math.abs(delta) >= 2) {
-      return { sourceHandle: "source-top", targetHandle: "target-top" };
-    }
-    if (delta < 0) {
-      return { sourceHandle: "source-left", targetHandle: "target-right" };
-    }
-    return { sourceHandle: "source-right", targetHandle: "target-left" };
-  }
-
-  if (sourceIsStem) {
-    if (Math.abs(delta) >= 2) {
-      return { sourceHandle: "source-top", targetHandle: "target-top" };
-    }
-    if (delta < 0) {
-      return { sourceHandle: "source-left", targetHandle: "target-right" };
-    }
-    return { sourceHandle: "source-right", targetHandle: "target-left" };
-  }
-
-  if (Math.abs(delta) >= 2) {
-    return { sourceHandle: "source-top", targetHandle: "target-top" };
-  }
-  if (delta < 0) {
-    return { sourceHandle: "source-left", targetHandle: "target-right" };
-  }
-  return { sourceHandle: "source-right", targetHandle: "target-left" };
-}
-
 function buildInteractionEdges(
   badges: BaseChartReactionBadgeValue[],
   visibleMarkerBadges: BaseChartReactionBadgeValue[],
+  resolveHandles: (
+    sourcePillarKey: SemanticPillarKey,
+    targetPillarKey: SemanticPillarKey,
+    sourceIsStem: boolean,
+    targetIsStem: boolean,
+  ) => { sourceHandle: string; targetHandle: string },
 ): SemanticEdge[] {
   const edges: SemanticEdge[] = [];
 
@@ -745,7 +501,7 @@ function buildInteractionEdges(
       const sourceNodeId = sourceIsStem ? stemNodeId(source.pillarKey) : branchNodeId(source.pillarKey);
       const targetNodeId = targetIsStem ? stemNodeId(target.pillarKey) : branchNodeId(target.pillarKey);
 
-      const { sourceHandle, targetHandle } = resolveInteractionHandles(
+      const { sourceHandle, targetHandle } = resolveHandles(
         source.pillarKey,
         target.pillarKey,
         sourceIsStem,
@@ -824,48 +580,15 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
   return edges;
 }
 
-function shouldOffsetLayer(layer: SemanticEdge["data"]["layer"]): boolean {
-  return layer === "inter-pillar-reaction";
-}
-
-function getOffsetGroupKey(edge: SemanticEdge): string {
-  return `${edge.source}->${edge.target}`;
-}
-
-function getOffsetStride(layer: SemanticEdge["data"]["layer"]): number {
-  if (layer === "inter-pillar-reaction") {
-    return 18;
-  }
-
-  return 0;
-}
-
-function assignParallelOffsets(edges: SemanticEdge[]): void {
-  const groups = new Map<string, SemanticEdge[]>();
-
-  for (const edge of edges) {
-    edge.data.parallelOffset = 0;
-    if (!shouldOffsetLayer(edge.data.layer)) continue;
-
-    const key = getOffsetGroupKey(edge);
-    const group = groups.get(key);
-    if (group) {
-      group.push(edge);
-    } else {
-      groups.set(key, [edge]);
-    }
-  }
-
-  for (const group of groups.values()) {
-    if (group.length <= 1) continue;
-    const stride = getOffsetStride(group[0].data.layer);
-    for (let index = 0; index < group.length; index += 1) {
-      group[index].data.parallelOffset = index * stride;
-    }
-  }
-}
-
-export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): SemanticChamberGraph | null {
+export function buildChamberSemanticModel(
+  calculatedState: CalculatedStateValue,
+  resolveHandles: (
+    sourcePillarKey: SemanticPillarKey,
+    targetPillarKey: SemanticPillarKey,
+    sourceIsStem: boolean,
+    targetIsStem: boolean,
+  ) => { sourceHandle: string; targetHandle: string },
+): SemanticChamberGraph | null {
   const reading = calculatedState.baseChartReading;
 
   if (!reading) {
@@ -883,39 +606,12 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): 
     edges: [
       ...buildDaymasterRelationEdges(reading.roleBadges),
       ...buildElementFlowEdges(reading.roleBadges),
-      ...buildInteractionEdges(interactionBadges, visibleMarkerBadges),
+      ...buildInteractionEdges(interactionBadges, visibleMarkerBadges, resolveHandles),
       ...buildOverlayEdges(reading.markerBadges),
     ],
     schoolClusters: interactionBadges.map((badge) => buildSchoolClusterForBadge(badge, visibleMarkerBadges)),
     hiddenSecondaryOverlays,
   };
-}
-
-export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue): SemanticChamberGraph {
-  const graph = buildSemanticGraphModel(calculatedState);
-
-  if (!graph) {
-    return { nodes: [], edges: [], schoolClusters: [], hiddenSecondaryOverlays: [] };
-  }
-
-  const stemPositions = computeStemNodePositions();
-  const branchPositions = computeBranchNodePositions();
-
-  for (const node of graph.nodes) {
-    if (node.data.kind === "stem-node") {
-      node.position = stemPositions[node.data.pillarKey];
-    } else if (node.data.kind === "branch-node") {
-      node.position = branchPositions[node.data.pillarKey];
-    } else if (node.data.kind === "marker" && node.data.attachedPillarKey) {
-      node.position = computeMarkerPosition(node.data.attachedPillarKey);
-    } else if (node.data.kind === "marker") {
-      node.position = { x: 640, y: 620 };
-    }
-  }
-
-  assignParallelOffsets(graph.edges);
-
-  return graph;
 }
 
 export const __testing__ = {
@@ -924,7 +620,4 @@ export const __testing__ = {
   resolvePillarKeyFromString,
   getOverlayTier,
   getOverlayDisplayLabel,
-  shouldOffsetLayer,
-  getOffsetGroupKey,
-  getOffsetStride,
 };

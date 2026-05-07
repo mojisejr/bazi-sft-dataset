@@ -1,0 +1,363 @@
+/* Reaction Chamber inspector and decode panels */
+
+.chamber-ten-god-toggle {
+  position: absolute;
+  top: 60px;
+  left: 12px;
+  z-index: 10;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
+  color: var(--chamber-text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 200ms ease, border-color 200ms ease;
+  backdrop-filter: blur(14px);
+}
+
+.chamber-ten-god-toggle:hover {
+  background: var(--surface-accent-soft);
+  border-color: var(--chamber-line-strong);
+}
+
+.chamber-ten-god-panel {
+  position: absolute;
+  top: 100px;
+  left: 12px;
+  z-index: 10;
+  width: 240px;
+  max-height: calc(100vh - 160px);
+  overflow-y: auto;
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: var(--chamber-shadow);
+  backdrop-filter: blur(18px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.chamber-ten-god-panel__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--chamber-accent);
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--chamber-line);
+}
+
+.chamber-ten-god-panel__categories {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chamber-ten-god-category {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chamber-ten-god-category__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--chamber-text);
+}
+
+.chamber-ten-god-category__description {
+  margin: 0;
+  font-size: 11px;
+  color: var(--chamber-muted);
+  line-height: 1.4;
+}
+
+.chamber-ten-god-category__badges {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chamber-ten-god-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  background: var(--chamber-panel-soft);
+  border: 1px solid var(--chamber-line);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--chamber-text);
+}
+
+.chamber-ten-god-badge__label {
+  font-weight: 500;
+}
+
+@media (max-width: 899px) {
+  .chamber-ten-god-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    width: 100%;
+    max-height: 40vh;
+    border-radius: 18px 18px 0 0;
+    border-bottom: none;
+  }
+
+  .chamber-ten-god-toggle {
+    top: auto;
+    bottom: 12px;
+    left: 12px;
+  }
+}
+
+.chamber-inspector {
+  display: flex;
+  flex-direction: column;
+  background: var(--chamber-panel);
+  border-left: 1px solid var(--chamber-line);
+  color: var(--chamber-text);
+}
+
+.chamber-inspector--docked {
+  width: 360px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.chamber-inspector--sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 70vh;
+  border-left: none;
+  border-top: 1px solid var(--chamber-line);
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+  z-index: 35;
+  box-shadow: var(--chamber-shadow);
+}
+
+.chamber-inspector__sheet-grip {
+  width: 44px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-line-emphasis);
+  margin: 10px auto 4px;
+}
+
+.chamber-inspector__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--chamber-line);
+}
+
+.chamber-inspector__head-kicker {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__close {
+  appearance: none;
+  background: var(--chamber-panel-soft);
+  border: 1px solid var(--chamber-line);
+  color: inherit;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.chamber-inspector__scroll {
+  overflow-y: auto;
+  padding: 16px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.chamber-inspector__placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__kicker {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chamber-inspector__school {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chamber-accent);
+}
+
+.chamber-inspector__summary,
+.chamber-inspector__explanation {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chamber-text);
+}
+
+.chamber-inspector__reading-order {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chamber-accent);
+}
+
+.chamber-inspector__details {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.chamber-inspector__details--doctrine {
+  padding-top: 10px;
+  border-top: 1px solid var(--chamber-line);
+}
+
+.chamber-inspector__stage-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.chamber-inspector__stage-grid dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 12px;
+}
+
+.chamber-inspector__detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chamber-inspector__detail-row dt {
+  font-size: 11px;
+  color: var(--chamber-muted);
+  letter-spacing: 0.1em;
+}
+
+.chamber-inspector__detail-row dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chamber-text);
+}
+
+.chamber-inspector__participants ul,
+.chamber-inspector__roles ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chamber-inspector__roles li {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.chamber-inspector__role-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface-accent-soft);
+  border: 1px solid var(--chamber-line);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.chamber-inspector__role-chip--neutralized {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.chamber-inspector__role-meaning {
+  font-size: 12px;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__section-title {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__pillar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chamber-inspector__glyphs {
+  display: flex;
+  gap: 10px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.chamber-inspector__translation {
+  margin: 0;
+  font-size: 12px;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--chamber-muted);
+}
+
+@media (max-width: 900px) {
+  .chamber-node-pillar {
+    width: 235px;
+  }
+
+  .chamber-node-pillar--day-anchor {
+    width: 200px;
+    min-height: 200px;
+  }
+
+  .chamber-node-pillar__stem,
+  .chamber-node-pillar__branch {
+    font-size: 32px;
+  }
+}

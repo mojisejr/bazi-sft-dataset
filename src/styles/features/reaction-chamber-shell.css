@@ -1,0 +1,134 @@
+/* Reaction Chamber shell and layout ownership */
+
+.reaction-chamber-shell {
+  --chamber-shell-bg:
+    var(--app-bg-layer-1),
+    var(--app-bg-layer-2),
+    linear-gradient(180deg, var(--surface-panel-strong) 0%, var(--color-canvas) 100%);
+  --chamber-canvas-bg:
+    radial-gradient(circle at top left, var(--surface-accent-soft-strong), transparent 26%),
+    radial-gradient(circle at bottom right, var(--surface-success-soft), transparent 24%),
+    linear-gradient(180deg, var(--ref-color-sand-150) 0%, var(--color-canvas) 100%);
+  --chamber-panel: var(--surface-panel-strong);
+  --chamber-panel-soft: var(--surface-raised-soft);
+  --chamber-panel-strong: var(--surface-raised-strong);
+  --chamber-line: var(--surface-line-soft);
+  --chamber-line-strong: var(--surface-accent-line-strong);
+  --chamber-line-success: var(--surface-success-line);
+  --chamber-text: var(--color-text-primary);
+  --chamber-muted: var(--color-text-muted);
+  --chamber-accent: var(--color-accent);
+  --chamber-shadow: var(--shadow-panel);
+  --chamber-edge-combination: var(--edge-combination);
+  --chamber-edge-clash: var(--edge-clash);
+  --chamber-edge-harm: var(--edge-harm);
+  --chamber-edge-destruction: var(--edge-destruction);
+  --chamber-edge-punishment: var(--edge-punishment);
+  --chamber-edge-stem-combination: var(--edge-stem-combination);
+  --chamber-edge-stem-clash: var(--edge-stem-clash);
+  --chamber-element-wood: var(--element-wood);
+  --chamber-element-fire: var(--element-fire);
+  --chamber-element-earth: var(--element-earth);
+  --chamber-element-metal: var(--element-metal);
+  --chamber-element-water: var(--element-water);
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--chamber-shell-bg);
+  color: var(--chamber-text);
+  z-index: 30;
+  overflow: hidden;
+}
+
+.reaction-chamber-shell--empty {
+  position: static;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+.reaction-chamber-shell__empty-card {
+  max-width: 480px;
+  padding: 28px 32px;
+  border-radius: 22px;
+  background: var(--chamber-panel);
+  border: 1px solid var(--chamber-line);
+  box-shadow: var(--chamber-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: center;
+}
+
+.chamber-command-bar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--chamber-line);
+  background: linear-gradient(180deg, var(--chamber-panel) 0%, var(--chamber-panel-soft) 100%);
+  backdrop-filter: blur(14px);
+}
+
+.chamber-command-bar__back {
+  appearance: none;
+  background: var(--chamber-panel-soft);
+  border: 1px solid var(--chamber-line);
+  color: inherit;
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 200ms ease;
+}
+
+.chamber-command-bar__back:hover {
+  background: var(--surface-accent-soft);
+}
+
+.chamber-command-bar__title {
+  margin: 0;
+  text-align: center;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--chamber-muted);
+}
+
+.chamber-command-bar__viewport-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chamber-command-bar__action {
+  appearance: none;
+  background: var(--chamber-panel-soft);
+  color: inherit;
+  border: 1px solid var(--chamber-line);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.chamber-command-bar__action:hover {
+  background: var(--surface-accent-soft);
+  border-color: var(--chamber-line-strong);
+}
+
+.reaction-chamber-shell__viewport {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.reaction-chamber-canvas {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  background: var(--chamber-canvas-bg);
+}

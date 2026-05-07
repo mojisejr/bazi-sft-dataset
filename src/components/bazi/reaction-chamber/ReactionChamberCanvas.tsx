@@ -4,12 +4,9 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Background,
   Controls,
-  MarkerType,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Edge,
-  type Node,
   type NodeMouseHandler,
   type EdgeMouseHandler,
   type OnSelectionChangeParams,
@@ -23,6 +20,7 @@ import type {
   SemanticNode,
 } from "@/lib/bazi/semantic-chamber-graph";
 import { getSemanticDayFocusNodeIds } from "@/lib/bazi/semantic-chamber-graph";
+import { assignChamberGraphLayout } from "@/lib/bazi/chamber-layout";
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
@@ -30,6 +28,7 @@ import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemN
 import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
 import { ChamberBezierEdge } from "@/components/bazi/reaction-chamber/ChamberSmoothStepEdge";
 import { ChamberEdgeLegend } from "@/components/bazi/reaction-chamber/ChamberEdgeLegend";
+import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 
 const NODE_TYPES = {
   chamberPillar: ChamberPillarNode,
@@ -53,72 +52,6 @@ type ReactionChamberCanvasProps = {
   onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
 
-function computeGraphLayout(graph: SemanticChamberGraph): Map<string, { x: number; y: number }> {
-  const positionMap = new Map<string, { x: number; y: number }>();
-  graph.nodes.forEach((node) => {
-    positionMap.set(node.id, node.position);
-  });
-
-  return positionMap;
-}
-
-function toReactFlowNodes(graph: SemanticChamberGraph, positions: Map<string, { x: number; y: number }>): Node[] {
-  return graph.nodes.map((node) => {
-    const layoutPosition = positions.get(node.id);
-    const fallbackPosition = node.position;
-
-    return {
-      id: node.id,
-      type: node.type,
-      data: node.data as unknown as Record<string, unknown>,
-      position: layoutPosition ?? fallbackPosition,
-      draggable: false,
-      selectable: true,
-    } satisfies Node;
-  });
-}
-
-function toReactFlowEdges(graph: SemanticChamberGraph): Edge[] {
-  return graph.edges.map((edge) => {
-    const isReaction = edge.data.layer === "inter-pillar-reaction";
-    const isElementFlow = edge.data.layer === "element-flow";
-    const useBezier = isReaction || isElementFlow;
-    const flowDir = isElementFlow
-      ? (edge.data as unknown as { flowDirection?: string }).flowDirection
-      : undefined;
-
-    let zIndex = 6;
-    if (isElementFlow) zIndex = 10;
-    else if (edge.data.layer === "shen-sha-overlay") zIndex = 18;
-    else if (isReaction) zIndex = 20;
-
-    return {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      targetHandle: edge.targetHandle,
-      label: edge.label,
-      className: edge.className,
-      data: edge.data as unknown as Record<string, unknown>,
-      selectable: true,
-      focusable: true,
-      type: useBezier ? "chamberBezier" : "smoothstep",
-      zIndex,
-      interactionWidth: isReaction ? 20 : 12,
-      ...(isReaction ? {
-        markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14 },
-      } : {}),
-      ...(isElementFlow && flowDir === "outward" ? {
-        markerEnd: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
-      } : {}),
-      ...(isElementFlow && flowDir === "inward" ? {
-        markerStart: { type: MarkerType.ArrowClosed, width: 12, height: 12 },
-      } : {}),
-    } satisfies Edge;
-  });
-}
-
 function ReactionChamberCanvasInner({
   graph,
   onSelectionChange,
@@ -127,16 +60,17 @@ function ReactionChamberCanvasInner({
   const reactFlowInstance = useReactFlow();
   const focusFitRef = useRef(false);
 
-  const layoutPositions = useMemo(() => computeGraphLayout(graph), [graph]);
-  const nodes = useMemo(() => toReactFlowNodes(graph, layoutPositions), [graph, layoutPositions]);
-  const edges = useMemo(() => toReactFlowEdges(graph), [graph]);
+  const renderModel = useMemo(() => {
+    const positions = assignChamberGraphLayout(graph);
+    return buildChamberRenderModel(graph, positions);
+  }, [graph]);
 
   useEffect(() => {
     focusFitRef.current = false;
   }, [graph]);
 
   useEffect(() => {
-    if (nodes.length === 0 || focusFitRef.current) {
+    if (renderModel.nodes.length === 0 || focusFitRef.current) {
       return;
     }
 
@@ -147,7 +81,7 @@ function ReactionChamberCanvasInner({
       reactFlowInstance.fitView({ padding: 0.14, duration: 400 });
       focusFitRef.current = true;
     }
-  }, [graph, nodes.length, reactFlowInstance]);
+  }, [graph, renderModel.nodes.length, reactFlowInstance]);
 
   const handleSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
@@ -211,8 +145,8 @@ function ReactionChamberCanvasInner({
   return (
     <div className="reaction-chamber-canvas">
       <ReactFlow
-        nodes={nodes}
-        edges={edges}
+        nodes={renderModel.nodes}
+        edges={renderModel.edges}
         nodeTypes={NODE_TYPES}
         edgeTypes={EDGE_TYPES}
         fitView
