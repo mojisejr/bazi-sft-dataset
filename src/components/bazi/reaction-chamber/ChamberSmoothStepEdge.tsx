@@ -12,6 +12,12 @@ type ChamberBezierEdgeData = {
   flowDirection?: FlowDirection;
   flowLabel?: string;
   flowElement?: string;
+  inlineLabel?: string;
+  inlineDirectionLabel?: string;
+  inlineDirectionSymbol?: string;
+  inlineStrengthLabel?: string;
+  showInlineLabel?: boolean;
+  isRevealed?: boolean;
 };
 
 const RF_INTERNAL = new Set([
@@ -122,10 +128,10 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
         path={edgePath}
         {...filtered}
       />
-      {data?.schoolLabel && (
+      {data?.showInlineLabel && data.inlineLabel && (
         <EdgeLabelRenderer>
           <div
-            className="chamber-edge-pill"
+            className="chamber-edge-inline-label"
             style={{
               position: "absolute",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
@@ -133,10 +139,16 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
             }}
             data-school={data.schoolLabel}
             data-tier={data.tier ?? ""}
+            data-direction={data.inlineDirectionLabel ?? ""}
           >
-            <span className="chamber-edge-pill__label">{data.schoolLabel}</span>
-            {data.tier === "secondary" && <span className="chamber-edge-pill__tier">(รอง)</span>}
-            {data.tier === "tertiary" && <span className="chamber-edge-pill__tier">(เสริม)</span>}
+            <span className="chamber-edge-inline-label__rail">
+              <span className="chamber-edge-inline-label__direction">{data.inlineDirectionSymbol ?? "•"}</span>
+              <span className="chamber-edge-inline-label__label">{data.inlineLabel}</span>
+            </span>
+            <span className="chamber-edge-inline-label__meta">
+              {data.inlineDirectionLabel}
+              {data.inlineStrengthLabel ? ` · ${data.inlineStrengthLabel}` : ""}
+            </span>
           </div>
         </EdgeLabelRenderer>
       )}

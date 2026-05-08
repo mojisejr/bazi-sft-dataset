@@ -89,7 +89,7 @@ export function ReactionChamberShell() {
         <ChamberCommandBar title={title} onBack={() => router.push("/")} graph={graph} />
 
         <div className="reaction-chamber-shell__viewport">
-            <ReactionChamberCanvas graph={graph} selection={selection} onSelectionChange={setSelection} />
+            <ReactionChamberCanvas graph={graph} selection={selection} relationBundle={relationBundle} onSelectionChange={setSelection} />
             <ChamberTenGodPanel roleBadges={roleBadges} />
             {variant === "docked" && (
               <ChamberInspector selection={selection} relationBundle={relationBundle} variant="docked" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />

@@ -256,40 +256,52 @@
   transition: stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
 }
 
-.chamber-edge-pill {
+.chamber-edge-inline-label {
   pointer-events: none;
   display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 8px 5px;
+  border-radius: 12px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
-  background: color-mix(in srgb, var(--chamber-panel-strong) 92%, transparent);
+  background: color-mix(in srgb, var(--chamber-panel-strong) 94%, transparent);
   border: 1px solid var(--chamber-line);
   box-shadow: 0 2px 8px rgba(76, 48, 27, 0.1);
   backdrop-filter: blur(8px);
   z-index: 25;
 }
 
-.chamber-edge-pill__label {
+.chamber-edge-inline-label__rail {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.chamber-edge-inline-label__direction {
+  color: var(--chamber-accent);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.chamber-edge-inline-label__label {
   color: var(--chamber-text);
 }
 
-.chamber-edge-pill__tier {
+.chamber-edge-inline-label__meta {
   font-weight: 400;
   font-size: 9px;
   color: var(--chamber-muted);
 }
 
-.chamber-edge-pill[data-tier="secondary"] {
+.chamber-edge-inline-label[data-tier="secondary"] {
   background: color-mix(in srgb, var(--chamber-accent) 8%, var(--chamber-panel-strong) 92%);
   border-color: color-mix(in srgb, var(--chamber-accent) 25%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-tier="tertiary"] {
+.chamber-edge-inline-label[data-tier="tertiary"] {
   background: color-mix(in srgb, var(--chamber-muted) 6%, var(--chamber-panel-strong) 94%);
   border-color: color-mix(in srgb, var(--chamber-muted) 20%, var(--chamber-line));
   opacity: 0.78;
@@ -300,33 +312,33 @@
   display: none;
 }
 
-.chamber-edge-pill[data-school="ภาคี"],
-.chamber-edge-pill[data-school="ราศีบน"] {
+.chamber-edge-inline-label[data-school="ภาคี"],
+.chamber-edge-inline-label[data-school="ราศีบน"] {
   border-color: color-mix(in srgb, var(--chamber-edge-combination) 40%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-school="ชง"] {
+.chamber-edge-inline-label[data-school="ชง"] {
   border-color: color-mix(in srgb, var(--chamber-edge-clash) 50%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-school="ไห่"] {
+.chamber-edge-inline-label[data-school="ไห่"] {
   border-color: color-mix(in srgb, var(--chamber-edge-harm) 45%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-school="ผั่ว"] {
+.chamber-edge-inline-label[data-school="ผั่ว"] {
   border-color: color-mix(in srgb, var(--chamber-edge-destruction) 50%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-school="เฮ้ง"],
-.chamber-edge-pill[data-school="ซำเฮ้ง"] {
+.chamber-edge-inline-label[data-school="เฮ้ง"],
+.chamber-edge-inline-label[data-school="ซำเฮ้ง"] {
   border-color: color-mix(in srgb, var(--chamber-edge-punishment) 45%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-school="ฟ้าภาคี"] {
+.chamber-edge-inline-label[data-school="ฟ้าภาคี"] {
   border-color: color-mix(in srgb, var(--chamber-edge-stem-combination) 45%, var(--chamber-line));
 }
 
-.chamber-edge-pill[data-school="ฟ้าพิฆาต"] {
+.chamber-edge-inline-label[data-school="ฟ้าพิฆาต"] {
   border-color: color-mix(in srgb, var(--chamber-edge-stem-clash) 45%, var(--chamber-line));
 }
 

@@ -9,7 +9,6 @@ import {
   useReactFlow,
   type NodeMouseHandler,
   type EdgeMouseHandler,
-  type OnSelectionChangeParams,
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
@@ -22,13 +21,13 @@ import { getSemanticDayFocusNodeIds } from "@/lib/bazi/semantic-chamber-graph";
 import { assignChamberGraphLayout } from "@/lib/bazi/chamber-layout";
 
 import { buildChamberSelectionState, type ChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
+import type { ChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
 import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemNode";
 import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
 import { ChamberBezierEdge } from "@/components/bazi/reaction-chamber/ChamberSmoothStepEdge";
-import { ChamberEdgeLegend } from "@/components/bazi/reaction-chamber/ChamberEdgeLegend";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 
 const NODE_TYPES = {
@@ -45,6 +44,7 @@ const EDGE_TYPES = {
 type ReactionChamberCanvasProps = {
   graph: SemanticChamberGraph;
   selection?: ChamberSelectionState;
+  relationBundle?: ChamberRelationBundle | null;
   onSelectionChange?: (selection: ChamberSelectionState) => void;
   onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
@@ -52,6 +52,7 @@ type ReactionChamberCanvasProps = {
 function ReactionChamberCanvasInner({
   graph,
   selection,
+  relationBundle,
   onSelectionChange,
   onNodeHover,
 }: ReactionChamberCanvasProps) {
@@ -63,8 +64,10 @@ function ReactionChamberCanvasInner({
     return buildChamberRenderModel(graph, positions, {
       selectedNodeIds: selection?.selectedNodes.map((node) => node.id) ?? [],
       selectedEdgeIds: selection?.selectedEdges.map((edge) => edge.id) ?? [],
+      revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
+      hideUnrevealedEdges: selection?.mode === "single" || selection?.mode === "pair" || selection?.mode === "multi",
     });
-  }, [graph, selection]);
+  }, [graph, relationBundle, selection]);
 
   useEffect(() => {
     focusFitRef.current = false;
@@ -85,18 +88,36 @@ function ReactionChamberCanvasInner({
   }, [graph, renderModel.nodes.length, reactFlowInstance]);
 
   const handleSelectionChange = useCallback(
-    (params: OnSelectionChangeParams) => {
+    (nodeIds: string[], edgeIds: string[] = []) => {
       if (!onSelectionChange) {
         return;
       }
 
-        onSelectionChange(buildChamberSelectionState({
-          graph,
-          nodeIds: params.nodes.map((node) => node.id),
-          edgeIds: params.edges.map((edge) => edge.id),
-        }));
-      },
-      [graph, onSelectionChange],
+      onSelectionChange(buildChamberSelectionState({ graph, nodeIds, edgeIds }));
+    },
+    [graph, onSelectionChange],
+  );
+
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (event, node) => {
+      if (!onSelectionChange) {
+        return;
+      }
+
+      const wantsMultiSelect = event.metaKey || event.ctrlKey || event.shiftKey;
+      if (!wantsMultiSelect) {
+        handleSelectionChange([node.id]);
+        return;
+      }
+
+      const selectedNodeIds = selection?.selectedNodes.map((selectedNode) => selectedNode.id) ?? [];
+      const nextNodeIds = selectedNodeIds.includes(node.id)
+        ? selectedNodeIds.filter((selectedNodeId) => selectedNodeId !== node.id)
+        : [...selectedNodeIds, node.id];
+
+      handleSelectionChange(nextNodeIds);
+    },
+    [handleSelectionChange, onSelectionChange, selection?.selectedNodes],
   );
 
   const handleNodeMouseEnter: NodeMouseHandler = useCallback(
@@ -119,14 +140,30 @@ function ReactionChamberCanvasInner({
   }, [onNodeHover]);
 
   const handleEdgeClick: EdgeMouseHandler = useCallback(
-    (_event, edge) => {
+    (event, edge) => {
       if (!onSelectionChange) {
         return;
       }
-      onSelectionChange(buildChamberSelectionState({ graph, edgeIds: [edge.id] }));
+
+      const wantsMultiSelect = event.metaKey || event.ctrlKey || event.shiftKey;
+      if (!wantsMultiSelect) {
+        handleSelectionChange([], [edge.id]);
+        return;
+      }
+
+      const selectedEdgeIds = selection?.selectedEdges.map((selectedEdge) => selectedEdge.id) ?? [];
+      const nextEdgeIds = selectedEdgeIds.includes(edge.id)
+        ? selectedEdgeIds.filter((selectedEdgeId) => selectedEdgeId !== edge.id)
+        : [...selectedEdgeIds, edge.id];
+
+      handleSelectionChange([], nextEdgeIds);
     },
-    [graph, onSelectionChange],
+    [handleSelectionChange, onSelectionChange, selection?.selectedEdges],
   );
+
+  const handlePaneClick = useCallback(() => {
+    handleSelectionChange([]);
+  }, [handleSelectionChange]);
 
   return (
     <div className="reaction-chamber-canvas">
@@ -143,7 +180,9 @@ function ReactionChamberCanvasInner({
         nodesConnectable={false}
         elementsSelectable
         proOptions={{ hideAttribution: true }}
-        onSelectionChange={handleSelectionChange}
+        multiSelectionKeyCode={["Meta", "Control", "Shift"]}
+        onPaneClick={handlePaneClick}
+        onNodeClick={handleNodeClick}
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onEdgeClick={handleEdgeClick}
@@ -151,7 +190,6 @@ function ReactionChamberCanvasInner({
         <Background gap={28} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
       </ReactFlow>
-      <ChamberEdgeLegend />
     </div>
   );
 }

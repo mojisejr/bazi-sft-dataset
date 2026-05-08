@@ -39,9 +39,9 @@ export const CHAMBER_GRAPH_SURFACE_INVENTORY: readonly ChamberSurfaceItem[] = [
   },
   {
     path: "src/components/bazi/reaction-chamber/ChamberEdgeLegend.tsx",
-    name: "active decode legend",
-    status: "active",
-    reason: "collapsible edge legend that supports graph reading without competing for primary focus",
+    name: "dormant decode legend",
+    status: "dormant",
+    reason: "phase 4 removed the legend from the default runtime path so edge labels carry relation meaning directly on the graph",
   },
   {
     path: "src/components/bazi/reaction-chamber/ChamberTenGodPanel.tsx",

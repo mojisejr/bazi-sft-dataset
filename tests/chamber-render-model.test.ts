@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
 import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import { assignChamberGraphLayout } from "@/lib/bazi/chamber-layout";
+import { buildChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
+import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 import type { CalculatedStateValue, PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
@@ -132,5 +134,28 @@ describe("buildChamberRenderModel", () => {
 
     expect(selectedBranch?.selected).toBe(true);
     expect(unselectedBranch?.selected).toBe(false);
+  });
+
+  test("reveals only active compare edges with inline label semantics", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState);
+    const positions = assignChamberGraphLayout(graph);
+    const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day", "stem:hour"] });
+    const relationBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
+    const renderModel = buildChamberRenderModel(graph, positions, {
+      selectedNodeIds: selection.selectedNodes.map((node) => node.id),
+      revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
+      hideUnrevealedEdges: true,
+    });
+
+    const revealedFlowEdge = renderModel.edges.find((edge) => edge.id.includes("element-flow") && edge.id.includes("hour"));
+    const unrelatedEdge = renderModel.edges.find((edge) => edge.id.includes("year"));
+
+    expect(revealedFlowEdge?.hidden).toBe(false);
+    expect(revealedFlowEdge?.data?.showInlineLabel).toBe(true);
+    expect(revealedFlowEdge?.data?.inlineLabel).toBe("ส่งเสริม");
+    expect(revealedFlowEdge?.data?.inlineDirectionLabel).toBe("รับเข้า");
+    expect(revealedFlowEdge?.data?.inlineStrengthLabel).toBe("รอง");
+    expect(unrelatedEdge?.hidden).toBe(true);
   });
 });
