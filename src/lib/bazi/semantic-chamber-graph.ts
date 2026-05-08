@@ -69,6 +69,8 @@ export type SemanticStemNodeData = {
   element: string;
   isFocal: boolean;
   tenGod?: string;
+  hiddenStems: string[];
+  hiddenStemCompactLabel?: string;
 };
 
 export type SemanticBranchNodeData = {
@@ -82,6 +84,8 @@ export type SemanticBranchNodeData = {
   isFocal: boolean;
   tenGod?: string;
   stageDisplay?: string;
+  hiddenStems: string[];
+  hiddenStemCompactLabel?: string;
 };
 
 export type SemanticNodeData = SemanticPillarNodeData | SemanticMarkerNodeData | SemanticStemNodeData | SemanticBranchNodeData;
@@ -427,6 +431,10 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
     const stemElement = STEM_TO_ELEMENT[pillar.stem] ?? "ไม้";
     const branchElement = BRANCH_TO_ELEMENT[pillar.branch] ?? "ไม้";
     const stemTenGod = pillar.tenGod && pillar.tenGod !== "ดิถี" ? pillar.tenGod : undefined;
+    const hiddenStems = pillar.hiddenStems ?? [];
+    const compactHiddenStemLabel = hiddenStems.length <= 2
+      ? hiddenStems.join(" · ")
+      : `${hiddenStems.slice(0, 2).join(" · ")} +${hiddenStems.length - 2}`;
 
     nodes.push({
       id: stemNodeId(pillarKey),
@@ -441,6 +449,8 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
         element: stemElement,
         isFocal,
         tenGod: stemTenGod,
+        hiddenStems,
+        hiddenStemCompactLabel: compactHiddenStemLabel,
       },
       position: stemPositions[pillarKey],
       width: 80,
@@ -461,6 +471,8 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
         isFocal,
         tenGod: undefined,
         stageDisplay: pillar.sittingStage ?? pillar.lowerStageDisplay,
+        hiddenStems,
+        hiddenStemCompactLabel: compactHiddenStemLabel,
       },
       position: branchPositions[pillarKey],
       width: 80,

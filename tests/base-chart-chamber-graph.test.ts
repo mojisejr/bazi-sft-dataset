@@ -143,6 +143,21 @@ describe("buildSemanticChamberGraph", () => {
     expect(focalBranch?.position.y).toBeGreaterThan(stemY);
   });
 
+  test("promotes hidden stems into typed node payloads for stem and branch nodes", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const dayStemNode = graph.nodes.find((node) => node.id === "stem:day");
+    const monthBranchNode = graph.nodes.find((node) => node.id === "branch:month");
+
+    expect(dayStemNode?.data.kind).toBe("stem-node");
+    expect(dayStemNode?.data.kind === "stem-node" ? dayStemNode.data.hiddenStems : []).toEqual(["丁", "己"]);
+    expect(dayStemNode?.data.kind === "stem-node" ? dayStemNode.data.hiddenStemCompactLabel : undefined).toBe("丁 · 己");
+
+    expect(monthBranchNode?.data.kind).toBe("branch-node");
+    expect(monthBranchNode?.data.kind === "branch-node" ? monthBranchNode.data.hiddenStems : []).toEqual(["己", "癸", "辛"]);
+    expect(monthBranchNode?.data.kind === "branch-node" ? monthBranchNode.data.hiddenStemCompactLabel : undefined).toBe("己 · 癸 +1");
+  });
+
   test("exposes semantic focus ids for the live day nodes", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
 

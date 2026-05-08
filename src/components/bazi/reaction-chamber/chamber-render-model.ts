@@ -12,6 +12,11 @@ export type ChamberRenderModel = {
   edges: Edge[];
 };
 
+type ChamberRenderSelectionState = {
+  selectedNodeIds?: string[];
+  selectedEdgeIds?: string[];
+};
+
 function isReactionEdge(edge: SemanticEdge): boolean {
   return edge.data.layer === "inter-pillar-reaction";
 }
@@ -39,6 +44,7 @@ function resolveEdgeZIndex(edge: SemanticEdge): number {
 function buildReactFlowNode(
   graphNode: SemanticNode,
   layoutPositions: ChamberLayoutPositions,
+  selectedNodeIds: Set<string>,
 ): Node {
   const position = layoutPositions.get(graphNode.id) ?? graphNode.position;
 
@@ -49,10 +55,11 @@ function buildReactFlowNode(
     position,
     draggable: false,
     selectable: true,
+    selected: selectedNodeIds.has(graphNode.id),
   } satisfies Node;
 }
 
-function buildReactFlowEdge(edge: SemanticEdge): Edge {
+function buildReactFlowEdge(edge: SemanticEdge, selectedEdgeIds: Set<string>): Edge {
   const flowDirection = isElementFlowEdge(edge)
     ? (edge.data as unknown as { flowDirection?: string }).flowDirection
     : undefined;
@@ -68,6 +75,7 @@ function buildReactFlowEdge(edge: SemanticEdge): Edge {
     data: edge.data as unknown as Record<string, unknown>,
     selectable: true,
     focusable: true,
+    selected: selectedEdgeIds.has(edge.id),
     type: resolveEdgeType(edge),
     zIndex: resolveEdgeZIndex(edge),
     interactionWidth: isReactionEdge(edge) ? 20 : 12,
@@ -86,9 +94,13 @@ function buildReactFlowEdge(edge: SemanticEdge): Edge {
 export function buildChamberRenderModel(
   graph: SemanticChamberGraph,
   layoutPositions: ChamberLayoutPositions,
+  selectionState: ChamberRenderSelectionState = {},
 ): ChamberRenderModel {
+  const selectedNodeIds = new Set(selectionState.selectedNodeIds ?? []);
+  const selectedEdgeIds = new Set(selectionState.selectedEdgeIds ?? []);
+
   return {
-    nodes: graph.nodes.map((node) => buildReactFlowNode(node, layoutPositions)),
-    edges: graph.edges.map(buildReactFlowEdge),
+    nodes: graph.nodes.map((node) => buildReactFlowNode(node, layoutPositions, selectedNodeIds)),
+    edges: graph.edges.map((edge) => buildReactFlowEdge(edge, selectedEdgeIds)),
   };
 }

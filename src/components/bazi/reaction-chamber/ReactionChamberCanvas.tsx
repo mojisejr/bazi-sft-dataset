@@ -44,12 +44,14 @@ const EDGE_TYPES = {
 
 type ReactionChamberCanvasProps = {
   graph: SemanticChamberGraph;
+  selection?: ChamberSelectionState;
   onSelectionChange?: (selection: ChamberSelectionState) => void;
   onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
 
 function ReactionChamberCanvasInner({
   graph,
+  selection,
   onSelectionChange,
   onNodeHover,
 }: ReactionChamberCanvasProps) {
@@ -58,8 +60,11 @@ function ReactionChamberCanvasInner({
 
   const renderModel = useMemo(() => {
     const positions = assignChamberGraphLayout(graph);
-    return buildChamberRenderModel(graph, positions);
-  }, [graph]);
+    return buildChamberRenderModel(graph, positions, {
+      selectedNodeIds: selection?.selectedNodes.map((node) => node.id) ?? [],
+      selectedEdgeIds: selection?.selectedEdges.map((edge) => edge.id) ?? [],
+    });
+  }, [graph, selection]);
 
   useEffect(() => {
     focusFitRef.current = false;

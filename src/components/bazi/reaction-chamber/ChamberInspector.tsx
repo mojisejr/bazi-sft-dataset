@@ -99,6 +99,7 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
   const semanticRole = node.data.kind === "stem-node" ? "ราศีบน" : "ราศีล่าง";
   const detailLabel = node.data.kind === "stem-node" ? "จับซิ้ง" : "12 เชี่ยงแซ";
   const detailValue = node.data.kind === "stem-node" ? (node.data.tenGod ?? "-") : (node.data.stageDisplay ?? "-");
+  const hiddenStems = node.data.hiddenStems ?? [];
 
   return (
     <div className="chamber-inspector__pillar">
@@ -115,6 +116,10 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
         <div className="chamber-inspector__detail-row">
           <dt>{detailLabel}</dt>
           <dd>{detailValue}</dd>
+        </div>
+        <div className="chamber-inspector__detail-row">
+          <dt>ราศีแฝง</dt>
+          <dd>{hiddenStems.length > 0 ? hiddenStems.join(" · ") : "-"}</dd>
         </div>
       </dl>
     </div>

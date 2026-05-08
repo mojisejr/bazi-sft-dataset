@@ -119,4 +119,18 @@ describe("buildChamberRenderModel", () => {
     expect(matchedSemanticEdge).toBeDefined();
     expect(matchedSemanticEdge?.data.layer).toBe("inter-pillar-reaction");
   });
+
+  test("marks selected nodes in the render model when selection ids are provided", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const positions = assignChamberGraphLayout(graph);
+    const renderModel = buildChamberRenderModel(graph, positions, {
+      selectedNodeIds: ["branch:hour"],
+    });
+
+    const selectedBranch = renderModel.nodes.find((node) => node.id === "branch:hour");
+    const unselectedBranch = renderModel.nodes.find((node) => node.id === "branch:year");
+
+    expect(selectedBranch?.selected).toBe(true);
+    expect(unselectedBranch?.selected).toBe(false);
+  });
 });

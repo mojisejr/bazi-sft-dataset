@@ -13,10 +13,11 @@ type ChamberBranchNodeProps = {
 export function ChamberBranchNode({ data, selected }: ChamberBranchNodeProps) {
   const focalClass = data.isFocal ? " chamber-branch-node--focal" : "";
   const selectedClass = selected ? " chamber-branch-node--selected" : "";
+  const expandedClass = selected || data.isFocal ? " chamber-branch-node--expanded" : "";
   const elementColor = ELEMENT_COLORS_TH[data.element] ?? "#9f5320";
 
   return (
-    <div className={`chamber-branch-node${focalClass}${selectedClass}`} style={{ borderColor: elementColor }}>
+    <div className={`chamber-branch-node${focalClass}${selectedClass}${expandedClass}`} style={{ borderColor: elementColor }}>
       <Handle id="target-top" type="target" position={Position.Top} className="chamber-node-handle" />
       <Handle id="target-left" type="target" position={Position.Left} className="chamber-node-handle" />
       <Handle id="target-right" type="target" position={Position.Right} className="chamber-node-handle" />
@@ -28,10 +29,14 @@ export function ChamberBranchNode({ data, selected }: ChamberBranchNodeProps) {
 
       <span className="chamber-branch-node__glyph" style={{ color: elementColor }}>{data.branch}</span>
       <span className="chamber-branch-node__translation">{data.branchTranslation ?? data.element}</span>
-      <span className="chamber-branch-node__pillar">{data.pillarLabel}</span>
-      {data.stageDisplay && (
-        <span className="chamber-branch-node__stage">{data.stageDisplay}</span>
+      {data.hiddenStems.length > 0 && (
+        <span className="chamber-branch-node__hidden-stems" aria-label={`hidden stems ${data.hiddenStems.join(" ")}`}>
+          <span className="chamber-branch-node__hidden-label">藏</span>
+          <span className="chamber-branch-node__hidden-compact">{data.hiddenStemCompactLabel ?? data.hiddenStems.join(" · ")}</span>
+          <span className="chamber-branch-node__hidden-expanded">{data.hiddenStems.join(" · ")}</span>
+        </span>
       )}
+      <span className="chamber-branch-node__pillar">{data.pillarLabel}</span>
     </div>
   );
 }
