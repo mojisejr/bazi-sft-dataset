@@ -1,6 +1,19 @@
 import type {
   CalculatedStateValue,
   ContextRuleNoteValue,
+  GeneralizedElementInteractionTypeValue,
+  GeneralizedInteractionDayMasterEffectValue,
+  GeneralizedInteractionEntityTypeValue,
+  GeneralizedInteractionFamilyKeyValue,
+  GeneralizedInteractionOutcomeStatusValue,
+  GeneralizedInteractionPrecedenceLevelValue,
+  GeneralizedInteractionQualifierKeyValue,
+  GeneralizedInteractionQualifierLaneValue,
+  InteractionEntityValue,
+  InteractionOutcomeValue,
+  InteractionQualifierValue,
+  InteractionRelationValue,
+  InteractionStateValue,
   PillarValue,
 } from "@/lib/bazi/schema-types";
 
@@ -111,6 +124,40 @@ export type MultiBranchInteraction = {
 
 export type InteractionTier = "primary" | "secondary" | "tertiary";
 
+export type GeneralizedInteractionEntityType =
+  GeneralizedInteractionEntityTypeValue;
+
+export type GeneralizedInteractionFamilyKey =
+  GeneralizedInteractionFamilyKeyValue;
+
+export type GeneralizedElementInteractionType =
+  GeneralizedElementInteractionTypeValue;
+
+export type GeneralizedInteractionOutcomeStatus =
+  GeneralizedInteractionOutcomeStatusValue;
+
+export type GeneralizedInteractionDayMasterEffect =
+  GeneralizedInteractionDayMasterEffectValue;
+
+export type GeneralizedInteractionPrecedenceLevel =
+  GeneralizedInteractionPrecedenceLevelValue;
+
+export type GeneralizedInteractionQualifierLane =
+  GeneralizedInteractionQualifierLaneValue;
+
+export type GeneralizedInteractionQualifierKey =
+  GeneralizedInteractionQualifierKeyValue;
+
+export type InteractionEntity = InteractionEntityValue;
+
+export type InteractionRelation = InteractionRelationValue;
+
+export type InteractionOutcome = InteractionOutcomeValue;
+
+export type InteractionQualifier = InteractionQualifierValue;
+
+export type GeneralizedInteractionState = InteractionStateValue;
+
 export type BranchInteractionResolution = {
   activeCombinations: string[];
   neutralizedClashes: string[];
@@ -123,6 +170,7 @@ export type BranchInteractionResolution = {
   precedenceNotes: string[];
   precedenceSignals: ContextRuleNoteValue[];
   interactionTiers: Record<string, InteractionTier>;
+  interactionState?: GeneralizedInteractionState;
 };
 
 export type ReferencePillar = {

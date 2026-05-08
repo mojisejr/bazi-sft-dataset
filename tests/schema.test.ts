@@ -18,7 +18,9 @@ import {
 } from "@/db/schema";
 import {
   AnnotationDataSchema,
+  CalculatedStateSchema,
   DraftAnnotationDataSchema,
+  InteractionStateSchema,
   RejectedAnnotationDataSchema,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
 } from "@/lib/bazi/schema-types";
@@ -146,5 +148,155 @@ describe("phase 1.5 canonical tables", () => {
     expect(getTableColumns(baziDayMasterProfiles)).toHaveProperty("combinedNarrative");
     expect(getTableColumns(baziSixtyJiaziNarratives)).toHaveProperty("combinedNarrative");
     expect(getTableColumns(baziDomainMatrices)).toHaveProperty("rawCells");
+  });
+});
+
+describe("generalized interaction contract", () => {
+  test("encodes generalized interaction entities, relations, outcomes, and qualifiers without semantic collision", () => {
+    const parsed = InteractionStateSchema.parse({
+      version: "v3-phase-1",
+      entities: [
+        {
+          id: "branch-year-申",
+          type: "branch",
+          pillarKey: "year",
+          symbol: "申",
+          element: "metal",
+        },
+        {
+          id: "branch-month-子",
+          type: "branch",
+          pillarKey: "month",
+          symbol: "子",
+          element: "water",
+        },
+        {
+          id: "branch-day-辰",
+          type: "branch",
+          pillarKey: "day",
+          symbol: "辰",
+          element: "earth",
+        },
+      ],
+      relations: [
+        {
+          id: "relation-san-he-shen-zi-chen",
+          familyKey: "earthly-branch-san-he",
+          type: "branch-combination",
+          participantEntityIds: ["branch-year-申", "branch-month-子", "branch-day-辰"],
+          label: "申子辰",
+          transformElement: "water",
+        },
+        {
+          id: "relation-ban-san-he-zi-chen",
+          familyKey: "earthly-branch-ban-san-he",
+          type: "branch-combination",
+          participantEntityIds: ["branch-month-子", "branch-day-辰"],
+          label: "子辰",
+          transformElement: "water",
+        },
+      ],
+      outcomes: [
+        {
+          relationId: "relation-san-he-shen-zi-chen",
+          status: "transformed",
+          precedence: "primary",
+          transformElement: "water",
+          supportReasons: ["season-support", "full-triad"],
+          dayMasterEffect: "beneficial",
+        },
+        {
+          relationId: "relation-ban-san-he-zi-chen",
+          status: "detected",
+          precedence: "secondary",
+          supportReasons: ["partial-triad"],
+          dayMasterEffect: "neutral",
+        },
+      ],
+      qualifiers: [
+        {
+          id: "qualifier-day-qi",
+          lane: "twelve-qi",
+          qualifierKey: "twelve-qi-stage",
+          entityId: "branch-day-辰",
+          value: "长生",
+          display: "เชี่ยงแซ",
+        },
+      ],
+    });
+
+    expect(parsed.relations).toHaveLength(2);
+    expect(parsed.outcomes[0]).toMatchObject({
+      relationId: "relation-san-he-shen-zi-chen",
+      status: "transformed",
+      transformElement: "water",
+    });
+    expect(parsed.qualifiers[0]).toMatchObject({
+      lane: "twelve-qi",
+      qualifierKey: "twelve-qi-stage",
+      value: "长生",
+    });
+  });
+
+  test("accepts calculated state payloads with optional generalized interaction state while preserving legacy shape", () => {
+    const parsed = CalculatedStateSchema.parse({
+      fourPillars: {
+        year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
+        month: { stem: "甲", branch: "子", hiddenStems: ["癸"] },
+        day: { stem: "癸", branch: "辰", hiddenStems: ["戊", "乙", "癸"] },
+        hour: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
+      },
+      dayMaster: "癸",
+      strengthScore: 2.5,
+      tenGods: {
+        yearStem: "劫财",
+        yearBranch: "正印,劫财,正官",
+        monthStem: "伤官",
+        monthBranch: "比肩",
+        dayStem: "ดิถี",
+        dayBranch: "正官,食神,比肩",
+        hourStem: "正财",
+        hourBranch: "偏财,七杀",
+      },
+      twelveQi: {
+        yearBranch: "เชี่ยงแซ",
+        monthBranch: "ตี้อ๋วง",
+        dayBranch: "เชี่ยงแซ",
+        hourBranch: "ไท้",
+      },
+      interactionState: {
+        version: "v3-phase-1",
+        entities: [
+          {
+            id: "branch-month-子",
+            type: "branch",
+            pillarKey: "month",
+            symbol: "子",
+            element: "water",
+          },
+        ],
+        relations: [
+          {
+            id: "relation-half-he-zi-chen",
+            familyKey: "earthly-branch-ban-san-he",
+            type: "branch-combination",
+            participantEntityIds: ["branch-month-子"],
+            label: "子辰",
+          },
+        ],
+        outcomes: [
+          {
+            relationId: "relation-half-he-zi-chen",
+            status: "detected",
+          },
+        ],
+        qualifiers: [],
+      },
+      elementMetaphors: [],
+    });
+
+    expect(parsed.interactionState?.version).toBe("v3-phase-1");
+    expect(parsed.compatibilityMatrixProfiles).toEqual([]);
+    expect(parsed.explainable).toEqual({});
   });
 });

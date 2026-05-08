@@ -379,6 +379,57 @@ export const INTERACTION_FAMILIES = [
 
 export type InteractionFamily = (typeof INTERACTION_FAMILIES)[number];
 
+export const GENERALIZED_INTERACTION_ENTITY_TYPES = [
+  "stem",
+  "branch",
+  "hidden-stem",
+  "pillar",
+  "day-master",
+  "season-anchor",
+] as const;
+
+export const GENERALIZED_INTERACTION_FAMILY_KEYS = [
+  "heavenly-stem-he",
+  "heavenly-stem-clash",
+  "earthly-branch-liu-he",
+  "earthly-branch-san-he",
+  "earthly-branch-ban-san-he",
+  "earthly-branch-san-hui",
+  "earthly-branch-fang-ju",
+  "earthly-branch-clash",
+  "earthly-branch-harm",
+  "earthly-branch-destruction",
+  "earthly-branch-punishment",
+  "element-generate",
+  "element-control",
+] as const;
+
+export const GENERALIZED_ELEMENT_INTERACTION_TYPES = ["generate", "control"] as const;
+
+export const GENERALIZED_INTERACTION_OUTCOME_STATUSES = [
+  "detected",
+  "supported",
+  "transformed",
+  "blocked",
+  "transit-broken",
+] as const;
+
+export const GENERALIZED_INTERACTION_DAY_MASTER_EFFECTS = [
+  "beneficial",
+  "harmful",
+  "neutral",
+] as const;
+
+export const GENERALIZED_INTERACTION_PRECEDENCE_LEVELS = [
+  "primary",
+  "secondary",
+  "tertiary",
+] as const;
+
+export const GENERALIZED_INTERACTION_QUALIFIER_LANES = ["twelve-qi"] as const;
+
+export const GENERALIZED_INTERACTION_QUALIFIER_KEYS = ["twelve-qi-stage"] as const;
+
 export const SHEN_SHA_COPY = {
   nobleman: {
     starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",

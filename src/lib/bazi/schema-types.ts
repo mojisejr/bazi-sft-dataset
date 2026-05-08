@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+import {
+  GENERALIZED_ELEMENT_INTERACTION_TYPES,
+  GENERALIZED_INTERACTION_DAY_MASTER_EFFECTS,
+  GENERALIZED_INTERACTION_ENTITY_TYPES,
+  GENERALIZED_INTERACTION_FAMILY_KEYS,
+  GENERALIZED_INTERACTION_OUTCOME_STATUSES,
+  GENERALIZED_INTERACTION_PRECEDENCE_LEVELS,
+  GENERALIZED_INTERACTION_QUALIFIER_KEYS,
+  GENERALIZED_INTERACTION_QUALIFIER_LANES,
+} from "@/lib/bazi/symbolic-engine.constants";
+
 export const REQUIRED_ANNOTATION_DIMENSION_NAMES = [
   "chart_foundation",
   "balance_element",
@@ -348,6 +359,88 @@ export const BaseChartReadingSchema = z.object({
   readingOrderSteps: z.array(z.string().trim().min(1)).default([]),
 });
 
+export const GeneralizedInteractionEntityTypeSchema = z.enum(
+  GENERALIZED_INTERACTION_ENTITY_TYPES,
+);
+
+export const GeneralizedInteractionFamilyKeySchema = z.enum(
+  GENERALIZED_INTERACTION_FAMILY_KEYS,
+);
+
+export const GeneralizedElementInteractionTypeSchema = z.enum(
+  GENERALIZED_ELEMENT_INTERACTION_TYPES,
+);
+
+export const GeneralizedInteractionOutcomeStatusSchema = z.enum(
+  GENERALIZED_INTERACTION_OUTCOME_STATUSES,
+);
+
+export const GeneralizedInteractionDayMasterEffectSchema = z.enum(
+  GENERALIZED_INTERACTION_DAY_MASTER_EFFECTS,
+);
+
+export const GeneralizedInteractionPrecedenceLevelSchema = z.enum(
+  GENERALIZED_INTERACTION_PRECEDENCE_LEVELS,
+);
+
+export const GeneralizedInteractionQualifierLaneSchema = z.enum(
+  GENERALIZED_INTERACTION_QUALIFIER_LANES,
+);
+
+export const GeneralizedInteractionQualifierKeySchema = z.enum(
+  GENERALIZED_INTERACTION_QUALIFIER_KEYS,
+);
+
+export const InteractionEntitySchema = z.object({
+  id: z.string().trim().min(1),
+  type: GeneralizedInteractionEntityTypeSchema,
+  pillarKey: z.string().trim().min(1).optional(),
+  symbol: z.string().trim().min(1),
+  element: SupportedElementSchema.optional(),
+  hidden: z.boolean().optional(),
+  label: z.string().trim().min(1).optional(),
+});
+
+export const InteractionRelationSchema = z.object({
+  id: z.string().trim().min(1),
+  familyKey: GeneralizedInteractionFamilyKeySchema,
+  type: z.string().trim().min(1),
+  participantEntityIds: z.array(z.string().trim().min(1)).min(1),
+  label: z.string().trim().min(1),
+  elementInteractionType: GeneralizedElementInteractionTypeSchema.optional(),
+  transformElement: SupportedElementSchema.optional(),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const InteractionOutcomeSchema = z.object({
+  relationId: z.string().trim().min(1),
+  status: GeneralizedInteractionOutcomeStatusSchema,
+  precedence: GeneralizedInteractionPrecedenceLevelSchema.optional(),
+  transformElement: SupportedElementSchema.optional(),
+  supportReasons: z.array(z.string().trim().min(1)).default([]),
+  dayMasterEffect: GeneralizedInteractionDayMasterEffectSchema.optional(),
+  blockedByRelationIds: z.array(z.string().trim().min(1)).default([]),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const InteractionQualifierSchema = z.object({
+  id: z.string().trim().min(1),
+  lane: GeneralizedInteractionQualifierLaneSchema,
+  qualifierKey: GeneralizedInteractionQualifierKeySchema,
+  entityId: z.string().trim().min(1),
+  value: z.string().trim().min(1),
+  display: z.string().trim().min(1).optional(),
+  metadata: z.record(z.string(), z.unknown()).default({}),
+});
+
+export const InteractionStateSchema = z.object({
+  version: z.literal("v3-phase-1"),
+  entities: z.array(InteractionEntitySchema).default([]),
+  relations: z.array(InteractionRelationSchema).default([]),
+  outcomes: z.array(InteractionOutcomeSchema).default([]),
+  qualifiers: z.array(InteractionQualifierSchema).default([]),
+});
+
 export const CalculatedStateExplainableSchema = z.object({
   mingGong: ExplainablePillarValueSchema.optional(),
   strengthScore: ExplainableNumberSchema.optional(),
@@ -381,6 +474,7 @@ export const CalculatedStateSchema = z.object({
   seasonalInteraction: SeasonalInteractionSchema.optional(),
   dayMasterStrengthProfile: DayMasterStrengthProfileSchema.optional(),
   sixtyJiaziCorePersona: SixtyJiaziCorePersonaSchema.optional(),
+  interactionState: InteractionStateSchema.optional(),
   baseChartReading: BaseChartReadingSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
   isForwardDirection: z.boolean().optional(),
@@ -503,3 +597,32 @@ export type BaseChartReactionBadgeValue = z.infer<typeof BaseChartReactionBadgeS
 export type InteractionTierValue = z.infer<typeof InteractionTierSchema>;
 export type BaseChartReactionGroupValue = z.infer<typeof BaseChartReactionGroupSchema>;
 export type BaseChartReadingValue = z.infer<typeof BaseChartReadingSchema>;
+export type GeneralizedInteractionEntityTypeValue = z.infer<
+  typeof GeneralizedInteractionEntityTypeSchema
+>;
+export type GeneralizedInteractionFamilyKeyValue = z.infer<
+  typeof GeneralizedInteractionFamilyKeySchema
+>;
+export type GeneralizedElementInteractionTypeValue = z.infer<
+  typeof GeneralizedElementInteractionTypeSchema
+>;
+export type GeneralizedInteractionOutcomeStatusValue = z.infer<
+  typeof GeneralizedInteractionOutcomeStatusSchema
+>;
+export type GeneralizedInteractionDayMasterEffectValue = z.infer<
+  typeof GeneralizedInteractionDayMasterEffectSchema
+>;
+export type GeneralizedInteractionPrecedenceLevelValue = z.infer<
+  typeof GeneralizedInteractionPrecedenceLevelSchema
+>;
+export type GeneralizedInteractionQualifierLaneValue = z.infer<
+  typeof GeneralizedInteractionQualifierLaneSchema
+>;
+export type GeneralizedInteractionQualifierKeyValue = z.infer<
+  typeof GeneralizedInteractionQualifierKeySchema
+>;
+export type InteractionEntityValue = z.infer<typeof InteractionEntitySchema>;
+export type InteractionRelationValue = z.infer<typeof InteractionRelationSchema>;
+export type InteractionOutcomeValue = z.infer<typeof InteractionOutcomeSchema>;
+export type InteractionQualifierValue = z.infer<typeof InteractionQualifierSchema>;
+export type InteractionStateValue = z.infer<typeof InteractionStateSchema>;
