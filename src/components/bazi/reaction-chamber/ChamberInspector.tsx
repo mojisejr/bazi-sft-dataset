@@ -5,12 +5,14 @@ import { motion, AnimatePresence } from "motion/react";
 import type {
   BaseChartReactionBadgeValue,
 } from "@/lib/bazi/schema-types";
+import type { ChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import type { SemanticEdge, SemanticNode } from "@/lib/bazi/semantic-chamber-graph";
 
 import type { ChamberSelection } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 
 type ChamberInspectorProps = {
   selection: ChamberSelection;
+  relationBundle: ChamberRelationBundle | null;
   variant: "docked" | "sheet";
   onClose: () => void;
 };
@@ -213,7 +215,53 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
   );
 }
 
-function InspectorBody({ selection }: { selection: ChamberSelection }) {
+function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
+  return (
+    <div className="chamber-inspector__badge">
+      <p className="chamber-inspector__kicker">
+        {bundle.mode === "pair" ? "โหมดเทียบสัมพันธ์" : bundle.mode === "multi" ? "โหมดกลุ่มสัมพันธ์" : "โหมด neighborhood"}
+      </p>
+      {bundle.pairDoctrine && (
+        <p className="chamber-inspector__summary">
+          {bundle.pairDoctrine.doctrine === "day-master-compare"
+            ? "bundle นี้ยึดดิถีเป็นแกน compare และ reveal เฉพาะ relation ที่เชื่อมกับ anchor ที่เลือก"
+            : bundle.pairDoctrine.doctrine === "day-pillar-compare"
+              ? "bundle นี้ยึดเสาดิถีเป็นแกน compare และ reveal เฉพาะ relation ที่เกี่ยวข้อง"
+              : "bundle นี้เปรียบเทียบ anchor สองจุดโดยไม่ยึดดิถีเป็นแกนหลัก"}
+        </p>
+      )}
+
+      {bundle.relations.length > 0 ? (
+        <>
+          <p className="chamber-inspector__section-title">Relation Bundle</p>
+          <dl className="chamber-inspector__details">
+            {bundle.relations.map((relation) => (
+              <div key={relation.edgeId} className="chamber-inspector__detail-row">
+                <dt>{relation.displayLabel}</dt>
+                <dd>{relation.relationType} · {relation.direction} · {relation.strength}</dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      ) : (
+        <p className="chamber-inspector__empty">selection นี้ยังไม่มี relation bundle ที่เชื่อมกันโดยตรงใน graph ชุดนี้</p>
+      )}
+
+      {bundle.hiddenStemCues.length > 0 && (
+        <div className="chamber-inspector__participants">
+          <p className="chamber-inspector__section-title">Hidden Stem Cues</p>
+          <ul>
+            {bundle.hiddenStemCues.map((cue) => (
+              <li key={cue.pillarKey}>{cue.pillarLabel} · {cue.hiddenStems.join(" · ") || "-"}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InspectorBody({ selection, relationBundle }: { selection: ChamberSelection; relationBundle: ChamberRelationBundle | null }) {
   if (selection.mode === "base" || !selection.primary) {
     return (
       <div className="chamber-inspector__placeholder">
@@ -223,19 +271,8 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
     );
   }
 
-  if (selection.mode === "pair" && selection.pairDoctrine) {
-    return (
-      <div className="chamber-inspector__placeholder">
-        <p className="chamber-inspector__kicker">โหมดเทียบสัมพันธ์</p>
-        <p>
-          {selection.pairDoctrine.doctrine === "day-master-compare"
-            ? "จับคู่เทียบดิถีกับ anchor อื่นแล้ว พร้อมสำหรับ reveal relation bundle ของ phase ถัดไป"
-            : selection.pairDoctrine.doctrine === "day-pillar-compare"
-              ? "จับคู่เทียบเสาดิถีกับ anchor อื่นแล้ว พร้อมสำหรับ reveal relation bundle ของ phase ถัดไป"
-              : "จับคู่เทียบสอง anchor แล้ว พร้อมสำหรับ reveal relation bundle ของ phase ถัดไป"}
-        </p>
-      </div>
-    );
+  if ((selection.mode === "pair" || selection.mode === "multi") && relationBundle) {
+    return <RelationBundleDetail bundle={relationBundle} />;
   }
 
   if (selection.mode === "multi") {
@@ -267,7 +304,7 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
   return null;
 }
 
-export function ChamberInspector({ selection, variant, onClose }: ChamberInspectorProps) {
+export function ChamberInspector({ selection, relationBundle, variant, onClose }: ChamberInspectorProps) {
   if (variant === "docked") {
     return (
       <aside className="chamber-inspector chamber-inspector--docked" aria-label="chamber inspector">
@@ -275,7 +312,7 @@ export function ChamberInspector({ selection, variant, onClose }: ChamberInspect
           <p className="chamber-inspector__head-kicker">รายละเอียดที่เลือก</p>
         </div>
         <div className="chamber-inspector__scroll">
-          <InspectorBody selection={selection} />
+          <InspectorBody selection={selection} relationBundle={relationBundle} />
         </div>
       </aside>
     );
@@ -305,7 +342,7 @@ export function ChamberInspector({ selection, variant, onClose }: ChamberInspect
             </button>
           </div>
           <div className="chamber-inspector__scroll">
-            <InspectorBody selection={selection} />
+            <InspectorBody selection={selection} relationBundle={relationBundle} />
           </div>
         </motion.aside>
       )}

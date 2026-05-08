@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { EMPTY_CHAMBER_SELECTION } from "@/lib/bazi/chamber-selection-grammar";
+import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 import { useBaziWorkspaceSessionStore } from "@/lib/bazi/bazi-session-store";
 
@@ -53,6 +54,18 @@ export function ReactionChamberShell() {
     return buildSemanticChamberGraph(calculatedState);
   }, [calculatedState]);
 
+  const relationBundle = useMemo(() => {
+    if (!calculatedState) {
+      return null;
+    }
+
+    return resolveChamberRelationBundle({
+      selection,
+      graph,
+      calculatedState,
+    });
+  }, [calculatedState, graph, selection]);
+
   if (!calculatedState) {
     return (
       <main className="reaction-chamber-shell reaction-chamber-shell--empty">
@@ -79,12 +92,12 @@ export function ReactionChamberShell() {
             <ReactionChamberCanvas graph={graph} onSelectionChange={setSelection} />
             <ChamberTenGodPanel roleBadges={roleBadges} />
             {variant === "docked" && (
-              <ChamberInspector selection={selection} variant="docked" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
+              <ChamberInspector selection={selection} relationBundle={relationBundle} variant="docked" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
             )}
           </div>
 
         {variant === "sheet" && (
-          <ChamberInspector selection={selection} variant="sheet" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
+          <ChamberInspector selection={selection} relationBundle={relationBundle} variant="sheet" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
         )}
       </main>
     </ReactFlowProvider>
