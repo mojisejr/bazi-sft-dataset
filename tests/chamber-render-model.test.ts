@@ -174,7 +174,7 @@ describe("buildChamberRenderModel", () => {
 
   test("renders element-interaction edges as bezier edges with inline lane labels", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const positions = assignChamberGraphLayout(graph);
     const edge = graph.edges.find((candidate) => candidate.data.layer === "element-interaction");
     const selection = buildChamberSelectionState({ graph, edgeIds: edge ? [edge.id] : [] });

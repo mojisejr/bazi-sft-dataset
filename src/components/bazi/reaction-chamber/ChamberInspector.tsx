@@ -9,6 +9,8 @@ import type { ChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import type { SemanticEdge, SemanticNode } from "@/lib/bazi/semantic-chamber-graph";
 
 import type { ChamberSelection } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
+import { ELEMENT_COLORS_TH, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
+import { getSchoolLexiconRelation, getSchoolLexiconInteraction } from "@/lib/bazi/lexicon/school-lexicon";
 
 type ChamberInspectorProps = {
   selection: ChamberSelection;
@@ -39,13 +41,15 @@ function PillarSummary({ node }: { node: SemanticNode }) {
   }
 
   const data = node.data;
+  const stemElement = STEM_TO_ELEMENT[data.stem as keyof typeof STEM_TO_ELEMENT] ?? "ไม้";
+  const branchElement = BRANCH_TO_ELEMENT[data.branch as keyof typeof BRANCH_TO_ELEMENT] ?? "ไม้";
 
   return (
     <div className="chamber-inspector__pillar">
       <p className="chamber-inspector__kicker">{data.pillarLabel}{data.isFocal ? " · ดิถี" : ""}</p>
       <div className="chamber-inspector__glyphs">
-        <span>{data.stem}</span>
-        <span>{data.branch}</span>
+        <span style={{ color: ELEMENT_COLORS_TH[stemElement] }}>{data.stem}</span>
+        <span style={{ color: ELEMENT_COLORS_TH[branchElement] }}>{data.branch}</span>
       </div>
       {(data.stemTranslation || data.branchTranslation) && (
         <p className="chamber-inspector__translation">
@@ -100,12 +104,13 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
   const detailLabel = node.data.kind === "stem-node" ? "จับซิ้ง" : "12 เชี่ยงแซ";
   const detailValue = node.data.kind === "stem-node" ? (node.data.tenGod ?? "-") : (node.data.stageDisplay ?? "-");
   const hiddenStems = node.data.hiddenStems ?? [];
+  const elementColor = ELEMENT_COLORS_TH[node.data.element] ?? "inherit";
 
   return (
     <div className="chamber-inspector__pillar">
       <p className="chamber-inspector__kicker">{node.data.pillarLabel}{node.data.isFocal ? " · ดิถี" : ""}</p>
       <div className="chamber-inspector__glyphs">
-        <span>{symbol}</span>
+        <span style={{ color: elementColor }}>{symbol}</span>
       </div>
       <p className="chamber-inspector__translation">{semanticRole} · {translation}</p>
       <dl className="chamber-inspector__details">
@@ -172,13 +177,15 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
   const badge = edge.data.badge;
   const cluster = edge.data.schoolCluster;
   const layerSummary = edge.data.layer === "element-interaction"
-    ? "lane นี้คือความสัมพันธ์ธาตุที่ engine ยืนยันแล้ว แยกจาก school family ของราศี"
+    ? "ความสัมพันธ์ตามกฎเบญจธาตุ (Five Elements)"
     : cluster?.humanSummary;
+
+  const title = cluster?.title ?? getSchoolLexiconInteraction(badge.modal.title) ?? badge.modal.title;
 
   return (
     <div className="chamber-inspector__badge">
-      <p className="chamber-inspector__kicker">{badge.modal.family} · {badge.priority}</p>
-      <h3 className="chamber-inspector__title">{cluster?.title ?? badge.modal.title}</h3>
+      <p className="chamber-inspector__kicker">{getSchoolLexiconRelation(badge.modal.family)} · {badge.priority}</p>
+      <h3 className="chamber-inspector__title">{title}</h3>
       {layerSummary && <p className="chamber-inspector__summary">{layerSummary}</p>}
       <p className="chamber-inspector__explanation">{badge.modal.explanation}</p>
 

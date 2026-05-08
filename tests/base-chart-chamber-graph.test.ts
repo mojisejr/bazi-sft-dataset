@@ -468,7 +468,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("element-interaction edges stay in a dedicated lane separate from school reactions", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const elementInteractionEdges = graph.edges.filter((edge) => edge.data.layer === "element-interaction");
     expect(elementInteractionEdges.length).toBeGreaterThan(0);

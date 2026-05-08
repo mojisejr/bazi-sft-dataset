@@ -278,6 +278,21 @@ export function normalizeBranchPairKey(left: string, right: string): string {
   return leftIndex <= rightIndex ? `${left}|${right}` : `${right}|${left}`;
 }
 
+export const BRANCH_COMBINATION_TRANSFORMS = new Map<string, string>([
+  ["丑|子", "earth"], // 子|丑
+  ["子|丑", "earth"],
+  ["亥|寅", "wood"], // 寅|亥
+  ["寅|亥", "wood"],
+  ["戌|卯", "fire"], // 卯|戌
+  ["卯|戌", "fire"],
+  ["酉|辰", "metal"], // 辰|酉
+  ["辰|酉", "metal"],
+  ["申|巳", "water"], // 巳|申
+  ["巳|申", "water"],
+  ["未|午", "fire"], // 午|未
+  ["午|未", "fire"],
+]);
+
 export const SIX_COMBINATION_PAIRS = new Set([
   "子|丑",
   "寅|亥",

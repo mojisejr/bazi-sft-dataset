@@ -23,6 +23,7 @@ import {
   STEM_BRANCH_DESTRUCTION_PAIRS,
   STEM_CLASH_PAIRS,
   STEM_COMBINATION_TRANSFORMS,
+  BRANCH_COMBINATION_TRANSFORMS,
   normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type { BranchInteractionResolution, GeneralizedInteractionState } from "@/lib/bazi/symbolic-engine.types";
@@ -664,6 +665,7 @@ function buildBranchInteractionBadges(
   };
 
   const pushPairBadge = (kind: Exclude<InteractionKind, "punishment">, pair: PairRecord, status: "active" | "supplementary" | "neutralized") => {
+    
     const meta = INTERACTION_META[kind];
     const leftLabel = PILLAR_LABELS[pair.leftKey];
     const rightLabel = PILLAR_LABELS[pair.rightKey];
@@ -674,10 +676,19 @@ function buildBranchInteractionBadges(
       .map((signal) => renderContextRuleNoteThai(signal))
       .find((text) => text.includes(pair.label));
 
-    badges.push({
+    let displayLabel = `${meta.title} ${pair.label}`;
+    if (kind === "combination") {
+      const pairKey = `${pair.leftPillar.branch}|${pair.rightPillar.branch}`;
+      const transformEn = BRANCH_COMBINATION_TRANSFORMS.get(pairKey) ?? BRANCH_COMBINATION_TRANSFORMS.get(`${pair.rightPillar.branch}|${pair.leftPillar.branch}`);
+      if (transformEn) {
+        const transformTh = { water: "น้ำ", wood: "ไม้", fire: "ไฟ", earth: "ดิน", metal: "ทอง" }[transformEn] ?? transformEn;
+        displayLabel = `${meta.title} ${pair.label} (ฮะสำเร็จได้${transformTh})`;
+      }
+    }
+badges.push({
       id: `${kind}-${pair.leftKey}-${pair.rightKey}`,
       family: "interaction",
-      label: `${meta.title} ${pair.label}`,
+      label: displayLabel,
       shortLabel: pair.label,
       priority,
       status,

@@ -31,7 +31,6 @@ export function ChamberStemNode({ data, selected }: ChamberStemNodeProps) {
       <span className="chamber-stem-node__translation">{data.stemTranslation ?? data.element}</span>
       {data.hiddenStems.length > 0 && (
         <span className="chamber-stem-node__hidden-stems" aria-label={`hidden stems ${data.hiddenStems.join(" ")}`}>
-          <span className="chamber-stem-node__hidden-label">藏</span>
           <span className="chamber-stem-node__hidden-compact">{data.hiddenStemCompactLabel ?? data.hiddenStems.join(" · ")}</span>
           <span className="chamber-stem-node__hidden-expanded">{data.hiddenStems.join(" · ")}</span>
         </span>

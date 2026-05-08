@@ -605,29 +605,46 @@ function buildElementRelations(
   const outcomes: InteractionOutcomeValue[] = [];
   const dayMasterElement = STEM_TO_ELEMENT[dayMasterStem as keyof typeof STEM_TO_ELEMENT];
 
-  for (let leftIndex = 0; leftIndex < entries.length - 1; leftIndex += 1) {
-    for (let rightIndex = leftIndex + 1; rightIndex < entries.length; rightIndex += 1) {
-      const [leftKey, leftPillar] = entries[leftIndex];
-      const [rightKey, rightPillar] = entries[rightIndex];
-      const leftElement = STEM_TO_ELEMENT[leftPillar.stem as keyof typeof STEM_TO_ELEMENT];
-      const rightElement = STEM_TO_ELEMENT[rightPillar.stem as keyof typeof STEM_TO_ELEMENT];
+  const allEntities = entries.flatMap(([key, pillar]) => [
+    {
+      type: "stem" as const,
+      key,
+      symbol: pillar.stem,
+      element: STEM_TO_ELEMENT[pillar.stem as keyof typeof STEM_TO_ELEMENT],
+      entityId: buildStemEntityId(key),
+    },
+    {
+      type: "branch" as const,
+      key,
+      symbol: pillar.branch,
+      element: BRANCH_TO_ELEMENT[pillar.branch as keyof typeof BRANCH_TO_ELEMENT],
+      entityId: buildBranchEntityId(key),
+    },
+  ]);
 
-      if (!leftElement || !rightElement) {
-        continue;
-      }
+  for (let leftIndex = 0; leftIndex < allEntities.length; leftIndex += 1) {
+    for (let rightIndex = 0; rightIndex < allEntities.length; rightIndex += 1) {
+      if (leftIndex === rightIndex) continue;
 
-      if (GENERATES[leftElement] === rightElement) {
-        const relationId = `relation-generate-${leftKey}-${rightKey}`;
+      const left = allEntities[leftIndex];
+      const right = allEntities[rightIndex];
+
+      if (!left.element || !right.element) continue;
+
+      if (GENERATES[left.element as keyof typeof GENERATES] === right.element) {
+        const relationId = `relation-generate-${left.entityId}-${right.entityId}`;
         relations.push({
           id: relationId,
           familyKey: "element-generate",
           type: "element-interaction",
-          participantEntityIds: [buildStemEntityId(leftKey), buildStemEntityId(rightKey)],
-          label: `${leftPillar.stem}->${rightPillar.stem}`,
+          participantEntityIds: [left.entityId, right.entityId],
+          label: `${left.symbol}->${right.symbol}`,
           elementInteractionType: "generate",
           metadata: {
-            sourceElement: leftElement,
-            targetElement: rightElement,
+            sourceElement: left.element,
+            targetElement: right.element,
+            sourceType: left.type,
+            targetType: right.type,
           },
         });
         outcomes.push({
@@ -635,51 +652,27 @@ function buildElementRelations(
           status: "detected",
           precedence: "secondary",
           dayMasterEffect:
-            dayMasterElement === rightElement ? "beneficial" : dayMasterElement === leftElement ? "harmful" : "neutral",
+            dayMasterElement === right.element ? "beneficial" : dayMasterElement === left.element ? "harmful" : "neutral",
           supportReasons: [],
           blockedByRelationIds: [],
           metadata: {},
         });
       }
 
-      if (GENERATES[rightElement] === leftElement) {
-        const relationId = `relation-generate-${rightKey}-${leftKey}`;
-        relations.push({
-          id: relationId,
-          familyKey: "element-generate",
-          type: "element-interaction",
-          participantEntityIds: [buildStemEntityId(rightKey), buildStemEntityId(leftKey)],
-          label: `${rightPillar.stem}->${leftPillar.stem}`,
-          elementInteractionType: "generate",
-          metadata: {
-            sourceElement: rightElement,
-            targetElement: leftElement,
-          },
-        });
-        outcomes.push({
-          relationId,
-          status: "detected",
-          precedence: "secondary",
-          dayMasterEffect:
-            dayMasterElement === leftElement ? "beneficial" : dayMasterElement === rightElement ? "harmful" : "neutral",
-          supportReasons: [],
-          blockedByRelationIds: [],
-          metadata: {},
-        });
-      }
-
-      if (CONTROLS[leftElement] === rightElement) {
-        const relationId = `relation-control-${leftKey}-${rightKey}`;
+      if (CONTROLS[left.element as keyof typeof CONTROLS] === right.element) {
+        const relationId = `relation-control-${left.entityId}-${right.entityId}`;
         relations.push({
           id: relationId,
           familyKey: "element-control",
           type: "element-interaction",
-          participantEntityIds: [buildStemEntityId(leftKey), buildStemEntityId(rightKey)],
-          label: `${leftPillar.stem}x${rightPillar.stem}`,
+          participantEntityIds: [left.entityId, right.entityId],
+          label: `${left.symbol}x${right.symbol}`,
           elementInteractionType: "control",
           metadata: {
-            sourceElement: leftElement,
-            targetElement: rightElement,
+            sourceElement: left.element,
+            targetElement: right.element,
+            sourceType: left.type,
+            targetType: right.type,
           },
         });
         outcomes.push({
@@ -687,33 +680,7 @@ function buildElementRelations(
           status: "detected",
           precedence: "secondary",
           dayMasterEffect:
-            dayMasterElement === rightElement ? "harmful" : dayMasterElement === leftElement ? "beneficial" : "neutral",
-          supportReasons: [],
-          blockedByRelationIds: [],
-          metadata: {},
-        });
-      }
-
-      if (CONTROLS[rightElement] === leftElement) {
-        const relationId = `relation-control-${rightKey}-${leftKey}`;
-        relations.push({
-          id: relationId,
-          familyKey: "element-control",
-          type: "element-interaction",
-          participantEntityIds: [buildStemEntityId(rightKey), buildStemEntityId(leftKey)],
-          label: `${rightPillar.stem}x${leftPillar.stem}`,
-          elementInteractionType: "control",
-          metadata: {
-            sourceElement: rightElement,
-            targetElement: leftElement,
-          },
-        });
-        outcomes.push({
-          relationId,
-          status: "detected",
-          precedence: "secondary",
-          dayMasterEffect:
-            dayMasterElement === leftElement ? "harmful" : dayMasterElement === rightElement ? "beneficial" : "neutral",
+            dayMasterElement === right.element ? "harmful" : dayMasterElement === left.element ? "beneficial" : "neutral",
           supportReasons: [],
           blockedByRelationIds: [],
           metadata: {},

@@ -119,7 +119,7 @@ describe("chamber relation bundle resolver", () => {
 
   test("keeps direction and flow family stable across repeated resolution", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day", "stem:hour"] });
 
     const firstBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
@@ -145,7 +145,7 @@ describe("chamber relation bundle resolver", () => {
 
   test("returns dedicated element-interaction relations when selecting a generated elemental edge", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const elementEdge = graph.edges.find((edge) => edge.data.layer === "element-interaction");
 
     expect(elementEdge).toBeDefined();

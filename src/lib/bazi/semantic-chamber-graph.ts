@@ -127,6 +127,8 @@ export type SemanticEdge = {
   className?: string;
 };
 
+import { applySchoolRevealPolicy, type SchoolRevealPolicyConfig } from "@/lib/bazi/school-reveal-policy";
+
 export type SemanticChamberGraph = {
   nodes: SemanticNode[];
   edges: SemanticEdge[];
@@ -950,7 +952,7 @@ function assignParallelOffsets(edges: SemanticEdge[]): void {
   }
 }
 
-export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): SemanticChamberGraph | null {
+export function buildSemanticGraphModel(calculatedState: CalculatedStateValue, config: SchoolRevealPolicyConfig = { quietGraph: true }): SemanticChamberGraph | null {
   const reading = calculatedState.baseChartReading;
 
   if (!reading) {
@@ -959,7 +961,13 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): 
 
   const pillarNodes = buildPillarNodes(calculatedState);
   const visibleMarkerBadges = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "visible");
-  const interactionBadges = [...reading.stemInteractionBadges, ...reading.branchInteractionBadges];
+  
+  // Apply SchoolRevealPolicy adapter
+  const interactionBadges = applySchoolRevealPolicy(
+    [...reading.stemInteractionBadges, ...reading.branchInteractionBadges],
+    config
+  );
+  
   const elementalInteractionBadges = interactionBadges.filter(
     (badge) => badge.semanticKind === "element-generate" || badge.semanticKind === "element-control",
   );
@@ -983,8 +991,8 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): 
   };
 }
 
-export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue): SemanticChamberGraph {
-  const graph = buildSemanticGraphModel(calculatedState);
+export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue, config: SchoolRevealPolicyConfig = { quietGraph: true }): SemanticChamberGraph {
+  const graph = buildSemanticGraphModel(calculatedState, config);
 
   if (!graph) {
     return { nodes: [], edges: [], schoolClusters: [], hiddenSecondaryOverlays: [] };

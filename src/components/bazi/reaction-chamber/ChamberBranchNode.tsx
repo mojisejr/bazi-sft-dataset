@@ -31,7 +31,6 @@ export function ChamberBranchNode({ data, selected }: ChamberBranchNodeProps) {
       <span className="chamber-branch-node__translation">{data.branchTranslation ?? data.element}</span>
       {data.hiddenStems.length > 0 && (
         <span className="chamber-branch-node__hidden-stems" aria-label={`hidden stems ${data.hiddenStems.join(" ")}`}>
-          <span className="chamber-branch-node__hidden-label">藏</span>
           <span className="chamber-branch-node__hidden-compact">{data.hiddenStemCompactLabel ?? data.hiddenStems.join(" · ")}</span>
           <span className="chamber-branch-node__hidden-expanded">{data.hiddenStems.join(" · ")}</span>
         </span>
