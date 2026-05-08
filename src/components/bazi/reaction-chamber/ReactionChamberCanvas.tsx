@@ -15,12 +15,13 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import type {
-  SemanticEdge,
   SemanticChamberGraph,
   SemanticNode,
 } from "@/lib/bazi/semantic-chamber-graph";
 import { getSemanticDayFocusNodeIds } from "@/lib/bazi/semantic-chamber-graph";
 import { assignChamberGraphLayout } from "@/lib/bazi/chamber-layout";
+
+import { buildChamberSelectionState, type ChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
@@ -41,14 +42,9 @@ const EDGE_TYPES = {
   chamberBezier: ChamberBezierEdge,
 };
 
-type ChamberSelection =
-  | { kind: "node"; node: SemanticNode }
-  | { kind: "edge"; edge: SemanticEdge }
-  | null;
-
 type ReactionChamberCanvasProps = {
   graph: SemanticChamberGraph;
-  onSelectionChange?: (selection: ChamberSelection) => void;
+  onSelectionChange?: (selection: ChamberSelectionState) => void;
   onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
 };
 
@@ -89,25 +85,13 @@ function ReactionChamberCanvasInner({
         return;
       }
 
-      if (params.nodes.length > 0) {
-        const selectedNode = graph.nodes.find((node) => node.id === params.nodes[0].id);
-        if (selectedNode) {
-          onSelectionChange({ kind: "node", node: selectedNode });
-          return;
-        }
-      }
-
-      if (params.edges.length > 0) {
-        const selectedEdge = graph.edges.find((edge) => edge.id === params.edges[0].id);
-        if (selectedEdge) {
-          onSelectionChange({ kind: "edge", edge: selectedEdge });
-          return;
-        }
-      }
-
-      onSelectionChange(null);
-    },
-    [graph, onSelectionChange],
+        onSelectionChange(buildChamberSelectionState({
+          graph,
+          nodeIds: params.nodes.map((node) => node.id),
+          edgeIds: params.edges.map((edge) => edge.id),
+        }));
+      },
+      [graph, onSelectionChange],
   );
 
   const handleNodeMouseEnter: NodeMouseHandler = useCallback(
@@ -134,10 +118,7 @@ function ReactionChamberCanvasInner({
       if (!onSelectionChange) {
         return;
       }
-      const matched = graph.edges.find((candidate) => candidate.id === edge.id);
-      if (matched) {
-        onSelectionChange({ kind: "edge", edge: matched });
-      }
+      onSelectionChange(buildChamberSelectionState({ graph, edgeIds: [edge.id] }));
     },
     [graph, onSelectionChange],
   );
@@ -170,7 +151,7 @@ function ReactionChamberCanvasInner({
   );
 }
 
-export type { ChamberSelection };
+export type { ChamberSelectionState as ChamberSelection };
 
 export const ReactionChamberCanvas = ReactionChamberCanvasInner;
 export { ReactFlowProvider };

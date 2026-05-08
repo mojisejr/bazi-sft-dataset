@@ -16,16 +16,16 @@ type ChamberInspectorProps = {
 };
 
 function getBadgeFromSelection(selection: ChamberSelection): BaseChartReactionBadgeValue | null {
-  if (!selection) {
+  if (!selection.primary) {
     return null;
   }
 
-  if (selection.kind === "edge") {
-    return selection.edge.data.badge;
+  if (selection.primary.kind === "edge") {
+    return selection.primary.edge.data.badge;
   }
 
-  if (selection.kind === "node" && selection.node.data.kind === "marker") {
-    return selection.node.data.badge;
+  if (selection.primary.kind === "node" && selection.primary.node.data.kind === "marker") {
+    return selection.primary.node.data.badge;
   }
 
   return null;
@@ -214,7 +214,7 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
 }
 
 function InspectorBody({ selection }: { selection: ChamberSelection }) {
-  if (!selection) {
+  if (selection.mode === "base" || !selection.primary) {
     return (
       <div className="chamber-inspector__placeholder">
         <p className="chamber-inspector__kicker">แผนภาพปฏิกิริยา</p>
@@ -223,8 +223,32 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
     );
   }
 
-  if (selection.kind === "edge") {
-    return <EdgeDetail edge={selection.edge} />;
+  if (selection.mode === "pair" && selection.pairDoctrine) {
+    return (
+      <div className="chamber-inspector__placeholder">
+        <p className="chamber-inspector__kicker">โหมดเทียบสัมพันธ์</p>
+        <p>
+          {selection.pairDoctrine.doctrine === "day-master-compare"
+            ? "จับคู่เทียบดิถีกับ anchor อื่นแล้ว พร้อมสำหรับ reveal relation bundle ของ phase ถัดไป"
+            : selection.pairDoctrine.doctrine === "day-pillar-compare"
+              ? "จับคู่เทียบเสาดิถีกับ anchor อื่นแล้ว พร้อมสำหรับ reveal relation bundle ของ phase ถัดไป"
+              : "จับคู่เทียบสอง anchor แล้ว พร้อมสำหรับ reveal relation bundle ของ phase ถัดไป"}
+        </p>
+      </div>
+    );
+  }
+
+  if (selection.mode === "multi") {
+    return (
+      <div className="chamber-inspector__placeholder">
+        <p className="chamber-inspector__kicker">โหมดกลุ่มสัมพันธ์</p>
+        <p>เลือกหลาย anchor แล้ว ระบบล็อกไว้เป็น cluster-bundle grammar สำหรับ phase ถัดไปค่ะ</p>
+      </div>
+    );
+  }
+
+  if (selection.primary.kind === "edge") {
+    return <EdgeDetail edge={selection.primary.edge} />;
   }
 
   const badge = getBadgeFromSelection(selection);
@@ -232,12 +256,12 @@ function InspectorBody({ selection }: { selection: ChamberSelection }) {
     return <BadgeDetail badge={badge} />;
   }
 
-  if (selection.kind === "node" && selection.node.data.kind === "pillar") {
-    return <PillarSummary node={selection.node} />;
+  if (selection.primary.kind === "node" && selection.primary.node.data.kind === "pillar") {
+    return <PillarSummary node={selection.primary.node} />;
   }
 
-  if (selection.kind === "node" && (selection.node.data.kind === "stem-node" || selection.node.data.kind === "branch-node")) {
-    return <SemanticNodeSummary node={selection.node} />;
+  if (selection.primary.kind === "node" && (selection.primary.node.data.kind === "stem-node" || selection.primary.node.data.kind === "branch-node")) {
+    return <SemanticNodeSummary node={selection.primary.node} />;
   }
 
   return null;
@@ -259,7 +283,7 @@ export function ChamberInspector({ selection, variant, onClose }: ChamberInspect
 
   return (
     <AnimatePresence>
-      {selection && (
+      {selection.mode !== "base" && (
         <motion.aside
           className="chamber-inspector chamber-inspector--sheet"
           aria-label="chamber inspector"

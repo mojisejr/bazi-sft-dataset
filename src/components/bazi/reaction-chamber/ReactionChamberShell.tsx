@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { EMPTY_CHAMBER_SELECTION } from "@/lib/bazi/chamber-selection-grammar";
 import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 import { useBaziWorkspaceSessionStore } from "@/lib/bazi/bazi-session-store";
 
@@ -36,7 +37,7 @@ function useViewportVariant(): "docked" | "sheet" {
 export function ReactionChamberShell() {
   const router = useRouter();
   const calculatedState = useBaziWorkspaceSessionStore((state) => state.calculatedState);
-  const [selection, setSelection] = useState<ChamberSelection>(null);
+  const [selection, setSelection] = useState<ChamberSelection>(EMPTY_CHAMBER_SELECTION);
   const variant = useViewportVariant();
 
   useEffect(() => {
@@ -75,15 +76,15 @@ export function ReactionChamberShell() {
         <ChamberCommandBar title={title} onBack={() => router.push("/")} graph={graph} />
 
         <div className="reaction-chamber-shell__viewport">
-          <ReactionChamberCanvas graph={graph} onSelectionChange={setSelection} />
-          <ChamberTenGodPanel roleBadges={roleBadges} />
-          {variant === "docked" && (
-            <ChamberInspector selection={selection} variant="docked" onClose={() => setSelection(null)} />
-          )}
-        </div>
+            <ReactionChamberCanvas graph={graph} onSelectionChange={setSelection} />
+            <ChamberTenGodPanel roleBadges={roleBadges} />
+            {variant === "docked" && (
+              <ChamberInspector selection={selection} variant="docked" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
+            )}
+          </div>
 
         {variant === "sheet" && (
-          <ChamberInspector selection={selection} variant="sheet" onClose={() => setSelection(null)} />
+          <ChamberInspector selection={selection} variant="sheet" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
         )}
       </main>
     </ReactFlowProvider>
