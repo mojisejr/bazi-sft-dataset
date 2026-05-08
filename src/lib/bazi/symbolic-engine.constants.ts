@@ -57,6 +57,21 @@ export const BRANCH_LABELS_TH = {
   亥: "กุน",
 } as const;
 
+export const BRANCH_TO_ELEMENT = {
+  子: "water",
+  丑: "earth",
+  寅: "wood",
+  卯: "wood",
+  辰: "earth",
+  巳: "fire",
+  午: "fire",
+  未: "earth",
+  申: "metal",
+  酉: "metal",
+  戌: "earth",
+  亥: "water",
+} as const;
+
 export const TWELVE_QI_LABELS_TH = {
   长生: "เชี่ยงแซ",
   沐浴: "หมกยก",
@@ -271,6 +286,13 @@ export const SIX_COMBINATION_PAIRS = new Set([
   "巳|申",
   "午|未",
 ]);
+
+export const SAN_HE_GROUPS = [
+  { branches: ["申", "子", "辰"], element: "water" },
+  { branches: ["亥", "卯", "未"], element: "wood" },
+  { branches: ["寅", "午", "戌"], element: "fire" },
+  { branches: ["巳", "酉", "丑"], element: "metal" },
+] as const;
 
 export const CLASH_PAIRS = new Set([
   "子|午",

@@ -30,9 +30,11 @@ import {
   STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
 import {
+  buildGeneralizedInteractionState,
   resolveBranchInteractionEffects,
 } from "@/lib/bazi/symbolic-engine.interactions";
 export {
+  buildGeneralizedInteractionState,
   resolveBranchInteractionEffects,
 } from "@/lib/bazi/symbolic-engine.interactions";
 import {
@@ -489,6 +491,18 @@ export async function calculateBaziChart(
     lowerStageDisplay: mingGongLowerPrimary ? formatStagePair(mingGongLowerPrimary, mingGongSittingStage) : undefined,
   };
   const interactionResolution = resolveBranchInteractionEffects(pillars);
+  const interactionState = buildGeneralizedInteractionState({
+    pillars,
+    dayMasterStem,
+    twelveQiByBranch: {
+      year: canonicalTwelveQiState.yearBranch,
+      month: canonicalTwelveQiState.monthBranch,
+      day: canonicalTwelveQiState.dayBranch,
+      hour: canonicalTwelveQiState.hourBranch,
+    },
+    resolution: interactionResolution,
+  });
+  interactionResolution.interactionState = interactionState;
   const elementAnalysis = buildElementAnalysis(pillars);
   const strengthScore = buildStrengthScoreExplainable(
     dayMasterStem,
@@ -597,6 +611,7 @@ export async function calculateBaziChart(
           precedenceNoteSignals,
         }
       : undefined,
+    interactionState,
     baseChartReading,
     compatibilityMatrixProfiles,
     isForwardDirection: forwardDirection,

@@ -8,6 +8,7 @@ import {
 } from "@/lib/bazi/pillar-display";
 import { isForwardDaYunDirection } from "@/lib/bazi/symbolic-engine.birth";
 import {
+  buildGeneralizedInteractionState,
   calculateBaziChart,
   resolveBranchInteractionEffects,
 } from "@/lib/bazi/symbolic-engine";
@@ -42,6 +43,78 @@ describe("calculateBaziChart", () => {
     expect(unresolved.activeCombinations).toEqual([]);
     expect(unresolved.activeClashes).toContain("子午");
     expect(unresolved.monthBranchSeasonalFactor).toBe(0.6);
+  });
+
+  test("builds generalized interaction state for stem he, liu he, san he, half san he, and elemental interactions", () => {
+    const pillars = {
+      year: { stem: "己", branch: "丑", hiddenStems: [] },
+      month: { stem: "乙", branch: "巳", hiddenStems: [] },
+      day: { stem: "庚", branch: "酉", hiddenStems: [] },
+      hour: { stem: "壬", branch: "申", hiddenStems: [] },
+    };
+    const resolution = resolveBranchInteractionEffects(pillars);
+    const interactionState = buildGeneralizedInteractionState({
+      pillars,
+      dayMasterStem: "庚",
+      twelveQiByBranch: {
+        year: "墓",
+        month: "长生",
+        day: "帝旺",
+        hour: "临官",
+      },
+      resolution,
+    });
+
+    expect(interactionState.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          familyKey: "heavenly-stem-he",
+          label: "乙庚",
+        }),
+        expect.objectContaining({
+          familyKey: "earthly-branch-liu-he",
+          label: "巳申",
+        }),
+        expect.objectContaining({
+          familyKey: "earthly-branch-san-he",
+          label: "巳酉丑",
+          transformElement: "metal",
+        }),
+        expect.objectContaining({
+          familyKey: "earthly-branch-ban-san-he",
+          transformElement: "metal",
+        }),
+        expect.objectContaining({
+          familyKey: "element-generate",
+          elementInteractionType: "generate",
+        }),
+        expect.objectContaining({
+          familyKey: "element-control",
+          elementInteractionType: "control",
+        }),
+      ]),
+    );
+    expect(interactionState.outcomes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          status: "supported",
+          transformElement: "metal",
+        }),
+        expect.objectContaining({
+          status: "detected",
+          precedence: "secondary",
+        }),
+      ]),
+    );
+    expect(interactionState.qualifiers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lane: "twelve-qi",
+          qualifierKey: "twelve-qi-stage",
+          value: "帝旺",
+        }),
+      ]),
+    );
   });
 
   test("flips the year and month pillars when crossing the start-of-spring boundary", async () => {
@@ -351,6 +424,60 @@ describe("calculateBaziChart", () => {
       ]),
     );
     expect(result.seasonalInteraction).toBeUndefined();
+    expect(result.interactionState?.version).toBe("v3-phase-1");
+    expect(result.interactionState?.entities.length).toBeGreaterThan(0);
+    expect(result.interactionState?.qualifiers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          lane: "twelve-qi",
+          qualifierKey: "twelve-qi-stage",
+        }),
+      ]),
+    );
+  });
+
+  test("emits generalized interaction state for the 1989 half-trine style runtime case", async () => {
+    const repository = createTestKnowledgeRepository();
+    const result = await calculateBaziChart(
+      RawInputSchema.parse({
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: "male",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      }),
+      repository,
+    );
+
+    expect(result.fourPillars.year).toMatchObject({ stem: "戊", branch: "辰" });
+    expect(result.fourPillars.month).toMatchObject({ stem: "甲", branch: "子" });
+    expect(result.fourPillars.day).toMatchObject({ stem: "癸", branch: "亥" });
+    expect(result.fourPillars.hour).toMatchObject({ stem: "丙", branch: "辰" });
+
+    expect(result.interactionState?.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          familyKey: "heavenly-stem-he",
+          label: "戊癸",
+        }),
+        expect.objectContaining({
+          familyKey: "earthly-branch-ban-san-he",
+          label: "子辰",
+        }),
+        expect.objectContaining({
+          familyKey: "element-generate",
+        }),
+      ]),
+    );
+    expect(result.interactionState?.relations).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          familyKey: "earthly-branch-san-he",
+          label: "申子辰",
+        }),
+      ]),
+    );
   });
 
   test("keeps historical Bangkok births on fixed regional offsets instead of political DST", async () => {
