@@ -519,14 +519,14 @@ function buildGeneralizedInteractionBadge(args: {
       summary: `ราศีล่างคู่ ${relation.label} เป็นครึ่งสามภาคี${transformText}`,
     },
     "element-generate": {
-      label: `相生 ${relation.label}`,
-      schoolLabel: "相生",
+      label: `เซียงแซ ${relation.label}`,
+      schoolLabel: "เซียงแซ",
       semanticKind: "element-generate",
       summary: `คู่ธาตุ ${relation.label} ส่งเสริมกัน`,
     },
     "element-control": {
-      label: `相克 ${relation.label}`,
-      schoolLabel: "相克",
+      label: `พิฆาต ${relation.label}`,
+      schoolLabel: "พิฆาต",
       semanticKind: "element-control",
       summary: `คู่ธาตุ ${relation.label} กดหรือคุมกัน`,
     },

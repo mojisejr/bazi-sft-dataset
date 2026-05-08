@@ -187,7 +187,7 @@ describe("buildChamberRenderModel", () => {
 
     const renderedEdge = renderModel.edges.find((candidate) => candidate.id === edge?.id);
     expect(renderedEdge?.type).toBe("chamberBezier");
-    expect(renderedEdge?.data?.inlineLabel).toMatch(/^(相生|相克)$/);
+    expect(renderedEdge?.data?.inlineLabel).toMatch(/^(เซียงแซ|พิฆาต)$/);
     expect(renderedEdge?.hidden).toBe(false);
   });
 });

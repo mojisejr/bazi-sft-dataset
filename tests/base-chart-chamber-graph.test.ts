@@ -476,7 +476,7 @@ describe("buildSemanticChamberGraph", () => {
     for (const edge of elementInteractionEdges) {
       expect(edge.className).toContain("chamber-edge--element-interaction");
       expect(edge.data.schoolCluster).toBeNull();
-      expect(edge.data.flowLabel).toMatch(/^(相生|相克)$/);
+      expect(edge.data.flowLabel).toMatch(/^(เซียงแซ|พิฆาต)$/);
     }
   });
 

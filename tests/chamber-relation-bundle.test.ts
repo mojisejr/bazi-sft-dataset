@@ -126,7 +126,7 @@ describe("chamber relation bundle resolver", () => {
     const secondBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
 
     expect(firstBundle).toEqual(secondBundle);
-    expect(firstBundle?.relations.map((relation) => relation.displayLabel)).toEqual(["เพียงอิ่ง", "ส่งเสริม", "相生"]);
+    expect(firstBundle?.relations.map((relation) => relation.displayLabel)).toEqual(["เพียงอิ่ง", "ส่งเสริม", "เซียงแซ"]);
     expect(firstBundle?.relations.map((relation) => relation.direction)).toEqual(["outward", "inward", "mutual"]);
   });
 
