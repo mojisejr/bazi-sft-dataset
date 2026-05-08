@@ -12,26 +12,12 @@ export function applySchoolRevealPolicy(
   badges: BaseChartReactionBadgeValue[],
   config: SchoolRevealPolicyConfig = { quietGraph: true }
 ): BaseChartReactionBadgeValue[] {
-  return badges.filter((badge) => {
-    // Canonical Reactions Protection
-    if (
-      badge.semanticKind !== "element-generate" &&
-      badge.semanticKind !== "element-control"
-    ) {
-      return true; // Always render canonical reactions
-    }
-
-    if (config.quietGraph) {
-      return false; // Suppress noise
-    }
-
-    return true;
-  });
+  // In quietGraph mode, we currently DO NOT drop element-generate / element-control.
+  // The user explicitly expects "เซียงแซ" (element-generate) to connect across the chart.
+  // We will preserve them so the graph shows generating flows accurately.
+  return badges;
 }
 
-/**
- * Alternatively, apply directly to semantic edges so that they can be fully omitted or hidden.
- */
 export function filterEdgesBySchoolRevealPolicy(
   edges: SemanticEdge[],
   config: SchoolRevealPolicyConfig = { quietGraph: true }
@@ -40,10 +26,6 @@ export function filterEdgesBySchoolRevealPolicy(
     return edges;
   }
 
-  return edges.filter((edge) => {
-    if (edge.data.layer === "element-interaction") {
-      return false;
-    }
-    return true;
-  });
+  // Same here, we do not drop the element-interaction layer.
+  return edges;
 }
