@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
-import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
+import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import { buildChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
@@ -65,16 +65,29 @@ const sampleMarkers: ShenShaValue[] = [
 
 function buildStubCalculatedState(): CalculatedStateValue {
   const resolution = resolveBranchInteractionEffects(samplePillars);
+  const interactionState = buildGeneralizedInteractionState({
+    pillars: samplePillars,
+    dayMasterStem: "己",
+    twelveQiByBranch: {
+      year: "长生",
+      month: "病",
+      day: "帝旺",
+      hour: "养",
+    },
+    resolution,
+  });
   const reading = buildBaseChartReading({
     dayMasterStem: "己",
     pillars: samplePillars,
     shenSha: sampleMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
+    interactionState,
   });
 
   return {
     fourPillars: samplePillars,
+    interactionState,
     baseChartReading: reading,
   } as unknown as CalculatedStateValue;
 }
@@ -113,8 +126,8 @@ describe("chamber relation bundle resolver", () => {
     const secondBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
 
     expect(firstBundle).toEqual(secondBundle);
-    expect(firstBundle?.relations.map((relation) => relation.displayLabel)).toEqual(["เพียงอิ่ง", "ส่งเสริม"]);
-    expect(firstBundle?.relations.map((relation) => relation.direction)).toEqual(["outward", "inward"]);
+    expect(firstBundle?.relations.map((relation) => relation.displayLabel)).toEqual(["เพียงอิ่ง", "ส่งเสริม", "相生"]);
+    expect(firstBundle?.relations.map((relation) => relation.direction)).toEqual(["outward", "inward", "mutual"]);
   });
 
   test("returns hidden stem cues only for visible pillars in the active bundle", () => {
@@ -127,6 +140,23 @@ describe("chamber relation bundle resolver", () => {
     expect(bundle?.hiddenStemCues).toEqual([
       { pillarKey: "day", pillarLabel: "ดิถี", hiddenStems: ["丁", "己"] },
       { pillarKey: "month", pillarLabel: "เดือน", hiddenStems: ["己", "癸", "辛"] },
+    ]);
+  });
+
+  test("returns dedicated element-interaction relations when selecting a generated elemental edge", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState);
+    const elementEdge = graph.edges.find((edge) => edge.data.layer === "element-interaction");
+
+    expect(elementEdge).toBeDefined();
+
+    const selection = buildChamberSelectionState({ graph, edgeIds: elementEdge ? [elementEdge.id] : [] });
+    const bundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
+
+    expect(bundle?.relations).toEqual([
+      expect.objectContaining({
+        relationType: "element-interaction",
+      }),
     ]);
   });
 });

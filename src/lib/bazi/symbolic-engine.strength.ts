@@ -19,6 +19,7 @@ import {
 } from "@/lib/bazi/constants";
 import type {
   BranchInteractionResolution,
+  GeneralizedInteractionState,
   StrengthStageSnapshot,
   SupportedElement,
 } from "@/lib/bazi/symbolic-engine.types";
@@ -86,11 +87,39 @@ function normalizePairKey(left: string, right: string) {
   return [right, left].sort().join("|");
 }
 
+function hasGeneralizedBranchClash(
+  interactionState: GeneralizedInteractionState | undefined,
+  left: string,
+  right: string,
+) {
+  if (!interactionState) {
+    return false;
+  }
+
+  const label = normalizePairKey(left, right).replace("|", "");
+
+  return interactionState.relations.some((relation) => (
+    relation.familyKey === "earthly-branch-clash"
+    && relation.label === label
+  )) || interactionState.outcomes.some((outcome) => (
+    outcome.status !== "blocked"
+    && interactionState.relations.some((relation) => (
+      relation.id === outcome.relationId
+      && relation.familyKey === "earthly-branch-clash"
+      && relation.label === label
+    ))
+  ));
+}
+
 function hasActiveClash(
   interactionResolution: BranchInteractionResolution,
   left: string,
   right: string,
 ) {
+  if (hasGeneralizedBranchClash(interactionResolution.interactionState, left, right)) {
+    return true;
+  }
+
   const label = normalizePairKey(left, right).replace("|", "");
 
   return interactionResolution.activeClashes.includes(label);

@@ -7,7 +7,7 @@ import type {
   SemanticPillarKey,
 } from "@/lib/bazi/semantic-chamber-graph";
 
-export type ChamberBundleRelationType = "ten-god-flow" | "day-master-role" | "interaction" | "overlay";
+export type ChamberBundleRelationType = "ten-god-flow" | "day-master-role" | "interaction" | "element-interaction" | "overlay";
 
 export type ChamberBundleRelationDirection = "outward" | "inward" | "mutual" | "none";
 
@@ -126,6 +126,10 @@ function resolveDirection(edge: SemanticEdge): ChamberBundleRelationDirection {
     return "mutual";
   }
 
+  if (edge.data.layer === "element-interaction") {
+    return "mutual";
+  }
+
   return "none";
 }
 
@@ -142,11 +146,15 @@ function resolveRelationType(edge: SemanticEdge): ChamberBundleRelationType {
     return "interaction";
   }
 
+  if (edge.data.layer === "element-interaction") {
+    return "element-interaction";
+  }
+
   return "overlay";
 }
 
 function resolveDisplayLabel(edge: SemanticEdge): string {
-  if (edge.data.layer === "element-flow") {
+  if (edge.data.layer === "element-flow" || edge.data.layer === "element-interaction") {
     return edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label;
   }
 
@@ -205,7 +213,9 @@ function buildBundleRelation(edge: SemanticEdge): ChamberBundleRelation {
     displayLabel: resolveDisplayLabel(edge),
     sourceNodeId: edge.source,
     targetNodeId: edge.target,
-    flowFamily: edge.data.layer === "element-flow" ? edge.data.flowLabel : undefined,
+    flowFamily: edge.data.layer === "element-flow" || edge.data.layer === "element-interaction"
+      ? edge.data.flowLabel
+      : undefined,
   };
 }
 

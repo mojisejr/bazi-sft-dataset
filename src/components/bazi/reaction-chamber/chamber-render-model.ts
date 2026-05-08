@@ -30,12 +30,16 @@ function isReactionEdge(edge: SemanticEdge): boolean {
   return edge.data.layer === "inter-pillar-reaction";
 }
 
+function isElementInteractionEdge(edge: SemanticEdge): boolean {
+  return edge.data.layer === "element-interaction";
+}
+
 function isElementFlowEdge(edge: SemanticEdge): boolean {
   return edge.data.layer === "element-flow";
 }
 
 function resolveEdgeType(edge: SemanticEdge): string {
-  if (isReactionEdge(edge) || isElementFlowEdge(edge)) {
+  if (isReactionEdge(edge) || isElementFlowEdge(edge) || isElementInteractionEdge(edge)) {
     return "chamberBezier";
   }
 
@@ -44,6 +48,7 @@ function resolveEdgeType(edge: SemanticEdge): string {
 
 function resolveEdgeZIndex(edge: SemanticEdge): number {
   if (isElementFlowEdge(edge)) return 10;
+  if (isElementInteractionEdge(edge)) return 16;
   if (edge.data.layer === "shen-sha-overlay") return 18;
   if (isReactionEdge(edge)) return 20;
 
@@ -59,6 +64,10 @@ function resolveEdgeDirectionLabel(edge: SemanticEdge): { label: string; symbol:
       return { label: "รับเข้า", symbol: "←" };
     }
     return { label: "คู่ธาตุ", symbol: "↔" };
+  }
+
+  if (edge.data.layer === "element-interaction") {
+    return { label: "สัมพันธ์ธาตุ", symbol: "↔" };
   }
 
   if (edge.data.layer === "daymaster-meaning") {
@@ -105,7 +114,7 @@ function buildInlineEdgeLabel(edge: SemanticEdge): ChamberInlineEdgeLabel | null
     return null;
   }
 
-  const relationLabel = edge.data.layer === "element-flow"
+  const relationLabel = edge.data.layer === "element-flow" || edge.data.layer === "element-interaction"
     ? edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label
     : edge.data.schoolLabel ?? edge.data.badge.shortLabel ?? edge.label ?? edge.data.badge.label;
 
@@ -174,7 +183,7 @@ function buildReactFlowEdge(
     zIndex: resolveEdgeZIndex(edge),
     interactionWidth: isReactionEdge(edge) ? 20 : 12,
     hidden: hideUnrevealedEdges && !isRevealed,
-    ...(isReactionEdge(edge)
+    ...(isReactionEdge(edge) || isElementInteractionEdge(edge)
       ? { markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10 } }
       : {}),
     ...(isElementFlowEdge(edge) && flowDirection === "outward"

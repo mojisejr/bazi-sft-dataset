@@ -546,6 +546,7 @@ export async function calculateBaziChart(
     shenSha,
     resolution: interactionResolution,
     precedenceSignals: precedenceNoteSignals,
+    interactionState,
   });
 
   const calculatedState = CalculatedStateSchema.parse({

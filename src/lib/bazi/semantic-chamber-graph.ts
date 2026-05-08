@@ -11,6 +11,7 @@ export type SemanticGraphLayer =
   | "pillar-structure"
   | "daymaster-meaning"
   | "element-flow"
+  | "element-interaction"
   | "inter-pillar-reaction"
   | "shen-sha-overlay";
 
@@ -660,15 +661,87 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
   return edges;
 }
 
+function buildElementInteractionEdges(badges: BaseChartReactionBadgeValue[]): SemanticEdge[] {
+  const edges: SemanticEdge[] = [];
+
+  badges.forEach((badge, badgeIndex) => {
+    const graphParticipants = badge.participants
+      .map((participant) => ({
+        participant,
+        pillarKey: resolvePillarKeyFromBadgeParticipant(participant),
+      }))
+      .filter((entry): entry is { participant: BaseChartParticipantValue; pillarKey: SemanticPillarKey } => Boolean(entry.pillarKey));
+
+    if (graphParticipants.length < 2) {
+      return;
+    }
+
+    const source = graphParticipants[0];
+    const target = graphParticipants[1];
+    const sourceIsStem = source.participant.type === "stem";
+    const targetIsStem = target.participant.type === "stem";
+    const sourceNodeId = sourceIsStem ? stemNodeId(source.pillarKey) : branchNodeId(source.pillarKey);
+    const targetNodeId = targetIsStem ? stemNodeId(target.pillarKey) : branchNodeId(target.pillarKey);
+    const { sourceHandle, targetHandle } = resolveInteractionHandles(
+      source.pillarKey,
+      target.pillarKey,
+      sourceIsStem,
+      targetIsStem,
+    );
+    const flowCycleType = badge.semanticKind === "element-generate"
+      ? "generating"
+      : badge.semanticKind === "element-control"
+        ? "controlling"
+        : "neutral";
+    const flowElement = badge.modal.details.find((detail) => detail.label === "ธาตุปลายทาง")?.value;
+
+    edges.push({
+      id: `element-interaction:${badge.id}`,
+      source: sourceNodeId,
+      target: targetNodeId,
+      sourceHandle,
+      targetHandle,
+      data: {
+        layer: "element-interaction",
+        badge,
+        readingOrder: badgeIndex + 1,
+        schoolCluster: null,
+        sourceDetail: formatParticipantForGraph(source.participant),
+        targetDetail: formatParticipantForGraph(target.participant),
+        tier: badge.tier,
+        schoolLabel: badge.schoolLabel,
+        flowCycleType,
+        flowDirection: "outward",
+        flowLabel: badge.schoolLabel ?? badge.shortLabel ?? badge.label,
+        flowElement: flowElement ? ELEMENT_TH_TO_EN[flowElement] ?? undefined : undefined,
+      },
+      label: badge.schoolLabel ?? badge.shortLabel ?? badge.label,
+      className: [
+        "chamber-edge",
+        "chamber-edge--element-interaction",
+        `chamber-edge--element-flow-${flowCycleType}`,
+        badge.status ? `chamber-edge--${badge.status}` : "",
+        flowElement ? `chamber-edge--element-${ELEMENT_TH_TO_EN[flowElement] ?? flowElement}` : "",
+      ].filter(Boolean).join(" "),
+    });
+  });
+
+  return edges;
+}
+
 function normalizeSchoolToEdgeClass(schoolLabel: string | undefined, badge?: BaseChartReactionBadgeValue): string {
   if (badge?.semanticKind === "stem-combination") return "school-faa-pakhee";
   if (badge?.semanticKind === "stem-clash") return "school-faa-phikat";
+  if (badge?.semanticKind === "branch-liu-he") return "school-pakhee";
+  if (badge?.semanticKind === "branch-san-he") return "school-pakhee";
+  if (badge?.semanticKind === "branch-ban-san-he") return "school-pakhee";
   if (badge?.semanticKind === "branch-combination") return "school-pakhee";
   if (badge?.semanticKind === "branch-clash") return "school-chong";
   if (badge?.semanticKind === "branch-harm") return "school-hai";
   if (badge?.semanticKind === "branch-destruction" || badge?.semanticKind === "intra-pillar-destruction") return "school-pua";
   if (badge?.semanticKind === "branch-punishment-pair" || badge?.semanticKind === "branch-punishment-self") return "school-heng";
   if (badge?.semanticKind === "branch-punishment-trio") return "school-sam-heng";
+  if (badge?.semanticKind === "element-generate" || badge?.semanticKind === "element-control") return "";
   if (badge?.semanticKind === "marker-nobleman") return "school-nobleman";
   if (badge?.semanticKind === "marker-wenchang") return "school-wenchang";
   if (!schoolLabel) return "";
@@ -887,6 +960,12 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): 
   const pillarNodes = buildPillarNodes(calculatedState);
   const visibleMarkerBadges = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "visible");
   const interactionBadges = [...reading.stemInteractionBadges, ...reading.branchInteractionBadges];
+  const elementalInteractionBadges = interactionBadges.filter(
+    (badge) => badge.semanticKind === "element-generate" || badge.semanticKind === "element-control",
+  );
+  const schoolInteractionBadges = interactionBadges.filter(
+    (badge) => badge.semanticKind !== "element-generate" && badge.semanticKind !== "element-control",
+  );
   const visibleMarkerNodes = buildMarkerNodes(reading.markerBadges);
   const hiddenSecondaryOverlays = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "secondary");
 
@@ -895,10 +974,11 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue): 
     edges: [
       ...buildDaymasterRelationEdges(reading.roleBadges),
       ...buildElementFlowEdges(reading.roleBadges),
-      ...buildInteractionEdges(interactionBadges, visibleMarkerBadges),
+      ...buildInteractionEdges(schoolInteractionBadges, visibleMarkerBadges),
+      ...buildElementInteractionEdges(elementalInteractionBadges),
       ...buildOverlayEdges(reading.markerBadges),
     ],
-    schoolClusters: interactionBadges.map((badge) => buildSchoolClusterForBadge(badge, visibleMarkerBadges)),
+    schoolClusters: schoolInteractionBadges.map((badge) => buildSchoolClusterForBadge(badge, visibleMarkerBadges)),
     hiddenSecondaryOverlays,
   };
 }

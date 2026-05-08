@@ -57,7 +57,7 @@ function computeMarkerPosition(pillarKey: SemanticPillarKey): { x: number; y: nu
 }
 
 function shouldOffsetLayer(layer: SemanticEdge["data"]["layer"]): boolean {
-  return layer === "inter-pillar-reaction";
+  return layer === "inter-pillar-reaction" || layer === "element-interaction";
 }
 
 function getOffsetGroupKey(edge: SemanticEdge): string {
@@ -67,6 +67,10 @@ function getOffsetGroupKey(edge: SemanticEdge): string {
 function getOffsetStride(layer: SemanticEdge["data"]["layer"]): number {
   if (layer === "inter-pillar-reaction") {
     return 18;
+  }
+
+  if (layer === "element-interaction") {
+    return 12;
   }
 
   return 0;

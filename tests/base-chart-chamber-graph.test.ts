@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
-import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
+import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import {
   buildSemanticChamberGraph,
   getSemanticDayFocusNodeIds,
@@ -72,16 +72,29 @@ const sampleMarkers: ShenShaValue[] = [
 
 function buildStubCalculatedState(): CalculatedStateValue {
   const resolution = resolveBranchInteractionEffects(samplePillars);
+  const interactionState = buildGeneralizedInteractionState({
+    pillars: samplePillars,
+    dayMasterStem: "己",
+    twelveQiByBranch: {
+      year: "长生",
+      month: "病",
+      day: "帝旺",
+      hour: "养",
+    },
+    resolution,
+  });
   const reading = buildBaseChartReading({
     dayMasterStem: "己",
     pillars: samplePillars,
     shenSha: sampleMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
+    interactionState,
   });
 
   return {
     fourPillars: samplePillars,
+    interactionState,
     baseChartReading: reading,
   } as unknown as CalculatedStateValue;
 }
@@ -451,6 +464,19 @@ describe("buildSemanticChamberGraph", () => {
       for (let index = 0; index < group.length; index += 1) {
         expect(group[index].data.parallelOffset).toBe(index * 18);
       }
+    }
+  });
+
+  test("element-interaction edges stay in a dedicated lane separate from school reactions", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+
+    const elementInteractionEdges = graph.edges.filter((edge) => edge.data.layer === "element-interaction");
+    expect(elementInteractionEdges.length).toBeGreaterThan(0);
+
+    for (const edge of elementInteractionEdges) {
+      expect(edge.className).toContain("chamber-edge--element-interaction");
+      expect(edge.data.schoolCluster).toBeNull();
+      expect(edge.data.flowLabel).toMatch(/^(相生|相克)$/);
     }
   });
 

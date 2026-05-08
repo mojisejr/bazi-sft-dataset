@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
-import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
+import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import { assignChamberGraphLayout } from "@/lib/bazi/chamber-layout";
 import { buildChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
@@ -72,16 +72,29 @@ const sampleMarkers: ShenShaValue[] = [
 
 function buildStubCalculatedState(): CalculatedStateValue {
   const resolution = resolveBranchInteractionEffects(samplePillars);
+  const interactionState = buildGeneralizedInteractionState({
+    pillars: samplePillars,
+    dayMasterStem: "己",
+    twelveQiByBranch: {
+      year: "长生",
+      month: "病",
+      day: "帝旺",
+      hour: "养",
+    },
+    resolution,
+  });
   const reading = buildBaseChartReading({
     dayMasterStem: "己",
     pillars: samplePillars,
     shenSha: sampleMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
+    interactionState,
   });
 
   return {
     fourPillars: samplePillars,
+    interactionState,
     baseChartReading: reading,
   } as unknown as CalculatedStateValue;
 }
@@ -157,5 +170,24 @@ describe("buildChamberRenderModel", () => {
     expect(revealedFlowEdge?.data?.inlineDirectionLabel).toBe("รับเข้า");
     expect(revealedFlowEdge?.data?.inlineStrengthLabel).toBe("รอง");
     expect(unrelatedEdge?.hidden).toBe(true);
+  });
+
+  test("renders element-interaction edges as bezier edges with inline lane labels", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState);
+    const positions = assignChamberGraphLayout(graph);
+    const edge = graph.edges.find((candidate) => candidate.data.layer === "element-interaction");
+    const selection = buildChamberSelectionState({ graph, edgeIds: edge ? [edge.id] : [] });
+    const relationBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
+    const renderModel = buildChamberRenderModel(graph, positions, {
+      selectedEdgeIds: selection.selectedEdges.map((selectedEdge) => selectedEdge.id),
+      revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
+      hideUnrevealedEdges: true,
+    });
+
+    const renderedEdge = renderModel.edges.find((candidate) => candidate.id === edge?.id);
+    expect(renderedEdge?.type).toBe("chamberBezier");
+    expect(renderedEdge?.data?.inlineLabel).toMatch(/^(相生|相克)$/);
+    expect(renderedEdge?.hidden).toBe(false);
   });
 });

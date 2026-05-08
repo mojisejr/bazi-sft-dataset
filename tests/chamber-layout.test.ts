@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
-import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
+import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import {
   assignChamberGraphLayout,
   computeChamberLayoutPositions,
@@ -73,16 +73,29 @@ const sampleMarkers: ShenShaValue[] = [
 
 function buildStubCalculatedState(): CalculatedStateValue {
   const resolution = resolveBranchInteractionEffects(samplePillars);
+  const interactionState = buildGeneralizedInteractionState({
+    pillars: samplePillars,
+    dayMasterStem: "己",
+    twelveQiByBranch: {
+      year: "长生",
+      month: "病",
+      day: "帝旺",
+      hour: "养",
+    },
+    resolution,
+  });
   const reading = buildBaseChartReading({
     dayMasterStem: "己",
     pillars: samplePillars,
     shenSha: sampleMarkers,
     resolution,
     precedenceSignals: resolution.precedenceSignals,
+    interactionState,
   });
 
   return {
     fourPillars: samplePillars,
+    interactionState,
     baseChartReading: reading,
   } as unknown as CalculatedStateValue;
 }

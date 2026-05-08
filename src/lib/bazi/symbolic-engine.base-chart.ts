@@ -4,6 +4,8 @@ import type {
   BaseChartReactionBadgeValue,
   ContextRuleNoteValue,
   InteractionTierValue,
+  InteractionOutcomeValue,
+  InteractionRelationValue,
   PillarValue,
   ShenShaValue,
 } from "@/lib/bazi/schema-types";
@@ -23,7 +25,7 @@ import {
   STEM_COMBINATION_TRANSFORMS,
   normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
-import type { BranchInteractionResolution } from "@/lib/bazi/symbolic-engine.types";
+import type { BranchInteractionResolution, GeneralizedInteractionState } from "@/lib/bazi/symbolic-engine.types";
 import { renderContextRuleNoteThai } from "@/lib/bazi/context-dictionary";
 import { getStemElementTranslation, resolveTenGodForStem } from "@/lib/bazi/pillar-display";
 
@@ -394,10 +396,244 @@ function buildStemInteractionBadges(pillars: BaseChartPillars) {
   return badges;
 }
 
+function buildOutcomeMap(interactionState?: GeneralizedInteractionState) {
+  return new Map<string, InteractionOutcomeValue>(
+    (interactionState?.outcomes ?? []).map((outcome) => [outcome.relationId, outcome]),
+  );
+}
+
+function resolvePillarParticipants(
+  pillars: BaseChartPillars,
+  relation: InteractionRelationValue,
+) : BaseChartReactionBadgeValue["participants"] {
+  const participants: BaseChartReactionBadgeValue["participants"] = [];
+
+  for (const entityId of relation.participantEntityIds) {
+    const [, pillarKey] = entityId.split("-");
+    const typedPillarKey = pillarKey as BaseChartPillarKey;
+    const pillar = pillars[typedPillarKey];
+
+    if (!pillar) {
+      continue;
+    }
+
+    if (entityId.startsWith("stem-")) {
+      participants.push({
+        pillarKey: typedPillarKey,
+        pillarLabel: PILLAR_LABELS[typedPillarKey],
+        type: "stem" as const,
+        symbol: pillar.stem,
+        translation: pillar.stemTranslation,
+      });
+      continue;
+    }
+
+    if (entityId.startsWith("branch-")) {
+      participants.push({
+        pillarKey: typedPillarKey,
+        pillarLabel: PILLAR_LABELS[typedPillarKey],
+        type: "branch" as const,
+        symbol: pillar.branch,
+        translation: BRANCH_LABELS_TH[pillar.branch as keyof typeof BRANCH_LABELS_TH],
+      });
+    }
+
+  }
+
+  return participants;
+}
+
+function resolveInteractionPriority(outcome?: InteractionOutcomeValue): BaseChartReactionBadgeValue["priority"] {
+  if (outcome?.status === "blocked") {
+    return "neutralized";
+  }
+
+  return outcome?.precedence === "secondary" || outcome?.precedence === "tertiary"
+    ? "secondary"
+    : "primary";
+}
+
+function resolveInteractionStatus(outcome?: InteractionOutcomeValue): BaseChartReactionBadgeValue["status"] {
+  return outcome?.status === "blocked" ? "neutralized" : "active";
+}
+
+function buildGeneralizedInteractionBadge(args: {
+  relation: InteractionRelationValue;
+  outcome?: InteractionOutcomeValue;
+  pillars: BaseChartPillars;
+}): BaseChartReactionBadgeValue | null {
+  const { relation, outcome, pillars } = args;
+  const participants = resolvePillarParticipants(pillars, relation);
+
+  if (participants.length === 0) {
+    return null;
+  }
+
+  const status = resolveInteractionStatus(outcome);
+  const priority = resolveInteractionPriority(outcome);
+  const tier = outcome?.precedence as InteractionTierValue | undefined;
+  const transformElement = relation.transformElement;
+  const transformText = transformElement ? ` → ${transformElement}` : "";
+  const supportText = outcome?.supportReasons.length
+    ? `เงื่อนไข: ${outcome.supportReasons.join(" · ")}`
+    : "";
+  const blockedText = outcome?.blockedByRelationIds.length
+    ? `ถูกบังโดย ${outcome.blockedByRelationIds.join(" · ")}`
+    : "";
+
+  const metaByFamily: Partial<Record<InteractionRelationValue["familyKey"], {
+    label: string;
+    schoolLabel: string;
+    semanticKind: BaseChartReactionBadgeValue["semanticKind"];
+    summary: string;
+  }>> = {
+    "heavenly-stem-he": {
+      label: `ฟ้าภาคี ${relation.label}`,
+      schoolLabel: "ภาคีราศีบน",
+      semanticKind: "stem-combination",
+      summary: `ราศีบนในคู่ ${relation.label} เกิดภาคี${transformText}`,
+    },
+    "heavenly-stem-clash": {
+      label: `ฟ้าพิฆาต ${relation.label}`,
+      schoolLabel: "พิฆาตราศีบน",
+      semanticKind: "stem-clash",
+      summary: `ราศีบนในคู่ ${relation.label} ปะทะกันโดยตรง`,
+    },
+    "earthly-branch-liu-he": {
+      label: `六合 ${relation.label}`,
+      schoolLabel: "六合",
+      semanticKind: "branch-liu-he",
+      summary: `ราศีล่างในคู่ ${relation.label} เกิด六合`,
+    },
+    "earthly-branch-san-he": {
+      label: `三合 ${relation.label}`,
+      schoolLabel: "三合",
+      semanticKind: "branch-san-he",
+      summary: `ราศีล่างชุด ${relation.label} เกิดสามภาคี${transformText}`,
+    },
+    "earthly-branch-ban-san-he": {
+      label: `半三合 ${relation.label}`,
+      schoolLabel: "半三合",
+      semanticKind: "branch-ban-san-he",
+      summary: `ราศีล่างคู่ ${relation.label} เป็นครึ่งสามภาคี${transformText}`,
+    },
+    "element-generate": {
+      label: `相生 ${relation.label}`,
+      schoolLabel: "相生",
+      semanticKind: "element-generate",
+      summary: `คู่ธาตุ ${relation.label} ส่งเสริมกัน`,
+    },
+    "element-control": {
+      label: `相克 ${relation.label}`,
+      schoolLabel: "相克",
+      semanticKind: "element-control",
+      summary: `คู่ธาตุ ${relation.label} กดหรือคุมกัน`,
+    },
+  };
+
+  const meta = metaByFamily[relation.familyKey];
+
+  if (!meta) {
+    return null;
+  }
+
+  const effectText = outcome?.dayMasterEffect
+    ? `ผลต่อดิถี: ${outcome.dayMasterEffect}`
+    : "";
+  const explanation = [
+    meta.summary,
+    outcome?.status === "transformed" ? "ผลลัพธ์รอบนี้ผ่านเกณฑ์แปรสภาพแล้ว" : "",
+    outcome?.status === "supported" ? "ผลลัพธ์รอบนี้มีแรงหนุนพอจะนับเป็น supported" : "",
+    outcome?.status === "blocked" ? "ผลลัพธ์รอบนี้ถูก relation ที่แรงกว่าบังไว้" : "",
+    supportText,
+    blockedText,
+    effectText,
+  ].filter(Boolean).join(" ");
+
+  return {
+    id: relation.id,
+    family: "interaction",
+    label: meta.label,
+    shortLabel: relation.label,
+    priority,
+    status,
+    meaningShort: explanation || meta.summary,
+    schoolLabel: meta.schoolLabel,
+    doctrineKey: `interaction:${relation.familyKey}`,
+    semanticKind: meta.semanticKind,
+    hierarchyLevel: "interaction",
+    readingOrder: relation.familyKey.startsWith("element-") ? 4 : 3,
+    tier,
+    sourceRelationId: relation.id,
+    sourceFamilyKey: relation.familyKey,
+    sourceOutcomeStatus: outcome?.status,
+    participants,
+    modal: {
+      title: meta.label,
+      family: "interaction",
+      summary: meta.summary,
+      explanation: explanation || meta.summary,
+      readingOrderHint: relation.familyKey.startsWith("element-")
+        ? "อ่าน lane ธาตุหลังดู family interaction เพื่อแยกแรงธาตุออกจาก school family"
+        : "อ่าน family interaction นี้หลังบทบาทต่อดิถี และก่อนดู marker ประกอบ",
+      details: [
+        makeDetail("family", relation.familyKey),
+        makeDetail("คู่/ชุด", relation.label),
+        ...(outcome?.status ? [makeDetail("สถานะ outcome", outcome.status)] : []),
+        ...(transformElement ? [makeDetail("ธาตุปลายทาง", transformElement)] : []),
+        ...(outcome?.dayMasterEffect ? [makeDetail("ผลต่อดิถี", outcome.dayMasterEffect)] : []),
+        ...(outcome?.supportReasons.length ? [makeDetail("เหตุผลหนุน", outcome.supportReasons.join(" · "))] : []),
+        ...(outcome?.blockedByRelationIds.length ? [makeDetail("ถูกบังโดย", outcome.blockedByRelationIds.join(" · "))] : []),
+      ],
+    },
+  };
+}
+
+function buildGeneralizedInteractionBadges(
+  pillars: BaseChartPillars,
+  interactionState?: GeneralizedInteractionState,
+) {
+  if (!interactionState) {
+    return {
+      stemBadges: [] as BaseChartReactionBadgeValue[],
+      branchBadges: [] as BaseChartReactionBadgeValue[],
+      elementalBadges: [] as BaseChartReactionBadgeValue[],
+    };
+  }
+
+  const outcomeMap = buildOutcomeMap(interactionState);
+  const stemBadges: BaseChartReactionBadgeValue[] = [];
+  const branchBadges: BaseChartReactionBadgeValue[] = [];
+  const elementalBadges: BaseChartReactionBadgeValue[] = [];
+
+  for (const relation of interactionState.relations) {
+    const badge = buildGeneralizedInteractionBadge({
+      relation,
+      outcome: outcomeMap.get(relation.id),
+      pillars,
+    });
+
+    if (!badge) {
+      continue;
+    }
+
+    if (relation.familyKey.startsWith("heavenly-stem")) {
+      stemBadges.push(badge);
+    } else if (relation.familyKey.startsWith("element-")) {
+      elementalBadges.push(badge);
+    } else {
+      branchBadges.push(badge);
+    }
+  }
+
+  return { stemBadges, branchBadges, elementalBadges };
+}
+
 function buildBranchInteractionBadges(
   pillars: BaseChartPillars,
   resolution: BranchInteractionResolution,
   precedenceSignals: ContextRuleNoteValue[],
+  interactionState?: GeneralizedInteractionState,
 ) {
   const combinationPairs = buildPairRecords(pillars, SIX_COMBINATION_PAIRS);
   const clashPairs = buildPairRecords(pillars, CLASH_PAIRS);
@@ -412,6 +648,11 @@ function buildBranchInteractionBadges(
   const activePunishments = punishmentRecords.filter((record) => activePunishmentLabels.has(record.label));
   const combinationKeys = new Set(combinationPairs.flatMap((pair) => [pair.leftKey, pair.rightKey]));
   const activeClashKeys = new Set(activeClashes.flatMap((pair) => [pair.leftKey, pair.rightKey]));
+  const generalizedBranchLabels = new Set(
+    (interactionState?.relations ?? [])
+      .filter((relation) => relation.familyKey === "earthly-branch-liu-he")
+      .map((relation) => relation.label),
+  );
   const badges: BaseChartReactionBadgeValue[] = [];
 
   const tierForKind = (kind: string, status: string): InteractionTierValue => {
@@ -472,7 +713,9 @@ function buildBranchInteractionBadges(
     });
   };
 
-  combinationPairs.forEach((pair) => pushPairBadge("combination", pair, "active"));
+  combinationPairs
+    .filter((pair) => !generalizedBranchLabels.has(pair.label))
+    .forEach((pair) => pushPairBadge("combination", pair, "active"));
   activeClashes.forEach((pair) => pushPairBadge("clash", pair, "active"));
   neutralizedClashes.forEach((pair) => pushPairBadge("clash", pair, "neutralized"));
   harmPairs.forEach((pair) => pushPairBadge("harm", pair, combinationKeys.has(pair.leftKey) || combinationKeys.has(pair.rightKey) || activeClashKeys.has(pair.leftKey) || activeClashKeys.has(pair.rightKey) ? "supplementary" : "active"));
@@ -624,16 +867,23 @@ export function buildBaseChartReading(args: {
   shenSha: ShenShaValue[];
   resolution: BranchInteractionResolution;
   precedenceSignals: ContextRuleNoteValue[];
+  interactionState?: GeneralizedInteractionState;
 }) : BaseChartReadingValue {
-  const { dayMasterStem, pillars, shenSha, resolution, precedenceSignals } = args;
+  const { dayMasterStem, pillars, shenSha, resolution, precedenceSignals, interactionState } = args;
   const roleBadges = (Object.entries(pillars) as Array<[BaseChartPillarKey, PillarValue]>)
     .flatMap(([pillarKey, pillar]) => {
       const stemBadge = buildRoleBadge(dayMasterStem, pillarKey, pillar, "stem");
       const branchBadge = buildRoleBadge(dayMasterStem, pillarKey, pillar, "branch");
       return [stemBadge, branchBadge].filter((badge): badge is BaseChartReactionBadgeValue => Boolean(badge));
     });
-  const stemInteractionBadges = buildStemInteractionBadges(pillars);
-  const branchInteractionBadges = buildBranchInteractionBadges(pillars, resolution, precedenceSignals);
+  const generalizedBadges = buildGeneralizedInteractionBadges(pillars, interactionState);
+  const stemInteractionBadges = generalizedBadges.stemBadges.length > 0 || generalizedBadges.elementalBadges.length > 0
+    ? [...generalizedBadges.stemBadges, ...generalizedBadges.elementalBadges]
+    : buildStemInteractionBadges(pillars);
+  const branchInteractionBadges = [
+    ...generalizedBadges.branchBadges,
+    ...buildBranchInteractionBadges(pillars, resolution, precedenceSignals, interactionState),
+  ];
   const markerBadges = buildMarkerBadges(
     shenSha.filter((entry) => ["ปี", "เดือน", "วัน", "ยาม"].includes(entry.relatedPillar)),
   );
@@ -656,7 +906,7 @@ export function buildBaseChartReading(args: {
       {
         key: "stem-interactions",
         title: "ฟ้า-ฟ้า interactions",
-        description: "ภาคีหรือพิฆาตกันของราศีบนที่มองเห็นได้ตรง ๆ",
+        description: "ภาคี พิฆาต และ lane ธาตุที่ engine ยืนยันแล้วจาก interactionState",
         family: "interaction",
         hierarchyLevel: "interaction",
         readingOrder: 3,
@@ -665,7 +915,7 @@ export function buildBaseChartReading(args: {
       {
         key: "branch-interactions",
         title: "ดิน-ดิน interactions",
-        description: "ภาคี ชง ไห่ ผั่ว และเฮ้งของราศีล่างในดวงกำเนิด",
+        description: "六合 三合 半三合 และแรง legacy residual ของราศีล่างในดวงกำเนิด",
         family: "interaction",
         hierarchyLevel: "interaction",
         readingOrder: 3,

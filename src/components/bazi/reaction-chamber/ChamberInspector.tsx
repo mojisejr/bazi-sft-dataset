@@ -171,12 +171,15 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
 function EdgeDetail({ edge }: { edge: SemanticEdge }) {
   const badge = edge.data.badge;
   const cluster = edge.data.schoolCluster;
+  const layerSummary = edge.data.layer === "element-interaction"
+    ? "lane นี้คือความสัมพันธ์ธาตุที่ engine ยืนยันแล้ว แยกจาก school family ของราศี"
+    : cluster?.humanSummary;
 
   return (
     <div className="chamber-inspector__badge">
       <p className="chamber-inspector__kicker">{badge.modal.family} · {badge.priority}</p>
       <h3 className="chamber-inspector__title">{cluster?.title ?? badge.modal.title}</h3>
-      {cluster && <p className="chamber-inspector__summary">{cluster.humanSummary}</p>}
+      {layerSummary && <p className="chamber-inspector__summary">{layerSummary}</p>}
       <p className="chamber-inspector__explanation">{badge.modal.explanation}</p>
 
       <dl className="chamber-inspector__details">

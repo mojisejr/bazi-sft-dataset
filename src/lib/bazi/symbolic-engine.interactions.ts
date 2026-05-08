@@ -40,6 +40,203 @@ import {
   uniqueContextRuleNotes,
 } from "@/lib/bazi/symbolic-engine.context-notes";
 
+type OutcomeByRelationId = Map<string, InteractionOutcomeValue>;
+
+function resolveDayMasterEffect(
+  dayMasterElement: string | undefined,
+  candidateElement: string | undefined,
+): InteractionOutcomeValue["dayMasterEffect"] {
+  if (!dayMasterElement || !candidateElement) {
+    return undefined;
+  }
+
+  if (dayMasterElement === candidateElement || GENERATES[candidateElement as keyof typeof GENERATES] === dayMasterElement) {
+    return "beneficial";
+  }
+
+  if (CONTROLS[candidateElement as keyof typeof CONTROLS] === dayMasterElement) {
+    return "harmful";
+  }
+
+  return "neutral";
+}
+
+function getQualifierByEntityId(
+  qualifiers: InteractionQualifierValue[],
+  entityId: string,
+) {
+  return qualifiers.find((qualifier) => qualifier.entityId === entityId && qualifier.qualifierKey === "twelve-qi-stage");
+}
+
+function isSupportiveTwelveQiStage(stage: string | undefined) {
+  return stage === "长生" || stage === "临官" || stage === "帝旺" || stage === "冠带";
+}
+
+function indexOutcomesByRelationId(outcomes: InteractionOutcomeValue[]): OutcomeByRelationId {
+  return new Map(outcomes.map((outcome) => [outcome.relationId, outcome]));
+}
+
+function resolveStemCombinationOutcomes(
+  relations: InteractionRelationValue[],
+  outcomes: OutcomeByRelationId,
+  qualifiers: InteractionQualifierValue[],
+  dayMasterElement: string | undefined,
+) {
+  for (const relation of relations) {
+    if (relation.familyKey !== "heavenly-stem-he") {
+      continue;
+    }
+
+    const outcome = outcomes.get(relation.id);
+    if (!outcome) {
+      continue;
+    }
+
+    const supportReasons = [...outcome.supportReasons];
+    const branchQualifiers = relation.participantEntityIds
+      .map((entityId) => entityId.replace(/^stem-/, "branch-"))
+      .map((entityId) => getQualifierByEntityId(qualifiers, entityId))
+      .filter((qualifier): qualifier is InteractionQualifierValue => Boolean(qualifier));
+    const hasSupportiveBranchRoute = branchQualifiers.some((qualifier) => isSupportiveTwelveQiStage(qualifier.value));
+
+    if (hasSupportiveBranchRoute) {
+      supportReasons.push("supportive-branch-route");
+    }
+
+    outcome.supportReasons = uniqueStrings(supportReasons);
+    outcome.dayMasterEffect = resolveDayMasterEffect(dayMasterElement, relation.transformElement);
+
+    if (relation.transformElement && hasSupportiveBranchRoute) {
+      outcome.status = "transformed";
+      outcome.precedence = "primary";
+    } else if (relation.transformElement) {
+      outcome.status = "supported";
+      outcome.precedence = "primary";
+    }
+  }
+}
+
+function resolveBranchCombinationOutcomes(
+  relations: InteractionRelationValue[],
+  outcomes: OutcomeByRelationId,
+  qualifiers: InteractionQualifierValue[],
+  dayMasterElement: string | undefined,
+) {
+  const fullGroupBySource = new Map<string, InteractionRelationValue>();
+
+  for (const relation of relations) {
+    if (relation.familyKey === "earthly-branch-san-he") {
+      fullGroupBySource.set(relation.label, relation);
+    }
+  }
+
+  for (const relation of relations) {
+    const outcome = outcomes.get(relation.id);
+    if (!outcome) {
+      continue;
+    }
+
+    if (relation.familyKey === "earthly-branch-san-he") {
+      const supportingStages = relation.participantEntityIds
+        .map((entityId) => getQualifierByEntityId(qualifiers, entityId))
+        .filter((qualifier): qualifier is InteractionQualifierValue => Boolean(qualifier))
+        .filter((qualifier) => isSupportiveTwelveQiStage(qualifier.value));
+
+      outcome.dayMasterEffect = resolveDayMasterEffect(dayMasterElement, relation.transformElement);
+      outcome.supportReasons = uniqueStrings([
+        ...outcome.supportReasons,
+        ...(supportingStages.length >= 2 ? ["route-backed-full-triad"] : []),
+      ]);
+      outcome.status = "supported";
+      outcome.precedence = "primary";
+      continue;
+    }
+
+    if (relation.familyKey !== "earthly-branch-ban-san-he") {
+      continue;
+    }
+
+    const sourceGroup = typeof relation.metadata.sourceGroup === "string"
+      ? relation.metadata.sourceGroup
+      : undefined;
+    const blockingRelation = sourceGroup ? fullGroupBySource.get(sourceGroup) : undefined;
+    outcome.dayMasterEffect = resolveDayMasterEffect(dayMasterElement, relation.transformElement);
+
+    if (blockingRelation) {
+      outcome.status = "blocked";
+      outcome.blockedByRelationIds = uniqueStrings([
+        ...outcome.blockedByRelationIds,
+        blockingRelation.id,
+      ]);
+      outcome.supportReasons = uniqueStrings([...outcome.supportReasons, "superseded-by-full-triad"]);
+      outcome.precedence = "secondary";
+      continue;
+    }
+
+    const supportingStages = relation.participantEntityIds
+      .map((entityId) => getQualifierByEntityId(qualifiers, entityId))
+      .filter((qualifier): qualifier is InteractionQualifierValue => Boolean(qualifier))
+      .filter((qualifier) => isSupportiveTwelveQiStage(qualifier.value));
+
+    outcome.supportReasons = uniqueStrings([
+      ...outcome.supportReasons,
+      ...(supportingStages.length >= 1 ? ["route-backed-half-triad"] : []),
+    ]);
+    outcome.status = supportingStages.length >= 1 ? "supported" : "detected";
+    outcome.precedence = "secondary";
+  }
+}
+
+function resolveElementInteractionOutcomes(
+  relations: InteractionRelationValue[],
+  outcomes: OutcomeByRelationId,
+  dayMasterElement: string | undefined,
+) {
+  for (const relation of relations) {
+    if (relation.familyKey !== "element-generate" && relation.familyKey !== "element-control") {
+      continue;
+    }
+
+    const outcome = outcomes.get(relation.id);
+    if (!outcome) {
+      continue;
+    }
+
+    const targetElement = typeof relation.metadata.targetElement === "string"
+      ? relation.metadata.targetElement
+      : undefined;
+    outcome.dayMasterEffect = resolveDayMasterEffect(dayMasterElement, targetElement);
+
+    if (relation.familyKey === "element-generate") {
+      outcome.supportReasons = uniqueStrings([
+        ...outcome.supportReasons,
+        ...(outcome.dayMasterEffect === "beneficial" ? ["nourishes-day-master-lane"] : []),
+      ]);
+    }
+
+    if (relation.familyKey === "element-control") {
+      outcome.supportReasons = uniqueStrings([
+        ...outcome.supportReasons,
+        ...(outcome.dayMasterEffect === "harmful" ? ["pressures-day-master-lane"] : []),
+      ]);
+    }
+  }
+}
+
+function resolveGeneralizedInteractionOutcomes(state: GeneralizedInteractionState): GeneralizedInteractionState {
+  const dayMasterElement = state.entities.find((entity) => entity.type === "day-master")?.element;
+  const outcomes = indexOutcomesByRelationId(state.outcomes);
+
+  resolveStemCombinationOutcomes(state.relations, outcomes, state.qualifiers, dayMasterElement);
+  resolveBranchCombinationOutcomes(state.relations, outcomes, state.qualifiers, dayMasterElement);
+  resolveElementInteractionOutcomes(state.relations, outcomes, dayMasterElement);
+
+  return {
+    ...state,
+    outcomes: state.outcomes.map((outcome) => outcomes.get(outcome.relationId) ?? outcome),
+  };
+}
+
 export function uniqueStrings(values: string[]) {
   return Array.from(new Set(values));
 }
@@ -540,13 +737,13 @@ export function buildGeneralizedInteractionState(options: {
   const elemental = buildElementRelations(options.pillars, options.dayMasterStem);
   const qualifiers = buildTwelveQiQualifiers(options.pillars, options.twelveQiByBranch);
 
-  return {
+  return resolveGeneralizedInteractionOutcomes({
     version: "v3-phase-1",
     entities,
     relations: [...stem.relations, ...branchFamilies.relations, ...elemental.relations],
     outcomes: [...stem.outcomes, ...branchFamilies.outcomes, ...elemental.outcomes],
     qualifiers,
-  };
+  });
 }
 
 export function resolveBranchInteractionEffects(
