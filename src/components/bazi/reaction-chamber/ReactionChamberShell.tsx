@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { EMPTY_CHAMBER_SELECTION } from "@/lib/bazi/chamber-selection-grammar";
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
+import {
+  resetChamberPresentation,
+  useChamberPresentationStore,
+} from "@/lib/bazi/chamber-presentation-store";
 import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 import { useBaziWorkspaceSessionStore } from "@/lib/bazi/bazi-session-store";
 
 import {
   ReactionChamberCanvas,
   ReactFlowProvider,
-  type ChamberSelection,
 } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 import { ChamberCommandBar } from "@/components/bazi/reaction-chamber/ChamberCommandBar";
 import { ChamberInspector } from "@/components/bazi/reaction-chamber/ChamberInspector";
@@ -38,14 +40,28 @@ function useViewportVariant(): "docked" | "sheet" {
 export function ReactionChamberShell() {
   const router = useRouter();
   const calculatedState = useBaziWorkspaceSessionStore((state) => state.calculatedState);
-  const [selection, setSelection] = useState<ChamberSelection>(EMPTY_CHAMBER_SELECTION);
   const variant = useViewportVariant();
+  const selection = useChamberPresentationStore((state) => state.selection);
+  const isInspectorOpen = useChamberPresentationStore((state) => state.isInspectorOpen);
+  const setSelection = useChamberPresentationStore((state) => state.setSelection);
+  const clearSelection = useChamberPresentationStore((state) => state.clearSelection);
+  const toggleInspector = useChamberPresentationStore((state) => state.toggleInspector);
+  const isTenGodPanelOpen = useChamberPresentationStore((state) => state.isTenGodPanelOpen);
+  const toggleTenGodPanel = useChamberPresentationStore((state) => state.toggleTenGodPanel);
 
   useEffect(() => {
     if (!calculatedState) {
       router.replace("/");
     }
   }, [calculatedState, router]);
+
+  useEffect(() => {
+    resetChamberPresentation();
+
+    return () => {
+      resetChamberPresentation();
+    };
+  }, [calculatedState]);
 
   const graph = useMemo(() => {
     if (!calculatedState) {
@@ -86,18 +102,29 @@ export function ReactionChamberShell() {
   return (
     <ReactFlowProvider>
       <main className={`reaction-chamber-shell reaction-chamber-shell--${variant}`}>
-        <ChamberCommandBar title={title} onBack={() => router.push("/")} graph={graph} />
+        <ChamberCommandBar
+          title={title}
+          onBack={() => router.push("/")}
+          graph={graph}
+          selectionMode={selection.mode}
+          isInspectorOpen={isInspectorOpen}
+          onToggleInspector={toggleInspector}
+        />
 
         <div className="reaction-chamber-shell__viewport">
-            <ReactionChamberCanvas graph={graph} selection={selection} relationBundle={relationBundle} onSelectionChange={setSelection} />
-            <ChamberTenGodPanel roleBadges={roleBadges} />
-            {variant === "docked" && (
-              <ChamberInspector selection={selection} relationBundle={relationBundle} variant="docked" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
-            )}
-          </div>
+          <ReactionChamberCanvas graph={graph} selection={selection} relationBundle={relationBundle} onSelectionChange={setSelection} />
+          <ChamberTenGodPanel
+            roleBadges={roleBadges}
+            isOpen={isTenGodPanelOpen}
+            onToggle={toggleTenGodPanel}
+          />
+          {variant === "docked" && isInspectorOpen && (
+            <ChamberInspector selection={selection} relationBundle={relationBundle} variant="docked" onClose={clearSelection} />
+          )}
+        </div>
 
         {variant === "sheet" && (
-          <ChamberInspector selection={selection} relationBundle={relationBundle} variant="sheet" onClose={() => setSelection(EMPTY_CHAMBER_SELECTION)} />
+          <ChamberInspector selection={selection} relationBundle={relationBundle} variant="sheet" onClose={clearSelection} />
         )}
       </main>
     </ReactFlowProvider>

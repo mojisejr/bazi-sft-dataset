@@ -92,14 +92,30 @@
 
 .chamber-command-bar__title {
   margin: 0;
-  text-align: center;
   font-size: 15px;
   letter-spacing: 0.04em;
+  color: var(--chamber-text);
+}
+
+.chamber-command-bar__title-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.chamber-command-bar__hint {
+  margin: 0;
+  font-size: 11px;
   color: var(--chamber-muted);
+  letter-spacing: 0.08em;
+  text-align: center;
 }
 
 .chamber-command-bar__viewport-actions {
   display: flex;
+  align-items: center;
   gap: 8px;
 }
 
@@ -131,4 +147,29 @@
   min-width: 0;
   position: relative;
   background: var(--chamber-canvas-bg);
+}
+
+@media (max-width: 900px) {
+  .chamber-command-bar {
+    grid-template-columns: 1fr;
+    justify-items: stretch;
+  }
+
+  .chamber-command-bar__back,
+  .chamber-command-bar__viewport-actions {
+    justify-self: start;
+  }
+
+  .chamber-command-bar__title-group {
+    align-items: flex-start;
+  }
+
+  .chamber-command-bar__title,
+  .chamber-command-bar__hint {
+    text-align: left;
+  }
+
+  .chamber-command-bar__viewport-actions {
+    flex-wrap: wrap;
+  }
 }

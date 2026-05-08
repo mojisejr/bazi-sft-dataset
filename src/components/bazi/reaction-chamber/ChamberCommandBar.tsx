@@ -9,6 +9,9 @@ type ChamberCommandBarProps = {
   title: string;
   onBack: () => void;
   graph: SemanticChamberGraph;
+  selectionMode: "base" | "single" | "pair" | "multi";
+  isInspectorOpen: boolean;
+  onToggleInspector: () => void;
 };
 
 function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
@@ -44,14 +47,49 @@ function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
   );
 }
 
-export function ChamberCommandBar({ title, onBack, graph }: ChamberCommandBarProps) {
+function describeSelectionMode(selectionMode: ChamberCommandBarProps["selectionMode"]): string {
+  if (selectionMode === "pair") {
+    return "โหมดเทียบคู่";
+  }
+  if (selectionMode === "multi") {
+    return "โหมดหลายจุด";
+  }
+  if (selectionMode === "single") {
+    return "โหมดจุดเดียว";
+  }
+  return "กราฟสงบ";
+}
+
+export function ChamberCommandBar({
+  title,
+  onBack,
+  graph,
+  selectionMode,
+  isInspectorOpen,
+  onToggleInspector,
+}: ChamberCommandBarProps) {
   return (
     <header className="chamber-command-bar" aria-label="chamber command bar">
       <button type="button" onClick={onBack} className="chamber-command-bar__back" aria-label="กลับไปหน้าสรุป">
         ← กลับสรุปดวง
       </button>
-      <p className="chamber-command-bar__title">{title}</p>
-      <FocusFitButtons graph={graph} />
+      <div className="chamber-command-bar__title-group">
+        <p className="chamber-command-bar__title">{title}</p>
+        <p className="chamber-command-bar__hint">
+          {describeSelectionMode(selectionMode)} · กด Shift/Cmd/Ctrl เพื่อเทียบหลายจุด
+        </p>
+      </div>
+      <div className="chamber-command-bar__viewport-actions">
+        <button
+          type="button"
+          onClick={onToggleInspector}
+          className="chamber-command-bar__action"
+          aria-pressed={isInspectorOpen}
+        >
+          {isInspectorOpen ? "ซ่อนรายละเอียด" : "เปิดรายละเอียด"}
+        </button>
+        <FocusFitButtons graph={graph} />
+      </div>
     </header>
   );
 }

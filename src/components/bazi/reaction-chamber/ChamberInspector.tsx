@@ -315,6 +315,14 @@ export function ChamberInspector({ selection, relationBundle, variant, onClose }
       <aside className="chamber-inspector chamber-inspector--docked" aria-label="chamber inspector">
         <div className="chamber-inspector__head">
           <p className="chamber-inspector__head-kicker">รายละเอียดที่เลือก</p>
+          <button
+            type="button"
+            className="chamber-inspector__close"
+            onClick={onClose}
+            aria-label="ล้าง selection และปิดรายละเอียด"
+          >
+            ปิด
+          </button>
         </div>
         <div className="chamber-inspector__scroll">
           <InspectorBody selection={selection} relationBundle={relationBundle} />

@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-
 import type { BaseChartReactionBadgeValue } from "@/lib/bazi/schema-types";
 
 type TenGodCategory = {
@@ -67,10 +65,11 @@ function groupBadgesByCategory(badges: BaseChartReactionBadgeValue[]): TenGodCat
 
 type ChamberTenGodPanelProps = {
   roleBadges: BaseChartReactionBadgeValue[];
+  isOpen: boolean;
+  onToggle: () => void;
 };
 
-export function ChamberTenGodPanel({ roleBadges }: ChamberTenGodPanelProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export function ChamberTenGodPanel({ roleBadges, isOpen, onToggle }: ChamberTenGodPanelProps) {
   const categories = groupBadgesByCategory(roleBadges);
 
   if (categories.length === 0) {
@@ -81,7 +80,7 @@ export function ChamberTenGodPanel({ roleBadges }: ChamberTenGodPanelProps) {
     <>
       <button
         className="chamber-ten-god-toggle"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={onToggle}
         aria-label={isOpen ? "ซ่อน 10 เทพ" : "แสดง 10 เทพ"}
         title={isOpen ? "ซ่อน 10 เทพ" : "10 เทพ"}
       >
