@@ -6,11 +6,18 @@ import {
   type ChamberSelectionState,
 } from "@/lib/bazi/chamber-selection-grammar";
 
+export type ChamberLayerToggles = {
+  showStructure: boolean;
+  showEnergy: boolean;
+  showOverlay: boolean;
+};
+
 export type ChamberPresentationState = {
   selection: ChamberSelectionState;
   isInspectorOpen: boolean;
   isTenGodPanelOpen: boolean;
   isRawMatrixOpen: boolean;
+  layerToggles: ChamberLayerToggles;
 };
 
 type ChamberPresentationStoreState = ChamberPresentationState & {
@@ -23,6 +30,7 @@ type ChamberPresentationStoreState = ChamberPresentationState & {
   closeTenGodPanel: () => void;
   toggleRawMatrix: () => void;
   closeRawMatrix: () => void;
+  toggleLayer: (layer: keyof ChamberLayerToggles) => void;
   resetPresentation: () => void;
 };
 
@@ -34,6 +42,11 @@ export function createChamberPresentationState(
     isInspectorOpen: false,
     isTenGodPanelOpen: false,
     isRawMatrixOpen: false,
+    layerToggles: {
+      showStructure: true,
+      showEnergy: true,
+      showOverlay: true,
+    },
     ...overrides,
   };
 }
@@ -75,6 +88,14 @@ export function createChamberPresentationStore(
     },
     closeRawMatrix: () => {
       set({ isRawMatrixOpen: false });
+    },
+    toggleLayer: (layer) => {
+      set((current) => ({
+        layerToggles: {
+          ...current.layerToggles,
+          [layer]: !current.layerToggles[layer],
+        },
+      }));
     },
     resetPresentation: () => {
       set(createChamberPresentationState());

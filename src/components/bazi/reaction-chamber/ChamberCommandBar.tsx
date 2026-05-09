@@ -4,6 +4,7 @@ import { useReactFlow } from "@xyflow/react";
 
 import type { SemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 import { getSemanticDayFocusNodeIds } from "@/lib/bazi/semantic-chamber-graph";
+import type { ChamberLayerToggles } from "@/lib/bazi/chamber-presentation-store";
 
 type ChamberCommandBarProps = {
   title: string;
@@ -13,9 +14,11 @@ type ChamberCommandBarProps = {
   isInspectorOpen: boolean;
   isRoleSummaryOpen: boolean;
   isRawMatrixOpen: boolean;
+  layerToggles: ChamberLayerToggles;
   onToggleInspector: () => void;
   onToggleRoleSummary: () => void;
   onToggleRawMatrix: () => void;
+  onToggleLayer: (layer: keyof ChamberLayerToggles) => void;
 };
 
 function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
@@ -72,9 +75,11 @@ export function ChamberCommandBar({
   isInspectorOpen,
   isRoleSummaryOpen,
   isRawMatrixOpen,
+  layerToggles,
   onToggleInspector,
   onToggleRoleSummary,
   onToggleRawMatrix,
+  onToggleLayer,
 }: ChamberCommandBarProps) {
   return (
     <header className="chamber-command-bar" aria-label="chamber command bar">
@@ -86,6 +91,32 @@ export function ChamberCommandBar({
         <p className="chamber-command-bar__hint">
           {describeSelectionMode(selectionMode)} · กด Shift/Cmd/Ctrl เพื่อเทียบหลายจุด
         </p>
+      </div>
+      <div className="chamber-command-bar__layer-toggles">
+        <label className="chamber-command-bar__toggle-label">
+          <input
+            type="checkbox"
+            checked={layerToggles.showStructure}
+            onChange={() => onToggleLayer("showStructure")}
+          />
+          โครงสร้าง (Structure)
+        </label>
+        <label className="chamber-command-bar__toggle-label">
+          <input
+            type="checkbox"
+            checked={layerToggles.showEnergy}
+            onChange={() => onToggleLayer("showEnergy")}
+          />
+          พลังงาน (Energy)
+        </label>
+        <label className="chamber-command-bar__toggle-label">
+          <input
+            type="checkbox"
+            checked={layerToggles.showOverlay}
+            onChange={() => onToggleLayer("showOverlay")}
+          />
+          ดาวประกอบ (Overlay)
+        </label>
       </div>
       <div className="chamber-command-bar__viewport-actions">
         <button

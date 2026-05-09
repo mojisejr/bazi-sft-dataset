@@ -53,6 +53,8 @@ export function ReactionChamberShell() {
   const isRawMatrixOpen = useChamberPresentationStore((state) => state.isRawMatrixOpen);
   const toggleRawMatrix = useChamberPresentationStore((state) => state.toggleRawMatrix);
   const closeRawMatrix = useChamberPresentationStore((state) => state.closeRawMatrix);
+  const layerToggles = useChamberPresentationStore((state) => state.layerToggles);
+  const toggleLayer = useChamberPresentationStore((state) => state.toggleLayer);
 
   useEffect(() => {
     if (!calculatedState) {
@@ -72,8 +74,22 @@ export function ReactionChamberShell() {
     if (!calculatedState) {
       return { nodes: [], edges: [], schoolClusters: [], hiddenSecondaryOverlays: [] };
     }
-    return buildSemanticChamberGraph(calculatedState);
-  }, [calculatedState]);
+    const fullGraph = buildSemanticChamberGraph(calculatedState);
+
+    // Filter edges based on layer toggles
+    const filteredEdges = fullGraph.edges.filter((edge) => {
+      const layer = edge.data.layer;
+      if (layer === "inter-pillar-reaction" && !layerToggles.showStructure) return false;
+      if ((layer === "element-flow" || layer === "element-interaction") && !layerToggles.showEnergy) return false;
+      if (layer === "shen-sha-overlay" && !layerToggles.showOverlay) return false;
+      return true;
+    });
+
+    return {
+      ...fullGraph,
+      edges: filteredEdges,
+    };
+  }, [calculatedState, layerToggles]);
 
   const relationBundle = useMemo(() => {
     if (!calculatedState) {
@@ -113,9 +129,11 @@ export function ReactionChamberShell() {
           isInspectorOpen={isInspectorOpen}
           isRoleSummaryOpen={isTenGodPanelOpen}
           isRawMatrixOpen={isRawMatrixOpen}
+          layerToggles={layerToggles}
           onToggleInspector={toggleInspector}
           onToggleRoleSummary={toggleTenGodPanel}
           onToggleRawMatrix={toggleRawMatrix}
+          onToggleLayer={toggleLayer}
         />
 
         <div className="reaction-chamber-shell__viewport">
