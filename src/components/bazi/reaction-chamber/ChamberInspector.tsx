@@ -10,7 +10,16 @@ import type { SemanticEdge, SemanticNode } from "@/lib/bazi/semantic-chamber-gra
 
 import type { ChamberSelection } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 import { ELEMENT_COLORS_TH, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
-import { getSchoolLexiconRelation, getSchoolLexiconInteraction } from "@/lib/bazi/lexicon/school-lexicon";
+import {
+  getSchoolLexiconFamilyKey,
+  translatePriority,
+  translateOutcomeStatus,
+  FLOW_CYCLE_MAP,
+  FLOW_DIRECTION_MAP,
+  BADGE_FAMILY_MAP,
+  PILLAR_CONTEXT_SHORT,
+  PILLAR_LABEL_MAP,
+} from "@/lib/bazi/lexicon/school-lexicon";
 
 const PILLAR_CONTEXT_TH: Record<string, string> = {
   year: "บรรพบุรุษ / ตลาด / ลูกค้า / วัยเด็ก",
@@ -36,7 +45,14 @@ const ENGINE_TRANSLATIONS: Record<string, string> = {
 
 function translateEngineValue(val: string): string {
   const v = val.toLowerCase();
-  return ENGINE_TRANSLATIONS[v] || val;
+  return ENGINE_TRANSLATIONS[v] || `[engine: ${val}]`;
+}
+
+function resolveFamilyLabel(badge: BaseChartReactionBadgeValue): string {
+  if (badge.sourceFamilyKey) {
+    return getSchoolLexiconFamilyKey(badge.sourceFamilyKey);
+  }
+  return BADGE_FAMILY_MAP[badge.family] ?? badge.family;
 }
 
 type ChamberInspectorProps = {
@@ -164,27 +180,33 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
 }
 
 function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
+  const kicker = `${resolveFamilyLabel(badge)} · ${translatePriority(badge.priority)}`;
+
   return (
     <div className="chamber-inspector__badge">
-      <p className="chamber-inspector__kicker">{badge.modal.family} · {badge.priority}</p>
+      <p className="chamber-inspector__kicker">{kicker}</p>
       <h3 className="chamber-inspector__title">{badge.modal.title}</h3>
       {badge.schoolLabel && <p className="chamber-inspector__school">สาย {badge.schoolLabel}</p>}
       <p className="chamber-inspector__summary">{badge.modal.summary}</p>
-      <p className="chamber-inspector__explanation">{badge.modal.explanation}</p>
 
-      {badge.modal.readingOrderHint && (
-        <p className="chamber-inspector__reading-order">{badge.modal.readingOrderHint}</p>
+      {badge.meaningShort && (
+        <p className="chamber-inspector__outcome">
+          <strong>ผล:</strong> {badge.meaningShort}
+        </p>
       )}
 
       {badge.modal.details.length > 0 && (
-        <dl className="chamber-inspector__details">
-          {badge.modal.details.map((detail) => (
-            <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
-              <dt>{detail.label}</dt>
-              <dd>{translateEngineValue(detail.value)}</dd>
-            </div>
-          ))}
-        </dl>
+        <details className="chamber-inspector__extra">
+          <summary>รายละเอียดเพิ่มเติม</summary>
+          <dl className="chamber-inspector__details chamber-inspector__details--doctrine">
+            {badge.modal.details.map((detail) => (
+              <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
+                <dt>{detail.label}</dt>
+                <dd>{translateEngineValue(detail.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
       )}
 
       {badge.participants.length > 0 && (
@@ -193,7 +215,15 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
           <ul>
             {badge.participants.map((participant, index) => (
               <li key={`${participant.symbol}-${index}`}>
-                {participant.pillarLabel ? `${participant.pillarLabel} · ` : ""}
+                {participant.pillarKey && PILLAR_LABEL_MAP[participant.pillarKey]
+                  ? `${PILLAR_LABEL_MAP[participant.pillarKey]}`
+                  : participant.pillarLabel
+                    ? `${participant.pillarLabel}`
+                    : ""}
+                {participant.pillarKey && PILLAR_CONTEXT_SHORT[participant.pillarKey]
+                  ? ` (${PILLAR_CONTEXT_SHORT[participant.pillarKey]})`
+                  : ""}
+                {" · "}
                 {participant.symbol}
                 {participant.translation ? ` (${participant.translation})` : ""}
               </li>
@@ -203,7 +233,7 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
       )}
 
       <details className="chamber-inspector__debug">
-        <summary>Engine Trace (Debug)</summary>
+        <summary>ข้อมูลดิบ (Debug)</summary>
         <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
           {JSON.stringify(badge, null, 2)}
         </pre>
@@ -215,29 +245,58 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
 function EdgeDetail({ edge }: { edge: SemanticEdge }) {
   const badge = edge.data.badge;
   const cluster = edge.data.schoolCluster;
-  const layerSummary = edge.data.layer === "element-interaction"
-    ? "ความสัมพันธ์ตามกฎเบญจธาตุ (Five Elements)"
-    : cluster?.humanSummary;
 
-  const title = cluster?.title ?? getSchoolLexiconInteraction(badge.modal.title) ?? badge.modal.title;
+  const kicker = `${resolveFamilyLabel(badge)} · ${translatePriority(badge.priority)}`;
+
+  const title = cluster?.title ?? badge.modal.title;
+
+  const flowCycleLabel = edge.data.flowCycleType
+    ? FLOW_CYCLE_MAP[edge.data.flowCycleType] ?? null
+    : null;
+  const flowDirLabel = edge.data.flowDirection
+    ? FLOW_DIRECTION_MAP[edge.data.flowDirection] ?? null
+    : null;
 
   return (
     <div className="chamber-inspector__badge">
-      <p className="chamber-inspector__kicker">{getSchoolLexiconRelation(badge.modal.family)} · {badge.priority}</p>
+      <p className="chamber-inspector__kicker">{kicker}</p>
       <h3 className="chamber-inspector__title">{title}</h3>
-      {layerSummary && <p className="chamber-inspector__summary">{layerSummary}</p>}
-      <p className="chamber-inspector__explanation">{badge.modal.explanation}</p>
+
+      {cluster?.humanSummary && (
+        <p className="chamber-inspector__summary">{cluster.humanSummary}</p>
+      )}
+
+      {badge.meaningShort && (
+        <p className="chamber-inspector__outcome">
+          <strong>ผล:</strong> {badge.meaningShort}
+        </p>
+      )}
+
+      {(flowCycleLabel || flowDirLabel) && (
+        <div className="chamber-inspector__flow-tags">
+          {flowCycleLabel && (
+            <span className="chamber-inspector__flow-tag chamber-inspector__flow-tag--cycle">
+              {flowCycleLabel}
+            </span>
+          )}
+          {flowDirLabel && (
+            <span className="chamber-inspector__flow-tag chamber-inspector__flow-tag--dir">
+              {flowDirLabel}
+            </span>
+          )}
+        </div>
+      )}
 
       <dl className="chamber-inspector__details">
         {edge.data.sourceDetail && (
           <div className="chamber-inspector__detail-row">
-            <dt>จาก</dt>
+            <dt>ผู้กระทำ</dt>
             <dd>{edge.data.sourceDetail}</dd>
           </div>
         )}
         {edge.data.targetDetail && (
           <div className="chamber-inspector__detail-row">
-            <dt>ไปเทียบกับ</dt>
+            <dt>ถูกกระทำ</dt>
             <dd>{edge.data.targetDetail}</dd>
           </div>
         )}
@@ -253,21 +312,30 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
             <dd>{label}</dd>
           </div>
         ))}
+        {badge.sourceOutcomeStatus && (
+          <div className="chamber-inspector__detail-row">
+            <dt>สถานะผลลัพธ์</dt>
+            <dd>{translateOutcomeStatus(badge.sourceOutcomeStatus)}</dd>
+          </div>
+        )}
       </dl>
 
       {badge.modal.details.length > 0 && (
-        <dl className="chamber-inspector__details chamber-inspector__details--doctrine">
-          {badge.modal.details.map((detail) => (
-            <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
-              <dt>{detail.label}</dt>
-              <dd>{translateEngineValue(detail.value)}</dd>
-            </div>
-          ))}
-        </dl>
+        <details className="chamber-inspector__extra">
+          <summary>รายละเอียดเพิ่มเติม</summary>
+          <dl className="chamber-inspector__details chamber-inspector__details--doctrine">
+            {badge.modal.details.map((detail) => (
+              <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
+                <dt>{detail.label}</dt>
+                <dd>{translateEngineValue(detail.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
       )}
 
       <details className="chamber-inspector__debug">
-        <summary>Engine Trace (Debug)</summary>
+        <summary>ข้อมูลดิบ (Debug)</summary>
         <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
           {JSON.stringify({ badge, cluster: edge.data.schoolCluster }, null, 2)}
         </pre>
@@ -304,7 +372,7 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
             ))}
           </dl>
           <details className="chamber-inspector__debug">
-            <summary>Engine Trace (Debug)</summary>
+            <summary>ข้อมูลดิบ (Debug)</summary>
             <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
               {JSON.stringify(bundle.relations, null, 2)}
             </pre>
@@ -316,7 +384,7 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
 
       {bundle.hiddenStemCues.length > 0 && (
         <div className="chamber-inspector__participants">
-          <p className="chamber-inspector__section-title">Hidden Stem Cues</p>
+          <p className="chamber-inspector__section-title">ราศีแฝง</p>
           <ul>
             {bundle.hiddenStemCues.map((cue) => (
               <li key={cue.pillarKey}>{cue.pillarLabel} · {cue.hiddenStems.join(" · ") || "-"}</li>
