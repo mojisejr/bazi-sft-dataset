@@ -1,4 +1,4 @@
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, Position } from "@xyflow/react";
+import { BaseEdge, EdgeLabelRenderer, Position } from "@xyflow/react";
 import type { EdgeProps } from "@xyflow/react";
 
 type FlowCycleType = "generating" | "controlling" | "neutral";
@@ -104,16 +104,50 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
     offset,
   );
 
-  const arcSpread = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 0.35 : 0;
+  const isVerticalPath =
+    sourcePosition === Position.Top || sourcePosition === Position.Bottom ||
+    targetPosition === Position.Top || targetPosition === Position.Bottom;
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX: sx,
-    sourceY: sy - arcSpread,
-    targetX: tx,
-    targetY: ty + arcSpread,
-    sourcePosition,
-    targetPosition,
-  });
+  const distanceX = Math.abs(tx - sx);
+  const distanceY = Math.abs(ty - sy);
+  const distance = isVerticalPath ? distanceX : distanceY;
+  const distanceScale = Math.max(1, distance / 120);
+
+  // Rainbow/Hammock effect: bend the curve outwards perpendicular to the handle direction
+  // For vertical paths (Top/Bottom handles), the primary movement is Y. We bend them along X.
+  // For horizontal paths (Left/Right handles), the primary movement is X. We bend them along Y.
+  const bulge = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 0.8 * distanceScale : 0;
+
+  let edgePath = "";
+  let labelX = (sx + tx) / 2;
+  let labelY = (sy + ty) / 2;
+
+  if (isVerticalPath) {
+    // Vertical path: Top to Bottom or Bottom to Top
+    // Control points are pushed along Y by React Flow normally, we add a bulge along X
+    const sourceDirY = sourcePosition === Position.Bottom ? 1 : -1;
+    const targetDirY = targetPosition === Position.Top ? -1 : 1;
+    const absY = Math.max(Math.abs(ty - sy), 50); // minimum curve depth
+    const c1x = sx + bulge;
+    const c1y = sy + (absY * 0.4 * sourceDirY);
+    const c2x = tx + bulge;
+    const c2y = ty + (absY * 0.4 * targetDirY);
+    edgePath = `M ${sx},${sy} C ${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
+    labelX = (c1x + c2x) / 2;
+    labelY = (c1y + c2y) / 2;
+  } else {
+    // Horizontal path: Left to Right or Right to Left
+    const sourceDirX = sourcePosition === Position.Right ? 1 : -1;
+    const targetDirX = targetPosition === Position.Left ? -1 : 1;
+    const absX = Math.max(Math.abs(tx - sx), 50);
+    const c1x = sx + (absX * 0.4 * sourceDirX);
+    const c1y = sy + bulge;
+    const c2x = tx + (absX * 0.4 * targetDirX);
+    const c2y = ty + bulge;
+    edgePath = `M ${sx},${sy} C ${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
+    labelX = (c1x + c2x) / 2;
+    labelY = (c1y + c2y) / 2;
+  }
 
   const filtered: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(rest)) {
