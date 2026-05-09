@@ -5,7 +5,7 @@ import { startTransition, useDeferredValue, useMemo, useState } from "react";
 import { DetailOverlay } from "@/components/bazi/DetailOverlay";
 import { Badge } from "@/components/bazi/primitives/Badge";
 import { Surface } from "@/components/bazi/primitives/Surface";
-import { getSchoolLexiconInteraction } from "@/lib/bazi/lexicon/school-lexicon";
+
 import type {
   CalculatedStateValue,
   InteractionEntityValue,

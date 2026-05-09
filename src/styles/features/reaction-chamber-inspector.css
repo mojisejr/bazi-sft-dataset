@@ -307,3 +307,20 @@
     font-size: 32px;
   }
 }
+
+.chamber-inspector__debug {
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__debug summary {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+
+.chamber-inspector__debug summary:hover {
+  opacity: 1;
+}

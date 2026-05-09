@@ -12,6 +12,33 @@ import type { ChamberSelection } from "@/components/bazi/reaction-chamber/Reacti
 import { ELEMENT_COLORS_TH, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 import { getSchoolLexiconRelation, getSchoolLexiconInteraction } from "@/lib/bazi/lexicon/school-lexicon";
 
+const PILLAR_CONTEXT_TH: Record<string, string> = {
+  year: "บรรพบุรุษ / ตลาด / ลูกค้า / วัยเด็ก",
+  month: "พ่อแม่ / ผู้บังคับบัญชา / สังคมการงาน",
+  day: "ดิถี / คู่ครอง / บ้าน / ชีวิตส่วนตัว",
+  time: "ลูกหลาน / ลูกน้อง / บั้นปลายชีวิต / ผลงาน",
+};
+
+const ENGINE_TRANSLATIONS: Record<string, string> = {
+  supported: "สำเร็จสมบูรณ์",
+  resisted: "ถูกขัดขวาง/ต้านทาน",
+  weak: "กำลังอ่อนแอ",
+  dormant: "แฝงเร้น",
+  active: "มีกำลัง",
+  water: "หลอมรวมเป็นธาตุน้ำ",
+  wood: "หลอมรวมเป็นธาตุไม้",
+  fire: "หลอมรวมเป็นธาตุไฟ",
+  earth: "หลอมรวมเป็นธาตุดิน",
+  metal: "หลอมรวมเป็นธาตุทอง",
+  generating: "ก่อเกิด/ส่งเสริม",
+  controlling: "พิฆาต/ควบคุม",
+};
+
+function translateEngineValue(val: string): string {
+  const v = val.toLowerCase();
+  return ENGINE_TRANSLATIONS[v] || val;
+}
+
 type ChamberInspectorProps = {
   selection: ChamberSelection;
   relationBundle: ChamberRelationBundle | null;
@@ -54,6 +81,11 @@ function PillarSummary({ node }: { node: SemanticNode }) {
       {(data.stemTranslation || data.branchTranslation) && (
         <p className="chamber-inspector__translation">
           {[data.stemTranslation, data.branchTranslation].filter(Boolean).join(" / ")}
+        </p>
+      )}
+      {data.pillarKey && PILLAR_CONTEXT_TH[data.pillarKey] && (
+        <p className="chamber-inspector__explanation" style={{ marginTop: 8 }}>
+          <strong>บริบท:</strong> {PILLAR_CONTEXT_TH[data.pillarKey]}
         </p>
       )}
       {data.stageSlots.length > 0 && (
@@ -149,7 +181,7 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
           {badge.modal.details.map((detail) => (
             <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
               <dt>{detail.label}</dt>
-              <dd>{detail.value}</dd>
+              <dd>{translateEngineValue(detail.value)}</dd>
             </div>
           ))}
         </dl>
@@ -169,6 +201,13 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
           </ul>
         </div>
       )}
+
+      <details className="chamber-inspector__debug">
+        <summary>Engine Trace (Debug)</summary>
+        <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
+          {JSON.stringify(badge, null, 2)}
+        </pre>
+      </details>
     </div>
   );
 }
@@ -221,11 +260,18 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
           {badge.modal.details.map((detail) => (
             <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
               <dt>{detail.label}</dt>
-              <dd>{detail.value}</dd>
+              <dd>{translateEngineValue(detail.value)}</dd>
             </div>
           ))}
         </dl>
       )}
+
+      <details className="chamber-inspector__debug">
+        <summary>Engine Trace (Debug)</summary>
+        <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
+          {JSON.stringify({ badge, cluster: edge.data.schoolCluster }, null, 2)}
+        </pre>
+      </details>
     </div>
   );
 }
@@ -248,15 +294,21 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
 
       {bundle.relations.length > 0 ? (
         <>
-          <p className="chamber-inspector__section-title">Relation Bundle</p>
+          <p className="chamber-inspector__section-title">ปฏิกิริยาที่พบ</p>
           <dl className="chamber-inspector__details">
             {bundle.relations.map((relation) => (
               <div key={relation.edgeId} className="chamber-inspector__detail-row">
                 <dt>{relation.displayLabel}</dt>
-                <dd>{relation.relationType} · {relation.direction} · {relation.strength}</dd>
+                <dd>{translateEngineValue(relation.relationType)} · {translateEngineValue(relation.direction)}</dd>
               </div>
             ))}
           </dl>
+          <details className="chamber-inspector__debug">
+            <summary>Engine Trace (Debug)</summary>
+            <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
+              {JSON.stringify(bundle.relations, null, 2)}
+            </pre>
+          </details>
         </>
       ) : (
         <p className="chamber-inspector__empty">selection นี้ยังไม่มี relation bundle ที่เชื่อมกันโดยตรงใน graph ชุดนี้</p>
