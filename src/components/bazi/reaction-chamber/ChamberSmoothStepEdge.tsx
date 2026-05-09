@@ -111,12 +111,14 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
   const distanceX = Math.abs(tx - sx);
   const distanceY = Math.abs(ty - sy);
   const distance = isVerticalPath ? distanceX : distanceY;
-  const distanceScale = Math.max(1, distance / 120);
+  // Exaggerate scale non-linearly for longer distances to push them out of the dense center
+  const distanceScale = Math.max(1, Math.pow(distance / 100, 1.3));
 
   // Rainbow/Hammock effect: bend the curve outwards perpendicular to the handle direction
   // For vertical paths (Top/Bottom handles), the primary movement is Y. We bend them along X.
   // For horizontal paths (Left/Right handles), the primary movement is X. We bend them along Y.
-  const bulge = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 0.8 * distanceScale : 0;
+  // Increased base multiplier to 2.2 for more aggressive separation
+  const bulge = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 2.2 * distanceScale : 0;
 
   let edgePath = "";
   let labelX = (sx + tx) / 2;
