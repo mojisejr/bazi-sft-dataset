@@ -127,6 +127,7 @@ export function ReactionChamberShell() {
           />
           <RawInteractionMatrixModal
             calculatedState={calculatedState}
+            graph={graph}
             isOpen={isRawMatrixOpen}
             onClose={closeRawMatrix}
           />

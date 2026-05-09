@@ -12,23 +12,86 @@ import type {
   InteractionOutcomeValue,
   InteractionRelationValue,
 } from "@/lib/bazi/schema-types";
-import { BRANCH_LABELS_TH, ELEMENT_LABELS_TH, ELEMENT_TH_TO_EN } from "@/lib/bazi/symbolic-engine.constants";
+import { ELEMENT_LABELS_TH, ELEMENT_TH_TO_EN, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
+
+import { SemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 
 type RawInteractionMatrixModalProps = {
   calculatedState: CalculatedStateValue;
+  graph: SemanticChamberGraph;
   isOpen: boolean;
   onClose: () => void;
 };
 
 type MatrixRow = {
   id: string;
-  from: string;
-  to: string;
+  from: InteractionEntityValue | undefined;
+  to: InteractionEntityValue[];
   type: string;
   direction: string;
   result: string;
   familyKey: string;
   summary: string;
+  isOnGraph: boolean;
+};
+
+function MatrixParticipantBadge({ entity }: { entity: InteractionEntityValue | undefined }) {
+  if (!entity) return <span>-</span>;
+  const isStem = !!(STEM_TO_ELEMENT as Record<string, string>)[entity.symbol];
+  const elementEn = isStem 
+    ? (STEM_TO_ELEMENT as Record<string, string>)[entity.symbol]
+    : (BRANCH_TO_ELEMENT as Record<string, string>)[entity.symbol];
+  const pillarLabel = entity.pillarKey === "year" ? "ปี"
+    : entity.pillarKey === "month" ? "เดือน"
+    : entity.pillarKey === "day" ? "ดิถี"
+    : entity.pillarKey === "hour" ? "ยาม" : "";
+  const side = isStem ? "บน" : "ล่าง";
+  return (
+    <div className="matrix-participant">
+      <Badge className={`text-element-${elementEn} bg-element-${elementEn}/10 border border-element-${elementEn}/20`}>
+        {entity.symbol}
+      </Badge>
+      {pillarLabel && <span className="text-xs text-muted-foreground ml-1">เสา{pillarLabel}({side})</span>}
+    </div>
+  );
+}
+
+function MatrixDirectionArrow({ familyKey }: { familyKey: string }) {
+  const isOneWay = familyKey === "element-generate" || familyKey === "element-control";
+  return <span className="text-muted-foreground font-mono">{isOneWay ? "---→" : "←→"}</span>;
+}
+
+function MatrixGraphStatusBadge({ isOnGraph }: { isOnGraph: boolean }) {
+  if (!isOnGraph) return null;
+  return <Badge tone="ai" className="text-[10px] py-0 px-1.5 h-4 ml-2 bg-blue-500/10 text-blue-500 border border-blue-500/20">👁️ บนกราฟ</Badge>;
+}
+
+const MATRIX_FAMILY_LABELS_TH: Record<string, string> = {
+  "heavenly-stem-he": "ภาคีราศีบน",
+  "heavenly-stem-clash": "ชงราศีบน",
+  "earthly-branch-liu-he": "ฮะราศีล่าง (ฮะ6)",
+  "earthly-branch-san-he": "ซาฮะ",
+  "earthly-branch-ban-san-he": "ครึ่งซาฮะ",
+  "earthly-branch-clash": "ชง",
+  "earthly-branch-harm": "ไห่",
+  "earthly-branch-destruction": "ผั่ว",
+  "earthly-branch-punishment": "เฮ้ง",
+  "element-generate": "เซียงแซ (ส่งเสริม)",
+  "element-control": "พิฆาต (ควบคุม)",
+};
+
+const MATRIX_INTERACTION_NARRATIVE: Record<string, string> = {
+  "heavenly-stem-he": "รวมตัว ดึงดูดกัน",
+  "heavenly-stem-clash": "ขัดแย้ง ปะทะทางความคิด",
+  "earthly-branch-liu-he": "รวมตัว จับคู่ สนับสนุน",
+  "earthly-branch-san-he": "รวมพลังเป็นกลุ่มก้อน",
+  "earthly-branch-ban-san-he": "รอการรวมพลัง",
+  "earthly-branch-clash": "ปะทะ แตกหัก เปลี่ยนแปลง",
+  "earthly-branch-harm": "เบียดเบียน ให้ร้าย",
+  "earthly-branch-destruction": "ทำให้เสียหาย แตกแยก",
+  "earthly-branch-punishment": "ทำร้าย กดดัน ลงโทษ",
+  "element-generate": "ให้กำเนิด ถ่ายเทกำลัง",
+  "element-control": "ควบคุม ข่ม กดดัน",
 };
 
 function resolveEntityLabel(entity: InteractionEntityValue) {
@@ -41,8 +104,7 @@ function resolveEntityLabel(entity: InteractionEntityValue) {
         : entity.pillarKey === "hour"
           ? "ยาม"
           : "";
-  const branchLabel = BRANCH_LABELS_TH[entity.symbol as keyof typeof BRANCH_LABELS_TH];
-  const detail = entity.label ?? branchLabel;
+  const detail = entity.label ?? entity.symbol;
 
   if (!pillarLabel) {
     return entity.symbol;
@@ -52,18 +114,7 @@ function resolveEntityLabel(entity: InteractionEntityValue) {
 }
 
 function resolveTypeLabel(relation: InteractionRelationValue) {
-  if (relation.familyKey === "heavenly-stem-he") return "ภาคีราศีบน";
-  if (relation.familyKey === "heavenly-stem-clash") return "ชงราศีบน";
-  if (relation.familyKey === "earthly-branch-liu-he") return "ฮะราศีล่าง";
-  if (relation.familyKey === "earthly-branch-san-he") return "ซาฮะ";
-  if (relation.familyKey === "earthly-branch-ban-san-he") return "ครึ่งซาฮะ";
-  if (relation.familyKey === "earthly-branch-clash") return "ชง";
-  if (relation.familyKey === "earthly-branch-harm") return "ไห่";
-  if (relation.familyKey === "earthly-branch-destruction") return "ผั่ว";
-  if (relation.familyKey === "earthly-branch-punishment") return "เฮ้ง";
-  if (relation.familyKey === "element-generate") return getSchoolLexiconInteraction("generate");
-  if (relation.familyKey === "element-control") return getSchoolLexiconInteraction("control");
-  return relation.label;
+  return MATRIX_FAMILY_LABELS_TH[relation.familyKey] ?? relation.label;
 }
 
 function resolveDirectionLabel(relation: InteractionRelationValue) {
@@ -82,26 +133,27 @@ function resolveOutcomeLabel(relation: InteractionRelationValue, outcome: Intera
     ? ELEMENT_LABELS_TH[ELEMENT_TH_TO_EN[transformElement] as keyof typeof ELEMENT_LABELS_TH] ?? transformElement
     : null;
 
-  const statusLabel = outcome?.status === "transformed"
-    ? "แปรธาตุสำเร็จ"
-    : outcome?.status === "supported"
-      ? "ได้แรงหนุน"
-      : outcome?.status === "blocked"
-        ? "ถูกขวาง"
-        : outcome?.status === "transit-broken"
-          ? "แตกกลางทาง"
-          : outcome?.status === "detected"
-            ? "ตรวจพบ"
-            : "-";
-
-  if (transformLabel) {
-    return `${statusLabel} · ${transformLabel}`;
+  if (outcome?.status === "transformed" && transformLabel) {
+    return `หลอมรวมเป็นธาตุ${transformLabel}`;
+  }
+  if (outcome?.status === "supported") {
+    return "ได้รับการส่งเสริม";
+  }
+  if (outcome?.status === "blocked") {
+    return "ถูกสกัดกั้น";
+  }
+  if (outcome?.status === "transit-broken") {
+    return "ปฏิกิริยาไม่สมบูรณ์";
   }
 
-  return statusLabel;
+  // Default or "detected" fallback
+  if (transformLabel) {
+    return `ส่งผลธาตุ${transformLabel}`;
+  }
+  return "ส่งผลปฏิกิริยา";
 }
 
-function buildMatrixRows(calculatedState: CalculatedStateValue): MatrixRow[] {
+function buildMatrixRows(calculatedState: CalculatedStateValue, graph: SemanticChamberGraph): MatrixRow[] {
   const interactionState = calculatedState.interactionState;
   if (!interactionState) {
     return [];
@@ -109,35 +161,38 @@ function buildMatrixRows(calculatedState: CalculatedStateValue): MatrixRow[] {
 
   const entityMap = new Map<string, InteractionEntityValue>(interactionState.entities.map((entity) => [entity.id, entity]));
   const outcomeMap = new Map<string, InteractionOutcomeValue>(interactionState.outcomes.map((outcome) => [outcome.relationId, outcome]));
+  const activeRelationIds = new Set(graph.edges.map((edge) => edge.data.badge?.sourceRelationId).filter(Boolean));
 
   return interactionState.relations.map((relation) => {
     const [sourceId, ...targetIds] = relation.participantEntityIds;
     const source = sourceId ? entityMap.get(sourceId) : undefined;
     const targets = targetIds.map((entityId) => entityMap.get(entityId)).filter((entity): entity is InteractionEntityValue => Boolean(entity));
-    const from = source ? resolveEntityLabel(source) : relation.label;
-    const to = targets.length > 0 ? targets.map(resolveEntityLabel).join(" + ") : "-";
+    const fromLabel = source ? resolveEntityLabel(source) : relation.label;
+    const toLabel = targets.length > 0 ? targets.map(resolveEntityLabel).join(" + ") : "-";
     const type = resolveTypeLabel(relation);
     const direction = resolveDirectionLabel(relation);
     const result = resolveOutcomeLabel(relation, outcomeMap.get(relation.id));
+    const isOnGraph = activeRelationIds.has(relation.id);
     return {
       id: relation.id,
-      from,
-      to,
+      from: source,
+      to: targets,
       type,
       direction,
       result,
       familyKey: relation.familyKey,
-      summary: `${from} ${type} ${to} ${result}`,
+      summary: `${fromLabel} ${type} ${toLabel} ${result}`,
+      isOnGraph,
     };
   });
 }
 
-export function RawInteractionMatrixModal({ calculatedState, isOpen, onClose }: RawInteractionMatrixModalProps) {
+export function RawInteractionMatrixModal({ calculatedState, graph, isOpen, onClose }: RawInteractionMatrixModalProps) {
   const [search, setSearch] = useState("");
   const [familyFilter, setFamilyFilter] = useState("all");
   const deferredSearch = useDeferredValue(search.trim().toLowerCase());
 
-  const rows = useMemo(() => buildMatrixRows(calculatedState), [calculatedState]);
+  const rows = useMemo(() => buildMatrixRows(calculatedState, graph), [calculatedState, graph]);
   const families = useMemo(
     () => Array.from(new Set(rows.map((row) => row.familyKey))).sort(),
     [rows],
@@ -150,7 +205,7 @@ export function RawInteractionMatrixModal({ calculatedState, isOpen, onClose }: 
       if (!deferredSearch) {
         return true;
       }
-      return `${row.from} ${row.to} ${row.type} ${row.result} ${row.direction}`.toLowerCase().includes(deferredSearch);
+      return `${row.summary} ${row.direction}`.toLowerCase().includes(deferredSearch);
     });
   }, [deferredSearch, familyFilter, rows]);
 
@@ -184,7 +239,7 @@ export function RawInteractionMatrixModal({ calculatedState, isOpen, onClose }: 
               <select value={familyFilter} onChange={(event) => setFamilyFilter(event.target.value)}>
                 <option value="all">ทั้งหมด</option>
                 {families.map((family) => (
-                  <option key={family} value={family}>{family}</option>
+                  <option key={family} value={family}>{MATRIX_FAMILY_LABELS_TH[family] ?? family}</option>
                 ))}
               </select>
             </label>
@@ -202,11 +257,26 @@ export function RawInteractionMatrixModal({ calculatedState, isOpen, onClose }: 
             </div>
             {filteredRows.map((row) => (
               <div key={row.id} className="chamber-matrix__row" role="row">
-                <span role="cell">{row.from}</span>
-                <span role="cell">{row.to}</span>
-                <span role="cell">{row.type}</span>
-                <span role="cell">{row.direction}</span>
-                <span role="cell">{row.result}</span>
+                <span role="cell" className="flex items-center gap-1">
+                  <MatrixParticipantBadge entity={row.from} />
+                  <MatrixGraphStatusBadge isOnGraph={row.isOnGraph} />
+                </span>
+                <span role="cell" className="flex items-center gap-1">
+                  {row.to.length > 0 
+                    ? row.to.map((target) => <MatrixParticipantBadge key={target.id} entity={target} />)
+                    : <span>-</span>
+                  }
+                </span>
+                <span role="cell">
+                  <div className="font-medium">{row.type}</div>
+                </span>
+                <span role="cell" className="text-center">
+                  <MatrixDirectionArrow familyKey={row.familyKey} />
+                </span>
+                <span role="cell">
+                  <div className="font-medium">{MATRIX_INTERACTION_NARRATIVE[row.familyKey] ?? "-"}</div>
+                  <div className="text-xs text-muted-foreground">({row.result})</div>
+                </span>
               </div>
             ))}
           </div>
