@@ -134,6 +134,7 @@ function buildReactFlowNode(
   selectedNodeIds: Set<string>,
 ): Node {
   const position = layoutPositions.get(graphNode.id) ?? graphNode.position;
+  const isSelected = selectedNodeIds.has(graphNode.id);
 
   return {
     id: graphNode.id,
@@ -142,7 +143,8 @@ function buildReactFlowNode(
     position,
     draggable: false,
     selectable: true,
-    selected: selectedNodeIds.has(graphNode.id),
+    selected: isSelected,
+    zIndex: isSelected ? 60 : 50,
   } satisfies Node;
 }
 

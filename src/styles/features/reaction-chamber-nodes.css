@@ -2,8 +2,8 @@
 
 .chamber-node-pillar {
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--chamber-panel) 92%, transparent), var(--chamber-panel-soft)),
-    color-mix(in srgb, var(--chamber-panel) 85%, transparent);
+    linear-gradient(180deg, color-mix(in srgb, var(--chamber-panel) 95%, transparent), var(--chamber-panel-soft)),
+    color-mix(in srgb, var(--chamber-panel) 95%, transparent);
   backdrop-filter: blur(18px);
   z-index: 10;
   border: 1px solid var(--chamber-line);
@@ -220,7 +220,7 @@
 }
 
 .chamber-stem-node {
-  background: color-mix(in srgb, var(--chamber-panel) 85%, transparent);
+  background: color-mix(in srgb, var(--chamber-panel) 92%, transparent);
   backdrop-filter: blur(18px);
   z-index: 10;
   border: 2px solid var(--chamber-accent);
@@ -316,7 +316,7 @@
 }
 
 .chamber-branch-node {
-  background: color-mix(in srgb, var(--chamber-panel-soft) 85%, transparent);
+  background: color-mix(in srgb, var(--chamber-panel-soft) 92%, transparent);
   backdrop-filter: blur(18px);
   z-index: 10;
   border: 2px solid var(--chamber-line);
