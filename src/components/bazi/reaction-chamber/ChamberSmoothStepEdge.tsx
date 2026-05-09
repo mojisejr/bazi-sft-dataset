@@ -124,28 +124,63 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
   let labelX = (sx + tx) / 2;
   let labelY = (sy + ty) / 2;
 
-  if (isVerticalPath) {
-    // Vertical path: Top to Bottom or Bottom to Top
-    // Control points are pushed along Y by React Flow normally, we add a bulge along X
-    const sourceDirY = sourcePosition === Position.Bottom ? 1 : -1;
-    const targetDirY = targetPosition === Position.Top ? -1 : 1;
-    const absY = Math.max(Math.abs(ty - sy), 50); // minimum curve depth
-    const c1x = sx + bulge;
-    const c1y = sy + (absY * 0.4 * sourceDirY);
-    const c2x = tx + bulge;
-    const c2y = ty + (absY * 0.4 * targetDirY);
+  // For Handle-based routing, we need to generate curves that respect the exit/entry directions.
+  // sourceDir / targetDir are vectors for the handles.
+  const getDir = (pos: Position, isSource: boolean) => {
+    switch (pos) {
+      case Position.Top: return { x: 0, y: -1 };
+      case Position.Bottom: return { x: 0, y: 1 };
+      case Position.Left: return { x: -1, y: 0 };
+      case Position.Right: return { x: 1, y: 0 };
+      default: return { x: 0, y: isSource ? 1 : -1 };
+    }
+  };
+
+  const sDir = getDir(sourcePosition, true);
+  const tDir = getDir(targetPosition, false);
+
+  // If the path connects handles on the same axis (e.g. Top to Top), 
+  // the distance between them primarily spans the OTHER axis.
+  // So Top-to-Top spans X. We should bulge along Y (the handle axis).
+  const isSameAxis = (sDir.y !== 0 && tDir.y !== 0) || (sDir.x !== 0 && tDir.x !== 0);
+  
+  if (isSameAxis && sDir.y !== 0) {
+    // Both are Top or Bottom (Vertical Handles). 
+    // They are separated along X. Bulge should push along Y.
+    const controlDist = Math.max(Math.abs(tx - sx) * 0.4, 50); // curve strength based on X gap
+    // Bulge acts as an additional push in the Y direction (up for top, down for bottom)
+    const yBulge = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 1.5 * distanceScale : 0;
+    
+    const c1x = sx;
+    const c1y = sy + (sDir.y * controlDist) + yBulge;
+    const c2x = tx;
+    const c2y = ty + (tDir.y * controlDist) + yBulge;
+
+    edgePath = `M ${sx},${sy} C ${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
+    labelX = (c1x + c2x) / 2;
+    labelY = (c1y + c2y) / 2;
+  } else if (isSameAxis && sDir.x !== 0) {
+    // Both are Left or Right
+    const controlDist = Math.max(Math.abs(ty - sy) * 0.4, 50);
+    const xBulge = offset !== 0 ? Math.sign(offset) * Math.abs(offset) * 1.5 * distanceScale : 0;
+    
+    const c1x = sx + (sDir.x * controlDist) + xBulge;
+    const c1y = sy;
+    const c2x = tx + (tDir.x * controlDist) + xBulge;
+    const c2y = ty;
+
     edgePath = `M ${sx},${sy} C ${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
     labelX = (c1x + c2x) / 2;
     labelY = (c1y + c2y) / 2;
   } else {
-    // Horizontal path: Left to Right or Right to Left
-    const sourceDirX = sourcePosition === Position.Right ? 1 : -1;
-    const targetDirX = targetPosition === Position.Left ? -1 : 1;
-    const absX = Math.max(Math.abs(tx - sx), 50);
-    const c1x = sx + (absX * 0.4 * sourceDirX);
-    const c1y = sy + bulge;
-    const c2x = tx + (absX * 0.4 * targetDirX);
-    const c2y = ty + bulge;
+    // Cross-axis (e.g. Top to Bottom, Top to Left)
+    // Use the original logic where control points extend in handle direction
+    const c1x = sx + (sDir.x * Math.max(Math.abs(tx - sx) * 0.4, 50)) + (sDir.y !== 0 ? bulge : 0);
+    const c1y = sy + (sDir.y * Math.max(Math.abs(ty - sy) * 0.4, 50)) + (sDir.x !== 0 ? bulge : 0);
+    
+    const c2x = tx + (tDir.x * Math.max(Math.abs(tx - sx) * 0.4, 50)) + (tDir.y !== 0 ? bulge : 0);
+    const c2y = ty + (tDir.y * Math.max(Math.abs(ty - sy) * 0.4, 50)) + (tDir.x !== 0 ? bulge : 0);
+
     edgePath = `M ${sx},${sy} C ${c1x},${c1y} ${c2x},${c2y} ${tx},${ty}`;
     labelX = (c1x + c2x) / 2;
     labelY = (c1y + c2y) / 2;

@@ -621,18 +621,18 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
     if (flowInfo.direction === "outward") {
       source = dayNodeId;
       target = targetNodeId;
-      sourceHandle = "source-top";
-      targetHandle = "target-top";
+      sourceHandle = isStem ? "source-top" : "source-bottom";
+      targetHandle = isStem ? "target-top" : "target-bottom";
     } else if (flowInfo.direction === "inward") {
       source = targetNodeId;
       target = dayNodeId;
-      sourceHandle = "source-top";
-      targetHandle = "target-bottom";
+      sourceHandle = isStem ? "source-top" : "source-bottom";
+      targetHandle = isStem ? "target-top" : "target-bottom";
     } else {
       source = dayNodeId;
       target = targetNodeId;
-      sourceHandle = "source-top";
-      targetHandle = "target-top";
+      sourceHandle = isStem ? "source-top" : "source-bottom";
+      targetHandle = isStem ? "target-top" : "target-bottom";
     }
 
     const edgeClasses = [
@@ -771,42 +771,25 @@ function resolveInteractionHandles(
   sourceIsStem: boolean,
   targetIsStem: boolean,
 ): { sourceHandle: string; targetHandle: string } {
-  const sourceCol = gridColumnIndex(sourcePillarKey);
-  const targetCol = gridColumnIndex(targetPillarKey);
-  const delta = targetCol - sourceCol;
-  const isCrossType = sourceIsStem !== targetIsStem;
-
-  if (isCrossType && delta === 0) {
-    return { sourceHandle: "source-bottom", targetHandle: "target-top" };
-  }
-
-  if (isCrossType) {
-    if (Math.abs(delta) >= 2) {
-      return { sourceHandle: "source-top", targetHandle: "target-top" };
-    }
-    if (delta < 0) {
-      return { sourceHandle: "source-left", targetHandle: "target-right" };
-    }
-    return { sourceHandle: "source-right", targetHandle: "target-left" };
-  }
-
-  if (sourceIsStem) {
-    if (Math.abs(delta) >= 2) {
-      return { sourceHandle: "source-top", targetHandle: "target-top" };
-    }
-    if (delta < 0) {
-      return { sourceHandle: "source-left", targetHandle: "target-right" };
-    }
-    return { sourceHandle: "source-right", targetHandle: "target-left" };
-  }
-
-  if (Math.abs(delta) >= 2) {
+  // Stem -> Stem: Top -> Top
+  if (sourceIsStem && targetIsStem) {
     return { sourceHandle: "source-top", targetHandle: "target-top" };
   }
-  if (delta < 0) {
-    return { sourceHandle: "source-left", targetHandle: "target-right" };
+  // Branch -> Branch: Bottom -> Bottom
+  if (!sourceIsStem && !targetIsStem) {
+    return { sourceHandle: "source-bottom", targetHandle: "target-bottom" };
   }
-  return { sourceHandle: "source-right", targetHandle: "target-left" };
+  // Stem -> Branch (Heaven to Earth): Bottom -> Top
+  if (sourceIsStem && !targetIsStem) {
+    return { sourceHandle: "source-bottom", targetHandle: "target-top" };
+  }
+  // Branch -> Stem (Earth to Heaven): Top -> Bottom
+  if (!sourceIsStem && targetIsStem) {
+    return { sourceHandle: "source-top", targetHandle: "target-bottom" };
+  }
+
+  // Fallback (should not be reached)
+  return { sourceHandle: "source-top", targetHandle: "target-top" };
 }
 
 function buildInteractionEdges(
