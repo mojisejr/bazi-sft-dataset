@@ -28,6 +28,7 @@ import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMar
 import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemNode";
 import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
 import { ChamberBezierEdge } from "@/components/bazi/reaction-chamber/ChamberSmoothStepEdge";
+import { ChamberLayerTogglesPanel } from "@/components/bazi/reaction-chamber/ChamberLayerTogglesPanel";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 
 const NODE_TYPES = {
@@ -190,6 +191,7 @@ function ReactionChamberCanvasInner({
       >
         <Background gap={28} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
+        <ChamberLayerTogglesPanel />
       </ReactFlow>
     </div>
   );

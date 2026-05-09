@@ -9,6 +9,7 @@
 @import "../styles/features/reaction-chamber-shell.css";
 @import "../styles/features/reaction-chamber-nodes.css";
 @import "../styles/features/reaction-chamber-edges.css";
+@import "../styles/features/reaction-chamber-layer-panel.css";
 @import "../styles/features/reaction-chamber-inspector.css";
 @import "../styles/features/dynamic-temporal.css";
 @import "../styles/features/classic-report.css";

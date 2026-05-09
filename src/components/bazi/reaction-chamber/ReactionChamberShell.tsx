@@ -54,7 +54,6 @@ export function ReactionChamberShell() {
   const toggleRawMatrix = useChamberPresentationStore((state) => state.toggleRawMatrix);
   const closeRawMatrix = useChamberPresentationStore((state) => state.closeRawMatrix);
   const layerToggles = useChamberPresentationStore((state) => state.layerToggles);
-  const toggleLayer = useChamberPresentationStore((state) => state.toggleLayer);
 
   useEffect(() => {
     if (!calculatedState) {
@@ -129,11 +128,9 @@ export function ReactionChamberShell() {
           isInspectorOpen={isInspectorOpen}
           isRoleSummaryOpen={isTenGodPanelOpen}
           isRawMatrixOpen={isRawMatrixOpen}
-          layerToggles={layerToggles}
           onToggleInspector={toggleInspector}
           onToggleRoleSummary={toggleTenGodPanel}
           onToggleRawMatrix={toggleRawMatrix}
-          onToggleLayer={toggleLayer}
         />
 
         <div className="reaction-chamber-shell__viewport">

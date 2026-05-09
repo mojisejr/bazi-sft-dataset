@@ -1,0 +1,85 @@
+/* src/styles/features/reaction-chamber-layer-panel.css */
+
+.chamber-layer-panel {
+  z-index: 40;
+  margin-bottom: 16px;
+  margin-left: 16px;
+}
+
+.chamber-layer-panel__container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: color-mix(in srgb, var(--chamber-panel-strong) 85%, transparent);
+  border: 1px solid var(--chamber-line);
+  border-radius: 16px;
+  padding: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(12px);
+}
+
+.chamber-layer-panel__title {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--chamber-muted);
+  margin: 0;
+  padding: 0 4px;
+  letter-spacing: 0.05em;
+}
+
+.chamber-layer-panel__buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chamber-layer-panel__button {
+  appearance: none;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--chamber-text);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  opacity: 0.6;
+}
+
+.chamber-layer-panel__icon {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+/* Hover States */
+.chamber-layer-panel__button:hover {
+  background: color-mix(in srgb, var(--chamber-line) 50%, transparent);
+  opacity: 0.8;
+}
+
+/* Active Glow States */
+.chamber-layer-panel__button--active {
+  opacity: 1;
+  background: var(--chamber-panel);
+  border-color: var(--chamber-line-strong);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chamber-accent) 20%, transparent);
+}
+
+.chamber-layer-panel__button--active[data-layer="structure"] {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chamber-element-earth) 20%, transparent);
+  color: var(--chamber-element-earth);
+}
+
+.chamber-layer-panel__button--active[data-layer="energy"] {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chamber-element-water) 20%, transparent);
+  color: var(--chamber-element-water);
+}
+
+.chamber-layer-panel__button--active[data-layer="overlay"] {
+  box-shadow: 0 0 12px color-mix(in srgb, var(--chamber-element-metal) 20%, transparent);
+  color: var(--chamber-element-metal);
+}
