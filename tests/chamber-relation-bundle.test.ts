@@ -95,7 +95,7 @@ function buildStubCalculatedState(): CalculatedStateValue {
 describe("chamber relation bundle resolver", () => {
   test("returns null in quiet base state", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const selection = buildChamberSelectionState({ graph });
 
     expect(resolveChamberRelationBundle({ selection, graph, calculatedState })).toBeNull();
@@ -103,7 +103,7 @@ describe("chamber relation bundle resolver", () => {
 
   test("reveals only relevant ten-god flow relations for day-master compare", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day", "stem:month"] });
 
     const bundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
@@ -132,7 +132,7 @@ describe("chamber relation bundle resolver", () => {
 
   test("returns hidden stem cues only for visible pillars in the active bundle", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day", "stem:month"] });
 
     const bundle = resolveChamberRelationBundle({ selection, graph, calculatedState });

@@ -188,7 +188,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
       repository,
     );
 
-    const graph = buildSemanticChamberGraph(result);
+    const graph = buildSemanticChamberGraph(result, { quietGraph: false });
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
     const hourStemFlow = flowEdges.find((edge) =>
@@ -215,7 +215,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
       repository,
     );
 
-    const graph = buildSemanticChamberGraph(result);
+    const graph = buildSemanticChamberGraph(result, { quietGraph: false });
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
     const yearStemFlow = flowEdges.find((edge) =>
@@ -242,7 +242,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
       repository,
     );
 
-    const graph = buildSemanticChamberGraph(result);
+    const graph = buildSemanticChamberGraph(result, { quietGraph: false });
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
     const stemFlowEdges = flowEdges.filter((edge) => edge.id.includes("-stem-role"));

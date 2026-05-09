@@ -151,7 +151,7 @@ describe("buildChamberRenderModel", () => {
 
   test("reveals only active compare edges with inline label semantics", () => {
     const calculatedState = buildStubCalculatedState();
-    const graph = buildSemanticChamberGraph(calculatedState);
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
     const positions = assignChamberGraphLayout(graph);
     const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day", "stem:hour"] });
     const relationBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });

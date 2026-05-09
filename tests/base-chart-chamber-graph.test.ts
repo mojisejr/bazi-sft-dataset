@@ -113,7 +113,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("emits stem and branch nodes in a grid layout with day as focal center", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const stemNodes = graph.nodes.filter((node) => node.type === "chamberStemNode");
     const branchNodes = graph.nodes.filter((node) => node.type === "chamberBranchNode");
@@ -157,7 +157,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("promotes hidden stems into typed node payloads for stem and branch nodes", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const dayStemNode = graph.nodes.find((node) => node.id === "stem:day");
     const monthBranchNode = graph.nodes.find((node) => node.id === "branch:month");
@@ -172,20 +172,20 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("exposes semantic focus ids for the live day nodes", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     expect(getSemanticDayFocusNodeIds(graph)).toEqual(["stem:day", "branch:day"]);
   });
 
   test("marks only the live day stem and branch nodes as focal", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const focalNodeIds = graph.nodes.filter(isFocalSemanticNode).map((node) => node.id);
     expect(focalNodeIds).toEqual(["stem:day", "branch:day"]);
   });
 
   test("promotes visible-tier shen-sha and keeps secondary overlays hidden by default", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const markerNodes = graph.nodes.filter((node) => node.type === "chamberMarker");
     expect(markerNodes).toHaveLength(1);
@@ -195,7 +195,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("renders daymaster relation edges as first-class semantic relations", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const daymasterEdges = graph.edges.filter((edge) => edge.data.layer === "daymaster-meaning");
     expect(daymasterEdges.length).toBeGreaterThan(0);
@@ -206,7 +206,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("produces doctrine-layer interaction edges connecting at least two nodes", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     expect(graph.edges.length).toBeGreaterThan(0);
 
@@ -219,7 +219,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("propagates semantic edge layers and status into edge className", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const matchedEdge = graph.edges.find((edge) => edge.className?.includes("chamber-edge--"));
     expect(matchedEdge?.className).toMatch(/chamber-edge chamber-edge--/);
@@ -227,7 +227,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("all edges have explicit sourceHandle and targetHandle", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     for (const edge of graph.edges) {
       expect(edge.sourceHandle).toBeDefined();
@@ -238,7 +238,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("edge handles follow multi-handle routing rules", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const stemEdges = graph.edges.filter(
       (edge) => edge.source.startsWith("stem:") && edge.data.layer === "inter-pillar-reaction",
@@ -266,7 +266,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("groups doctrine reactions into school clusters without losing source provenance", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     expect(graph.schoolClusters.length).toBeGreaterThan(0);
 
@@ -307,7 +307,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("no self-loop edges exist in reaction layer", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const reactionEdges = graph.edges.filter(
       (edge) => edge.data.layer === "inter-pillar-reaction",
@@ -319,7 +319,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("cross-type stem-to-branch edges resolve to correct node IDs", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const reactionEdges = graph.edges.filter(
       (edge) => edge.data.layer === "inter-pillar-reaction",
@@ -338,7 +338,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("same-pillar cross-type edges use vertical handle routing", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const reactionEdges = graph.edges.filter(
       (edge) => edge.data.layer === "inter-pillar-reaction",
@@ -357,7 +357,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("far-span branch edges use top handles for middle-zone arc routing", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const branchEdges = graph.edges.filter(
       (edge) => edge.source.startsWith("branch:") && edge.data.layer === "inter-pillar-reaction",
@@ -404,7 +404,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("daymaster guide edges stay anchored with zero parallelOffset", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const daymasterEdges = graph.edges.filter(
       (edge) => edge.data.layer === "daymaster-meaning",
@@ -417,7 +417,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("overlay edges stay anchored with zero parallelOffset", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const overlayEdges = graph.edges.filter(
       (edge) => edge.data.layer === "shen-sha-overlay",
@@ -430,7 +430,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("non-reaction edges do not affect reaction offset grouping", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const reactionEdges = graph.edges.filter(
       (edge) => edge.data.layer === "inter-pillar-reaction",
@@ -481,7 +481,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("element-flow edges exist for non-day role badges", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
     expect(flowEdges.length).toBeGreaterThan(0);
@@ -497,7 +497,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("element-flow edges have correct cycle type and direction per Ten God", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
@@ -516,7 +516,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("element-flow edges have element-specific CSS class", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
@@ -526,7 +526,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("no self-loop element-flow edges", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
@@ -536,7 +536,7 @@ describe("buildSemanticChamberGraph", () => {
   });
 
   test("element-flow edges do not connect to day pillar nodes", () => {
-    const graph = buildSemanticChamberGraph(buildStubCalculatedState());
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 

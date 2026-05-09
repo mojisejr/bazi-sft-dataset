@@ -39,6 +39,11 @@ export function filterEdgesBySchoolRevealPolicy(
   }
 
   return edges.filter((edge) => {
+    // Drop Daymaster role lines in quiet graph, as they are now in the summary modal
+    if (edge.data.layer === "element-flow" || edge.data.layer === "daymaster-meaning") {
+      return false;
+    }
+
     if (edge.data.layer !== "element-interaction") {
       return true;
     }
