@@ -183,8 +183,16 @@ function buildReactFlowEdge(
     zIndex: resolveEdgeZIndex(edge),
     interactionWidth: isReactionEdge(edge) ? 20 : 12,
     hidden: hideUnrevealedEdges && !isRevealed,
-    ...(isReactionEdge(edge) || isElementInteractionEdge(edge)
+    ...(isReactionEdge(edge)
       ? { markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10 } }
+      : {}),
+    ...(isElementInteractionEdge(edge)
+      ? {
+          markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10 },
+          ...(edge.data.flowDirection === "both"
+            ? { markerStart: { type: MarkerType.ArrowClosed, width: 10, height: 10 } }
+            : {}),
+        }
       : {}),
     ...(isElementFlowEdge(edge) && flowDirection === "outward"
       ? { markerEnd: { type: MarkerType.ArrowClosed, width: 8, height: 8 } }

@@ -1,0 +1,485 @@
+CHART:
+{
+  "year": {
+    "stem": "戊",
+    "branch": "辰",
+    "hiddenStems": [
+      "戊",
+      "乙",
+      "癸"
+    ]
+  },
+  "month": {
+    "stem": "甲",
+    "branch": "子",
+    "hiddenStems": [
+      "癸"
+    ]
+  },
+  "day": {
+    "stem": "癸",
+    "branch": "亥",
+    "hiddenStems": [
+      "壬",
+      "甲"
+    ]
+  },
+  "hour": {
+    "stem": "戊",
+    "branch": "午",
+    "hiddenStems": [
+      "丁",
+      "己"
+    ]
+  }
+}
+
+INTERACTIONS:
+[
+  {
+    "id": "relation-stem-clash-year-month",
+    "familyKey": "heavenly-stem-clash",
+    "type": "stem-clash",
+    "participantEntityIds": [
+      "stem-year",
+      "stem-month"
+    ],
+    "label": "戊甲",
+    "metadata": {
+      "leftPillar": "year",
+      "rightPillar": "month"
+    }
+  },
+  {
+    "id": "relation-stem-he-year-day",
+    "familyKey": "heavenly-stem-he",
+    "type": "stem-combination",
+    "participantEntityIds": [
+      "stem-year",
+      "stem-day"
+    ],
+    "label": "戊癸",
+    "transformElement": "fire",
+    "metadata": {
+      "leftPillar": "year",
+      "rightPillar": "day"
+    }
+  },
+  {
+    "id": "relation-stem-clash-month-hour",
+    "familyKey": "heavenly-stem-clash",
+    "type": "stem-clash",
+    "participantEntityIds": [
+      "stem-month",
+      "stem-hour"
+    ],
+    "label": "甲戊",
+    "metadata": {
+      "leftPillar": "month",
+      "rightPillar": "hour"
+    }
+  },
+  {
+    "id": "relation-stem-he-day-hour",
+    "familyKey": "heavenly-stem-he",
+    "type": "stem-combination",
+    "participantEntityIds": [
+      "stem-day",
+      "stem-hour"
+    ],
+    "label": "癸戊",
+    "transformElement": "fire",
+    "metadata": {
+      "leftPillar": "day",
+      "rightPillar": "hour"
+    }
+  },
+  {
+    "id": "relation-half-san-he-子辰",
+    "familyKey": "earthly-branch-ban-san-he",
+    "type": "branch-combination",
+    "participantEntityIds": [
+      "branch-year",
+      "branch-month"
+    ],
+    "label": "子辰",
+    "transformElement": "water",
+    "metadata": {
+      "sourceGroup": "申子辰"
+    }
+  },
+  {
+    "id": "relation-control-stem-year-branch-month",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-year",
+      "branch-month"
+    ],
+    "label": "戊x子",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-stem-year-stem-day",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-year",
+      "stem-day"
+    ],
+    "label": "戊x癸",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "stem",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-stem-year-branch-day",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-year",
+      "branch-day"
+    ],
+    "label": "戊x亥",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-branch-year-branch-month",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-year",
+      "branch-month"
+    ],
+    "label": "辰x子",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "branch",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-branch-year-stem-day",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-year",
+      "stem-day"
+    ],
+    "label": "辰x癸",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "branch",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-branch-year-branch-day",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-year",
+      "branch-day"
+    ],
+    "label": "辰x亥",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "branch",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-stem-month-stem-year",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-month",
+      "stem-year"
+    ],
+    "label": "甲x戊",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "wood",
+      "targetElement": "earth",
+      "sourceType": "stem",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-stem-month-branch-year",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-month",
+      "branch-year"
+    ],
+    "label": "甲x辰",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "wood",
+      "targetElement": "earth",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-stem-month-stem-hour",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-month",
+      "stem-hour"
+    ],
+    "label": "甲x戊",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "wood",
+      "targetElement": "earth",
+      "sourceType": "stem",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-generate-stem-month-branch-hour",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-month",
+      "branch-hour"
+    ],
+    "label": "甲->午",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "wood",
+      "targetElement": "fire",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-generate-branch-month-stem-month",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-month",
+      "stem-month"
+    ],
+    "label": "子->甲",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "water",
+      "targetElement": "wood",
+      "sourceType": "branch",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-branch-month-branch-hour",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-month",
+      "branch-hour"
+    ],
+    "label": "子x午",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "water",
+      "targetElement": "fire",
+      "sourceType": "branch",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-generate-stem-day-stem-month",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-day",
+      "stem-month"
+    ],
+    "label": "癸->甲",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "water",
+      "targetElement": "wood",
+      "sourceType": "stem",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-stem-day-branch-hour",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-day",
+      "branch-hour"
+    ],
+    "label": "癸x午",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "water",
+      "targetElement": "fire",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-generate-branch-day-stem-month",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-day",
+      "stem-month"
+    ],
+    "label": "亥->甲",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "water",
+      "targetElement": "wood",
+      "sourceType": "branch",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-branch-day-branch-hour",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-day",
+      "branch-hour"
+    ],
+    "label": "亥x午",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "water",
+      "targetElement": "fire",
+      "sourceType": "branch",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-stem-hour-branch-month",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-hour",
+      "branch-month"
+    ],
+    "label": "戊x子",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-control-stem-hour-stem-day",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-hour",
+      "stem-day"
+    ],
+    "label": "戊x癸",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "stem",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-control-stem-hour-branch-day",
+    "familyKey": "element-control",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "stem-hour",
+      "branch-day"
+    ],
+    "label": "戊x亥",
+    "elementInteractionType": "control",
+    "metadata": {
+      "sourceElement": "earth",
+      "targetElement": "water",
+      "sourceType": "stem",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-generate-branch-hour-stem-year",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-hour",
+      "stem-year"
+    ],
+    "label": "午->戊",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "fire",
+      "targetElement": "earth",
+      "sourceType": "branch",
+      "targetType": "stem"
+    }
+  },
+  {
+    "id": "relation-generate-branch-hour-branch-year",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-hour",
+      "branch-year"
+    ],
+    "label": "午->辰",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "fire",
+      "targetElement": "earth",
+      "sourceType": "branch",
+      "targetType": "branch"
+    }
+  },
+  {
+    "id": "relation-generate-branch-hour-stem-hour",
+    "familyKey": "element-generate",
+    "type": "element-interaction",
+    "participantEntityIds": [
+      "branch-hour",
+      "stem-hour"
+    ],
+    "label": "午->戊",
+    "elementInteractionType": "generate",
+    "metadata": {
+      "sourceElement": "fire",
+      "targetElement": "earth",
+      "sourceType": "branch",
+      "targetType": "stem"
+    }
+  }
+]

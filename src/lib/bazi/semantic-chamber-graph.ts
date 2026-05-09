@@ -111,7 +111,7 @@ export type SemanticEdgeData = {
   parallelOffset?: number;
   schoolLabel?: string;
   flowCycleType?: "generating" | "controlling" | "neutral";
-  flowDirection?: "outward" | "inward" | "none";
+  flowDirection?: "outward" | "inward" | "none" | "both";
   flowLabel?: string;
   flowElement?: string;
 };
@@ -713,7 +713,7 @@ function buildElementInteractionEdges(badges: BaseChartReactionBadgeValue[]): Se
         tier: badge.tier,
         schoolLabel: badge.schoolLabel,
         flowCycleType,
-        flowDirection: "outward",
+        flowDirection: flowCycleType === "generating" ? "both" : "outward",
         flowLabel: badge.schoolLabel ?? badge.shortLabel ?? badge.label,
         flowElement: flowElement ? ELEMENT_TH_TO_EN[flowElement] ?? undefined : undefined,
       },

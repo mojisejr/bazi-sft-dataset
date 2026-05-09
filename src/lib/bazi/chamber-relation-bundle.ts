@@ -106,8 +106,10 @@ function resolveStrength(edge: SemanticEdge): ChamberBundleRelationStrength {
 }
 
 function resolveDirection(edge: SemanticEdge): ChamberBundleRelationDirection {
-  if (edge.data.layer === "element-flow") {
-    return edge.data.flowDirection ?? "none";
+  if (edge.data.layer === "element-flow" || edge.data.layer === "element-interaction") {
+    const d = edge.data.flowDirection;
+    if (d === "both") return "mutual";
+    return d ?? "none";
   }
 
   if (edge.data.layer === "daymaster-meaning") {
@@ -123,10 +125,6 @@ function resolveDirection(edge: SemanticEdge): ChamberBundleRelationDirection {
   }
 
   if (edge.data.layer === "inter-pillar-reaction") {
-    return "mutual";
-  }
-
-  if (edge.data.layer === "element-interaction") {
     return "mutual";
   }
 
