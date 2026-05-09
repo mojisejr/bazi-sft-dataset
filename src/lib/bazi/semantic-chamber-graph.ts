@@ -127,7 +127,11 @@ export type SemanticEdge = {
   className?: string;
 };
 
-import { applySchoolRevealPolicy, type SchoolRevealPolicyConfig } from "@/lib/bazi/school-reveal-policy";
+import {
+  applySchoolRevealPolicy,
+  filterEdgesBySchoolRevealPolicy,
+  type SchoolRevealPolicyConfig,
+} from "@/lib/bazi/school-reveal-policy";
 
 export type SemanticChamberGraph = {
   nodes: SemanticNode[];
@@ -977,15 +981,17 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue, c
   const visibleMarkerNodes = buildMarkerNodes(reading.markerBadges);
   const hiddenSecondaryOverlays = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "secondary");
 
+  const edges = [
+    ...buildDaymasterRelationEdges(reading.roleBadges),
+    ...buildElementFlowEdges(reading.roleBadges),
+    ...buildInteractionEdges(schoolInteractionBadges, visibleMarkerBadges),
+    ...buildElementInteractionEdges(elementalInteractionBadges),
+    ...buildOverlayEdges(reading.markerBadges),
+  ];
+
   return {
     nodes: [...pillarNodes, ...visibleMarkerNodes],
-    edges: [
-      ...buildDaymasterRelationEdges(reading.roleBadges),
-      ...buildElementFlowEdges(reading.roleBadges),
-      ...buildInteractionEdges(schoolInteractionBadges, visibleMarkerBadges),
-      ...buildElementInteractionEdges(elementalInteractionBadges),
-      ...buildOverlayEdges(reading.markerBadges),
-    ],
+    edges: filterEdgesBySchoolRevealPolicy(edges, config),
     schoolClusters: schoolInteractionBadges.map((badge) => buildSchoolClusterForBadge(badge, visibleMarkerBadges)),
     hiddenSecondaryOverlays,
   };

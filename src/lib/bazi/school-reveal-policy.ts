@@ -27,47 +27,43 @@ export function filterEdgesBySchoolRevealPolicy(
     return edges;
   }
 
-  // Find all pillars that are involved in a stem-combination
-  const combinationLockedNodeIds = new Set<string>();
-  edges.forEach((edge) => {
-    if (edge.data.badge.semanticKind === "stem-combination") {
-      combinationLockedNodeIds.add(edge.source);
-      combinationLockedNodeIds.add(edge.target);
-    }
-  });
+  const pillarOrder = ["hour", "day", "month", "year"];
+
+  function resolveNodeParts(nodeId: string) {
+    const [kind, pillarKey] = nodeId.split(":");
+    return { kind, pillarKey };
+  }
+
+  function isAdjacentPillar(sourcePillar: string, targetPillar: string) {
+    return Math.abs(pillarOrder.indexOf(sourcePillar) - pillarOrder.indexOf(targetPillar)) === 1;
+  }
 
   return edges.filter((edge) => {
-    // We only prune generation and control edges
-    if (edge.data.badge.semanticKind !== "element-generate" && edge.data.badge.semanticKind !== "element-control") {
+    if (edge.data.layer !== "element-interaction") {
       return true;
     }
 
-    const sourceParts = edge.source.split(":");
-    const targetParts = edge.target.split(":");
-    const sourcePillar = sourceParts[1];
-    const targetPillar = targetParts[1];
-    const sourceIsStem = sourceParts[0] === "stem";
-    const targetIsBranch = targetParts[0] === "branch";
+    const { kind: sourceKind, pillarKey: sourcePillar } = resolveNodeParts(edge.source);
+    const { kind: targetKind, pillarKey: targetPillar } = resolveNodeParts(edge.target);
+    const isGenerating = edge.data.flowCycleType === "generating";
+    const isSamePillar = sourcePillar === targetPillar;
 
-    // Rule 1: Drop Same-Pillar (การส่งเสริม/พิฆาตในเสาเดียวกัน)
-    // Sinsaes treat intra-pillar relationships as implicit structural context, not macroscopic graph flows.
-    if (sourcePillar === targetPillar) {
+    // Rule 1: Tong Gen survives in the graph when the line is vertical and nourishing.
+    if (isSamePillar) {
+      return isGenerating && sourceKind !== targetKind;
+    }
+
+    // Rule 2: Adjacency survives for both generating and controlling lanes.
+    if (isAdjacentPillar(sourcePillar, targetPillar)) {
+      return true;
+    }
+
+    // Rule 3: Non-adjacent controls are too noisy for the Master's view.
+    if (!isGenerating) {
       return false;
     }
 
-    // Rule 2: Drop Downward Flow (จากบนลงล่าง)
-    // Qi naturally flows upwards from roots to stems, or across the same layer.
-    // Downward generation is often seen as "draining" rather than active support.
-    if (sourceIsStem && targetIsBranch) {
-      return false;
-    }
-
-    // Rule 3: Apply Combination Lock (ฮะแล้วลืมเกิด/พิฆาต)
-    // If a Heavenly Stem is involved in an active "Combination", its energy is locked.
-    if (combinationLockedNodeIds.has(edge.source)) {
-      return false;
-    }
-
+    // Rule 4: Continuous Xiang Sheng may bridge non-adjacent pillars.
     return true;
   });
 }

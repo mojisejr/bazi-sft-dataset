@@ -1,112 +1,141 @@
 "use client";
 
-import type { BaseChartReactionBadgeValue } from "@/lib/bazi/schema-types";
-
-type TenGodCategory = {
-  label: string;
-  description: string;
-  badges: BaseChartReactionBadgeValue[];
-};
-
-const TEN_GOD_CATEGORIES: Record<string, { label: string; description: string }> = {
-  食神: { label: "ถ่ายเท", description: "แรงถ่ายเท การแสดงออก ผลงาน" },
-  เจี้ยซิ้ง: { label: "ถ่ายเท", description: "แรงถ่ายเท การแสดงออก ผลงาน" },
-  伤官: { label: "ถ่ายเท", description: "แรงถ่ายเทต่างพลัง ความคิดคม" },
-  เซียกัว: { label: "ถ่ายเท", description: "แรงถ่ายเทต่างพลัง ความคิดคม" },
-  偏财: { label: "โชคลาภ", description: "ลาภแบบพลิกเร็ว โอกาส เงินหมุน" },
-  เพียงไช้: { label: "โชคลาภ", description: "ลาภแบบพลิกเร็ว โอกาส เงินหมุน" },
-  正财: { label: "โชคลาภ", description: "ลาภที่เป็นระบบ การเงิน ทรัพย์" },
-  เจี้ยไช้: { label: "โชคลาภ", description: "ลาภที่เป็นระบบ การเงิน ทรัพย์" },
-  七杀: { label: "พิฆาต", description: "แรงกด แรงเสี่ยง อำนาจกดดัน" },
-  ชิกสัวะ: { label: "พิฆาต", description: "แรงกด แรงเสี่ยง อำนาจกดดัน" },
-  正官: { label: "พิฆาต", description: "หน้าที่ ระเบียบ กติกา ตำแหน่ง" },
-  เจี้ยกัว: { label: "พิฆาต", description: "หน้าที่ ระเบียบ กติกา ตำแหน่ง" },
-  正印: { label: "ส่งเสริม", description: "แรงหนุนตรง ผู้ใหญ่ ครู อุปถัมภ์" },
-  เจี้ยอิ่ง: { label: "ส่งเสริม", description: "แรงหนุนตรง ผู้ใหญ่ ครู อุปถัมภ์" },
-  偏印: { label: "ส่งเสริม", description: "แรงหนุนเชิงเฉพาะทาง การคิด การศึกษา" },
-  เพียงอิ่ง: { label: "ส่งเสริม", description: "แรงหนุนเชิงเฉพาะทาง การคิด การศึกษา" },
-  比肩: { label: "คู่ธาตุ", description: "พวกเดียวกัน การช่วยเหลือและการแย่งแรง" },
-  ปี่เกียง: { label: "คู่ธาตุ", description: "พวกเดียวกัน การช่วยเหลือและการแย่งแรง" },
-  劫财: { label: "คู่ธาตุ", description: "คู่ธาตุต่างพลัง แรงแข่ง แรงแชร์" },
-  เกี๊ยบไช้: { label: "คู่ธาตุ", description: "คู่ธาตุต่างพลัง แรงแข่ง แรงแชร์" },
-};
-
-function groupBadgesByCategory(badges: BaseChartReactionBadgeValue[]): TenGodCategory[] {
-  const categoryMap = new Map<string, BaseChartReactionBadgeValue[]>();
-
-  for (const badge of badges) {
-    const tenGod = badge.modal.details.find((d) => d.label === "จับซิ้ง")?.value;
-    if (!tenGod) continue;
-
-    const category = TEN_GOD_CATEGORIES[tenGod];
-    if (!category) continue;
-
-    const existing = categoryMap.get(category.label) ?? [];
-    existing.push(badge);
-    categoryMap.set(category.label, existing);
-  }
-
-  const result: TenGodCategory[] = [];
-  const seen = new Set<string>();
-
-  for (const [label, categoryBadges] of categoryMap) {
-    if (seen.has(label)) continue;
-    seen.add(label);
-    const category = Object.values(TEN_GOD_CATEGORIES).find((c) => c.label === label);
-    result.push({
-      label,
-      description: category?.description ?? "",
-      badges: categoryBadges,
-    });
-  }
-
-  return result;
-}
+import { Badge } from "@/components/bazi/primitives/Badge";
+import { Surface } from "@/components/bazi/primitives/Surface";
+import { DetailOverlay } from "@/components/bazi/DetailOverlay";
+import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
+import {
+  CONTROLS,
+  ELEMENT_COLORS_TH,
+  ELEMENT_LABELS_TH,
+  GENERATES,
+  STEM_TO_ELEMENT,
+  BRANCH_TO_ELEMENT,
+} from "@/lib/bazi/symbolic-engine.constants";
 
 type ChamberTenGodPanelProps = {
-  roleBadges: BaseChartReactionBadgeValue[];
+  calculatedState: CalculatedStateValue;
   isOpen: boolean;
-  onToggle: () => void;
+  onClose: () => void;
 };
 
-export function ChamberTenGodPanel({ roleBadges, isOpen, onToggle }: ChamberTenGodPanelProps) {
-  const categories = groupBadgesByCategory(roleBadges);
+type RoleSummaryRow = {
+  label: string;
+  element: string;
+  description: string;
+  symbols: string[];
+};
 
-  if (categories.length === 0) {
-    return null;
+function resolveElementForRole(dayMasterElement: keyof typeof GENERATES, role: RoleSummaryRow["label"]) {
+  if (role === "ดิถี" || role === "คู่ธาตุ") {
+    return dayMasterElement;
+  }
+  if (role === "ถ่ายเท") {
+    return GENERATES[dayMasterElement];
+  }
+  if (role === "โชคลาภ") {
+    return CONTROLS[dayMasterElement];
+  }
+  if (role === "พิฆาต") {
+    return Object.entries(CONTROLS).find(([, target]) => target === dayMasterElement)?.[0] as keyof typeof GENERATES;
+  }
+  return Object.entries(GENERATES).find(([, target]) => target === dayMasterElement)?.[0] as keyof typeof GENERATES;
+}
+
+function buildPresentElementSymbols(calculatedState: CalculatedStateValue) {
+  const symbolMap = new Map<string, string[]>();
+
+  for (const pillar of Object.values(calculatedState.fourPillars)) {
+    const stemElement = STEM_TO_ELEMENT[pillar.stem as keyof typeof STEM_TO_ELEMENT];
+    const branchElement = BRANCH_TO_ELEMENT[pillar.branch as keyof typeof BRANCH_TO_ELEMENT];
+
+    if (stemElement) {
+      symbolMap.set(stemElement, [...(symbolMap.get(stemElement) ?? []), pillar.stem]);
+    }
+    if (branchElement) {
+      symbolMap.set(branchElement, [...(symbolMap.get(branchElement) ?? []), pillar.branch]);
+    }
   }
 
-  return (
-    <>
-      <button
-        className="chamber-ten-god-toggle"
-        onClick={onToggle}
-        aria-label={isOpen ? "ซ่อน 10 เทพ" : "แสดง 10 เทพ"}
-        title={isOpen ? "ซ่อน 10 เทพ" : "10 เทพ"}
-      >
-        {isOpen ? "×" : "十"}
-      </button>
+  return symbolMap;
+}
 
-      {isOpen && (
-        <div className="chamber-ten-god-panel">
-          <h3 className="chamber-ten-god-panel__title">10 เทพ</h3>
-          <div className="chamber-ten-god-panel__categories">
-            {categories.map((category) => (
-              <div key={category.label} className="chamber-ten-god-category">
-                <h4 className="chamber-ten-god-category__label">{category.label}</h4>
-                <p className="chamber-ten-god-category__description">{category.description}</p>
-                <ul className="chamber-ten-god-category__badges">
-                  {category.badges.map((badge) => (
-                    <li key={badge.id} className="chamber-ten-god-badge">
-                      <span className="chamber-ten-god-badge__label">{badge.shortLabel ?? badge.label}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+function buildRoleRows(calculatedState: CalculatedStateValue): RoleSummaryRow[] {
+  const dayMasterElement = STEM_TO_ELEMENT[calculatedState.dayMaster as keyof typeof STEM_TO_ELEMENT] as keyof typeof GENERATES | undefined;
+  if (!dayMasterElement) {
+    return [];
+  }
+
+  const presentElementSymbols = buildPresentElementSymbols(calculatedState);
+  const roleDescriptions: Record<string, string> = {
+    "ดิถี": "ธาตุหลักของเจ้าชะตา ใช้เป็นแกนอ่านทั้งดวง",
+    "คู่ธาตุ": "พวกเดียวกัน คนร่วมแรง คู่แข่ง หรือแรงแชร์พลัง",
+    "ถ่ายเท": "สิ่งที่ดิถีปล่อยออกไปเป็นผลงาน ความคิด และการแสดงออก",
+    "โชคลาภ": "ทรัพย์ โอกาส ผลตอบแทน และสิ่งที่ดิถีไปครอบครอง",
+    "พิฆาต": "แรงกด อำนาจ ระเบียบ หรือแรงที่มาคุมดิถี",
+    "ส่งเสริม": "แรงหนุน ผู้ใหญ่ ความรู้ และสิ่งที่หล่อเลี้ยงดิถี",
+  };
+
+  return ["ดิถี", "คู่ธาตุ", "ถ่ายเท", "โชคลาภ", "พิฆาต", "ส่งเสริม"].map((role) => {
+    const element = resolveElementForRole(dayMasterElement, role);
+    return {
+      label: role,
+      element,
+      description: roleDescriptions[role],
+      symbols: presentElementSymbols.get(element) ?? [],
+    };
+  });
+}
+
+export function ChamberTenGodPanel({ calculatedState, isOpen, onClose }: ChamberTenGodPanelProps) {
+  const roleRows = buildRoleRows(calculatedState);
+  const dayMasterElement = STEM_TO_ELEMENT[calculatedState.dayMaster as keyof typeof STEM_TO_ELEMENT] as keyof typeof ELEMENT_LABELS_TH | undefined;
+
+  return (
+    <DetailOverlay
+      isOpen={isOpen}
+      title="สรุปบทบาทธาตุ"
+      kicker="บันทึกซินแส"
+      summary={dayMasterElement
+        ? `ดิถี ${calculatedState.dayMaster} เป็นธาตุ${ELEMENT_LABELS_TH[dayMasterElement]} แยกอ่านเป็น คู่ธาตุ ถ่ายเท โชคลาภ พิฆาต และส่งเสริม`
+        : undefined}
+      closeLabel="ปิด"
+      panelClassName="explainable-modal--wide chamber-detail-modal"
+      onClose={onClose}
+    >
+      <div className="chamber-role-summary">
+        <Surface className="chamber-role-summary__card">
+          <div className="section-heading section-heading--compact">
+            <div>
+              <p className="section-kicker">Role Map</p>
+              <h3>อ่านดวงแบบสรุปก่อนลงกราฟ</h3>
+            </div>
+            <Badge>ดิถี {calculatedState.dayMaster}</Badge>
           </div>
-        </div>
-      )}
-    </>
+
+          <div className="chamber-role-summary__table" role="table" aria-label="สรุปบทบาทธาตุ">
+            <div className="chamber-role-summary__row chamber-role-summary__row--head" role="row">
+              <span role="columnheader">บทบาท</span>
+              <span role="columnheader">ธาตุ</span>
+              <span role="columnheader">ตัวที่มีในดวง</span>
+              <span role="columnheader">ความหมาย</span>
+            </div>
+            {roleRows.map((row) => {
+              const thaiElement = ELEMENT_LABELS_TH[row.element as keyof typeof ELEMENT_LABELS_TH] ?? row.element;
+              return (
+                <div key={row.label} className="chamber-role-summary__row" role="row">
+                  <strong role="cell">{row.label}</strong>
+                  <span role="cell" className="chamber-role-summary__element" style={{ color: ELEMENT_COLORS_TH[thaiElement] }}>
+                    {thaiElement}
+                  </span>
+                  <span role="cell">{row.symbols.length > 0 ? row.symbols.join(" · ") : "ไม่มี"}</span>
+                  <span role="cell">{row.description}</span>
+                </div>
+              );
+            })}
+          </div>
+        </Surface>
+      </div>
+    </DetailOverlay>
   );
 }

@@ -186,6 +186,7 @@ function ReactionChamberCanvasInner({
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onEdgeClick={handleEdgeClick}
+        defaultEdgeOptions={{ type: "chamberBezier" }}
       >
         <Background gap={28} size={1} />
         <Controls position="bottom-right" showInteractive={false} />

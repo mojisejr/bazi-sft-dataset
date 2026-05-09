@@ -18,6 +18,7 @@ import {
 import { ChamberCommandBar } from "@/components/bazi/reaction-chamber/ChamberCommandBar";
 import { ChamberInspector } from "@/components/bazi/reaction-chamber/ChamberInspector";
 import { ChamberTenGodPanel } from "@/components/bazi/reaction-chamber/ChamberTenGodPanel";
+import { RawInteractionMatrixModal } from "@/components/bazi/reaction-chamber/RawInteractionMatrixModal";
 
 const MOBILE_BREAKPOINT_PX = 900;
 
@@ -48,6 +49,10 @@ export function ReactionChamberShell() {
   const toggleInspector = useChamberPresentationStore((state) => state.toggleInspector);
   const isTenGodPanelOpen = useChamberPresentationStore((state) => state.isTenGodPanelOpen);
   const toggleTenGodPanel = useChamberPresentationStore((state) => state.toggleTenGodPanel);
+  const closeTenGodPanel = useChamberPresentationStore((state) => state.closeTenGodPanel);
+  const isRawMatrixOpen = useChamberPresentationStore((state) => state.isRawMatrixOpen);
+  const toggleRawMatrix = useChamberPresentationStore((state) => state.toggleRawMatrix);
+  const closeRawMatrix = useChamberPresentationStore((state) => state.closeRawMatrix);
 
   useEffect(() => {
     if (!calculatedState) {
@@ -97,8 +102,6 @@ export function ReactionChamberShell() {
 
   const dayMaster = calculatedState.dayMaster;
   const title = `แผนภาพปฏิกิริยา · ดิถี ${dayMaster}`;
-  const roleBadges = calculatedState.baseChartReading?.roleBadges ?? [];
-
   return (
     <ReactFlowProvider>
       <main className={`reaction-chamber-shell reaction-chamber-shell--${variant}`}>
@@ -108,15 +111,24 @@ export function ReactionChamberShell() {
           graph={graph}
           selectionMode={selection.mode}
           isInspectorOpen={isInspectorOpen}
+          isRoleSummaryOpen={isTenGodPanelOpen}
+          isRawMatrixOpen={isRawMatrixOpen}
           onToggleInspector={toggleInspector}
+          onToggleRoleSummary={toggleTenGodPanel}
+          onToggleRawMatrix={toggleRawMatrix}
         />
 
         <div className="reaction-chamber-shell__viewport">
           <ReactionChamberCanvas graph={graph} selection={selection} relationBundle={relationBundle} onSelectionChange={setSelection} />
           <ChamberTenGodPanel
-            roleBadges={roleBadges}
+            calculatedState={calculatedState}
             isOpen={isTenGodPanelOpen}
-            onToggle={toggleTenGodPanel}
+            onClose={closeTenGodPanel}
+          />
+          <RawInteractionMatrixModal
+            calculatedState={calculatedState}
+            isOpen={isRawMatrixOpen}
+            onClose={closeRawMatrix}
           />
           {variant === "docked" && isInspectorOpen && (
             <ChamberInspector selection={selection} relationBundle={relationBundle} variant="docked" onClose={clearSelection} />

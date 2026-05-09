@@ -10,6 +10,7 @@ export type ChamberPresentationState = {
   selection: ChamberSelectionState;
   isInspectorOpen: boolean;
   isTenGodPanelOpen: boolean;
+  isRawMatrixOpen: boolean;
 };
 
 type ChamberPresentationStoreState = ChamberPresentationState & {
@@ -20,6 +21,8 @@ type ChamberPresentationStoreState = ChamberPresentationState & {
   toggleInspector: () => void;
   toggleTenGodPanel: () => void;
   closeTenGodPanel: () => void;
+  toggleRawMatrix: () => void;
+  closeRawMatrix: () => void;
   resetPresentation: () => void;
 };
 
@@ -30,6 +33,7 @@ export function createChamberPresentationState(
     selection: EMPTY_CHAMBER_SELECTION,
     isInspectorOpen: false,
     isTenGodPanelOpen: false,
+    isRawMatrixOpen: false,
     ...overrides,
   };
 }
@@ -65,6 +69,12 @@ export function createChamberPresentationStore(
     },
     closeTenGodPanel: () => {
       set({ isTenGodPanelOpen: false });
+    },
+    toggleRawMatrix: () => {
+      set((current) => ({ isRawMatrixOpen: !current.isRawMatrixOpen }));
+    },
+    closeRawMatrix: () => {
+      set({ isRawMatrixOpen: false });
     },
     resetPresentation: () => {
       set(createChamberPresentationState());

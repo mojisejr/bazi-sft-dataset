@@ -1,5 +1,5 @@
-import { calculateBaziStructuralState } from './src/lib/bazi/symbolic-engine';
-import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from './src/lib/bazi/symbolic-engine.interactions';
+import { calculateBaziStructuralState } from '../../src/lib/bazi/symbolic-engine';
+import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from '../../src/lib/bazi/symbolic-engine.interactions';
 
 const payload = {
   id: "test2",

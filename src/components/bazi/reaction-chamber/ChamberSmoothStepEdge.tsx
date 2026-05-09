@@ -2,7 +2,7 @@ import { BaseEdge, EdgeLabelRenderer, getBezierPath, Position } from "@xyflow/re
 import type { EdgeProps } from "@xyflow/react";
 
 type FlowCycleType = "generating" | "controlling" | "neutral";
-type FlowDirection = "outward" | "inward" | "none";
+type FlowDirection = "outward" | "inward" | "none" | "both";
 
 type ChamberBezierEdgeData = {
   parallelOffset?: number;

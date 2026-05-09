@@ -11,7 +11,11 @@ type ChamberCommandBarProps = {
   graph: SemanticChamberGraph;
   selectionMode: "base" | "single" | "pair" | "multi";
   isInspectorOpen: boolean;
+  isRoleSummaryOpen: boolean;
+  isRawMatrixOpen: boolean;
   onToggleInspector: () => void;
+  onToggleRoleSummary: () => void;
+  onToggleRawMatrix: () => void;
 };
 
 function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
@@ -66,7 +70,11 @@ export function ChamberCommandBar({
   graph,
   selectionMode,
   isInspectorOpen,
+  isRoleSummaryOpen,
+  isRawMatrixOpen,
   onToggleInspector,
+  onToggleRoleSummary,
+  onToggleRawMatrix,
 }: ChamberCommandBarProps) {
   return (
     <header className="chamber-command-bar" aria-label="chamber command bar">
@@ -87,6 +95,22 @@ export function ChamberCommandBar({
           aria-pressed={isInspectorOpen}
         >
           {isInspectorOpen ? "ซ่อนรายละเอียด" : "เปิดรายละเอียด"}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleRoleSummary}
+          className="chamber-command-bar__action"
+          aria-pressed={isRoleSummaryOpen}
+        >
+          {isRoleSummaryOpen ? "ซ่อนสรุปธาตุ" : "สรุปธาตุ"}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleRawMatrix}
+          className="chamber-command-bar__action"
+          aria-pressed={isRawMatrixOpen}
+        >
+          {isRawMatrixOpen ? "ซ่อนตารางปฏิกิริยา" : "ตารางปฏิกิริยา"}
         </button>
         <FocusFitButtons graph={graph} />
       </div>

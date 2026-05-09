@@ -91,6 +91,7 @@ describe("chamber-presentation-store", () => {
       selection: EMPTY_CHAMBER_SELECTION,
       isInspectorOpen: false,
       isTenGodPanelOpen: false,
+      isRawMatrixOpen: false,
     });
   });
 
@@ -124,6 +125,18 @@ describe("chamber-presentation-store", () => {
       selection: EMPTY_CHAMBER_SELECTION,
       isInspectorOpen: false,
       isTenGodPanelOpen: false,
+      isRawMatrixOpen: false,
     });
+  });
+
+  test("toggles raw matrix modal without disturbing selection state", () => {
+    const store = createChamberPresentationStore();
+
+    store.getState().toggleRawMatrix();
+    expect(store.getState().isRawMatrixOpen).toBe(true);
+
+    store.getState().toggleRawMatrix();
+    expect(store.getState().isRawMatrixOpen).toBe(false);
+    expect(store.getState().selection).toEqual(EMPTY_CHAMBER_SELECTION);
   });
 });

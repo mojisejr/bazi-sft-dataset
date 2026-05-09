@@ -1,6 +1,5 @@
-import { calculateBaziStructuralState } from './src/lib/bazi/symbolic-engine';
-import { buildGeneralizedInteractionState } from './src/lib/bazi/symbolic-engine.interactions';
-import { getTwelveQiStage } from './src/lib/bazi/symbolic-engine.strength'; // or wherever it is
+import { calculateBaziStructuralState } from '../../src/lib/bazi/symbolic-engine';
+import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } from '../../src/lib/bazi/symbolic-engine.interactions';
 
 const payload = {
   id: "test",
@@ -12,22 +11,19 @@ const payload = {
 };
 
 const state = calculateBaziStructuralState(payload);
+const interactionResolution = resolveBranchInteractionEffects(state.fourPillars);
 
 // Just calling buildGeneralizedInteractionState manually
 const interactions = buildGeneralizedInteractionState({
-  pillars: state.baseChart.pillars,
+  pillars: state.fourPillars,
   dayMasterStem: state.dayMaster,
-  twelveQiByBranch: {}, // mock
-  resolution: { 
-    sixCombinations: [], 
-    threeCombinations: [], 
-    halfCombinations: [], 
-    directionalCombinations: [], 
-    clashes: [], 
-    harms: [], 
-    destructions: [], 
-    punishments: [] 
-  } // mock resolution or find a way to get it
+  twelveQiByBranch: {
+    year: "test",
+    month: "test",
+    day: "test",
+    hour: "test",
+  },
+  resolution: interactionResolution,
 });
 
 console.log(JSON.stringify(interactions, null, 2));
