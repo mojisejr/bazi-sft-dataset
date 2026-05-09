@@ -90,8 +90,13 @@ describe("chamber-presentation-store", () => {
     expect(createChamberPresentationState()).toEqual({
       selection: EMPTY_CHAMBER_SELECTION,
       isInspectorOpen: false,
-      isTenGodPanelOpen: false,
       isRawMatrixOpen: false,
+      isTenGodPanelOpen: false,
+      layerToggles: {
+        showStructure: true,
+        showEnergy: true,
+        showOverlay: true,
+      },
     });
   });
 

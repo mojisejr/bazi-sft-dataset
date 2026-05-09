@@ -356,7 +356,7 @@ describe("buildSemanticChamberGraph", () => {
     }
   });
 
-  test("far-span branch edges use top handles for middle-zone arc routing", () => {
+  test("far-span branch edges use bottom handles for middle-zone arc routing", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
 
     const branchEdges = graph.edges.filter(
@@ -372,8 +372,8 @@ describe("buildSemanticChamberGraph", () => {
     });
 
     for (const edge of farSpanEdges) {
-      expect(edge.sourceHandle).toBe("source-top");
-      expect(edge.targetHandle).toBe("target-top");
+      expect(edge.sourceHandle).toBe("source-bottom");
+      expect(edge.targetHandle).toBe("target-bottom");
     }
 
     // Adjacent branch edges should still use left/right handles
@@ -385,8 +385,8 @@ describe("buildSemanticChamberGraph", () => {
     });
 
     for (const edge of adjacentEdges) {
-      expect(edge.sourceHandle).toMatch(/^source-(left|right)$/);
-      expect(edge.targetHandle).toMatch(/^target-(left|right)$/);
+      expect(edge.sourceHandle).toBe("source-bottom");
+      expect(edge.targetHandle).toBe("target-bottom");
     }
   });
 
