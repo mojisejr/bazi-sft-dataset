@@ -122,8 +122,18 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
     }
   }
 
+  // Mootech Semantics: Combine base classes with semantic states
+  const className = ("className" in rest && typeof rest.className === "string") ? rest.className : "";
+  const isDimmed = className.includes("chamber-edge--dimmed");
+  const edgeClasses = [
+    "chamber-edge",
+    selected ? "chamber-edge--selected" : "",
+    isDimmed ? "chamber-edge--dimmed" : "",
+    data?.flowCycleType ? `chamber-edge--cycle-${data.flowCycleType}` : "",
+  ].filter(Boolean).join(" ");
+
   return (
-    <g className={selected ? "chamber-edge--selected" : undefined}>
+    <g className={edgeClasses}>
       <BaseEdge
         path={edgePath}
         {...filtered}
