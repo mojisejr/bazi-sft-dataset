@@ -113,7 +113,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 14px 18px;
-  border-bottom: 1px solid var(--chamber-line);
+  background: linear-gradient(to bottom, var(--chamber-panel), transparent 100%);
 }
 
 .chamber-inspector__head-kicker {
@@ -176,6 +176,10 @@
   color: var(--chamber-text);
 }
 
+.chamber-inspector__explanation {
+  margin-top: 8px;
+}
+
 .chamber-inspector__reading-order {
   margin: 0;
   font-size: 12px;
@@ -185,8 +189,8 @@
 .chamber-inspector__details {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 12px;
+  grid-template-columns: auto 1fr;
+  gap: 8px 14px;
 }
 
 .chamber-inspector__details--doctrine {
@@ -323,4 +327,75 @@
 
 .chamber-inspector__debug summary:hover {
   opacity: 1;
+}
+
+.chamber-inspector__debug pre,
+.chamber-inspector__debug-pre {
+  font-size: 10px;
+  padding: 8px;
+  background: var(--chamber-panel-soft);
+  border-radius: 4px;
+  overflow-x: auto;
+  margin-top: 8px;
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__extra {
+  margin-top: 4px;
+}
+
+.chamber-inspector__extra summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--chamber-muted);
+  letter-spacing: 0.06em;
+  padding: 6px 0;
+  user-select: none;
+  transition: color 0.2s;
+}
+
+.chamber-inspector__extra summary:hover {
+  color: var(--chamber-text);
+}
+
+.chamber-inspector__outcome {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--chamber-text);
+}
+
+.chamber-inspector__flow-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chamber-inspector__flow-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--chamber-line);
+  background: var(--chamber-panel-soft);
+  color: var(--chamber-text);
+}
+
+.chamber-inspector__flow-tag--cycle {
+  border-color: var(--chamber-accent);
+  color: var(--chamber-accent);
+  background: color-mix(in srgb, var(--chamber-accent) 8%, var(--chamber-panel));
+}
+
+.chamber-inspector__flow-tag--dir {
+  border-color: var(--chamber-line-strong, var(--chamber-line));
+  color: var(--chamber-muted);
+}
+
+.chamber-inspector__badge {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }

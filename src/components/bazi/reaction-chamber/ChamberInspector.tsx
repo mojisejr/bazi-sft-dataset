@@ -100,7 +100,7 @@ function PillarSummary({ node }: { node: SemanticNode }) {
         </p>
       )}
       {data.pillarKey && PILLAR_CONTEXT_TH[data.pillarKey] && (
-        <p className="chamber-inspector__explanation" style={{ marginTop: 8 }}>
+        <p className="chamber-inspector__explanation">
           <strong>บริบท:</strong> {PILLAR_CONTEXT_TH[data.pillarKey]}
         </p>
       )}
@@ -234,7 +234,7 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
 
       <details className="chamber-inspector__debug">
         <summary>ข้อมูลดิบ (Debug)</summary>
-        <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
+        <pre className="chamber-inspector__debug-pre">
           {JSON.stringify(badge, null, 2)}
         </pre>
       </details>
@@ -336,7 +336,7 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
 
       <details className="chamber-inspector__debug">
         <summary>ข้อมูลดิบ (Debug)</summary>
-        <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
+        <pre className="chamber-inspector__debug-pre">
           {JSON.stringify({ badge, cluster: edge.data.schoolCluster }, null, 2)}
         </pre>
       </details>
@@ -373,7 +373,7 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
           </dl>
           <details className="chamber-inspector__debug">
             <summary>ข้อมูลดิบ (Debug)</summary>
-            <pre style={{ fontSize: 10, padding: 8, background: "rgba(0,0,0,0.1)", borderRadius: 4, overflowX: "auto", marginTop: 8 }}>
+            <pre className="chamber-inspector__debug-pre">
               {JSON.stringify(bundle.relations, null, 2)}
             </pre>
           </details>
