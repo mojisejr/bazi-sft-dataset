@@ -14,6 +14,10 @@ import type {
 } from "@/lib/bazi/schema-types";
 import { ELEMENT_LABELS_TH, ELEMENT_TH_TO_EN, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 
+import {
+  SCHOOL_LEXICON_FAMILY_KEY,
+  INTERACTION_NARRATIVE_MAP,
+} from "@/lib/bazi/lexicon/school-lexicon";
 import { SemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 
 type RawInteractionMatrixModalProps = {
@@ -66,34 +70,6 @@ function MatrixGraphStatusBadge({ isOnGraph }: { isOnGraph: boolean }) {
   return <Badge tone="ai" className="text-[10px] py-0 px-1.5 h-4 ml-2 bg-blue-500/10 text-blue-500 border border-blue-500/20">👁️ บนกราฟ</Badge>;
 }
 
-const MATRIX_FAMILY_LABELS_TH: Record<string, string> = {
-  "heavenly-stem-he": "ภาคีราศีบน",
-  "heavenly-stem-clash": "ชงราศีบน",
-  "earthly-branch-liu-he": "ฮะราศีล่าง (ฮะ6)",
-  "earthly-branch-san-he": "ซาฮะ",
-  "earthly-branch-ban-san-he": "ครึ่งซาฮะ",
-  "earthly-branch-clash": "ชง",
-  "earthly-branch-harm": "ไห่",
-  "earthly-branch-destruction": "ผั่ว",
-  "earthly-branch-punishment": "เฮ้ง",
-  "element-generate": "เซียงแซ (ส่งเสริม)",
-  "element-control": "พิฆาต (ควบคุม)",
-};
-
-const MATRIX_INTERACTION_NARRATIVE: Record<string, string> = {
-  "heavenly-stem-he": "รวมตัว ดึงดูดกัน",
-  "heavenly-stem-clash": "ขัดแย้ง ปะทะทางความคิด",
-  "earthly-branch-liu-he": "รวมตัว จับคู่ สนับสนุน",
-  "earthly-branch-san-he": "รวมพลังเป็นกลุ่มก้อน",
-  "earthly-branch-ban-san-he": "รอการรวมพลัง",
-  "earthly-branch-clash": "ปะทะ แตกหัก เปลี่ยนแปลง",
-  "earthly-branch-harm": "เบียดเบียน ให้ร้าย",
-  "earthly-branch-destruction": "ทำให้เสียหาย แตกแยก",
-  "earthly-branch-punishment": "ทำร้าย กดดัน ลงโทษ",
-  "element-generate": "ให้กำเนิด ถ่ายเทกำลัง",
-  "element-control": "ควบคุม ข่ม กดดัน",
-};
-
 function resolveEntityLabel(entity: InteractionEntityValue) {
   const pillarLabel = entity.pillarKey === "year"
     ? "ปี"
@@ -114,7 +90,7 @@ function resolveEntityLabel(entity: InteractionEntityValue) {
 }
 
 function resolveTypeLabel(relation: InteractionRelationValue) {
-  return MATRIX_FAMILY_LABELS_TH[relation.familyKey] ?? relation.label;
+  return SCHOOL_LEXICON_FAMILY_KEY[relation.familyKey] ?? relation.label;
 }
 
 function resolveDirectionLabel(relation: InteractionRelationValue) {
@@ -213,7 +189,7 @@ export function RawInteractionMatrixModal({ calculatedState, graph, isOpen, onCl
     <DetailOverlay
       isOpen={isOpen}
       title="ตารางปฏิกิริยาทั้งหมด"
-      kicker="Engine Truth"
+      kicker="ข้อมูลจากระบบ"
       summary={`แสดงปฏิกิริยาที่ engine คำนวณได้ทั้งหมด ${rows.length} เส้น โดยไม่ผ่าน quiet graph filter`}
       closeLabel="ปิด"
       panelClassName="explainable-modal--wide chamber-detail-modal"
@@ -239,7 +215,7 @@ export function RawInteractionMatrixModal({ calculatedState, graph, isOpen, onCl
               <select value={familyFilter} onChange={(event) => setFamilyFilter(event.target.value)}>
                 <option value="all">ทั้งหมด</option>
                 {families.map((family) => (
-                  <option key={family} value={family}>{MATRIX_FAMILY_LABELS_TH[family] ?? family}</option>
+                  <option key={family} value={family}>{SCHOOL_LEXICON_FAMILY_KEY[family] ?? family}</option>
                 ))}
               </select>
             </label>
@@ -274,7 +250,7 @@ export function RawInteractionMatrixModal({ calculatedState, graph, isOpen, onCl
                   <MatrixDirectionArrow familyKey={row.familyKey} />
                 </span>
                 <span role="cell">
-                  <div className="font-medium">{MATRIX_INTERACTION_NARRATIVE[row.familyKey] ?? "-"}</div>
+                  <div className="font-medium">{INTERACTION_NARRATIVE_MAP[row.familyKey] ?? "-"}</div>
                   <div className="text-xs text-muted-foreground">({row.result})</div>
                 </span>
               </div>

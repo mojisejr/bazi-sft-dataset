@@ -350,10 +350,10 @@ export function AnnotationWorkspace({
             disabled={saveState === "saving" || datasetStatus === "reviewed"}
           >
             {datasetStatus === "reviewed"
-              ? "Reviewed แล้ว"
+              ? "ตรวจแล้ว"
               : saveState === "saving"
                 ? "กำลังบันทึก..."
-                : "Accept Annotation"}
+                : "ยืนยันคำพยากรณ์"}
           </button>
         </div>
       ) : null}

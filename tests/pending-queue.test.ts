@@ -45,12 +45,12 @@ describe("PendingDraftQueue", () => {
 
     expect(html).toContain("Pending Queue สำหรับรอตรวจทาน");
     expect(html).toContain("กำลังเปิดคิว fresh-2026-04-24 อยู่ มี 1 เคสพร้อมตรวจ");
-    expect(html).toContain("campaign fresh-2026-04-24");
-    expect(html).toContain("AI Generated");
+    expect(html).toContain("แคมเปญ fresh-2026-04-24");
+    expect(html).toContain("AI สร้าง");
     expect(html).toContain("สมบัติ");
     expect(html).toContain("ดิถี 己");
     expect(html).toContain("love");
-    expect(html).toContain("active");
+    expect(html).toContain("ปกติ");
     expect(html).toContain("ต้นฉบับของคิวรอบนี้");
     expect(html).toContain("แถวที่ 12 จากไฟล์ต้นทาง");
     expect(html).toContain("หมายเหตุเคส: เสียชีวิต");

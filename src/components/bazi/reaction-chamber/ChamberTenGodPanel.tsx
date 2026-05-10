@@ -107,7 +107,7 @@ export function ChamberTenGodPanel({ calculatedState, isOpen, onClose }: Chamber
         <Surface className="chamber-role-summary__card">
           <div className="section-heading section-heading--compact">
             <div>
-              <p className="section-kicker">Role Map</p>
+              <p className="section-kicker">ผังบทบาทธาตุ</p>
               <h3>อ่านดวงแบบสรุปก่อนลงกราฟ</h3>
             </div>
             <Badge>ดิถี {calculatedState.dayMaster}</Badge>

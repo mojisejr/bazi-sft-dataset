@@ -124,3 +124,94 @@ export const PARTICIPANT_ROLE_MAP: Record<string, string> = {
   "ผู้กระทำ": "ผู้กระทำ",
   "ถูกกระทำ": "ถูกกระทำ",
 };
+
+export const OUTCOME_DETAIL_MAP: Record<string, string> = {
+  "supported": "สำเร็จสมบูรณ์",
+  "resisted": "ถูกขัดขวาง/ต้านทาน",
+  "weak": "กำลังอ่อนแอ",
+  "dormant": "แฝงเร้น",
+  "water": "หลอมรวมเป็นธาตุน้ำ",
+  "wood": "หลอมรวมเป็นธาตุไม้",
+  "fire": "หลอมรวมเป็นธาตุไฟ",
+  "earth": "หลอมรวมเป็นธาตุดิน",
+  "metal": "หลอมรวมเป็นธาตุทอง",
+  "generating": "ก่อเกิด/ส่งเสริม",
+  "controlling": "พิฆาต/ควบคุม",
+};
+
+export function translateOutcomeDetail(val: string): string {
+  return OUTCOME_DETAIL_MAP[val.toLowerCase()] ?? `[engine: ${val}]`;
+}
+
+export const REVIEW_STATE_MAP: Record<string, string> = {
+  "active": "ปกติ",
+  "stale": "ต้องตรวจซ้ำ",
+  "needs-reproof": "ต้องตรวจซ้ำใหม่",
+  "superseded": "ถูกแทนแล้ว",
+};
+
+export function translateReviewState(state: string): string {
+  return REVIEW_STATE_MAP[state] ?? `[engine: ${state}]`;
+}
+
+export const ANNOTATOR_BADGE_MAP: Record<string, string> = {
+  "AI Generated": "AI สร้าง",
+  "Draft Record": "ร่าง",
+};
+
+export const CHAMBER_RELATION_TYPE_MAP: Record<string, string> = {
+  "ten-god-flow": "กระแสสิบเทพ",
+  "day-master-role": "บทบาทต่อดิถี",
+  "interaction": "ปฏิกิริยา",
+  "element-interaction": "ปฏิกิริยาธาตุ",
+  "overlay": "ชั้นทับซ้อน",
+};
+
+export function translateRelationType(type: string): string {
+  return CHAMBER_RELATION_TYPE_MAP[type] ?? `[engine: ${type}]`;
+}
+
+export const BUNDLE_DIRECTION_MAP: Record<string, string> = {
+  "outward": "ส่งออก",
+  "inward": "รับเข้า",
+  "mutual": "สองทิศ",
+  "none": "ไม่มีทิศ",
+};
+
+export function translateBundleDirection(dir: string): string {
+  return BUNDLE_DIRECTION_MAP[dir] ?? `[engine: ${dir}]`;
+}
+
+export const INTERACTION_NARRATIVE_MAP: Record<string, string> = {
+  "heavenly-stem-he": "รวมกันเป็นธาตุใหม่",
+  "heavenly-stem-clash": "ปะทะ แตกหัก เปลี่ยนแปลง",
+  "earthly-branch-liu-he": "ร่วมมือ สนับสนุน หนุนเนื่อง",
+  "earthly-branch-san-he": "รวมพลังสามธาตุ เป็นกรอบใหญ่",
+  "earthly-branch-ban-san-he": "รวมบางส่วน มีแรงแต่ไม่เต็มภาค",
+  "earthly-branch-san-hui": "รวมกลุ่มตามทิศ พลังทิศา",
+  "earthly-branch-fang-ju": "รวมกลุ่มตามทิศ แน่นหนา",
+  "earthly-branch-clash": "ปะทะ แตกหัก เปลี่ยนแปลง",
+  "earthly-branch-harm": "ทำร้าย เบียดเบียน ลำบาก",
+  "earthly-branch-destruction": "ทำลาย สูญเสีย ขัดแย้ง",
+  "earthly-branch-punishment": "ลงโทษ ติดขัด ทรมาน",
+  "element-generate": "ก่อเกิด ส่งเสริม เลี้ยงดู",
+  "element-control": "ควบคุม พิฆาต กดขี่",
+};
+
+export const UI_KICKER_MAP: Record<string, string> = {
+  "ground-truth-check": "ตรวจสอบค่าจริง",
+  "quick-truth-anchors": "ค่าหลักที่ถือไว้",
+  "decision-dock": "ช่องตัดสินใจ",
+  "proof-note": "บันทึกของซินแส",
+  "draft-queue": "คิวร่าง",
+  "case-preview": "ตัวอย่างเคส",
+  "engine-truth": "ข้อมูลจากระบบ",
+  "role-map": "ผังบทบาทธาตุ",
+  "operator-access": "เข้าถึงระบบ",
+  "secure-operator-access": "สิทธิ์เข้าถึงระบบ",
+  "proof-queue-workspace": "พื้นที่งานคิวตรวจ",
+  "expanded-case-context": "ข้อมูลเคสแบบเต็ม",
+  "proof-calculation-drawer": "แผงคำนวณสำหรับงานตรวจ",
+  "phase-4": "เฟส 4",
+  "phase-5": "เฟส 5",
+};

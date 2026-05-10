@@ -168,7 +168,7 @@ function buildRouteDetail(
   pillar: PillarValue | undefined,
 ): RouteDetail {
   return {
-    kicker: "route",
+    kicker: "เส้นทาง",
     title: `${columnLabel} · ${stageLabel}`,
     summary: `${stageLabel}ของ${columnLabel}แสดงค่า ${value}`,
     explanation: "ชั้น route ใช้บอกคุณภาพของเส้นทางในพื้นดวงก่อนอ่านบทบาทต่อดิถีและปฏิกิริยาระหว่างตัวในดวง",
@@ -651,7 +651,7 @@ export function CalculatedBoard({ calculatedState }: CalculatedBoardProps) {
                   </article>
                 </div>
 
-                <div className="dayun-track" aria-label="Da Yun track" data-dayun-direction={calculatedState?.isForwardDirection === false ? "rtl" : "ltr"}>
+                <div className="dayun-track" aria-label="ถนนวัยจร" data-dayun-direction={calculatedState?.isForwardDirection === false ? "rtl" : "ltr"}>
                   {daYunTrackEntries.map((entry) => (
                     <article
                       key={`${entry.startAge}-${entry.endAge}-${entry.stem}-${entry.branch}`}

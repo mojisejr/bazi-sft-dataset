@@ -69,7 +69,7 @@ export function CaseContextSheet({
           </div>
           {campaignLabel ? (
             <div className="pending-metadata-row">
-              <dt>campaign</dt>
+              <dt>แคมเปญ</dt>
               <dd>{campaignLabel}</dd>
             </div>
           ) : null}
@@ -78,7 +78,7 @@ export function CaseContextSheet({
             <dd>{queueStateLabel}</dd>
           </div>
           <div className="pending-metadata-row">
-            <dt>lineage</dt>
+            <dt>ประวัติรายการ</dt>
             <dd>{lineageSummary}</dd>
           </div>
           {typeof sourceRow === "number" ? (
@@ -105,7 +105,7 @@ export function CaseContextSheet({
       {truthAnchors.length > 0 ? (
         <section className="surface inset-card proof-summary-card">
           <div>
-            <p className="section-kicker">Quick Truth Anchors</p>
+            <p className="section-kicker">ค่าหลักที่ถือไว้</p>
             <h3>ค่าหลักที่ควรถือไว้ก่อนกลับไปอ่านงานต่อ</h3>
           </div>
 

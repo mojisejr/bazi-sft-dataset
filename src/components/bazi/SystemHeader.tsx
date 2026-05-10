@@ -25,7 +25,7 @@ export function SystemHeader({ statusCopy }: SystemHeaderProps) {
       <div className="header-sidebar">
         <div className="operator-panel" aria-label="operator session controls">
           <div className="operator-copy">
-            <p className="section-kicker">Secure Operator Access</p>
+            <p className="section-kicker">สิทธิ์เข้าถึงระบบ</p>
             <p className="operator-note">
               บัญชีนี้ยืนยันตัวตนผ่าน Google SSO แล้ว เปิดเมนูเพื่อดูโปรไฟล์ จัดการบัญชี
               และออกจากระบบของ workspace นี้ได้อย่างปลอดภัย

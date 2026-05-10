@@ -44,7 +44,7 @@ export function QueueCasePreviewButton({
       <DetailOverlay
         isOpen={isOpen}
         title={customerName ?? `Record ${recordId.slice(0, 8)}`}
-        kicker="Case Preview"
+        kicker="ตัวอย่างเคส"
         summary="เปิดอ่านข้อมูลเคสใน canvas ที่กว้างขึ้นก่อนเข้าสู่ proof เพื่อไม่ให้ context ถูกบีบอยู่ในแถวคิว"
         closeLabel="กลับสู่คิว"
         onClose={() => setIsOpen(false)}

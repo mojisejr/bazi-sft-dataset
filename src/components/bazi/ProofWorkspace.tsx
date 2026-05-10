@@ -130,27 +130,27 @@ function getReviewStateCopy(
     case "stale":
       return "ต้องตรวจซ้ำ";
     case "needs-reproof":
-      return "ต้อง re-proof";
+      return "ต้องตรวจซ้ำใหม่";
     case "superseded":
       return "ถูกแทนแล้ว";
     default:
-      return "active";
+      return "ปกติ";
   }
 }
 
 function getLineageSummary(record: ProofDatasetRecord) {
   if (record.metadata.revision?.supersedesRecordId) {
-    return "record นี้เป็น revision ใหม่ที่เปิดมาตรวจแทนเคสเดิม";
+    return "รายการนี้เป็นฉบับแก้ใหม่ที่เปิดมาตรวจแทนเคสเดิม";
   }
 
   if (
     record.metadata.revision?.latestEffectiveRecordId
     && record.metadata.revision.latestEffectiveRecordId !== record.id
   ) {
-    return "คิวนี้มี record ตัวใหม่กว่าสำหรับใช้ตรวจต่อแล้ว";
+    return "คิวนี้มีรายการตัวใหม่กว่าสำหรับใช้ตรวจต่อแล้ว";
   }
 
-  return "record นี้ยังเป็นเป้าหมาย active ของคิวปัจจุบัน";
+  return "รายการนี้ยังเป็นเป้าหมายที่ใช้งานอยู่ของคิวปัจจุบัน";
 }
 
 function getSaveMessage(
@@ -341,7 +341,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     <section className="workspace-stack">
       <section className="surface inset-card proof-hero-card">
         <div>
-          <p className="section-kicker">Phase 5</p>
+          <p className="section-kicker">เฟส 5</p>
           <h2>หน้าตรวจทานคำทำนาย AI</h2>
           <p className="annotation-intro">
             อ่านภาพรวมดวง แก้ข้อความทีละมิติ แล้วปิดงานด้วยการอนุมัติหรือการตีกลับพร้อมเหตุผลในหน้าเดียว
@@ -393,7 +393,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
       <DetailOverlay
         isOpen={isCalculationOpen}
         title="Calculation Board สำหรับงาน proof"
-        kicker="Proof Calculation Drawer"
+        kicker="แผงคำนวณสำหรับงานตรวจ"
         summary="เปิดแผงคำนวณแบบเต็มเพื่อเช็กโครงดวง กำลังดิถี และข้อมูลอ้างอิง โดยไม่พา canvas หลักหลุดจากตำแหน่งที่กำลังแก้"
         closeLabel="กลับสู่ canvas"
         panelClassName="explainable-modal--wide"
@@ -403,7 +403,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           <section className="surface inset-card proof-summary-card">
             <div className="proof-summary-card__header">
               <div>
-                <p className="section-kicker">Quick Truth Anchors</p>
+                <p className="section-kicker">ค่าหลักที่ถือไว้</p>
                 <h3>ถือค่าหลักไว้ก่อน แล้วค่อยไล่ reasoning ในแผงคำนวณ</h3>
               </div>
               <span className="proof-status-badge">{getStatusBadgeCopy(record.status)}</span>
@@ -429,13 +429,13 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
               data-proof-friction={hasStrengthConflict ? "conflict" : aiStrengthClaim ? "aligned" : "missing"}
             >
               <div>
-                <p className="section-kicker">Ground Truth Check</p>
-                <h4>
-                  {hasStrengthConflict
-                    ? "AI ประเมินกำลังดิถีไม่ตรงกับ ground truth"
-                    : aiStrengthClaim
-                      ? "ระดับกำลังดิถีใน draft สอดคล้องกับ ground truth"
-                      : "ยังไม่มีค่าระดับกำลังดิถีจาก AI ให้เทียบโดยตรง"}
+              <p className="section-kicker">ตรวจสอบค่าจริง</p>
+              <h4>
+                {hasStrengthConflict
+                  ? "AI ประเมินกำลังดิถีไม่ตรงกับ ground truth"
+                  : aiStrengthClaim
+                    ? "ระดับกำลังดิถีใน draft สอดคล้องกับ ground truth"
+                    : "ยังไม่มีค่าระดับกำลังดิถีจาก AI ให้เทียบโดยตรง"}
                 </h4>
               </div>
               <p className="metric-copy">
@@ -635,7 +635,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
 
       <section className="surface inset-card proof-note-card proof-note-card--mobile">
         <div>
-          <p className="section-kicker">Proof Note</p>
+          <p className="section-kicker">บันทึกของซินแส</p>
           <h3>เขียน note ให้จบก่อนค่อยกดปุ่มจาก dock ด้านล่าง</h3>
         </div>
         {proofNoteField("proof-note-card__field")}
@@ -645,7 +645,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
         <div className="proof-dock__surface surface">
           <div className="proof-dock__header">
             <div>
-              <p className="section-kicker">Decision Dock</p>
+              <p className="section-kicker">ช่องตัดสินใจ</p>
               <h3>เช็ก note แล้วค่อยอนุมัติหรือตีกลับจาก dock ด้านล่าง</h3>
             </div>
             <p className={`save-indicator save-indicator--${saveState} proof-dock__status`} aria-live="polite">

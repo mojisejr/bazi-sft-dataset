@@ -16,11 +16,11 @@ function getReviewStateCopy(state: PendingDraftDatasetRecord["reviewState"]) {
     case "stale":
       return "ต้องตรวจซ้ำ";
     case "needs-reproof":
-      return "ต้อง re-proof";
+      return "ต้องตรวจซ้ำใหม่";
     case "superseded":
       return "ถูกแทนแล้ว";
     default:
-      return "active";
+      return "ปกติ";
   }
 }
 
@@ -70,10 +70,10 @@ function formatUpdatedAt(timestamp: string) {
 
 function getAnnotatorBadge(annotatorId: string | null) {
   if (annotatorId?.startsWith("agent_")) {
-    return "AI Generated";
+    return "AI สร้าง";
   }
 
-  return "Draft Record";
+  return "ร่าง";
 }
 
 export function PendingDraftQueue({
@@ -89,22 +89,22 @@ export function PendingDraftQueue({
     <section className="workspace-stack">
       <Surface as="section" inset className="message-card pending-hero-card">
         <SectionHeading
-          kicker="Phase 4"
+          kicker="เฟส 4"
           title="Pending Queue สำหรับรอตรวจทาน"
           titleLevel="h2"
-          note="หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเห็นกองงาน active, ตรวจ state ของคิว และเปิดเข้า proof ของเป้าหมายล่าสุดได้ทันที"
+          note="หน้านี้ดึง draft records จากฐานข้อมูลโดยตรง เพื่อให้ซินแสเห็นกองงานที่ใช้งานอยู่ ตรวจสถานะของคิว และเปิดเข้า proof ของเป้าหมายล่าสุดได้ทันที"
         />
         <div className="pending-hero-card__meta">
-          <Badge>{campaignLabel ? `campaign ${campaignLabel}` : "ทุก campaign ที่ยัง active"}</Badge>
-          <Badge tone="ai">active {activeCount}</Badge>
+          <Badge>{campaignLabel ? `แคมเปญ ${campaignLabel}` : "ทุกแคมเปญที่ยังใช้งาน"}</Badge>
+          <Badge tone="ai">ใช้งานอยู่ {activeCount}</Badge>
           <Badge>ต้องตรวจซ้ำ {staleCount}</Badge>
-          <Badge>ต้อง re-proof {reproofCount}</Badge>
+          <Badge>ต้องตรวจซ้ำใหม่ {reproofCount}</Badge>
         </div>
       </Surface>
 
       {records.length === 0 ? (
         <Surface as="section" inset className="empty-state pending-empty-state">
-          <p className="section-kicker">Draft Queue</p>
+          <p className="section-kicker">คิวร่าง</p>
           <h3>ยังไม่มี draft record ในคิว</h3>
           <p>
             เมื่อ script generation และ import เข้ามาเป็น `draft` แล้ว รายการจะมาโผล่ที่หน้านี้ทันที
@@ -152,8 +152,8 @@ export function PendingDraftQueue({
 
                 <div className="pending-row__identity">
                   <strong>{record.customerName ?? record.id.slice(0, 8)}</strong>
-                  {record.customerName ? <span>Record Key {record.id.slice(0, 8)}</span> : null}
-                  <span>Record ID {record.id}</span>
+                  {record.customerName ? <span>รหัสย่อ {record.id.slice(0, 8)}</span> : null}
+                  <span>รหัสรายการ {record.id}</span>
                   <span>{lineageCopy}</span>
                   {record.sourceRow ? <span>แถวที่ {record.sourceRow} จากไฟล์ต้นทาง</span> : null}
                   {record.caseNote ? <span>หมายเหตุเคส: {record.caseNote}</span> : null}

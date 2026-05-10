@@ -9,11 +9,14 @@ import type { ChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import type { SemanticEdge, SemanticNode } from "@/lib/bazi/semantic-chamber-graph";
 
 import type { ChamberSelection } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
-import { ELEMENT_COLORS_TH, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
+import { ELEMENT_COLORS_TH, ELEMENT_LABELS_TH, STEM_TO_ELEMENT, BRANCH_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 import {
   getSchoolLexiconFamilyKey,
   translatePriority,
   translateOutcomeStatus,
+  translateOutcomeDetail,
+  translateRelationType,
+  translateBundleDirection,
   FLOW_CYCLE_MAP,
   FLOW_DIRECTION_MAP,
   BADGE_FAMILY_MAP,
@@ -27,26 +30,6 @@ const PILLAR_CONTEXT_TH: Record<string, string> = {
   day: "ดิถี / คู่ครอง / บ้าน / ชีวิตส่วนตัว",
   time: "ลูกหลาน / ลูกน้อง / บั้นปลายชีวิต / ผลงาน",
 };
-
-const ENGINE_TRANSLATIONS: Record<string, string> = {
-  supported: "สำเร็จสมบูรณ์",
-  resisted: "ถูกขัดขวาง/ต้านทาน",
-  weak: "กำลังอ่อนแอ",
-  dormant: "แฝงเร้น",
-  active: "มีกำลัง",
-  water: "หลอมรวมเป็นธาตุน้ำ",
-  wood: "หลอมรวมเป็นธาตุไม้",
-  fire: "หลอมรวมเป็นธาตุไฟ",
-  earth: "หลอมรวมเป็นธาตุดิน",
-  metal: "หลอมรวมเป็นธาตุทอง",
-  generating: "ก่อเกิด/ส่งเสริม",
-  controlling: "พิฆาต/ควบคุม",
-};
-
-function translateEngineValue(val: string): string {
-  const v = val.toLowerCase();
-  return ENGINE_TRANSLATIONS[v] || `[engine: ${val}]`;
-}
 
 function resolveFamilyLabel(badge: BaseChartReactionBadgeValue): string {
   if (badge.sourceFamilyKey) {
@@ -146,8 +129,8 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
 
   const symbol = node.data.kind === "stem-node" ? node.data.stem : node.data.branch;
   const translation = node.data.kind === "stem-node"
-    ? (node.data.stemTranslation ?? node.data.element)
-    : (node.data.branchTranslation ?? node.data.element);
+    ? (node.data.stemTranslation ?? ELEMENT_LABELS_TH[node.data.element as keyof typeof ELEMENT_LABELS_TH] ?? node.data.element)
+    : (node.data.branchTranslation ?? ELEMENT_LABELS_TH[node.data.element as keyof typeof ELEMENT_LABELS_TH] ?? node.data.element);
   const semanticRole = node.data.kind === "stem-node" ? "ราศีบน" : "ราศีล่าง";
   const detailLabel = node.data.kind === "stem-node" ? "จับซิ้ง" : "12 เชี่ยงแซ";
   const detailValue = node.data.kind === "stem-node" ? (node.data.tenGod ?? "-") : (node.data.stageDisplay ?? "-");
@@ -202,7 +185,7 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
             {badge.modal.details.map((detail) => (
               <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
                 <dt>{detail.label}</dt>
-                <dd>{translateEngineValue(detail.value)}</dd>
+                <dd>{translateOutcomeDetail(detail.value)}</dd>
               </div>
             ))}
           </dl>
@@ -327,7 +310,7 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
             {badge.modal.details.map((detail) => (
               <div key={`${detail.label}-${detail.value}`} className="chamber-inspector__detail-row">
                 <dt>{detail.label}</dt>
-                <dd>{translateEngineValue(detail.value)}</dd>
+                <dd>{translateOutcomeDetail(detail.value)}</dd>
               </div>
             ))}
           </dl>
@@ -367,7 +350,7 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
             {bundle.relations.map((relation) => (
               <div key={relation.edgeId} className="chamber-inspector__detail-row">
                 <dt>{relation.displayLabel}</dt>
-                <dd>{translateEngineValue(relation.relationType)} · {translateEngineValue(relation.direction)}</dd>
+                <dd>{translateRelationType(relation.relationType)} · {translateBundleDirection(relation.direction)}</dd>
               </div>
             ))}
           </dl>

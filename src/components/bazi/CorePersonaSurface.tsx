@@ -162,7 +162,7 @@ export function CorePersonaSurface({
   twelveQi,
   elementAnalysis,
   title = "แกนบุคลิกพื้นฐาน",
-  kicker = "60 Jiazi Core Persona",
+  kicker = "บุคลิก 60 กะจื่อ",
   defaultDetailsOpen = false,
   enableDetailToggle = true,
   detailMode = "inline",
@@ -184,9 +184,9 @@ export function CorePersonaSurface({
     ?? dayMasterStrengthProfile?.strengthState;
   const strengthStateMeta = dayMasterStrengthProfile?.sourceState
     && dayMasterStrengthProfile.sourceState !== dayMasterStrengthProfile.strengthState
-    ? `source ${dayMasterStrengthProfile.sourceState} → lookup ${dayMasterStrengthProfile.strengthState}`
+    ? null
     : dayMasterStrengthProfile?.qiLabel
-      ? `qi อ้างอิง ${dayMasterStrengthProfile.qiLabel}`
+      ? `ช่วงชีพ ${dayMasterStrengthProfile.qiLabel}`
       : null;
 
   function handleDetailToggle() {

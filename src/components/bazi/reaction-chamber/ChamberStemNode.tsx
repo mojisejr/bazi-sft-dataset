@@ -3,7 +3,7 @@
 import { Handle, Position } from "@xyflow/react";
 
 import type { SemanticStemNodeData } from "@/lib/bazi/semantic-chamber-graph";
-import { ELEMENT_COLORS_TH } from "@/lib/bazi/symbolic-engine.constants";
+import { ELEMENT_COLORS_TH, ELEMENT_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
 
 type ChamberStemNodeProps = {
   data: SemanticStemNodeData;
@@ -28,7 +28,7 @@ export function ChamberStemNode({ data, selected }: ChamberStemNodeProps) {
       <Handle id="source-bottom" type="source" position={Position.Bottom} className="chamber-node-handle" />
 
       <span className="chamber-stem-node__glyph" style={{ color: elementColor }}>{data.stem}</span>
-      <span className="chamber-stem-node__translation">{data.stemTranslation ?? data.element}</span>
+      <span className="chamber-stem-node__translation">{data.stemTranslation ?? ELEMENT_LABELS_TH[data.element as keyof typeof ELEMENT_LABELS_TH] ?? data.element}</span>
       {data.hiddenStems.length > 0 && (
         <span className="chamber-stem-node__hidden-stems" aria-label={`hidden stems ${data.hiddenStems.join(" ")}`}>
           <span className="chamber-stem-node__hidden-compact">{data.hiddenStemCompactLabel ?? data.hiddenStems.join(" · ")}</span>

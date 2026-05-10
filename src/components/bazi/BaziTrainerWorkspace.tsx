@@ -298,7 +298,7 @@ export function BaziTrainerWorkspace({
             />
           ) : (
             <div className="surface inset-card message-card">
-              <p className="section-kicker">Proof Queue Workspace</p>
+              <p className="section-kicker">พื้นที่งานคิวตรวจ</p>
               <h3>
                 {pendingQueueState === "error"
                   ? "ยังโหลด draft queue ไม่สำเร็จ"
