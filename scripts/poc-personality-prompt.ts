@@ -7,6 +7,8 @@ import {
   DEFAULT_PERSONALITY_POC_MODEL,
   PERSONALITY_TRUTH_HIERARCHY,
   buildPersonalityFocusPayload,
+  formatPersonalityPocGeneratedReport,
+  formatPersonalityPocPreflightReport,
   generatePersonalityPromptPoc,
 } from "@/lib/bazi/personality-prompt-poc";
 import { RawInputSchema } from "@/lib/bazi/schema-types";
@@ -43,18 +45,13 @@ export async function main(argv = process.argv.slice(2)) {
   const calculatedState = await calculateBaziChart(DEFAULT_TEST_CASE, repository);
   const focusPayload = buildPersonalityFocusPayload(calculatedState);
 
-  console.log(
-    JSON.stringify(
-      {
-        mode: options.dryRun ? "dry-run" : "generate",
-        testCase: DEFAULT_TEST_CASE,
-        truthHierarchy: PERSONALITY_TRUTH_HIERARCHY,
-        focusPayload,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log(formatPersonalityPocPreflightReport({
+    rawInput: DEFAULT_TEST_CASE,
+    focusPayload,
+  }));
+
+  console.log("\nลำดับ truth hierarchy ที่ใช้:");
+  console.log(`- ${PERSONALITY_TRUTH_HIERARCHY.join(" -> ")}`);
 
   if (options.dryRun) {
     return;
@@ -66,18 +63,15 @@ export async function main(argv = process.argv.slice(2)) {
     model: options.model,
   });
 
-  console.log(
-    JSON.stringify(
-      {
-        model: result.model,
-        reviewSummary: result.response.reviewSummary,
-        personality: result.response.personality,
-        annotationDimensionCount: result.annotationData.dimensions.length,
-      },
-      null,
-      2,
-    ),
-  );
+  console.log("");
+  console.log(formatPersonalityPocGeneratedReport({
+    rawInput: DEFAULT_TEST_CASE,
+    focusPayload: result.focusPayload,
+    response: result.response,
+    model: result.model,
+  }));
+  console.log("");
+  console.log(`annotation dimensions ที่ปิด schema แล้ว: ${result.annotationData.dimensions.length}`);
 }
 
 if (

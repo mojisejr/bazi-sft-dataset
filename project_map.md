@@ -130,6 +130,8 @@
   - tooling สำหรับ regenerate/backfill cases จาก source dataset
 - `scripts/export-sft-dataset.ts`
   - local-only exporter สำหรับ `reviewed` records ไปเป็น JSONL
+- `scripts/poc-personality-prompt.ts`
+  - POC CLI สำหรับแปลง symbolic-engine truth ไปเป็นรายงาน `นิสัยพื้นฐาน` แบบภาษาซินแส เพื่อจูน prompt และ formatter ก่อนย้าย pattern ไปฝั่ง UI จริง
 
 ### Test Surfaces
 - `tests/symbolic-engine.test.ts`, `tests/symbolic-engine.e2e.test.ts`
@@ -170,6 +172,7 @@
 - `scripts/import-agent-drafts.ts` validate draft และ import เข้าฐานข้อมูล
 - มนุษย์ proof ต่อใน UI จนได้ `reviewed`
 - `scripts/export-sft-dataset.ts` export เฉพาะ record ที่ผ่าน review แล้วออกนอกระบบเป็น training artifact
+- `scripts/poc-personality-prompt.ts` ใช้เป็นสนามทดลอง headless สำหรับปรับ output ให้เห็นลำดับ `แกนดวง -> สัญญาณ -> คำอธิบายแบบซินแส -> ข้อความพร้อมส่งลูกค้า` ก่อนนำ pattern เดียวกันไปใช้ในหน้า proof
 
 ## 4. 🗄️ Database Schema
 

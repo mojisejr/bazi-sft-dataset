@@ -3,6 +3,8 @@ import { describe, expect, test } from "vitest";
 import {
   buildDraftAnnotationDataFromPersonality,
   buildPersonalityFocusPayload,
+  formatPersonalityPocGeneratedReport,
+  formatPersonalityPocPreflightReport,
   buildPersonalityPocSystemInstruction,
   buildPersonalityPocUserPrompt,
 } from "@/lib/bazi/personality-prompt-poc";
@@ -151,8 +153,61 @@ describe("personality prompt poc helpers", () => {
 
     expect(instruction).toContain("dayMasterStrengthProfile first");
     expect(instruction).toContain("Ignore interactionState");
+    expect(instruction).toContain("Do not use gendered polite particles");
     expect(prompt).toContain("personality_psychology dimension only");
+    expect(prompt).toContain("คุณเป็นคน... / พอมาเจอ... / จึงทำให้...");
     expect(prompt).toContain("dayMasterStrengthProfile -> sixtyJiaziCorePersona -> elementAnalysis -> seasonalInteraction");
     expect(prompt).toContain("Focused personality payload");
+  });
+
+  test("formats a preflight report in sinsae-readable Thai without debug headings", () => {
+    const report = formatPersonalityPocPreflightReport({
+      rawInput: SAMPLE_RAW_INPUT,
+      focusPayload: buildPersonalityFocusPayload(SAMPLE_CALCULATED_STATE),
+    });
+
+    expect(report).toContain("=== รายงานเตรียมอ่านนิสัยพื้นฐาน ===");
+    expect(report).toContain("แกนหลักของดวง");
+    expect(report).toContain("สัญญาณที่ใช้ในการอ่าน");
+    expect(report).toContain("ลำดับการอ่าน");
+    expect(report).not.toContain("payload");
+    expect(report).not.toContain("schema");
+    expect(report).not.toContain("JSON");
+  });
+
+  test("formats a generated report with bridge blocks and client-facing ending", () => {
+    const report = formatPersonalityPocGeneratedReport({
+      rawInput: SAMPLE_RAW_INPUT,
+      focusPayload: buildPersonalityFocusPayload(SAMPLE_CALCULATED_STATE),
+      model: "gemini-3-flash-preview",
+      response: {
+        reviewSummary: "แกนนิสัยชัดแต่ต้องอาศัยวินัยมาช่วยประคอง",
+        personality: {
+          thought_process: "ยึดดิถีเป็นแกน แล้วค่อยเติมสีจากกะจื่อและธาตุรวม",
+          bridge_blocks: [
+            {
+              title: "ดิถีเป็นแกนใหญ่",
+              explanation: "คุณเป็นคนธาตุดินที่มีแกนชัด รับแรงกดดันได้ แต่จะปิดใจเมื่อถูกบีบมากเกินไป",
+              personality_impact: "จึงทำให้เป็นคนเก็บอาการและอยากคุมจังหวะของตัวเอง",
+            },
+            {
+              title: "พอมาเจอกะจื่อวัน",
+              explanation: "ฐานวัน己巳เติมแรงขับภายใน ทำให้ภายนอกดูนิ่งแต่ข้างในไม่ยอมแพ้ง่าย",
+              personality_impact: "จึงทำให้เมื่อมั่นใจแล้วจะเดินหน้าแบบต่อเนื่องและเงียบ",
+            },
+          ],
+          final_prediction: "คุณเป็นคนคิดลึก มีแรงขับเงียบ และถ้าจัดระบบชีวิตให้ดี ศักยภาพจะออกผลชัดมาก",
+          supporting_signals: ["ดิถีค่อนข้างมั่นคง", "กะจื่อวัน己巳"],
+          confidence_note: "มั่นใจระดับสูง เพราะแกนดิถีกับฐานวันไปในทิศเดียวกัน",
+        },
+      },
+    });
+
+    expect(report).toContain("=== รายงานนิสัยพื้นฐานแบบซินแส ===");
+    expect(report).toContain("คำอธิบายแบบซินแส");
+    expect(report).toContain("1. ดิถีเป็นแกนใหญ่");
+    expect(report).toContain("จึงทำให้:");
+    expect(report).toContain("คำทำนายพร้อมส่งลูกค้า");
+    expect(report).toContain("รุ่นที่ใช้: gemini-3-flash-preview");
   });
 });

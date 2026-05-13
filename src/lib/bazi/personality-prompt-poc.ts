@@ -4,6 +4,12 @@ import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import {
+  getElementRootLabel,
+  getElementSeasonalSupportLabel,
+  getElementStrengthLabel,
+  localizeContextRuleNotes,
+} from "@/lib/bazi/context-dictionary";
+import {
   DraftAnnotationDataSchema,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type CalculatedStateValue,
@@ -11,6 +17,7 @@ import {
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
+import { ELEMENT_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
 
 export const DEFAULT_PERSONALITY_POC_MODEL = "gemini-3-flash-preview";
 
@@ -23,10 +30,17 @@ export const PERSONALITY_TRUTH_HIERARCHY = [
   "seasonalInteraction",
 ] as const;
 
+const PersonalityBridgeBlockSchema = z.object({
+  title: z.string().trim().min(1),
+  explanation: z.string().trim().min(1),
+  personality_impact: z.string().trim().min(1),
+});
+
 export const PersonalityPocResponseSchema = z.object({
   reviewSummary: z.string().trim().min(1),
   personality: z.object({
     thought_process: z.string().trim().min(1),
+    bridge_blocks: z.array(PersonalityBridgeBlockSchema).min(1).max(4).optional(),
     final_prediction: z.string().trim().min(1),
     supporting_signals: z.array(z.string().trim().min(1)).min(1),
     confidence_note: z.string().trim().min(1).optional(),
@@ -48,6 +62,24 @@ const PERSONALITY_POC_RESPONSE_JSON_SCHEMA = {
       properties: {
         thought_process: {
           type: "string",
+        },
+        bridge_blocks: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+              },
+              explanation: {
+                type: "string",
+              },
+              personality_impact: {
+                type: "string",
+              },
+            },
+            required: ["title", "explanation", "personality_impact"],
+          },
         },
         final_prediction: {
           type: "string",
@@ -94,8 +126,11 @@ export function buildPersonalityPocSystemInstruction() {
     "Use sixtyJiaziCorePersona as temperament color only when it supports the primary axis.",
     "Use elementAnalysis and seasonalInteraction only as context modifiers, not as replacement identity.",
     "Ignore interactionState, current events, and annual timing for this task.",
-    "thought_process must explain why the hierarchy led to the final reading.",
+    "thought_process must explain the causal chain in sinsae language, not technical language.",
+    "When possible, return 3-4 bridge_blocks that explain the path from signal to personality outcome.",
+    "Each bridge block should move in this flow: what the chart shows, what it means, and what kind of temperament it creates.",
     "final_prediction must read like a real sinsae talking to a client about temperament, inner drive, blind spots, and emotional patterning.",
+    "Do not use gendered polite particles such as ครับ or ค่ะ in the generated report.",
     "supporting_signals must be short factual strings copied from the provided payload.",
     "Return JSON only.",
   ].join(" ");
@@ -111,6 +146,8 @@ export function buildPersonalityPocUserPrompt(
     "Do not mention JSON, prompt, model, or AI.",
     "If an upstream signal is absent, say less instead of inventing.",
     "The reading must stay faithful to this order: dayMasterStrengthProfile -> sixtyJiaziCorePersona -> elementAnalysis -> seasonalInteraction.",
+    "Write the reasoning in a sinsae flow such as: คุณเป็นคน... / พอมาเจอ... / จึงทำให้...",
+    "If possible, return bridge_blocks that make each major signal readable by a human sinsae immediately.",
     "",
     "Raw input:",
     JSON.stringify(rawInput, null, 2),
@@ -143,6 +180,141 @@ export function buildDraftAnnotationDataFromPersonality(
           }
     )),
   });
+}
+
+function formatThaiGender(gender: string) {
+  return gender === "female" ? "หญิง" : gender === "male" ? "ชาย" : gender;
+}
+
+function formatThaiProvince(province: string) {
+  return province === "Bangkok" ? "กรุงเทพมหานคร" : province;
+}
+
+function formatElementList(elements: string[]) {
+  if (elements.length === 0) {
+    return "ไม่มีจุดเด่นเฉพาะ";
+  }
+
+  return elements
+    .map((element) => ELEMENT_LABELS_TH[element as keyof typeof ELEMENT_LABELS_TH] ?? element)
+    .join(", ");
+}
+
+function buildTruthAnchorLines(rawInput: RawInputValue, focusPayload: PersonalityFocusPayload) {
+  const strengthProfile = focusPayload.dayMasterStrengthProfile;
+  const sixtyJiazi = focusPayload.sixtyJiaziCorePersona;
+
+  return [
+    `- วันเกิด: ${rawInput.birthDate} เวลา ${rawInput.birthTime} ${formatThaiGender(rawInput.gender)}`,
+    `- สถานที่: ${formatThaiProvince(rawInput.province)}`,
+    `- ดิถี: ${strengthProfile?.dayMaster ?? "ไม่ทราบ"}`,
+    `- กำลังดิถี: ${strengthProfile?.displayLabel ?? strengthProfile?.strengthState ?? "ไม่ทราบ"}`,
+    `- 60 กะจื่อ: ${sixtyJiazi?.code ?? "ไม่ทราบ"}`,
+    `- ธาตุเด่น: ${formatElementList(focusPayload.elementAnalysis.dominantElements)}`,
+    `- ธาตุขาด: ${formatElementList(focusPayload.elementAnalysis.missingElements)}`,
+  ];
+}
+
+function buildSignalLines(focusPayload: PersonalityFocusPayload) {
+  const strengthProfile = focusPayload.dayMasterStrengthProfile;
+  const sixtyJiazi = focusPayload.sixtyJiaziCorePersona;
+  const strongestElements = focusPayload.elementAnalysis.elementStrengths
+    .filter((entry) => entry.strength === "strong" || entry.strength === "balanced")
+    .map((entry) => {
+      const label = ELEMENT_LABELS_TH[entry.element];
+      const strengthLabel = getElementStrengthLabel(entry.strength);
+      const rootLabel = getElementRootLabel(entry.rooted);
+      const seasonalSupportLabel = getElementSeasonalSupportLabel(entry.seasonalSupport);
+
+      return `${label} (${strengthLabel}, ${rootLabel}, ${seasonalSupportLabel})`;
+    });
+  const precedenceNotes = sixtyJiazi?.precedenceNoteSignals?.length
+    ? localizeContextRuleNotes(sixtyJiazi.precedenceNoteSignals, sixtyJiazi.precedenceNotes)
+    : (sixtyJiazi?.precedenceNotes ?? []);
+
+  return [
+    `- ดิถีและกำลังดวง: ${strengthProfile?.narrative ?? "ไม่มีคำอธิบายเพิ่ม"}`,
+    `- ฐานวัน 60 กะจื่อ: ${sixtyJiazi?.narrative ?? "ไม่มีคำอธิบายเพิ่ม"}`,
+    `- น้ำหนักธาตุรวม: ธาตุเด่นคือ ${formatElementList(focusPayload.elementAnalysis.dominantElements)}; ธาตุขาดคือ ${formatElementList(focusPayload.elementAnalysis.missingElements)}`,
+    `- ธาตุที่พยุงภาพนิสัย: ${strongestElements.length > 0 ? strongestElements.join(", ") : "ยังไม่มีตัวเด่นชัด"}`,
+    ...(focusPayload.seasonalInteraction
+      ? [`- บริบทฤดูกาล: ${focusPayload.seasonalInteraction.seasonLabel} — ${focusPayload.seasonalInteraction.metaphor}`]
+      : ["- บริบทฤดูกาล: เคสนี้ไม่มีตัวแต้มฤดูกาลเพิ่มเติม จึงยืนบนแกนดิถีและกะจื่อวันเป็นหลัก"]),
+    ...(precedenceNotes.length > 0
+      ? [`- หมายเหตุการจัดลำดับ: ${precedenceNotes.join(" | ")}`]
+      : []),
+  ];
+}
+
+function buildBridgeBlockLines(response: PersonalityPocResponse) {
+  if (response.personality.bridge_blocks?.length) {
+    return response.personality.bridge_blocks.flatMap((block, index) => [
+      `${index + 1}. ${block.title}`,
+      `   ${block.explanation}`,
+      `   จึงทำให้: ${block.personality_impact}`,
+    ]);
+  }
+
+  return response.personality.thought_process
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line, index) => `${index + 1}. ${line}`);
+}
+
+export function formatPersonalityPocPreflightReport(options: {
+  rawInput: RawInputValue;
+  focusPayload: PersonalityFocusPayload;
+}) {
+  return [
+    "=== รายงานเตรียมอ่านนิสัยพื้นฐาน ===",
+    "",
+    "แกนหลักของดวง",
+    ...buildTruthAnchorLines(options.rawInput, options.focusPayload),
+    "",
+    "ลำดับการอ่าน",
+    "- ดิถีและกำลังดวง -> 60 กะจื่อ -> น้ำหนักธาตุรวม -> บริบทฤดูกาล",
+    "",
+    "สัญญาณที่ใช้ในการอ่าน",
+    ...buildSignalLines(options.focusPayload),
+    "",
+    "หมายเหตุ",
+    "- โหมดนี้ยังไม่เรียก Gemini ใช้สำหรับตรวจว่าข้อมูลจาก engine พร้อมและเรียงลำดับถูกต้องแล้ว",
+  ].join("\n");
+}
+
+export function formatPersonalityPocGeneratedReport(options: {
+  rawInput: RawInputValue;
+  focusPayload: PersonalityFocusPayload;
+  response: PersonalityPocResponse;
+  model: string;
+}) {
+  return [
+    "=== รายงานนิสัยพื้นฐานแบบซินแส ===",
+    "",
+    "ข้อมูลเคสทดลอง",
+    ...buildTruthAnchorLines(options.rawInput, options.focusPayload),
+    "",
+    "สัญญาณที่ใช้ในการอ่าน",
+    ...buildSignalLines(options.focusPayload),
+    ...(options.response.personality.supporting_signals.length > 0
+      ? ["", "สัญญาณประกอบที่ AI ถือไว้", ...options.response.personality.supporting_signals.map((signal) => `- ${signal}`)]
+      : []),
+    "",
+    "คำอธิบายแบบซินแส",
+    ...buildBridgeBlockLines(options.response),
+    "",
+    "สรุปย่อ",
+    options.response.reviewSummary,
+    "",
+    "คำทำนายพร้อมส่งลูกค้า",
+    options.response.personality.final_prediction,
+    ...(options.response.personality.confidence_note
+      ? ["", "หมายเหตุความมั่นใจ", options.response.personality.confidence_note]
+      : []),
+    "",
+    `รุ่นที่ใช้: ${options.model}`,
+  ].join("\n");
 }
 
 export async function generatePersonalityPromptPoc(options: {
