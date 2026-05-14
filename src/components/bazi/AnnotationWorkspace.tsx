@@ -154,7 +154,7 @@ export function AnnotationWorkspace({
     <section className="annotation-stage">
       <div className="annotation-stage__lead">
         <p className="section-kicker">เริ่มเขียนคำพยากรณ์</p>
-        <h3>เมื่ออ่านภาพรวมด้านบนจบแล้ว ค่อยเข้าสู่ 15 มิติ</h3>
+        <h3>เมื่ออ่านภาพรวมด้านบนจบแล้ว ค่อยเขียนคำทำนายนิสัยพื้นฐาน</h3>
         <p className="annotation-intro">
           ส่วนด้านบนคือ reading zone สำหรับจับโครงดวง ส่วนจากนี้คือ writing zone ที่ค่อย ๆ แปลง insight ให้เป็นคำพยากรณ์พร้อมส่งต่อ
         </p>
@@ -162,10 +162,10 @@ export function AnnotationWorkspace({
 
       <div className="surface inset-card annotation-summary-card">
         <div>
-          <p className="section-kicker">สมุดวิเคราะห์ 15 มิติ</p>
-          <h3>ไล่เขียนทีละหัวข้อแบบไม่หลงทาง</h3>
+          <p className="section-kicker">สมุดวิเคราะห์นิสัยพื้นฐาน</p>
+          <h3>ไล่เขียนแกนนิสัยให้ชัดก่อนส่งต่อ</h3>
           <p className="annotation-intro">
-            เริ่มจากหัวข้อที่ระบบเปิดไว้ก่อน แล้วค่อยเติมเหตุผลการวิเคราะห์ให้ชัด เมื่อเหตุผลครบ ระบบจะเปิดช่องคำทำนายของหัวข้อนั้นเอง
+            เริ่มจากการสรุปแกนนิสัยพื้นฐานก่อน แล้วค่อยเติมเหตุผลการวิเคราะห์ให้ชัด เมื่อเหตุผลครบ ระบบจะเปิดช่องคำทำนายให้อัตโนมัติ
           </p>
         </div>
 
@@ -337,7 +337,7 @@ export function AnnotationWorkspace({
         <div className="surface inset-card completion-reveal" aria-live="polite">
           <div>
             <p className="section-kicker">พร้อมส่งงาน</p>
-            <h3>ครบทั้ง 15 มิติแล้ว</h3>
+            <h3>คำทำนายนิสัยพื้นฐานครบแล้ว</h3>
             <p className="annotation-intro">
               ตรวจอีกครั้งได้ทันที หรือกดยืนยันเพื่อปิด annotation ชุดนี้เป็น reviewed
             </p>

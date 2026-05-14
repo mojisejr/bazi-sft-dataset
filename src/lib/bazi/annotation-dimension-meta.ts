@@ -1,4 +1,7 @@
-import type { AnnotationDimensionName } from "@/lib/bazi/schema-types";
+import {
+  ACTIVE_RLHF_DIMENSION_NAMES,
+  type AnnotationDimensionName,
+} from "@/lib/bazi/schema-types";
 
 export type AnnotationDimensionMeta = {
   dimensionName: AnnotationDimensionName;
@@ -85,7 +88,7 @@ export const ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
   {
     dimensionName: "personality_psychology",
     step: 10,
-    title: "บุคลิกและจิตวิทยา",
+    title: "นิสัยพื้นฐาน",
     guidance: "แปลแกนนิสัยให้เป็นภาษาที่ซินแสใช้สนทนากับลูกค้าได้",
     thoughtPrompt: "จุดแข็ง จุดอ่อน และแรงขับลึกของเจ้าชะตาอยู่ตรงไหน",
     predictionPrompt: "สรุปลักษณะนิสัยและภาวะทางใจที่ควรรู้",
@@ -135,3 +138,9 @@ export const ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
 export const ANNOTATION_DIMENSION_TITLE_MAP = Object.fromEntries(
   ANNOTATION_DIMENSION_META.map((dimension) => [dimension.dimensionName, dimension.title]),
 ) as Record<AnnotationDimensionName, string>;
+
+export const ACTIVE_ANNOTATION_DIMENSION_META = ANNOTATION_DIMENSION_META.filter((dimension) =>
+  ACTIVE_RLHF_DIMENSION_NAMES.includes(
+    dimension.dimensionName as (typeof ACTIVE_RLHF_DIMENSION_NAMES)[number],
+  ),
+);

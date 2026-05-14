@@ -17,9 +17,9 @@ import {
   type SaveDatasetAuthenticate,
 } from "@/lib/bazi/dataset-records";
 import {
+  ACTIVE_RLHF_DIMENSION_NAMES,
   CalculatedStateSchema,
   DraftAnnotationDataSchema,
-  REQUIRED_ANNOTATION_DIMENSION_NAMES,
   RawInputSchema,
 } from "@/lib/bazi/schema-types";
 
@@ -176,10 +176,10 @@ function createProofRecord() {
     annotationData: DraftAnnotationDataSchema.parse({
       version: "1.6",
       reviewSummary: "AI ประเมินกำลังดิถีว่า ดวงแข็ง แต่ยังต้องให้ซินแสตรวจทวน",
-      dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+      dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => ({
         dimension_name: dimensionName,
-        thought_process: dimensionName === "chart_foundation" ? "AI draft reason" : "",
-        final_prediction: dimensionName === "chart_foundation" ? "AI draft prediction" : "",
+        thought_process: dimensionName === "personality_psychology" ? "AI draft reason" : "",
+        final_prediction: dimensionName === "personality_psychology" ? "AI draft prediction" : "",
         supporting_signals: [],
       })),
       sinsaeProofNote: "ตรวจโครงสร้างก่อนเริ่มเกลา",
@@ -269,8 +269,8 @@ describe("createSaveProofDatasetHandler", () => {
           status: "reviewed",
           annotationData: {
             version: "1.6",
-            sinsaeProofNote: "ปรับภาษาและยืนยันว่าครบทุกมิติแล้ว",
-            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+            sinsaeProofNote: "ปรับภาษาและยืนยันว่าครบหัวข้อที่เปิดใช้งานแล้ว",
+            dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => ({
               dimension_name: dimensionName,
               thought_process: `Reasoning for ${dimensionName}`,
               final_prediction: `Prediction for ${dimensionName}`,
@@ -326,9 +326,9 @@ describe("createSaveProofDatasetHandler", () => {
           annotationData: {
             version: "1.6",
             sinsaeProofNote: "logic หลักยังผิดอยู่ จึงตีกลับโดยไม่ฝืนเกลาให้จบ",
-            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+            dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => ({
               dimension_name: dimensionName,
-              thought_process: dimensionName === "chart_foundation" ? "ยังมีแกนผิด" : "",
+              thought_process: dimensionName === "personality_psychology" ? "ยังมีแกนผิด" : "",
               final_prediction: "",
             })),
           },
@@ -379,7 +379,7 @@ describe("createSaveProofDatasetHandler", () => {
           annotationData: {
             version: "1.6",
             sinsaeProofNote: "legacy draft นี้ตรวจแล้วและอนุมัติได้แม้ chart encoding เดิมยังเป็น romanized",
-            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+            dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => ({
               dimension_name: dimensionName,
               thought_process: `Reasoning for ${dimensionName}`,
               final_prediction: `Prediction for ${dimensionName}`,
@@ -429,7 +429,7 @@ describe("createSaveProofDatasetHandler", () => {
           status: "rejected",
           annotationData: {
             version: "1.6",
-            dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+            dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => ({
               dimension_name: dimensionName,
               thought_process: "",
               final_prediction: "",

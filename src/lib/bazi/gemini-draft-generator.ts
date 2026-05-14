@@ -13,7 +13,7 @@ import {
   localizeContextRuleNotes,
 } from "@/lib/bazi/context-dictionary";
 import {
-  REQUIRED_ANNOTATION_DIMENSION_COUNT,
+  addAnnotationDimensionIssues,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type CalculatedStateValue,
   type DraftAnnotationDataValue,
@@ -50,32 +50,13 @@ const GeneratedDraftDimensionSchema = z.object({
 export const GeneratedDraftAnnotationDataSchema = z
   .object({
     version: z.literal("1.6"),
-    dimensions: z.array(GeneratedDraftDimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    dimensions: z.array(GeneratedDraftDimensionSchema)
+      .min(1)
+      .max(REQUIRED_ANNOTATION_DIMENSION_NAMES.length),
     reviewSummary: z.string().trim().min(1),
   })
   .superRefine((value, context) => {
-    const names = value.dimensions.map((dimension) => dimension.dimension_name);
-    const uniqueNames = new Set(names);
-
-    if (uniqueNames.size !== REQUIRED_ANNOTATION_DIMENSION_COUNT) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "annotation_data.dimensions must not contain duplicate dimensions.",
-        path: ["dimensions"],
-      });
-    }
-
-    const missingNames = REQUIRED_ANNOTATION_DIMENSION_NAMES.filter(
-      (dimensionName) => !uniqueNames.has(dimensionName),
-    );
-
-    if (missingNames.length > 0) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `annotation_data.dimensions is missing: ${missingNames.join(", ")}`,
-        path: ["dimensions"],
-      });
-    }
+    addAnnotationDimensionIssues(value, context);
   });
 
 type ReferenceCaseExample = {

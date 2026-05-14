@@ -23,6 +23,19 @@ export const DEFAULT_PERSONALITY_POC_MODEL = "gemini-3-flash-preview";
 
 const TARGET_DIMENSION = "personality_psychology" as const;
 
+const FORBIDDEN_REPORT_TERMS = [
+  "payload",
+  "schema",
+  "json",
+  "model",
+  "ai",
+  "missing:",
+  "dominant:",
+  "day master",
+  "ครับ",
+  "ค่ะ",
+] as const;
+
 export const PERSONALITY_TRUTH_HIERARCHY = [
   "dayMasterStrengthProfile",
   "sixtyJiaziCorePersona",
@@ -32,6 +45,7 @@ export const PERSONALITY_TRUTH_HIERARCHY = [
 
 const PersonalityBridgeBlockSchema = z.object({
   title: z.string().trim().min(1),
+  signal: z.string().trim().min(1),
   explanation: z.string().trim().min(1),
   personality_impact: z.string().trim().min(1),
 });
@@ -40,11 +54,38 @@ export const PersonalityPocResponseSchema = z.object({
   reviewSummary: z.string().trim().min(1),
   personality: z.object({
     thought_process: z.string().trim().min(1),
-    bridge_blocks: z.array(PersonalityBridgeBlockSchema).min(1).max(4).optional(),
+    bridge_blocks: z.array(PersonalityBridgeBlockSchema).min(3).max(4),
     final_prediction: z.string().trim().min(1),
     supporting_signals: z.array(z.string().trim().min(1)).min(1),
     confidence_note: z.string().trim().min(1).optional(),
   }),
+}).superRefine((response, context) => {
+  const reportFields = [
+    response.reviewSummary,
+    response.personality.thought_process,
+    response.personality.final_prediction,
+    ...response.personality.supporting_signals,
+    ...(response.personality.confidence_note ? [response.personality.confidence_note] : []),
+    ...response.personality.bridge_blocks.flatMap((block) => [
+      block.title,
+      block.signal,
+      block.explanation,
+      block.personality_impact,
+    ]),
+  ];
+
+  for (const field of reportFields) {
+    const normalizedField = field.toLowerCase();
+
+    for (const forbiddenTerm of FORBIDDEN_REPORT_TERMS) {
+      if (normalizedField.includes(forbiddenTerm)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `Forbidden report term detected: ${forbiddenTerm}`,
+        });
+      }
+    }
+  }
 });
 
 export type PersonalityPocResponse = z.infer<typeof PersonalityPocResponseSchema>;
@@ -71,6 +112,9 @@ const PERSONALITY_POC_RESPONSE_JSON_SCHEMA = {
               title: {
                 type: "string",
               },
+              signal: {
+                type: "string",
+              },
               explanation: {
                 type: "string",
               },
@@ -78,8 +122,10 @@ const PERSONALITY_POC_RESPONSE_JSON_SCHEMA = {
                 type: "string",
               },
             },
-            required: ["title", "explanation", "personality_impact"],
+            required: ["title", "signal", "explanation", "personality_impact"],
           },
+          minItems: 3,
+          maxItems: 4,
         },
         final_prediction: {
           type: "string",
@@ -94,7 +140,7 @@ const PERSONALITY_POC_RESPONSE_JSON_SCHEMA = {
           type: "string",
         },
       },
-      required: ["thought_process", "final_prediction", "supporting_signals"],
+      required: ["thought_process", "bridge_blocks", "final_prediction", "supporting_signals"],
     },
   },
   required: ["reviewSummary", "personality"],
@@ -126,12 +172,15 @@ export function buildPersonalityPocSystemInstruction() {
     "Use sixtyJiaziCorePersona as temperament color only when it supports the primary axis.",
     "Use elementAnalysis and seasonalInteraction only as context modifiers, not as replacement identity.",
     "Ignore interactionState, current events, and annual timing for this task.",
+    "You own the interpretation and the sinsae wording. Do not leave semantic expansion to the caller.",
     "thought_process must explain the causal chain in sinsae language, not technical language.",
-    "When possible, return 3-4 bridge_blocks that explain the path from signal to personality outcome.",
+    "Return 3-4 bridge_blocks. Each bridge block is mandatory.",
+    "Each bridge block must contain a short Thai title, a human-readable signal line grounded in the payload, a sinsae explanation, and the personality impact it creates.",
     "Each bridge block should move in this flow: what the chart shows, what it means, and what kind of temperament it creates.",
     "final_prediction must read like a real sinsae talking to a client about temperament, inner drive, blind spots, and emotional patterning.",
     "Do not use gendered polite particles such as ครับ or ค่ะ in the generated report.",
-    "supporting_signals must be short factual strings copied from the provided payload.",
+    "supporting_signals must be short Thai factual lines that a human reader can understand immediately from the provided payload.",
+    "Do not write developer language such as payload, schema, JSON, model, AI, missing:, dominant:, or Day Master.",
     "Return JSON only.",
   ].join(" ");
 }
@@ -147,7 +196,10 @@ export function buildPersonalityPocUserPrompt(
     "If an upstream signal is absent, say less instead of inventing.",
     "The reading must stay faithful to this order: dayMasterStrengthProfile -> sixtyJiaziCorePersona -> elementAnalysis -> seasonalInteraction.",
     "Write the reasoning in a sinsae flow such as: คุณเป็นคน... / พอมาเจอ... / จึงทำให้...",
-    "If possible, return bridge_blocks that make each major signal readable by a human sinsae immediately.",
+    "Return exactly 3 or 4 bridge_blocks so the explanation is already expanded before any formatter sees it.",
+    "Each bridge block must include title, signal, explanation, and personality_impact.",
+    "Write supporting_signals as Thai evidence lines, not enum-style fragments.",
+    "Never write terms like missing: metal, dominant: water, payload, schema, JSON, model, AI, or Day Master.",
     "",
     "Raw input:",
     JSON.stringify(rawInput, null, 2),
@@ -247,19 +299,12 @@ function buildSignalLines(focusPayload: PersonalityFocusPayload) {
 }
 
 function buildBridgeBlockLines(response: PersonalityPocResponse) {
-  if (response.personality.bridge_blocks?.length) {
-    return response.personality.bridge_blocks.flatMap((block, index) => [
-      `${index + 1}. ${block.title}`,
-      `   ${block.explanation}`,
-      `   จึงทำให้: ${block.personality_impact}`,
-    ]);
-  }
-
-  return response.personality.thought_process
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .map((line, index) => `${index + 1}. ${line}`);
+  return response.personality.bridge_blocks.flatMap((block, index) => [
+    `${index + 1}. ${block.title}`,
+    `   สัญญาณ: ${block.signal}`,
+    `   ${block.explanation}`,
+    `   จึงทำให้: ${block.personality_impact}`,
+  ]);
 }
 
 export function formatPersonalityPocPreflightReport(options: {
@@ -298,7 +343,7 @@ export function formatPersonalityPocGeneratedReport(options: {
     "สัญญาณที่ใช้ในการอ่าน",
     ...buildSignalLines(options.focusPayload),
     ...(options.response.personality.supporting_signals.length > 0
-      ? ["", "สัญญาณประกอบที่ AI ถือไว้", ...options.response.personality.supporting_signals.map((signal) => `- ${signal}`)]
+      ? ["", "สัญญาณประกอบที่ยึดในการอ่าน", ...options.response.personality.supporting_signals.map((signal) => `- ${signal}`)]
       : []),
     "",
     "คำอธิบายแบบซินแส",
@@ -313,7 +358,8 @@ export function formatPersonalityPocGeneratedReport(options: {
       ? ["", "หมายเหตุความมั่นใจ", options.response.personality.confidence_note]
       : []),
     "",
-    `รุ่นที่ใช้: ${options.model}`,
+    "ภาคผนวกเทคนิค",
+    `- รุ่นที่ใช้: ${options.model}`,
   ].join("\n");
 }
 

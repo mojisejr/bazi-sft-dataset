@@ -7,11 +7,11 @@ import {
   type SaveDatasetRequest,
 } from "@/lib/bazi/dataset-request";
 import {
+  addAnnotationDimensionIssues,
   CalculatedStateSchema,
   DimensionSchema,
   RawInputSchema,
   REQUIRED_ANNOTATION_DIMENSION_COUNT,
-  REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 
@@ -41,41 +41,17 @@ export const AutoLabelingQueueDocumentSchema = z.object({
   cases: z.array(AutoLabelingQueueEntrySchema),
 });
 
-function refineCompleteDimensions(
-  value: { dimensions: Array<{ dimension_name: (typeof REQUIRED_ANNOTATION_DIMENSION_NAMES)[number] }> },
-  context: z.RefinementCtx,
-) {
-  const names = value.dimensions.map((dimension) => dimension.dimension_name);
-  const uniqueNames = new Set(names);
-
-  if (uniqueNames.size !== REQUIRED_ANNOTATION_DIMENSION_COUNT) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "annotation_data.dimensions must not contain duplicate dimensions.",
-      path: ["dimensions"],
-    });
-  }
-
-  const missingNames = REQUIRED_ANNOTATION_DIMENSION_NAMES.filter(
-    (dimensionName) => !uniqueNames.has(dimensionName),
-  );
-
-  if (missingNames.length > 0) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: `annotation_data.dimensions is missing: ${missingNames.join(", ")}`,
-      path: ["dimensions"],
-    });
-  }
-}
-
 export const AutoLabelingAnnotationDataSchema = z
   .object({
     version: z.literal("1.6"),
-    dimensions: z.array(DimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    dimensions: z.array(DimensionSchema)
+      .min(1)
+      .max(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
   })
-  .superRefine(refineCompleteDimensions);
+  .superRefine((value, context) => {
+    addAnnotationDimensionIssues(value, context);
+  });
 
 export const AutoLabelingDraftRecordSchema = AutoLabelingQueueEntrySchema.extend({
   annotationData: AutoLabelingAnnotationDataSchema,

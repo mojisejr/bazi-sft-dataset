@@ -13,6 +13,7 @@ import {
 import type { ProofDatasetRecord } from "@/lib/bazi/dataset-records";
 import type { SaveDatasetStatus } from "@/lib/bazi/dataset-request";
 import {
+  ACTIVE_RLHF_DIMENSION_NAMES,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type AnnotationDimensionName,
   type DraftAnnotationDataValue,
@@ -96,7 +97,7 @@ function createProofAnnotationData(
     version: "1.6",
     reviewSummary: reviewSummary?.trim() ? reviewSummary.trim() : undefined,
     sinsaeProofNote: sinsaeProofNote.trim() ? sinsaeProofNote.trim() : undefined,
-    dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => {
+    dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => {
       const draft = dimensions[dimensionName];
 
       return {
@@ -227,7 +228,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     createProofDimensions(record.annotationData),
   );
   const [expandedDimensionName, setExpandedDimensionName] = useState<AnnotationDimensionName | null>(
-    REQUIRED_ANNOTATION_DIMENSION_NAMES[0],
+    ACTIVE_RLHF_DIMENSION_NAMES[0],
   );
   const [sinsaeProofNote, setSinsaeProofNote] = useState(
     record.annotationData?.sinsaeProofNote ?? "",
@@ -242,7 +243,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
     createAnnotationProgressSource(dimensions),
   );
   const canApprove =
-    annotationSummary.completeCount === REQUIRED_ANNOTATION_DIMENSION_NAMES.length
+    annotationSummary.completeCount === ACTIVE_RLHF_DIMENSION_NAMES.length
     && sinsaeProofNote.trim().length > 0;
   const canReject = sinsaeProofNote.trim().length > 0;
   const strengthBand = classifyOperatorStrengthScore(record.calculatedState.strengthScore);
@@ -272,7 +273,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
   async function handleSubmit(nextStatus: SaveDatasetStatus) {
     if (nextStatus === "reviewed" && !canApprove) {
       setSaveState("error");
-      setSaveErrorMessage("ต้องเติมข้อมูลให้ครบทั้ง 15 มิติและใส่เหตุผลประกอบการตัดสินใจก่อนอนุมัติ");
+      setSaveErrorMessage("ต้องเติมคำทำนายนิสัยพื้นฐานให้ครบและใส่เหตุผลประกอบการตัดสินใจก่อนอนุมัติ");
       return;
     }
 
@@ -343,9 +344,9 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
         <div>
           <p className="section-kicker">เฟส 5</p>
           <h2>หน้าตรวจทานคำทำนาย AI</h2>
-          <p className="annotation-intro">
-            อ่านภาพรวมดวง แก้ข้อความทีละมิติ แล้วปิดงานด้วยการอนุมัติหรือการตีกลับพร้อมเหตุผลในหน้าเดียว
-          </p>
+            <p className="annotation-intro">
+              อ่านภาพรวมดวง เกลาคำทำนายนิสัยพื้นฐาน แล้วปิดงานด้วยการอนุมัติหรือการตีกลับพร้อมเหตุผลในหน้าเดียว
+            </p>
         </div>
         <div className="message-card__actions">
           <button
@@ -470,7 +471,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           <section className="surface inset-card annotation-summary-card">
             <div>
               <p className="section-kicker">ความคืบหน้าการตรวจ</p>
-              <h3>แก้ไขทีละมิติ แล้วค่อยตัดสินใจตอนท้าย</h3>
+            <h3>เกลาคำนิสัยพื้นฐาน แล้วค่อยตัดสินใจตอนท้าย</h3>
             </div>
 
             <div className="annotation-metrics" aria-label="proof progress summary">
@@ -538,7 +539,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           <section className="surface inset-card proof-summary-card">
             <p className="section-kicker">เงื่อนไขการปิดงาน</p>
             <ul className="workflow-list proof-guidance-list">
-              <li>อนุมัติได้เมื่อครบทั้ง 15 มิติและมีเหตุผลประกอบการตัดสินใจ</li>
+                <li>อนุมัติได้เมื่อนิสัยพื้นฐานครบและมีเหตุผลประกอบการตัดสินใจ</li>
               <li>ตีกลับได้ทันทีหาก logic ของ AI ผิด แต่ต้องบอกเหตุผลให้ชัด</li>
               <li>ถ้ายังไม่พร้อมปิดงาน สามารถบันทึกความคืบหน้าไว้ก่อน</li>
             </ul>

@@ -2,12 +2,13 @@ import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 
 import {
+  ACTIVE_RLHF_DIMENSION_NAMES,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type AnnotationDimensionName,
   type DraftAnnotationDataValue,
 } from "@/lib/bazi/schema-types";
 
-export { ANNOTATION_DIMENSION_META } from "@/lib/bazi/annotation-dimension-meta";
+export { ACTIVE_ANNOTATION_DIMENSION_META as ANNOTATION_DIMENSION_META } from "@/lib/bazi/annotation-dimension-meta";
 
 export type AnnotationProgressState = "not-started" | "draft" | "complete";
 
@@ -60,7 +61,7 @@ export function getDimensionProgress(
 export function getAnnotationProgressSummary(
   dimensions: AnnotationDimensionDraftState,
 ): AnnotationProgressSummary {
-  return REQUIRED_ANNOTATION_DIMENSION_NAMES.reduce(
+  return ACTIVE_RLHF_DIMENSION_NAMES.reduce(
     (summary, dimensionName) => {
       const progress = getDimensionProgress(dimensions[dimensionName]);
 
@@ -99,7 +100,7 @@ export function isAnnotationReadyForReview(
 ) {
   const summary = getAnnotationProgressSummary(dimensions);
 
-  return summary.completeCount === REQUIRED_ANNOTATION_DIMENSION_NAMES.length;
+  return summary.completeCount === ACTIVE_RLHF_DIMENSION_NAMES.length;
 }
 
 export function createDraftAnnotationData(
@@ -107,7 +108,7 @@ export function createDraftAnnotationData(
 ): DraftAnnotationDataValue {
   return {
     version: "1.6",
-    dimensions: REQUIRED_ANNOTATION_DIMENSION_NAMES.map((dimensionName) => ({
+    dimensions: ACTIVE_RLHF_DIMENSION_NAMES.map((dimensionName) => ({
       dimension_name: dimensionName,
       thought_process: dimensions[dimensionName].thoughtProcess,
       final_prediction: dimensions[dimensionName].finalPrediction,
@@ -134,7 +135,7 @@ type AnnotationStoreState = {
 export function createAnnotationStore() {
   return createStore<AnnotationStoreState>((set) => ({
     dimensions: createEmptyAnnotationDimensions(),
-    expandedDimensionName: REQUIRED_ANNOTATION_DIMENSION_NAMES[0],
+    expandedDimensionName: ACTIVE_RLHF_DIMENSION_NAMES[0],
     setExpandedDimension: (dimensionName) => {
       set({ expandedDimensionName: dimensionName });
     },
@@ -170,7 +171,7 @@ export function createAnnotationStore() {
     reset: () => {
       set({
         dimensions: createEmptyAnnotationDimensions(),
-        expandedDimensionName: REQUIRED_ANNOTATION_DIMENSION_NAMES[0],
+        expandedDimensionName: ACTIVE_RLHF_DIMENSION_NAMES[0],
       });
     },
   }));

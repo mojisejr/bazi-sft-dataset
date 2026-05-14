@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   buildDraftAnnotationDataFromPersonality,
   buildPersonalityFocusPayload,
+  PersonalityPocResponseSchema,
   formatPersonalityPocGeneratedReport,
   formatPersonalityPocPreflightReport,
   buildPersonalityPocSystemInstruction,
@@ -127,17 +128,37 @@ describe("personality prompt poc helpers", () => {
 
   test("wraps the personality response into a schema-valid draft payload", () => {
     const annotationData = buildDraftAnnotationDataFromPersonality({
-      reviewSummary: "นิสัยพื้นฐานมีแกนมั่นคงและควบคุมตัวเองสูง",
-      personality: {
-        thought_process: "ยึดแกนดิถีเป็นหลัก แล้วใช้ 60 Jiazi กับฤดูกาลเป็นตัวแต้มอารมณ์ของดวง",
-        final_prediction: "เป็นคนเก็บอาการ คิดลึก และไม่ชอบเสียการควบคุม แต่เมื่อมั่นใจแล้วจะเดินหน้าแบบเงียบ ๆ และต่อเนื่อง",
-        supporting_signals: [
-          "dayMasterStrengthProfile=ดิถีค่อนข้างมั่นคง",
-          "sixtyJiaziCorePersona=己巳",
-          "seasonalInteraction=ฤดูหนาวกลางฤดู",
-        ],
-      },
-    });
+        reviewSummary: "นิสัยพื้นฐานมีแกนมั่นคงและควบคุมตัวเองสูง",
+        personality: {
+          thought_process: "ยึดแกนดิถีเป็นหลัก แล้วใช้ 60 Jiazi กับฤดูกาลเป็นตัวแต้มอารมณ์ของดวง",
+          bridge_blocks: [
+            {
+              title: "ดิถีวางแกนตัวตน",
+              signal: "ดิถีค่อนข้างมั่นคงและรับแรงกดดันได้",
+              explanation: "คุณเป็นคนที่มีแกนในชัด เวลาตัดสินใจแล้วไม่เปลี่ยนง่าย",
+              personality_impact: "จึงทำให้มักควบคุมอารมณ์และทิศทางชีวิตด้วยตัวเอง",
+            },
+            {
+              title: "กะจื่อวันเติมแรงขับ",
+              signal: "ฐานวัน己巳ทำให้ภายนอกนิ่งแต่ข้างในมีแรงส่ง",
+              explanation: "พอมาเจอฐานวันแบบนี้ จึงไม่ใช่คนนิ่งเฉย แต่เป็นคนนิ่งแล้วค่อยขยับเมื่อเห็นจังหวะ",
+              personality_impact: "จึงทำให้เดินหน้าเงียบ ๆ แต่ไม่ยอมแพ้ง่าย",
+            },
+            {
+              title: "ฤดูกาลช่วยแต้มอารมณ์",
+              signal: "ฤดูหนาวกลางฤดูทำให้ต้องค่อย ๆ อุ่นพลังตัวเองก่อน",
+              explanation: "ด้านในจึงมีช่วงคิดนานและดูอึดอัดก่อนเปิดตัว",
+              personality_impact: "จึงทำให้คนอื่นอาจมองว่าช้า แต่จริง ๆ เป็นคนระวังและคิดลึก",
+            },
+          ],
+          final_prediction: "เป็นคนเก็บอาการ คิดลึก และไม่ชอบเสียการควบคุม แต่เมื่อมั่นใจแล้วจะเดินหน้าแบบเงียบ ๆ และต่อเนื่อง",
+          supporting_signals: [
+            "ดิถีค่อนข้างมั่นคงและรับแรงกดดันได้ดี",
+            "ฐานวัน己巳เสริมแรงขับภายใน",
+            "ฤดูหนาวกลางฤดูทำให้พลังออกช้าแต่ต่อเนื่อง",
+          ],
+        },
+      });
 
     expect(annotationData.dimensions).toHaveLength(15);
     expect(
@@ -154,10 +175,43 @@ describe("personality prompt poc helpers", () => {
     expect(instruction).toContain("dayMasterStrengthProfile first");
     expect(instruction).toContain("Ignore interactionState");
     expect(instruction).toContain("Do not use gendered polite particles");
+    expect(instruction).toContain("You own the interpretation and the sinsae wording");
     expect(prompt).toContain("personality_psychology dimension only");
     expect(prompt).toContain("คุณเป็นคน... / พอมาเจอ... / จึงทำให้...");
+    expect(prompt).toContain("Return exactly 3 or 4 bridge_blocks");
     expect(prompt).toContain("dayMasterStrengthProfile -> sixtyJiaziCorePersona -> elementAnalysis -> seasonalInteraction");
     expect(prompt).toContain("Focused personality payload");
+  });
+
+  test("rejects report content that leaks forbidden dev wording", () => {
+    expect(() => PersonalityPocResponseSchema.parse({
+      reviewSummary: "สรุปนิสัยจาก payload นี้ชัดเจน",
+      personality: {
+        thought_process: "ใช้ภาษาซินแสปกติ",
+        bridge_blocks: [
+          {
+            title: "แกนแรก",
+            signal: "ดิถีมั่นคง",
+            explanation: "คุณเป็นคนมีแกน",
+            personality_impact: "จึงทำให้ยืนระยะได้",
+          },
+          {
+            title: "แกนสอง",
+            signal: "กะจื่อวันหนุนแรงขับ",
+            explanation: "พอมาเจอแรงขับภายใน",
+            personality_impact: "จึงทำให้ไม่ยอมแพ้ง่าย",
+          },
+          {
+            title: "แกนสาม",
+            signal: "ฤดูหนาวแต้มอารมณ์",
+            explanation: "ด้านในคิดนาน",
+            personality_impact: "จึงทำให้เปิดใจช้า",
+          },
+        ],
+        final_prediction: "เป็นคนมีวินัย",
+        supporting_signals: ["ดิถีมั่นคง"],
+      },
+    })).toThrow("Forbidden report term detected");
   });
 
   test("formats a preflight report in sinsae-readable Thai without debug headings", () => {
@@ -187,13 +241,21 @@ describe("personality prompt poc helpers", () => {
           bridge_blocks: [
             {
               title: "ดิถีเป็นแกนใหญ่",
+              signal: "ดิถีค่อนข้างมั่นคงและรับแรงกดดันได้",
               explanation: "คุณเป็นคนธาตุดินที่มีแกนชัด รับแรงกดดันได้ แต่จะปิดใจเมื่อถูกบีบมากเกินไป",
               personality_impact: "จึงทำให้เป็นคนเก็บอาการและอยากคุมจังหวะของตัวเอง",
             },
             {
               title: "พอมาเจอกะจื่อวัน",
+              signal: "ฐานวัน己巳เติมแรงขับภายใน",
               explanation: "ฐานวัน己巳เติมแรงขับภายใน ทำให้ภายนอกดูนิ่งแต่ข้างในไม่ยอมแพ้ง่าย",
               personality_impact: "จึงทำให้เมื่อมั่นใจแล้วจะเดินหน้าแบบต่อเนื่องและเงียบ",
+            },
+            {
+              title: "ฤดูกาลเข้ามาแต้มอารมณ์",
+              signal: "ฤดูหนาวกลางฤดูทำให้พลังออกช้าแต่ไม่ดับ",
+              explanation: "เมื่อมาอยู่ในจังหวะหนาว จึงมีด้านที่ระวังและต้องใช้เวลาอุ่นใจก่อนเปิดตัว",
+              personality_impact: "จึงทำให้คนรอบตัวรู้สึกว่าเข้าถึงช้า แต่ถ้าไว้ใจแล้วจะไปยาว",
             },
           ],
           final_prediction: "คุณเป็นคนคิดลึก มีแรงขับเงียบ และถ้าจัดระบบชีวิตให้ดี ศักยภาพจะออกผลชัดมาก",
@@ -206,8 +268,11 @@ describe("personality prompt poc helpers", () => {
     expect(report).toContain("=== รายงานนิสัยพื้นฐานแบบซินแส ===");
     expect(report).toContain("คำอธิบายแบบซินแส");
     expect(report).toContain("1. ดิถีเป็นแกนใหญ่");
+    expect(report).toContain("สัญญาณ: ดิถีค่อนข้างมั่นคงและรับแรงกดดันได้");
     expect(report).toContain("จึงทำให้:");
     expect(report).toContain("คำทำนายพร้อมส่งลูกค้า");
-    expect(report).toContain("รุ่นที่ใช้: gemini-3-flash-preview");
+    expect(report).toContain("ภาคผนวกเทคนิค");
+    expect(report).toContain("- รุ่นที่ใช้: gemini-3-flash-preview");
+    expect(report).not.toContain("สัญญาณประกอบที่ AI ถือไว้");
   });
 });

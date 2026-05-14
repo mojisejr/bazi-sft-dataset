@@ -7,7 +7,10 @@ import {
   getDimensionProgress,
   isAnnotationReadyForReview,
 } from "@/lib/bazi/annotation-store";
-import { REQUIRED_ANNOTATION_DIMENSION_NAMES } from "@/lib/bazi/schema-types";
+import {
+  ACTIVE_RLHF_DIMENSION_NAMES,
+  REQUIRED_ANNOTATION_DIMENSION_NAMES,
+} from "@/lib/bazi/schema-types";
 
 describe("annotation store", () => {
   test("updates one dimension without mutating the others", () => {
@@ -29,29 +32,29 @@ describe("annotation store", () => {
   test("calculates progress summary and clears prediction when thought process is removed", () => {
     const store = createAnnotationStore();
 
-    store.getState().updateThoughtProcess("chart_foundation", "ดวงนี้มีฐานธาตุที่ต้องประคอง");
-    store.getState().updateFinalPrediction("chart_foundation", "ควรค่อยๆ เดินเกมชีวิตแบบมีแผน");
+    store.getState().updateThoughtProcess("personality_psychology", "ดวงนี้มีแรงขับภายในที่ชัดและคุมเกมเก่ง");
+    store.getState().updateFinalPrediction("personality_psychology", "นิสัยหลักคือรับแรงกดดันได้ดีแต่ต้องระวังความตึงในใจ");
     store.getState().updateThoughtProcess("balance_element", "ควรเติมธาตุน้ำและโลหะ");
 
     let summary = getAnnotationProgressSummary(store.getState().dimensions);
 
     expect(summary).toEqual({
       completeCount: 1,
-      draftCount: 1,
-      notStartedCount: 13,
+      draftCount: 0,
+      notStartedCount: 0,
     });
 
-    store.getState().updateThoughtProcess("chart_foundation", "");
+    store.getState().updateThoughtProcess("personality_psychology", "");
 
-    const chartFoundation = store.getState().dimensions.chart_foundation;
+    const personality = store.getState().dimensions.personality_psychology;
     summary = getAnnotationProgressSummary(store.getState().dimensions);
 
-    expect(chartFoundation.finalPrediction).toBe("");
-    expect(getDimensionProgress(chartFoundation)).toBe("not-started");
+    expect(personality.finalPrediction).toBe("");
+    expect(getDimensionProgress(personality)).toBe("not-started");
     expect(summary).toEqual({
       completeCount: 0,
-      draftCount: 1,
-      notStartedCount: 14,
+      draftCount: 0,
+      notStartedCount: ACTIVE_RLHF_DIMENSION_NAMES.length,
     });
   });
 
@@ -67,7 +70,7 @@ describe("annotation store", () => {
 
     expect(annotationData.version).toBe("1.6");
     expect(annotationData.dimensions.map((dimension) => dimension.dimension_name)).toEqual(
-      [...REQUIRED_ANNOTATION_DIMENSION_NAMES],
+      [...ACTIVE_RLHF_DIMENSION_NAMES],
     );
     expect(isAnnotationReadyForReview(store.getState().dimensions)).toBe(true);
   });

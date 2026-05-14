@@ -11,7 +11,7 @@ import {
   GENERALIZED_INTERACTION_QUALIFIER_LANES,
 } from "@/lib/bazi/symbolic-engine.constants";
 
-export const REQUIRED_ANNOTATION_DIMENSION_NAMES = [
+export const ANNOTATION_DIMENSION_NAMES = [
   "chart_foundation",
   "balance_element",
   "ten_gods_reaction",
@@ -29,11 +29,17 @@ export const REQUIRED_ANNOTATION_DIMENSION_NAMES = [
   "core_prediction",
 ] as const;
 
+export const ACTIVE_RLHF_DIMENSION_NAMES = ["personality_psychology"] as const;
+
+export const REQUIRED_ANNOTATION_DIMENSION_NAMES = ANNOTATION_DIMENSION_NAMES;
+
 export const REQUIRED_ANNOTATION_DIMENSION_COUNT =
   REQUIRED_ANNOTATION_DIMENSION_NAMES.length;
 
+export const ACTIVE_RLHF_DIMENSION_COUNT = ACTIVE_RLHF_DIMENSION_NAMES.length;
+
 export const AnnotationDimensionNameSchema = z.enum(
-  REQUIRED_ANNOTATION_DIMENSION_NAMES,
+  ANNOTATION_DIMENSION_NAMES,
 );
 
 export const PillarValueSchema = z.object({
@@ -505,14 +511,15 @@ export const DraftDimensionSchema = z.object({
   confidence_note: z.string().trim().min(1).optional(),
 });
 
-function refineAnnotationDimensions(
+export function addAnnotationDimensionIssues(
   value: { dimensions: Array<{ dimension_name: AnnotationDimensionName }> },
   context: z.RefinementCtx,
+  requiredDimensionNames: readonly AnnotationDimensionName[] = ACTIVE_RLHF_DIMENSION_NAMES,
 ) {
   const names = value.dimensions.map((dimension) => dimension.dimension_name);
   const uniqueNames = new Set(names);
 
-  if (uniqueNames.size !== REQUIRED_ANNOTATION_DIMENSION_COUNT) {
+  if (uniqueNames.size !== names.length) {
     context.addIssue({
       code: z.ZodIssueCode.custom,
       message: "annotation_data.dimensions must not contain duplicate dimensions.",
@@ -520,7 +527,7 @@ function refineAnnotationDimensions(
     });
   }
 
-  const missingNames = REQUIRED_ANNOTATION_DIMENSION_NAMES.filter(
+  const missingNames = requiredDimensionNames.filter(
     (dimensionName) => !uniqueNames.has(dimensionName),
   );
 
@@ -536,29 +543,41 @@ function refineAnnotationDimensions(
 export const DraftAnnotationDataSchema = z
   .object({
     version: z.literal("1.6"),
-    dimensions: z.array(DraftDimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    dimensions: z.array(DraftDimensionSchema)
+      .min(ACTIVE_RLHF_DIMENSION_COUNT)
+      .max(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
     sinsaeProofNote: z.string().trim().min(1).optional(),
   })
-  .superRefine(refineAnnotationDimensions);
+  .superRefine((value, context) => {
+    addAnnotationDimensionIssues(value, context);
+  });
 
 export const AnnotationDataSchema = z
   .object({
     version: z.literal("1.6"),
-    dimensions: z.array(DimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    dimensions: z.array(DimensionSchema)
+      .min(ACTIVE_RLHF_DIMENSION_COUNT)
+      .max(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
     sinsaeProofNote: z.string().trim().min(1),
   })
-  .superRefine(refineAnnotationDimensions);
+  .superRefine((value, context) => {
+    addAnnotationDimensionIssues(value, context);
+  });
 
 export const RejectedAnnotationDataSchema = z
   .object({
     version: z.literal("1.6"),
-    dimensions: z.array(DraftDimensionSchema).length(REQUIRED_ANNOTATION_DIMENSION_COUNT),
+    dimensions: z.array(DraftDimensionSchema)
+      .min(ACTIVE_RLHF_DIMENSION_COUNT)
+      .max(REQUIRED_ANNOTATION_DIMENSION_COUNT),
     reviewSummary: z.string().trim().min(1).optional(),
     sinsaeProofNote: z.string().trim().min(1),
   })
-  .superRefine(refineAnnotationDimensions);
+  .superRefine((value, context) => {
+    addAnnotationDimensionIssues(value, context);
+  });
 
 export type PillarValue = z.infer<typeof PillarValueSchema>;
 export type DaYunPhaseValue = z.infer<typeof DaYunPhaseSchema>;
