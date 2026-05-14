@@ -28,6 +28,7 @@ const FORBIDDEN_READING_TERMS = [
   "ครับ",
   "ค่ะ",
 ] as const;
+const ENGLISH_SCENE_KEY_PATTERN = /[A-Za-z_]/;
 
 const PILLAR_SEQUENCE = ["year", "month", "day", "hour"] as const;
 const RELATION_SEQUENCE = ["output", "resource", "same", "power", "wealth"] as const;
@@ -148,6 +149,16 @@ export const RelationReadingResponseSchema = z.object({
       }
     }
   }
+
+  response.scenes.forEach((scene, index) => {
+    if (ENGLISH_SCENE_KEY_PATTERN.test(scene.scene_key)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scenes", index, "scene_key"],
+        message: "Scene heading must stay Thai-only on the visible surface.",
+      });
+    }
+  });
 });
 
 const RELATION_READING_RESPONSE_JSON_SCHEMA = {
@@ -484,6 +495,15 @@ function formatActiveRelationTable(packet: RelationReadingPacket) {
   );
 }
 
+function formatVisibleSceneHeading(sceneKey: string, index: number) {
+  const normalized = sceneKey.trim();
+  if (!normalized || ENGLISH_SCENE_KEY_PATTERN.test(normalized)) {
+    return `ประเด็นที่ ${index + 1}`;
+  }
+
+  return `ประเด็นที่ ${index + 1}: ${normalized}`;
+}
+
 export function buildDayMasterRelationPocSystemInstruction() {
   return [
     "You are a senior Thai Bazi master writing a client-facing relation reading from a deterministic packet.",
@@ -492,8 +512,10 @@ export function buildDayMasterRelationPocSystemInstruction() {
     "Read the packet in this order only: day master -> active relation -> targets -> life meaning.",
     "Keep relation logic separate from life-domain meaning.",
     "Every scene must contain a fact sentence, a bridge sentence, an interpretation sentence, and a risk or advice sentence.",
+    "The scene_key is a short Thai heading for the visible report only. Never use English words, transliteration, snake_case, or section codes.",
     "If evidence is thin, say less instead of inventing.",
     "Do not mention JSON, schema, payload, model, AI, enum, or debug language.",
+    "Do not write in generic assistant tone such as saying this is an analysis, output, response, or generated text.",
     "Do not use polite particles such as ครับ or ค่ะ.",
     "Return 2 to 4 scenes and make them read like a real sinsae explanation.",
     "Return JSON only.",
@@ -506,6 +528,8 @@ export function buildDayMasterRelationPocUserPrompt(rawInput: RawInputValue, pac
     "Use the visible flow: fact -> bridge -> scene -> risk.",
     "Use the active relation as the main opening path.",
     "Keep the wording school-faithful and client-readable.",
+    "Keep every visible heading in Thai only, especially scene_key.",
+    "Do not leak English scene identifiers, snake_case labels, or generic assistant wording onto the visible surface.",
     "Do not use developer wording.",
     "Do not invent health, timing, marriage, or money claims unless they are directly supported by the packet.",
     "Return exactly the JSON shape requested by the system instruction.",
@@ -529,7 +553,7 @@ export function formatDayMasterRelationPocPreflightReport(options: {
     `- วันเกิด: ${options.rawInput.birthDate} เวลา ${options.rawInput.birthTime}`,
     `- ดิถี: ${options.packet.chartAnchor.dayMasterStem} ธาตุ${options.packet.chartAnchor.dayMasterElementLabelThai}`,
     `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai}`,
-    `- relation ที่ใช้เปิดการอ่าน: ${options.packet.chartAnchor.activeRelationLabelThai}`,
+    `- ธาตุสัมพันธ์ที่ใช้เปิดการอ่าน: ${options.packet.chartAnchor.activeRelationLabelThai}`,
     "",
     "ตาราง 8 ช่อง",
     formatEightSlotTable(options.packet),
@@ -558,7 +582,7 @@ export function formatDayMasterRelationPocGeneratedReport(options: {
     `- วันเกิด: ${options.rawInput.birthDate} เวลา ${options.rawInput.birthTime}`,
     `- ดิถี: ${options.packet.chartAnchor.dayMasterStem} ธาตุ${options.packet.chartAnchor.dayMasterElementLabelThai}`,
     `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai}`,
-    `- relation ที่ใช้เปิดการอ่าน: ${options.packet.chartAnchor.activeRelationLabelThai}`,
+    `- ธาตุสัมพันธ์ที่ใช้เปิดการอ่าน: ${options.packet.chartAnchor.activeRelationLabelThai}`,
     "",
     "ตาราง 8 ช่อง",
     formatEightSlotTable(options.packet),
@@ -573,7 +597,7 @@ export function formatDayMasterRelationPocGeneratedReport(options: {
     options.response.title,
     options.response.summary,
     ...options.response.scenes.flatMap((scene, index) => [
-      `${index + 1}. ${scene.scene_key}`,
+      formatVisibleSceneHeading(scene.scene_key, index),
       `   ${scene.fact_sentence}`,
       `   ${scene.bridge_sentence}`,
       `   ${scene.interpretation}`,

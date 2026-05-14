@@ -68,8 +68,10 @@ describe("day master relation reading poc", () => {
 
     expect(instruction).toContain("fact sentence");
     expect(instruction).toContain("bridge sentence");
+    expect(instruction).toContain("scene_key is a short Thai heading");
     expect(instruction).toContain("Do not mention JSON, schema, payload, model, AI");
     expect(prompt).toContain("Use the visible flow: fact -> bridge -> scene -> risk.");
+    expect(prompt).toContain("Keep every visible heading in Thai only");
     expect(prompt).toContain("Relation reading packet:");
   });
 
@@ -97,6 +99,30 @@ describe("day master relation reading poc", () => {
     })).toThrow("Forbidden reading term detected");
   });
 
+  test("rejects english scene headings on the visible surface", () => {
+    expect(() => RelationReadingResponseSchema.parse({
+      title: "ภาพรวมปกติ",
+      summary: "ยังเดินตามแรงของดิถี",
+      scenes: [
+        {
+          scene_key: "career_and_family",
+          fact_sentence: "ดิถีมีแรงไปออกด้านนอก",
+          bridge_sentence: "แรงจึงไหลไปยังพื้นที่ที่ต้องแสดงผลงาน",
+          interpretation: "เจ้าชะตามักขยับเรื่องงานก่อนเรื่องอื่น",
+          risk_or_advice: "อย่ารับหลายเรื่องพร้อมกันเกินไป",
+        },
+        {
+          scene_key: "ประเด็นรอง",
+          fact_sentence: "อีกด้านหนึ่งยังคุมตัวเองได้",
+          bridge_sentence: "จึงไม่ปล่อยแรงออกจนหมดหน้าตัก",
+          interpretation: "ยังมีจังหวะตั้งหลักก่อนตัดสินใจ",
+          risk_or_advice: "รักษาจังหวะนี้ไว้จะดี",
+        },
+      ],
+      closing_reading: "ภาพรวมยังพอประคองได้",
+    })).toThrow("Scene heading must stay Thai-only");
+  });
+
   test("formats preflight and generated reports with proof tables", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
     const preflight = formatDayMasterRelationPocPreflightReport({
@@ -112,7 +138,7 @@ describe("day master relation reading poc", () => {
         summary: "ดวงนี้เปิดการอ่านจากธาตุถ่ายเทเป็นหลัก",
         scenes: [
           {
-            scene_key: "ดิถีเริ่มปล่อยแรงออกจากตัว",
+            scene_key: "career_and_family",
             fact_sentence: "ดิถีดินของดวงนี้มีแรงถ่ายเทไปหาธาตุทองก่อน",
             bridge_sentence: "เมื่อแรงของดิถีไปออกที่ทอง จึงแปลว่าพลังการแสดงออกและสิ่งที่เจ้าชะตาปล่อยออกไปจะเด่นขึ้น",
             interpretation: "เจ้าชะตามักไม่เก็บทุกอย่างไว้ในใจ แต่มีความต้องการผลักสิ่งที่คิดให้ออกมาเป็นงานหรือการกระทำ",
@@ -133,7 +159,10 @@ describe("day master relation reading poc", () => {
     expect(preflight).toContain("ตาราง 8 ช่อง");
     expect(preflight).toContain("ตาราง relation ของดิถี");
     expect(preflight).toContain("รายละเอียดธาตุถ่ายเท");
+    expect(preflight).toContain("ธาตุสัมพันธ์ที่ใช้เปิดการอ่าน");
     expect(report).toContain("คำอธิบายแบบซินแส");
+    expect(report).toContain("ประเด็นที่ 1");
+    expect(report).not.toContain("career_and_family");
     expect(report).toContain("ภาคผนวกเทคนิค");
     expect(report).toContain("- รุ่นที่ใช้: gemini-3-flash-preview");
   });
