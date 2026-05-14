@@ -15,6 +15,18 @@ export function getSchoolLexiconRelation(systemRelation: string): string {
   return SCHOOL_LEXICON_RELATION[systemRelation] ?? systemRelation;
 }
 
+export const CANONICAL_FIVE_PHASE_RELATION_LABELS: Record<string, string> = {
+  same: "คู่ธาตุ",
+  resource: "ธาตุส่งเสริม",
+  output: "ธาตุถ่ายเท",
+  power: "ธาตุพิฆาต",
+  wealth: "พิฆาตธาตุ",
+};
+
+export function getCanonicalFivePhaseRelationLabel(relationKey: string): string {
+  return CANONICAL_FIVE_PHASE_RELATION_LABELS[relationKey] ?? `[engine: ${relationKey}]`;
+}
+
 export const SCHOOL_LEXICON_INTERACTION: Record<string, string> = {
   "combination": "ภาคีราศีบน",
   "branch-combination": "ฮะราศีล่าง",
