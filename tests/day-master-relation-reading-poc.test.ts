@@ -10,6 +10,10 @@ import {
   formatDayMasterRelationPocGeneratedReport,
   formatDayMasterRelationPocPreflightReport,
 } from "@/lib/bazi/day-master-relation-reading-poc";
+import {
+  PILLAR_CONTEXT_MAP,
+  VERTICAL_CONTEXT_MAP,
+} from "@/lib/bazi/symbolic-engine.constants";
 import { calculateBaziStructuralState } from "@/lib/bazi/symbolic-engine";
 import { CalculatedStateSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 
@@ -362,5 +366,108 @@ describe("day master relation reading poc", () => {
       const twelveQiEvidence = step4.evidenceLines.find((line) => line.includes("เซงแซ"));
       expect(twelveQiEvidence).toBeDefined();
     }
+  });
+
+  test("step 5 context mapping provides horizontal pillar context for action and wealth carriers", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step5 = packet.stepInsights[4]!;
+
+    expect(step5.titleThai).toContain("บริบทสี่เสา");
+    expect(step5.evidenceIds).toContain("S5-horizontal-pillar-context");
+    expect(step5.evidenceIds).toContain("S5-vertical-context");
+
+    const horizontalEvidence = step5.evidenceLines.find((line) => line.includes("เสา"));
+    expect(horizontalEvidence).toBeDefined();
+
+    const verticalEvidence = step5.evidenceLines.find((line) => line.includes("ฟ้ากำหนด") || line.includes("แสวงหาเอง"));
+    expect(verticalEvidence).toBeDefined();
+  });
+
+  test("step 5 maps month stem to business person context and stem vertical nature", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step5 = packet.stepInsights[4]!;
+
+    const horizontalEvidence = step5.evidenceLines.find((line) => line.includes("เสาเดือน") && line.includes("เจ้านาย"));
+    expect(horizontalEvidence).toBeDefined();
+
+    const verticalEvidence = step5.evidenceLines.find((line) => line.includes("month-stem") && line.includes("ฟ้ากำหนด"));
+    expect(verticalEvidence).toBeDefined();
+  });
+
+  test("step 5 maps branch carriers to earthly vertical nature when present", () => {
+    const branchWealthState = {
+      ...SAMPLE_CALCULATED_STATE,
+      fourPillars: {
+        year: { stem: "壬", branch: "午", hiddenStems: ["丁", "己"] },
+        month: { stem: "甲", branch: "子", hiddenStems: ["癸"] },
+        day: { stem: "癸", branch: "亥", hiddenStems: ["壬", "甲"] },
+        hour: { stem: "丙", branch: "辰", hiddenStems: ["戊", "乙", "癸"] },
+      },
+      elementAnalysis: {
+        visibleCounts: { wood: 1, fire: 2, earth: 1, metal: 0, water: 1 },
+        hiddenCounts: { wood: 2, fire: 1, earth: 3, metal: 0, water: 3 },
+        totalCounts: { wood: 3, fire: 3, earth: 4, metal: 0, water: 4 },
+        missingElements: ["metal"],
+        dominantElements: ["water", "earth"],
+        elementStrengths: [],
+      },
+    };
+    const parsedState = CalculatedStateSchema.parse(branchWealthState);
+    const packet = buildDayMasterRelationPacket(parsedState);
+    const step5 = packet.stepInsights[4]!;
+
+    const verticalEvidence = step5.evidenceLines.find((line) => line.includes("แสวงหาเอง"));
+    expect(verticalEvidence).toBeDefined();
+  });
+
+  test("step 5 falls back gracefully when no visible action or wealth carriers exist", () => {
+    const noWealthState = {
+      ...SAMPLE_CALCULATED_STATE,
+      fourPillars: {
+        year: { stem: "壬", branch: "子", hiddenStems: ["癸"] },
+        month: { stem: "癸", branch: "丑", hiddenStems: ["己", "癸", "辛"] },
+        day: { stem: "癸", branch: "亥", hiddenStems: ["壬", "甲"] },
+        hour: { stem: "壬", branch: "子", hiddenStems: ["癸"] },
+      },
+      elementAnalysis: {
+        visibleCounts: { wood: 0, fire: 0, earth: 0, metal: 0, water: 4 },
+        hiddenCounts: { wood: 1, fire: 0, earth: 1, metal: 1, water: 3 },
+        totalCounts: { wood: 1, fire: 0, earth: 1, metal: 1, water: 7 },
+        missingElements: ["fire", "earth", "metal"],
+        dominantElements: ["water"],
+        elementStrengths: [],
+      },
+    };
+    const parsedState = CalculatedStateSchema.parse(noWealthState);
+    const packet = buildDayMasterRelationPacket(parsedState);
+    const step5 = packet.stepInsights[4]!;
+
+    expect(step5.evidenceIds.length).toBeGreaterThanOrEqual(4);
+    expect(step5.summaryThai).toContain("สี่เสาแยกหน้าที่");
+  });
+});
+
+describe("pillar context map constants", () => {
+  test("all four pillars have business person and health zone dimensions", () => {
+    const pillars = ["year", "month", "day", "hour"] as const;
+    for (const pillar of pillars) {
+      expect(PILLAR_CONTEXT_MAP[pillar].businessPerson).toBeTruthy();
+      expect(PILLAR_CONTEXT_MAP[pillar].healthZone).toBeTruthy();
+      expect(PILLAR_CONTEXT_MAP[pillar].traditionalPerson).toBeTruthy();
+      expect(PILLAR_CONTEXT_MAP[pillar].administrationRole).toBeTruthy();
+      expect(PILLAR_CONTEXT_MAP[pillar].agePhase).toBeTruthy();
+      expect(PILLAR_CONTEXT_MAP[pillar].nature).toBeTruthy();
+    }
+  });
+});
+
+describe("vertical context map constants", () => {
+  test("stem and branch have nature label, meaning, business lens, and agency", () => {
+    expect(VERTICAL_CONTEXT_MAP.stem.natureLabel).toBe("ฟ้ากำหนด");
+    expect(VERTICAL_CONTEXT_MAP.branch.natureLabel).toBe("แสวงหาเอง");
+    expect(VERTICAL_CONTEXT_MAP.stem.businessLens).toBeTruthy();
+    expect(VERTICAL_CONTEXT_MAP.branch.businessLens).toBeTruthy();
+    expect(VERTICAL_CONTEXT_MAP.stem.agency).toBe("ภายนอกกำหนด");
+    expect(VERTICAL_CONTEXT_MAP.branch.agency).toBe("ตัวเองเป็นธง");
   });
 });

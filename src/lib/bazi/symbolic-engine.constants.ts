@@ -467,6 +467,87 @@ export const GENERALIZED_INTERACTION_QUALIFIER_LANES = ["twelve-qi"] as const;
 
 export const GENERALIZED_INTERACTION_QUALIFIER_KEYS = ["twelve-qi-stage"] as const;
 
+export const PILLAR_CONTEXT_MAP = {
+  year: {
+    traditionalPerson: "ปู่ย่า ตระกูล วงศ์ตระกูล",
+    businessPerson: "ตลาด สังคม ชื่อเสียง อุตสาหกรรม",
+    administrationRole: "ผู้บริหารระดับสูง กรรมการ ที่ปรึกษา",
+    agePhase: "วัยเด็ก พื้นฐานชีวิต",
+    healthZone: "หัว คอ ส่วนบนของลำตัว",
+    nature: "กำเนิดภายนอก",
+  },
+  month: {
+    traditionalPerson: "พ่อแม่ ผู้ใหญ่ในวงศ์",
+    businessPerson: "เจ้านาย ผู้บังคับบัญชา องค์กร หุ้นส่วน",
+    administrationRole: "ผู้บริหารระดับกลาง ผู้จัดการ แผนก",
+    agePhase: "วัยรุ่น วัยทำงานตอนต้น",
+    healthZone: "หน้าอก แขน ระบบหายใจ",
+    nature: "ฐานรากและสภาพแวดล้อม",
+  },
+  day: {
+    traditionalPerson: "ตัวเอง คู่ครอง",
+    businessPerson: "ตัวเองในฐานะผู้ประกอบการ พันธมิตรใกล้ตัว",
+    administrationRole: "ผู้ปฏิบัติงานหลัก ผู้รับผิดชอบตรง",
+    agePhase: "วัยกลางคน ช่วงสร้างครอบครัว",
+    healthZone: "ลำตัว หัวใจ กระเพาะ",
+    nature: "แกนตัวตนและชีวิตใกล้ตัว",
+  },
+  hour: {
+    traditionalPerson: "ลูก บริวาร ผู้ติดตาม",
+    businessPerson: "ลูกน้อง ทีม ผลงาน สินค้า สิ่งที่สร้างภายหลัง",
+    administrationRole: "ทีมปฏิบัติการ หน่วยงานย่อย โครงการ",
+    agePhase: "วัยชรา มรดก สิ่งที่ทิ้งไว้",
+    healthZone: "ขา เท้า ระบบสืบพันธุ์",
+    nature: "ผลลัพธ์และสิ่งที่ส่งต่อ",
+  },
+} as const;
+
+export type PillarContextKey = keyof typeof PILLAR_CONTEXT_MAP;
+export type PillarContextDimension = keyof (typeof PILLAR_CONTEXT_MAP)["year"];
+
+export const VERTICAL_CONTEXT_MAP = {
+  stem: {
+    natureLabel: "ฟ้ากำหนด",
+    meaningThai: "สิ่งที่ภายนอกกำหนดมาให้ โอกาสที่เข้ามาหา ช่วงชะตาที่ฟ้าประทาน",
+    businessLens: "เงื่อนไขตลาด แนวโน้มอุตสาหกรรม โอกาสที่เข้ามาโดยไม่ได้ตั้งใจ",
+    agency: "ภายนอกกำหนด",
+  },
+  branch: {
+    natureLabel: "แสวงหาเอง",
+    meaningThai: "สิ่งที่ตัวเองสร้าง แสวงหา หรือดิ้นรนเพื่อให้ได้มา",
+    businessLens: "ความพยายามของตัวเอง ทักษะ การตัดสินใจ การลงมือทำ",
+    agency: "ตัวเองเป็นธง",
+  },
+} as const;
+
+export type VerticalLayerKey = keyof typeof VERTICAL_CONTEXT_MAP;
+
+export const TWELVE_QI_CONTEXT_MAP: Record<string, { labelThai: string; contextTag: string }> = {
+  "长生": { labelThai: "เชี่ยงแซ", contextTag: "กำเนิดใหม่ เริ่มต้น" },
+  "沐浴": { labelThai: "หมกยก", contextTag: "ล้างตัว ปรับตัว ช่วงเปราะบาง" },
+  "冠带": { labelThai: "กวงตั่ว", contextTag: "เตรียมพร้อม สวมเกราะ" },
+  "临官": { labelThai: "ลิ่มกัว", contextTag: "มีอำนาจ ได้ตำแหน่ง กำลังพีค" },
+  "帝旺": { labelThai: "ตี้อ๋วง", contextTag: "จุดสูงสุด รุ่งเรืองเต็มที่" },
+  "衰": { labelThai: "ซวย", contextTag: "เริ่มถดถอย ต้องระวัง" },
+  "病": { labelThai: "แป่", contextTag: "อ่อนแอ ป่วย มีปัญหา" },
+  "死": { labelThai: "ซี่", contextTag: "สิ้นสุด ดับสูญ" },
+  "墓": { labelThai: "หมอ", contextTag: "ฝังจม สะสม เก็บกัก" },
+  "绝": { labelThai: "เจ๊าะ", contextTag: "ขาดสาย หมดสิ้น ต่ำสุด" },
+  "胎": { labelThai: "ทอ", contextTag: "เริ่มฟื้น เพาะชำ" },
+  "养": { labelThai: "เอี้ยง", contextTag: "บำรุง เติบโต เสริมสร้าง" },
+};
+
+export const INTERACTION_CONTEXT_TAG: Record<string, string> = {
+  "heavenly-stem-clash": "ชงฟ้า: แรงขัดแย้งจากภายนอก กระทบโดยไม่คาดฝัน",
+  "earthly-branch-clash": "ชงดิน: แรงขัดแย้งจากการกระทำของตัวเอง ผลจากการตัดสินใจ",
+  "earthly-branch-harm": "เฮ้ง: แรงทำร้ายแบบซ่อนเร้น ถูกหักหลัง ถูกทำร้ายจากคนใกล้ตัว",
+  "earthly-branch-destruction": "ไห่: ความสัมพันธ์พังทลาย ผิดหวัง เสียใจ",
+  "earthly-branch-punishment": "ผว/กุ้ยนั้ง: ลงโทษ กดดัน ความเครียด",
+  "earthly-branch-liu-he": "ฮะดิน: การรวมกลุ่ม พันธมิตร การสนับสนุน",
+  "heavenly-stem-he": "ฮะฟ้า: ความร่วมมือจากภายนอก โอกาสที่เข้ามาเอง",
+  "earthly-branch-ban-san-he": "กึ่งภาคี: การสนับสนุนบางส่วน พันธมิตรที่ยังไม่เต็มที่",
+};
+
 export const SHEN_SHA_COPY = {
   nobleman: {
     starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",

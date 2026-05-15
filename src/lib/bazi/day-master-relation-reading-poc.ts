@@ -11,8 +11,12 @@ import {
   CONTROLS,
   ELEMENT_LABELS_TH,
   GENERATES,
+  INTERACTION_CONTEXT_TAG,
+  PILLAR_CONTEXT_MAP,
   STEM_TO_ELEMENT,
+  TWELVE_QI_CONTEXT_MAP,
   TWELVE_QI_LABELS_TH,
+  VERTICAL_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
 import { YANG_STEMS } from "@/lib/bazi/pillar-display";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
@@ -580,6 +584,123 @@ function buildStep4WealthVector(
   };
 }
 
+type Step5CarrierContext = {
+  carrierKey: string;
+  pillarKey: PillarKey;
+  layer: "stem" | "branch";
+  symbol: string;
+  relationKey: RelationKey;
+  relationLabelThai: string;
+  pillarContext: {
+    traditionalPerson: string;
+    businessPerson: string;
+    administrationRole: string;
+    agePhase: string;
+    healthZone: string;
+    nature: string;
+  };
+  verticalContext: {
+    natureLabel: string;
+    meaningThai: string;
+    businessLens: string;
+    agency: string;
+  };
+  twelveQiContext: string | null;
+  interactionContexts: string[];
+};
+
+type Step5ContextMapping = {
+  carrierContexts: Step5CarrierContext[];
+  pillarDimensionSummary: Array<{
+    pillarKey: PillarKey;
+    pillarLabelThai: string;
+    carriers: Array<{
+      carrierKey: string;
+      layer: "stem" | "branch";
+      symbol: string;
+      relationLabelThai: string;
+      contextLine: string;
+    }>;
+  }>;
+};
+
+function buildStep5ContextMapping(
+  actionVector: Step3ActionVector,
+  wealthVector: Step4WealthVector,
+  allTargets: RelationTarget[],
+  interactionState: CalculatedStateValue["interactionState"],
+  twelveQi: Record<string, string>,
+): Step5ContextMapping {
+  const visibleActionKeys = new Set(actionVector.visibleActionCarriers.map((c) => c.carrierKey));
+  const visibleWealthKeys = new Set(wealthVector.visibleWealthCarriers.map((c) => c.carrierKey));
+
+  const relevantCarrierKeys = new Set([...visibleActionKeys, ...visibleWealthKeys]);
+
+  const interactionMap = new Map<string, string[]>();
+  if (interactionState?.relations?.length) {
+    for (const relation of interactionState.relations) {
+      const tag = INTERACTION_CONTEXT_TAG[relation.familyKey];
+      if (!tag) continue;
+      const participants = relation.participantEntityIds ?? [];
+      for (const pid of participants) {
+        const existing = interactionMap.get(pid) ?? [];
+        existing.push(tag);
+        interactionMap.set(pid, existing);
+      }
+    }
+  }
+
+  const relevantCarriers = allTargets.filter(
+    (t) => relevantCarrierKeys.has(t.carrierKey) && STEP_3_VISIBLE_LAYERS.has(t.layer),
+  );
+
+  const carrierContexts: Step5CarrierContext[] = relevantCarriers.map((carrier) => {
+    const pillarContext = PILLAR_CONTEXT_MAP[carrier.pillarKey];
+    const verticalKey = carrier.layer === "stem" ? "stem" : "branch";
+    const verticalContext = VERTICAL_CONTEXT_MAP[verticalKey];
+    const resolvedLayer = verticalKey as "stem" | "branch";
+
+    const qiKey = carrier.layer === "branch"
+      ? twelveQi[`${carrier.pillarKey}Branch`]
+      : undefined;
+    const twelveQiEntry = qiKey ? TWELVE_QI_CONTEXT_MAP[qiKey] : undefined;
+
+    const interactionContexts = interactionMap.get(carrier.carrierKey) ?? [];
+
+    return {
+      carrierKey: carrier.carrierKey,
+      pillarKey: carrier.pillarKey,
+      layer: resolvedLayer,
+      symbol: carrier.symbol,
+      relationKey: carrier.relationKey,
+      relationLabelThai: carrier.relationLabelThai,
+      pillarContext,
+      verticalContext,
+      twelveQiContext: twelveQiEntry ? `${twelveQiEntry.labelThai}: ${twelveQiEntry.contextTag}` : null,
+      interactionContexts,
+    };
+  });
+
+  const pillarDimensionSummary = (["year", "month", "day", "hour"] as const).map((pillarKey) => {
+    const pillarLabel = PILLAR_LABELS[pillarKey];
+    const carriersInPillar = carrierContexts.filter((c) => c.pillarKey === pillarKey);
+
+    return {
+      pillarKey,
+      pillarLabelThai: pillarLabel,
+      carriers: carriersInPillar.map((c) => ({
+        carrierKey: c.carrierKey,
+        layer: c.layer,
+        symbol: c.symbol,
+        relationLabelThai: c.relationLabelThai,
+        contextLine: `${c.relationLabelThai} ${c.layer === "stem" ? "ฟ้า" : "ดิน"} → ${c.pillarContext.businessPerson} (${c.verticalContext.agency})${c.twelveQiContext ? ` [${c.twelveQiContext}]` : ""}${c.interactionContexts.length > 0 ? ` ⚡${c.interactionContexts.join("; ")}` : ""}`,
+      })),
+    };
+  });
+
+  return { carrierContexts, pillarDimensionSummary };
+}
+
 function buildEightSlotRows(calculatedState: CalculatedStateValue) {
   const dayMasterElement = getStemElement(calculatedState.dayMaster);
 
@@ -761,6 +882,13 @@ function buildStepInsights(options: {
     calculatedState.twelveQi,
   );
   const pillarContextLines = buildPillarContextLines(calculatedState);
+  const contextMapping = buildStep5ContextMapping(
+    actionVector,
+    wealthVector,
+    relationTargets,
+    calculatedState.interactionState,
+    calculatedState.twelveQi,
+  );
 
   const step1EvidenceIds = [
     addEvidence(
@@ -941,13 +1069,72 @@ function buildStepInsights(options: {
       : [],
   ];
 
-  const step5EvidenceIds = pillarContextLines.map((line, index) => addEvidence(
-    evidenceCatalog,
-    `S5-context-${index + 1}`,
-    `บริบท${PILLAR_LABELS[PILLAR_SEQUENCE[index]]}`,
-    line,
-    "Step 5",
-  ));
+  const step5EvidenceIds: string[] = [];
+
+  const hasRelevantCarriers = contextMapping.carrierContexts.length > 0;
+
+  if (hasRelevantCarriers) {
+    step5EvidenceIds.push(
+      addEvidence(
+        evidenceCatalog,
+        "S5-horizontal-pillar-context",
+        "บริบทแนวราบสี่เสา",
+        contextMapping.pillarDimensionSummary
+          .filter((p) => p.carriers.length > 0)
+          .map((p) => `เสา${p.pillarLabelThai}: ${p.carriers.map((c) => c.contextLine).join(" | ")}`)
+          .join("\n"),
+        "Step 5",
+      ),
+    );
+
+    step5EvidenceIds.push(
+      addEvidence(
+        evidenceCatalog,
+        "S5-vertical-context",
+        "บริบทแนวตั้ง ฟ้า/ดิน",
+        contextMapping.carrierContexts
+          .map((c) => `${c.carrierKey} → ${c.verticalContext.natureLabel}: ${c.verticalContext.meaningThai}`)
+          .join("\n"),
+        "Step 5",
+      ),
+    );
+  }
+
+  const carriersWithQi = contextMapping.carrierContexts.filter((c) => c.twelveQiContext !== null);
+  if (carriersWithQi.length > 0) {
+    step5EvidenceIds.push(
+      addEvidence(
+        evidenceCatalog,
+        "S5-twelve-qi-modifier",
+        "12 เซงแซ ต่อบริบท",
+        carriersWithQi.map((c) => `${c.carrierKey}: ${c.twelveQiContext}`).join(" | "),
+        "Step 5",
+      ),
+    );
+  }
+
+  const carriersWithInteraction = contextMapping.carrierContexts.filter((c) => c.interactionContexts.length > 0);
+  if (carriersWithInteraction.length > 0) {
+    step5EvidenceIds.push(
+      addEvidence(
+        evidenceCatalog,
+        "S5-interaction-modifier",
+        "ปฏิกิริยาต่อบริบท",
+        carriersWithInteraction.map((c) => `${c.carrierKey}: ${c.interactionContexts.join("; ")}`).join(" | "),
+        "Step 5",
+      ),
+    );
+  }
+
+  step5EvidenceIds.push(
+    ...pillarContextLines.map((line, index) => addEvidence(
+      evidenceCatalog,
+      `S5-context-${index + 1}`,
+      `บริบท${PILLAR_LABELS[PILLAR_SEQUENCE[index]]}`,
+      line,
+      "Step 5",
+    )),
+  );
 
   const step6EvidenceIds = advancedSignals.map((line, index) => addEvidence(
     evidenceCatalog,
@@ -1031,8 +1218,18 @@ function buildStepInsights(options: {
       stepNumber: 5,
       stepKey: "context-mapping",
       titleThai: "บริบทสี่เสา",
-      summaryThai: "สี่เสาแยกหน้าที่กันชัด: ปีคือสังคม เดือนคือองค์กรและฐานใหญ่ วันคือชีวิตใกล้ตัว ยามคือผลงานและสิ่งที่จะสร้างต่อจากนี้ จึงต้อง map relation กลับไปยังพื้นที่ชีวิตให้ถูกจุด",
-      auditFocusThai: "ดูว่าพลังเดียวกันไปตกคนละเสาแล้วให้ความหมายคนละเรื่องอย่างไร",
+      summaryThai: [
+        "สี่เสาแยกหน้าที่กันชัด: ปีคือสังคม เดือนคือองค์กรและฐานใหญ่ วันคือชีวิตใกล้ตัว ยามคือผลงานและสิ่งที่จะสร้างต่อจากนี้",
+        ...hasRelevantCarriers
+          ? contextMapping.pillarDimensionSummary
+              .filter((p) => p.carriers.length > 0)
+              .map((p) => `เสา${p.pillarLabelThai}: ${p.carriers.map((c) => `${c.relationLabelThai}(${c.layer === "stem" ? "ฟ้า" : "ดิน"})`).join(" ")}`)
+          : ["ยังไม่มีพลังถ่ายเทหรือโชคลาภที่มองเห็นบนชั้นฟ้าดิน จึงต้องอ่านบริบทจากสี่เสาโดยรวมก่อน"],
+        ...hasRelevantCarriers && contextMapping.carrierContexts.filter((c) => c.twelveQiContext !== null).length > 0
+          ? [`; ลีลาเซงแซ: ${contextMapping.carrierContexts.filter((c) => c.twelveQiContext !== null).map((c) => `${c.carrierKey}→${c.twelveQiContext}`).join(" ")}`]
+          : [],
+      ].join(" | "),
+      auditFocusThai: "ดูว่าพลังเดียวกันไปตกคนละเสาแล้วให้ความหมายคนละเรื่องอย่างไร และชั้นฟ้า/ดินเปลี่ยนธรรมชาติของพลังอย่างไร",
       evidenceIds: step5EvidenceIds,
       evidenceLines: step5EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
