@@ -5,7 +5,9 @@ import { config as loadEnv } from "dotenv";
 
 import {
   DEFAULT_DAY_MASTER_RELATION_POC_MODEL,
+  buildDayMasterRelationBrief,
   buildDayMasterRelationPacket,
+  formatDayMasterRelationPocBriefPreview,
   formatDayMasterRelationPocGeneratedReport,
   formatDayMasterRelationPocPreflightReport,
   generateDayMasterRelationReadingPoc,
@@ -84,10 +86,17 @@ export async function main(argv = process.argv.slice(2)) {
   const repository = createDbKnowledgeRepository();
   const calculatedState = await calculateBaziChart(options.rawInput, repository);
   const packet = buildDayMasterRelationPacket(calculatedState);
+  const brief = buildDayMasterRelationBrief(options.rawInput, packet);
 
   console.log(formatDayMasterRelationPocPreflightReport({
     rawInput: options.rawInput,
     packet,
+  }));
+  console.log("");
+  console.log(formatDayMasterRelationPocBriefPreview({
+    rawInput: options.rawInput,
+    brief,
+    model: options.model,
   }));
 
   if (options.dryRun) {
@@ -104,8 +113,11 @@ export async function main(argv = process.argv.slice(2)) {
   console.log(formatDayMasterRelationPocGeneratedReport({
     rawInput: options.rawInput,
     packet: result.packet,
+    brief: result.brief,
     response: result.response,
     model: result.model,
+    includeAuditAppendix: true,
+    includeBriefPreview: false,
   }));
 }
 
