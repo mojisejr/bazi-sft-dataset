@@ -8,10 +8,13 @@ import {
   BRANCH_HIDDEN_STEMS,
   BRANCH_LABELS_TH,
   BRANCH_TO_ELEMENT,
+  CONTROLS,
   ELEMENT_LABELS_TH,
   GENERATES,
   STEM_TO_ELEMENT,
+  TWELVE_QI_LABELS_TH,
 } from "@/lib/bazi/symbolic-engine.constants";
+import { YANG_STEMS } from "@/lib/bazi/pillar-display";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
@@ -309,6 +312,28 @@ type Step3ActionVector = {
   hiddenActionCarrierSummary: string;
 };
 
+const WEALTH_CAPACITY_MAP: Record<string, { id: string; label: string; metaphor: string; canGrab: boolean }> = {
+  "very-weak": { id: "very-weak", label: "คว้าไม่ได้", metaphor: "ดินเหลว/โคลน เห็นโชคแต่ไขว่คว้าไม่ได้", canGrab: false },
+  "weak": { id: "weak", label: "คว้ายาก", metaphor: "ต้องมีธาตุเสริม (เพื่อน/ผู้ใหญ่) ถึงจะรอด", canGrab: false },
+  "balanced": { id: "balanced", label: "คว้าได้", metaphor: "สมดุล ทำงานได้ผลตามวัฏจักร", canGrab: true },
+  "strong": { id: "strong", label: "คว้าได้ดี", metaphor: "มีศักยภาพ ยืนหยัดได้ด้วยตนเอง", canGrab: true },
+  "very-strong": { id: "very-strong", label: "เก็บกักไม่ได้", metaphor: "ภูเขาหิน โชคไหลมาแต่เก็บไม่อยู่", canGrab: false },
+};
+
+type Step4WealthVector = {
+  wealthElement: SupportedElementValue;
+  wealthElementLabelThai: string;
+  visibleWealthCarriers: RelationTarget[];
+  strongestVisibleWealthCarrier: RelationTarget | null;
+  hiddenWealthCarrierCount: number;
+  hiddenWealthCarrierSummary: string;
+  capacity: { id: string; label: string; metaphor: string; canGrab: boolean };
+  pianCaiBadges: Array<{ carrierLabel: string; pillarKey: string; isPianCai: boolean }>;
+  muYuBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string }>;
+  absentWealth: boolean;
+};
+
 function buildSeed(rawInput: RawInputValue) {
   const digest = createHash("sha256")
     .update(JSON.stringify(rawInput))
@@ -473,6 +498,85 @@ function buildStep3ActionVector(
     hiddenActionCarrierSummary: hiddenActionCarriers.length > 0
       ? hiddenActionCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
       : "ไม่มี",
+  };
+}
+
+function getCarrierPolarityIsYang(carrier: RelationTarget): boolean {
+  if (carrier.layer === "stem") {
+    return YANG_STEMS.has(carrier.symbol);
+  }
+  const mainQi = BRANCH_HIDDEN_STEMS[carrier.symbol as keyof typeof BRANCH_HIDDEN_STEMS]?.[0];
+  return mainQi ? YANG_STEMS.has(mainQi) : false;
+}
+
+function buildStep4WealthVector(
+  allTargets: RelationTarget[],
+  dayMasterElement: SupportedElementValue,
+  dayMasterStem: string,
+  strengthState: string,
+  twelveQi: Record<string, string>,
+): Step4WealthVector {
+  const wealthElement = CONTROLS[dayMasterElement as keyof typeof CONTROLS] as SupportedElementValue;
+
+  const visibleWealthCarriers = allTargets
+    .filter((t) => STEP_3_VISIBLE_LAYERS.has(t.layer) && t.relationKey === "wealth")
+    .sort((a, b) => a.weight - b.weight);
+
+  const hiddenWealthCarriers = allTargets
+    .filter((t) => t.layer === "hidden" && t.relationKey === "wealth");
+
+  const strongestVisibleWealthCarrier = visibleWealthCarriers[0] ?? null;
+
+  const dayMasterIsYang = YANG_STEMS.has(dayMasterStem);
+
+  const capacityFallback = WEALTH_CAPACITY_MAP["balanced"]!;
+  const capacity = WEALTH_CAPACITY_MAP[strengthState] ?? capacityFallback;
+
+  const pianCaiBadges: Step4WealthVector["pianCaiBadges"] = visibleWealthCarriers.map((c) => {
+    const carrierIsYang = getCarrierPolarityIsYang(c);
+    return {
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+      pillarKey: c.pillarKey,
+      isPianCai: dayMasterIsYang === carrierIsYang,
+    };
+  });
+
+  const muYuBadges: Step4WealthVector["muYuBadges"] = visibleWealthCarriers
+    .filter((c) => c.layer === "branch")
+    .filter((c) => {
+      const stage = twelveQi[`${c.pillarKey}Branch`];
+      return stage === "沐浴";
+    })
+    .map((c) => ({
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+      pillarKey: c.pillarKey,
+      stageLabel: TWELVE_QI_LABELS_TH["沐浴"] ?? "หมกยก",
+    }));
+
+  const twelveQiBadges: Step4WealthVector["twelveQiBadges"] = visibleWealthCarriers
+    .filter((c) => c.layer === "branch")
+    .map((c) => ({
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+      pillarKey: c.pillarKey,
+      stageLabel: twelveQi[`${c.pillarKey}Branch`]
+        ? (TWELVE_QI_LABELS_TH[twelveQi[`${c.pillarKey}Branch`] as keyof typeof TWELVE_QI_LABELS_TH] ?? "ไม่ระบุ")
+        : "ไม่ระบุ",
+    }));
+
+  return {
+    wealthElement,
+    wealthElementLabelThai: getElementLabelThai(wealthElement),
+    visibleWealthCarriers,
+    strongestVisibleWealthCarrier,
+    hiddenWealthCarrierCount: hiddenWealthCarriers.length,
+    hiddenWealthCarrierSummary: hiddenWealthCarriers.length > 0
+      ? hiddenWealthCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+      : "ไม่มี",
+    capacity,
+    pianCaiBadges,
+    muYuBadges,
+    twelveQiBadges,
+    absentWealth: visibleWealthCarriers.length === 0,
   };
 }
 
@@ -642,15 +746,20 @@ function buildStepInsights(options: {
   relationSummary: RelationSummary[];
   advancedSignals: string[];
 }) {
-  const { calculatedState, relationTargets, relationSummary, advancedSignals } = options;
+  const { calculatedState, relationTargets, advancedSignals } = options;
   const evidenceCatalog: AuditEvidence[] = [];
   const dayMasterElement = getStemElement(calculatedState.dayMaster);
   const dayBranchLabelThai = getSymbolThaiForBranch(calculatedState.fourPillars.day.branch);
   const strengthProfile = calculatedState.dayMasterStrengthProfile;
   const sixtyJiazi = calculatedState.sixtyJiaziCorePersona;
   const actionVector = buildStep3ActionVector(relationTargets, dayMasterElement, calculatedState.interactionState, calculatedState.twelveQi);
-  const outputRelation = relationSummary.find((entry) => entry.relationKey === "output")!;
-  const wealthRelation = relationSummary.find((entry) => entry.relationKey === "wealth")!;
+  const wealthVector = buildStep4WealthVector(
+    relationTargets,
+    dayMasterElement,
+    calculatedState.dayMaster,
+    strengthProfile?.strengthState ?? "balanced",
+    calculatedState.twelveQi,
+  );
   const pillarContextLines = buildPillarContextLines(calculatedState);
 
   const step1EvidenceIds = [
@@ -766,18 +875,70 @@ function buildStepInsights(options: {
   const step4EvidenceIds = [
     addEvidence(
       evidenceCatalog,
-      "S4-output",
-      "ผลลัพธ์ที่ออกจากตัว",
-      `${outputRelation.relationLabelThai} ${outputRelation.targetCount} จุด; จุดเด่นคือ ${outputRelation.strongestCarrierThai}`,
+      "S4-wealth-element",
+      "ธาตุโชคลาภ (สิ่งที่ดิถีพิฆาต)",
+      `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} พิฆาตธาตุ${wealthVector.wealthElementLabelThai} จึงใช้ธาตุ${wealthVector.wealthElementLabelThai}เป็นแกนอ่านโชคลาภ`,
       "Step 4",
     ),
     addEvidence(
       evidenceCatalog,
-      "S4-wealth",
-      "โชคลาภและสิ่งที่ต้องคว้า",
-      `${wealthRelation.relationLabelThai} ${wealthRelation.targetCount} จุด; จุดเด่นคือ ${wealthRelation.strongestCarrierThai}`,
+      "S4-visible-wealth-carriers",
+      "จุดที่มองเห็นธาตุโชคลาภ",
+      wealthVector.visibleWealthCarriers.length > 0
+        ? wealthVector.visibleWealthCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol} (${t.elementLabelThai})`).join(", ")
+        : "ไม่พบธาตุโชคลาภบนชั้นมองเห็น ต้องรอรอบเวลาจร",
       "Step 4",
     ),
+    addEvidence(
+      evidenceCatalog,
+      "S4-strongest-visible-wealth-carrier",
+      "จุดแรงสุดของธาตุโชคลาภ",
+      wealthVector.strongestVisibleWealthCarrier
+        ? `${wealthVector.strongestVisibleWealthCarrier.pillarLabelThai} ${wealthVector.strongestVisibleWealthCarrier.symbol} (${wealthVector.strongestVisibleWealthCarrier.elementLabelThai})`
+        : "ไม่มีจุดมองเห็น",
+      "Step 4",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S4-hidden-deferred",
+      "ธาตุโชคลาภที่เก็บไว้อ่านขั้นสูง",
+      `ซ่อน ${wealthVector.hiddenWealthCarrierCount} จุด: ${wealthVector.hiddenWealthCarrierSummary}`,
+      "Step 4",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S4-capacity",
+      `ศักยภาพคว้าโชค: ${wealthVector.capacity.label}`,
+      `${wealthVector.capacity.metaphor} (สามารถคว้า: ${wealthVector.capacity.canGrab ? "ได้" : "ไม่ได้"})`,
+      "Step 4",
+    ),
+    ...wealthVector.pianCaiBadges.some((b) => b.isPianCai)
+      ? [addEvidence(
+          evidenceCatalog,
+          "S4-pian-cai",
+          "ลาภเปีย (ธาตุโชคลาภที่ต่างขั้วกับดิถี)",
+          wealthVector.pianCaiBadges.filter((b) => b.isPianCai).map((b) => b.carrierLabel).join(", "),
+          "Step 4",
+        )]
+      : [],
+    ...wealthVector.muYuBadges.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S4-mu-yu",
+          "ลาภหมกยก (ธาตุโชคลาภอยู่ช่วงหมกยก)",
+          wealthVector.muYuBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel}`).join(" | "),
+          "Step 4",
+        )]
+      : [],
+    ...wealthVector.twelveQiBadges.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S4-twelve-qi-badges",
+          "12 เซงแซ (ลีลาโชคลาภ)",
+          wealthVector.twelveQiBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel}`).join(" | "),
+          "Step 4",
+        )]
+      : [],
   ];
 
   const step5EvidenceIds = pillarContextLines.map((line, index) => addEvidence(
@@ -844,8 +1005,25 @@ function buildStepInsights(options: {
       stepNumber: 4,
       stepKey: "result-wealth",
       titleThai: "ผลลัพธ์และโชคลาภ",
-      summaryThai: `ผลลัพธ์ที่ออกจากตัวอยู่ที่ ${outputRelation.relationLabelThai} ${outputRelation.targetCount} จุด ส่วนโชคลาภหรือสิ่งที่ต้องคว้าอยู่ที่ ${wealthRelation.relationLabelThai} ${wealthRelation.targetCount} จุด จึงใช้สองแกนนี้อ่านเรื่องผลตอบแทนและสิ่งที่ต้องแลก`,
-      auditFocusThai: "แยกให้ชัดว่าอะไรคือผลผลิตจากตัวเอง และอะไรคือสิ่งที่ต้องไปคว้าหรือรับมือ",
+      summaryThai: [
+        wealthVector.absentWealth
+          ? `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} พิฆาตธาตุ${wealthVector.wealthElementLabelThai} แต่ไม่มีจุดมองเห็นบนชั้นฟ้าดิน ต้องรอรอบเวลาจร`
+          : `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} พิฆาตธาตุ${wealthVector.wealthElementLabelThai} มองเห็น ${wealthVector.visibleWealthCarriers.length} จุด แรงสุดที่ ${wealthVector.strongestVisibleWealthCarrier!.pillarLabelThai} ${wealthVector.strongestVisibleWealthCarrier!.symbol}`,
+        `; ศักยภาพคว้าโชค: ${wealthVector.capacity.label}`,
+        wealthVector.pianCaiBadges.some((b) => b.isPianCai)
+          ? `; ลาภเปีย (ต่างขั้ว): ${wealthVector.pianCaiBadges.filter((b) => b.isPianCai).map((b) => b.carrierLabel).join(", ")}`
+          : "",
+        wealthVector.muYuBadges.length > 0
+          ? `; ลาภหมกยก: ${wealthVector.muYuBadges.map((b) => `${b.carrierLabel}อยู่${b.stageLabel}`).join(" ")}`
+          : "",
+        wealthVector.twelveQiBadges.length > 0
+          ? `; ${wealthVector.twelveQiBadges.map((b) => `${b.carrierLabel}อยู่${b.stageLabel}`).join(" ")}`
+          : "",
+        wealthVector.hiddenWealthCarrierCount > 0
+          ? `; ซ่อนอีก ${wealthVector.hiddenWealthCarrierCount} จุด เก็บไว้อ่านขั้นสูง`
+          : "",
+      ].join(""),
+      auditFocusThai: "ดูว่าดิถีพิฆาตธาตุไหน มีจุดมองเห็นกี่จุด จุดไหนแรงสุด ศักยภาพคว้าโชคเป็นอย่างไร มีลาภเปีย (ต่างขั้ว) หรือลาภหมกยกไหม และลีลา 12 เซงแซเป็นอย่างไร ส่วนที่ซ่อนอยู่เก็บไว้อ่านขั้นสูง",
       evidenceIds: step4EvidenceIds,
       evidenceLines: step4EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },

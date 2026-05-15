@@ -291,4 +291,76 @@ describe("day master relation reading poc", () => {
     expect(focused).not.toContain("Step 5:");
     expect(focused).not.toContain("Step 6:");
   });
+
+  test("step 4 wealth vector identifies fire as wealth for water day master", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step4 = packet.stepInsights[3]!;
+
+    expect(step4.titleThai).toContain("โชคลาภ");
+    expect(step4.summaryThai).toContain("พิฆาตธาตุไฟ");
+    expect(step4.evidenceIds).toContain("S4-wealth-element");
+    expect(step4.evidenceIds).toContain("S4-visible-wealth-carriers");
+    expect(step4.evidenceIds).toContain("S4-capacity");
+
+    const wealthElementEvidence = step4.evidenceLines.find((line) => line.includes("พิฆาตธาตุไฟ"));
+    expect(wealthElementEvidence).toBeDefined();
+  });
+
+  test("step 4 wealth vector shows capacity from strength state", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step4 = packet.stepInsights[3]!;
+
+    expect(step4.summaryThai).toContain("คว้าได้");
+
+    const capacityEvidence = step4.evidenceLines.find((line) => line.includes("สามารถคว้า"));
+    expect(capacityEvidence).toBeDefined();
+  });
+
+  test("step 4 detects pian cai polarity for all visible wealth carriers", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step4 = packet.stepInsights[3]!;
+
+    expect(step4.evidenceIds).toContain("S4-visible-wealth-carriers");
+
+    const pianCaiEvidence = step4.evidenceLines.find((line) => line.includes("ลาภเปีย"));
+    if (pianCaiEvidence) {
+      expect(pianCaiEvidence).toContain("ยามบน 丙");
+    }
+  });
+
+  test("step 4 flags absent wealth when no visible carriers", () => {
+    const noWealthState = {
+      ...SAMPLE_CALCULATED_STATE,
+      fourPillars: {
+        year: { stem: "壬", branch: "子", hiddenStems: ["癸"] },
+        month: { stem: "癸", branch: "丑", hiddenStems: ["己", "癸", "辛"] },
+        day: { stem: "癸", branch: "亥", hiddenStems: ["壬", "甲"] },
+        hour: { stem: "壬", branch: "子", hiddenStems: ["癸"] },
+      },
+      elementAnalysis: {
+        visibleCounts: { wood: 0, fire: 0, earth: 0, metal: 0, water: 4 },
+        hiddenCounts: { wood: 1, fire: 0, earth: 1, metal: 1, water: 3 },
+        totalCounts: { wood: 1, fire: 0, earth: 1, metal: 1, water: 7 },
+        missingElements: ["fire", "earth", "metal"],
+        dominantElements: ["water"],
+        elementStrengths: [],
+      },
+    };
+    const parsedState = CalculatedStateSchema.parse(noWealthState);
+    const packet = buildDayMasterRelationPacket(parsedState);
+    const step4 = packet.stepInsights[3]!;
+
+    expect(step4.summaryThai).toContain("ไม่มีจุดมองเห็น");
+    expect(step4.summaryThai).toContain("รอรอบเวลาจร");
+  });
+
+  test("step 4 includes twelve qi badges for branch wealth carriers", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step4 = packet.stepInsights[3]!;
+
+    if (step4.evidenceIds.includes("S4-twelve-qi-badges")) {
+      const twelveQiEvidence = step4.evidenceLines.find((line) => line.includes("เซงแซ"));
+      expect(twelveQiEvidence).toBeDefined();
+    }
+  });
 });

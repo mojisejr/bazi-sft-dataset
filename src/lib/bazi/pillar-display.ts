@@ -9,7 +9,7 @@ import {
 
 const STEM_ORDER = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
 const BRANCH_ORDER = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] as const;
-const YANG_STEMS = new Set(["甲", "丙", "戊", "庚", "壬"]);
+export const YANG_STEMS = new Set(["甲", "丙", "戊", "庚", "壬"]);
 const TWELVE_QI_ORDER = ["长生", "沐浴", "冠带", "临官", "帝旺", "衰", "病", "死", "墓", "绝", "胎", "养"] as const;
 const TWELVE_QI_OFFSETS = {
   甲: 1,
