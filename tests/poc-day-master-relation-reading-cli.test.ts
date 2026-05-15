@@ -38,4 +38,21 @@ describe("relation reading cli argv", () => {
       "--relation=wealth",
     ])).toThrow("Unknown CLI option");
   });
+
+  test("parses --max-step and clamps to valid range", () => {
+    const three = parseCliExecutionOptions(["--max-step=3"]);
+    expect(three.maxStep).toBe(3);
+
+    const clampedLow = parseCliExecutionOptions(["--max-step=0"]);
+    expect(clampedLow.maxStep).toBe(1);
+
+    const clampedHigh = parseCliExecutionOptions(["--max-step=99"]);
+    expect(clampedHigh.maxStep).toBe(6);
+
+    const invalid = parseCliExecutionOptions(["--max-step=abc"]);
+    expect(invalid.maxStep).toBe(6);
+
+    const defaultVal = parseCliExecutionOptions([]);
+    expect(defaultVal.maxStep).toBe(6);
+  });
 });

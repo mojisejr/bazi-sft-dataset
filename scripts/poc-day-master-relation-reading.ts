@@ -30,6 +30,7 @@ const DEFAULT_TEST_CASE = RawInputSchema.parse({
 type CliExecutionOptions = {
   dryRun: boolean;
   model: string;
+  maxStep: number;
   rawInput: typeof DEFAULT_TEST_CASE;
 };
 
@@ -49,6 +50,9 @@ function readFlagValue(argv: string[], flag: string) {
 export function parseCliExecutionOptions(argv: string[]): CliExecutionOptions {
   const dryRun = argv.includes("--dry-run");
   const model = readFlagValue(argv, "--model") || DEFAULT_DAY_MASTER_RELATION_POC_MODEL;
+  const maxStepRaw = readFlagValue(argv, "--max-step");
+  const parsedMaxStep = maxStepRaw ? parseInt(maxStepRaw, 10) : 6;
+  const maxStep = Number.isNaN(parsedMaxStep) ? 6 : Math.max(1, Math.min(6, parsedMaxStep));
   const rawInputPatch = Object.fromEntries(
     Object.entries(RAW_INPUT_FLAG_TO_FIELD)
       .map(([flag, field]) => [field, readFlagValue(argv, flag)])
@@ -64,7 +68,7 @@ export function parseCliExecutionOptions(argv: string[]): CliExecutionOptions {
       return false;
     }
 
-    return !["--model", ...Object.keys(RAW_INPUT_FLAG_TO_FIELD)].some((flag) => entry.startsWith(`${flag}=`));
+    return !["--model", "--max-step", ...Object.keys(RAW_INPUT_FLAG_TO_FIELD)].some((flag) => entry.startsWith(`${flag}=`));
   });
 
   if (unknownFlags.length > 0) {
@@ -74,6 +78,7 @@ export function parseCliExecutionOptions(argv: string[]): CliExecutionOptions {
   return {
     dryRun,
     model,
+    maxStep,
     rawInput: RawInputSchema.parse({
       ...DEFAULT_TEST_CASE,
       ...rawInputPatch,
@@ -88,15 +93,19 @@ export async function main(argv = process.argv.slice(2)) {
   const packet = buildDayMasterRelationPacket(calculatedState);
   const brief = buildDayMasterRelationBrief(options.rawInput, packet);
 
+  const maxVisibleStep = options.maxStep < 6 ? options.maxStep : undefined;
+
   console.log(formatDayMasterRelationPocPreflightReport({
     rawInput: options.rawInput,
     packet,
+    maxVisibleStep,
   }));
   console.log("");
   console.log(formatDayMasterRelationPocBriefPreview({
     rawInput: options.rawInput,
     brief,
     model: options.model,
+    maxVisibleStep,
   }));
 
   if (options.dryRun) {
@@ -118,6 +127,7 @@ export async function main(argv = process.argv.slice(2)) {
     model: result.model,
     includeAuditAppendix: true,
     includeBriefPreview: false,
+    maxVisibleStep,
   }));
 }
 

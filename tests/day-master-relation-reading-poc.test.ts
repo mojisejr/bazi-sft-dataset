@@ -232,4 +232,63 @@ describe("day master relation reading poc", () => {
     expect(caseTwo.dayMaster).toBe("癸");
     expect(caseTwo.fourPillars.day.branch).toBe("亥");
   });
+
+  test("step 3 action vector uses visible carriers only and excludes hidden stems", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step3 = packet.stepInsights[2]!;
+
+    expect(step3.titleThai).toContain("ธาตุถ่ายเท");
+    expect(step3.summaryThai).toContain("ถ่ายเทไปธาตุไม้");
+    expect(step3.summaryThai).toContain("มองเห็น");
+    expect(step3.summaryThai).not.toContain("วันล่างแฝง 甲");
+    expect(step3.evidenceIds).toContain("S3-action-element");
+    expect(step3.evidenceIds).toContain("S3-visible-action-carriers");
+    expect(step3.evidenceIds).toContain("S3-strongest-visible-carrier");
+    expect(step3.evidenceIds).toContain("S3-hidden-deferred");
+
+    const visibleCarriers = step3.evidenceLines.find((line) => line.includes("เดือนบน 甲"));
+    expect(visibleCarriers).toBeDefined();
+
+    const hiddenDeferred = step3.evidenceLines.find((line) => line.includes("ซ่อน") && line.includes("จุด"));
+    expect(hiddenDeferred).toBeDefined();
+    expect(hiddenDeferred).toContain("甲");
+  });
+
+  test("preflight report respects maxVisibleStep to hide steps 4-6", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+
+    const full = formatDayMasterRelationPocPreflightReport({
+      rawInput: SAMPLE_RAW_INPUT,
+      packet,
+    });
+    expect(full).toContain("Step 3:");
+    expect(full).toContain("Step 4:");
+    expect(full).toContain("Step 6:");
+
+    const focused = formatDayMasterRelationPocPreflightReport({
+      rawInput: SAMPLE_RAW_INPUT,
+      packet,
+      maxVisibleStep: 3,
+    });
+    expect(focused).toContain("Step 3:");
+    expect(focused).not.toContain("Step 4:");
+    expect(focused).not.toContain("Step 5:");
+    expect(focused).not.toContain("Step 6:");
+  });
+
+  test("brief preview respects maxVisibleStep to hide steps 4-6", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const brief = buildDayMasterRelationBrief(SAMPLE_RAW_INPUT, packet);
+
+    const focused = formatDayMasterRelationPocBriefPreview({
+      rawInput: SAMPLE_RAW_INPUT,
+      brief,
+      model: "test",
+      maxVisibleStep: 3,
+    });
+    expect(focused).toContain("Step 3:");
+    expect(focused).not.toContain("Step 4:");
+    expect(focused).not.toContain("Step 5:");
+    expect(focused).not.toContain("Step 6:");
+  });
 });

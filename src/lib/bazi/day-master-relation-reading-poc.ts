@@ -56,6 +56,33 @@ const LAYER_LABELS = {
   hidden: "แฝง",
 } as const;
 
+const STEP_3_VISIBLE_LAYERS: ReadonlySet<string> = new Set(["stem", "branch"]);
+
+const STEP_3_DISTURBANCE_FAMILIES = new Set([
+  "heavenly-stem-clash",
+  "earthly-branch-clash",
+  "earthly-branch-harm",
+  "earthly-branch-destruction",
+  "earthly-branch-punishment",
+]);
+
+const STEP_3_ATTRACTION_FAMILIES = new Set([
+  "earthly-branch-liu-he",
+  "heavenly-stem-he",
+  "earthly-branch-ban-san-he",
+]);
+
+const MODIFIER_FAMILY_LABEL_THAI: Record<string, string> = {
+  "heavenly-stem-clash": "ชง (ฟ้า)",
+  "earthly-branch-clash": "ชง (ดิน)",
+  "earthly-branch-harm": "เฮ้ง (ฮะ)",
+  "earthly-branch-destruction": "ไห่",
+  "earthly-branch-punishment": "ผว / กุ้ยนั้ง",
+  "earthly-branch-liu-he": "ฮะ (ดิน)",
+  "heavenly-stem-he": "ฮะ (ฟ้า)",
+  "earthly-branch-ban-san-he": "กึ่งภาคี",
+};
+
 const RelationKeySchema = z.enum(["same", "resource", "output", "power", "wealth"]);
 const ReadingStepKeySchema = z.enum([
   "balance-core",
@@ -269,6 +296,19 @@ type RelationTarget = {
   weight: number;
 };
 
+type Step3ActionVector = {
+  actionElement: SupportedElementValue;
+  actionElementLabelThai: string;
+  visibleActionCarriers: RelationTarget[];
+  strongestVisibleActionCarrier: RelationTarget | null;
+  actionCarrierCount: number;
+  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string }>;
+  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string }>;
+  hiddenActionCarrierCount: number;
+  hiddenActionCarrierSummary: string;
+};
+
 function buildSeed(rawInput: RawInputValue) {
   const digest = createHash("sha256")
     .update(JSON.stringify(rawInput))
@@ -371,6 +411,69 @@ function getCarrierWeight(layer: "stem" | "branch" | "hidden", pillarKey: Pillar
   const layerWeight = { stem: 0, branch: 1, hidden: 2 }[layer];
   const pillarWeight = { day: 0, month: 1, hour: 2, year: 3 }[pillarKey];
   return pillarWeight * 10 + layerWeight;
+}
+
+function buildStep3ActionVector(
+  allTargets: RelationTarget[],
+  dayMasterElement: SupportedElementValue,
+  interactionState: CalculatedStateValue["interactionState"],
+  twelveQi: Record<string, string>,
+): Step3ActionVector {
+  const actionElement = GENERATES[dayMasterElement as keyof typeof GENERATES] as SupportedElementValue;
+
+  const visibleActionCarriers = allTargets
+    .filter((t) => STEP_3_VISIBLE_LAYERS.has(t.layer) && t.relationKey === "output")
+    .sort((a, b) => a.weight - b.weight);
+
+  const hiddenActionCarriers = allTargets
+    .filter((t) => t.layer === "hidden" && t.relationKey === "output");
+
+  const strongestVisibleActionCarrier = visibleActionCarriers[0] ?? null;
+
+  const disturbanceModifiers: Step3ActionVector["disturbanceModifiers"] = [];
+  const attractionModifiers: Step3ActionVector["attractionModifiers"] = [];
+
+  if (interactionState?.relations?.length) {
+    for (const relation of interactionState.relations) {
+      const family = relation.familyKey;
+      if (STEP_3_DISTURBANCE_FAMILIES.has(family)) {
+        disturbanceModifiers.push({
+          familyKey: family,
+          label: relation.label,
+          categoryThai: MODIFIER_FAMILY_LABEL_THAI[family] ?? family,
+        });
+      } else if (STEP_3_ATTRACTION_FAMILIES.has(family)) {
+        attractionModifiers.push({
+          familyKey: family,
+          label: relation.label,
+          categoryThai: MODIFIER_FAMILY_LABEL_THAI[family] ?? family,
+        });
+      }
+    }
+  }
+
+  const twelveQiBadges: Step3ActionVector["twelveQiBadges"] = visibleActionCarriers
+    .filter((c) => c.layer === "branch")
+    .map((c) => ({
+      carrierLabel: c.pillarLabelThai,
+      pillarKey: c.pillarKey,
+      stageLabel: twelveQi[`${c.pillarKey}Branch`] ?? "ไม่ระบุ",
+    }));
+
+  return {
+    actionElement,
+    actionElementLabelThai: getElementLabelThai(actionElement),
+    visibleActionCarriers,
+    strongestVisibleActionCarrier,
+    actionCarrierCount: visibleActionCarriers.length,
+    disturbanceModifiers,
+    attractionModifiers,
+    twelveQiBadges,
+    hiddenActionCarrierCount: hiddenActionCarriers.length,
+    hiddenActionCarrierSummary: hiddenActionCarriers.length > 0
+      ? hiddenActionCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+      : "ไม่มี",
+  };
 }
 
 function buildEightSlotRows(calculatedState: CalculatedStateValue) {
@@ -484,16 +587,6 @@ function summarizeCarriers(targets: RelationTarget[]) {
   return targets.map((target) => `${target.pillarLabelThai} ${target.symbol}`).join(", ");
 }
 
-function sortRelationSummary(summary: RelationSummary[]) {
-  return [...summary].sort((left, right) => {
-    if (right.targetCount !== left.targetCount) {
-      return right.targetCount - left.targetCount;
-    }
-
-    return RELATION_SEQUENCE.indexOf(left.relationKey) - RELATION_SEQUENCE.indexOf(right.relationKey);
-  });
-}
-
 function addEvidence(catalog: AuditEvidence[], id: string, labelThai: string, detailThai: string, categoryThai: string) {
   catalog.push({ id, labelThai, detailThai, categoryThai });
   return id;
@@ -545,17 +638,17 @@ function buildAdvancedSignals(calculatedState: CalculatedStateValue) {
 
 function buildStepInsights(options: {
   calculatedState: CalculatedStateValue;
+  relationTargets: RelationTarget[];
   relationSummary: RelationSummary[];
   advancedSignals: string[];
 }) {
-  const { calculatedState, relationSummary, advancedSignals } = options;
+  const { calculatedState, relationTargets, relationSummary, advancedSignals } = options;
   const evidenceCatalog: AuditEvidence[] = [];
   const dayMasterElement = getStemElement(calculatedState.dayMaster);
   const dayBranchLabelThai = getSymbolThaiForBranch(calculatedState.fourPillars.day.branch);
   const strengthProfile = calculatedState.dayMasterStrengthProfile;
   const sixtyJiazi = calculatedState.sixtyJiaziCorePersona;
-  const sortedRelations = sortRelationSummary(relationSummary).filter((entry) => entry.targetCount > 0);
-  const topRelations = sortedRelations.slice(0, 2);
+  const actionVector = buildStep3ActionVector(relationTargets, dayMasterElement, calculatedState.interactionState, calculatedState.twelveQi);
   const outputRelation = relationSummary.find((entry) => entry.relationKey === "output")!;
   const wealthRelation = relationSummary.find((entry) => entry.relationKey === "wealth")!;
   const pillarContextLines = buildPillarContextLines(calculatedState);
@@ -611,20 +704,63 @@ function buildStepInsights(options: {
   const step3EvidenceIds = [
     addEvidence(
       evidenceCatalog,
-      "S3-primary-relations",
-      "พลังมาตรฐานที่เด่นสุด",
-      topRelations.length > 0
-        ? topRelations.map((relation) => `${relation.relationLabelThai} ${relation.targetCount} จุด (เด่นที่ ${relation.strongestCarrierThai})`).join(" | ")
-        : "ยังไม่พบ relation เด่นที่ยกขึ้นมาขับการอ่าน",
+      "S3-action-element",
+      "ธาตุถ่ายเท (พลังมาตรฐานแรงกระทำ)",
+      `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai}`,
       "Step 3",
     ),
     addEvidence(
       evidenceCatalog,
-      "S3-supportive-relations",
-      "แรงประคองและแรงระบาย",
-      relationSummary.map((relation) => `${relation.relationLabelThai} ${relation.targetCount} จุด`).join(" | "),
+      "S3-visible-action-carriers",
+      "จุดที่มองเห็นธาตุถ่ายเท",
+      actionVector.visibleActionCarriers.length > 0
+        ? actionVector.visibleActionCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+        : "ไม่พบธาตุถ่ายเทบนชั้นมองเห็น",
       "Step 3",
     ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-strongest-visible-carrier",
+      "จุดแรงสุดของธาตุถ่ายเท",
+      actionVector.strongestVisibleActionCarrier
+        ? `${actionVector.strongestVisibleActionCarrier.pillarLabelThai} ${actionVector.strongestVisibleActionCarrier.symbol} (${actionVector.strongestVisibleActionCarrier.elementLabelThai})`
+        : "ไม่มีจุดมองเห็น",
+      "Step 3",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-hidden-deferred",
+      "ธาตุถ่ายเทที่เก็บไว้อ่านขั้นสูง",
+      `ซ่อน ${actionVector.hiddenActionCarrierCount} จุด: ${actionVector.hiddenActionCarrierSummary}`,
+      "Step 3",
+    ),
+    ...actionVector.disturbanceModifiers.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S3-disturbance-modifiers",
+          "แรงรบกวน (ชง เฮ้ง ไห่ ผว กุ้ยนั้ง)",
+          actionVector.disturbanceModifiers.map((m) => `${m.categoryThai}: ${m.label}`).join(" | "),
+          "Step 3",
+        )]
+      : [],
+    ...actionVector.attractionModifiers.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S3-attraction-modifiers",
+          "แรงดึงดูด (ฮะ ภาคี ที่ไม่แปลงธาตุ)",
+          actionVector.attractionModifiers.map((m) => `${m.categoryThai}: ${m.label}`).join(" | "),
+          "Step 3",
+        )]
+      : [],
+    ...actionVector.twelveQiBadges.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S3-twelve-qi-badges",
+          "12 เซงแซ (ลีลาการกระทำ)",
+          actionVector.twelveQiBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel}`).join(" | "),
+          "Step 3",
+        )]
+      : [],
   ];
 
   const step4EvidenceIds = [
@@ -682,11 +818,25 @@ function buildStepInsights(options: {
     {
       stepNumber: 3,
       stepKey: "standard-energies",
-      titleThai: "พลังมาตรฐานและการขับเคลื่อน",
-      summaryThai: topRelations.length > 0
-        ? `แรงที่ขับดวงเด่นคือ ${topRelations.map((relation) => `${relation.relationLabelThai} ${relation.targetCount} จุด`).join(" และ ")}; จึงเห็นว่าดวงนี้เคลื่อนด้วยพลังมาตรฐานชุดนี้ก่อน`
-        : "ยังไม่เห็น relation ชุดใดเด่นพอจะขึ้นเป็นตัวขับหลัก จึงต้องอ่านจากสมดุลและบริบทประกอบกัน",
-      auditFocusThai: "ดูว่าพลังมาตรฐานห้าชุดใดขึ้นนำ และมันพาเจ้าชะตาไปลงแรงแบบไหน",
+      titleThai: "พลังมาตรฐาน: ธาตุถ่ายเท (แรงกระทำ)",
+      summaryThai: [
+        actionVector.actionCarrierCount > 0
+          ? `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai} มองเห็น ${actionVector.actionCarrierCount} จุด แรงสุดที่ ${actionVector.strongestVisibleActionCarrier!.pillarLabelThai} ${actionVector.strongestVisibleActionCarrier!.symbol}`
+          : `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai} แต่ไม่มีจุดมองเห็นบนชั้นฟ้าดิน ต้องอ่านจากบริบทและขั้นสูงประกอบ`,
+        actionVector.disturbanceModifiers.length > 0
+          ? `; ติด${actionVector.disturbanceModifiers.map((m) => m.categoryThai).join(" ")}`
+          : "",
+        actionVector.attractionModifiers.length > 0
+          ? `; มี${actionVector.attractionModifiers.map((m) => m.categoryThai).join(" ")}ดึงดูด`
+          : "",
+        actionVector.twelveQiBadges.length > 0
+          ? `; ${actionVector.twelveQiBadges.map((b) => `${b.carrierLabel}อยู่${b.stageLabel}`).join(" ")}`
+          : "",
+        actionVector.hiddenActionCarrierCount > 0
+          ? `; ซ่อนอีก ${actionVector.hiddenActionCarrierCount} จุด เก็บไว้อ่านขั้นสูง`
+          : "",
+      ].join(""),
+      auditFocusThai: "ดูว่าดิถีถ่ายเทไปธาตุไหน มีจุดมองเห็นกี่จุด จุดไหนแรงสุด มีแรงรบกวนอะไร (ชง เฮ้ง ไห่ ผว) มีแรงดึงดูดอะไร (ฮะ ภาคี) และลีลา 12 เซงแซเป็นอย่างไร ส่วนที่ซ่อนอยู่เก็บไว้อ่านขั้นสูง",
       evidenceIds: step3EvidenceIds,
       evidenceLines: step3EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
@@ -739,6 +889,7 @@ export function buildDayMasterRelationPacket(calculatedState: CalculatedStateVal
     ?? `หลักวัน ${calculatedState.dayMaster}${calculatedState.fourPillars.day.branch} เป็นแกนตัวตนหลักของดวงนี้`;
   const { evidenceCatalog, stepInsights } = buildStepInsights({
     calculatedState,
+    relationTargets,
     relationSummary,
     advancedSignals,
   });
@@ -881,7 +1032,10 @@ export function buildDayMasterRelationPocUserPrompt(rawInput: RawInputValue, bri
 export function formatDayMasterRelationPocPreflightReport(options: {
   rawInput: RawInputValue;
   packet: RelationReadingPacket;
+  maxVisibleStep?: number;
 }) {
+  const visibleSteps = options.packet.stepInsights
+    .filter((step) => !options.maxVisibleStep || step.stepNumber <= options.maxVisibleStep);
   return [
     "=== รายงานตรวจฐานคำนวณแบบ Stepwise ===",
     "",
@@ -897,7 +1051,7 @@ export function formatDayMasterRelationPocPreflightReport(options: {
     `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai}`,
     `- หลักวันราศีล่าง: ${options.packet.chartAnchor.dayBranch} (${options.packet.chartAnchor.dayBranchLabelThai})`,
     "",
-    ...options.packet.stepInsights.flatMap((step) => [
+    ...visibleSteps.flatMap((step) => [
       `Step ${step.stepNumber}: ${step.titleThai}`,
       `- สรุป: ${step.summaryThai}`,
       `- จุดที่ใช้ตรวจ: ${step.auditFocusThai}`,
@@ -916,7 +1070,11 @@ export function formatDayMasterRelationPocBriefPreview(options: {
   rawInput: RawInputValue;
   brief: DayMasterRelationBrief;
   model?: string;
+  maxVisibleStep?: number;
 }) {
+  const visibleSteps = options.brief.steps
+    .filter((step) => !options.maxVisibleStep || step.stepNumber <= options.maxVisibleStep);
+
   return [
     "=== คู่มือชั้นคำอ่านสำหรับ LLM ===",
     "",
@@ -927,7 +1085,7 @@ export function formatDayMasterRelationPocBriefPreview(options: {
     `- หลักการเปิดอ่าน: ${options.brief.openingDoctrineThai}`,
     ...(options.model ? [`- รุ่นที่ใช้: ${options.model}`] : []),
     "",
-    ...options.brief.steps.flatMap((step) => [
+    ...visibleSteps.flatMap((step) => [
       `Step ${step.stepNumber}: ${step.titleThai}`,
       `- brief: ${step.briefThai}`,
       `- evidence refs: ${step.evidenceRefs.join(", ")}`,
@@ -945,7 +1103,13 @@ export function formatDayMasterRelationPocGeneratedReport(options: {
   model: string;
   includeAuditAppendix?: boolean;
   includeBriefPreview?: boolean;
+  maxVisibleStep?: number;
 }) {
+  const visibleReadings = options.response.step_readings
+    .filter((step) => !options.maxVisibleStep || step.step_number <= options.maxVisibleStep);
+  const visibleInsights = options.packet.stepInsights
+    .filter((step) => !options.maxVisibleStep || step.stepNumber <= options.maxVisibleStep);
+
   return [
     "=== รายงานอ่านดวงแบบซินแส Stepwise ===",
     "",
@@ -960,7 +1124,7 @@ export function formatDayMasterRelationPocGeneratedReport(options: {
     "คำอ่านเปิดดวง",
     options.response.openingSummary,
     "",
-    ...options.response.step_readings.flatMap((step) => [
+    ...visibleReadings.flatMap((step) => [
       formatVisibleStepHeading(step.step_number, step.heading_thai),
       `   ${step.teacher_reading}`,
       `   ความหมายต่อชีวิต: ${step.life_meaning}`,
@@ -984,7 +1148,7 @@ export function formatDayMasterRelationPocGeneratedReport(options: {
           "",
           "=== คู่มือหลักฐานแบบ Audit Companion ===",
           "",
-          ...options.packet.stepInsights.flatMap((step) => [
+          ...visibleInsights.flatMap((step) => [
             `Step ${step.stepNumber}: ${step.titleThai}`,
             ...formatEvidenceCatalog(options.packet, step.evidenceIds),
             "",
