@@ -548,6 +548,35 @@ export const INTERACTION_CONTEXT_TAG: Record<string, string> = {
   "earthly-branch-ban-san-he": "กึ่งภาคี: การสนับสนุนบางส่วน พันธมิตรที่ยังไม่เต็มที่",
 };
 
+export const TWELVE_QI_ADVERB_MAP: Record<string, { thai: string; meaning: string }> = {
+  长生: { thai: "เติบโต", meaning: "กำลังเริ่มต้น มีพลังงานใหม่" },
+  沐浴: { thai: "หมกยก", meaning: "ยังไม่มั่นคง ต้องระวัง" },
+  冠带: { thai: "กวงตั่ว", meaning: "กำลังเติบโต สะสมพลัง" },
+  临官: { thai: "ลิ่มกัว", meaning: "แรง มีอำนาจ จัดการได้" },
+  帝旺: { thai: "ตี้อ๋วง", meaning: "รุ่งเรืองสุดขีด" },
+  衰: { thai: "ซวย", meaning: "เริ่มถดถอย" },
+  病: { thai: "แป่", meaning: "มีปัญหา ต้องรักษา" },
+  死: { thai: "ซี่", meaning: "หมดแรง ไม่สามารถ" },
+  墓: { thai: "หมอ", meaning: "ซ่อน ฝัง ต้องขุด" },
+  绝: { thai: "เจ๊าะ", meaning: "ขาด ไม่มี" },
+  胎: { thai: "ทอ", meaning: "กำลังเกิด ซ่อนอยู่" },
+  养: { thai: "เอี้ยง", meaning: "เตรียม สะสม" },
+};
+
+export const ROLE_SUBTYPE_LABELS_TH: Record<string, { direct: string; indirect: string }> = {
+  same: { direct: "คู่ (ผู้สนับสนุน)", indirect: "เปรียว (คู่แข่ง)" },
+  resource: { direct: "เสริมตรง (แบบตรง)", indirect: "เสริมเฉียว (แบบเบี่ยง)" },
+  output: { direct: "ถ่ายเทตรง (สร้าง)", indirect: "ถ่ายเทเฉียว (แบก)" },
+  power: { direct: "อำนาจตรง (แบบมีระเบียบ)", indirect: "อำนาจเฉียว (แบบกดดัน)" },
+  wealth: { direct: "ลาภตรง (แบบตรง)", indirect: "ลาภเปีย (แบบเบี่ยง)" },
+};
+
+export const CONFLICT_RESOLUTION_LABELS_TH: Record<string, string> = {
+  neutralized: "ชงถูกฮะแก้ (ปัญหาถูกช่วยเหลือ/บรรเทา)",
+  partial: "ฮะบรรเทาชง (ปัญหาลดลงแต่ยังมี)",
+  active: "ชงเต็มขั้น (ปัญหาไม่ถูกแก้)",
+};
+
 export const SHEN_SHA_COPY = {
   nobleman: {
     starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",

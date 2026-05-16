@@ -8,18 +8,22 @@ import {
   BRANCH_HIDDEN_STEMS,
   BRANCH_LABELS_TH,
   BRANCH_TO_ELEMENT,
+  CONFLICT_RESOLUTION_LABELS_TH,
   CONTROLS,
   ELEMENT_LABELS_TH,
   GENERATES,
   INTERACTION_CONTEXT_TAG,
   PILLAR_CONTEXT_MAP,
+  ROLE_SUBTYPE_LABELS_TH,
   STEM_TO_ELEMENT,
+  TWELVE_QI_ADVERB_MAP,
   TWELVE_QI_CONTEXT_MAP,
   TWELVE_QI_LABELS_TH,
   VERTICAL_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
 import { YANG_STEMS } from "@/lib/bazi/pillar-display";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
+import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import { getGeminiApiKey } from "@/lib/env";
 
 export const DEFAULT_DAY_MASTER_RELATION_POC_MODEL = "gemini-3-flash-preview";
@@ -77,6 +81,9 @@ const STEP_3_ATTRACTION_FAMILIES = new Set([
   "earthly-branch-liu-he",
   "heavenly-stem-he",
   "earthly-branch-ban-san-he",
+  "earthly-branch-san-he",
+  "earthly-branch-san-hui",
+  "earthly-branch-fang-ju",
 ]);
 
 const MODIFIER_FAMILY_LABEL_THAI: Record<string, string> = {
@@ -88,6 +95,9 @@ const MODIFIER_FAMILY_LABEL_THAI: Record<string, string> = {
   "earthly-branch-liu-he": "ฮะ (ดิน)",
   "heavenly-stem-he": "ฮะ (ฟ้า)",
   "earthly-branch-ban-san-he": "กึ่งภาคี",
+  "earthly-branch-san-he": "ภาคี",
+  "earthly-branch-san-hui": "สามรวม",
+  "earthly-branch-fang-ju": "จู้",
 };
 
 const RelationKeySchema = z.enum(["same", "resource", "output", "power", "wealth"]);
@@ -309,11 +319,12 @@ type Step3ActionVector = {
   visibleActionCarriers: RelationTarget[];
   strongestVisibleActionCarrier: RelationTarget | null;
   actionCarrierCount: number;
-  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string }>;
-  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string }>;
-  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string }>;
+  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string; adverb: string }>;
   hiddenActionCarrierCount: number;
   hiddenActionCarrierSummary: string;
+  subtypeBadges: Array<{ carrierLabel: string; pillarKey: string; subtypeLabel: string }>;
 };
 
 const WEALTH_CAPACITY_MAP: Record<string, { id: string; label: string; metaphor: string; canGrab: boolean }> = {
@@ -334,8 +345,50 @@ type Step4WealthVector = {
   capacity: { id: string; label: string; metaphor: string; canGrab: boolean };
   pianCaiBadges: Array<{ carrierLabel: string; pillarKey: string; isPianCai: boolean }>;
   muYuBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string }>;
-  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string; adverb: string }>;
   absentWealth: boolean;
+};
+
+type Step3CompanionVector = {
+  companionElement: SupportedElementValue;
+  companionElementLabelThai: string;
+  visibleCompanionCarriers: RelationTarget[];
+  strongestVisibleCompanionCarrier: RelationTarget | null;
+  companionCarrierCount: number;
+  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string; adverb: string }>;
+  hiddenCompanionCarrierCount: number;
+  hiddenCompanionCarrierSummary: string;
+  subtypeBadges: Array<{ carrierLabel: string; pillarKey: string; subtypeLabel: string }>;
+};
+
+type Step3ResourceVector = {
+  resourceElement: SupportedElementValue;
+  resourceElementLabelThai: string;
+  visibleResourceCarriers: RelationTarget[];
+  strongestVisibleResourceCarrier: RelationTarget | null;
+  resourceCarrierCount: number;
+  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string; adverb: string }>;
+  hiddenResourceCarrierCount: number;
+  hiddenResourceCarrierSummary: string;
+  subtypeBadges: Array<{ carrierLabel: string; pillarKey: string; subtypeLabel: string }>;
+};
+
+type Step3PowerVector = {
+  powerElement: SupportedElementValue;
+  powerElementLabelThai: string;
+  visiblePowerCarriers: RelationTarget[];
+  strongestVisiblePowerCarrier: RelationTarget | null;
+  powerCarrierCount: number;
+  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  twelveQiBadges: Array<{ carrierLabel: string; pillarKey: string; stageLabel: string; adverb: string }>;
+  hiddenPowerCarrierCount: number;
+  hiddenPowerCarrierSummary: string;
+  subtypeBadges: Array<{ carrierLabel: string; pillarKey: string; subtypeLabel: string }>;
 };
 
 function buildSeed(rawInput: RawInputValue) {
@@ -445,8 +498,10 @@ function getCarrierWeight(layer: "stem" | "branch" | "hidden", pillarKey: Pillar
 function buildStep3ActionVector(
   allTargets: RelationTarget[],
   dayMasterElement: SupportedElementValue,
+  dayMasterStem: string,
   interactionState: CalculatedStateValue["interactionState"],
   twelveQi: Record<string, string>,
+  neutralizedClashes: string[] = [],
 ): Step3ActionVector {
   const actionElement = GENERATES[dayMasterElement as keyof typeof GENERATES] as SupportedElementValue;
 
@@ -458,36 +513,30 @@ function buildStep3ActionVector(
     .filter((t) => t.layer === "hidden" && t.relationKey === "output");
 
   const strongestVisibleActionCarrier = visibleActionCarriers[0] ?? null;
+  const dayMasterIsYang = YANG_STEMS.has(dayMasterStem);
 
-  const disturbanceModifiers: Step3ActionVector["disturbanceModifiers"] = [];
-  const attractionModifiers: Step3ActionVector["attractionModifiers"] = [];
-
-  if (interactionState?.relations?.length) {
-    for (const relation of interactionState.relations) {
-      const family = relation.familyKey;
-      if (STEP_3_DISTURBANCE_FAMILIES.has(family)) {
-        disturbanceModifiers.push({
-          familyKey: family,
-          label: relation.label,
-          categoryThai: MODIFIER_FAMILY_LABEL_THAI[family] ?? family,
-        });
-      } else if (STEP_3_ATTRACTION_FAMILIES.has(family)) {
-        attractionModifiers.push({
-          familyKey: family,
-          label: relation.label,
-          categoryThai: MODIFIER_FAMILY_LABEL_THAI[family] ?? family,
-        });
-      }
-    }
-  }
+  const { disturbanceModifiers, attractionModifiers } = buildModifiersWithResolution(interactionState, neutralizedClashes);
 
   const twelveQiBadges: Step3ActionVector["twelveQiBadges"] = visibleActionCarriers
     .filter((c) => c.layer === "branch")
-    .map((c) => ({
-      carrierLabel: c.pillarLabelThai,
+    .map((c) => {
+      const stage = twelveQi[`${c.pillarKey}Branch`];
+      return {
+        carrierLabel: c.pillarLabelThai,
+        pillarKey: c.pillarKey,
+        stageLabel: stage ?? "ไม่ระบุ",
+        adverb: getTwelveQiAdverb(stage),
+      };
+    });
+
+  const subtypeBadges: Step3ActionVector["subtypeBadges"] = visibleActionCarriers.map((c) => {
+    const carrierIsYang = getCarrierPolarityIsYang(c);
+    return {
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
       pillarKey: c.pillarKey,
-      stageLabel: twelveQi[`${c.pillarKey}Branch`] ?? "ไม่ระบุ",
-    }));
+      subtypeLabel: getRoleSubtypeLabel("output", dayMasterIsYang === carrierIsYang),
+    };
+  });
 
   return {
     actionElement,
@@ -502,6 +551,7 @@ function buildStep3ActionVector(
     hiddenActionCarrierSummary: hiddenActionCarriers.length > 0
       ? hiddenActionCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
       : "ไม่มี",
+    subtypeBadges,
   };
 }
 
@@ -511,6 +561,227 @@ function getCarrierPolarityIsYang(carrier: RelationTarget): boolean {
   }
   const mainQi = BRANCH_HIDDEN_STEMS[carrier.symbol as keyof typeof BRANCH_HIDDEN_STEMS]?.[0];
   return mainQi ? YANG_STEMS.has(mainQi) : false;
+}
+
+function getRoleSubtypeLabel(relationKey: RelationKey, isSamePolarity: boolean): string {
+  const labels = ROLE_SUBTYPE_LABELS_TH[relationKey];
+  if (!labels) return isSamePolarity ? "เฉียว" : "ตรง";
+  return isSamePolarity ? labels.indirect : labels.direct;
+}
+
+function getTwelveQiAdverb(stage: string | undefined): string {
+  if (!stage) return "ไม่ระบุ";
+  const entry = TWELVE_QI_ADVERB_MAP[stage];
+  return entry ? `${entry.thai} (${entry.meaning})` : stage;
+}
+
+function buildModifiersWithResolution(
+  interactionState: CalculatedStateValue["interactionState"],
+  neutralizedClashes: string[],
+): {
+  disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+  attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }>;
+} {
+  const disturbanceModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }> = [];
+  const attractionModifiers: Array<{ familyKey: string; label: string; categoryThai: string; resolutionStatus?: string }> = [];
+
+  if (interactionState?.relations?.length) {
+    for (const relation of interactionState.relations) {
+      const family = relation.familyKey;
+      const isClash = family.includes("clash");
+      const isNeutralized = isClash && neutralizedClashes.some((nc) => relation.label.includes(nc) || nc.includes(relation.label));
+      const resolutionStatus = isNeutralized ? CONFLICT_RESOLUTION_LABELS_TH.neutralized : undefined;
+
+      if (STEP_3_DISTURBANCE_FAMILIES.has(family)) {
+        disturbanceModifiers.push({
+          familyKey: family,
+          label: relation.label,
+          categoryThai: MODIFIER_FAMILY_LABEL_THAI[family] ?? family,
+          resolutionStatus,
+        });
+      } else if (STEP_3_ATTRACTION_FAMILIES.has(family)) {
+        attractionModifiers.push({
+          familyKey: family,
+          label: relation.label,
+          categoryThai: MODIFIER_FAMILY_LABEL_THAI[family] ?? family,
+          resolutionStatus,
+        });
+      }
+    }
+  }
+
+  return { disturbanceModifiers, attractionModifiers };
+}
+
+function buildStepCompanionVector(
+  allTargets: RelationTarget[],
+  dayMasterElement: SupportedElementValue,
+  dayMasterStem: string,
+  interactionState: CalculatedStateValue["interactionState"],
+  twelveQi: Record<string, string>,
+  neutralizedClashes: string[] = [],
+): Step3CompanionVector {
+  const companionElement = dayMasterElement;
+  const visibleCompanionCarriers = allTargets
+    .filter((t) => STEP_3_VISIBLE_LAYERS.has(t.layer) && t.relationKey === "same")
+    .sort((a, b) => a.weight - b.weight);
+  const hiddenCompanionCarriers = allTargets
+    .filter((t) => t.layer === "hidden" && t.relationKey === "same");
+  const strongestVisibleCompanionCarrier = visibleCompanionCarriers[0] ?? null;
+  const dayMasterIsYang = YANG_STEMS.has(dayMasterStem);
+
+  const { disturbanceModifiers, attractionModifiers } = buildModifiersWithResolution(interactionState, neutralizedClashes);
+
+  const twelveQiBadges: Step3CompanionVector["twelveQiBadges"] = visibleCompanionCarriers
+    .filter((c) => c.layer === "branch")
+    .map((c) => {
+      const stage = twelveQi[`${c.pillarKey}Branch`];
+      return {
+        carrierLabel: c.pillarLabelThai,
+        pillarKey: c.pillarKey,
+        stageLabel: stage ?? "ไม่ระบุ",
+        adverb: getTwelveQiAdverb(stage),
+      };
+    });
+
+  const subtypeBadges: Step3CompanionVector["subtypeBadges"] = visibleCompanionCarriers.map((c) => {
+    const carrierIsYang = getCarrierPolarityIsYang(c);
+    return {
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+      pillarKey: c.pillarKey,
+      subtypeLabel: getRoleSubtypeLabel("same", dayMasterIsYang === carrierIsYang),
+    };
+  });
+
+  return {
+    companionElement,
+    companionElementLabelThai: getElementLabelThai(companionElement),
+    visibleCompanionCarriers,
+    strongestVisibleCompanionCarrier,
+    companionCarrierCount: visibleCompanionCarriers.length,
+    disturbanceModifiers,
+    attractionModifiers,
+    twelveQiBadges,
+    hiddenCompanionCarrierCount: hiddenCompanionCarriers.length,
+    hiddenCompanionCarrierSummary: hiddenCompanionCarriers.length > 0
+      ? hiddenCompanionCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+      : "ไม่มี",
+    subtypeBadges,
+  };
+}
+
+function buildStepResourceVector(
+  allTargets: RelationTarget[],
+  dayMasterElement: SupportedElementValue,
+  dayMasterStem: string,
+  interactionState: CalculatedStateValue["interactionState"],
+  twelveQi: Record<string, string>,
+  neutralizedClashes: string[] = [],
+): Step3ResourceVector {
+  const resourceElement = getTargetElementByRelation(dayMasterElement, "resource");
+  const visibleResourceCarriers = allTargets
+    .filter((t) => STEP_3_VISIBLE_LAYERS.has(t.layer) && t.relationKey === "resource")
+    .sort((a, b) => a.weight - b.weight);
+  const hiddenResourceCarriers = allTargets
+    .filter((t) => t.layer === "hidden" && t.relationKey === "resource");
+  const strongestVisibleResourceCarrier = visibleResourceCarriers[0] ?? null;
+  const dayMasterIsYang = YANG_STEMS.has(dayMasterStem);
+
+  const { disturbanceModifiers, attractionModifiers } = buildModifiersWithResolution(interactionState, neutralizedClashes);
+
+  const twelveQiBadges: Step3ResourceVector["twelveQiBadges"] = visibleResourceCarriers
+    .filter((c) => c.layer === "branch")
+    .map((c) => {
+      const stage = twelveQi[`${c.pillarKey}Branch`];
+      return {
+        carrierLabel: c.pillarLabelThai,
+        pillarKey: c.pillarKey,
+        stageLabel: stage ?? "ไม่ระบุ",
+        adverb: getTwelveQiAdverb(stage),
+      };
+    });
+
+  const subtypeBadges: Step3ResourceVector["subtypeBadges"] = visibleResourceCarriers.map((c) => {
+    const carrierIsYang = getCarrierPolarityIsYang(c);
+    return {
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+      pillarKey: c.pillarKey,
+      subtypeLabel: getRoleSubtypeLabel("resource", dayMasterIsYang === carrierIsYang),
+    };
+  });
+
+  return {
+    resourceElement,
+    resourceElementLabelThai: getElementLabelThai(resourceElement),
+    visibleResourceCarriers,
+    strongestVisibleResourceCarrier,
+    resourceCarrierCount: visibleResourceCarriers.length,
+    disturbanceModifiers,
+    attractionModifiers,
+    twelveQiBadges,
+    hiddenResourceCarrierCount: hiddenResourceCarriers.length,
+    hiddenResourceCarrierSummary: hiddenResourceCarriers.length > 0
+      ? hiddenResourceCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+      : "ไม่มี",
+    subtypeBadges,
+  };
+}
+
+function buildStepPowerVector(
+  allTargets: RelationTarget[],
+  dayMasterElement: SupportedElementValue,
+  dayMasterStem: string,
+  interactionState: CalculatedStateValue["interactionState"],
+  twelveQi: Record<string, string>,
+  neutralizedClashes: string[] = [],
+): Step3PowerVector {
+  const powerElement = getTargetElementByRelation(dayMasterElement, "power");
+  const visiblePowerCarriers = allTargets
+    .filter((t) => STEP_3_VISIBLE_LAYERS.has(t.layer) && t.relationKey === "power")
+    .sort((a, b) => a.weight - b.weight);
+  const hiddenPowerCarriers = allTargets
+    .filter((t) => t.layer === "hidden" && t.relationKey === "power");
+  const strongestVisiblePowerCarrier = visiblePowerCarriers[0] ?? null;
+  const dayMasterIsYang = YANG_STEMS.has(dayMasterStem);
+
+  const { disturbanceModifiers, attractionModifiers } = buildModifiersWithResolution(interactionState, neutralizedClashes);
+
+  const twelveQiBadges: Step3PowerVector["twelveQiBadges"] = visiblePowerCarriers
+    .filter((c) => c.layer === "branch")
+    .map((c) => {
+      const stage = twelveQi[`${c.pillarKey}Branch`];
+      return {
+        carrierLabel: c.pillarLabelThai,
+        pillarKey: c.pillarKey,
+        stageLabel: stage ?? "ไม่ระบุ",
+        adverb: getTwelveQiAdverb(stage),
+      };
+    });
+
+  const subtypeBadges: Step3PowerVector["subtypeBadges"] = visiblePowerCarriers.map((c) => {
+    const carrierIsYang = getCarrierPolarityIsYang(c);
+    return {
+      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+      pillarKey: c.pillarKey,
+      subtypeLabel: getRoleSubtypeLabel("power", dayMasterIsYang === carrierIsYang),
+    };
+  });
+
+  return {
+    powerElement,
+    powerElementLabelThai: getElementLabelThai(powerElement),
+    visiblePowerCarriers,
+    strongestVisiblePowerCarrier,
+    powerCarrierCount: visiblePowerCarriers.length,
+    disturbanceModifiers,
+    attractionModifiers,
+    twelveQiBadges,
+    hiddenPowerCarrierCount: hiddenPowerCarriers.length,
+    hiddenPowerCarrierSummary: hiddenPowerCarriers.length > 0
+      ? hiddenPowerCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+      : "ไม่มี",
+    subtypeBadges,
+  };
 }
 
 function buildStep4WealthVector(
@@ -559,13 +830,17 @@ function buildStep4WealthVector(
 
   const twelveQiBadges: Step4WealthVector["twelveQiBadges"] = visibleWealthCarriers
     .filter((c) => c.layer === "branch")
-    .map((c) => ({
-      carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
-      pillarKey: c.pillarKey,
-      stageLabel: twelveQi[`${c.pillarKey}Branch`]
-        ? (TWELVE_QI_LABELS_TH[twelveQi[`${c.pillarKey}Branch`] as keyof typeof TWELVE_QI_LABELS_TH] ?? "ไม่ระบุ")
-        : "ไม่ระบุ",
-    }));
+    .map((c) => {
+      const stage = twelveQi[`${c.pillarKey}Branch`];
+      return {
+        carrierLabel: `${c.pillarLabelThai} ${c.symbol}`,
+        pillarKey: c.pillarKey,
+        stageLabel: stage
+          ? (TWELVE_QI_LABELS_TH[stage as keyof typeof TWELVE_QI_LABELS_TH] ?? "ไม่ระบุ")
+          : "ไม่ระบุ",
+        adverb: getTwelveQiAdverb(stage),
+      };
+    });
 
   return {
     wealthElement,
@@ -627,14 +902,26 @@ type Step5ContextMapping = {
 function buildStep5ContextMapping(
   actionVector: Step3ActionVector,
   wealthVector: Step4WealthVector,
+  companionVector: Step3CompanionVector,
+  resourceVector: Step3ResourceVector,
+  powerVector: Step3PowerVector,
   allTargets: RelationTarget[],
   interactionState: CalculatedStateValue["interactionState"],
   twelveQi: Record<string, string>,
 ): Step5ContextMapping {
   const visibleActionKeys = new Set(actionVector.visibleActionCarriers.map((c) => c.carrierKey));
   const visibleWealthKeys = new Set(wealthVector.visibleWealthCarriers.map((c) => c.carrierKey));
+  const visibleCompanionKeys = new Set(companionVector.visibleCompanionCarriers.map((c) => c.carrierKey));
+  const visibleResourceKeys = new Set(resourceVector.visibleResourceCarriers.map((c) => c.carrierKey));
+  const visiblePowerKeys = new Set(powerVector.visiblePowerCarriers.map((c) => c.carrierKey));
 
-  const relevantCarrierKeys = new Set([...visibleActionKeys, ...visibleWealthKeys]);
+  const relevantCarrierKeys = new Set([
+    ...visibleActionKeys,
+    ...visibleWealthKeys,
+    ...visibleCompanionKeys,
+    ...visibleResourceKeys,
+    ...visiblePowerKeys,
+  ]);
 
   const interactionMap = new Map<string, string[]>();
   if (interactionState?.relations?.length) {
@@ -873,7 +1160,43 @@ function buildStepInsights(options: {
   const dayBranchLabelThai = getSymbolThaiForBranch(calculatedState.fourPillars.day.branch);
   const strengthProfile = calculatedState.dayMasterStrengthProfile;
   const sixtyJiazi = calculatedState.sixtyJiaziCorePersona;
-  const actionVector = buildStep3ActionVector(relationTargets, dayMasterElement, calculatedState.interactionState, calculatedState.twelveQi);
+
+  // Compute branch interaction resolution for ฮะแก้ชง
+  const branchResolution = resolveBranchInteractionEffects(calculatedState.fourPillars);
+  const neutralizedClashes = branchResolution.neutralizedClashes;
+
+  const actionVector = buildStep3ActionVector(
+    relationTargets,
+    dayMasterElement,
+    calculatedState.dayMaster,
+    calculatedState.interactionState,
+    calculatedState.twelveQi,
+    neutralizedClashes,
+  );
+  const companionVector = buildStepCompanionVector(
+    relationTargets,
+    dayMasterElement,
+    calculatedState.dayMaster,
+    calculatedState.interactionState,
+    calculatedState.twelveQi,
+    neutralizedClashes,
+  );
+  const resourceVector = buildStepResourceVector(
+    relationTargets,
+    dayMasterElement,
+    calculatedState.dayMaster,
+    calculatedState.interactionState,
+    calculatedState.twelveQi,
+    neutralizedClashes,
+  );
+  const powerVector = buildStepPowerVector(
+    relationTargets,
+    dayMasterElement,
+    calculatedState.dayMaster,
+    calculatedState.interactionState,
+    calculatedState.twelveQi,
+    neutralizedClashes,
+  );
   const wealthVector = buildStep4WealthVector(
     relationTargets,
     dayMasterElement,
@@ -885,6 +1208,9 @@ function buildStepInsights(options: {
   const contextMapping = buildStep5ContextMapping(
     actionVector,
     wealthVector,
+    companionVector,
+    resourceVector,
+    powerVector,
     relationTargets,
     calculatedState.interactionState,
     calculatedState.twelveQi,
@@ -971,12 +1297,60 @@ function buildStepInsights(options: {
       `ซ่อน ${actionVector.hiddenActionCarrierCount} จุด: ${actionVector.hiddenActionCarrierSummary}`,
       "Step 3",
     ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-companion-element",
+      "ธาตุคู่ (คู่ธาตุและเปรียว)",
+      `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} มีคู่ธาตุเป็นธาตุ${companionVector.companionElementLabelThai}`,
+      "Step 3",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-visible-companion-carriers",
+      "จุดที่มองเห็นคู่ธาตุ",
+      companionVector.visibleCompanionCarriers.length > 0
+        ? companionVector.visibleCompanionCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+        : "ไม่พบคู่ธาตุบนชั้นมองเห็น",
+      "Step 3",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-resource-element",
+      "ธาตุเสริม (ผู้สนับสนุนและความรู้)",
+      `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ได้รับการสนับสนุนจากธาตุ${resourceVector.resourceElementLabelThai}`,
+      "Step 3",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-visible-resource-carriers",
+      "จุดที่มองเห็นธาตุเสริม",
+      resourceVector.visibleResourceCarriers.length > 0
+        ? resourceVector.visibleResourceCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+        : "ไม่พบธาตุเสริมบนชั้นมองเห็น",
+      "Step 3",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-power-element",
+      "ธาตุอำนาจ (ผู้มีอำนาจและกฎระเบียบ)",
+      `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถูกควบคุมโดยธาตุ${powerVector.powerElementLabelThai}`,
+      "Step 3",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S3-visible-power-carriers",
+      "จุดที่มองเห็นธาตุอำนาจ",
+      powerVector.visiblePowerCarriers.length > 0
+        ? powerVector.visiblePowerCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
+        : "ไม่พบธาตุอำนาจบนชั้นมองเห็น",
+      "Step 3",
+    ),
     ...actionVector.disturbanceModifiers.length > 0
       ? [addEvidence(
           evidenceCatalog,
           "S3-disturbance-modifiers",
           "แรงรบกวน (ชง เฮ้ง ไห่ ผว กุ้ยนั้ง)",
-          actionVector.disturbanceModifiers.map((m) => `${m.categoryThai}: ${m.label}`).join(" | "),
+          actionVector.disturbanceModifiers.map((m) => `${m.categoryThai}: ${m.label}${m.resolutionStatus ? ` [${m.resolutionStatus}]` : ""}`).join(" | "),
           "Step 3",
         )]
       : [],
@@ -994,7 +1368,34 @@ function buildStepInsights(options: {
           evidenceCatalog,
           "S3-twelve-qi-badges",
           "12 เซงแซ (ลีลาการกระทำ)",
-          actionVector.twelveQiBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel}`).join(" | "),
+          actionVector.twelveQiBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel} → ${b.adverb}`).join(" | "),
+          "Step 3",
+        )]
+      : [],
+    ...companionVector.subtypeBadges.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S3-companion-subtypes",
+          "ประเภทคู่ธาตุ (คู่/เปรียว)",
+          companionVector.subtypeBadges.map((b) => `${b.carrierLabel}: ${b.subtypeLabel}`).join(" | "),
+          "Step 3",
+        )]
+      : [],
+    ...resourceVector.subtypeBadges.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S3-resource-subtypes",
+          "ประเภทธาตุเสริม (ตรง/เฉียว)",
+          resourceVector.subtypeBadges.map((b) => `${b.carrierLabel}: ${b.subtypeLabel}`).join(" | "),
+          "Step 3",
+        )]
+      : [],
+    ...powerVector.subtypeBadges.length > 0
+      ? [addEvidence(
+          evidenceCatalog,
+          "S3-power-subtypes",
+          "ประเภทธาตุอำนาจ (ตรง/เฉียว)",
+          powerVector.subtypeBadges.map((b) => `${b.carrierLabel}: ${b.subtypeLabel}`).join(" | "),
           "Step 3",
         )]
       : [],
@@ -1166,11 +1567,21 @@ function buildStepInsights(options: {
     {
       stepNumber: 3,
       stepKey: "standard-energies",
-      titleThai: "พลังมาตรฐาน: ธาตุถ่ายเท (แรงกระทำ)",
+      titleThai: "พลังมาตรฐาน: ธาตุถ่ายเท + อีก 4 บทบาท (เสริม คู่ อำนาจ โชคลาภ)",
       summaryThai: [
+        `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} มี 5 บทบาท: `,
         actionVector.actionCarrierCount > 0
-          ? `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai} มองเห็น ${actionVector.actionCarrierCount} จุด แรงสุดที่ ${actionVector.strongestVisibleActionCarrier!.pillarLabelThai} ${actionVector.strongestVisibleActionCarrier!.symbol}`
-          : `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai} แต่ไม่มีจุดมองเห็นบนชั้นฟ้าดิน ต้องอ่านจากบริบทและขั้นสูงประกอบ`,
+          ? `ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai} ${actionVector.actionCarrierCount} จุด`
+          : `ถ่ายเทไปธาตุ${actionVector.actionElementLabelThai} ไม่มีจุดมองเห็น`,
+        companionVector.companionCarrierCount > 0
+          ? `; คู่ธาตุ${companionVector.companionElementLabelThai} ${companionVector.companionCarrierCount} จุด`
+          : `; ไม่มีคู่ธาตุมองเห็น`,
+        resourceVector.resourceCarrierCount > 0
+          ? `; เสริมจากธาตุ${resourceVector.resourceElementLabelThai} ${resourceVector.resourceCarrierCount} จุด`
+          : `; ไม่มีธาตุเสริมมองเห็น`,
+        powerVector.powerCarrierCount > 0
+          ? `; ถูกกดจากธาตุ${powerVector.powerElementLabelThai} ${powerVector.powerCarrierCount} จุด`
+          : `; ไม่มีธาตุอำนาจมองเห็น`,
         actionVector.disturbanceModifiers.length > 0
           ? `; ติด${actionVector.disturbanceModifiers.map((m) => m.categoryThai).join(" ")}`
           : "",
@@ -1178,13 +1589,22 @@ function buildStepInsights(options: {
           ? `; มี${actionVector.attractionModifiers.map((m) => m.categoryThai).join(" ")}ดึงดูด`
           : "",
         actionVector.twelveQiBadges.length > 0
-          ? `; ${actionVector.twelveQiBadges.map((b) => `${b.carrierLabel}อยู่${b.stageLabel}`).join(" ")}`
+          ? `; ลีลา: ${actionVector.twelveQiBadges.map((b) => `${b.carrierLabel}${b.adverb}`).join(" ")}`
           : "",
         actionVector.hiddenActionCarrierCount > 0
-          ? `; ซ่อนอีก ${actionVector.hiddenActionCarrierCount} จุด เก็บไว้อ่านขั้นสูง`
+          ? `; ซ่อนถ่ายเท ${actionVector.hiddenActionCarrierCount} จุด`
+          : "",
+        companionVector.hiddenCompanionCarrierCount > 0
+          ? `; ซ่อนคู่ ${companionVector.hiddenCompanionCarrierCount} จุด`
+          : "",
+        resourceVector.hiddenResourceCarrierCount > 0
+          ? `; ซ่อนเสริม ${resourceVector.hiddenResourceCarrierCount} จุด`
+          : "",
+        powerVector.hiddenPowerCarrierCount > 0
+          ? `; ซ่อนอำนาจ ${powerVector.hiddenPowerCarrierCount} จุด`
           : "",
       ].join(""),
-      auditFocusThai: "ดูว่าดิถีถ่ายเทไปธาตุไหน มีจุดมองเห็นกี่จุด จุดไหนแรงสุด มีแรงรบกวนอะไร (ชง เฮ้ง ไห่ ผว) มีแรงดึงดูดอะไร (ฮะ ภาคี) และลีลา 12 เซงแซเป็นอย่างไร ส่วนที่ซ่อนอยู่เก็บไว้อ่านขั้นสูง",
+      auditFocusThai: "ดู 5 บทบาทธาตุทั้งหมด: ถ่ายเท (output), คู่ธาตุ (same), เสริม (resource), อำนาจ (power), โชคลาภ (wealth) — ว่ามีจุดมองเห็นกี่จุด จุดไหนแรงสุด มีแรงรบกวนอะไร (ชง เฮ้ง ไห่ ผว) มีแรงดึงดูดอะไร (ฮะ ภาคี) 12 เซงแซเป็นอย่างไร และฮะแก้ชงหรือไม่ ส่วนที่ซ่อนเก็บไว้อ่านขั้นสูง",
       evidenceIds: step3EvidenceIds,
       evidenceLines: step3EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
