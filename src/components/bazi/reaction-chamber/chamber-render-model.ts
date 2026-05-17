@@ -17,6 +17,7 @@ type ChamberRenderSelectionState = {
   selectedEdgeIds?: string[];
   revealedEdgeIds?: string[];
   hideUnrevealedEdges?: boolean;
+  hoveredNodeId?: string | null;
 };
 
 type ChamberInlineEdgeLabel = {
@@ -132,14 +133,20 @@ function buildReactFlowNode(
   graphNode: SemanticNode,
   layoutPositions: ChamberLayoutPositions,
   selectedNodeIds: Set<string>,
+  highlightedNodeIds: Set<string>,
 ): Node {
   const position = layoutPositions.get(graphNode.id) ?? graphNode.position;
   const isSelected = selectedNodeIds.has(graphNode.id);
+  const isHighlighted = highlightedNodeIds.size === 0 || highlightedNodeIds.has(graphNode.id);
 
   return {
     id: graphNode.id,
     type: graphNode.type,
-    data: graphNode.data as unknown as Record<string, unknown>,
+    data: {
+      ...(graphNode.data as unknown as Record<string, unknown>),
+      isDimmed: !isHighlighted,
+      isHighlighted,
+    },
     position,
     draggable: false,
     selectable: true,
@@ -153,6 +160,7 @@ function buildReactFlowEdge(
   selectedEdgeIds: Set<string>,
   revealedEdgeIds: Set<string>,
   hideUnrevealedEdges: boolean,
+  hoveredNodeId: string | null,
 ): Edge {
   const flowDirection = isElementFlowEdge(edge)
     ? (edge.data as unknown as { flowDirection?: string }).flowDirection
@@ -160,6 +168,11 @@ function buildReactFlowEdge(
   const inlineLabel = buildInlineEdgeLabel(edge);
   const isSelected = selectedEdgeIds.has(edge.id);
   const isRevealed = revealedEdgeIds.has(edge.id) || isSelected;
+  const isHoveredEdge = hoveredNodeId ? edge.source === hoveredNodeId || edge.target === hoveredNodeId : false;
+  const isDimmed = Boolean(hoveredNodeId) && !isHoveredEdge && !isSelected;
+  const classNames = [edge.className, isHoveredEdge ? "chamber-edge--hovered" : "", isDimmed ? "chamber-edge--dimmed" : ""]
+    .filter(Boolean)
+    .join(" ");
 
   return {
     id: edge.id,
@@ -168,15 +181,17 @@ function buildReactFlowEdge(
     sourceHandle: edge.sourceHandle,
     targetHandle: edge.targetHandle,
     label: edge.label,
-    className: edge.className,
+    className: classNames,
     data: {
       ...(edge.data as unknown as Record<string, unknown>),
       inlineLabel: inlineLabel?.relationLabel,
       inlineDirectionLabel: inlineLabel?.directionLabel,
       inlineDirectionSymbol: inlineLabel?.directionSymbol,
       inlineStrengthLabel: inlineLabel?.strengthLabel,
-      showInlineLabel: isRevealed && Boolean(inlineLabel),
+      showInlineLabel: (isRevealed || isHoveredEdge) && Boolean(inlineLabel),
       isRevealed,
+      isHoveredEdge,
+      isDimmed,
     },
     selectable: true,
     focusable: true,
@@ -213,14 +228,27 @@ export function buildChamberRenderModel(
   const selectedNodeIds = new Set(selectionState.selectedNodeIds ?? []);
   const selectedEdgeIds = new Set(selectionState.selectedEdgeIds ?? []);
   const revealedEdgeIds = new Set(selectionState.revealedEdgeIds ?? []);
+  const hoveredNodeId = selectionState.hoveredNodeId ?? null;
+  const highlightedNodeIds = new Set<string>();
+
+  if (hoveredNodeId) {
+    highlightedNodeIds.add(hoveredNodeId);
+    graph.edges.forEach((edge) => {
+      if (edge.source === hoveredNodeId || edge.target === hoveredNodeId) {
+        highlightedNodeIds.add(edge.source);
+        highlightedNodeIds.add(edge.target);
+      }
+    });
+  }
 
   return {
-    nodes: graph.nodes.map((node) => buildReactFlowNode(node, layoutPositions, selectedNodeIds)),
+    nodes: graph.nodes.map((node) => buildReactFlowNode(node, layoutPositions, selectedNodeIds, highlightedNodeIds)),
     edges: graph.edges.map((edge) => buildReactFlowEdge(
       edge,
       selectedEdgeIds,
       revealedEdgeIds,
       selectionState.hideUnrevealedEdges ?? false,
+      hoveredNodeId,
     )),
   };
 }

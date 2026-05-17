@@ -231,6 +231,11 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
     const compactHiddenStemLabel = hiddenStems.length <= 2
       ? hiddenStems.join(" · ")
       : `${hiddenStems.slice(0, 2).join(" · ")} +${hiddenStems.length - 2}`;
+    const markerLabels = Array.from(new Set(
+      reading.markerBadges
+        .filter((badge) => getParticipantPillarKeys(badge).includes(pillarKey))
+        .map((badge) => getOverlayDisplayLabel(badge)),
+    ));
 
     nodes.push({
       id: stemNodeId(pillarKey),
@@ -247,6 +252,7 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
         tenGod: stemTenGod,
         hiddenStems,
         hiddenStemCompactLabel: compactHiddenStemLabel,
+        markerLabels,
       },
       position: { x: 0, y: 0 },
       width: 80,
@@ -269,6 +275,7 @@ function buildPillarNodes(calculatedState: CalculatedStateValue): SemanticNode[]
         stageDisplay: pillar.sittingStage ?? pillar.lowerStageDisplay,
         hiddenStems,
         hiddenStemCompactLabel: compactHiddenStemLabel,
+        markerLabels,
       },
       position: { x: 0, y: 0 },
       width: 80,

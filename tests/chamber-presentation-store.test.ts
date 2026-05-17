@@ -92,6 +92,7 @@ describe("chamber-presentation-store", () => {
       isInspectorOpen: false,
       isRawMatrixOpen: false,
       isTenGodPanelOpen: false,
+      hoveredNodeId: null,
       layerToggles: {
         showStructure: true,
         showEnergy: true,

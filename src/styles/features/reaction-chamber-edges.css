@@ -180,7 +180,7 @@
 
 .reaction-chamber-canvas .chamber-edge--element-flow .react-flow__edge-path {
   stroke-width: 1.8;
-  opacity: 0.55;
+  opacity: 0.18;
   transition: stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
 }
 
@@ -254,6 +254,18 @@
 
 .reaction-chamber-canvas .react-flow__edge .react-flow__edge-path {
   transition: stroke-width 180ms ease, opacity 180ms ease, filter 180ms ease;
+}
+
+.reaction-chamber-canvas .chamber-edge--reaction .react-flow__edge-path,
+.reaction-chamber-canvas .chamber-edge--interaction .react-flow__edge-path,
+.reaction-chamber-canvas .chamber-edge--element-flow .react-flow__edge-path,
+.reaction-chamber-canvas .chamber-edge--daymaster .react-flow__edge-path {
+  opacity: 0.2;
+}
+
+.reaction-chamber-canvas .chamber-edge--hovered .react-flow__edge-path,
+.reaction-chamber-canvas .chamber-edge--selected .react-flow__edge-path {
+  opacity: 1;
 }
 
 .chamber-edge-inline-label {

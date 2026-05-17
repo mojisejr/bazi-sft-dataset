@@ -340,6 +340,27 @@
   color: var(--chamber-muted);
 }
 
+.chamber-inspector__packet-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--chamber-line);
+}
+
+.chamber-inspector__packet-step {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--chamber-accent);
+}
+
+.chamber-inspector__packet-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .chamber-inspector__extra {
   margin-top: 4px;
 }

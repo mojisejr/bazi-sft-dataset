@@ -11,11 +11,7 @@ type ChamberCommandBarProps = {
   graph: SemanticChamberGraph;
   selectionMode: "base" | "single" | "pair" | "multi";
   isInspectorOpen: boolean;
-  isRoleSummaryOpen: boolean;
-  isRawMatrixOpen: boolean;
   onToggleInspector: () => void;
-  onToggleRoleSummary: () => void;
-  onToggleRawMatrix: () => void;
 };
 
 function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
@@ -53,15 +49,15 @@ function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
 
 function describeSelectionMode(selectionMode: ChamberCommandBarProps["selectionMode"]): string {
   if (selectionMode === "pair") {
-    return "โหมดเทียบคู่";
+    return "เทียบคู่สัมพันธ์";
   }
   if (selectionMode === "multi") {
-    return "โหมดหลายจุด";
+    return "มองหลายจุดพร้อมกัน";
   }
   if (selectionMode === "single") {
-    return "โหมดจุดเดียว";
+    return "กำลังอ่านจุดเดียว";
   }
-  return "กราฟสงบ";
+  return "ภาพรวมสงบ";
 }
 
 export function ChamberCommandBar({
@@ -70,11 +66,7 @@ export function ChamberCommandBar({
   graph,
   selectionMode,
   isInspectorOpen,
-  isRoleSummaryOpen,
-  isRawMatrixOpen,
   onToggleInspector,
-  onToggleRoleSummary,
-  onToggleRawMatrix,
 }: ChamberCommandBarProps) {
   return (
     <header className="chamber-command-bar" aria-label="chamber command bar">
@@ -84,7 +76,7 @@ export function ChamberCommandBar({
       <div className="chamber-command-bar__title-group">
         <p className="chamber-command-bar__title">{title}</p>
         <p className="chamber-command-bar__hint">
-          {describeSelectionMode(selectionMode)} · กด Shift/Cmd/Ctrl เพื่อเทียบหลายจุด
+          {describeSelectionMode(selectionMode)} · ชี้เพื่อดูปฏิกิริยา คลิกเพื่อขุดรายละเอียด
         </p>
       </div>
       <div className="chamber-command-bar__viewport-actions">
@@ -95,22 +87,6 @@ export function ChamberCommandBar({
           aria-pressed={isInspectorOpen}
         >
           {isInspectorOpen ? "ซ่อนรายละเอียด" : "เปิดรายละเอียด"}
-        </button>
-        <button
-          type="button"
-          onClick={onToggleRoleSummary}
-          className="chamber-command-bar__action"
-          aria-pressed={isRoleSummaryOpen}
-        >
-          {isRoleSummaryOpen ? "ซ่อนสรุปธาตุ" : "สรุปธาตุ"}
-        </button>
-        <button
-          type="button"
-          onClick={onToggleRawMatrix}
-          className="chamber-command-bar__action"
-          aria-pressed={isRawMatrixOpen}
-        >
-          {isRawMatrixOpen ? "ซ่อนตารางปฏิกิริยา" : "ตารางปฏิกิริยา"}
         </button>
         <FocusFitButtons graph={graph} />
       </div>

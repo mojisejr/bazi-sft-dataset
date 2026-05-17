@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from "motion/react";
 
+import type { RelationReadingPacket } from "@/lib/bazi/day-master-relation-reading-poc";
 import type {
   BaseChartReactionBadgeValue,
 } from "@/lib/bazi/schema-types";
@@ -41,9 +42,82 @@ function resolveFamilyLabel(badge: BaseChartReactionBadgeValue): string {
 type ChamberInspectorProps = {
   selection: ChamberSelection;
   relationBundle: ChamberRelationBundle | null;
+  readingPacket: RelationReadingPacket | null;
   variant: "docked" | "sheet";
   onClose: () => void;
 };
+
+type PacketStep = RelationReadingPacket["stepInsights"][number];
+
+function findPacketStepForSelection(
+  selection: ChamberSelection,
+  packet: RelationReadingPacket | null,
+): PacketStep | null {
+  if (!packet || !selection.primary) {
+    return null;
+  }
+
+  if (selection.primary.kind === "edge") {
+    const badge = selection.primary.edge.data.badge;
+    const family = badge.family.toLowerCase();
+    if (family.includes("marker") || badge.doctrineKey?.startsWith("marker:")) {
+      return packet.stepInsights.find((step) => step.stepNumber === 6) ?? null;
+    }
+    if (family.includes("ten-god") || badge.doctrineKey?.startsWith("ten-god:")) {
+      return packet.stepInsights.find((step) => step.stepNumber === 3) ?? null;
+    }
+    if (family.includes("wealth")) {
+      return packet.stepInsights.find((step) => step.stepNumber === 4) ?? null;
+    }
+    if (family.includes("interaction") || family.includes("branch") || family.includes("stem")) {
+      return packet.stepInsights.find((step) => step.stepNumber === 5) ?? null;
+    }
+  }
+
+  if (selection.primary.kind === "node") {
+    const node = selection.primary.node;
+    if (node.data.kind === "stem-node" && node.data.pillarKey === "day") {
+      return packet.stepInsights.find((step) => step.stepNumber === 2) ?? null;
+    }
+    if (node.data.kind === "stem-node") {
+      return packet.stepInsights.find((step) => step.stepNumber === 3) ?? null;
+    }
+    if (node.data.kind === "branch-node") {
+      return packet.stepInsights.find((step) => step.stepNumber === 5) ?? null;
+    }
+    if (node.data.kind === "pillar") {
+      return packet.stepInsights.find((step) => step.stepNumber === 1) ?? null;
+    }
+  }
+
+  return packet.stepInsights[0] ?? null;
+}
+
+function PacketReadingCard({ step, packet }: { step: PacketStep; packet: RelationReadingPacket }) {
+  const evidenceDetails = packet.evidenceCatalog.filter((entry) => step.evidenceIds.includes(entry.id));
+
+  return (
+    <section className="chamber-inspector__packet-card">
+      <p className="chamber-inspector__section-title">คำอธิบายตามลำดับสำนัก</p>
+      <p className="chamber-inspector__packet-step">Step {step.stepNumber} · {step.titleThai}</p>
+      <p className="chamber-inspector__summary">{step.summaryThai}</p>
+      <div className="chamber-inspector__packet-block">
+        <p className="chamber-inspector__section-title">จุดที่ใช้ตรวจ</p>
+        <p className="chamber-inspector__explanation">{step.auditFocusThai}</p>
+      </div>
+      {evidenceDetails.length > 0 && (
+        <div className="chamber-inspector__participants">
+          <p className="chamber-inspector__section-title">หลักฐานที่อ้าง</p>
+          <ul>
+            {evidenceDetails.map((entry) => (
+              <li key={entry.id}>{entry.labelThai} · {entry.detailThai}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
+}
 
 function getBadgeFromSelection(selection: ChamberSelection): BaseChartReactionBadgeValue | null {
   if (!selection.primary) {
@@ -215,12 +289,6 @@ function BadgeDetail({ badge }: { badge: BaseChartReactionBadgeValue }) {
         </div>
       )}
 
-      <details className="chamber-inspector__debug">
-        <summary>ข้อมูลดิบ (Debug)</summary>
-        <pre className="chamber-inspector__debug-pre">
-          {JSON.stringify(badge, null, 2)}
-        </pre>
-      </details>
     </div>
   );
 }
@@ -317,12 +385,6 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
         </details>
       )}
 
-      <details className="chamber-inspector__debug">
-        <summary>ข้อมูลดิบ (Debug)</summary>
-        <pre className="chamber-inspector__debug-pre">
-          {JSON.stringify({ badge, cluster: edge.data.schoolCluster }, null, 2)}
-        </pre>
-      </details>
     </div>
   );
 }
@@ -354,12 +416,6 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
               </div>
             ))}
           </dl>
-          <details className="chamber-inspector__debug">
-            <summary>ข้อมูลดิบ (Debug)</summary>
-            <pre className="chamber-inspector__debug-pre">
-              {JSON.stringify(bundle.relations, null, 2)}
-            </pre>
-          </details>
         </>
       ) : (
         <p className="chamber-inspector__empty">selection นี้ยังไม่มี relation bundle ที่เชื่อมกันโดยตรงใน graph ชุดนี้</p>
@@ -379,18 +435,33 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
   );
 }
 
-function InspectorBody({ selection, relationBundle }: { selection: ChamberSelection; relationBundle: ChamberRelationBundle | null }) {
+function InspectorBody({
+  selection,
+  relationBundle,
+  readingPacket,
+}: {
+  selection: ChamberSelection;
+  relationBundle: ChamberRelationBundle | null;
+  readingPacket: RelationReadingPacket | null;
+}) {
+  const packetStep = findPacketStepForSelection(selection, readingPacket);
+
   if (selection.mode === "base" || !selection.primary) {
     return (
       <div className="chamber-inspector__placeholder">
-        <p className="chamber-inspector__kicker">แผนภาพปฏิกิริยา</p>
-        <p>ดิถีเป็นจุดกลางของการอ่าน เสารอบนอกคือพื้นที่ที่ดิถีใช้เทียบราศีบน ราศีล่าง เชี่ยงแซ และปฏิกิริยาที่เกิดขึ้นในดวงนี้</p>
+        <p className="chamber-inspector__kicker">แผนภาพพื้นดวง</p>
+        <p>ดิถีเป็นจุดกลางของการอ่าน ชี้ดูเสาใดก็ได้เพื่อเห็นปฏิกิริยา เส้นที่เกี่ยวข้อง และคำอธิบายตามลำดับสำนัก</p>
       </div>
     );
   }
 
   if ((selection.mode === "pair" || selection.mode === "multi") && relationBundle) {
-    return <RelationBundleDetail bundle={relationBundle} />;
+    return (
+      <>
+        <RelationBundleDetail bundle={relationBundle} />
+        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
+      </>
+    );
   }
 
   if (selection.mode === "multi") {
@@ -403,26 +474,46 @@ function InspectorBody({ selection, relationBundle }: { selection: ChamberSelect
   }
 
   if (selection.primary.kind === "edge") {
-    return <EdgeDetail edge={selection.primary.edge} />;
+    return (
+      <>
+        <EdgeDetail edge={selection.primary.edge} />
+        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
+      </>
+    );
   }
 
   const badge = getBadgeFromSelection(selection);
   if (badge) {
-    return <BadgeDetail badge={badge} />;
+    return (
+      <>
+        <BadgeDetail badge={badge} />
+        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
+      </>
+    );
   }
 
   if (selection.primary.kind === "node" && selection.primary.node.data.kind === "pillar") {
-    return <PillarSummary node={selection.primary.node} />;
+    return (
+      <>
+        <PillarSummary node={selection.primary.node} />
+        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
+      </>
+    );
   }
 
   if (selection.primary.kind === "node" && (selection.primary.node.data.kind === "stem-node" || selection.primary.node.data.kind === "branch-node")) {
-    return <SemanticNodeSummary node={selection.primary.node} />;
+    return (
+      <>
+        <SemanticNodeSummary node={selection.primary.node} />
+        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
+      </>
+    );
   }
 
   return null;
 }
 
-export function ChamberInspector({ selection, relationBundle, variant, onClose }: ChamberInspectorProps) {
+export function ChamberInspector({ selection, relationBundle, readingPacket, variant, onClose }: ChamberInspectorProps) {
   if (variant === "docked") {
     return (
       <aside className="chamber-inspector chamber-inspector--docked" aria-label="chamber inspector">
@@ -438,7 +529,17 @@ export function ChamberInspector({ selection, relationBundle, variant, onClose }
           </button>
         </div>
         <div className="chamber-inspector__scroll">
-          <InspectorBody selection={selection} relationBundle={relationBundle} />
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${selection.mode}:${selection.primary?.kind ?? "base"}:${selection.primary?.kind === "node" ? selection.primary.node.id : selection.primary?.kind === "edge" ? selection.primary.edge.id : "none"}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
+            >
+              <InspectorBody selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} />
+            </motion.div>
+          </AnimatePresence>
         </div>
       </aside>
     );
@@ -468,7 +569,17 @@ export function ChamberInspector({ selection, relationBundle, variant, onClose }
             </button>
           </div>
           <div className="chamber-inspector__scroll">
-            <InspectorBody selection={selection} relationBundle={relationBundle} />
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`${selection.mode}:${selection.primary?.kind ?? "base"}:${selection.primary?.kind === "node" ? selection.primary.node.id : selection.primary?.kind === "edge" ? selection.primary.edge.id : "none"}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              >
+                <InspectorBody selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} />
+              </motion.div>
+            </AnimatePresence>
           </div>
         </motion.aside>
       )}

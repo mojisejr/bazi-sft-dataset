@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 
 import "@xyflow/react/dist/style.css";
+import { motion } from "motion/react";
 
 import type {
   SemanticChamberGraph,
@@ -24,16 +25,13 @@ import { buildChamberSelectionState, type ChamberSelectionState } from "@/lib/ba
 import type { ChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
-import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
 import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemNode";
 import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
 import { ChamberBezierEdge } from "@/components/bazi/reaction-chamber/ChamberSmoothStepEdge";
-import { ChamberLayerTogglesPanel } from "@/components/bazi/reaction-chamber/ChamberLayerTogglesPanel";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 
 const NODE_TYPES = {
   chamberPillar: ChamberPillarNode,
-  chamberMarker: ChamberMarkerNode,
   chamberStemNode: ChamberStemNode,
   chamberBranchNode: ChamberBranchNode,
 };
@@ -47,7 +45,8 @@ type ReactionChamberCanvasProps = {
   selection?: ChamberSelectionState;
   relationBundle?: ChamberRelationBundle | null;
   onSelectionChange?: (selection: ChamberSelectionState) => void;
-  onNodeHover?: (node: SemanticNode | null, event?: React.MouseEvent) => void;
+  hoveredNodeId?: string | null;
+  onNodeHover?: (node: SemanticNode | null) => void;
 };
 
 function ReactionChamberCanvasInner({
@@ -55,6 +54,7 @@ function ReactionChamberCanvasInner({
   selection,
   relationBundle,
   onSelectionChange,
+  hoveredNodeId,
   onNodeHover,
 }: ReactionChamberCanvasProps) {
   const reactFlowInstance = useReactFlow();
@@ -67,8 +67,9 @@ function ReactionChamberCanvasInner({
       selectedEdgeIds: selection?.selectedEdges.map((edge) => edge.id) ?? [],
       revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
       hideUnrevealedEdges: selection?.mode === "single" || selection?.mode === "pair" || selection?.mode === "multi",
+      hoveredNodeId,
     });
-  }, [graph, relationBundle, selection]);
+  }, [graph, hoveredNodeId, relationBundle, selection]);
 
   useEffect(() => {
     focusFitRef.current = false;
@@ -128,7 +129,7 @@ function ReactionChamberCanvasInner({
       }
       const matchedNode = graph.nodes.find((candidate) => candidate.id === node.id);
       if (matchedNode) {
-        onNodeHover(matchedNode, event as unknown as React.MouseEvent);
+        onNodeHover(matchedNode);
       }
     },
     [graph, onNodeHover],
@@ -167,7 +168,12 @@ function ReactionChamberCanvasInner({
   }, [handleSelectionChange]);
 
   return (
-    <div className="reaction-chamber-canvas">
+    <motion.div
+      className="reaction-chamber-canvas"
+      initial={{ opacity: 0.94, scale: 0.995 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+    >
       <ReactFlow
         nodes={renderModel.nodes}
         edges={renderModel.edges}
@@ -191,9 +197,8 @@ function ReactionChamberCanvasInner({
       >
         <Background gap={28} size={1} />
         <Controls position="bottom-right" showInteractive={false} />
-        <ChamberLayerTogglesPanel />
       </ReactFlow>
-    </div>
+    </motion.div>
   );
 }
 

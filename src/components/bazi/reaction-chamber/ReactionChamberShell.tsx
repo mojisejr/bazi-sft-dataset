@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { buildDayMasterRelationPacket } from "@/lib/bazi/day-master-relation-reading-poc";
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import {
   resetChamberPresentation,
@@ -17,8 +18,6 @@ import {
 } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 import { ChamberCommandBar } from "@/components/bazi/reaction-chamber/ChamberCommandBar";
 import { ChamberInspector } from "@/components/bazi/reaction-chamber/ChamberInspector";
-import { ChamberTenGodPanel } from "@/components/bazi/reaction-chamber/ChamberTenGodPanel";
-import { RawInteractionMatrixModal } from "@/components/bazi/reaction-chamber/RawInteractionMatrixModal";
 
 const MOBILE_BREAKPOINT_PX = 900;
 
@@ -44,16 +43,11 @@ export function ReactionChamberShell() {
   const variant = useViewportVariant();
   const selection = useChamberPresentationStore((state) => state.selection);
   const isInspectorOpen = useChamberPresentationStore((state) => state.isInspectorOpen);
+  const hoveredNodeId = useChamberPresentationStore((state) => state.hoveredNodeId);
   const setSelection = useChamberPresentationStore((state) => state.setSelection);
+  const setHoveredNodeId = useChamberPresentationStore((state) => state.setHoveredNodeId);
   const clearSelection = useChamberPresentationStore((state) => state.clearSelection);
   const toggleInspector = useChamberPresentationStore((state) => state.toggleInspector);
-  const isTenGodPanelOpen = useChamberPresentationStore((state) => state.isTenGodPanelOpen);
-  const toggleTenGodPanel = useChamberPresentationStore((state) => state.toggleTenGodPanel);
-  const closeTenGodPanel = useChamberPresentationStore((state) => state.closeTenGodPanel);
-  const isRawMatrixOpen = useChamberPresentationStore((state) => state.isRawMatrixOpen);
-  const toggleRawMatrix = useChamberPresentationStore((state) => state.toggleRawMatrix);
-  const closeRawMatrix = useChamberPresentationStore((state) => state.closeRawMatrix);
-  const layerToggles = useChamberPresentationStore((state) => state.layerToggles);
 
   useEffect(() => {
     if (!calculatedState) {
@@ -69,26 +63,20 @@ export function ReactionChamberShell() {
     };
   }, [calculatedState]);
 
+  const readingPacket = useMemo(() => {
+    if (!calculatedState) {
+      return null;
+    }
+
+    return buildDayMasterRelationPacket(calculatedState);
+  }, [calculatedState]);
+
   const graph = useMemo(() => {
     if (!calculatedState) {
       return { nodes: [], edges: [], schoolClusters: [], hiddenSecondaryOverlays: [] };
     }
-    const fullGraph = buildSemanticChamberGraph(calculatedState);
-
-    // Filter edges based on layer toggles
-    const filteredEdges = fullGraph.edges.filter((edge) => {
-      const layer = edge.data.layer;
-      if (layer === "inter-pillar-reaction" && !layerToggles.showStructure) return false;
-      if ((layer === "element-flow" || layer === "element-interaction") && !layerToggles.showEnergy) return false;
-      if (layer === "shen-sha-overlay" && !layerToggles.showOverlay) return false;
-      return true;
-    });
-
-    return {
-      ...fullGraph,
-      edges: filteredEdges,
-    };
-  }, [calculatedState, layerToggles]);
+    return buildSemanticChamberGraph(calculatedState);
+  }, [calculatedState]);
 
   const relationBundle = useMemo(() => {
     if (!calculatedState) {
@@ -116,7 +104,7 @@ export function ReactionChamberShell() {
   }
 
   const dayMaster = calculatedState.dayMaster;
-  const title = `แผนภาพปฏิกิริยา · ดิถี ${dayMaster}`;
+  const title = `แผนภาพพื้นดวง · ดิถี ${dayMaster}`;
   return (
     <ReactFlowProvider>
       <main className={`reaction-chamber-shell reaction-chamber-shell--${variant}`}>
@@ -126,33 +114,25 @@ export function ReactionChamberShell() {
           graph={graph}
           selectionMode={selection.mode}
           isInspectorOpen={isInspectorOpen}
-          isRoleSummaryOpen={isTenGodPanelOpen}
-          isRawMatrixOpen={isRawMatrixOpen}
           onToggleInspector={toggleInspector}
-          onToggleRoleSummary={toggleTenGodPanel}
-          onToggleRawMatrix={toggleRawMatrix}
         />
 
         <div className="reaction-chamber-shell__viewport">
-          <ReactionChamberCanvas graph={graph} selection={selection} relationBundle={relationBundle} onSelectionChange={setSelection} />
-          <ChamberTenGodPanel
-            calculatedState={calculatedState}
-            isOpen={isTenGodPanelOpen}
-            onClose={closeTenGodPanel}
-          />
-          <RawInteractionMatrixModal
-            calculatedState={calculatedState}
+          <ReactionChamberCanvas
             graph={graph}
-            isOpen={isRawMatrixOpen}
-            onClose={closeRawMatrix}
+            selection={selection}
+            relationBundle={relationBundle}
+            hoveredNodeId={hoveredNodeId}
+            onSelectionChange={setSelection}
+            onNodeHover={(node) => setHoveredNodeId(node?.id ?? null)}
           />
           {variant === "docked" && isInspectorOpen && (
-            <ChamberInspector selection={selection} relationBundle={relationBundle} variant="docked" onClose={clearSelection} />
+            <ChamberInspector selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} variant="docked" onClose={clearSelection} />
           )}
         </div>
 
         {variant === "sheet" && (
-          <ChamberInspector selection={selection} relationBundle={relationBundle} variant="sheet" onClose={clearSelection} />
+          <ChamberInspector selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} variant="sheet" onClose={clearSelection} />
         )}
       </main>
     </ReactFlowProvider>

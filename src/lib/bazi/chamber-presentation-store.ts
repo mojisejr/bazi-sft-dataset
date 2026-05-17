@@ -18,11 +18,13 @@ export type ChamberPresentationState = {
   isTenGodPanelOpen: boolean;
   isRawMatrixOpen: boolean;
   layerToggles: ChamberLayerToggles;
+  hoveredNodeId: string | null;
 };
 
 type ChamberPresentationStoreState = ChamberPresentationState & {
   setSelection: (selection: ChamberSelectionState) => void;
   clearSelection: () => void;
+  setHoveredNodeId: (nodeId: string | null) => void;
   openInspector: () => void;
   closeInspector: () => void;
   toggleInspector: () => void;
@@ -47,6 +49,7 @@ export function createChamberPresentationState(
       showEnergy: true,
       showOverlay: true,
     },
+    hoveredNodeId: null,
     ...overrides,
   };
 }
@@ -67,6 +70,9 @@ export function createChamberPresentationStore(
         selection: EMPTY_CHAMBER_SELECTION,
         isInspectorOpen: false,
       });
+    },
+    setHoveredNodeId: (hoveredNodeId) => {
+      set({ hoveredNodeId });
     },
     openInspector: () => {
       set({ isInspectorOpen: true });

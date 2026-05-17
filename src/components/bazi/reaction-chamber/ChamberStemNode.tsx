@@ -1,23 +1,29 @@
 "use client";
 
 import { Handle, Position } from "@xyflow/react";
+import { motion } from "motion/react";
 
 import type { SemanticStemNodeData } from "@/lib/bazi/semantic-chamber-graph";
 import { ELEMENT_COLORS_TH, ELEMENT_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
 
 type ChamberStemNodeProps = {
-  data: SemanticStemNodeData;
+  data: SemanticStemNodeData & { isDimmed?: boolean };
   selected?: boolean;
 };
 
 export function ChamberStemNode({ data, selected }: ChamberStemNodeProps) {
   const focalClass = data.isFocal ? " chamber-stem-node--focal" : "";
   const selectedClass = selected ? " chamber-stem-node--selected" : "";
-  const expandedClass = selected || data.isFocal ? " chamber-stem-node--expanded" : "";
+  const dimmedClass = data.isDimmed ? " chamber-stem-node--dimmed" : "";
   const elementColor = ELEMENT_COLORS_TH[data.element] ?? "#9f5320";
 
   return (
-    <div className={`chamber-stem-node${focalClass}${selectedClass}${expandedClass}`} style={{ borderColor: elementColor }}>
+    <motion.div
+      className={`chamber-stem-node${focalClass}${selectedClass}${dimmedClass}`}
+      style={{ borderColor: elementColor }}
+      animate={{ opacity: data.isDimmed ? 0.3 : 1, scale: selected ? 1.04 : 1, y: selected ? -2 : 0 }}
+      transition={{ duration: 0.18, ease: "easeOut" }}
+    >
       <Handle id="target-top" type="target" position={Position.Top} className="chamber-node-handle" />
       <Handle id="target-left" type="target" position={Position.Left} className="chamber-node-handle" />
       <Handle id="target-right" type="target" position={Position.Right} className="chamber-node-handle" />
@@ -29,13 +35,9 @@ export function ChamberStemNode({ data, selected }: ChamberStemNodeProps) {
 
       <span className="chamber-stem-node__glyph" style={{ color: elementColor }}>{data.stem}</span>
       <span className="chamber-stem-node__translation">{data.stemTranslation ?? ELEMENT_LABELS_TH[data.element as keyof typeof ELEMENT_LABELS_TH] ?? data.element}</span>
-      {data.hiddenStems.length > 0 && (
-        <span className="chamber-stem-node__hidden-stems" aria-label={`hidden stems ${data.hiddenStems.join(" ")}`}>
-          <span className="chamber-stem-node__hidden-compact">{data.hiddenStemCompactLabel ?? data.hiddenStems.join(" · ")}</span>
-          <span className="chamber-stem-node__hidden-expanded">{data.hiddenStems.join(" · ")}</span>
-        </span>
-      )}
+      {data.tenGod && <span className="chamber-stem-node__cue">{data.tenGod}</span>}
+      {data.markerLabels.length > 0 && <span className="chamber-stem-node__marker-count">ดาว {data.markerLabels.length}</span>}
       <span className="chamber-stem-node__pillar">{data.pillarLabel}</span>
-    </div>
+    </motion.div>
   );
 }
