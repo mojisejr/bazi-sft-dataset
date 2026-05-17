@@ -309,6 +309,13 @@ export const SAN_HE_GROUPS = [
   { branches: ["巳", "酉", "丑"], element: "metal" },
 ] as const;
 
+export const SAN_HUI_GROUPS = [
+  { branches: ["亥", "子", "丑"], element: "water" },
+  { branches: ["寅", "卯", "辰"], element: "wood" },
+  { branches: ["巳", "午", "未"], element: "fire" },
+  { branches: ["申", "酉", "戌"], element: "metal" },
+] as const;
+
 export const CLASH_PAIRS = new Set([
   "子|午",
   "丑|未",
@@ -540,12 +547,14 @@ export const TWELVE_QI_CONTEXT_MAP: Record<string, { labelThai: string; contextT
 export const INTERACTION_CONTEXT_TAG: Record<string, string> = {
   "heavenly-stem-clash": "ชงฟ้า: แรงขัดแย้งจากภายนอก กระทบโดยไม่คาดฝัน",
   "earthly-branch-clash": "ชงดิน: แรงขัดแย้งจากการกระทำของตัวเอง ผลจากการตัดสินใจ",
-  "earthly-branch-harm": "เฮ้ง: แรงทำร้ายแบบซ่อนเร้น ถูกหักหลัง ถูกทำร้ายจากคนใกล้ตัว",
-  "earthly-branch-destruction": "ไห่: ความสัมพันธ์พังทลาย ผิดหวัง เสียใจ",
-  "earthly-branch-punishment": "ผว/กุ้ยนั้ง: ลงโทษ กดดัน ความเครียด",
+  "earthly-branch-harm": "ไห่: แรงทำร้ายแบบซ่อนเร้น ถูกหักหลัง ถูกทำร้ายจากคนใกล้ตัว",
+  "earthly-branch-destruction": "ผั่ว: ความสัมพันธ์พังทลาย ผิดหวัง เสียใจ",
+  "earthly-branch-punishment": "เฮ้ง: ลงโทษ กดดัน ความเครียด",
   "earthly-branch-liu-he": "ฮะดิน: การรวมกลุ่ม พันธมิตร การสนับสนุน",
   "heavenly-stem-he": "ฮะฟ้า: ความร่วมมือจากภายนอก โอกาสที่เข้ามาเอง",
   "earthly-branch-ban-san-he": "กึ่งภาคี: การสนับสนุนบางส่วน พันธมิตรที่ยังไม่เต็มที่",
+  "earthly-branch-san-he": "ภาคี: การรวมกลุ่มเต็มชุด เกิดแรงหนุนร่วมกัน",
+  "earthly-branch-san-hui": "ไตรทิศ: การรวมกลุ่มตามทิศ เกิดแรงหนุนของฤดูกาลและทิศทาง",
 };
 
 export const TWELVE_QI_ADVERB_MAP: Record<string, { thai: string; meaning: string }> = {

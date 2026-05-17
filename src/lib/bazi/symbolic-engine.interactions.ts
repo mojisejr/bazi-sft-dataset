@@ -16,6 +16,7 @@ import {
   HARM_PAIRS,
   MONTH_SEASONAL_CLASH_FACTOR,
   SAN_HE_GROUPS,
+  SAN_HUI_GROUPS,
   PUNISHMENT_PAIR_KEYS,
   PUNISHMENT_TRIOS,
   SELF_PUNISHMENT_BRANCHES,
@@ -34,6 +35,7 @@ import type {
   PairInteraction,
   PillarKey,
 } from "@/lib/bazi/symbolic-engine.types";
+import type { SupportedElementValue } from "@/lib/bazi/schema-types";
 import {
   buildContextRuleNote,
   renderContextRuleNoteEnglish,
@@ -128,6 +130,10 @@ function resolveBranchCombinationOutcomes(
     if (relation.familyKey === "earthly-branch-san-he") {
       fullGroupBySource.set(relation.label, relation);
     }
+
+    if (relation.familyKey === "earthly-branch-san-hui") {
+      fullGroupBySource.set(relation.label, relation);
+    }
   }
 
   for (const relation of relations) {
@@ -136,7 +142,7 @@ function resolveBranchCombinationOutcomes(
       continue;
     }
 
-    if (relation.familyKey === "earthly-branch-san-he") {
+    if (relation.familyKey === "earthly-branch-san-he" || relation.familyKey === "earthly-branch-san-hui") {
       const supportingStages = relation.participantEntityIds
         .map((entityId) => getQualifierByEntityId(qualifiers, entityId))
         .filter((qualifier): qualifier is InteractionQualifierValue => Boolean(qualifier))
@@ -145,7 +151,9 @@ function resolveBranchCombinationOutcomes(
       outcome.dayMasterEffect = resolveDayMasterEffect(dayMasterElement, relation.transformElement);
       outcome.supportReasons = uniqueStrings([
         ...outcome.supportReasons,
-        ...(supportingStages.length >= 2 ? ["route-backed-full-triad"] : []),
+        ...(supportingStages.length >= 2
+          ? [relation.familyKey === "earthly-branch-san-hui" ? "route-backed-directional-meeting" : "route-backed-full-triad"]
+          : []),
       ]);
       outcome.status = "supported";
       outcome.precedence = "primary";
@@ -247,6 +255,61 @@ function buildStemKey(left: string, right: string) {
 
 function buildNormalizedBranchPairLabel(left: string, right: string) {
   return normalizeBranchPairKey(left, right).replace("|", "");
+}
+
+function getUniqueBranchMatches(
+  branchEntries: Array<[PillarKey, PillarValue]>,
+  branches: readonly string[],
+) {
+  return branchEntries.filter((entry, index, all) =>
+    branches.includes(entry[1].branch)
+    && all.findIndex((candidate) => candidate[1].branch === entry[1].branch) === index,
+  );
+}
+
+function buildFullDirectionalInteractions(
+  branchEntries: Array<[PillarKey, PillarValue]>,
+  groups: readonly { branches: readonly string[]; element: SupportedElementValue }[],
+) {
+  return groups.flatMap((group) => {
+    const matches = getUniqueBranchMatches(branchEntries, group.branches);
+
+    if (matches.length !== group.branches.length) {
+      return [];
+    }
+
+    return [{
+      branches: group.branches.join(""),
+      element: group.element,
+      pillarKeys: matches.map(([pillarKey]) => pillarKey),
+      entityIds: matches.map(([pillarKey]) => buildBranchEntityId(pillarKey)),
+    }];
+  });
+}
+
+function buildHalfSanHeInteractions(
+  branchEntries: Array<[PillarKey, PillarValue]>,
+) {
+  return SAN_HE_GROUPS.flatMap((group) => {
+    const matches = getUniqueBranchMatches(branchEntries, group.branches);
+
+    if (matches.length < 2) {
+      return [];
+    }
+
+    const halfMatches = matches.slice(0, 2);
+
+    return [{
+      label: buildNormalizedBranchPairLabel(
+        halfMatches[0]?.[1].branch ?? "",
+        halfMatches[1]?.[1].branch ?? "",
+      ),
+      element: group.element,
+      pillarKeys: halfMatches.map(([pillarKey]) => pillarKey),
+      entityIds: halfMatches.map(([pillarKey]) => buildBranchEntityId(pillarKey)),
+      sourceGroup: group.branches.join(""),
+    }];
+  });
 }
 
 
@@ -501,6 +564,9 @@ function buildBranchFamilyRelations(
 ) {
   const pairInteractions = buildPairInteractions(pillars, SIX_COMBINATION_PAIRS);
   const branchEntries = Object.entries(pillars) as Array<[PillarKey, PillarValue]>;
+  const sanHeInteractions = buildFullDirectionalInteractions(branchEntries, SAN_HE_GROUPS);
+  const halfSanHeInteractions = buildHalfSanHeInteractions(branchEntries);
+  const sanHuiInteractions = buildFullDirectionalInteractions(branchEntries, SAN_HUI_GROUPS);
   const relations: InteractionRelationValue[] = [];
   const outcomes: InteractionOutcomeValue[] = [];
   const pairLabels = new Set(resolution.activeCombinations);
@@ -522,75 +588,177 @@ function buildBranchFamilyRelations(
       label: interaction.label,
       metadata: {},
     });
-      outcomes.push({
-        relationId,
-        status: "detected",
-        precedence: "primary",
-        supportReasons: [],
-        blockedByRelationIds: [],
-        metadata: {},
-      });
+    outcomes.push({
+      relationId,
+      status: "detected",
+      precedence: "primary",
+      supportReasons: [],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
   }
 
-  for (const group of SAN_HE_GROUPS) {
-    const groupBranches = [...group.branches] as string[];
-    const matches = branchEntries.filter(([, pillar]) => groupBranches.includes(pillar.branch));
-    const uniqueMatchedBranches = Array.from(new Set(matches.map(([, pillar]) => pillar.branch)));
+  for (const interaction of sanHeInteractions) {
+    const relationId = `relation-san-he-${interaction.branches}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-san-he",
+      type: "branch-combination",
+      participantEntityIds: interaction.entityIds,
+      label: interaction.branches,
+      transformElement: interaction.element,
+      metadata: {},
+    });
+    outcomes.push({
+      relationId,
+      status: "supported",
+      precedence: "primary",
+      transformElement: interaction.element,
+      supportReasons: ["full-triad"],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
+  }
 
-    if (uniqueMatchedBranches.length === 3) {
-      const relationId = `relation-san-he-${group.branches.join("")}`;
-      relations.push({
-        id: relationId,
-        familyKey: "earthly-branch-san-he",
-        type: "branch-combination",
-        participantEntityIds: matches
-          .filter((entry, index, all) => all.findIndex((candidate) => candidate[1].branch === entry[1].branch) === index)
-          .map(([pillarKey]) => buildBranchEntityId(pillarKey)),
-        label: group.branches.join(""),
-        transformElement: group.element,
-        metadata: {},
-      });
-      outcomes.push({
-        relationId,
-        status: "supported",
-        precedence: "primary",
-        transformElement: group.element,
-        supportReasons: ["full-triad"],
-        blockedByRelationIds: [],
-        metadata: {},
-      });
-    }
+  for (const interaction of halfSanHeInteractions) {
+    const relationId = `relation-half-san-he-${interaction.label}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-ban-san-he",
+      type: "branch-combination",
+      participantEntityIds: interaction.entityIds,
+      label: interaction.label,
+      transformElement: interaction.element,
+      metadata: {
+        sourceGroup: interaction.sourceGroup,
+      },
+    });
+    outcomes.push({
+      relationId,
+      status: "detected",
+      precedence: "secondary",
+      transformElement: interaction.element,
+      supportReasons: ["partial-triad"],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
+  }
 
-    if (uniqueMatchedBranches.length >= 2) {
-      const halfMatches = matches
-        .filter((entry, index, all) => all.findIndex((candidate) => candidate[1].branch === entry[1].branch) === index)
-        .slice(0, 2);
-      const halfLabel = buildNormalizedBranchPairLabel(
-        halfMatches[0]?.[1].branch ?? "",
-        halfMatches[1]?.[1].branch ?? "",
-      );
-      const relationId = `relation-half-san-he-${halfLabel}`;
-      relations.push({
-        id: relationId,
-        familyKey: "earthly-branch-ban-san-he",
-        type: "branch-combination",
-        participantEntityIds: halfMatches.map(([pillarKey]) => buildBranchEntityId(pillarKey)),
-        label: halfLabel,
-        transformElement: group.element,
-        metadata: {
-          sourceGroup: group.branches.join(""),
-        },
-      });
-      outcomes.push({
-        relationId,
-        status: "detected",
-        precedence: "secondary",
-        transformElement: group.element,
-        supportReasons: ["partial-triad"],
-        blockedByRelationIds: [],
-        metadata: {},
-      });
-    }
+  for (const interaction of sanHuiInteractions) {
+    const relationId = `relation-san-hui-${interaction.branches}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-san-hui",
+      type: "branch-combination",
+      participantEntityIds: interaction.entityIds,
+      label: interaction.branches,
+      transformElement: interaction.element,
+      metadata: {},
+    });
+    outcomes.push({
+      relationId,
+      status: "supported",
+      precedence: "primary",
+      transformElement: interaction.element,
+      supportReasons: ["directional-meeting"],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
+  }
+
+  const clashLabels = new Set([...resolution.activeClashes, ...resolution.neutralizedClashes]);
+  const clashPairs = buildPairInteractions(pillars, CLASH_PAIRS).filter((interaction) => clashLabels.has(interaction.label));
+  const harmPairs = buildPairInteractions(pillars, HARM_PAIRS);
+  const destructionPairs = buildPairInteractions(pillars, DESTRUCTION_PAIRS);
+  const punishments = buildPunishmentInteractions(pillars);
+
+  for (const interaction of clashPairs) {
+    const relationId = `relation-branch-clash-${interaction.leftPillar}-${interaction.rightPillar}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-clash",
+      type: "branch-clash",
+      participantEntityIds: [
+        buildBranchEntityId(interaction.leftPillar),
+        buildBranchEntityId(interaction.rightPillar),
+      ],
+      label: interaction.label,
+      metadata: {},
+    });
+    outcomes.push({
+      relationId,
+      status: resolution.neutralizedClashes.includes(interaction.label) ? "blocked" : "detected",
+      precedence: resolution.neutralizedClashes.includes(interaction.label) ? "secondary" : "primary",
+      supportReasons: resolution.neutralizedClashes.includes(interaction.label) ? ["neutralized-by-combination"] : [],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
+  }
+
+  for (const interaction of harmPairs) {
+    const relationId = `relation-branch-harm-${interaction.leftPillar}-${interaction.rightPillar}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-harm",
+      type: "branch-harm",
+      participantEntityIds: [
+        buildBranchEntityId(interaction.leftPillar),
+        buildBranchEntityId(interaction.rightPillar),
+      ],
+      label: interaction.label,
+      metadata: {},
+    });
+    outcomes.push({
+      relationId,
+      status: "detected",
+      precedence: "secondary",
+      supportReasons: [],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
+  }
+
+  for (const interaction of destructionPairs) {
+    const relationId = `relation-branch-destruction-${interaction.leftPillar}-${interaction.rightPillar}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-destruction",
+      type: "branch-destruction",
+      participantEntityIds: [
+        buildBranchEntityId(interaction.leftPillar),
+        buildBranchEntityId(interaction.rightPillar),
+      ],
+      label: interaction.label,
+      metadata: {},
+    });
+    outcomes.push({
+      relationId,
+      status: "detected",
+      precedence: "secondary",
+      supportReasons: [],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
+  }
+
+  for (const interaction of punishments) {
+    const relationId = `relation-branch-punishment-${interaction.label}`;
+    relations.push({
+      id: relationId,
+      familyKey: "earthly-branch-punishment",
+      type: "branch-punishment",
+      participantEntityIds: interaction.pillars.map((pillarKey) => buildBranchEntityId(pillarKey)),
+      label: interaction.label,
+      metadata: {},
+    });
+    outcomes.push({
+      relationId,
+      status: "detected",
+      precedence: "tertiary",
+      supportReasons: [],
+      blockedByRelationIds: [],
+      metadata: {},
+    });
   }
 
   return { relations, outcomes };
@@ -717,13 +885,19 @@ export function resolveBranchInteractionEffects(
   pillars: CalculatedStateValue["fourPillars"],
 ): BranchInteractionResolution {
   const combinations = buildPairInteractions(pillars, SIX_COMBINATION_PAIRS);
+  const branchEntries = Object.entries(pillars) as Array<[PillarKey, PillarValue]>;
+  const sanHeInteractions = buildFullDirectionalInteractions(branchEntries, SAN_HE_GROUPS);
+  const halfSanHeInteractions = buildHalfSanHeInteractions(branchEntries);
+  const sanHuiInteractions = buildFullDirectionalInteractions(branchEntries, SAN_HUI_GROUPS);
   const clashes = buildPairInteractions(pillars, CLASH_PAIRS);
   const harms = buildPairInteractions(pillars, HARM_PAIRS);
   const destructions = buildPairInteractions(pillars, DESTRUCTION_PAIRS);
   const punishments = buildPunishmentInteractions(pillars);
-  const combinationPillars = new Set(
-    combinations.flatMap((interaction) => [interaction.leftPillar, interaction.rightPillar]),
-  );
+  const combinationPillars = new Set<PillarKey>([
+    ...combinations.flatMap((interaction) => [interaction.leftPillar, interaction.rightPillar]),
+    ...sanHeInteractions.flatMap((interaction) => interaction.pillarKeys),
+    ...sanHuiInteractions.flatMap((interaction) => interaction.pillarKeys),
+  ]);
   const neutralizedClashes = clashes.filter(
     (interaction) =>
       combinationPillars.has(interaction.leftPillar) ||
@@ -738,6 +912,9 @@ export function resolveBranchInteractionEffects(
   const activePunishments = punishments;
   const interactionTiers: Record<string, InteractionTier> = {};
   combinations.forEach((i) => { interactionTiers[`combination-${i.label}`] = "primary"; });
+  sanHeInteractions.forEach((i) => { interactionTiers[`combination-${i.branches}`] = "primary"; });
+  halfSanHeInteractions.forEach((i) => { interactionTiers[`combination-${i.label}`] = "secondary"; });
+  sanHuiInteractions.forEach((i) => { interactionTiers[`combination-${i.branches}`] = "primary"; });
   activeClashes.forEach((i) => { interactionTiers[`clash-${i.label}`] = "primary"; });
   neutralizedClashes.forEach((i) => { interactionTiers[`clash-${i.label}`] = "secondary"; });
   harms.forEach((i) => { interactionTiers[`harm-${i.label}`] = "secondary"; });
@@ -754,6 +931,21 @@ export function resolveBranchInteractionEffects(
     ...combinations.map((interaction) =>
       buildContextRuleNote("ACTIVE_COMBINATION_PRECEDENCE", {
         label: interaction.label,
+      }),
+    ),
+    ...sanHeInteractions.map((interaction) =>
+      buildContextRuleNote("ACTIVE_COMBINATION_PRECEDENCE", {
+        label: interaction.branches,
+      }),
+    ),
+    ...halfSanHeInteractions.map((interaction) =>
+      buildContextRuleNote("ACTIVE_COMBINATION_PRECEDENCE", {
+        label: interaction.label,
+      }),
+    ),
+    ...sanHuiInteractions.map((interaction) =>
+      buildContextRuleNote("ACTIVE_COMBINATION_PRECEDENCE", {
+        label: interaction.branches,
       }),
     ),
     ...neutralizedClashes.map((interaction) =>
@@ -814,7 +1006,11 @@ export function resolveBranchInteractionEffects(
   const intraPillarDestructions = buildIntraPillarDestruction(pillars);
 
   return {
-    activeCombinations: uniqueStrings(combinations.map((interaction) => interaction.label)),
+    activeCombinations: uniqueStrings([
+      ...combinations.map((interaction) => interaction.label),
+      ...sanHeInteractions.map((interaction) => interaction.branches),
+      ...sanHuiInteractions.map((interaction) => interaction.branches),
+    ]),
     neutralizedClashes: uniqueStrings(neutralizedClashes.map((interaction) => interaction.label)),
     activeClashes: uniqueStrings(activeClashes.map((interaction) => interaction.label)),
     activePunishments: uniqueStrings(activePunishments.map((interaction) => interaction.label)),

@@ -117,6 +117,20 @@ describe("calculateBaziChart", () => {
     );
   });
 
+  test("detects san hui and uses it to neutralize clash on shared pillar", () => {
+    const resolved = resolveBranchInteractionEffects({
+      year: { stem: "甲", branch: "寅", hiddenStems: [] },
+      month: { stem: "乙", branch: "申", hiddenStems: [] },
+      day: { stem: "丙", branch: "卯", hiddenStems: [] },
+      hour: { stem: "丁", branch: "辰", hiddenStems: [] },
+    });
+
+    expect(resolved.activeCombinations).toContain("寅卯辰");
+    expect(resolved.neutralizedClashes).toContain("寅申");
+    expect(resolved.activeClashes).toEqual([]);
+    expect(resolved.interactionTiers["combination-寅卯辰"]).toBe("primary");
+  });
+
   test("flips the year and month pillars when crossing the start-of-spring boundary", async () => {
     const repository = createTestKnowledgeRepository();
     const before = await calculateBaziChart(

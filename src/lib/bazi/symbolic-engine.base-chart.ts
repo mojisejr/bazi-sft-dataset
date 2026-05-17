@@ -518,6 +518,12 @@ function buildGeneralizedInteractionBadge(args: {
       semanticKind: "branch-ban-san-he",
       summary: `ราศีล่างคู่ ${relation.label} เป็นครึ่งสามภาคี${transformText}`,
     },
+    "earthly-branch-san-hui": {
+      label: `三會 ${relation.label}`,
+      schoolLabel: "三會",
+      semanticKind: "branch-san-he",
+      summary: `ราศีล่างชุด ${relation.label} เกิดไตรทิศ${transformText}`,
+    },
     "element-generate": {
       label: `เซียงแซ ${relation.label}`,
       schoolLabel: "เซียงแซ",

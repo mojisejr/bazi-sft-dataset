@@ -273,6 +273,39 @@ describe("day master relation reading poc", () => {
     expect(attractionEvidence).toContain("子辰");
   });
 
+  test("stepwise surfaces use school-consistent labels for harm destruction and punishment", () => {
+    const packet = buildDayMasterRelationPacket(CalculatedStateSchema.parse({
+      ...SAMPLE_CALCULATED_STATE,
+      fourPillars: {
+        year: { stem: "甲", branch: "子", hiddenStems: ["癸"] },
+        month: { stem: "乙", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+        day: { stem: "丙", branch: "卯", hiddenStems: ["乙"] },
+        hour: { stem: "丁", branch: "酉", hiddenStems: ["辛"] },
+      },
+      interactionState: buildGeneralizedInteractionState({
+        pillars: {
+          year: { stem: "甲", branch: "子", hiddenStems: ["癸"] },
+          month: { stem: "乙", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+          day: { stem: "丙", branch: "卯", hiddenStems: ["乙"] },
+          hour: { stem: "丁", branch: "酉", hiddenStems: ["辛"] },
+        },
+        dayMasterStem: "丙",
+        twelveQiByBranch: {},
+        resolution: resolveBranchInteractionEffects({
+          year: { stem: "甲", branch: "子", hiddenStems: ["癸"] },
+          month: { stem: "乙", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+          day: { stem: "丙", branch: "卯", hiddenStems: ["乙"] },
+          hour: { stem: "丁", branch: "酉", hiddenStems: ["辛"] },
+        }),
+      }),
+    }));
+
+    const step3 = packet.stepInsights[2]!;
+    expect(step3.evidenceLines.some((line) => line.includes("ไห่") && line.includes("子未"))).toBe(true);
+    expect(step3.evidenceLines.some((line) => line.includes("ผั่ว") && line.includes("子酉"))).toBe(true);
+    expect(step3.evidenceLines.some((line) => line.includes("เฮ้ง") && line.includes("子卯"))).toBe(true);
+  });
+
   test("preflight report respects maxVisibleStep to hide steps 4-6", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
 

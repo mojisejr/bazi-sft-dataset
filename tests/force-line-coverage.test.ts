@@ -92,14 +92,15 @@ describe("Force-line coverage — 9 interaction families", () => {
         hour: ["丁", "申"],
       });
 
-      expect(resolution.activeClashes).toContain("子午");
-      expect(resolution.neutralizedClashes).toEqual([]);
+      expect(resolution.activeCombinations).toContain("申子辰");
+      expect(resolution.activeClashes).toEqual([]);
+      expect(resolution.neutralizedClashes).toContain("子午");
 
       const clashBadge = reading.branchInteractionBadges.find(
         (b) => b.schoolLabel === "ชง" && b.label.includes("子午"),
       );
       expect(clashBadge).toBeDefined();
-      expect(clashBadge!.status).toBe("active");
+      expect(clashBadge!.status).toBe("neutralized");
     });
 
     test("子午 clash is neutralized when 子丑 combination exists", () => {

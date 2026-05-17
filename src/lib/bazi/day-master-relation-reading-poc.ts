@@ -91,14 +91,14 @@ const STEP_3_ATTRACTION_FAMILIES = new Set([
 const MODIFIER_FAMILY_LABEL_THAI: Record<string, string> = {
   "heavenly-stem-clash": "ชง (ฟ้า)",
   "earthly-branch-clash": "ชง (ดิน)",
-  "earthly-branch-harm": "เฮ้ง (ฮะ)",
-  "earthly-branch-destruction": "ไห่",
-  "earthly-branch-punishment": "ผว / กุ้ยนั้ง",
+  "earthly-branch-harm": "ไห่",
+  "earthly-branch-destruction": "ผั่ว",
+  "earthly-branch-punishment": "เฮ้ง",
   "earthly-branch-liu-he": "ฮะ (ดิน)",
   "heavenly-stem-he": "ฮะ (ฟ้า)",
   "earthly-branch-ban-san-he": "กึ่งภาคี",
   "earthly-branch-san-he": "ภาคี",
-  "earthly-branch-san-hui": "สามรวม",
+  "earthly-branch-san-hui": "ไตรทิศ",
   "earthly-branch-fang-ju": "จู้",
 };
 
