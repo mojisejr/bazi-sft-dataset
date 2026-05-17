@@ -24,6 +24,7 @@ import {
 } from "@/lib/bazi/symbolic-engine.constants";
 import { YANG_STEMS } from "@/lib/bazi/pillar-display";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
+import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import { getGeminiApiKey } from "@/lib/env";
 
@@ -792,7 +793,7 @@ function buildStep4WealthVector(
   allTargets: RelationTarget[],
   dayMasterElement: SupportedElementValue,
   dayMasterStem: string,
-  strengthState: string,
+  strengthScore: number,
   twelveQi: Record<string, string>,
 ): Step4WealthVector {
   const wealthElement = CONTROLS[dayMasterElement as keyof typeof CONTROLS] as SupportedElementValue;
@@ -809,7 +810,13 @@ function buildStep4WealthVector(
   const dayMasterIsYang = YANG_STEMS.has(dayMasterStem);
 
   const capacityFallback = WEALTH_CAPACITY_MAP["balanced"]!;
-  const capacity = WEALTH_CAPACITY_MAP[strengthState] ?? capacityFallback;
+  let capacityKey: string;
+  try {
+    capacityKey = classifyOperatorStrengthScore(strengthScore).id;
+  } catch {
+    capacityKey = "balanced";
+  }
+  const capacity = WEALTH_CAPACITY_MAP[capacityKey] ?? capacityFallback;
 
   const pianCaiBadges: Step4WealthVector["pianCaiBadges"] = visibleWealthCarriers.map((c) => {
     const carrierIsYang = getCarrierPolarityIsYang(c);
@@ -1210,7 +1217,7 @@ function buildStepInsights(options: {
     relationTargets,
     dayMasterElement,
     calculatedState.dayMaster,
-    strengthProfile?.strengthState ?? "balanced",
+    calculatedState.strengthScore,
     calculatedState.twelveQi,
   );
   const pillarContextLines = buildPillarContextLines(calculatedState);

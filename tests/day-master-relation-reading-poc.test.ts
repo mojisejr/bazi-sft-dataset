@@ -325,11 +325,12 @@ describe("day master relation reading poc", () => {
     expect(wealthElementEvidence).toBeDefined();
   });
 
-  test("step 4 wealth vector shows capacity from strength state", () => {
+  test("step 4 wealth vector shows capacity from strength score", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
     const step4 = packet.stepInsights[3]!;
 
-    expect(step4.summaryThai).toContain("คว้าได้");
+    // strengthScore 3.25 maps to "weak" band → capacity label "คว้ายาก"
+    expect(step4.summaryThai).toContain("คว้ายาก");
 
     const capacityEvidence = step4.evidenceLines.find((line) => line.includes("สามารถคว้า"));
     expect(capacityEvidence).toBeDefined();
