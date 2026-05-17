@@ -84,11 +84,30 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
   sixtyJiaziCorePersona: {
     code: "癸亥",
     narrative: "น้ำหยินบนกุนให้ภาพคนที่รับรู้อะไรไว แต่เก็บแรงขับไว้ลึกและค่อยปล่อยเมื่อเห็นจังหวะ",
-    precedenceNotes: ["หลักวันต้องอ่านคู่กับแรงน้ำซ่อนในกุน"],
-    precedenceNoteSignals: [],
+    precedenceNotes: ["Active combination 子辰 takes precedence over clashes touching the same branches."],
+    precedenceNoteSignals: [
+      {
+        key: "ACTIVE_COMBINATION_PRECEDENCE",
+        params: {
+          label: "子辰",
+        },
+      },
+    ],
     semanticNotes: [],
   },
   interactionState: buildRealInteractionState(),
+  shenSha: [
+    {
+      starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
+      relatedPillar: "เดือน",
+      meaning: "ดาวอุปถัมภ์ ชี้จังหวะที่มีผู้ใหญ่ค้ำชู คนแนะนำ หรือแรงสนับสนุนเข้ามาช่วยเปิดทาง",
+    },
+    {
+      starName: "บุ่งเชียง/วิชาการ (文昌)",
+      relatedPillar: "วัน",
+      meaning: "ดาววิชาการ การคิดเชิงระบบ การเขียน การเรียนรู้ และงานที่ต้องใช้ปัญญาหรือชื่อเสียงทางความรู้",
+    },
+  ],
   baseChartReading: {
     roleBadges: [],
     stemInteractionBadges: [],
@@ -113,7 +132,17 @@ describe("day master relation reading poc", () => {
     expect(packet.chartAnchor.dayBranchLabelThai).toBe("กุน");
     expect(packet.stepInsights[0]?.titleThai).toContain("สมดุล");
     expect(packet.stepInsights[3]?.titleThai).toContain("ผลลัพธ์");
+    expect(packet.stepInsights[5]?.titleThai).toContain("ดาวพิเศษ");
     expect(packet.evidenceCatalog.length).toBeGreaterThanOrEqual(6);
+  });
+
+  test("step 2 precedence evidence localizes thai wording from precedence signals", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step2 = packet.stepInsights[1]!;
+
+    const precedenceLine = step2.evidenceLines.find((line) => line.includes("ฮะ 子辰 ทำงานก่อน"));
+    expect(precedenceLine).toBeDefined();
+    expect(precedenceLine).not.toContain("Active combination");
   });
 
   test("builds a brief and prompt that lock the six-step order", () => {
@@ -493,6 +522,23 @@ describe("day master relation reading poc", () => {
 
     expect(step5.evidenceIds.length).toBeGreaterThanOrEqual(4);
     expect(step5.summaryThai).toContain("สี่เสาแยกหน้าที่");
+  });
+
+  test("step 6 integrates shen sha and hidden stems from engine truth", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step6 = packet.stepInsights[5]!;
+
+    expect(step6.titleThai).toContain("ดาวพิเศษ");
+    expect(step6.evidenceIds).toContain("S6-shen-sha");
+    expect(step6.evidenceIds).toContain("S6-hidden-stems-year");
+    expect(step6.evidenceIds).toContain("S6-hidden-wealth");
+    expect(step6.evidenceIds).toContain("S6-hidden-power");
+    expect(step6.summaryThai).toContain("ขุนนาง/อุปถัมภ์");
+    expect(step6.summaryThai).toContain("บุ่งเชียง/วิชาการ");
+    expect(step6.summaryThai).toContain("ปี 辰 (มะโรง) แฝง");
+    expect(step6.summaryThai).toContain("戊(ธาตุพิฆาต/ธาตุดิน หยาง)");
+    expect(step6.summaryThai).toContain("คลังทรัพย์แฝง");
+    expect(step6.summaryThai).toContain("คลังอำนาจแฝง");
   });
 });
 

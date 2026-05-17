@@ -22,6 +22,7 @@ import {
   TWELVE_QI_LABELS_TH,
   VERTICAL_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
+import { renderContextRuleNoteThai } from "@/lib/bazi/context-dictionary";
 import { YANG_STEMS } from "@/lib/bazi/pillar-display";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
@@ -910,6 +911,17 @@ type Step5ContextMapping = {
   }>;
 };
 
+type Step6AdvancedVector = {
+  summaryLines: string[];
+  shenShaDetail: string;
+  hiddenStemDetails: Array<{ pillarKey: PillarKey; detail: string }>;
+  hiddenWealthDetail: string;
+  hiddenPowerDetail: string;
+  seasonalDetail: string;
+  interactionDetail: string;
+  readingOrderDetail: string;
+};
+
 function buildStep5ContextMapping(
   actionVector: Step3ActionVector,
   wealthVector: Step4WealthVector,
@@ -1150,25 +1162,95 @@ function buildPillarContextLines(calculatedState: CalculatedStateValue) {
   });
 }
 
-function buildAdvancedSignals(calculatedState: CalculatedStateValue) {
-  const seasonalSignal = calculatedState.seasonalInteraction
+function localizePrecedenceNotes(sixtyJiazi: CalculatedStateValue["sixtyJiaziCorePersona"] | undefined) {
+  const precedenceSignals = sixtyJiazi?.precedenceNoteSignals ?? [];
+  if (precedenceSignals.length > 0) {
+    return precedenceSignals.map((signal, index) => renderContextRuleNoteThai(signal) ?? sixtyJiazi?.precedenceNotes[index] ?? signal.key);
+  }
+
+  const precedenceNotes = sixtyJiazi?.precedenceNotes ?? [];
+  if (precedenceNotes.length > 0) {
+    return precedenceNotes;
+  }
+
+  return ["ยังไม่มีหมายเหตุการจัดลำดับการอ่านเพิ่มเติม"];
+}
+
+function formatHiddenStemAdvancedSignal(target: RelationTarget) {
+  const polarityThai = YANG_STEMS.has(target.symbol) ? "หยาง" : "หยิน";
+  return `${target.symbol}(${target.relationLabelThai}/ธาตุ${target.elementLabelThai} ${polarityThai})`;
+}
+
+function buildAdvancedSignals(
+  calculatedState: CalculatedStateValue,
+  relationTargets: RelationTarget[],
+): Step6AdvancedVector {
+  const shenShaDetail = calculatedState.shenSha.length > 0
+    ? calculatedState.shenSha.map((entry) => `${entry.starName} ที่${entry.relatedPillar}: ${entry.meaning}`).join(" | ")
+    : "ยังไม่มีดาวพิเศษที่ต้องยกขึ้นมาเป็นจุดอ่านเสริม";
+
+  const hiddenStemDetails = PILLAR_SEQUENCE.map((pillarKey) => {
+    const pillar = calculatedState.fourPillars[pillarKey];
+    const hiddenTargets = relationTargets.filter((target) => target.pillarKey === pillarKey && target.layer === "hidden");
+    const branchLabelThai = getSymbolThaiForBranch(pillar.branch);
+
+    return {
+      pillarKey,
+      detail: hiddenTargets.length > 0
+        ? `${PILLAR_LABELS[pillarKey]} ${pillar.branch} (${branchLabelThai}) แฝง ${hiddenTargets.map(formatHiddenStemAdvancedSignal).join(", ")}`
+        : `${PILLAR_LABELS[pillarKey]} ${pillar.branch} (${branchLabelThai}) ไม่มีราศีแฝงให้ยกอ่านเพิ่ม`,
+    };
+  });
+
+  const hiddenWealthCarriers = relationTargets
+    .filter((target) => target.layer === "hidden" && target.relationKey === "wealth")
+    .sort((left, right) => left.weight - right.weight);
+  const hiddenPowerCarriers = relationTargets
+    .filter((target) => target.layer === "hidden" && target.relationKey === "power")
+    .sort((left, right) => left.weight - right.weight);
+
+  const hiddenWealthDetail = hiddenWealthCarriers.length > 0
+    ? `คลังทรัพย์แฝงอยู่ที่ ${hiddenWealthCarriers.map((target) => `${target.pillarLabelThai} ${target.symbol}`).join(", ")}`
+    : "คลังทรัพย์แฝงยังไม่เปิดบนดวงนี้";
+  const hiddenPowerDetail = hiddenPowerCarriers.length > 0
+    ? `คลังอำนาจแฝงอยู่ที่ ${hiddenPowerCarriers.map((target) => `${target.pillarLabelThai} ${target.symbol}`).join(", ")}`
+    : "คลังอำนาจแฝงยังไม่เปิดบนดวงนี้";
+
+  const seasonalDetail = calculatedState.seasonalInteraction
     ? `ฤดูกาล ${calculatedState.seasonalInteraction.seasonLabel} ให้ภาพว่า ${calculatedState.seasonalInteraction.metaphor}`
     : "ฤดูกาลไม่มีสัญญาณพิเศษเพิ่ม จึงยืนบนแกนดิถีและสี่เสาเป็นหลัก";
-  const interactionSignal = calculatedState.interactionState?.relations.length
+  const interactionDetail = calculatedState.interactionState?.relations.length
     ? `ฐานคำนวณพบปฏิกิริยา ${calculatedState.interactionState.relations.length} ชุด เช่น ${calculatedState.interactionState.relations.slice(0, 3).map((relation) => relation.label).join(", ")}`
     : "ฐานคำนวณยังไม่มีปฏิกิริยาพิเศษที่ต้องยกเป็นเงื่อนไขนำ";
-  const readingOrderSignal = calculatedState.baseChartReading?.readingOrderSteps?.length
+  const readingOrderDetail = calculatedState.baseChartReading?.readingOrderSteps?.length
     ? `ลำดับอ่านจากฐานชาร์ตคือ ${calculatedState.baseChartReading.readingOrderSteps.slice(0, 3).join(" -> ")}`
     : "ฐานชาร์ตยังไม่มี reading order เสริมเพิ่มเติม";
 
-  return [seasonalSignal, interactionSignal, readingOrderSignal];
+  return {
+    summaryLines: [
+      shenShaDetail,
+      ...hiddenStemDetails.map((entry) => entry.detail),
+      hiddenWealthDetail,
+      hiddenPowerDetail,
+      seasonalDetail,
+      interactionDetail,
+      readingOrderDetail,
+    ],
+    shenShaDetail,
+    hiddenStemDetails,
+    hiddenWealthDetail,
+    hiddenPowerDetail,
+    seasonalDetail,
+    interactionDetail,
+    readingOrderDetail,
+  };
 }
 
 function buildStepInsights(options: {
   calculatedState: CalculatedStateValue;
   relationTargets: RelationTarget[];
   relationSummary: RelationSummary[];
-  advancedSignals: string[];
+  advancedSignals: Step6AdvancedVector;
 }) {
   const { calculatedState, relationTargets, advancedSignals } = options;
   const evidenceCatalog: AuditEvidence[] = [];
@@ -1275,7 +1357,7 @@ function buildStepInsights(options: {
       evidenceCatalog,
       "S2-precedence",
       "หมายเหตุการจัดลำดับการอ่าน",
-      sixtyJiazi?.precedenceNotes?.length ? sixtyJiazi.precedenceNotes.join(" | ") : "ยังไม่มี precedence note เพิ่มเติม",
+      localizePrecedenceNotes(sixtyJiazi).join(" | "),
       "Step 2",
     ),
   ];
@@ -1553,13 +1635,57 @@ function buildStepInsights(options: {
     )),
   );
 
-  const step6EvidenceIds = advancedSignals.map((line, index) => addEvidence(
-    evidenceCatalog,
-    `S6-advanced-${index + 1}`,
-    `สัญญาณขั้นสูง ${index + 1}`,
-    line,
-    "Step 6",
-  ));
+  const step6EvidenceIds: string[] = [
+    addEvidence(
+      evidenceCatalog,
+      "S6-shen-sha",
+      "ดาวพิเศษที่ทำงานในดวง",
+      advancedSignals.shenShaDetail,
+      "Step 6",
+    ),
+    ...advancedSignals.hiddenStemDetails.map((entry) => addEvidence(
+      evidenceCatalog,
+      `S6-hidden-stems-${entry.pillarKey}`,
+      `ราศีแฝงของเสา${PILLAR_LABELS[entry.pillarKey]}`,
+      entry.detail,
+      "Step 6",
+    )),
+    addEvidence(
+      evidenceCatalog,
+      "S6-hidden-wealth",
+      "คลังทรัพย์แฝง",
+      advancedSignals.hiddenWealthDetail,
+      "Step 6",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S6-hidden-power",
+      "คลังอำนาจแฝง",
+      advancedSignals.hiddenPowerDetail,
+      "Step 6",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S6-seasonal",
+      "สัญญาณฤดูกาล",
+      advancedSignals.seasonalDetail,
+      "Step 6",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S6-interactions",
+      "ปฏิกิริยาที่ต้องยกปลาย",
+      advancedSignals.interactionDetail,
+      "Step 6",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S6-reading-order",
+      "ลำดับอ่านจากฐานชาร์ต",
+      advancedSignals.readingOrderDetail,
+      "Step 6",
+    ),
+  ];
 
   const stepInsights = [
     {
@@ -1672,9 +1798,9 @@ function buildStepInsights(options: {
     {
       stepNumber: 6,
       stepKey: "advanced-signals",
-      titleThai: "สัญญาณขั้นสูง",
-      summaryThai: advancedSignals.join(" | "),
-      auditFocusThai: "ใช้ฤดูกาล ปฏิกิริยา และลำดับอ่านจากฐานชาร์ตเป็นตัวเก็บปลาย ไม่ให้แย่งแกนหลัก",
+      titleThai: "ดาวพิเศษ ราศีแฝง และสัญญาณขั้นสูง",
+      summaryThai: advancedSignals.summaryLines.join(" | "),
+      auditFocusThai: "ใช้ดาวพิเศษ ราศีแฝง คลังทรัพย์/อำนาจแฝง รวมถึงฤดูกาลและลำดับอ่านจากฐานชาร์ตเป็นตัวเก็บปลาย โดยไม่ให้แย่งแกนหลัก",
       evidenceIds: step6EvidenceIds,
       evidenceLines: step6EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
@@ -1690,7 +1816,7 @@ export function buildDayMasterRelationPacket(calculatedState: CalculatedStateVal
   const dayMasterElement = getStemElement(calculatedState.dayMaster);
   const relationTargets = buildRelationTargets(calculatedState);
   const relationSummary = buildRelationSummary(relationTargets, dayMasterElement);
-  const advancedSignals = buildAdvancedSignals(calculatedState);
+  const advancedSignals = buildAdvancedSignals(calculatedState, relationTargets);
   const strengthLabel = calculatedState.dayMasterStrengthProfile?.displayLabel
     ?? calculatedState.dayMasterStrengthProfile?.strengthState
     ?? "ยังไม่มีคำอธิบายกำลังดวง";
@@ -1723,7 +1849,7 @@ export function buildDayMasterRelationPacket(calculatedState: CalculatedStateVal
     relationSummary,
     stepInsights,
     evidenceCatalog,
-    advancedSignals,
+    advancedSignals: advancedSignals.summaryLines,
   });
 }
 
