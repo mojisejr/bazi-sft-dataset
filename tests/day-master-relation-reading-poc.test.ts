@@ -14,7 +14,11 @@ import {
   PILLAR_CONTEXT_MAP,
   VERTICAL_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
-import { calculateBaziStructuralState } from "@/lib/bazi/symbolic-engine";
+import {
+  calculateBaziStructuralState,
+  resolveBranchInteractionEffects,
+  buildGeneralizedInteractionState,
+} from "@/lib/bazi/symbolic-engine";
 import { CalculatedStateSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 
 const SAMPLE_RAW_INPUT: RawInputValue = {
@@ -25,6 +29,18 @@ const SAMPLE_RAW_INPUT: RawInputValue = {
   calendarSystem: "solar",
   timezone: "Asia/Bangkok",
 };
+
+function buildRealInteractionState() {
+  const structural = calculateBaziStructuralState(SAMPLE_RAW_INPUT);
+  const resolution = resolveBranchInteractionEffects(structural.fourPillars);
+  const interactionState = buildGeneralizedInteractionState({
+    pillars: structural.fourPillars,
+    dayMasterStem: structural.dayMaster,
+    twelveQiByBranch: {},
+    resolution,
+  });
+  return interactionState;
+}
 
 const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
   fourPillars: {
@@ -72,22 +88,7 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
     precedenceNoteSignals: [],
     semanticNotes: [],
   },
-  interactionState: {
-    version: "v3-phase-1",
-    entities: [],
-    relations: [
-      {
-        id: "r-1",
-        familyKey: "earthly-branch-san-he",
-        type: "combination",
-        participantEntityIds: ["a", "b"],
-        label: "กึ่งภาคีน้ำ",
-        metadata: {},
-      },
-    ],
-    outcomes: [],
-    qualifiers: [],
-  },
+  interactionState: buildRealInteractionState(),
   baseChartReading: {
     roleBadges: [],
     stemInteractionBadges: [],
@@ -256,6 +257,20 @@ describe("day master relation reading poc", () => {
     const hiddenDeferred = step3.evidenceLines.find((line) => line.includes("ซ่อน") && line.includes("จุด"));
     expect(hiddenDeferred).toBeDefined();
     expect(hiddenDeferred).toContain("甲");
+  });
+
+  test("step 3 populates disturbance and attraction modifiers from real interaction data", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step3 = packet.stepInsights[2]!;
+
+    const disturbanceEvidence = step3.evidenceLines.find((line) => line.includes("ชง (ฟ้า)"));
+    expect(disturbanceEvidence).toBeDefined();
+    expect(disturbanceEvidence).toContain("戊甲");
+
+    const attractionEvidence = step3.evidenceLines.find((line) => line.includes("ฮะ (ฟ้า)") && line.includes("กึ่งภาคี"));
+    expect(attractionEvidence).toBeDefined();
+    expect(attractionEvidence).toContain("戊癸");
+    expect(attractionEvidence).toContain("子辰");
   });
 
   test("preflight report respects maxVisibleStep to hide steps 4-6", () => {

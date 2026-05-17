@@ -571,6 +571,14 @@ export const ROLE_SUBTYPE_LABELS_TH: Record<string, { direct: string; indirect: 
   wealth: { direct: "ลาภตรง (แบบตรง)", indirect: "ลาภเปีย (แบบเบี่ยง)" },
 };
 
+export const RELATION_SEMANTIC_MEANING_TH: Record<string, string> = {
+  same: "เครือข่าย/ผู้สนับสนุน",
+  resource: "ความรู้/อุปถัมภ์",
+  output: "แสดงออก/ผลงาน",
+  power: "อำนาจ/ระเบียบ",
+  wealth: "โชคลาภ/รายได้",
+};
+
 export const CONFLICT_RESOLUTION_LABELS_TH: Record<string, string> = {
   neutralized: "ชงถูกฮะแก้ (ปัญหาถูกช่วยเหลือ/บรรเทา)",
   partial: "ฮะบรรเทาชง (ปัญหาลดลงแต่ยังมี)",

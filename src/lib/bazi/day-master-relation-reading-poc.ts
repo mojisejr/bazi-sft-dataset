@@ -15,6 +15,7 @@ import {
   INTERACTION_CONTEXT_TAG,
   PILLAR_CONTEXT_MAP,
   ROLE_SUBTYPE_LABELS_TH,
+  RELATION_SEMANTIC_MEANING_TH,
   STEM_TO_ELEMENT,
   TWELVE_QI_ADVERB_MAP,
   TWELVE_QI_CONTEXT_MAP,
@@ -113,6 +114,7 @@ const ReadingStepKeySchema = z.enum([
 const RelationSummarySchema = z.object({
   relationKey: RelationKeySchema,
   relationLabelThai: z.string().trim().min(1),
+  semanticMeaningThai: z.string().trim().min(1),
   targetElement: z.enum(["wood", "fire", "earth", "metal", "water"]),
   targetElementLabelThai: z.string().trim().min(1),
   carrierSummaryThai: z.string().trim().min(1),
@@ -158,6 +160,7 @@ export const RelationReadingPacketSchema = z.object({
     dayMasterElement: z.enum(["wood", "fire", "earth", "metal", "water"]),
     dayMasterElementLabelThai: z.string().trim().min(1),
     dayMasterStrengthLabelThai: z.string().trim().min(1),
+    dayMasterStrengthScore: z.number().finite(),
     dayBranch: z.string().trim().min(1),
     dayBranchLabelThai: z.string().trim().min(1),
     balanceNarrativeThai: z.string().trim().min(1),
@@ -185,6 +188,7 @@ export const DayMasterRelationBriefSchema = z.object({
     dayMasterStem: z.string().trim().min(1),
     dayMasterElementLabelThai: z.string().trim().min(1),
     dayMasterStrengthLabelThai: z.string().trim().min(1),
+    dayMasterStrengthScore: z.number().finite(),
     dayBranchLabelThai: z.string().trim().min(1),
   }),
   steps: z.array(BriefStepSchema).length(6),
@@ -477,7 +481,7 @@ function getHiddenStemSummary(branch: string) {
   }
 
   return hiddenStems
-    .map((stem) => `${stem}(${getElementLabelThai(getStemElement(stem))})`)
+    .map((stem) => `${stem}(${getElementLabelThai(getStemElement(stem))}${YANG_STEMS.has(stem) ? "หยาง" : "หยิน"})`)
     .join(", ");
 }
 
@@ -995,6 +999,10 @@ function buildEightSlotRows(calculatedState: CalculatedStateValue) {
     const pillar = calculatedState.fourPillars[pillarKey];
     const stemElement = getStemElement(pillar.stem);
     const branchElement = getBranchElement(pillar.branch);
+    
+    const stemPolarityThai = YANG_STEMS.has(pillar.stem) ? "(หยาง)" : "(หยิน)";
+    const branchMainQi = BRANCH_HIDDEN_STEMS[pillar.branch as keyof typeof BRANCH_HIDDEN_STEMS]?.[0];
+    const branchPolarityThai = branchMainQi && YANG_STEMS.has(branchMainQi) ? "(หยาง)" : "(หยิน)";
 
     return [
       {
@@ -1004,7 +1012,7 @@ function buildEightSlotRows(calculatedState: CalculatedStateValue) {
         symbol: pillar.stem,
         symbolThai: pillar.stem,
         element: stemElement,
-        elementLabelThai: getElementLabelThai(stemElement),
+        elementLabelThai: `${getElementLabelThai(stemElement)} ${stemPolarityThai}`,
         relationLabelThai: getCanonicalFivePhaseRelationLabel(getRelationKey(dayMasterElement, stemElement)),
         hiddenStemSummaryThai: "-",
         contextThai: PILLAR_DOMAIN_CONTEXT[pillarKey],
@@ -1016,7 +1024,7 @@ function buildEightSlotRows(calculatedState: CalculatedStateValue) {
         symbol: pillar.branch,
         symbolThai: getSymbolThaiForBranch(pillar.branch),
         element: branchElement,
-        elementLabelThai: getElementLabelThai(branchElement),
+        elementLabelThai: `${getElementLabelThai(branchElement)} ${branchPolarityThai}`,
         relationLabelThai: getCanonicalFivePhaseRelationLabel(getRelationKey(dayMasterElement, branchElement)),
         hiddenStemSummaryThai: getHiddenStemSummary(pillar.branch),
         contextThai: PILLAR_DOMAIN_CONTEXT[pillarKey],
@@ -1113,6 +1121,7 @@ function buildRelationSummary(allTargets: RelationTarget[], dayMasterElement: Su
     return {
       relationKey,
       relationLabelThai: getCanonicalFivePhaseRelationLabel(relationKey),
+      semanticMeaningThai: RELATION_SEMANTIC_MEANING_TH[relationKey] ?? "ไม่ระบุ",
       targetElement,
       targetElementLabelThai: getElementLabelThai(targetElement),
       carrierSummaryThai: summarizeCarriers(relationTargets),
@@ -1697,6 +1706,7 @@ export function buildDayMasterRelationPacket(calculatedState: CalculatedStateVal
       dayMasterElement,
       dayMasterElementLabelThai: getElementLabelThai(dayMasterElement),
       dayMasterStrengthLabelThai: strengthLabel,
+      dayMasterStrengthScore: calculatedState.strengthScore,
       dayBranch: calculatedState.fourPillars.day.branch,
       dayBranchLabelThai: getSymbolThaiForBranch(calculatedState.fourPillars.day.branch),
       balanceNarrativeThai,
@@ -1718,6 +1728,7 @@ export function buildDayMasterRelationBrief(_rawInput: RawInputValue, packet: Re
       dayMasterStem: packet.chartAnchor.dayMasterStem,
       dayMasterElementLabelThai: packet.chartAnchor.dayMasterElementLabelThai,
       dayMasterStrengthLabelThai: packet.chartAnchor.dayMasterStrengthLabelThai,
+      dayMasterStrengthScore: packet.chartAnchor.dayMasterStrengthScore,
       dayBranchLabelThai: packet.chartAnchor.dayBranchLabelThai,
     },
     steps: packet.stepInsights.map((step) => ({
@@ -1743,7 +1754,7 @@ function renderTable(headers: string[], rows: string[][]) {
 
 function formatEightSlotTable(packet: RelationReadingPacket) {
   return renderTable(
-    ["ตำแหน่ง", "ชั้น", "จีน", "ไทย", "ธาตุ", "relation ต่อดิถี", "ธาตุแฝง", "บริบท"],
+    ["ตำแหน่ง", "ชั้น", "จีน", "ไทย", "ธาตุ (ขั้ว)", "relation ต่อดิถี", "ธาตุแฝง", "บริบท"],
     packet.eightSlots.map((row) => [
       row.positionLabelThai,
       row.layerLabelThai,
@@ -1759,9 +1770,10 @@ function formatEightSlotTable(packet: RelationReadingPacket) {
 
 function formatRelationSummaryTable(packet: RelationReadingPacket) {
   return renderTable(
-    ["relation", "ธาตุที่มองหา", "พบตรงไหนบ้าง", "จุดเด่น", "จำนวน"],
+    ["relation", "ความหมาย", "ธาตุที่มองหา", "พบตรงไหนบ้าง", "จุดเด่น", "จำนวน"],
     packet.relationSummary.map((row) => [
       row.relationLabelThai,
+      row.semanticMeaningThai,
       row.targetElementLabelThai,
       row.carrierSummaryThai,
       row.strongestCarrierThai,
@@ -1843,7 +1855,7 @@ export function formatDayMasterRelationPocPreflightReport(options: {
     "",
     "แกนดวงที่ใช้เป็นจุดตั้งต้น",
     `- ดิถี: ${options.packet.chartAnchor.dayMasterStem} ธาตุ${options.packet.chartAnchor.dayMasterElementLabelThai}`,
-    `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai}`,
+    `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai} (คะแนน: ${options.packet.chartAnchor.dayMasterStrengthScore.toFixed(2)})`,
     `- หลักวันราศีล่าง: ${options.packet.chartAnchor.dayBranch} (${options.packet.chartAnchor.dayBranchLabelThai})`,
     "",
     ...visibleSteps.flatMap((step) => [
@@ -1875,7 +1887,7 @@ export function formatDayMasterRelationPocBriefPreview(options: {
     "",
     `- วันเกิด: ${options.rawInput.birthDate} เวลา ${options.rawInput.birthTime}`,
     `- ดิถี: ${options.brief.chartAnchor.dayMasterStem} ธาตุ${options.brief.chartAnchor.dayMasterElementLabelThai}`,
-    `- กำลังดวง: ${options.brief.chartAnchor.dayMasterStrengthLabelThai}`,
+    `- กำลังดวง: ${options.brief.chartAnchor.dayMasterStrengthLabelThai} (คะแนน: ${options.brief.chartAnchor.dayMasterStrengthScore.toFixed(2)})`,
     `- หลักวันราศีล่าง: ${options.brief.chartAnchor.dayBranchLabelThai}`,
     `- หลักการเปิดอ่าน: ${options.brief.openingDoctrineThai}`,
     ...(options.model ? [`- รุ่นที่ใช้: ${options.model}`] : []),
@@ -1913,7 +1925,7 @@ export function formatDayMasterRelationPocGeneratedReport(options: {
     `- เพศ: ${formatGenderThai(options.rawInput.gender)}`,
     `- จังหวัด: ${formatProvinceThai(options.rawInput.province)}`,
     `- ดิถี: ${options.packet.chartAnchor.dayMasterStem} ธาตุ${options.packet.chartAnchor.dayMasterElementLabelThai}`,
-    `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai}`,
+    `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai} (คะแนน: ${options.packet.chartAnchor.dayMasterStrengthScore.toFixed(2)})`,
     `- หลักวันราศีล่าง: ${options.packet.chartAnchor.dayBranch} (${options.packet.chartAnchor.dayBranchLabelThai})`,
     "",
     "คำอ่านเปิดดวง",
