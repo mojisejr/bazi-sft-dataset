@@ -5,12 +5,30 @@ import {
   EMPTY_CHAMBER_SELECTION,
   type ChamberSelectionState,
 } from "@/lib/bazi/chamber-selection-grammar";
+import {
+  DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
+  type SchoolRevealPolicyConfig,
+} from "@/lib/bazi/school-reveal-policy";
 
 export type ChamberLayerToggles = {
   showStructure: boolean;
   showEnergy: boolean;
   showOverlay: boolean;
 };
+
+export function resolveChamberGraphRevealPolicy(
+  layerToggles: ChamberLayerToggles,
+): SchoolRevealPolicyConfig {
+  const isQuietDefault = Object.values(layerToggles).every(Boolean);
+
+  return {
+    ...DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
+    ...layerToggles,
+    // The all-on baseline preserves the existing calm master view.
+    // Any deliberate toggle change switches the graph into explicit layer mode.
+    quietGraph: isQuietDefault,
+  };
+}
 
 export type ChamberPresentationState = {
   selection: ChamberSelectionState;

@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   createChamberPresentationStore,
   createChamberPresentationState,
+  resolveChamberGraphRevealPolicy,
 } from "@/lib/bazi/chamber-presentation-store";
 import {
   EMPTY_CHAMBER_SELECTION,
@@ -123,6 +124,7 @@ describe("chamber-presentation-store", () => {
     const store = createChamberPresentationStore();
 
     store.getState().toggleTenGodPanel();
+    store.getState().toggleLayer("showEnergy");
     store.getState().setSelection(selection);
     store.getState().closeInspector();
     store.getState().resetPresentation();
@@ -132,7 +134,75 @@ describe("chamber-presentation-store", () => {
       isInspectorOpen: true,
       isTenGodPanelOpen: false,
       isRawMatrixOpen: false,
+      layerToggles: {
+        showStructure: true,
+        showEnergy: true,
+        showOverlay: true,
+      },
     });
+  });
+
+  test("toggleLayer flips only the requested layer channel", () => {
+    const store = createChamberPresentationStore();
+
+    store.getState().toggleLayer("showOverlay");
+
+    expect(store.getState().layerToggles).toEqual({
+      showStructure: true,
+      showEnergy: true,
+      showOverlay: false,
+    });
+  });
+
+  test("preserves quiet default until the operator changes a layer", () => {
+    expect(
+      resolveChamberGraphRevealPolicy({
+        showStructure: true,
+        showEnergy: true,
+        showOverlay: true,
+      }),
+    ).toMatchObject({
+      quietGraph: true,
+      showStructure: true,
+      showEnergy: true,
+      showOverlay: true,
+    });
+
+    expect(
+      resolveChamberGraphRevealPolicy({
+        showStructure: true,
+        showEnergy: false,
+        showOverlay: true,
+      }),
+    ).toMatchObject({
+      quietGraph: false,
+      showStructure: true,
+      showEnergy: false,
+      showOverlay: true,
+    });
+  });
+
+  test("explicit overlay toggle changes the graph topology deterministically", () => {
+    const calculatedState = buildStubCalculatedState();
+    const withOverlay = buildSemanticChamberGraph(
+      calculatedState,
+      resolveChamberGraphRevealPolicy({
+        showStructure: true,
+        showEnergy: true,
+        showOverlay: true,
+      }),
+    );
+    const withoutOverlay = buildSemanticChamberGraph(
+      calculatedState,
+      resolveChamberGraphRevealPolicy({
+        showStructure: true,
+        showEnergy: true,
+        showOverlay: false,
+      }),
+    );
+
+    expect(withOverlay.nodes.some((node) => node.type === "chamberMarker")).toBe(true);
+    expect(withoutOverlay.nodes.some((node) => node.type === "chamberMarker")).toBe(false);
   });
 
   test("toggles raw matrix modal without disturbing selection state", () => {

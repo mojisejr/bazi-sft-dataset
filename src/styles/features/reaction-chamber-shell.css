@@ -142,6 +142,12 @@
   min-height: 0;
 }
 
+.reaction-chamber-shell__canvas-stack {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+
 .reaction-chamber-canvas {
   flex: 1;
   min-width: 0;

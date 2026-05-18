@@ -7,6 +7,7 @@ import { buildDayMasterRelationPacket } from "@/lib/bazi/day-master-relation-rea
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import {
   resetChamberPresentation,
+  resolveChamberGraphRevealPolicy,
   useChamberPresentationStore,
 } from "@/lib/bazi/chamber-presentation-store";
 import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
@@ -18,6 +19,7 @@ import {
 } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 import { ChamberCommandBar } from "@/components/bazi/reaction-chamber/ChamberCommandBar";
 import { ChamberInspector } from "@/components/bazi/reaction-chamber/ChamberInspector";
+import { ChamberLayerTogglesPanel } from "@/components/bazi/reaction-chamber/ChamberLayerTogglesPanel";
 
 const MOBILE_BREAKPOINT_PX = 900;
 
@@ -43,11 +45,13 @@ export function ReactionChamberShell() {
   const variant = useViewportVariant();
   const selection = useChamberPresentationStore((state) => state.selection);
   const isInspectorOpen = useChamberPresentationStore((state) => state.isInspectorOpen);
+  const layerToggles = useChamberPresentationStore((state) => state.layerToggles);
   const hoveredNodeId = useChamberPresentationStore((state) => state.hoveredNodeId);
   const setSelection = useChamberPresentationStore((state) => state.setSelection);
   const setHoveredNodeId = useChamberPresentationStore((state) => state.setHoveredNodeId);
   const clearSelection = useChamberPresentationStore((state) => state.clearSelection);
   const toggleInspector = useChamberPresentationStore((state) => state.toggleInspector);
+  const toggleLayer = useChamberPresentationStore((state) => state.toggleLayer);
 
   useEffect(() => {
     if (!calculatedState) {
@@ -75,8 +79,8 @@ export function ReactionChamberShell() {
     if (!calculatedState) {
       return { nodes: [], edges: [], schoolClusters: [], hiddenSecondaryOverlays: [] };
     }
-    return buildSemanticChamberGraph(calculatedState);
-  }, [calculatedState]);
+    return buildSemanticChamberGraph(calculatedState, resolveChamberGraphRevealPolicy(layerToggles));
+  }, [calculatedState, layerToggles]);
 
   const relationBundle = useMemo(() => {
     if (!calculatedState) {
@@ -118,14 +122,20 @@ export function ReactionChamberShell() {
         />
 
         <div className="reaction-chamber-shell__viewport">
-          <ReactionChamberCanvas
-            graph={graph}
-            selection={selection}
-            relationBundle={relationBundle}
-            hoveredNodeId={hoveredNodeId}
-            onSelectionChange={setSelection}
-            onNodeHover={(node) => setHoveredNodeId(node?.id ?? null)}
-          />
+          <div className="reaction-chamber-shell__canvas-stack">
+            <ChamberLayerTogglesPanel
+              layerToggles={layerToggles}
+              onToggleLayer={toggleLayer}
+            />
+            <ReactionChamberCanvas
+              graph={graph}
+              selection={selection}
+              relationBundle={relationBundle}
+              hoveredNodeId={hoveredNodeId}
+              onSelectionChange={setSelection}
+              onNodeHover={(node) => setHoveredNodeId(node?.id ?? null)}
+            />
+          </div>
           {variant === "docked" && isInspectorOpen && (
             <ChamberInspector selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} variant="docked" onClose={clearSelection} />
           )}
