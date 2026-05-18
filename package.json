@@ -27,6 +27,7 @@
     "db:seed:dataset-sample:write": "tsx scripts/validate-phase16-sample.ts --write",
     "dataset:queue:generate": "tsx scripts/generate-random-bazi.ts",
     "dataset:hybrid:generate": "tsx scripts/generate-hybrid-agent-drafts.ts",
+    "dataset:legacy:generate-three": "tsx scripts/generate-legacy-gemini-three-cases.ts",
     "dataset:queue:import-agent": "tsx scripts/import-agent-drafts.ts",
     "dataset:csv:generate": "tsx scripts/generate-dataset-from-csv.ts",
     "dataset:regenerate": "tsx scripts/regenerate-dataset-records.ts",

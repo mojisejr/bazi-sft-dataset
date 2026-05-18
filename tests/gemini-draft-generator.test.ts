@@ -114,6 +114,29 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
     chineseAge: 46,
     referenceDate: "2026-04-24",
   },
+  dayMasterStrengthProfile: {
+    dayMaster: "己",
+    strengthState: "strong",
+    displayLabel: "ดวงแข็งแรง",
+    narrative: "ดิถีมีกำลังและยืนได้ด้วยฐานของตัวเอง",
+    qiLabel: "帝旺",
+  },
+  interactionState: {
+    version: "v3-phase-1",
+    entities: [],
+    relations: [],
+    outcomes: [],
+    qualifiers: [],
+  },
+  baseChartReading: {
+    roleBadges: [],
+    stemInteractionBadges: [],
+    branchInteractionBadges: [],
+    markerBadges: [],
+    groups: [],
+    legendItems: [],
+    readingOrderSteps: ["ดูดิถีก่อน", "ดูฤดูกาล", "ดูแรงหนุน"],
+  },
 });
 
 describe("gemini draft generator helpers", () => {
@@ -227,6 +250,25 @@ describe("gemini draft generator helpers", () => {
     expect(compact.thaiContextSignals.contextRuleNotes).toContain(
       "ฮะ 巳申 ทำงานก่อน และมีน้ำหนักเหนือความปะทะที่แตะกิ่งเดียวกัน",
     );
+    expect(compact.dayMasterStrengthProfile).toEqual(
+      expect.objectContaining({
+        dayMaster: "己",
+        displayLabel: "ดวงแข็งแรง",
+      }),
+    );
+    expect(compact.interactionSignals).toEqual(
+      expect.objectContaining({
+        relations: [],
+        outcomes: [],
+        qualifiers: [],
+      }),
+    );
+    expect(compact.baseChartReading).toEqual(
+      expect.objectContaining({
+        summary: "ดูดิถีก่อน",
+        readingOrderSteps: ["ดูดิถีก่อน", "ดูฤดูกาล", "ดูแรงหนุน"],
+      }),
+    );
   });
 
   test("system instruction tells Gemini to trust Thai context signals over count-only intuition", () => {
@@ -237,5 +279,8 @@ describe("gemini draft generator helpers", () => {
     expect(instruction).toContain("thaiContextSignals");
     expect(instruction).toContain("Do not reduce elemental balance to counts alone");
     expect(instruction).toContain("precedenceNoteSignals");
+    expect(instruction).toContain("dayMasterStrengthProfile first");
+    expect(instruction).toContain("baseChartReading second");
+    expect(instruction).toContain("interactionSignals");
   });
 });

@@ -79,6 +79,7 @@ type GenerateGeminiDraftAnnotationOptions = {
   calculatedState: CalculatedStateValue;
   model?: string;
   referenceCasePaths?: readonly string[];
+  useReferenceCases?: boolean;
   apiKey?: string;
 };
 
@@ -335,9 +336,13 @@ export function buildSystemInstruction() {
   return [
     "You are a senior Thai Bazi master from the Mumate (สำนักมูเมท) school creating professional draft annotations for a human sinsae review workflow.",
     "Write every field in Thai.",
-    "Use only the provided raw_input, calculated_state, and reference-case style signals.",
+    "Use only the provided raw_input and calculated_state summary. Reference cases, if present, are style hints only and must never override chart truth.",
     "Do not invent new chart facts, ages, or stars that are absent from calculated_state.",
     "Read the chart through the Mumate lens: elemental DNA, season, life timing, and psychologically precise Thai language.",
+    "Treat the truth hierarchy as strict precedence: dayMasterStrengthProfile first, baseChartReading second, interactionSignals third, sixtyJiaziCorePersona fourth, elementAnalysis and seasonalInteraction after that.",
+    "When dayMasterStrengthProfile is present, use it as the canonical summary of strength and balance. Do not re-derive the main strength story from counts alone.",
+    "When baseChartReading is present, follow its readingOrderSteps and summary as the canonical reading sequence.",
+    "When interactionSignals are present, treat them as the canonical source for clash, combination, harm, punishment, and resolved interaction logic.",
     "When elementAnalysis or seasonalInteraction are present, use them as the canonical source instead of re-inferring elemental balance from scratch.",
     "When ageSnapshot, currentDaYun, currentDaYunPhase, or liuNian are present, anchor present-life timing to those values instead of guessing the client's age or current cycle.",
     "When thaiContextSignals are present, use them as the human-readable Thai bridge for element strength, seasonal context, and rule notes.",
@@ -395,6 +400,66 @@ function buildThaiContextSignals(calculatedState: CalculatedStateValue) {
   };
 }
 
+function buildInteractionSignals(calculatedState: CalculatedStateValue) {
+  return {
+    relations: (calculatedState.interactionState?.relations ?? []).map((relation) => ({
+      id: relation.id,
+      label: relation.label,
+      familyKey: relation.familyKey,
+      type: relation.type,
+      participantEntityIds: relation.participantEntityIds,
+      elementInteractionType: relation.elementInteractionType ?? null,
+      transformElement: relation.transformElement ?? null,
+    })),
+    outcomes: (calculatedState.interactionState?.outcomes ?? []).map((outcome) => ({
+      relationId: outcome.relationId,
+      status: outcome.status,
+      precedence: outcome.precedence ?? null,
+      transformElement: outcome.transformElement ?? null,
+      supportReasons: outcome.supportReasons,
+      dayMasterEffect: outcome.dayMasterEffect ?? null,
+      blockedByRelationIds: outcome.blockedByRelationIds,
+    })),
+    qualifiers: (calculatedState.interactionState?.qualifiers ?? []).map((qualifier) => ({
+      id: qualifier.id,
+      lane: qualifier.lane,
+      qualifierKey: qualifier.qualifierKey,
+      entityId: qualifier.entityId,
+      value: qualifier.value,
+      display: qualifier.display ?? null,
+    })),
+  };
+}
+
+function buildBaseChartReadingSignals(calculatedState: CalculatedStateValue) {
+  const reading = calculatedState.baseChartReading;
+
+  if (!reading) {
+    return null;
+  }
+
+  return {
+    summary: reading.readingOrderSteps[0] ?? null,
+    readingOrderSteps: reading.readingOrderSteps,
+    badges: [
+      ...reading.roleBadges,
+      ...reading.stemInteractionBadges,
+      ...reading.branchInteractionBadges,
+      ...reading.markerBadges,
+    ].slice(0, 8).map((badge) => ({
+      title: badge.shortLabel ?? badge.label,
+      family: badge.family,
+      priority: badge.priority,
+      description: badge.meaningShort,
+    })),
+    groups: reading.groups.slice(0, 6).map((group) => ({
+      title: group.title,
+      description: group.description ?? null,
+      badgeCount: group.badges.length,
+    })),
+  };
+}
+
 export function buildCompactCalculatedState(calculatedState: CalculatedStateValue) {
   const currentDaYun =
     calculatedState.daYun.find((entry) => entry.isCurrent)
@@ -407,6 +472,7 @@ export function buildCompactCalculatedState(calculatedState: CalculatedStateValu
     mingGong: calculatedState.mingGong ?? null,
     dayMaster: calculatedState.dayMaster,
     strengthScore: calculatedState.strengthScore,
+    dayMasterStrengthProfile: calculatedState.dayMasterStrengthProfile ?? null,
     tenGods: calculatedState.tenGods,
     twelveQi: calculatedState.twelveQi,
     shenSha: calculatedState.shenSha.map((entry) => ({
@@ -436,6 +502,8 @@ export function buildCompactCalculatedState(calculatedState: CalculatedStateValu
     })),
     liuNian: calculatedState.liuNian ?? null,
     sixtyJiaziCorePersona: calculatedState.sixtyJiaziCorePersona ?? null,
+    interactionSignals: buildInteractionSignals(calculatedState),
+    baseChartReading: buildBaseChartReadingSignals(calculatedState),
     compatibilityMatrixProfiles: calculatedState.compatibilityMatrixProfiles.map((profile) => ({
       domain: profile.domain,
       pairKey: profile.pairKey,
@@ -460,7 +528,8 @@ function buildUserPrompt(
     "Do not mention JSON, schema, model names, prompts, or AI.",
     "Keep thought_process analytical and evidence-led, then keep final_prediction clear enough to show to a client after human review.",
     "reviewSummary should be a short Thai summary of the whole reading.",
-    "Match the Mumate school voice from the reference cases: open with elemental DNA and seasonal atmosphere when relevant, then connect that symbolic picture to the client's lived behavior and timing.",
+    "Open from the engine truth first: strength axis, reading order, interaction logic, and timing. Only then express it in polished Thai sinsae language.",
+    "If reference excerpts are present, copy only the tone discipline, not their claims, structure, or conclusions.",
     "If calculated_state includes ageSnapshot or current luck-cycle fields, use them when discussing the client's current stage of life instead of speaking vaguely.",
     "",
     "Dimension briefs:",
@@ -471,14 +540,18 @@ function buildUserPrompt(
     "",
     "Calculated state summary:",
     JSON.stringify(buildCompactCalculatedState(calculatedState), null, 2),
-    "",
-    "Reference style excerpts:",
-    serializedExamples
-      .map(
-        (example) =>
-          `Example ${example.example_number} | ${example.source_path}\n${example.excerpt}`,
-      )
-      .join("\n\n"),
+    ...(serializedExamples.length > 0
+      ? [
+          "",
+          "Reference style excerpts:",
+          serializedExamples
+            .map(
+              (example) =>
+                `Example ${example.example_number} | ${example.source_path}\n${example.excerpt}`,
+            )
+            .join("\n\n"),
+        ]
+      : []),
   ].join("\n");
 }
 
@@ -527,12 +600,17 @@ export async function generateGeminiDraftAnnotation(
 ): Promise<GenerateGeminiDraftAnnotationResult> {
   const model = options.model?.trim() || DEFAULT_MODEL;
   const apiKey = options.apiKey ?? getGeminiApiKey();
-  const referenceCasePaths = (
-    options.referenceCasePaths?.length
-      ? [...options.referenceCasePaths]
-      : selectReferenceCaseExamplePaths(options.rawInput)
-  ).map((entry) => path.resolve(entry));
-  const referenceCaseExamples = await loadReferenceCaseExamples(referenceCasePaths);
+  const useReferenceCases = options.useReferenceCases ?? true;
+  const referenceCasePaths = useReferenceCases
+    ? (
+        options.referenceCasePaths?.length
+          ? [...options.referenceCasePaths]
+          : selectReferenceCaseExamplePaths(options.rawInput)
+      ).map((entry) => path.resolve(entry))
+    : [];
+  const referenceCaseExamples = useReferenceCases && referenceCasePaths.length > 0
+    ? await loadReferenceCaseExamples(referenceCasePaths)
+    : [];
   const ai = new GoogleGenAI({ apiKey });
   const generationSeed = buildStableReferenceSelectorSeed(options.rawInput);
   const prompt = buildUserPrompt(
