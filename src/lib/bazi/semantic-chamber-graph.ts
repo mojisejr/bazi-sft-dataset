@@ -398,6 +398,10 @@ function resolveFlowDirectionContract(edge: SemanticEdge): { label: string; symb
 }
 
 function resolveReactionFamilyLabel(badge: BaseChartReactionBadgeValue): string {
+  if (badge.semanticKind === "stem-clash") {
+    return "ชง";
+  }
+
   if (
     badge.semanticKind === "stem-combination"
     || badge.semanticKind === "branch-liu-he"

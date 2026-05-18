@@ -5,7 +5,7 @@ import { buildGeneralizedInteractionState, resolveBranchInteractionEffects } fro
 import { assignChamberGraphLayout } from "@/lib/bazi/chamber-layout";
 import { buildChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
-import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
+import { buildSemanticChamberGraph, resolveSemanticEdgeBadgeContract, type SemanticEdge } from "@/lib/bazi/semantic-chamber-graph";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 import type { CalculatedStateValue, PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
 
@@ -247,5 +247,48 @@ describe("buildChamberRenderModel", () => {
     expect(renderedEdge?.data?.inlineLabel).toBe("ชง");
     expect(renderedEdge?.data?.inlineDirectionLabel).toBe("คู่ปะทะ");
     expect(renderedEdge?.data?.inlineBadgeMode).toBe("reaction");
+  });
+
+  test("normalizes stem clash reaction badges to school-facing chong wording", () => {
+    const syntheticEdge = {
+      id: "reaction:test-stem-clash",
+      source: "stem:year",
+      target: "stem:month",
+      data: {
+        layer: "inter-pillar-reaction",
+        readingOrder: 1,
+        schoolCluster: null,
+        schoolLabel: "พิฆาตราศีบน",
+        badge: {
+          id: "relation-stem-clash-year-month",
+          family: "interaction",
+          label: "ฟ้าพิฆาต 戊甲",
+          shortLabel: "戊甲",
+          priority: "primary",
+          status: "active",
+          meaningShort: "ราศีบนคู่นี้ปะทะกันโดยตรง",
+          schoolLabel: "พิฆาตราศีบน",
+          doctrineKey: "interaction:heavenly-stem-clash",
+          semanticKind: "stem-clash",
+          hierarchyLevel: "interaction",
+          readingOrder: 3,
+          participants: [],
+          modal: {
+            title: "ฟ้าพิฆาต 戊甲",
+            family: "interaction",
+            summary: "ราศีบนคู่นี้ปะทะกันโดยตรง",
+            explanation: "ราศีบนคู่นี้ปะทะกันโดยตรง",
+            readingOrderHint: "อ่านหลังบทบาทต่อดิถี",
+            details: [],
+          },
+        },
+        arrowMode: "none",
+      },
+    } satisfies SemanticEdge;
+
+    const badgeContract = resolveSemanticEdgeBadgeContract(syntheticEdge);
+
+    expect(badgeContract?.relationLabel).toBe("ชง");
+    expect(badgeContract?.directionLabel).toBe("คู่ปะทะ");
   });
 });
