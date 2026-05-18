@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "cases": [
+    {
+      "label": "phase3-preflight",
+      "intentDomain": "general",
+      "rawInput": {
+        "birthDate": "1981-03-12",
+        "birthTime": "05:59",
+        "gender": "male",
+        "province": "Bangkok",
+        "calendarSystem": "solar",
+        "timezone": "Asia/Bangkok"
+      }
+    }
+  ]
+}
