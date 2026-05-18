@@ -47,76 +47,25 @@ type ChamberInspectorProps = {
   onClose: () => void;
 };
 
-type PacketStep = RelationReadingPacket["stepInsights"][number];
-
-function findPacketStepForSelection(
-  selection: ChamberSelection,
-  packet: RelationReadingPacket | null,
-): PacketStep | null {
-  if (!packet || !selection.primary) {
-    return null;
+function buildPairSummary(bundle: ChamberRelationBundle): string {
+  if (bundle.pairDoctrine?.doctrine === "day-master-compare") {
+    return "ยึดดิถีเป็นแกน แล้วดูว่าสองจุดนี้ส่งแรงเข้า ออก หรือขัดกันอย่างไร";
+  }
+  if (bundle.pairDoctrine?.doctrine === "day-pillar-compare") {
+    return "ยึดเสาดิถีเป็นแกน แล้วเทียบสองจุดว่ากำลังหนุน ขัด หรือโยงแรงเข้าหากันแบบไหน";
   }
 
-  if (selection.primary.kind === "edge") {
-    const badge = selection.primary.edge.data.badge;
-    const family = badge.family.toLowerCase();
-    if (family.includes("marker") || badge.doctrineKey?.startsWith("marker:")) {
-      return packet.stepInsights.find((step) => step.stepNumber === 6) ?? null;
-    }
-    if (family.includes("ten-god") || badge.doctrineKey?.startsWith("ten-god:")) {
-      return packet.stepInsights.find((step) => step.stepNumber === 3) ?? null;
-    }
-    if (family.includes("wealth")) {
-      return packet.stepInsights.find((step) => step.stepNumber === 4) ?? null;
-    }
-    if (family.includes("interaction") || family.includes("branch") || family.includes("stem")) {
-      return packet.stepInsights.find((step) => step.stepNumber === 5) ?? null;
-    }
-  }
-
-  if (selection.primary.kind === "node") {
-    const node = selection.primary.node;
-    if (node.data.kind === "stem-node" && node.data.pillarKey === "day") {
-      return packet.stepInsights.find((step) => step.stepNumber === 2) ?? null;
-    }
-    if (node.data.kind === "stem-node") {
-      return packet.stepInsights.find((step) => step.stepNumber === 3) ?? null;
-    }
-    if (node.data.kind === "branch-node") {
-      return packet.stepInsights.find((step) => step.stepNumber === 5) ?? null;
-    }
-    if (node.data.kind === "pillar") {
-      return packet.stepInsights.find((step) => step.stepNumber === 1) ?? null;
-    }
-  }
-
-  return packet.stepInsights[0] ?? null;
+  return "เทียบสองจุดโดยตรงเพื่อดูว่ามีแรงสัมพันธ์กันแบบไหนในผังนี้";
 }
 
-function PacketReadingCard({ step, packet }: { step: PacketStep; packet: RelationReadingPacket }) {
-  const evidenceDetails = packet.evidenceCatalog.filter((entry) => step.evidenceIds.includes(entry.id));
+function buildMultiSummary(bundle: ChamberRelationBundle): string {
+  const relationLabels = Array.from(new Set(bundle.relations.map((relation) => relation.displayLabel)));
 
-  return (
-    <section className="chamber-inspector__packet-card">
-      <p className="chamber-inspector__section-title">คำอธิบายตามลำดับสำนัก</p>
-      <p className="chamber-inspector__packet-step">{step.titleThai}</p>
-      <p className="chamber-inspector__summary">{step.summaryThai}</p>
-      <div className="chamber-inspector__packet-block">
-        <p className="chamber-inspector__section-title">จุดที่ใช้ชี้อ่าน</p>
-        <p className="chamber-inspector__explanation">{step.auditFocusThai}</p>
-      </div>
-      {evidenceDetails.length > 0 && (
-        <div className="chamber-inspector__participants">
-          <p className="chamber-inspector__section-title">สิ่งที่รองรับคำอ่าน</p>
-          <ul>
-            {evidenceDetails.map((entry) => (
-              <li key={entry.id}>{entry.labelThai} · {entry.detailThai}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-    </section>
-  );
+  if (relationLabels.length === 0) {
+    return "กลุ่มที่เลือกยังไม่สร้างเส้นสัมพันธ์ตรงกันในชั้นที่มองเห็นตอนนี้";
+  }
+
+  return `กลุ่มนี้กำลังก่อ pattern จาก ${relationLabels.join(" · ")}`;
 }
 
 function getBadgeFromSelection(selection: ChamberSelection): BaseChartReactionBadgeValue | null {
@@ -206,8 +155,10 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
     ? (node.data.stemTranslation ?? ELEMENT_LABELS_TH[node.data.element as keyof typeof ELEMENT_LABELS_TH] ?? node.data.element)
     : (node.data.branchTranslation ?? ELEMENT_LABELS_TH[node.data.element as keyof typeof ELEMENT_LABELS_TH] ?? node.data.element);
   const semanticRole = node.data.kind === "stem-node" ? "ราศีบน" : "ราศีล่าง";
-  const detailLabel = node.data.kind === "stem-node" ? "จับซิ้ง" : "12 เชี่ยงแซ";
-  const detailValue = node.data.kind === "stem-node" ? (node.data.tenGod ?? "-") : (node.data.stageDisplay ?? "-");
+  const detailLabel = node.data.kind === "stem-node" ? "บทบาทบนผัง" : "12 เชี่ยงแซ";
+  const detailValue = node.data.kind === "stem-node"
+    ? (node.data.tenGod ? `เก็บ 10 เทพไว้ชั้นรอง (${node.data.tenGod})` : "ดูความหมายจากเส้นที่โยงกับจุดนี้")
+    : (node.data.stageDisplay ?? "-");
   const hiddenStems = node.data.hiddenStems ?? [];
   const elementColor = ELEMENT_COLORS_TH[node.data.element] ?? "inherit";
 
@@ -227,6 +178,12 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
           <dt>{detailLabel}</dt>
           <dd>{detailValue}</dd>
         </div>
+        {node.data.kind === "stem-node" && (
+          <div className="chamber-inspector__detail-row">
+            <dt>วิธีอ่าน</dt>
+            <dd>ดูเส้นที่โยงกับจุดนี้ก่อน แล้วค่อยขยายความผ่าน panel</dd>
+          </div>
+        )}
         <div className="chamber-inspector__detail-row">
           <dt>ราศีแฝง</dt>
           <dd>{hiddenStems.length > 0 ? hiddenStems.join(" · ") : "-"}</dd>
@@ -297,7 +254,9 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
   const badge = edge.data.badge;
   const cluster = edge.data.schoolCluster;
 
-  const kicker = `${resolveFamilyLabel(badge)} · ${translatePriority(badge.priority)}`;
+  const kicker = edge.data.layer === "element-flow"
+    ? "คำอ่านความสัมพันธ์"
+    : `${resolveFamilyLabel(badge)} · ${translatePriority(badge.priority)}`;
 
   const title = cluster?.title ?? badge.modal.title;
 
@@ -315,6 +274,14 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
 
       {cluster?.humanSummary && (
         <p className="chamber-inspector__summary">{cluster.humanSummary}</p>
+      )}
+
+      {!cluster?.humanSummary && edge.data.layer === "element-flow" && (
+        <p className="chamber-inspector__summary">
+          {flowDirLabel
+            ? `เส้นนี้อ่านเป็น ${edge.data.flowLabel} โดยดูทิศแรง ${flowDirLabel.toLowerCase()}`
+            : "เส้นนี้ใช้บอกบทบาทของแรงธาตุที่กำลังเชื่อมกันอยู่"}
+        </p>
       )}
 
       {badge.meaningShort && (
@@ -390,20 +357,16 @@ function EdgeDetail({ edge }: { edge: SemanticEdge }) {
 }
 
 function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
+  const summary = bundle.mode === "pair"
+    ? buildPairSummary(bundle)
+    : buildMultiSummary(bundle);
+
   return (
     <div className="chamber-inspector__badge">
       <p className="chamber-inspector__kicker">
         {bundle.mode === "pair" ? "เทียบสองจุด" : bundle.mode === "multi" ? "มองหลายจุด" : "มองบริเวณเดียวกัน"}
       </p>
-      {bundle.pairDoctrine && (
-        <p className="chamber-inspector__summary">
-          {bundle.pairDoctrine.doctrine === "day-master-compare"
-            ? "คำอ่านนี้ยึดดิถีเป็นแกน แล้วเปิดให้เห็นเฉพาะเส้นที่เกี่ยวกับจุดที่เลือก"
-            : bundle.pairDoctrine.doctrine === "day-pillar-compare"
-              ? "คำอ่านนี้ยึดเสาดิถีเป็นแกน แล้วเทียบความสัมพันธ์ของจุดที่เกี่ยวข้อง"
-              : "คำอ่านนี้วางสองจุดที่เลือกไว้เทียบกันโดยตรง"}
-        </p>
-      )}
+      <p className="chamber-inspector__summary">{summary}</p>
 
       {bundle.relations.length > 0 ? (
         <>
@@ -483,26 +446,27 @@ function InspectorBody({
   relationBundle: ChamberRelationBundle | null;
   readingPacket: RelationReadingPacket | null;
 }) {
-  const packetStep = findPacketStepForSelection(selection, readingPacket);
-
   if (selection.mode === "base" || !selection.primary) {
     return <HolisticReadingOverview packet={readingPacket} />;
   }
 
-  if ((selection.mode === "pair" || selection.mode === "multi") && relationBundle) {
+  if (selection.mode === "pair" && relationBundle) {
     return (
       <>
         <RelationBundleDetail bundle={relationBundle} />
-        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
       </>
     );
   }
 
   if (selection.mode === "multi") {
+    if (relationBundle) {
+      return <RelationBundleDetail bundle={relationBundle} />;
+    }
+
     return (
       <div className="chamber-inspector__placeholder">
         <p className="chamber-inspector__kicker">มองหลายจุดพร้อมกัน</p>
-        <p>ตอนนี้ผังกำลังรวมจุดที่เลือกไว้ให้เห็นเป็นกลุ่มเดียว เพื่อให้เทียบอิทธิพลข้ามเสาได้ง่ายขึ้นค่ะ</p>
+        <p>เลือกหลายจุดเพื่อดู pattern ของกลุ่ม ไม่ใช่คำอธิบายทั้งดวงซ้ำอีกครั้งค่ะ</p>
       </div>
     );
   }
@@ -511,7 +475,6 @@ function InspectorBody({
     return (
       <>
         <EdgeDetail edge={selection.primary.edge} />
-        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
       </>
     );
   }
@@ -521,7 +484,6 @@ function InspectorBody({
     return (
       <>
         <BadgeDetail badge={badge} />
-        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
       </>
     );
   }
@@ -530,7 +492,6 @@ function InspectorBody({
     return (
       <>
         <PillarSummary node={selection.primary.node} />
-        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
       </>
     );
   }
@@ -539,7 +500,6 @@ function InspectorBody({
     return (
       <>
         <SemanticNodeSummary node={selection.primary.node} />
-        {packetStep && readingPacket && <PacketReadingCard step={packetStep} packet={readingPacket} />}
       </>
     );
   }

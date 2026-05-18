@@ -116,6 +116,7 @@ export type SemanticEdgeData = {
   flowDirection?: "outward" | "inward" | "none" | "both";
   flowLabel?: string;
   flowElement?: string;
+  arrowMode?: "none" | "forward" | "both";
 };
 
 export type SemanticEdge = {
@@ -586,6 +587,7 @@ function buildDaymasterRelationEdges(roleBadges: BaseChartReactionBadgeValue[]):
           schoolCluster: null,
           sourceDetail: "ดิถี · จุดอ้างอิง",
           targetDetail: formatParticipantForGraph(participant),
+          arrowMode: "none",
         },
         className: `chamber-edge chamber-edge--daymaster chamber-edge--guide chamber-edge--${badge.status}`,
     });
@@ -668,6 +670,7 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
         flowDirection: flowInfo.direction,
         flowLabel: flowInfo.label,
         flowElement: targetElementEN,
+        arrowMode: flowInfo.direction === "none" ? "none" : "forward",
       },
       className: edgeClasses,
     });
@@ -729,6 +732,7 @@ function buildElementInteractionEdges(badges: BaseChartReactionBadgeValue[]): Se
         flowDirection: flowCycleType === "generating" ? "both" : "outward",
         flowLabel: badge.schoolLabel ?? badge.shortLabel ?? badge.label,
         flowElement: flowElement ? ELEMENT_TH_TO_EN[flowElement] ?? undefined : undefined,
+        arrowMode: flowCycleType === "generating" ? "both" : "forward",
       },
       label: badge.schoolLabel ?? badge.shortLabel ?? badge.label,
       className: [
@@ -854,6 +858,7 @@ function buildInteractionEdges(
           targetDetail: formatParticipantForGraph(target.participant),
           tier,
           schoolLabel: cluster.schoolLabel,
+          arrowMode: "none",
         },
         label: `${cluster.schoolLabel}${tierSuffix}`,
         className: [
@@ -899,6 +904,7 @@ function buildOverlayEdges(markerBadges: BaseChartReactionBadgeValue[]): Semanti
           schoolCluster: buildSchoolClusterForBadge(badge, [badge]),
           sourceDetail: `${PILLAR_LABEL[attachedPillarKey]} · source`,
           targetDetail: getOverlayDisplayLabel(badge),
+          arrowMode: "none",
         },
         className: "chamber-edge chamber-edge--overlay chamber-edge--active",
     });

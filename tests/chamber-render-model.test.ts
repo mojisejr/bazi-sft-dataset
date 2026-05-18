@@ -113,14 +113,15 @@ describe("buildChamberRenderModel", () => {
     expect(stemDay?.draggable).toBe(false);
   });
 
-  test("maps reaction edges into bezier edge types with arrow markers", () => {
+  test("maps reaction edges into bezier edge types without forced one-way markers", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
     const positions = assignChamberGraphLayout(graph);
     const renderModel = buildChamberRenderModel(graph, positions);
 
     const reactionEdge = renderModel.edges.find((edge) => edge.data?.layer === "inter-pillar-reaction");
     expect(reactionEdge?.type).toBe("chamberBezier");
-    expect(reactionEdge?.markerEnd).toBeDefined();
+    expect(reactionEdge?.markerStart).toBeUndefined();
+    expect(reactionEdge?.markerEnd).toBeUndefined();
   });
 
   test("preserves selection semantics by id lookup on the semantic graph", () => {
@@ -168,6 +169,8 @@ describe("buildChamberRenderModel", () => {
     expect(revealedFlowEdge?.data?.showInlineLabel).toBe(true);
     expect(revealedFlowEdge?.data?.inlineLabel).toBe("ส่งเสริม");
     expect(revealedFlowEdge?.data?.inlineDirectionLabel).toBe("รับเข้า");
+    expect(revealedFlowEdge?.markerEnd).toBeDefined();
+    expect(revealedFlowEdge?.markerStart).toBeUndefined();
     expect(revealedFlowEdge?.ariaLabel).toBeTruthy();
     expect(unrelatedEdge?.hidden).toBe(true);
   });
@@ -189,5 +192,20 @@ describe("buildChamberRenderModel", () => {
     expect(renderedEdge?.type).toBe("chamberBezier");
     expect(renderedEdge?.data?.inlineLabel).toMatch(/^(เซียงแซ|พิฆาต)$/);
     expect(renderedEdge?.hidden).toBe(false);
+  });
+
+  test("renders mutual element-interaction edges with markers on both ends", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
+    const positions = assignChamberGraphLayout(graph);
+    const mutualEdge = graph.edges.find(
+      (candidate) => candidate.data.layer === "element-interaction" && candidate.data.flowDirection === "both",
+    );
+
+    const renderModel = buildChamberRenderModel(graph, positions);
+    const renderedEdge = renderModel.edges.find((candidate) => candidate.id === mutualEdge?.id);
+
+    expect(renderedEdge?.markerStart).toBeDefined();
+    expect(renderedEdge?.markerEnd).toBeDefined();
   });
 });

@@ -159,10 +159,8 @@ function buildReactFlowEdge(
   hideUnrevealedEdges: boolean,
   hoveredNodeId: string | null,
 ): Edge {
-  const flowDirection = isElementFlowEdge(edge)
-    ? (edge.data as unknown as { flowDirection?: string }).flowDirection
-    : undefined;
   const inlineLabel = buildInlineEdgeLabel(edge);
+  const arrowMode = edge.data.arrowMode ?? "none";
   const isSelected = selectedEdgeIds.has(edge.id);
   const isRevealed = revealedEdgeIds.has(edge.id) || isSelected;
   const isHoveredEdge = hoveredNodeId ? edge.source === hoveredNodeId || edge.target === hoveredNodeId : false;
@@ -197,22 +195,14 @@ function buildReactFlowEdge(
     zIndex: resolveEdgeZIndex(edge),
     interactionWidth: isReactionEdge(edge) ? 20 : 12,
     hidden: hideUnrevealedEdges && !isRevealed && !isHoveredEdge,
-    ...(isReactionEdge(edge)
-      ? { markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10 } }
+    ...(arrowMode === "forward"
+      ? { markerEnd: { type: MarkerType.ArrowClosed, width: isElementFlowEdge(edge) ? 8 : 10, height: isElementFlowEdge(edge) ? 8 : 10 } }
       : {}),
-    ...(isElementInteractionEdge(edge)
+    ...(arrowMode === "both"
       ? {
+          markerStart: { type: MarkerType.ArrowClosed, width: 10, height: 10 },
           markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10 },
-          ...(edge.data.flowDirection === "both"
-            ? { markerStart: { type: MarkerType.ArrowClosed, width: 10, height: 10 } }
-            : {}),
         }
-      : {}),
-    ...(isElementFlowEdge(edge) && flowDirection === "outward"
-      ? { markerEnd: { type: MarkerType.ArrowClosed, width: 8, height: 8 } }
-      : {}),
-    ...(isElementFlowEdge(edge) && flowDirection === "inward"
-      ? { markerStart: { type: MarkerType.ArrowClosed, width: 8, height: 8 } }
       : {}),
   } satisfies Edge;
 }
