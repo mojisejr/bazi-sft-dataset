@@ -130,6 +130,13 @@ export type SemanticEdge = {
   className?: string;
 };
 
+export type SemanticEdgeBadgeContract = {
+  relationLabel: string;
+  directionLabel?: string;
+  directionSymbol: string;
+  badgeMode: "flow" | "reaction";
+};
+
 import {
   applySchoolRevealPolicy,
   filterEdgesBySchoolRevealPolicy,
@@ -219,6 +226,12 @@ const BRANCH_TO_ELEMENT: Record<string, string> = {
 type FlowCategory = "output" | "wealth" | "power" | "resource" | "companion";
 type FlowCycleType = "generating" | "controlling" | "neutral";
 type FlowDirection = "outward" | "inward" | "none";
+
+const DAY_MASTER_EFFECT_LABEL: Record<string, string> = {
+  beneficial: "เป็นผลดี",
+  harmful: "เป็นผลร้าย",
+  neutral: "เป็นกลาง",
+};
 
 type TenGodFlowInfo = {
   category: FlowCategory;
@@ -364,6 +377,112 @@ function getPrimarySchoolLabel(badge: BaseChartReactionBadgeValue): string {
   }
 
   return badge.schoolLabel ?? badge.shortLabel ?? badge.label;
+}
+
+function getBadgeModalDetailValue(badge: BaseChartReactionBadgeValue, label: string): string | undefined {
+  return badge.modal.details.find((detail) => detail.label === label)?.value;
+}
+
+function resolveFlowDirectionContract(edge: SemanticEdge): { label: string; symbol: string } {
+  if (edge.data.flowDirection === "outward") {
+    return { label: "ส่งออก", symbol: "→" };
+  }
+  if (edge.data.flowDirection === "inward") {
+    return { label: "รับเข้า", symbol: "←" };
+  }
+  if (edge.data.flowDirection === "both") {
+    return { label: "สองทิศ", symbol: "↔" };
+  }
+
+  return { label: "คู่ธาตุ", symbol: "↔" };
+}
+
+function resolveReactionFamilyLabel(badge: BaseChartReactionBadgeValue): string {
+  if (
+    badge.semanticKind === "stem-combination"
+    || badge.semanticKind === "branch-liu-he"
+    || badge.semanticKind === "branch-combination"
+    || badge.semanticKind === "branch-san-he"
+    || badge.semanticKind === "branch-ban-san-he"
+  ) {
+    return "ภาคี";
+  }
+
+  if (badge.semanticKind === "branch-punishment-trio") {
+    return "ซำเฮ้ง";
+  }
+
+  return getPrimarySchoolLabel(badge);
+}
+
+function resolveReactionMetaLabel(badge: BaseChartReactionBadgeValue): string | undefined {
+  if (badge.doctrineKey === "interaction:branch-clash" || badge.doctrineKey === "interaction:heavenly-stem-clash") {
+    return "คู่ปะทะ";
+  }
+
+  if (badge.doctrineKey === "interaction:branch-harm") {
+    return "เบียดเบียน";
+  }
+
+  if (badge.doctrineKey === "interaction:branch-destruction" || badge.doctrineKey === "interaction:intra-pillar-destruction") {
+    return "แตกหัก";
+  }
+
+  if (badge.doctrineKey === "interaction:branch-punishment-pair" || badge.doctrineKey === "interaction:branch-punishment-self") {
+    return "กดดัน";
+  }
+
+  if (badge.semanticKind === "branch-punishment-trio") {
+    return "วุ่นวาย";
+  }
+
+  if (
+    badge.semanticKind === "stem-combination"
+    || badge.semanticKind === "branch-liu-he"
+    || badge.semanticKind === "branch-combination"
+  ) {
+    return "ดึงดูด";
+  }
+
+  if (badge.semanticKind === "branch-san-he" || badge.semanticKind === "branch-ban-san-he") {
+    return "รวมพลัง";
+  }
+
+  return undefined;
+}
+
+export function resolveSemanticEdgeBadgeContract(edge: SemanticEdge): SemanticEdgeBadgeContract | null {
+  if (edge.data.layer === "shen-sha-overlay" || edge.data.layer === "daymaster-meaning") {
+    return null;
+  }
+
+  if (edge.data.layer === "element-flow") {
+    const direction = resolveFlowDirectionContract(edge);
+    return {
+      relationLabel: edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label,
+      directionLabel: direction.label,
+      directionSymbol: direction.symbol,
+      badgeMode: "flow",
+    };
+  }
+
+  if (edge.data.layer === "element-interaction") {
+    const direction = resolveFlowDirectionContract(edge);
+    const dayMasterEffect = getBadgeModalDetailValue(edge.data.badge, "ผลต่อดิถี");
+    return {
+      relationLabel: edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label,
+      directionLabel: dayMasterEffect ? (DAY_MASTER_EFFECT_LABEL[dayMasterEffect] ?? dayMasterEffect) : direction.label,
+      directionSymbol: direction.symbol,
+      badgeMode: "flow",
+    };
+  }
+
+  return {
+    relationLabel: resolveReactionFamilyLabel(edge.data.badge),
+    directionLabel: resolveReactionMetaLabel(edge.data.badge),
+    directionSymbol: "↔",
+    badgeMode: "reaction",
+  };
 }
 
 function getSchoolHumanSummary(badge: BaseChartReactionBadgeValue): string {

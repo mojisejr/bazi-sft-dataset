@@ -130,6 +130,27 @@ describe("chamber relation bundle resolver", () => {
     expect(firstBundle?.relations.map((relation) => relation.direction)).toEqual(["outward", "inward", "mutual"]);
   });
 
+  test("reuses the graph badge contract for reaction relation detail labels", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
+    const reactionEdge = graph.edges.find(
+      (edge) => edge.data.layer === "inter-pillar-reaction" && edge.data.badge.doctrineKey === "interaction:branch-clash",
+    );
+
+    expect(reactionEdge).toBeDefined();
+
+    const selection = buildChamberSelectionState({ graph, edgeIds: reactionEdge ? [reactionEdge.id] : [] });
+    const bundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
+
+    expect(bundle?.relations).toEqual([
+      expect.objectContaining({
+        displayLabel: "ชง",
+        detailLabel: "คู่ปะทะ",
+        relationType: "interaction",
+      }),
+    ]);
+  });
+
   test("returns hidden stem cues only for visible pillars in the active bundle", () => {
     const calculatedState = buildStubCalculatedState();
     const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
@@ -156,6 +177,7 @@ describe("chamber relation bundle resolver", () => {
     expect(bundle?.relations).toEqual([
       expect.objectContaining({
         relationType: "element-interaction",
+        detailLabel: expect.stringMatching(/^(เป็นผลดี|เป็นผลร้าย|เป็นกลาง|สองทิศ)$/),
       }),
     ]);
   });

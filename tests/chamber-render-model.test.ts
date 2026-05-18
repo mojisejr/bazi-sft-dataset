@@ -194,6 +194,7 @@ describe("buildChamberRenderModel", () => {
     expect(renderedEdge?.type).toBe("chamberBezier");
     expect(renderedEdge?.data?.inlineLabel).toMatch(/^(เซียงแซ|พิฆาต)$/);
     expect(renderedEdge?.data?.inlineBadgeMode).toBe("flow");
+    expect(renderedEdge?.data?.inlineDirectionLabel).toMatch(/^(เป็นผลดี|เป็นผลร้าย|เป็นกลาง|สองทิศ)$/);
     expect(renderedEdge?.hidden).toBe(false);
   });
 
@@ -227,5 +228,24 @@ describe("buildChamberRenderModel", () => {
 
     expect(renderedEdge?.markerStart).toBeDefined();
     expect(renderedEdge?.markerEnd).toBeDefined();
+  });
+
+  test("renders reaction edges with a compact second-line relation meta", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
+    const positions = assignChamberGraphLayout(graph);
+    const reactionEdge = graph.edges.find(
+      (candidate) => candidate.data.layer === "inter-pillar-reaction" && candidate.data.badge.doctrineKey === "interaction:branch-clash",
+    );
+
+    const renderModel = buildChamberRenderModel(graph, positions, {
+      revealedEdgeIds: reactionEdge ? [reactionEdge.id] : [],
+      hideUnrevealedEdges: true,
+    });
+    const renderedEdge = renderModel.edges.find((candidate) => candidate.id === reactionEdge?.id);
+
+    expect(renderedEdge?.data?.inlineLabel).toBe("ชง");
+    expect(renderedEdge?.data?.inlineDirectionLabel).toBe("คู่ปะทะ");
+    expect(renderedEdge?.data?.inlineBadgeMode).toBe("reaction");
   });
 });

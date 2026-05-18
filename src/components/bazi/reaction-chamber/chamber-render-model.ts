@@ -1,9 +1,11 @@
 import { MarkerType, type Edge, type Node } from "@xyflow/react";
 
-import type {
-  SemanticChamberGraph,
-  SemanticEdge,
-  SemanticNode,
+import {
+  resolveSemanticEdgeBadgeContract,
+  type SemanticChamberGraph,
+  type SemanticEdgeBadgeContract,
+  type SemanticEdge,
+  type SemanticNode,
 } from "@/lib/bazi/semantic-chamber-graph";
 import type { ChamberLayoutPositions } from "@/lib/bazi/chamber-layout";
 
@@ -18,13 +20,6 @@ type ChamberRenderSelectionState = {
   revealedEdgeIds?: string[];
   hideUnrevealedEdges?: boolean;
   hoveredNodeId?: string | null;
-};
-
-type ChamberInlineEdgeLabel = {
-  relationLabel: string;
-  directionLabel?: string;
-  directionSymbol: string;
-  badgeMode: "flow" | "reaction";
 };
 
 function isReactionEdge(edge: SemanticEdge): boolean {
@@ -56,61 +51,11 @@ function resolveEdgeZIndex(edge: SemanticEdge): number {
   return 6;
 }
 
-function resolveEdgeDirectionLabel(edge: SemanticEdge): { label: string; symbol: string } {
-  if (edge.data.layer === "element-flow") {
-    if (edge.data.flowDirection === "outward") {
-      return { label: "ส่งออก", symbol: "→" };
-    }
-    if (edge.data.flowDirection === "inward") {
-      return { label: "รับเข้า", symbol: "←" };
-    }
-    return { label: "คู่ธาตุ", symbol: "↔" };
-  }
-
-  if (edge.data.layer === "element-interaction") {
-    return { label: "", symbol: "↔" };
-  }
-
-  if (edge.data.layer === "daymaster-meaning") {
-    const sourceIsDay = edge.source.endsWith(":day");
-    const targetIsDay = edge.target.endsWith(":day");
-
-    if (sourceIsDay && !targetIsDay) {
-      return { label: "ดิถีส่งออก", symbol: "→" };
-    }
-    if (!sourceIsDay && targetIsDay) {
-      return { label: "ดิถีรับเข้า", symbol: "←" };
-    }
-  }
-
-  if (edge.data.layer === "inter-pillar-reaction") {
-    return { label: "", symbol: "↔" };
-  }
-
-  return { label: "", symbol: "•" };
+function buildInlineEdgeLabel(edge: SemanticEdge): SemanticEdgeBadgeContract | null {
+  return resolveSemanticEdgeBadgeContract(edge);
 }
 
-function buildInlineEdgeLabel(edge: SemanticEdge): ChamberInlineEdgeLabel | null {
-  if (edge.data.layer === "shen-sha-overlay" || edge.data.layer === "daymaster-meaning") {
-    return null;
-  }
-
-  const isFlowLike = edge.data.layer === "element-flow" || edge.data.layer === "element-interaction";
-  const relationLabel = isFlowLike
-    ? edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label
-    : edge.data.schoolLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label;
-
-  const direction = resolveEdgeDirectionLabel(edge);
-
-  return {
-    relationLabel,
-    directionLabel: direction.label || undefined,
-    directionSymbol: direction.symbol,
-    badgeMode: isFlowLike ? "flow" : "reaction",
-  };
-}
-
-function resolveEdgeAriaLabel(edge: SemanticEdge, inlineLabel: ChamberInlineEdgeLabel | null): string | undefined {
+function resolveEdgeAriaLabel(edge: SemanticEdge, inlineLabel: SemanticEdgeBadgeContract | null): string | undefined {
   const summary = edge.data.schoolCluster?.humanSummary ?? edge.data.badge.meaningShort ?? undefined;
   const relationLabel = inlineLabel?.relationLabel
     ?? edge.data.schoolLabel

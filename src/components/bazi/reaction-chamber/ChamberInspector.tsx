@@ -385,7 +385,9 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
             {bundle.relations.map((relation) => (
               <div key={relation.edgeId} className="chamber-inspector__detail-row">
                 <dt>{relation.displayLabel}</dt>
-                <dd>{translateRelationType(relation.relationType)} · {translateBundleDirection(relation.direction)}</dd>
+                <dd>
+                  {relation.detailLabel ?? `${translateRelationType(relation.relationType)} · ${translateBundleDirection(relation.direction)}`}
+                </dd>
               </div>
             ))}
           </dl>

@@ -1,10 +1,12 @@
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
 import type { ChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar";
-import type {
-  SemanticChamberGraph,
-  SemanticEdge,
-  SemanticNode,
-  SemanticPillarKey,
+import {
+  resolveSemanticEdgeBadgeContract,
+  type SemanticChamberGraph,
+  type SemanticEdge,
+  type SemanticEdgeBadgeContract,
+  type SemanticNode,
+  type SemanticPillarKey,
 } from "@/lib/bazi/semantic-chamber-graph";
 
 export type ChamberBundleRelationType = "ten-god-flow" | "day-master-role" | "interaction" | "element-interaction" | "overlay";
@@ -27,6 +29,7 @@ export type ChamberBundleRelation = {
   direction: ChamberBundleRelationDirection;
   strength: ChamberBundleRelationStrength;
   displayLabel: string;
+  detailLabel?: string;
   sourceNodeId: string;
   targetNodeId: string;
   flowFamily?: string;
@@ -151,12 +154,8 @@ function resolveRelationType(edge: SemanticEdge): ChamberBundleRelationType {
   return "overlay";
 }
 
-function resolveDisplayLabel(edge: SemanticEdge): string {
-  if (edge.data.layer === "element-flow" || edge.data.layer === "element-interaction") {
-    return edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label;
-  }
-
-  return edge.data.schoolLabel ?? edge.data.badge.shortLabel ?? edge.label ?? edge.data.badge.label;
+function resolveBadgeContract(edge: SemanticEdge): SemanticEdgeBadgeContract | null {
+  return resolveSemanticEdgeBadgeContract(edge);
 }
 
 function resolvePillarKeyFromNode(node: SemanticNode): SemanticPillarKey | null {
@@ -201,6 +200,8 @@ function resolveHiddenStemCues(
 }
 
 function buildBundleRelation(edge: SemanticEdge): ChamberBundleRelation {
+  const badgeContract = resolveBadgeContract(edge);
+
   return {
     edgeId: edge.id,
     badgeId: edge.data.badge.id,
@@ -208,11 +209,12 @@ function buildBundleRelation(edge: SemanticEdge): ChamberBundleRelation {
     relationType: resolveRelationType(edge),
     direction: resolveDirection(edge),
     strength: resolveStrength(edge),
-    displayLabel: resolveDisplayLabel(edge),
+    displayLabel: badgeContract?.relationLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label,
+    detailLabel: badgeContract?.directionLabel,
     sourceNodeId: edge.source,
     targetNodeId: edge.target,
     flowFamily: edge.data.layer === "element-flow" || edge.data.layer === "element-interaction"
-      ? edge.data.flowLabel
+      ? badgeContract?.relationLabel ?? edge.data.flowLabel
       : undefined,
   };
 }
