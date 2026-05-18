@@ -38,10 +38,10 @@ function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
   return (
     <div className="chamber-command-bar__viewport-actions">
       <button type="button" onClick={handleFitAll} className="chamber-command-bar__action">
-        ดูทั้งหมด
+        เก็บภาพรวม
       </button>
       <button type="button" onClick={handleFocusDayPillar} className="chamber-command-bar__action">
-        โฟกัสดิถี
+        กลับหาดิถี
       </button>
     </div>
   );
@@ -49,15 +49,15 @@ function FocusFitButtons({ graph }: Pick<ChamberCommandBarProps, "graph">) {
 
 function describeSelectionMode(selectionMode: ChamberCommandBarProps["selectionMode"]): string {
   if (selectionMode === "pair") {
-    return "เทียบคู่สัมพันธ์";
+    return "กำลังเทียบสองจุด";
   }
   if (selectionMode === "multi") {
-    return "มองหลายจุดพร้อมกัน";
+    return "กำลังมองหลายจุดพร้อมกัน";
   }
   if (selectionMode === "single") {
-    return "กำลังอ่านจุดเดียว";
+    return "กำลังอ่านจุดที่เลือก";
   }
-  return "ภาพรวมสงบ";
+  return "ภาพรวมพื้นดวง";
 }
 
 export function ChamberCommandBar({
@@ -69,14 +69,14 @@ export function ChamberCommandBar({
   onToggleInspector,
 }: ChamberCommandBarProps) {
   return (
-    <header className="chamber-command-bar" aria-label="chamber command bar">
+    <header className="chamber-command-bar" aria-label="แถบคำสั่งผังปฏิกิริยา">
       <button type="button" onClick={onBack} className="chamber-command-bar__back" aria-label="กลับไปหน้าสรุป">
         ← กลับสรุปดวง
       </button>
       <div className="chamber-command-bar__title-group">
         <p className="chamber-command-bar__title">{title}</p>
         <p className="chamber-command-bar__hint">
-          {describeSelectionMode(selectionMode)} · ชี้เพื่อดูปฏิกิริยา คลิกเพื่อขุดรายละเอียด
+          {describeSelectionMode(selectionMode)} · ชี้เพื่อปลุกเส้นที่เกี่ยว คลิกเพื่ออ่านลึก
         </p>
       </div>
       <div className="chamber-command-bar__viewport-actions">
@@ -86,7 +86,7 @@ export function ChamberCommandBar({
           className="chamber-command-bar__action"
           aria-pressed={isInspectorOpen}
         >
-          {isInspectorOpen ? "ซ่อนรายละเอียด" : "เปิดรายละเอียด"}
+          {isInspectorOpen ? "ซ่อนคำอ่าน" : "เปิดคำอ่าน"}
         </button>
         <FocusFitButtons graph={graph} />
       </div>

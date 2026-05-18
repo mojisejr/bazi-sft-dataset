@@ -168,7 +168,7 @@ describe("buildChamberRenderModel", () => {
     expect(revealedFlowEdge?.data?.showInlineLabel).toBe(true);
     expect(revealedFlowEdge?.data?.inlineLabel).toBe("ส่งเสริม");
     expect(revealedFlowEdge?.data?.inlineDirectionLabel).toBe("รับเข้า");
-    expect(revealedFlowEdge?.data?.inlineStrengthLabel).toBe("รอง");
+    expect(revealedFlowEdge?.ariaLabel).toBeTruthy();
     expect(unrelatedEdge?.hidden).toBe(true);
   });
 

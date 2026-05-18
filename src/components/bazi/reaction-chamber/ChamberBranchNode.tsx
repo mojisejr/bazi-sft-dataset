@@ -37,7 +37,7 @@ export function ChamberBranchNode({ data, selected }: ChamberBranchNodeProps) {
       <span className="chamber-branch-node__glyph" style={{ color: elementColor }}>{data.branch}</span>
       <span className="chamber-branch-node__translation">{data.branchTranslation ?? ELEMENT_LABELS_TH[data.element as keyof typeof ELEMENT_LABELS_TH] ?? data.element}</span>
       <span className="chamber-branch-node__stage">{data.stageDisplay ?? "-"}</span>
-      {data.markerLabels.length > 0 && <span className="chamber-branch-node__marker-count">ดาว {data.markerLabels.length}</span>}
+      {data.markerLabels.length > 0 && <span className="chamber-branch-node__marker-count">ดาวประกอบ</span>}
       <AnimatePresence initial={false}>
         {selected && data.hiddenStems.length > 0 && (
           <motion.div

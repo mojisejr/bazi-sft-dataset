@@ -36,7 +36,7 @@ export function ChamberStemNode({ data, selected }: ChamberStemNodeProps) {
       <span className="chamber-stem-node__glyph" style={{ color: elementColor }}>{data.stem}</span>
       <span className="chamber-stem-node__translation">{data.stemTranslation ?? ELEMENT_LABELS_TH[data.element as keyof typeof ELEMENT_LABELS_TH] ?? data.element}</span>
       {data.tenGod && <span className="chamber-stem-node__cue">{data.tenGod}</span>}
-      {data.markerLabels.length > 0 && <span className="chamber-stem-node__marker-count">ดาว {data.markerLabels.length}</span>}
+      {data.markerLabels.length > 0 && <span className="chamber-stem-node__marker-count">ดาวประกอบ</span>}
       <span className="chamber-stem-node__pillar">{data.pillarLabel}</span>
     </motion.div>
   );

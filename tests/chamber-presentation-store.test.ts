@@ -89,7 +89,7 @@ describe("chamber-presentation-store", () => {
   test("starts from a calm base presentation state", () => {
     expect(createChamberPresentationState()).toEqual({
       selection: EMPTY_CHAMBER_SELECTION,
-      isInspectorOpen: false,
+      isInspectorOpen: true,
       isRawMatrixOpen: false,
       isTenGodPanelOpen: false,
       hoveredNodeId: null,
@@ -101,7 +101,7 @@ describe("chamber-presentation-store", () => {
     });
   });
 
-  test("opens inspector when a non-base selection arrives and closes on clear", () => {
+  test("keeps inspector on the holistic reading when selection clears", () => {
     const graph = buildSemanticChamberGraph(buildStubCalculatedState());
     const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day"] });
     const store = createChamberPresentationStore();
@@ -114,7 +114,7 @@ describe("chamber-presentation-store", () => {
     store.getState().clearSelection();
 
     expect(store.getState().selection).toEqual(EMPTY_CHAMBER_SELECTION);
-    expect(store.getState().isInspectorOpen).toBe(false);
+    expect(store.getState().isInspectorOpen).toBe(true);
   });
 
   test("resetPresentation removes stale support state between chamber runs", () => {
@@ -129,7 +129,7 @@ describe("chamber-presentation-store", () => {
 
     expect(store.getState()).toMatchObject({
       selection: EMPTY_CHAMBER_SELECTION,
-      isInspectorOpen: false,
+      isInspectorOpen: true,
       isTenGodPanelOpen: false,
       isRawMatrixOpen: false,
     });

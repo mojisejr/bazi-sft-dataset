@@ -15,7 +15,6 @@ type ChamberBezierEdgeData = {
   inlineLabel?: string;
   inlineDirectionLabel?: string;
   inlineDirectionSymbol?: string;
-  inlineStrengthLabel?: string;
   showInlineLabel?: boolean;
   isRevealed?: boolean;
 };
@@ -228,7 +227,6 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
             </span>
             <span className="chamber-edge-inline-label__meta">
               {data.inlineDirectionLabel}
-              {data.inlineStrengthLabel ? ` · ${data.inlineStrengthLabel}` : ""}
             </span>
           </div>
         </EdgeLabelRenderer>

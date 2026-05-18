@@ -41,7 +41,7 @@ export function createChamberPresentationState(
 ): ChamberPresentationState {
   return {
     selection: EMPTY_CHAMBER_SELECTION,
-    isInspectorOpen: false,
+    isInspectorOpen: true,
     isTenGodPanelOpen: false,
     isRawMatrixOpen: false,
     layerToggles: {
@@ -60,15 +60,15 @@ export function createChamberPresentationStore(
   return createStore<ChamberPresentationStoreState>((set) => ({
     ...createChamberPresentationState(initialState),
     setSelection: (selection) => {
-      set({
+      set((current) => ({
         selection,
-        isInspectorOpen: selection.mode !== "base",
-      });
+        isInspectorOpen: current.isInspectorOpen || selection.mode !== "base",
+      }));
     },
     clearSelection: () => {
       set({
         selection: EMPTY_CHAMBER_SELECTION,
-        isInspectorOpen: false,
+        isInspectorOpen: true,
       });
     },
     setHoveredNodeId: (hoveredNodeId) => {

@@ -104,7 +104,7 @@ export function ReactionChamberShell() {
   }
 
   const dayMaster = calculatedState.dayMaster;
-  const title = `แผนภาพพื้นดวง · ดิถี ${dayMaster}`;
+  const title = `ผังปฏิกิริยาพื้นดวง · ดิถี ${dayMaster}`;
   return (
     <ReactFlowProvider>
       <main className={`reaction-chamber-shell reaction-chamber-shell--${variant}`}>
@@ -131,7 +131,7 @@ export function ReactionChamberShell() {
           )}
         </div>
 
-        {variant === "sheet" && (
+        {variant === "sheet" && isInspectorOpen && (
           <ChamberInspector selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} variant="sheet" onClose={clearSelection} />
         )}
       </main>

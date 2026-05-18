@@ -66,7 +66,7 @@ function ReactionChamberCanvasInner({
       selectedNodeIds: selection?.selectedNodes.map((node) => node.id) ?? [],
       selectedEdgeIds: selection?.selectedEdges.map((edge) => edge.id) ?? [],
       revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
-      hideUnrevealedEdges: selection?.mode === "single" || selection?.mode === "pair" || selection?.mode === "multi",
+      hideUnrevealedEdges: true,
       hoveredNodeId,
     });
   }, [graph, hoveredNodeId, relationBundle, selection]);

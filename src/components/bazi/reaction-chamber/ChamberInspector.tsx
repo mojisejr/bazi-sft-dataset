@@ -99,15 +99,15 @@ function PacketReadingCard({ step, packet }: { step: PacketStep; packet: Relatio
   return (
     <section className="chamber-inspector__packet-card">
       <p className="chamber-inspector__section-title">คำอธิบายตามลำดับสำนัก</p>
-      <p className="chamber-inspector__packet-step">Step {step.stepNumber} · {step.titleThai}</p>
+      <p className="chamber-inspector__packet-step">{step.titleThai}</p>
       <p className="chamber-inspector__summary">{step.summaryThai}</p>
       <div className="chamber-inspector__packet-block">
-        <p className="chamber-inspector__section-title">จุดที่ใช้ตรวจ</p>
+        <p className="chamber-inspector__section-title">จุดที่ใช้ชี้อ่าน</p>
         <p className="chamber-inspector__explanation">{step.auditFocusThai}</p>
       </div>
       {evidenceDetails.length > 0 && (
         <div className="chamber-inspector__participants">
-          <p className="chamber-inspector__section-title">หลักฐานที่อ้าง</p>
+          <p className="chamber-inspector__section-title">สิ่งที่รองรับคำอ่าน</p>
           <ul>
             {evidenceDetails.map((entry) => (
               <li key={entry.id}>{entry.labelThai} · {entry.detailThai}</li>
@@ -393,15 +393,15 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
   return (
     <div className="chamber-inspector__badge">
       <p className="chamber-inspector__kicker">
-        {bundle.mode === "pair" ? "โหมดเทียบสัมพันธ์" : bundle.mode === "multi" ? "โหมดกลุ่มสัมพันธ์" : "โหมด neighborhood"}
+        {bundle.mode === "pair" ? "เทียบสองจุด" : bundle.mode === "multi" ? "มองหลายจุด" : "มองบริเวณเดียวกัน"}
       </p>
       {bundle.pairDoctrine && (
         <p className="chamber-inspector__summary">
           {bundle.pairDoctrine.doctrine === "day-master-compare"
-            ? "bundle นี้ยึดดิถีเป็นแกน compare และ reveal เฉพาะ relation ที่เชื่อมกับ anchor ที่เลือก"
+            ? "คำอ่านนี้ยึดดิถีเป็นแกน แล้วเปิดให้เห็นเฉพาะเส้นที่เกี่ยวกับจุดที่เลือก"
             : bundle.pairDoctrine.doctrine === "day-pillar-compare"
-              ? "bundle นี้ยึดเสาดิถีเป็นแกน compare และ reveal เฉพาะ relation ที่เกี่ยวข้อง"
-              : "bundle นี้เปรียบเทียบ anchor สองจุดโดยไม่ยึดดิถีเป็นแกนหลัก"}
+              ? "คำอ่านนี้ยึดเสาดิถีเป็นแกน แล้วเทียบความสัมพันธ์ของจุดที่เกี่ยวข้อง"
+              : "คำอ่านนี้วางสองจุดที่เลือกไว้เทียบกันโดยตรง"}
         </p>
       )}
 
@@ -418,7 +418,7 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
           </dl>
         </>
       ) : (
-        <p className="chamber-inspector__empty">selection นี้ยังไม่มี relation bundle ที่เชื่อมกันโดยตรงใน graph ชุดนี้</p>
+        <p className="chamber-inspector__empty">จุดที่เลือกยังไม่เกิดชุดปฏิกิริยาที่เชื่อมกันโดยตรงในผังนี้</p>
       )}
 
       {bundle.hiddenStemCues.length > 0 && (
@@ -435,6 +435,45 @@ function RelationBundleDetail({ bundle }: { bundle: ChamberRelationBundle }) {
   );
 }
 
+function HolisticReadingOverview({ packet }: { packet: RelationReadingPacket | null }) {
+  if (!packet) {
+    return (
+      <div className="chamber-inspector__placeholder">
+        <p className="chamber-inspector__kicker">ผังปฏิกิริยาพื้นดวง</p>
+        <p>ชี้ดูเสาใดก็ได้เพื่อเห็นปฏิกิริยาที่เกี่ยวข้อง แล้วค่อยขุดคำอ่านต่อจากจุดนั้นค่ะ</p>
+      </div>
+    );
+  }
+
+  const relationLeads = packet.relationSummary.filter((entry) => entry.targetCount > 0).slice(0, 3);
+
+  return (
+    <section className="chamber-inspector__packet-card">
+      <p className="chamber-inspector__kicker">คำอ่านภาพรวม</p>
+      <h3 className="chamber-inspector__title">{packet.chartAnchor.balanceNarrativeThai}</h3>
+      <p className="chamber-inspector__summary">{packet.chartAnchor.identityNarrativeThai}</p>
+
+      {relationLeads.length > 0 && (
+        <div className="chamber-inspector__participants">
+          <p className="chamber-inspector__section-title">แรงหลักที่กำลังเดินในดวง</p>
+          <ul>
+            {relationLeads.map((entry) => (
+              <li key={entry.relationKey}>{entry.relationLabelThai} · {entry.carrierSummaryThai}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="chamber-inspector__packet-block">
+        <p className="chamber-inspector__section-title">ลำดับที่ควรไล่อ่าน</p>
+        <p className="chamber-inspector__explanation">
+          เริ่มจากดิถีกับเสาวัน แล้วค่อยไล่บทบาทของราศีบน ราศีล่าง และดาวประกอบตามจุดที่สะดุดตาในผังนี้
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function InspectorBody({
   selection,
   relationBundle,
@@ -447,12 +486,7 @@ function InspectorBody({
   const packetStep = findPacketStepForSelection(selection, readingPacket);
 
   if (selection.mode === "base" || !selection.primary) {
-    return (
-      <div className="chamber-inspector__placeholder">
-        <p className="chamber-inspector__kicker">แผนภาพพื้นดวง</p>
-        <p>ดิถีเป็นจุดกลางของการอ่าน ชี้ดูเสาใดก็ได้เพื่อเห็นปฏิกิริยา เส้นที่เกี่ยวข้อง และคำอธิบายตามลำดับสำนัก</p>
-      </div>
-    );
+    return <HolisticReadingOverview packet={readingPacket} />;
   }
 
   if ((selection.mode === "pair" || selection.mode === "multi") && relationBundle) {
@@ -467,8 +501,8 @@ function InspectorBody({
   if (selection.mode === "multi") {
     return (
       <div className="chamber-inspector__placeholder">
-        <p className="chamber-inspector__kicker">โหมดกลุ่มสัมพันธ์</p>
-        <p>เลือกหลาย anchor แล้ว ระบบล็อกไว้เป็น cluster-bundle grammar สำหรับ phase ถัดไปค่ะ</p>
+        <p className="chamber-inspector__kicker">มองหลายจุดพร้อมกัน</p>
+        <p>ตอนนี้ผังกำลังรวมจุดที่เลือกไว้ให้เห็นเป็นกลุ่มเดียว เพื่อให้เทียบอิทธิพลข้ามเสาได้ง่ายขึ้นค่ะ</p>
       </div>
     );
   }
@@ -516,16 +550,16 @@ function InspectorBody({
 export function ChamberInspector({ selection, relationBundle, readingPacket, variant, onClose }: ChamberInspectorProps) {
   if (variant === "docked") {
     return (
-      <aside className="chamber-inspector chamber-inspector--docked" aria-label="chamber inspector">
+      <aside className="chamber-inspector chamber-inspector--docked" aria-label="คำอ่านประกอบผังปฏิกิริยา">
         <div className="chamber-inspector__head">
-          <p className="chamber-inspector__head-kicker">รายละเอียดที่เลือก</p>
+          <p className="chamber-inspector__head-kicker">คำอ่านประกอบ</p>
           <button
             type="button"
             className="chamber-inspector__close"
             onClick={onClose}
-            aria-label="ล้าง selection และปิดรายละเอียด"
+            aria-label="กลับสู่คำอ่านภาพรวม"
           >
-            ปิด
+            ภาพรวม
           </button>
         </div>
         <div className="chamber-inspector__scroll">
@@ -550,7 +584,7 @@ export function ChamberInspector({ selection, relationBundle, readingPacket, var
       {selection.mode !== "base" && (
         <motion.aside
           className="chamber-inspector chamber-inspector--sheet"
-          aria-label="chamber inspector"
+          aria-label="คำอ่านประกอบผังปฏิกิริยา"
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
@@ -558,14 +592,14 @@ export function ChamberInspector({ selection, relationBundle, readingPacket, var
         >
           <div className="chamber-inspector__sheet-grip" aria-hidden />
           <div className="chamber-inspector__head">
-            <p className="chamber-inspector__head-kicker">รายละเอียดที่เลือก</p>
+            <p className="chamber-inspector__head-kicker">คำอ่านประกอบ</p>
             <button
               type="button"
               className="chamber-inspector__close"
               onClick={onClose}
-              aria-label="ปิดรายละเอียด"
+              aria-label="กลับสู่คำอ่านภาพรวม"
             >
-              ปิด
+              ภาพรวม
             </button>
           </div>
           <div className="chamber-inspector__scroll">

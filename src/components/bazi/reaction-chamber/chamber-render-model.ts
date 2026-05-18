@@ -22,9 +22,8 @@ type ChamberRenderSelectionState = {
 
 type ChamberInlineEdgeLabel = {
   relationLabel: string;
-  directionLabel: string;
+  directionLabel?: string;
   directionSymbol: string;
-  strengthLabel: string;
 };
 
 function isReactionEdge(edge: SemanticEdge): boolean {
@@ -68,7 +67,7 @@ function resolveEdgeDirectionLabel(edge: SemanticEdge): { label: string; symbol:
   }
 
   if (edge.data.layer === "element-interaction") {
-    return { label: "สัมพันธ์ธาตุ", symbol: "↔" };
+    return { label: "", symbol: "↔" };
   }
 
   if (edge.data.layer === "daymaster-meaning") {
@@ -84,30 +83,10 @@ function resolveEdgeDirectionLabel(edge: SemanticEdge): { label: string; symbol:
   }
 
   if (edge.data.layer === "inter-pillar-reaction") {
-    return { label: "สวนกัน", symbol: "↔" };
+    return { label: "", symbol: "↔" };
   }
 
-  return { label: "พ่วง", symbol: "•" };
-}
-
-function resolveEdgeStrengthLabel(edge: SemanticEdge): string {
-  if (edge.data.badge.status === "neutralized" || edge.data.badge.priority === "neutralized") {
-    return "ล้าง";
-  }
-
-  if (edge.data.tier === "secondary") {
-    return "รอง";
-  }
-
-  if (edge.data.tier === "tertiary") {
-    return "เสริม";
-  }
-
-  if (edge.data.badge.priority === "primary") {
-    return "หลัก";
-  }
-
-  return "รอง";
+  return { label: "", symbol: "•" };
 }
 
 function buildInlineEdgeLabel(edge: SemanticEdge): ChamberInlineEdgeLabel | null {
@@ -123,10 +102,28 @@ function buildInlineEdgeLabel(edge: SemanticEdge): ChamberInlineEdgeLabel | null
 
   return {
     relationLabel,
-    directionLabel: direction.label,
+    directionLabel: direction.label || undefined,
     directionSymbol: direction.symbol,
-    strengthLabel: resolveEdgeStrengthLabel(edge),
   };
+}
+
+function resolveEdgeAriaLabel(edge: SemanticEdge, inlineLabel: ChamberInlineEdgeLabel | null): string | undefined {
+  const summary = edge.data.schoolCluster?.humanSummary ?? edge.data.badge.meaningShort ?? undefined;
+  const relationLabel = inlineLabel?.relationLabel
+    ?? edge.data.schoolLabel
+    ?? edge.data.flowLabel
+    ?? edge.label
+    ?? edge.data.badge.label;
+
+  if (!relationLabel) {
+    return undefined;
+  }
+
+  if (summary && summary !== relationLabel) {
+    return `${relationLabel} · ${summary}`;
+  }
+
+  return relationLabel;
 }
 
 function buildReactFlowNode(
@@ -181,13 +178,13 @@ function buildReactFlowEdge(
     sourceHandle: edge.sourceHandle,
     targetHandle: edge.targetHandle,
     label: edge.label,
+    ariaLabel: resolveEdgeAriaLabel(edge, inlineLabel),
     className: classNames,
     data: {
       ...(edge.data as unknown as Record<string, unknown>),
       inlineLabel: inlineLabel?.relationLabel,
       inlineDirectionLabel: inlineLabel?.directionLabel,
       inlineDirectionSymbol: inlineLabel?.directionSymbol,
-      inlineStrengthLabel: inlineLabel?.strengthLabel,
       showInlineLabel: (isRevealed || isHoveredEdge) && Boolean(inlineLabel),
       isRevealed,
       isHoveredEdge,
@@ -199,7 +196,7 @@ function buildReactFlowEdge(
     type: resolveEdgeType(edge),
     zIndex: resolveEdgeZIndex(edge),
     interactionWidth: isReactionEdge(edge) ? 20 : 12,
-    hidden: hideUnrevealedEdges && !isRevealed,
+    hidden: hideUnrevealedEdges && !isRevealed && !isHoveredEdge,
     ...(isReactionEdge(edge)
       ? { markerEnd: { type: MarkerType.ArrowClosed, width: 10, height: 10 } }
       : {}),
