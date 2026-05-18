@@ -177,7 +177,7 @@ describe("chamber relation bundle resolver", () => {
     expect(bundle?.relations).toEqual([
       expect.objectContaining({
         relationType: "element-interaction",
-        detailLabel: expect.stringMatching(/^(เป็นผลดี|เป็นผลร้าย|เป็นกลาง|สองทิศ)$/),
+        detailLabel: expect.stringMatching(/^(สองทิศ|ส่งออก)$/),
       }),
     ]);
   });

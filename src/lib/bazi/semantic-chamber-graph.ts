@@ -139,7 +139,9 @@ export type SemanticEdgeBadgeContract = {
 
 import {
   applySchoolRevealPolicy,
+  DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
   filterEdgesBySchoolRevealPolicy,
+  resolveSchoolRevealPolicyConfig,
   type SchoolRevealPolicyConfig,
 } from "@/lib/bazi/school-reveal-policy";
 
@@ -226,12 +228,6 @@ const BRANCH_TO_ELEMENT: Record<string, string> = {
 type FlowCategory = "output" | "wealth" | "power" | "resource" | "companion";
 type FlowCycleType = "generating" | "controlling" | "neutral";
 type FlowDirection = "outward" | "inward" | "none";
-
-const DAY_MASTER_EFFECT_LABEL: Record<string, string> = {
-  beneficial: "เป็นผลดี",
-  harmful: "เป็นผลร้าย",
-  neutral: "เป็นกลาง",
-};
 
 type TenGodFlowInfo = {
   category: FlowCategory;
@@ -379,10 +375,6 @@ function getPrimarySchoolLabel(badge: BaseChartReactionBadgeValue): string {
   return badge.schoolLabel ?? badge.shortLabel ?? badge.label;
 }
 
-function getBadgeModalDetailValue(badge: BaseChartReactionBadgeValue, label: string): string | undefined {
-  return badge.modal.details.find((detail) => detail.label === label)?.value;
-}
-
 function resolveFlowDirectionContract(edge: SemanticEdge): { label: string; symbol: string } {
   if (edge.data.flowDirection === "outward") {
     return { label: "ส่งออก", symbol: "→" };
@@ -472,10 +464,9 @@ export function resolveSemanticEdgeBadgeContract(edge: SemanticEdge): SemanticEd
 
   if (edge.data.layer === "element-interaction") {
     const direction = resolveFlowDirectionContract(edge);
-    const dayMasterEffect = getBadgeModalDetailValue(edge.data.badge, "ผลต่อดิถี");
     return {
       relationLabel: edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label,
-      directionLabel: dayMasterEffect ? (DAY_MASTER_EFFECT_LABEL[dayMasterEffect] ?? dayMasterEffect) : direction.label,
+      directionLabel: direction.label,
       directionSymbol: direction.symbol,
       badgeMode: "flow",
     };
@@ -1077,15 +1068,21 @@ function assignParallelOffsets(edges: SemanticEdge[]): void {
   }
 }
 
-export function buildSemanticGraphModel(calculatedState: CalculatedStateValue, config: SchoolRevealPolicyConfig = { quietGraph: true }): SemanticChamberGraph | null {
+export function buildSemanticGraphModel(
+  calculatedState: CalculatedStateValue,
+  config: Partial<SchoolRevealPolicyConfig> = DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
+): SemanticChamberGraph | null {
   const reading = calculatedState.baseChartReading;
+  const policy = resolveSchoolRevealPolicyConfig(config);
 
   if (!reading) {
     return null;
   }
 
   const pillarNodes = buildPillarNodes(calculatedState);
-  const visibleMarkerBadges = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "visible");
+  const visibleMarkerBadges = policy.showOverlay
+    ? reading.markerBadges.filter((badge) => getOverlayTier(badge) === "visible")
+    : [];
   
   // Apply SchoolRevealPolicy adapter
   const interactionBadges = applySchoolRevealPolicy(
@@ -1099,7 +1096,7 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue, c
   const schoolInteractionBadges = interactionBadges.filter(
     (badge) => badge.semanticKind !== "element-generate" && badge.semanticKind !== "element-control",
   );
-  const visibleMarkerNodes = buildMarkerNodes(reading.markerBadges);
+  const visibleMarkerNodes = policy.showOverlay ? buildMarkerNodes(reading.markerBadges) : [];
   const hiddenSecondaryOverlays = reading.markerBadges.filter((badge) => getOverlayTier(badge) === "secondary");
 
   const edges = [
@@ -1112,13 +1109,16 @@ export function buildSemanticGraphModel(calculatedState: CalculatedStateValue, c
 
   return {
     nodes: [...pillarNodes, ...visibleMarkerNodes],
-    edges: filterEdgesBySchoolRevealPolicy(edges, config),
+    edges: filterEdgesBySchoolRevealPolicy(edges, policy),
     schoolClusters: schoolInteractionBadges.map((badge) => buildSchoolClusterForBadge(badge, visibleMarkerBadges)),
     hiddenSecondaryOverlays,
   };
 }
 
-export function buildSemanticChamberGraph(calculatedState: CalculatedStateValue, config: SchoolRevealPolicyConfig = { quietGraph: true }): SemanticChamberGraph {
+export function buildSemanticChamberGraph(
+  calculatedState: CalculatedStateValue,
+  config: Partial<SchoolRevealPolicyConfig> = DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
+): SemanticChamberGraph {
   const graph = buildSemanticGraphModel(calculatedState, config);
 
   if (!graph) {

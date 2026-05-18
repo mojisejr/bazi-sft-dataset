@@ -3,29 +3,65 @@ import type { SemanticEdge } from "./semantic-chamber-graph";
 
 export type SchoolRevealPolicyConfig = {
   quietGraph: boolean;
+  showStructure: boolean;
+  showEnergy: boolean;
+  showOverlay: boolean;
 };
+
+export const DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG: SchoolRevealPolicyConfig = {
+  quietGraph: true,
+  showStructure: true,
+  showEnergy: true,
+  showOverlay: true,
+};
+
+export function resolveSchoolRevealPolicyConfig(
+  config: Partial<SchoolRevealPolicyConfig> = {},
+): SchoolRevealPolicyConfig {
+  return {
+    ...DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
+    ...config,
+  };
+}
 
 /**
  * Filter computed_truth into visible_truth.
  */
 export function applySchoolRevealPolicy(
   badges: BaseChartReactionBadgeValue[],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  config: SchoolRevealPolicyConfig = { quietGraph: true }
+  config: Partial<SchoolRevealPolicyConfig> = DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
 ): BaseChartReactionBadgeValue[] {
+  const policy = resolveSchoolRevealPolicyConfig(config);
+
+  if (!policy.showEnergy) {
+    return badges.filter(
+      (badge) => badge.semanticKind !== "element-generate" && badge.semanticKind !== "element-control",
+    );
+  }
+
   // In quietGraph mode, we currently DO NOT drop element-generate / element-control.
   // The user explicitly expects "เซียงแซ" (element-generate) to connect across the chart.
   // We will preserve them so the graph shows generating flows accurately.
   return badges;
 }
 
+function isStructureEdge(edge: SemanticEdge): boolean {
+  return edge.data.layer === "daymaster-meaning";
+}
+
+function isEnergyEdge(edge: SemanticEdge): boolean {
+  return edge.data.layer === "element-flow" || edge.data.layer === "element-interaction";
+}
+
+function isOverlayEdge(edge: SemanticEdge): boolean {
+  return edge.data.layer === "shen-sha-overlay";
+}
+
 export function filterEdgesBySchoolRevealPolicy(
   edges: SemanticEdge[],
-  config: SchoolRevealPolicyConfig = { quietGraph: true }
+  config: Partial<SchoolRevealPolicyConfig> = DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
 ): SemanticEdge[] {
-  if (!config.quietGraph) {
-    return edges;
-  }
+  const policy = resolveSchoolRevealPolicyConfig(config);
 
   const pillarOrder = ["hour", "day", "month", "year"];
 
@@ -39,6 +75,22 @@ export function filterEdgesBySchoolRevealPolicy(
   }
 
   return edges.filter((edge) => {
+    if (!policy.showStructure && isStructureEdge(edge)) {
+      return false;
+    }
+
+    if (!policy.showEnergy && isEnergyEdge(edge)) {
+      return false;
+    }
+
+    if (!policy.showOverlay && isOverlayEdge(edge)) {
+      return false;
+    }
+
+    if (!policy.quietGraph) {
+      return true;
+    }
+
     // Drop Daymaster role lines in quiet graph, as they are now in the summary modal
     if (edge.data.layer === "element-flow" || edge.data.layer === "daymaster-meaning") {
       return false;

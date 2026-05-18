@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { filterEdgesBySchoolRevealPolicy } from "@/lib/bazi/school-reveal-policy";
+import {
+  filterEdgesBySchoolRevealPolicy,
+  resolveSchoolRevealPolicyConfig,
+} from "@/lib/bazi/school-reveal-policy";
 import type { SemanticEdge } from "@/lib/bazi/semantic-chamber-graph";
 
 function makeEdge(partial: Partial<SemanticEdge>): SemanticEdge {
@@ -85,5 +88,48 @@ describe("filterEdgesBySchoolRevealPolicy", () => {
 
     const filtered = filterEdgesBySchoolRevealPolicy(edges);
     expect(filtered.map((edge) => edge.id)).toEqual(["generate"]);
+  });
+
+  test("drops structural guide edges when the structure layer is disabled", () => {
+    const edges = [
+      makeEdge({ id: "daymaster", data: { layer: "daymaster-meaning" } }),
+      makeEdge({ id: "reaction", data: { layer: "inter-pillar-reaction" } }),
+    ];
+
+    const filtered = filterEdgesBySchoolRevealPolicy(edges, { showStructure: false, quietGraph: false });
+
+    expect(filtered.map((edge) => edge.id)).toEqual(["reaction"]);
+  });
+
+  test("drops energy edges when the energy layer is disabled", () => {
+    const edges = [
+      makeEdge({ id: "flow", data: { layer: "element-flow" } }),
+      makeEdge({ id: "interaction", data: { layer: "element-interaction" } }),
+      makeEdge({ id: "reaction", data: { layer: "inter-pillar-reaction" } }),
+    ];
+
+    const filtered = filterEdgesBySchoolRevealPolicy(edges, { showEnergy: false, quietGraph: false });
+
+    expect(filtered.map((edge) => edge.id)).toEqual(["reaction"]);
+  });
+
+  test("drops overlay edges when the overlay layer is disabled", () => {
+    const edges = [
+      makeEdge({ id: "overlay", data: { layer: "shen-sha-overlay" } }),
+      makeEdge({ id: "reaction", data: { layer: "inter-pillar-reaction" } }),
+    ];
+
+    const filtered = filterEdgesBySchoolRevealPolicy(edges, { showOverlay: false, quietGraph: false });
+
+    expect(filtered.map((edge) => edge.id)).toEqual(["reaction"]);
+  });
+
+  test("normalizes reveal policy defaults before filtering", () => {
+    expect(resolveSchoolRevealPolicyConfig({ quietGraph: false })).toEqual({
+      quietGraph: false,
+      showStructure: true,
+      showEnergy: true,
+      showOverlay: true,
+    });
   });
 });

@@ -209,7 +209,7 @@ describe("buildChamberRenderModel", () => {
     expect(renderedEdge?.type).toBe("chamberBezier");
     expect(renderedEdge?.data?.inlineLabel).toMatch(/^(เซียงแซ|พิฆาต)$/);
     expect(renderedEdge?.data?.inlineBadgeMode).toBe("flow");
-    expect(renderedEdge?.data?.inlineDirectionLabel).toMatch(/^(เป็นผลดี|เป็นผลร้าย|เป็นกลาง|สองทิศ)$/);
+    expect(renderedEdge?.data?.inlineDirectionLabel).toMatch(/^(สองทิศ|ส่งออก)$/);
     expect(renderedEdge?.hidden).toBe(false);
   });
 
