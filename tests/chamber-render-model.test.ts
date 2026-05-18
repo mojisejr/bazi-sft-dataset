@@ -122,6 +122,7 @@ describe("buildChamberRenderModel", () => {
     expect(reactionEdge?.type).toBe("chamberBezier");
     expect(reactionEdge?.markerStart).toBeUndefined();
     expect(reactionEdge?.markerEnd).toBeUndefined();
+    expect(reactionEdge?.data?.inlineBadgeMode).toBe("reaction");
   });
 
   test("preserves selection semantics by id lookup on the semantic graph", () => {
@@ -169,6 +170,7 @@ describe("buildChamberRenderModel", () => {
     expect(revealedFlowEdge?.data?.showInlineLabel).toBe(true);
     expect(revealedFlowEdge?.data?.inlineLabel).toBe("ส่งเสริม");
     expect(revealedFlowEdge?.data?.inlineDirectionLabel).toBe("รับเข้า");
+    expect(revealedFlowEdge?.data?.inlineBadgeMode).toBe("flow");
     expect(revealedFlowEdge?.markerEnd).toBeDefined();
     expect(revealedFlowEdge?.markerStart).toBeUndefined();
     expect(revealedFlowEdge?.ariaLabel).toBeTruthy();
@@ -191,7 +193,25 @@ describe("buildChamberRenderModel", () => {
     const renderedEdge = renderModel.edges.find((candidate) => candidate.id === edge?.id);
     expect(renderedEdge?.type).toBe("chamberBezier");
     expect(renderedEdge?.data?.inlineLabel).toMatch(/^(เซียงแซ|พิฆาต)$/);
+    expect(renderedEdge?.data?.inlineBadgeMode).toBe("flow");
     expect(renderedEdge?.hidden).toBe(false);
+  });
+
+  test("suppresses daymaster meaning labels from the main graph inline badge layer", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });
+    const positions = assignChamberGraphLayout(graph);
+    const selection = buildChamberSelectionState({ graph, nodeIds: ["stem:day", "stem:year"] });
+    const relationBundle = resolveChamberRelationBundle({ selection, graph, calculatedState });
+    const renderModel = buildChamberRenderModel(graph, positions, {
+      selectedNodeIds: selection.selectedNodes.map((node) => node.id),
+      revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
+      hideUnrevealedEdges: true,
+    });
+
+    const daymasterEdge = renderModel.edges.find((candidate) => candidate.data?.layer === "daymaster-meaning");
+    expect(daymasterEdge?.data?.inlineLabel).toBeUndefined();
+    expect(daymasterEdge?.data?.showInlineLabel).toBe(false);
   });
 
   test("renders mutual element-interaction edges with markers on both ends", () => {

@@ -24,6 +24,7 @@ type ChamberInlineEdgeLabel = {
   relationLabel: string;
   directionLabel?: string;
   directionSymbol: string;
+  badgeMode: "flow" | "reaction";
 };
 
 function isReactionEdge(edge: SemanticEdge): boolean {
@@ -90,13 +91,14 @@ function resolveEdgeDirectionLabel(edge: SemanticEdge): { label: string; symbol:
 }
 
 function buildInlineEdgeLabel(edge: SemanticEdge): ChamberInlineEdgeLabel | null {
-  if (edge.data.layer === "shen-sha-overlay") {
+  if (edge.data.layer === "shen-sha-overlay" || edge.data.layer === "daymaster-meaning") {
     return null;
   }
 
-  const relationLabel = edge.data.layer === "element-flow" || edge.data.layer === "element-interaction"
+  const isFlowLike = edge.data.layer === "element-flow" || edge.data.layer === "element-interaction";
+  const relationLabel = isFlowLike
     ? edge.data.flowLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label
-    : edge.data.schoolLabel ?? edge.data.badge.shortLabel ?? edge.label ?? edge.data.badge.label;
+    : edge.data.schoolLabel ?? edge.data.badge.shortLabel ?? edge.data.badge.label;
 
   const direction = resolveEdgeDirectionLabel(edge);
 
@@ -104,6 +106,7 @@ function buildInlineEdgeLabel(edge: SemanticEdge): ChamberInlineEdgeLabel | null
     relationLabel,
     directionLabel: direction.label || undefined,
     directionSymbol: direction.symbol,
+    badgeMode: isFlowLike ? "flow" : "reaction",
   };
 }
 
@@ -183,6 +186,7 @@ function buildReactFlowEdge(
       inlineLabel: inlineLabel?.relationLabel,
       inlineDirectionLabel: inlineLabel?.directionLabel,
       inlineDirectionSymbol: inlineLabel?.directionSymbol,
+      inlineBadgeMode: inlineLabel?.badgeMode,
       showInlineLabel: (isRevealed || isHoveredEdge) && Boolean(inlineLabel),
       isRevealed,
       isHoveredEdge,

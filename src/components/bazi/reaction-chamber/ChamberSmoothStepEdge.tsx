@@ -220,6 +220,7 @@ export function ChamberBezierEdge(props: EdgeProps & { data?: ChamberBezierEdgeD
             data-school={data.schoolLabel}
             data-tier={data.tier ?? ""}
             data-direction={data.inlineDirectionLabel ?? ""}
+            data-badge-mode={typeof data.inlineBadgeMode === "string" ? data.inlineBadgeMode : "flow"}
           >
             <span className="chamber-edge-inline-label__rail">
               <span className="chamber-edge-inline-label__direction">{data.inlineDirectionSymbol ?? "•"}</span>

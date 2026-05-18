@@ -272,16 +272,16 @@
   pointer-events: none;
   display: inline-flex;
   flex-direction: column;
-  gap: 1px;
-  padding: 4px 8px 5px;
-  border-radius: 12px;
-  font-size: 10px;
+  gap: 2px;
+  padding: 5px 9px 6px;
+  border-radius: 14px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   white-space: nowrap;
   background: color-mix(in srgb, var(--chamber-panel-strong) 94%, transparent);
   border: 1px solid var(--chamber-line);
-  box-shadow: 0 2px 8px rgba(76, 48, 27, 0.1);
+  box-shadow: 0 4px 14px rgba(76, 48, 27, 0.12);
   backdrop-filter: blur(8px);
   z-index: 25;
 }
@@ -289,23 +289,36 @@
 .chamber-edge-inline-label__rail {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .chamber-edge-inline-label__direction {
   color: var(--chamber-accent);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
 }
 
 .chamber-edge-inline-label__label {
   color: var(--chamber-text);
+  font-weight: 700;
 }
 
 .chamber-edge-inline-label__meta {
   font-weight: 400;
-  font-size: 9px;
+  font-size: 10px;
   color: var(--chamber-muted);
+}
+
+.chamber-edge-inline-label[data-badge-mode="reaction"] .chamber-edge-inline-label__direction {
+  color: var(--chamber-muted);
+}
+
+.chamber-edge-inline-label[data-badge-mode="reaction"] .chamber-edge-inline-label__rail {
+  justify-content: center;
+}
+
+.chamber-edge-inline-label[data-badge-mode="reaction"] .chamber-edge-inline-label__label {
+  letter-spacing: 0.04em;
 }
 
 .chamber-edge-inline-label[data-tier="secondary"] {

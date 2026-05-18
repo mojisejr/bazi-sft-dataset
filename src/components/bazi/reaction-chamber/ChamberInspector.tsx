@@ -155,12 +155,23 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
     ? (node.data.stemTranslation ?? ELEMENT_LABELS_TH[node.data.element as keyof typeof ELEMENT_LABELS_TH] ?? node.data.element)
     : (node.data.branchTranslation ?? ELEMENT_LABELS_TH[node.data.element as keyof typeof ELEMENT_LABELS_TH] ?? node.data.element);
   const semanticRole = node.data.kind === "stem-node" ? "ราศีบน" : "ราศีล่าง";
-  const detailLabel = node.data.kind === "stem-node" ? "บทบาทบนผัง" : "12 เชี่ยงแซ";
-  const detailValue = node.data.kind === "stem-node"
-    ? (node.data.tenGod ? `เก็บ 10 เทพไว้ชั้นรอง (${node.data.tenGod})` : "ดูความหมายจากเส้นที่โยงกับจุดนี้")
-    : (node.data.stageDisplay ?? "-");
+  const primaryMeaning = node.data.kind === "stem-node"
+    ? (node.data.isFocal ? "จุดนี้เป็นแกนรับแรงของผังนี้" : `จุดนี้เปิดบทบาทของ${translation}บนผังนี้`)
+    : (node.data.stageDisplay ? `ราศีล่างจุดนี้เดินในจังหวะ ${node.data.stageDisplay}` : "จุดนี้ใช้ยืนยันแรงที่ซ่อนอยู่ในราศีล่าง");
+  const readingGuide = node.data.kind === "stem-node"
+    ? "ดูเส้นที่เชื่อมกับจุดนี้ก่อน แล้วค่อยขยายความผ่าน panel"
+    : "ดูเส้นที่พาดผ่านราศีล่างนี้ก่อน แล้วค่อยอ่านราศีแฝงที่รองรับมัน";
   const hiddenStems = node.data.hiddenStems ?? [];
   const elementColor = ELEMENT_COLORS_TH[node.data.element] ?? "inherit";
+  const supportingRows = node.data.kind === "stem-node"
+    ? [
+        { label: "10 เทพ", value: node.data.tenGod ? `เก็บไว้ชั้นรอง (${node.data.tenGod})` : "ใช้เส้นความสัมพันธ์เป็นตัวอ่านหลัก" },
+        { label: "ราศีแฝง", value: hiddenStems.length > 0 ? hiddenStems.join(" · ") : "-" },
+      ]
+    : [
+        { label: "12 เชี่ยงแซ", value: node.data.stageDisplay ?? "-" },
+        { label: "ราศีแฝง", value: hiddenStems.length > 0 ? hiddenStems.join(" · ") : "-" },
+      ];
 
   return (
     <div className="chamber-inspector__pillar">
@@ -169,26 +180,25 @@ function SemanticNodeSummary({ node }: { node: SemanticNode }) {
         <span style={{ color: elementColor }}>{symbol}</span>
       </div>
       <p className="chamber-inspector__translation">{semanticRole} · {translation}</p>
-      <dl className="chamber-inspector__details">
-        <div className="chamber-inspector__detail-row">
-          <dt>ชั้นความหมาย</dt>
-          <dd>{semanticRole}</dd>
-        </div>
-        <div className="chamber-inspector__detail-row">
-          <dt>{detailLabel}</dt>
-          <dd>{detailValue}</dd>
-        </div>
-        {node.data.kind === "stem-node" && (
-          <div className="chamber-inspector__detail-row">
-            <dt>วิธีอ่าน</dt>
-            <dd>ดูเส้นที่โยงกับจุดนี้ก่อน แล้วค่อยขยายความผ่าน panel</dd>
-          </div>
-        )}
-        <div className="chamber-inspector__detail-row">
-          <dt>ราศีแฝง</dt>
-          <dd>{hiddenStems.length > 0 ? hiddenStems.join(" · ") : "-"}</dd>
-        </div>
-      </dl>
+      <div className="chamber-inspector__primary-block">
+        <p className="chamber-inspector__section-title">ความหมายหลัก</p>
+        <p className="chamber-inspector__summary">{primaryMeaning}</p>
+      </div>
+      <div className="chamber-inspector__packet-block">
+        <p className="chamber-inspector__section-title">วิธีอ่าน</p>
+        <p className="chamber-inspector__explanation">{readingGuide}</p>
+      </div>
+      <div className="chamber-inspector__packet-block">
+        <p className="chamber-inspector__section-title">รายละเอียดรอง</p>
+        <dl className="chamber-inspector__details">
+          {supportingRows.map((row) => (
+            <div key={row.label} className="chamber-inspector__detail-row">
+              <dt>{row.label}</dt>
+              <dd>{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
     </div>
   );
 }

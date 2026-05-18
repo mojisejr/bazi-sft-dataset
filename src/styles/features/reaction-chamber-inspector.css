@@ -361,6 +361,16 @@
   gap: 4px;
 }
 
+.chamber-inspector__primary-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--chamber-panel-soft) 84%, transparent);
+  border: 1px solid color-mix(in srgb, var(--chamber-line) 72%, transparent);
+}
+
 .chamber-inspector__extra {
   margin-top: 4px;
 }
