@@ -7,6 +7,7 @@ import { buildChamberSelectionState } from "@/lib/bazi/chamber-selection-grammar
 import { resolveChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import { buildSemanticChamberGraph, resolveSemanticEdgeBadgeContract, type SemanticEdge } from "@/lib/bazi/semantic-chamber-graph";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
+import { CHAMBER_NODE_TYPES } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
 import type { CalculatedStateValue, PillarValue, ShenShaValue } from "@/lib/bazi/schema-types";
 
 const samplePillars: Record<"year" | "month" | "day" | "hour", PillarValue> = {
@@ -111,6 +112,20 @@ describe("buildChamberRenderModel", () => {
     expect(stemDay?.position).toEqual(positions.get("stem:day"));
     expect(stemDay?.selectable).toBe(true);
     expect(stemDay?.draggable).toBe(false);
+  });
+
+  test("registers chamber marker nodes so overlay labels and handles render with the custom node", () => {
+    const graph = buildSemanticChamberGraph(buildStubCalculatedState(), { quietGraph: false });
+    const markerNode = graph.nodes.find((node) => node.type === "chamberMarker");
+
+    expect(markerNode).toBeDefined();
+    expect(CHAMBER_NODE_TYPES.chamberMarker).toBeDefined();
+    expect(markerNode?.data.kind).toBe("marker");
+    expect(markerNode?.data.kind === "marker" ? markerNode.data.displayLabel : "").toContain("กุ้ยนั้ง");
+
+    const overlayEdge = graph.edges.find((edge) => edge.data.layer === "shen-sha-overlay");
+    expect(overlayEdge?.target).toBe(markerNode?.id);
+    expect(overlayEdge?.targetHandle).toBe("target-left");
   });
 
   test("maps reaction edges into bezier edge types without forced one-way markers", () => {

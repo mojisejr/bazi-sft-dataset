@@ -27,13 +27,15 @@ import type { ChamberRelationBundle } from "@/lib/bazi/chamber-relation-bundle";
 import { ChamberPillarNode } from "@/components/bazi/reaction-chamber/ChamberPillarNode";
 import { ChamberStemNode } from "@/components/bazi/reaction-chamber/ChamberStemNode";
 import { ChamberBranchNode } from "@/components/bazi/reaction-chamber/ChamberBranchNode";
+import { ChamberMarkerNode } from "@/components/bazi/reaction-chamber/ChamberMarkerNode";
 import { ChamberBezierEdge } from "@/components/bazi/reaction-chamber/ChamberSmoothStepEdge";
 import { buildChamberRenderModel } from "@/components/bazi/reaction-chamber/chamber-render-model";
 
-const NODE_TYPES = {
+export const CHAMBER_NODE_TYPES = {
   chamberPillar: ChamberPillarNode,
   chamberStemNode: ChamberStemNode,
   chamberBranchNode: ChamberBranchNode,
+  chamberMarker: ChamberMarkerNode,
 };
 
 const EDGE_TYPES = {
@@ -174,11 +176,11 @@ function ReactionChamberCanvasInner({
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
     >
-      <ReactFlow
-        nodes={renderModel.nodes}
-        edges={renderModel.edges}
-        nodeTypes={NODE_TYPES}
-        edgeTypes={EDGE_TYPES}
+        <ReactFlow
+          nodes={renderModel.nodes}
+          edges={renderModel.edges}
+          nodeTypes={CHAMBER_NODE_TYPES}
+          edgeTypes={EDGE_TYPES}
         fitView
         fitViewOptions={{ padding: 0.14 }}
         minZoom={0.55}
