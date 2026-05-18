@@ -47,6 +47,39 @@
   gap: 6px;
 }
 
+.chamber-layer-panel__focus-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.chamber-layer-panel__family-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chamber-layer-panel__family-pill,
+.chamber-layer-panel__reset {
+  appearance: none;
+  border: 1px solid var(--chamber-line);
+  background: color-mix(in srgb, var(--chamber-panel) 70%, transparent);
+  color: var(--chamber-text);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chamber-layer-panel__family-pill--active,
+.chamber-layer-panel__reset--active {
+  border-color: var(--chamber-line-strong);
+  background: var(--chamber-panel);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--chamber-accent) 16%, transparent);
+}
+
 .chamber-layer-panel__button {
   appearance: none;
   background: color-mix(in srgb, var(--chamber-panel) 64%, transparent);

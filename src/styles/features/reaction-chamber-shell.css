@@ -144,12 +144,15 @@
 
 .reaction-chamber-shell__canvas-stack {
   flex: 1;
+  display: flex;
   min-width: 0;
+  min-height: 0;
   position: relative;
 }
 
 .reaction-chamber-canvas {
   flex: 1;
+  min-height: 0;
   min-width: 0;
   position: relative;
   background: var(--chamber-canvas-bg);

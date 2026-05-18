@@ -46,12 +46,15 @@ export function ReactionChamberShell() {
   const selection = useChamberPresentationStore((state) => state.selection);
   const isInspectorOpen = useChamberPresentationStore((state) => state.isInspectorOpen);
   const layerToggles = useChamberPresentationStore((state) => state.layerToggles);
+  const isQuietDefault = useChamberPresentationStore((state) => resolveChamberGraphRevealPolicy(state.layerToggles).quietGraph);
   const hoveredNodeId = useChamberPresentationStore((state) => state.hoveredNodeId);
   const setSelection = useChamberPresentationStore((state) => state.setSelection);
   const setHoveredNodeId = useChamberPresentationStore((state) => state.setHoveredNodeId);
   const clearSelection = useChamberPresentationStore((state) => state.clearSelection);
   const toggleInspector = useChamberPresentationStore((state) => state.toggleInspector);
   const toggleLayer = useChamberPresentationStore((state) => state.toggleLayer);
+  const setEnergyFamily = useChamberPresentationStore((state) => state.setEnergyFamily);
+  const resetLayerFocus = useChamberPresentationStore((state) => state.resetLayerFocus);
 
   useEffect(() => {
     if (!calculatedState) {
@@ -126,12 +129,15 @@ export function ReactionChamberShell() {
             <ChamberLayerTogglesPanel
               layerToggles={layerToggles}
               onToggleLayer={toggleLayer}
+              onSetEnergyFamily={setEnergyFamily}
+              onResetLayerFocus={resetLayerFocus}
             />
             <ReactionChamberCanvas
               graph={graph}
               selection={selection}
               relationBundle={relationBundle}
               hoveredNodeId={hoveredNodeId}
+              forceInlineLabels={!isQuietDefault && layerToggles.energyFamily !== "all"}
               onSelectionChange={setSelection}
               onNodeHover={(node) => setHoveredNodeId(node?.id ?? null)}
             />

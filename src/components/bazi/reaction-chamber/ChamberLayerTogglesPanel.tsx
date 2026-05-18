@@ -1,14 +1,20 @@
 "use client";
 
-import type { ChamberLayerToggles } from "@/lib/bazi/chamber-presentation-store";
+import type {
+  ChamberLayerToggles,
+  ChamberToggleLayerKey,
+} from "@/lib/bazi/chamber-presentation-store";
+import type { SchoolRevealFlowFamily } from "@/lib/bazi/school-reveal-policy";
 
 type ChamberLayerTogglesPanelProps = {
   layerToggles: ChamberLayerToggles;
-  onToggleLayer: (layer: keyof ChamberLayerToggles) => void;
+  onToggleLayer: (layer: ChamberToggleLayerKey) => void;
+  onSetEnergyFamily: (family: SchoolRevealFlowFamily) => void;
+  onResetLayerFocus: () => void;
 };
 
 const LAYER_OPTIONS: Array<{
-  key: keyof ChamberLayerToggles;
+  key: ChamberToggleLayerKey;
   label: string;
   description: string;
 }> = [
@@ -19,8 +25,13 @@ const LAYER_OPTIONS: Array<{
   },
   {
     key: "showEnergy",
-    label: "กระแสธาตุ",
-    description: "เส้นส่งเสริมและพิฆาตในผัง",
+    label: "กระแสธาตุรวม",
+    description: "แสดงทุกสายบทบาทเมื่อยังไม่เจาะ family เดียว",
+  },
+  {
+    key: "showReaction",
+    label: "ปฏิกิริยา",
+    description: "ชง เฮ้ง ไห่ ผั่ว และภาคี",
   },
   {
     key: "showOverlay",
@@ -29,9 +40,19 @@ const LAYER_OPTIONS: Array<{
   },
 ];
 
+const ENERGY_FAMILY_OPTIONS: Array<{ key: SchoolRevealFlowFamily; label: string }> = [
+  { key: "output", label: "ถ่ายเท" },
+  { key: "wealth", label: "โชคลาภ" },
+  { key: "power", label: "พิฆาต" },
+  { key: "resource", label: "ส่งเสริม" },
+  { key: "companion", label: "คู่ธาตุ" },
+];
+
 export function ChamberLayerTogglesPanel({
   layerToggles,
   onToggleLayer,
+  onSetEnergyFamily,
+  onResetLayerFocus,
 }: ChamberLayerTogglesPanelProps) {
   return (
     <section className="chamber-layer-panel" aria-label="ชั้นข้อมูลของผังปฏิกิริยา">
@@ -60,6 +81,29 @@ export function ChamberLayerTogglesPanel({
               </button>
             );
           })}
+        </div>
+        <div className="chamber-layer-panel__focus-copy">
+          <p className="chamber-layer-panel__title">เจาะดูสายบทบาท</p>
+          <button
+            type="button"
+            className={`chamber-layer-panel__reset${layerToggles.energyFamily === "all" ? " chamber-layer-panel__reset--active" : ""}`}
+            onClick={onResetLayerFocus}
+          >
+            กลับภาพเงียบ
+          </button>
+        </div>
+        <div className="chamber-layer-panel__family-pills">
+          {ENERGY_FAMILY_OPTIONS.map((family) => (
+            <button
+              key={family.key}
+              type="button"
+              className={`chamber-layer-panel__family-pill${layerToggles.energyFamily === family.key ? " chamber-layer-panel__family-pill--active" : ""}`}
+              onClick={() => onSetEnergyFamily(family.key)}
+              aria-pressed={layerToggles.energyFamily === family.key}
+            >
+              {family.label}
+            </button>
+          ))}
         </div>
       </div>
     </section>

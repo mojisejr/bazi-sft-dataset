@@ -97,7 +97,9 @@ describe("chamber-presentation-store", () => {
       layerToggles: {
         showStructure: true,
         showEnergy: true,
+        showReaction: true,
         showOverlay: true,
+        energyFamily: "all",
       },
     });
   });
@@ -137,7 +139,9 @@ describe("chamber-presentation-store", () => {
       layerToggles: {
         showStructure: true,
         showEnergy: true,
+        showReaction: true,
         showOverlay: true,
+        energyFamily: "all",
       },
     });
   });
@@ -150,7 +154,9 @@ describe("chamber-presentation-store", () => {
     expect(store.getState().layerToggles).toEqual({
       showStructure: true,
       showEnergy: true,
+      showReaction: true,
       showOverlay: false,
+      energyFamily: "all",
     });
   });
 
@@ -159,26 +165,34 @@ describe("chamber-presentation-store", () => {
       resolveChamberGraphRevealPolicy({
         showStructure: true,
         showEnergy: true,
+        showReaction: true,
         showOverlay: true,
+        energyFamily: "all",
       }),
     ).toMatchObject({
       quietGraph: true,
       showStructure: true,
       showEnergy: true,
+      showReaction: true,
       showOverlay: true,
+      focusedRoleFamily: "all",
     });
 
     expect(
       resolveChamberGraphRevealPolicy({
         showStructure: true,
         showEnergy: false,
+        showReaction: true,
         showOverlay: true,
+        energyFamily: "all",
       }),
     ).toMatchObject({
       quietGraph: false,
       showStructure: true,
       showEnergy: false,
+      showReaction: true,
       showOverlay: true,
+      focusedRoleFamily: "all",
     });
   });
 
@@ -189,7 +203,9 @@ describe("chamber-presentation-store", () => {
       resolveChamberGraphRevealPolicy({
         showStructure: true,
         showEnergy: true,
+        showReaction: true,
         showOverlay: true,
+        energyFamily: "all",
       }),
     );
     const withoutOverlay = buildSemanticChamberGraph(
@@ -197,12 +213,57 @@ describe("chamber-presentation-store", () => {
       resolveChamberGraphRevealPolicy({
         showStructure: true,
         showEnergy: true,
+        showReaction: true,
         showOverlay: false,
+        energyFamily: "all",
       }),
     );
 
     expect(withOverlay.nodes.some((node) => node.type === "chamberMarker")).toBe(true);
     expect(withoutOverlay.nodes.some((node) => node.type === "chamberMarker")).toBe(false);
+  });
+
+  test("focused role-family mode keeps the graph in explicit family view without reopening every line", () => {
+    const policy = resolveChamberGraphRevealPolicy({
+      showStructure: false,
+      showEnergy: true,
+      showReaction: false,
+      showOverlay: false,
+      energyFamily: "output",
+    });
+
+    expect(policy).toMatchObject({
+      quietGraph: false,
+      showStructure: false,
+      showEnergy: true,
+      showReaction: false,
+      showOverlay: false,
+      focusedRoleFamily: "output",
+    });
+  });
+
+  test("setEnergyFamily enters focused role-family view and resetLayerFocus returns the calm baseline", () => {
+    const store = createChamberPresentationStore();
+
+    store.getState().setEnergyFamily("wealth");
+
+    expect(store.getState().layerToggles).toEqual({
+      showStructure: false,
+      showEnergy: true,
+      showReaction: false,
+      showOverlay: false,
+      energyFamily: "wealth",
+    });
+
+    store.getState().resetLayerFocus();
+
+    expect(store.getState().layerToggles).toEqual({
+      showStructure: true,
+      showEnergy: true,
+      showReaction: true,
+      showOverlay: true,
+      energyFamily: "all",
+    });
   });
 
   test("toggles raw matrix modal without disturbing selection state", () => {

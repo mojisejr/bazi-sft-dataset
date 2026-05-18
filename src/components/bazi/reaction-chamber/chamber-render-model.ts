@@ -20,6 +20,7 @@ type ChamberRenderSelectionState = {
   revealedEdgeIds?: string[];
   hideUnrevealedEdges?: boolean;
   hoveredNodeId?: string | null;
+  forceInlineLabels?: boolean;
 };
 
 function isReactionEdge(edge: SemanticEdge): boolean {
@@ -106,6 +107,7 @@ function buildReactFlowEdge(
   revealedEdgeIds: Set<string>,
   hideUnrevealedEdges: boolean,
   hoveredNodeId: string | null,
+  forceInlineLabels: boolean,
 ): Edge {
   const inlineLabel = buildInlineEdgeLabel(edge);
   const arrowMode = edge.data.arrowMode ?? "none";
@@ -132,7 +134,7 @@ function buildReactFlowEdge(
       inlineDirectionLabel: inlineLabel?.directionLabel,
       inlineDirectionSymbol: inlineLabel?.directionSymbol,
       inlineBadgeMode: inlineLabel?.badgeMode,
-      showInlineLabel: (isRevealed || isHoveredEdge) && Boolean(inlineLabel),
+      showInlineLabel: (forceInlineLabels || isRevealed || isHoveredEdge) && Boolean(inlineLabel),
       isRevealed,
       isHoveredEdge,
       isDimmed,
@@ -143,7 +145,7 @@ function buildReactFlowEdge(
     type: resolveEdgeType(edge),
     zIndex: resolveEdgeZIndex(edge),
     interactionWidth: isReactionEdge(edge) ? 20 : 12,
-    hidden: hideUnrevealedEdges && !isRevealed && !isHoveredEdge,
+    hidden: hideUnrevealedEdges && !forceInlineLabels && !isRevealed && !isHoveredEdge,
     ...(arrowMode === "forward"
       ? { markerEnd: { type: MarkerType.ArrowClosed, width: isElementFlowEdge(edge) ? 8 : 10, height: isElementFlowEdge(edge) ? 8 : 10 } }
       : {}),
@@ -185,6 +187,7 @@ export function buildChamberRenderModel(
       revealedEdgeIds,
       selectionState.hideUnrevealedEdges ?? false,
       hoveredNodeId,
+      selectionState.forceInlineLabels ?? false,
     )),
   };
 }

@@ -48,6 +48,7 @@ type ReactionChamberCanvasProps = {
   relationBundle?: ChamberRelationBundle | null;
   onSelectionChange?: (selection: ChamberSelectionState) => void;
   hoveredNodeId?: string | null;
+  forceInlineLabels?: boolean;
   onNodeHover?: (node: SemanticNode | null) => void;
 };
 
@@ -57,6 +58,7 @@ function ReactionChamberCanvasInner({
   relationBundle,
   onSelectionChange,
   hoveredNodeId,
+  forceInlineLabels,
   onNodeHover,
 }: ReactionChamberCanvasProps) {
   const reactFlowInstance = useReactFlow();
@@ -70,8 +72,9 @@ function ReactionChamberCanvasInner({
       revealedEdgeIds: relationBundle?.visibleEdgeIds ?? [],
       hideUnrevealedEdges: true,
       hoveredNodeId,
+      forceInlineLabels,
     });
-  }, [graph, hoveredNodeId, relationBundle, selection]);
+  }, [forceInlineLabels, graph, hoveredNodeId, relationBundle, selection]);
 
   useEffect(() => {
     focusFitRef.current = false;

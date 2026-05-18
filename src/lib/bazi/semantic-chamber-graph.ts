@@ -113,6 +113,7 @@ export type SemanticEdgeData = {
   parallelOffset?: number;
   schoolLabel?: string;
   flowCycleType?: "generating" | "controlling" | "neutral";
+  flowCategory?: FlowCategory;
   flowDirection?: "outward" | "inward" | "none" | "both";
   flowLabel?: string;
   flowElement?: string;
@@ -781,6 +782,7 @@ function buildElementFlowEdges(roleBadges: BaseChartReactionBadgeValue[]): Seman
         sourceDetail: "ดิถี",
         targetDetail: formatParticipantForGraph(participant),
         flowCycleType: flowInfo.cycleType,
+        flowCategory: flowInfo.category,
         flowDirection: flowInfo.direction,
         flowLabel: flowInfo.label,
         flowElement: targetElementEN,

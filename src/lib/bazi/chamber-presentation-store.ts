@@ -7,27 +7,39 @@ import {
 } from "@/lib/bazi/chamber-selection-grammar";
 import {
   DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
+  type SchoolRevealFlowFamily,
   type SchoolRevealPolicyConfig,
 } from "@/lib/bazi/school-reveal-policy";
 
 export type ChamberLayerToggles = {
   showStructure: boolean;
   showEnergy: boolean;
+  showReaction: boolean;
   showOverlay: boolean;
+  energyFamily: SchoolRevealFlowFamily;
 };
+
+export type ChamberToggleLayerKey = "showStructure" | "showEnergy" | "showReaction" | "showOverlay";
 
 export function resolveChamberGraphRevealPolicy(
   layerToggles: ChamberLayerToggles,
 ): SchoolRevealPolicyConfig {
-  const isQuietDefault = Object.values(layerToggles).every(Boolean);
+  const isQuietDefault = layerToggles.showStructure
+    && layerToggles.showEnergy
+    && layerToggles.showReaction
+    && layerToggles.showOverlay
+    && layerToggles.energyFamily === "all";
 
   return {
     ...DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG,
     ...layerToggles,
-    // The all-on baseline preserves the existing calm master view.
-    // Any deliberate toggle change switches the graph into explicit layer mode.
     quietGraph: isQuietDefault,
+    focusedRoleFamily: layerToggles.energyFamily,
   };
+}
+
+export function isChamberQuietDefault(layerToggles: ChamberLayerToggles): boolean {
+  return resolveChamberGraphRevealPolicy(layerToggles).quietGraph;
 }
 
 export type ChamberPresentationState = {
@@ -50,7 +62,9 @@ type ChamberPresentationStoreState = ChamberPresentationState & {
   closeTenGodPanel: () => void;
   toggleRawMatrix: () => void;
   closeRawMatrix: () => void;
-  toggleLayer: (layer: keyof ChamberLayerToggles) => void;
+  toggleLayer: (layer: ChamberToggleLayerKey) => void;
+  setEnergyFamily: (family: SchoolRevealFlowFamily) => void;
+  resetLayerFocus: () => void;
   resetPresentation: () => void;
 };
 
@@ -62,11 +76,13 @@ export function createChamberPresentationState(
     isInspectorOpen: true,
     isTenGodPanelOpen: false,
     isRawMatrixOpen: false,
-    layerToggles: {
-      showStructure: true,
-      showEnergy: true,
-      showOverlay: true,
-    },
+      layerToggles: {
+        showStructure: true,
+        showEnergy: true,
+        showReaction: true,
+        showOverlay: true,
+        energyFamily: "all",
+      },
     hoveredNodeId: null,
     ...overrides,
   };
@@ -118,6 +134,30 @@ export function createChamberPresentationStore(
         layerToggles: {
           ...current.layerToggles,
           [layer]: !current.layerToggles[layer],
+        },
+      }));
+    },
+    setEnergyFamily: (energyFamily) => {
+      set((current) => ({
+        layerToggles: {
+          ...current.layerToggles,
+          showEnergy: true,
+          showStructure: energyFamily === "all",
+          showReaction: energyFamily === "all" ? current.layerToggles.showReaction : false,
+          showOverlay: energyFamily === "all" ? current.layerToggles.showOverlay : false,
+          energyFamily,
+        },
+      }));
+    },
+    resetLayerFocus: () => {
+      set((current) => ({
+        layerToggles: {
+          ...current.layerToggles,
+          showStructure: true,
+          showEnergy: true,
+          showReaction: true,
+          showOverlay: true,
+          energyFamily: "all",
         },
       }));
     },

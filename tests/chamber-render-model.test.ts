@@ -213,6 +213,29 @@ describe("buildChamberRenderModel", () => {
     expect(renderedEdge?.hidden).toBe(false);
   });
 
+  test("shows role-family labels in focused family view without requiring selection", () => {
+    const calculatedState = buildStubCalculatedState();
+    const graph = buildSemanticChamberGraph(calculatedState, {
+      quietGraph: false,
+      showStructure: false,
+      showEnergy: true,
+      showReaction: false,
+      showOverlay: false,
+      focusedRoleFamily: "resource",
+    });
+    const positions = assignChamberGraphLayout(graph);
+    const renderModel = buildChamberRenderModel(graph, positions, {
+      hideUnrevealedEdges: true,
+      forceInlineLabels: true,
+    });
+
+    const visibleFlowEdges = renderModel.edges.filter((edge) => edge.hidden !== true && edge.data?.layer === "element-flow");
+
+    expect(visibleFlowEdges.length).toBeGreaterThan(0);
+    expect(visibleFlowEdges.every((edge) => edge.data?.inlineLabel === "ส่งเสริม")).toBe(true);
+    expect(visibleFlowEdges.every((edge) => edge.data?.showInlineLabel === true)).toBe(true);
+  });
+
   test("suppresses daymaster meaning labels from the main graph inline badge layer", () => {
     const calculatedState = buildStubCalculatedState();
     const graph = buildSemanticChamberGraph(calculatedState, { quietGraph: false });

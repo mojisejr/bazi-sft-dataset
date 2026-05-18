@@ -1,18 +1,24 @@
 import type { BaseChartReactionBadgeValue } from "./schema-types";
 import type { SemanticEdge } from "./semantic-chamber-graph";
 
+export type SchoolRevealFlowFamily = "all" | "output" | "wealth" | "power" | "resource" | "companion";
+
 export type SchoolRevealPolicyConfig = {
   quietGraph: boolean;
   showStructure: boolean;
   showEnergy: boolean;
+  showReaction: boolean;
   showOverlay: boolean;
+  focusedRoleFamily: SchoolRevealFlowFamily;
 };
 
 export const DEFAULT_SCHOOL_REVEAL_POLICY_CONFIG: SchoolRevealPolicyConfig = {
   quietGraph: true,
   showStructure: true,
   showEnergy: true,
+  showReaction: true,
   showOverlay: true,
+  focusedRoleFamily: "all",
 };
 
 export function resolveSchoolRevealPolicyConfig(
@@ -53,8 +59,20 @@ function isEnergyEdge(edge: SemanticEdge): boolean {
   return edge.data.layer === "element-flow" || edge.data.layer === "element-interaction";
 }
 
+function isReactionEdge(edge: SemanticEdge): boolean {
+  return edge.data.layer === "inter-pillar-reaction";
+}
+
 function isOverlayEdge(edge: SemanticEdge): boolean {
   return edge.data.layer === "shen-sha-overlay";
+}
+
+function matchesFocusedRoleFamily(edge: SemanticEdge, focusedRoleFamily: SchoolRevealFlowFamily): boolean {
+  if (focusedRoleFamily === "all") {
+    return true;
+  }
+
+  return edge.data.flowCategory === focusedRoleFamily;
 }
 
 export function filterEdgesBySchoolRevealPolicy(
@@ -83,19 +101,39 @@ export function filterEdgesBySchoolRevealPolicy(
       return false;
     }
 
+    if (!policy.showReaction && isReactionEdge(edge)) {
+      return false;
+    }
+
     if (!policy.showOverlay && isOverlayEdge(edge)) {
       return false;
     }
 
-    if (!policy.quietGraph) {
-      return true;
+    if (edge.data.layer === "element-flow") {
+      if (!matchesFocusedRoleFamily(edge, policy.focusedRoleFamily)) {
+        return false;
+      }
+
+      return policy.focusedRoleFamily !== "all" || !policy.quietGraph;
+    }
+
+    if (edge.data.layer === "daymaster-meaning") {
+      return !policy.quietGraph;
+    }
+
+    if (edge.data.layer === "element-interaction") {
+      if (!matchesFocusedRoleFamily(edge, policy.focusedRoleFamily)) {
+        return false;
+      }
+
+      // Focused role-family mode should foreground the canonical role lanes,
+      // not flood the graph with school-facing elemental interaction rails.
+      if (policy.focusedRoleFamily !== "all") {
+        return false;
+      }
     }
 
     // Drop Daymaster role lines in quiet graph, as they are now in the summary modal
-    if (edge.data.layer === "element-flow" || edge.data.layer === "daymaster-meaning") {
-      return false;
-    }
-
     if (edge.data.layer !== "element-interaction") {
       return true;
     }
