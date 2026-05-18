@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 
 import {
+  DatasetRecordMetadataSchema,
+  createDatasetRecordMetadata,
+} from "@/lib/bazi/dataset-metadata";
+import {
   BaseSaveDatasetRequestSchema,
   type SaveDatasetRequest,
 } from "@/lib/bazi/dataset-request";
@@ -55,6 +59,7 @@ export const AutoLabelingAnnotationDataSchema = z
 
 export const AutoLabelingDraftRecordSchema = AutoLabelingQueueEntrySchema.extend({
   annotationData: AutoLabelingAnnotationDataSchema,
+  metadata: DatasetRecordMetadataSchema.optional(),
 });
 
 export const AutoLabelingDraftBatchSchema = z.object({
@@ -161,8 +166,15 @@ export function buildDraftPayloadFromAutoLabelingRecord(
   return BaseSaveDatasetRequestSchema.parse({
     rawInput: record.rawInput,
     calculatedState: record.calculatedState,
+    intentDomain: record.intentDomain,
     annotationData: record.annotationData,
     status: "draft",
+    metadata: record.metadata ?? createDatasetRecordMetadata({
+      generation: {
+        source: "agent-import",
+        queueBatchId: record.queueId,
+      },
+    }),
   });
 }
 

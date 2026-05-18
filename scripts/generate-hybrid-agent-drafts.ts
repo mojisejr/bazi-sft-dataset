@@ -10,6 +10,7 @@ import {
   AutoLabelingIntentDomainSchema,
   createQueueEntry,
 } from "../src/lib/bazi/auto-labeling";
+import { createDatasetRecordMetadata } from "../src/lib/bazi/dataset-metadata";
 import {
   generateHybridSinsaeDraft,
   resolveHybridDimensionPlans,
@@ -29,6 +30,8 @@ const DEFAULT_MODEL = "gemini-3-flash-preview";
 const HybridCaseInputSchema = z.object({
   label: z.string().trim().min(1).optional(),
   intentDomain: AutoLabelingIntentDomainSchema.default("general"),
+  customerName: z.string().trim().min(1).optional(),
+  caseNote: z.string().trim().min(1).optional(),
   rawInput: RawInputSchema,
 });
 
@@ -123,6 +126,7 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const records = [];
+  const queueBatchId = `hybrid-${new Date().toISOString()}`;
 
   for (const entry of inputDocument.cases) {
     const calculatedState = await calculateBaziChart(entry.rawInput, repository);
@@ -139,6 +143,18 @@ export async function main(argv = process.argv.slice(2)) {
 
     records.push({
       ...queueEntry,
+      metadata: createDatasetRecordMetadata({
+        customerName: entry.customerName,
+        caseNote: entry.caseNote,
+        sourceFile: options.input,
+        sourceRow: inputDocument.cases.indexOf(entry) + 1,
+        generation: {
+          source: "agent-import",
+          model: options.model,
+          queueBatchId,
+          generatedAt: new Date().toISOString(),
+        },
+      }),
       annotationData: generation.annotationData,
     });
   }

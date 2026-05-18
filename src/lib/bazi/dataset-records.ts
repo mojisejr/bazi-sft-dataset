@@ -215,6 +215,7 @@ export function createDbDatasetRecordRepository(
       const values = {
         rawInput: input.rawInput,
         calculatedState: input.calculatedState,
+        ...(input.intentDomain ? { intentDomain: input.intentDomain } : {}),
         annotationData: input.annotationData,
         status: input.status,
         annotatorId,
@@ -731,6 +732,7 @@ export function createSaveProofDatasetHandler(
         recordId: payload.recordId,
         rawInput: existingRecord.rawInput,
         calculatedState: existingRecord.calculatedState,
+        intentDomain: existingRecord.intentDomain as SaveDatasetRequest["intentDomain"],
         annotationData: payload.annotationData,
         status: payload.status,
         metadata: existingRecord.metadata,

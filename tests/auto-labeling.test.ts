@@ -87,7 +87,14 @@ describe("auto-labeling helpers", () => {
     const payload = buildDraftPayloadFromAutoLabelingRecord(createQueueRecord());
 
     expect(payload.status).toBe("draft");
+    expect(payload.intentDomain).toBe("love");
     expect(payload.annotationData.dimensions).toHaveLength(15);
+    expect(payload.metadata).toEqual({
+      generation: {
+        source: "agent-import",
+        queueBatchId: "25d0e97b-6fb2-4b2b-8d5d-86fa43d7b8c2",
+      },
+    });
   });
 
   test("prunes imported queue ids from the queue document", () => {

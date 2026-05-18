@@ -1,0 +1,44 @@
+{
+  "version": "1",
+  "cases": [
+    {
+      "label": "พี่พล",
+      "intentDomain": "general",
+      "customerName": "พี่พล",
+      "rawInput": {
+        "birthDate": "1980-04-05",
+        "birthTime": "08:30",
+        "gender": "male",
+        "province": "Bangkok",
+        "calendarSystem": "solar",
+        "timezone": "Asia/Bangkok"
+      }
+    },
+    {
+      "label": "พี่ปอง",
+      "intentDomain": "general",
+      "customerName": "พี่ปอง",
+      "rawInput": {
+        "birthDate": "1982-10-18",
+        "birthTime": "16:15",
+        "gender": "female",
+        "province": "Khon Kaen",
+        "calendarSystem": "solar",
+        "timezone": "Asia/Bangkok"
+      }
+    },
+    {
+      "label": "พี่รุ้ง",
+      "intentDomain": "general",
+      "customerName": "พี่รุ้ง",
+      "rawInput": {
+        "birthDate": "1989-03-02",
+        "birthTime": "13:48",
+        "gender": "female",
+        "province": "Phang Nga",
+        "calendarSystem": "solar",
+        "timezone": "Asia/Bangkok"
+      }
+    }
+  ]
+}

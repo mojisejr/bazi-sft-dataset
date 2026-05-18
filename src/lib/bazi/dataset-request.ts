@@ -12,6 +12,18 @@ import {
   type StoredAnnotationDataValue,
 } from "@/lib/bazi/schema-types";
 
+const SaveDatasetIntentDomainSchema = z.enum([
+  "general",
+  "work",
+  "study",
+  "wealth",
+  "love",
+  "health",
+  "family",
+  "other",
+  "timing",
+]);
+
 export const SaveDatasetStatusSchema = z.enum(["draft", "reviewed", "rejected"]);
 
 export const BaseSaveDatasetRequestSchema = z
@@ -19,6 +31,7 @@ export const BaseSaveDatasetRequestSchema = z
     recordId: z.string().uuid().optional(),
     rawInput: RawInputSchema,
     calculatedState: CalculatedStateSchema,
+    intentDomain: SaveDatasetIntentDomainSchema.optional(),
     annotationData: DraftAnnotationDataSchema,
     status: SaveDatasetStatusSchema,
     metadata: DatasetRecordMetadataSchema.optional(),
