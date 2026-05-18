@@ -1,5 +1,6 @@
 import {
   ACTIVE_RLHF_DIMENSION_NAMES,
+  REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type AnnotationDimensionName,
 } from "@/lib/bazi/schema-types";
 
@@ -142,5 +143,11 @@ export const ANNOTATION_DIMENSION_TITLE_MAP = Object.fromEntries(
 export const ACTIVE_ANNOTATION_DIMENSION_META = ANNOTATION_DIMENSION_META.filter((dimension) =>
   ACTIVE_RLHF_DIMENSION_NAMES.includes(
     dimension.dimensionName as (typeof ACTIVE_RLHF_DIMENSION_NAMES)[number],
+  ),
+);
+
+export const REQUIRED_ANNOTATION_DIMENSION_META = ANNOTATION_DIMENSION_META.filter((dimension) =>
+  REQUIRED_ANNOTATION_DIMENSION_NAMES.includes(
+    dimension.dimensionName as (typeof REQUIRED_ANNOTATION_DIMENSION_NAMES)[number],
   ),
 );

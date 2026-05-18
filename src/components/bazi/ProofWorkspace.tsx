@@ -273,7 +273,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
   async function handleSubmit(nextStatus: SaveDatasetStatus) {
     if (nextStatus === "reviewed" && !canApprove) {
       setSaveState("error");
-      setSaveErrorMessage("ต้องเติมคำทำนายนิสัยพื้นฐานให้ครบและใส่เหตุผลประกอบการตัดสินใจก่อนอนุมัติ");
+      setSaveErrorMessage("ต้องเติมคำทำนายให้ครบทั้ง 15 มิติและใส่เหตุผลประกอบการตัดสินใจก่อนอนุมัติ");
       return;
     }
 
@@ -345,7 +345,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           <p className="section-kicker">เฟส 5</p>
           <h2>หน้าตรวจทานคำทำนาย AI</h2>
             <p className="annotation-intro">
-              อ่านภาพรวมดวง เกลาคำทำนายนิสัยพื้นฐาน แล้วปิดงานด้วยการอนุมัติหรือการตีกลับพร้อมเหตุผลในหน้าเดียว
+              อ่านภาพรวมดวง เกลาคำทำนายทั้ง 15 มิติ แล้วปิดงานด้วยการอนุมัติหรือการตีกลับพร้อมเหตุผลในหน้าเดียว
             </p>
         </div>
         <div className="message-card__actions">
@@ -471,7 +471,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           <section className="surface inset-card annotation-summary-card">
             <div>
               <p className="section-kicker">ความคืบหน้าการตรวจ</p>
-            <h3>เกลาคำนิสัยพื้นฐาน แล้วค่อยตัดสินใจตอนท้าย</h3>
+            <h3>เกลาคำทำนายให้ครบทุกมิติ แล้วค่อยตัดสินใจตอนท้าย</h3>
             </div>
 
             <div className="annotation-metrics" aria-label="proof progress summary">
@@ -539,7 +539,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           <section className="surface inset-card proof-summary-card">
             <p className="section-kicker">เงื่อนไขการปิดงาน</p>
             <ul className="workflow-list proof-guidance-list">
-                <li>อนุมัติได้เมื่อนิสัยพื้นฐานครบและมีเหตุผลประกอบการตัดสินใจ</li>
+                <li>อนุมัติได้เมื่อตรวจครบทั้ง 15 มิติและมีเหตุผลประกอบการตัดสินใจ</li>
               <li>ตีกลับได้ทันทีหาก logic ของ AI ผิด แต่ต้องบอกเหตุผลให้ชัด</li>
               <li>ถ้ายังไม่พร้อมปิดงาน สามารถบันทึกความคืบหน้าไว้ก่อน</li>
             </ul>

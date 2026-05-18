@@ -29,7 +29,7 @@ export const ANNOTATION_DIMENSION_NAMES = [
   "core_prediction",
 ] as const;
 
-export const ACTIVE_RLHF_DIMENSION_NAMES = ["personality_psychology"] as const;
+export const ACTIVE_RLHF_DIMENSION_NAMES = ANNOTATION_DIMENSION_NAMES;
 
 export const REQUIRED_ANNOTATION_DIMENSION_NAMES = ANNOTATION_DIMENSION_NAMES;
 
@@ -514,7 +514,7 @@ export const DraftDimensionSchema = z.object({
 export function addAnnotationDimensionIssues(
   value: { dimensions: Array<{ dimension_name: AnnotationDimensionName }> },
   context: z.RefinementCtx,
-  requiredDimensionNames: readonly AnnotationDimensionName[] = ACTIVE_RLHF_DIMENSION_NAMES,
+  requiredDimensionNames: readonly AnnotationDimensionName[] = REQUIRED_ANNOTATION_DIMENSION_NAMES,
 ) {
   const names = value.dimensions.map((dimension) => dimension.dimension_name);
   const uniqueNames = new Set(names);

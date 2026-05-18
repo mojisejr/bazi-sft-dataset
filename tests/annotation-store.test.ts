@@ -40,8 +40,8 @@ describe("annotation store", () => {
 
     expect(summary).toEqual({
       completeCount: 1,
-      draftCount: 0,
-      notStartedCount: 0,
+      draftCount: 1,
+      notStartedCount: ACTIVE_RLHF_DIMENSION_NAMES.length - 2,
     });
 
     store.getState().updateThoughtProcess("personality_psychology", "");
@@ -53,8 +53,8 @@ describe("annotation store", () => {
     expect(getDimensionProgress(personality)).toBe("not-started");
     expect(summary).toEqual({
       completeCount: 0,
-      draftCount: 0,
-      notStartedCount: ACTIVE_RLHF_DIMENSION_NAMES.length,
+      draftCount: 1,
+      notStartedCount: ACTIVE_RLHF_DIMENSION_NAMES.length - 1,
     });
   });
 

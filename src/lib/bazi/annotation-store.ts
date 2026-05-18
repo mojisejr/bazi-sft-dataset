@@ -8,7 +8,7 @@ import {
   type DraftAnnotationDataValue,
 } from "@/lib/bazi/schema-types";
 
-export { ACTIVE_ANNOTATION_DIMENSION_META as ANNOTATION_DIMENSION_META } from "@/lib/bazi/annotation-dimension-meta";
+export { REQUIRED_ANNOTATION_DIMENSION_META as ANNOTATION_DIMENSION_META } from "@/lib/bazi/annotation-dimension-meta";
 
 export type AnnotationProgressState = "not-started" | "draft" | "complete";
 
