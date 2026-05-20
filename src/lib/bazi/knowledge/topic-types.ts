@@ -90,7 +90,6 @@ export const CompiledKnowledgeDocumentSchema = z.object({
   title: z.string().trim().min(1),
   contentHash: z.string().trim().min(1),
   lineCount: z.number().int().nonnegative(),
-  rawContent: z.string(),
   normalizedContent: z.string().trim().min(1),
 });
 

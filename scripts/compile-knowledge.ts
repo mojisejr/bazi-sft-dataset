@@ -187,7 +187,6 @@ function compileDocument(label: string, file: CorpusFileRecord): CompiledKnowled
     title: file.fileBaseName,
     contentHash: createHash("sha256").update(rawContent).digest("hex"),
     lineCount: rawContent.split(/\r?\n/u).length,
-    rawContent,
     normalizedContent,
   };
 }
