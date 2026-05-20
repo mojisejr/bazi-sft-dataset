@@ -63,6 +63,24 @@ export const ENGINE_DEPENDENCIES = [
 
 export const EngineDependencySchema = z.enum(ENGINE_DEPENDENCIES);
 
+export const EngineFactDTOSchema = z.object({
+  dependency: EngineDependencySchema,
+  label: z.string().trim().min(1),
+  summary: z.string().trim().min(1),
+  sourcePaths: z.array(z.string().trim().min(1)).default([]),
+  resolved: z.boolean().default(false),
+});
+
+export const EngineFactMapSchema = z.record(
+  EngineDependencySchema,
+  EngineFactDTOSchema,
+);
+
+export const TopicEngineFactRequestSchema = z.object({
+  topicId: TopicIdSchema,
+  dependencies: z.array(EngineDependencySchema).min(1),
+});
+
 export const TopicSourceReferenceSchema = z.object({
   directoryLabel: z.string().trim().min(1),
   primarySource: z.string().trim().min(1),
@@ -125,6 +143,9 @@ export const CompiledKnowledgeArtifactSchema = z.object({
 export type TopicId = z.infer<typeof TopicIdSchema>;
 export type TopicChunkGroup = z.infer<typeof TopicChunkGroupSchema>;
 export type EngineDependency = z.infer<typeof EngineDependencySchema>;
+export type EngineFactDTO = z.infer<typeof EngineFactDTOSchema>;
+export type EngineFactMap = z.infer<typeof EngineFactMapSchema>;
+export type TopicEngineFactRequest = z.infer<typeof TopicEngineFactRequestSchema>;
 export type TopicSourceReference = z.infer<typeof TopicSourceReferenceSchema>;
 export type TopicSourceReferenceDraft = z.input<typeof TopicSourceReferenceSchema>;
 export type BaziTopicDefinition = z.infer<typeof BaziTopicDefinitionSchema>;
