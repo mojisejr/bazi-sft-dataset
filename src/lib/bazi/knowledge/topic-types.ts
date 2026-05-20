@@ -82,6 +82,47 @@ export const BaziTopicDefinitionSchema = z.object({
   sourceRefs: z.array(TopicSourceReferenceSchema).min(1),
 });
 
+export const CompiledKnowledgeDocumentSchema = z.object({
+  requestedLabel: z.string().trim().min(1),
+  matchedPath: z.string().trim().min(1),
+  relativePath: z.string().trim().min(1),
+  sourceFormat: z.enum(["markdown", "csv"]),
+  title: z.string().trim().min(1),
+  contentHash: z.string().trim().min(1),
+  lineCount: z.number().int().nonnegative(),
+  rawContent: z.string(),
+  normalizedContent: z.string().trim().min(1),
+});
+
+export const CompiledKnowledgeSourceBundleSchema = z.object({
+  directoryLabel: z.string().trim().min(1),
+  primarySource: z.string().trim().min(1),
+  supportingSources: z.array(z.string().trim().min(1)).default([]),
+  reasoningFocus: z.string().trim().min(1),
+  sourceRoot: z.string().trim().min(1),
+  documents: z.array(CompiledKnowledgeDocumentSchema).min(1),
+  combinedNormalizedContent: z.string().trim().min(1),
+});
+
+export const CompiledTopicKnowledgeSchema = z.object({
+  id: TopicIdSchema,
+  sequence: z.number().int().positive(),
+  thaiLabel: z.string().trim().min(1),
+  chunkGroup: TopicChunkGroupSchema,
+  annotationDimension: AnnotationDimensionNameSchema,
+  engineDependencies: z.array(EngineDependencySchema).min(1),
+  sinsaeLogicRules: z.array(z.string().trim().min(1)).min(1),
+  sourceBundles: z.array(CompiledKnowledgeSourceBundleSchema).min(1),
+});
+
+export const CompiledKnowledgeArtifactSchema = z.object({
+  version: z.literal("1.0.0"),
+  generatedAt: z.string().trim().min(1),
+  sourceRoot: z.string().trim().min(1),
+  topicCount: z.number().int().positive(),
+  topics: z.array(CompiledTopicKnowledgeSchema).length(BAZI_TOPIC_IDS.length),
+});
+
 export type TopicId = z.infer<typeof TopicIdSchema>;
 export type TopicChunkGroup = z.infer<typeof TopicChunkGroupSchema>;
 export type EngineDependency = z.infer<typeof EngineDependencySchema>;
@@ -89,4 +130,8 @@ export type TopicSourceReference = z.infer<typeof TopicSourceReferenceSchema>;
 export type TopicSourceReferenceDraft = z.input<typeof TopicSourceReferenceSchema>;
 export type BaziTopicDefinition = z.infer<typeof BaziTopicDefinitionSchema>;
 export type BaziTopicDefinitionDraft = z.input<typeof BaziTopicDefinitionSchema>;
+export type CompiledKnowledgeDocument = z.infer<typeof CompiledKnowledgeDocumentSchema>;
+export type CompiledKnowledgeSourceBundle = z.infer<typeof CompiledKnowledgeSourceBundleSchema>;
+export type CompiledTopicKnowledge = z.infer<typeof CompiledTopicKnowledgeSchema>;
+export type CompiledKnowledgeArtifact = z.infer<typeof CompiledKnowledgeArtifactSchema>;
 export type TopicAnnotationDimension = AnnotationDimensionName;
