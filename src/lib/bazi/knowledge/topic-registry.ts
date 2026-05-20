@@ -17,11 +17,12 @@ const TOPIC_REGISTRY_DRAFT = [
       "sixty_jiazi_persona",
       "hidden_stems",
       "twelve_qi_profile",
+      "output_star",
     ],
     sinsaeLogicRules: [
-      "อ่านบุคลิกจาก Day Master เป็นแกนหลักก่อนทุกครั้ง",
-      "ขยายภาพบุคลิกด้วย 60 Jiazi และ hidden stems ของหลักเดือน",
-      "ใช้ 12 เชี่ยงแซเป็นตัวคุมโทน ไม่ให้ตีความหลุดจากแรงจริงของดวง",
+      "ดูธาตุถ่ายเท (Output) เป็นหลักเพื่อดูการแสดงออก",
+      "ดูราศีบนหลักวัน (Day Master) เป็นแกนเสริมเพื่อดูคาแรคเตอร์ที่คนอื่นมองเห็น",
+      "นำ 12 เซียงแซมาขยายความนิสัยพฤติกรรม (เช่น กินเร็ว เจ้าระเบียบ ฯลฯ)",
     ],
     sourceRefs: [
       {
@@ -43,9 +44,9 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "career_potential",
     engineDependencies: ["day_master_strength", "resource_star", "peer_star", "favorable_elements", "useful_god"],
     sinsaeLogicRules: [
-      "เริ่มจากประเมินว่าดวงอ่อนหรือแข็ง แล้วค่อยเลือกธาตุงานที่ส่งเสริม",
-      "งานที่เหมาะต้องสอดคล้องกับธาตุเกื้อหนุนและ Useful God",
-      "ห้ามสรุปอาชีพจากบุคลิกอย่างเดียวโดยไม่ดูโครงสร้างธาตุ",
+      "อ้างอิงจากความแข็ง-อ่อนของดิถีเป็นหลัก",
+      "หากดวงอ่อนให้แนะนำธาตุส่งเสริม (Input/Resource) หรือธาตุคู่ (Peer)",
+      "จับคู่ Keyword อาชีพตามธาตุที่เป็นประโยชน์",
     ],
     sourceRefs: [
       {
@@ -64,9 +65,8 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "wealth_and_investment",
     engineDependencies: ["wealth_star", "pillar_relations", "clash_matrix", "combination_matrix", "day_master_strength"],
     sinsaeLogicRules: [
-      "ดูดาวทรัพย์และตำแหน่งที่มันไปอยู่ก่อนสรุปเรื่องโชคลาภ",
-      "แยกความหมายระหว่างโอกาสได้เงินกับความสามารถในการเก็บทรัพย์",
-      "ถ้ามีชงหรือฮะกับดาวทรัพย์ต้องอธิบายผลกระทบต่อความมั่นคงทางการเงิน",
+      "ดูธาตุโชคลาภ (Wealth) ในดวงว่ามีกี่ตัวและประจำอยู่ตำแหน่งไหน",
+      "อธิบายแหล่งที่มาของเงินตามตำแหน่ง (เช่น หลักเดือน = ธุรกิจในพื้นที่, หลักปี = ออนไลน์หรือต่างประเทศ)",
     ],
     sourceRefs: [
       {
@@ -83,11 +83,11 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "ผู้ดูแล/อุปถัมภ์",
     chunkGroup: "core_fate",
     annotationDimension: "chart_foundation",
-    engineDependencies: ["resource_star", "combination_matrix", "hidden_stems", "month_branch_relations"],
+    engineDependencies: ["resource_star", "peer_star", "combination_matrix", "hidden_stems", "month_branch_relations"],
     sinsaeLogicRules: [
-      "ผู้สนับสนุนดูจากดาวทรัพยากรและแรงหนุนที่ซ่อนในโครงสร้างหลักเดือน",
-      "ถ้ามีฮะที่ช่วยเปิด resource ให้บันทึกว่าแรงหนุนมาจากคนรอบตัวหรือระบบ",
-      "ห้ามตีความผู้ใหญ่ช่วยเหลือโดยไม่เห็น resource จริงในดวง",
+      "ดูธาตุส่งเสริม (Input/Resource) และธาตุคู่ (Peer)",
+      "หากไม่มีในราศีบน ให้เจาะเข้าไปดูที่ราศีแฝงเสมอ",
+      "ทำนายลักษณะการช่วยเหลือว่ามาแบบใด (เช่น ช่วยลับๆ หรือเราต้องให้ก่อน)",
     ],
     sourceRefs: [
       {
@@ -106,9 +106,8 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "ten_gods_reaction",
     engineDependencies: ["output_star", "day_master_strength", "twelve_qi_profile", "hidden_stems"],
     sinsaeLogicRules: [
-      "พรสวรรค์อ่านจาก Output ที่มีแรงและมีที่ยืนในดวง",
-      "ถ้า Output เด่นแต่ดิถีอ่อน ต้องอธิบายว่าพรสวรรค์ใช้ได้ดีเมื่อมีคนหนุน",
-      "ให้ใช้ 12 เชี่ยงแซช่วยแยกว่าเป็นพรสวรรค์เชิงสร้างสรรค์หรือเชิงปฏิบัติ",
+      "ดูที่ตัวถ่ายเท (Output) ที่ดีและมีกำลังจาก 12 เซียงแซ",
+      "อธิบายความสามารถพิเศษที่เจ้าตัวทำได้ง่ายและเร็วกว่าคนอื่น",
     ],
     sourceRefs: [
       {
@@ -125,11 +124,10 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "ครอบครัว",
     chunkGroup: "relationships",
     annotationDimension: "love_and_family",
-    engineDependencies: ["month_branch_relations", "pillar_relations", "clash_matrix", "harm_matrix"],
+    engineDependencies: ["month_branch_relations", "twelve_qi_profile", "pillar_relations", "clash_matrix", "harm_matrix"],
     sinsaeLogicRules: [
-      "เรื่องครอบครัวให้ยึดหลักเดือนเป็นแกนก่อน",
-      "ถ้ามีชง เฮ้ง ไห่ หรือผั่วกับหลักเดือน ต้องอธิบายเป็นความตึงเครียดในบ้านเดิม",
-      "ถ้ามีภาคีช่วยค้ำหลักเดือน ให้สะท้อนเป็นแรงประคองจากครอบครัว",
+      "ให้โฟกัสวิเคราะห์ความสัมพันธ์กับหลักเดือนเป็นหลัก",
+      "ใช้ 12 เซียงแซในการบอกสถานะและลักษณะแวดล้อมครอบครัว",
     ],
     sourceRefs: [
       {
@@ -148,9 +146,9 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "love_and_family",
     engineDependencies: ["wealth_star", "power_star", "day_branch_relations", "combination_matrix", "clash_matrix"],
     sinsaeLogicRules: [
-      "ฐานคู่ครองดูจากหลักวันก่อน แล้วค่อยพิจารณาดาวคู่ครองตามเพศ",
-      "ชายให้ดู Wealth หญิงให้ดู Power แต่ต้องอ่านร่วมกับ day branch เสมอ",
-      "ถ้ามีฮะหรือชงที่ฐานคู่ครอง ต้องแปลเป็นรูปแบบสัมพันธ์ ไม่ใช่สรุปดีร้ายลอยๆ",
+      "โฟกัสที่ราศีล่างหลักวัน (ฐานคู่ครอง)",
+      "แยกเพศในการพิจารณาชัดเจน (ชายดูธาตุลาภ Wealth, หญิงดูธาตุอำนาจ Power)",
+      "ดูแรงสัมพันธ์ว่าส่งเสริมกันหรือผลัก/ขัดแย้งกัน",
     ],
     sourceRefs: [
       {
@@ -167,11 +165,10 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "เพื่อนแท้/ศัตรู",
     chunkGroup: "relationships",
     annotationDimension: "pillar_relations",
-    engineDependencies: ["peer_star", "clash_matrix", "punishment_matrix", "twelve_qi_profile"],
+    engineDependencies: ["peer_star", "twelve_qi_profile", "clash_matrix", "punishment_matrix"],
     sinsaeLogicRules: [
-      "ดูเพื่อนและคู่แข่งจากดาวพวกเดียวกันประกบกับสภาพชงเฮ้งไห่ผั่ว",
-      "ถ้า peer เด่นแต่โดนชงแรง ต้องอธิบายว่ามีทั้งแรงช่วยและแรงแย่ง",
-      "ใช้ 12 เชี่ยงแซช่วยบอกว่าความสัมพันธ์ไปทางร่วมมือหรือกัดกัน",
+      "ใช้ 12 เซียงแซช่วยเช็กคุณภาพของบรรดาธาตุในทุกตำแหน่ง",
+      "ตำแหน่งที่เซียงแซดีคือมิตร ตำแหน่งที่เซียงแซเสียหรือโดนชงคือศัตรู/ขัดแย้ง",
     ],
     sourceRefs: [
       {
@@ -188,11 +185,10 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "หุ้นส่วน",
     chunkGroup: "relationships",
     annotationDimension: "career_potential",
-    engineDependencies: ["day_branch_relations", "peer_star", "wealth_star", "combination_matrix"],
+    engineDependencies: ["day_branch_relations", "twelve_qi_profile", "peer_star", "wealth_star", "combination_matrix"],
     sinsaeLogicRules: [
-      "หุ้นส่วนให้อ่านคล้ายคู่ครองแต่ย้ายบริบทไปความร่วมมือทางงาน",
-      "ถ้า day branch รับฮะกับดาวงานหรือดาวทรัพย์ ให้มองเป็นโอกาสจับมือ",
-      "ถ้า peer แข็งแต่ไม่มีกติกาคุม ต้องเตือนเรื่องการแย่งอำนาจในหุ้นส่วน",
+      "โฟกัสที่ราศีล่างหลักวัน แล้วนำมาเทียบกับ 12 เซียงแซ",
+      "ถ้าผลลัพธ์ดี แปลว่าการมีหุ้นส่วนจะช่วยส่งเสริมและเข้ากันได้ดี",
     ],
     sourceRefs: [
       {
@@ -211,9 +207,9 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "core_prediction",
     engineDependencies: ["day_master_strength", "peer_star", "output_star", "resource_star"],
     sinsaeLogicRules: [
-      "ถ้าดิถีแข็งและ peer หนาแน่น ให้ระวังการชนอัตตาในงานทีม",
-      "ถ้าดิถีอ่อนแต่ resource ดี มักทำงานทีมแล้วไปได้ไกลกว่าเดี่ยว",
-      "อย่าสรุปจาก personality อย่างเดียว ต้องยึด strength เป็นตัวชี้ขาด",
+      "ใช้ความแข็ง-อ่อนของดิถีเจาะเป็นประเด็นหลัก",
+      "ดวงอ่อนควรมีผู้ใหญ่หรือเพื่อนช่วยทำเป็นทีมถึงจะดันเป้าหมายได้",
+      "ดวงแข็งมีศักยภาพในการลุยเดี่ยว รับแรงกดดันคนเดียวได้ดีกว่า",
     ],
     sourceRefs: [
       {
@@ -230,11 +226,10 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "บริวาร",
     chunkGroup: "relationships",
     annotationDimension: "pillar_relations",
-    engineDependencies: ["hour_branch_relations", "output_star", "clash_matrix", "harm_matrix"],
+    engineDependencies: ["hour_branch_relations", "twelve_qi_profile", "output_star", "clash_matrix", "harm_matrix"],
     sinsaeLogicRules: [
-      "บริวารให้ดูหลักยามและความสัมพันธ์ที่มากระทบหลักยาม",
-      "ถ้า Output เด่นแต่หลักยามเสีย ต้องเตือนเรื่องคนทำงานตามไม่ทัน",
-      "ถ้ามีภาคีหรือฮะมาช่วยหลักยาม ให้สะท้อนเป็นทีมงานช่วยเสริมงาน",
+      "โฟกัสการพิจารณาตำแหน่งที่หลักยาม (ครอบคลุมลูกจ้างหรือบุตร)",
+      "ดูคุณภาพธาตุในหลักยามประกอบกับเซียงแซ (เช่น หมกยก หมายถึงสร้างปัญหาต้องตามแก้)",
     ],
     sourceRefs: [
       {
@@ -251,11 +246,10 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "การเรียน",
     chunkGroup: "life_path",
     annotationDimension: "actionable_advice",
-    engineDependencies: ["resource_star", "output_star", "day_master_strength", "favorable_elements"],
+    engineDependencies: ["resource_star", "output_star", "useful_god", "day_master_strength", "favorable_elements"],
     sinsaeLogicRules: [
-      "การเรียนให้ดู resource ว่ารับความรู้เข้าได้ดีแค่ไหน",
-      "ถ้า output แข็งแต่ resource บาง ให้เน้นการเรียนจากการลงมือทำ",
-      "แนะนำทิศทางการเรียนจากธาตุเกื้อหนุน ไม่ใช่แค่จากอาชีพที่เหมาะ",
+      "เน้นดูที่ตัวถ่ายเท (Output) และพิจารณาธาตุที่มาช่วยแก้ดวง (Useful God)",
+      "แนะนำสาขาวิชาหรือแขนงความรู้ตามธาตุสำคัญเพื่อมาช่วยปรับสมดุลดวง",
     ],
     sourceRefs: [
       {
@@ -274,9 +268,8 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "major_luck_cycles",
     engineDependencies: ["dayun_cycles", "twelve_qi_profile", "pillar_relations", "combination_matrix", "clash_matrix"],
     sinsaeLogicRules: [
-      "วัยจรต้องอ่านจาก DaYun เป็นแกนและผูกกับโครงสร้างกำเนิด",
-      "แต่ละช่วงอายุต้องระบุว่าดาวไหนเด่นขึ้นหรือถูกกระทบจากชงฮะ",
-      "ห้ามทำนายวัยจรแบบลอยๆ โดยไม่อิง relation กับดวงเดิม",
+      "ใช้ข้อมูลวัยจร (10-Year Luck Cycle)",
+      "อธิบายเล่าเรื่องหรือพยากรณ์บรรยากาศในแต่ละช่วงอายุเสมือนเป็น Chapter ของชีวิต",
     ],
     sourceRefs: [
       {
@@ -295,9 +288,8 @@ const TOPIC_REGISTRY_DRAFT = [
     annotationDimension: "health_overview",
     engineDependencies: ["health_signals", "element_balance", "clash_matrix", "harm_matrix", "punishment_matrix"],
     sinsaeLogicRules: [
-      "สุขภาพเริ่มจากธาตุขาดเกินก่อน แล้วค่อยดูตำแหน่งที่โดนชงหรือเจาะ",
-      "ต้องแยกความเสี่ยงพื้นฐานออกจากเหตุการณ์เฉียบพลันที่มาจากปฏิกิริยา",
-      "ห้ามสรุปโรคเฉพาะเจาะจงเกินฐานข้อมูลของดวง",
+      "นับแต้มธาตุเป็นหลัก ธาตุไหนน้อยหรือขาดหาย อวัยวะส่วนนั้นจะอ่อนแอ",
+      "ตรวจสอบตําแหน่งที่รับผลกระทบถูก 'ชง' หรือ 'เจาะ' ผสมด้วย (เช่น หลักยามโดนเจาะ = ปัญหาที่ช่วงล่างหรือขา)",
     ],
     sourceRefs: [
       {
@@ -314,11 +306,11 @@ const TOPIC_REGISTRY_DRAFT = [
     thaiLabel: "การเสริมดวง",
     chunkGroup: "misc",
     annotationDimension: "balance_element",
-    engineDependencies: ["useful_god", "favorable_elements", "unfavorable_elements", "day_master_strength", "element_balance"],
+    engineDependencies: ["useful_god", "twelve_qi_profile", "favorable_elements", "unfavorable_elements", "day_master_strength", "element_balance"],
     sinsaeLogicRules: [
-      "การเสริมดวงต้องยึด Useful God เป็นแกน ไม่ใช่เลือกธาตุจากความชอบ",
-      "ถ้าดวงแข็งให้เน้นธาตุระบาย ถ้าดวงอ่อนให้เน้นธาตุหนุน",
-      "ทุกคำแนะนำต้องอธิบายว่ากำลังแก้สมดุลตรงไหนของดวง",
+      "หาธาตุที่มาเป็น Master Key (Useful God) ขนานแท้ในการแก้ดวง",
+      "เอา Useful God นั้นไปประกบทดสอบกับดวงทั้ง 8 ตัวแล้วต้องทำ 12 เซียงแซได้ค่าที่ดีที่สุด (ห้ามเกิดตัวเสีย)",
+      "แนะนำสิ่งของ สี ทิศ องค์เทพเจ้าให้สอดคล้องเจาะจงกับธาตุสำคัญ",
     ],
     sourceRefs: [
       {
