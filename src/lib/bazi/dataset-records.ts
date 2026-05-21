@@ -4,6 +4,7 @@ import { ZodError, z } from "zod";
 import { createDbClient, createDbSqlClient } from "@/db/client";
 import { baziDatasetRecords } from "@/db/schema";
 import {
+  createDatasetRecordMetadata,
   mergeDatasetRecordMetadata,
   type DatasetRecordMetadataValue,
 } from "@/lib/bazi/dataset-metadata";
@@ -13,6 +14,8 @@ import {
   type SaveDatasetRequest,
   type SaveDatasetStatus,
 } from "@/lib/bazi/dataset-request";
+import { type GenerateChunkedTopicDraftOptions, generateChunkedTopicDraft } from "@/lib/bazi/orchestrator/gemini-runner";
+import { mapTopicDraftToDraftAnnotationData } from "@/lib/bazi/orchestrator/draft-mapper";
 import {
   AnnotationDataSchema,
   DraftAnnotationDataSchema,
@@ -145,6 +148,39 @@ export type DatasetRecordRepository = {
   ) => Promise<SavedDatasetRecord>;
 };
 
+export type GenerateAndSaveOrchestratedDraftDependencies = {
+  generateTopicDraft?: (
+    options: GenerateChunkedTopicDraftOptions,
+  ) => Promise<Awaited<ReturnType<typeof generateChunkedTopicDraft>>>;
+  mapTopicDraft?: typeof mapTopicDraftToDraftAnnotationData;
+  repository?: DatasetRecordRepository;
+};
+
+export type GenerateAndSaveOrchestratedDraftOptions = {
+  rawInput: RawInputValue;
+  calculatedState: CalculatedStateValue;
+  annotatorId: string;
+  intentDomain?: SaveDatasetRequest["intentDomain"];
+  recordId?: string;
+  metadata?: DatasetRecordMetadataValue;
+  model?: string;
+  apiKey?: string;
+  retry?: GenerateChunkedTopicDraftOptions["retry"];
+  executeChunk?: GenerateChunkedTopicDraftOptions["executeChunk"];
+  repository?: DatasetRecordRepository;
+  databaseUrl?: string;
+  dependencies?: GenerateAndSaveOrchestratedDraftDependencies;
+};
+
+export type GenerateAndSaveOrchestratedDraftResult = {
+  savedRecord: SavedDatasetRecord;
+  annotationData: z.infer<typeof DraftAnnotationDataSchema>;
+  draftByTopic: Awaited<ReturnType<typeof generateChunkedTopicDraft>>["draftByTopic"];
+  completedChunkIds: Awaited<ReturnType<typeof generateChunkedTopicDraft>>["completedChunkIds"];
+  model: string;
+  generationSeed: number;
+};
+
 export type DatasetDraftPurgeRepository = {
   purgeDrafts: (annotatorId: string) => Promise<void>;
 };
@@ -182,6 +218,55 @@ function mapProofDatasetRecordRow(record: ProofDatasetRecordRow): ProofDatasetRe
     metadata: record.metadata,
     createdAt: record.created_at,
     updatedAt: record.updated_at,
+  };
+}
+
+export async function generateAndSaveOrchestratedDraft(
+  options: GenerateAndSaveOrchestratedDraftOptions,
+): Promise<GenerateAndSaveOrchestratedDraftResult> {
+  const generateTopicDraft = options.dependencies?.generateTopicDraft ?? generateChunkedTopicDraft;
+  const mapTopicDraft = options.dependencies?.mapTopicDraft ?? mapTopicDraftToDraftAnnotationData;
+  const repository = options.dependencies?.repository
+    ?? options.repository
+    ?? createDbDatasetRecordRepository(options.databaseUrl);
+  const generation = await generateTopicDraft({
+    rawInput: options.rawInput,
+    calculatedState: options.calculatedState,
+    model: options.model,
+    apiKey: options.apiKey,
+    retry: options.retry,
+    executeChunk: options.executeChunk,
+  });
+  const annotationData = mapTopicDraft(generation.draftByTopic);
+  const metadata = createDatasetRecordMetadata({
+    ...options.metadata,
+    generation: {
+      ...options.metadata?.generation,
+      source: options.metadata?.generation?.source ?? "queue",
+      model: generation.model,
+      generatedAt:
+        options.metadata?.generation?.generatedAt
+        ?? new Date().toISOString(),
+    },
+  });
+  const payload = SaveDatasetRequestSchema.parse({
+    recordId: options.recordId,
+    rawInput: options.rawInput,
+    calculatedState: options.calculatedState,
+    intentDomain: options.intentDomain,
+    annotationData,
+    status: "draft",
+    metadata,
+  });
+  const savedRecord = await repository.saveRecord(payload, options.annotatorId);
+
+  return {
+    savedRecord,
+    annotationData,
+    draftByTopic: generation.draftByTopic,
+    completedChunkIds: generation.completedChunkIds,
+    model: generation.model,
+    generationSeed: generation.generationSeed,
   };
 }
 
