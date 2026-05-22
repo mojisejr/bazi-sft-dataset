@@ -351,7 +351,42 @@ erDiagram
 - **Style Ownership Drift**: ถ้า selector ใหม่ถูกทิ้งลง global/spillover โดยไม่ classify ก่อน สถาปัตยกรรม UI จะย้อนเป็นกองเดียว -> *Solution*: ยึด layer map ใน `docs/oracle-ui-exemplar.md` และลง selector ตาม ownership จริง
 - **Privacy Boundary**: export training data ไม่ควรโผล่เป็นปุ่มใน UI proof ของซินแส -> *Solution*: คง export เป็น local-only headless script
 
-## 7. ✅ Recent Structural Changes Reflected In This Map
+## 7. 🛡️ Testing & Hard Gate Doctrine
+
+### Default Developer Gate
+- งาน feature ปกติของ Bazi ต้องยึด default gate นี้เป็นสัญญาณหลักก่อนเดินงานต่อ:
+  1. `npm run build`
+  2. `npm run lint`
+  3. `npx vitest run <affected fast slice>`
+- ถ้างานแตะ runtime-critical path ต่อไปนี้ ให้รัน baseline runtime suite เพิ่ม แม้ไฟล์ที่แก้จะไม่ใช่ test โดยตรง:
+  - `src/lib/bazi/symbolic-engine.ts`
+  - `src/lib/bazi/dataset-records.ts`
+  - `src/app/api/bazi/calculate/route.ts`
+  - `src/app/api/dataset/**`
+  - `src/lib/bazi/schema-types.ts`
+- canonical baseline runtime suite สำหรับงานกลุ่มนี้คือ:
+  - `npx vitest run tests/symbolic-engine.test.ts tests/symbolic-engine.e2e.test.ts tests/schema.test.ts tests/dataset-save-route.test.ts tests/dataset-purge-drafts-route.test.ts`
+- `npm test` ทั้งชุดไม่ใช่ default gate สำหรับ feature slice ทั่วไป และไม่ควรใช้ block งานที่ไม่ได้แตะ corpus/build-wide surfaces
+
+### Heavy Verification Lane
+- งานที่แตะ corpus-wide truth, build artifacts, หรือ deterministic full-range generators ต้องรัน heavy lane แยกจาก default gate
+- ตัวอย่าง heavy lane command / surface:
+  - `npm test`
+  - `npm run build:knowledge`
+  - suites ที่ rebuild artifact หรือ full-range truth เช่น `tests/real-case-1981-03-17.test.ts`, `tests/compile-knowledge.test.ts`, `tests/canonical-knowledge.test.ts`, `tests/solar-terms.test.ts`, `tests/orchestrator-gemini-runner.test.ts`
+- heavy lane เป็น required gate เมื่อมีการแก้ knowledge builders, corpus generation, compiled artifacts, seeding flow, หรือ orchestration path ที่กิน compute ทั้งก้อน
+
+### Test Placement Rule
+- test ใหม่ควรอยู่ใน default lane ถ้ามันปกป้อง runtime-critical behavior, deterministic, และรันได้ในวงรอบ feature ปกติ
+- test ใหม่ควรอยู่ใน heavy lane ถ้ามันต้อง rebuild corpus, generate broad artifact, seed large knowledge sets, หรือพิสูจน์ full-range truth ที่ไม่จำเป็นต่อ feature slice ทั่วไป
+- ถ้า test เดิมเริ่มช้าเพราะ recompute truth ซ้ำ ให้แก้ที่ fixture reuse / caching / lane classification ก่อนเพิ่ม timeout
+
+### Continuity Rule
+- known-red ชั่วคราว, timeout investigations, และ phase progress ต้องเก็บใน Oracle memory artifacts ไม่ใช่ใน `project_map.md`
+- ถ้า default gate ผ่าน แต่ heavy lane ยังมี noise ที่ไม่เกี่ยวกับ slice ปัจจุบัน ให้ถือว่า feature continuity ยังเดินต่อได้ โดยต้องอ้างอิง snapshot ล่าสุดที่บอก risk boundary ไว้ชัดเจน
+- เมื่อมีข้อสงสัยว่าควรวาง test ไว้ lane ไหน ให้ถามก่อนว่า test นั้นปกป้อง runtime user path หรือ corpus/build truth เป็นหลัก แล้วจัดตาม dominant truth นั้น
+
+## 8. ✅ Recent Structural Changes Reflected In This Map
 - เพิ่ม reaction chamber fullscreen route และ semantic graph layer เป็น landmark ถาวรของระบบ
 - ย้าย CTA ของ chamber เข้าสู่ ribbon zone บน summary surface แทน section แยก
 - ยอมรับชัดเจนว่า browser truth เป็น verification layer สำคัญสำหรับ graph-heavy UI
