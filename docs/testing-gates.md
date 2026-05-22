@@ -37,6 +37,14 @@ Use `npm run gate:heavy-lane` only after `npm run gate:default` passes and the c
 - `tests/solar-terms.test.ts`
 - `tests/orchestrator-gemini-runner.test.ts`
 
+When this command runs, it also switches Vitest into the explicit `heavy` profile via `VITEST_BAZI_PROFILE=heavy`, which currently:
+
+- disables file-level parallelism
+- limits concurrency to one test task at a time
+- raises `testTimeout` and `hookTimeout` to 30 seconds
+
+This tuning belongs only to the heavy lane. The default gate keeps the normal Vitest behavior so day-to-day continuity does not inherit heavyweight runner policy.
+
 `npm test` remains available as a full-suite exploratory signal, but it is not the canonical continuity gate for unrelated feature slices.
 
 ## Trigger Rules

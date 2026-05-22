@@ -260,6 +260,17 @@ export function writeCompiledKnowledgeArtifact(repoRoot = process.cwd()) {
   const artifact = buildCompiledKnowledgeArtifact(repoRoot);
   const outputPath = resolveCompiledKnowledgeOutputPath(repoRoot);
 
+  if (existsSync(outputPath)) {
+    const previousRaw = readFileSync(outputPath, "utf8");
+    const previousArtifact = CompiledKnowledgeArtifactSchema.parse(JSON.parse(previousRaw));
+    const { generatedAt: _previousGeneratedAt, ...previousComparable } = previousArtifact;
+    const { generatedAt: _nextGeneratedAt, ...nextComparable } = artifact;
+
+    if (JSON.stringify(previousComparable) === JSON.stringify(nextComparable)) {
+      artifact.generatedAt = previousArtifact.generatedAt;
+    }
+  }
+
   mkdirSync(path.dirname(outputPath), { recursive: true });
   writeFileSync(outputPath, `${JSON.stringify(artifact, null, 2)}\n`, "utf8");
 
