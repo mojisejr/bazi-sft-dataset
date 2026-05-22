@@ -3,6 +3,14 @@ import { pathToFileURL } from "node:url";
 
 import { config as loadEnv } from "dotenv";
 
+import { AutoLabelingIntentDomainSchema } from "../src/lib/bazi/auto-labeling";
+import {
+  createDbDatasetRecordRepository,
+  generateAndSaveOrchestratedDraft,
+  type PendingDraftDatasetRecord,
+  type ProofDatasetRecord,
+} from "../src/lib/bazi/dataset-records";
+
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quiet: true });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
 
@@ -12,6 +20,34 @@ type CliOptions = {
   concurrency: number;
   help: boolean;
 };
+
+type GenerateRecordSuccess = {
+  recordId: string;
+  savedRecordId: string;
+  updatedAt: string;
+  model: string;
+  completedChunkCount: number;
+};
+
+export type GenerateOrchestratedDraftsSummary = {
+  status: "completed";
+  runName: string | null;
+  selectedCount: number;
+  processedCount: number;
+  failedCount: number;
+  limit: number | null;
+  concurrency: number;
+  results: GenerateRecordSuccess[];
+};
+
+export type GenerateOrchestratedDraftsDependencies = {
+  listDraftRecords?: () => Promise<PendingDraftDatasetRecord[]>;
+  getRecordById?: (recordId: string) => Promise<ProofDatasetRecord | null>;
+  generateDraft?: typeof generateAndSaveOrchestratedDraft;
+  now?: () => Date;
+};
+
+const DEFAULT_ANNOTATOR_ID = "agent_orchestrator";
 
 const HELP_TEXT = [
   "Usage: bun scripts/generate-orchestrated-drafts.ts [options]",
@@ -68,6 +104,112 @@ export function parseCliOptions(argv: string[]): CliOptions {
   };
 }
 
+function selectTargetRecordIds(records: PendingDraftDatasetRecord[], limit: number | null) {
+  return records
+    .slice(0, limit ?? records.length)
+    .map((record) => record.id);
+}
+
+function resolveIntentDomain(record: ProofDatasetRecord) {
+  const result = AutoLabelingIntentDomainSchema.safeParse(record.intentDomain);
+
+  return result.success ? result.data : undefined;
+}
+
+async function generateDraftForRecord(
+  recordId: string,
+  dependencies: Required<GenerateOrchestratedDraftsDependencies>,
+) {
+  const record = await dependencies.getRecordById(recordId);
+
+  if (!record) {
+    throw new Error(`Draft record ${recordId} was not found.`);
+  }
+
+  const generatedAt = dependencies.now().toISOString();
+  const result = await dependencies.generateDraft({
+    rawInput: record.rawInput,
+    calculatedState: record.calculatedState,
+    intentDomain: resolveIntentDomain(record),
+    annotatorId: record.annotatorId ?? DEFAULT_ANNOTATOR_ID,
+    recordId: record.id,
+    metadata: {
+      generation: {
+        source: "queue",
+        queueBatchId: record.metadata.generation?.queueBatchId,
+        queueSeed: record.metadata.generation?.queueSeed,
+        generatedAt,
+      },
+      reviewLifecycle: {
+        state: "active",
+        staleReason: undefined,
+        staleAt: undefined,
+      },
+    },
+  });
+
+  return {
+    recordId: record.id,
+    savedRecordId: result.savedRecord.recordId,
+    updatedAt: result.savedRecord.updatedAt,
+    model: result.model,
+    completedChunkCount: result.completedChunkIds.length,
+  } satisfies GenerateRecordSuccess;
+}
+
+export async function runGeneration(
+  options: CliOptions,
+  dependencies: GenerateOrchestratedDraftsDependencies = {},
+): Promise<GenerateOrchestratedDraftsSummary> {
+  const repository = createDbDatasetRecordRepository();
+  const resolvedDependencies: Required<GenerateOrchestratedDraftsDependencies> = {
+    listDraftRecords: dependencies.listDraftRecords ?? (() => repository.listDraftRecords()),
+    getRecordById: dependencies.getRecordById ?? ((recordId) => repository.getRecordById(recordId)),
+    generateDraft: dependencies.generateDraft ?? generateAndSaveOrchestratedDraft,
+    now: dependencies.now ?? (() => new Date()),
+  };
+  const draftRecords = await resolvedDependencies.listDraftRecords();
+  const targetRecordIds = selectTargetRecordIds(draftRecords, options.limit);
+  const results: GenerateRecordSuccess[] = [];
+  const failures: Array<{ recordId: string; message: string }> = [];
+
+  for (let index = 0; index < targetRecordIds.length; index += options.concurrency) {
+    const currentBatch = targetRecordIds.slice(index, index + options.concurrency);
+    const currentResults = await Promise.all(
+      currentBatch.map(async (recordId) => {
+        try {
+          return await generateDraftForRecord(recordId, resolvedDependencies);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          failures.push({ recordId, message });
+          return null;
+        }
+      }),
+    );
+
+    results.push(...currentResults.filter((entry): entry is GenerateRecordSuccess => entry !== null));
+  }
+
+  if (failures.length > 0) {
+    throw new Error(
+      `Failed to generate orchestrated drafts for ${failures.length} record(s): ${failures
+        .map((failure) => `${failure.recordId} (${failure.message})`)
+        .join(", ")}`,
+    );
+  }
+
+  return {
+    status: "completed",
+    runName: options.runName,
+    selectedCount: targetRecordIds.length,
+    processedCount: results.length,
+    failedCount: failures.length,
+    limit: options.limit,
+    concurrency: options.concurrency,
+    results,
+  };
+}
+
 export async function main(argv = process.argv.slice(2)) {
   const options = parseCliOptions(argv);
 
@@ -76,17 +218,9 @@ export async function main(argv = process.argv.slice(2)) {
     return;
   }
 
-  console.log(
-    JSON.stringify(
-      {
-        status: "phase-1-scaffold-ready",
-        message: "Phase 2 will wire generateAndSaveOrchestratedDraft into this script.",
-        options,
-      },
-      null,
-      2,
-    ),
-  );
+  const summary = await runGeneration(options);
+
+  console.log(JSON.stringify(summary, null, 2));
 }
 
 if (
