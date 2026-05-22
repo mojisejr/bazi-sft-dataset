@@ -6,21 +6,29 @@ import { calculateBaziChart } from "@/lib/bazi/symbolic-engine";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
 
+const rawInput = {
+  birthDate: "1992-08-21",
+  birthTime: "14:35",
+  gender: "female",
+  province: "Bangkok",
+  calendarSystem: "solar",
+  timezone: "Asia/Hong_Kong",
+} as const;
+
+let cachedChart: Awaited<ReturnType<typeof calculateBaziChart>> | null = null;
+
+async function getChart() {
+  cachedChart ??= await calculateBaziChart(rawInput, createTestKnowledgeRepository());
+
+  return cachedChart;
+}
+
 describe("orchestrator gemini runner", () => {
   test("executes all chunks sequentially and aggregates a full 15-topic draft object", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-15T04:00:00.000Z"));
 
-    const rawInput = {
-      birthDate: "1992-08-21",
-      birthTime: "14:35",
-      gender: "female",
-      province: "Bangkok",
-      calendarSystem: "solar",
-      timezone: "Asia/Hong_Kong",
-    } as const;
-
-    const chart = await calculateBaziChart(rawInput, createTestKnowledgeRepository());
+    const chart = await getChart();
     const seenChunkIds: string[] = [];
 
     const result = await generateChunkedTopicDraft({
@@ -52,16 +60,7 @@ describe("orchestrator gemini runner", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-15T04:00:00.000Z"));
 
-    const rawInput = {
-      birthDate: "1992-08-21",
-      birthTime: "14:35",
-      gender: "female",
-      province: "Bangkok",
-      calendarSystem: "solar",
-      timezone: "Asia/Hong_Kong",
-    } as const;
-
-    const chart = await calculateBaziChart(rawInput, createTestKnowledgeRepository());
+    const chart = await getChart();
     let shouldFailFirstAttempt = true;
     const executeChunk = vi.fn(async (request: { promptBundle: { responseSchemaKeys: string[] } }) => {
       if (shouldFailFirstAttempt) {

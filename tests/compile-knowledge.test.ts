@@ -2,9 +2,17 @@ import { describe, expect, test } from "vitest";
 
 import { buildCompiledKnowledgeArtifact } from "../scripts/compile-knowledge";
 
+let cachedArtifact: ReturnType<typeof buildCompiledKnowledgeArtifact> | null = null;
+
+function getArtifact() {
+  cachedArtifact ??= buildCompiledKnowledgeArtifact();
+
+  return cachedArtifact;
+}
+
 describe("compile-knowledge", () => {
   test("builds compiled topic knowledge from the distilled corpus", () => {
-    const artifact = buildCompiledKnowledgeArtifact();
+    const artifact = getArtifact();
 
     expect(artifact.topicCount).toBe(15);
     expect(artifact.topics).toHaveLength(15);
@@ -19,7 +27,7 @@ describe("compile-knowledge", () => {
   }, 20_000);
 
   test("resolves the partnership supporting source bundle despite corpus indirection", () => {
-    const artifact = buildCompiledKnowledgeArtifact();
+    const artifact = getArtifact();
     const partnerships = artifact.topics.find((topic) => topic.id === "partnerships");
 
     expect(partnerships).toBeDefined();

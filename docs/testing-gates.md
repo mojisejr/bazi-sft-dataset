@@ -56,10 +56,10 @@ These suites are intentionally excluded from the default gate during the hardeni
 
 | Suite | Why it is excluded from default gate for now |
 |---|---|
-| `tests/real-case-1981-03-17.test.ts` | Recomputes the same chart and graph truth across many assertions, so it is a poor fit for day-to-day continuity until Phase 3 reduces duplication. |
-| `tests/compile-knowledge.test.ts` | Builds the compiled topic artifact from the full distilled corpus, which is broad build truth rather than a narrow runtime check. |
-| `tests/canonical-knowledge.test.ts` | Builds and validates the full canonical dataset from the corpus, including large record counts and generated solar-term truth. |
+| `tests/real-case-1981-03-17.test.ts` | Phase 3 reduced duplication by caching the shared chart and graph fixture, but the suite still freezes a broad integration reading surface that is heavier than the default runtime baseline. |
+| `tests/compile-knowledge.test.ts` | Phase 3 reduced duplication by caching the compiled artifact within the file, but the suite still validates a broad corpus build rather than a narrow runtime check. |
+| `tests/canonical-knowledge.test.ts` | The file already caches the canonical dataset, but it still validates the full corpus with large record counts and generated solar-term truth. |
 | `tests/solar-terms.test.ts` | Generates full-range deterministic solar-term payloads, including the 1900-2100 seed rows, which is corpus-wide verification work. |
-| `tests/orchestrator-gemini-runner.test.ts` | Exercises sequential multi-chunk orchestration over a calculated chart and retry flow, making it broader and slower than the default runtime baseline. |
+| `tests/orchestrator-gemini-runner.test.ts` | Phase 3 reduced duplication by reusing the calculated chart fixture, but the suite still exercises sequential multi-chunk orchestration and retry flow across the full 15-topic contract. |
 
 This list is temporary mission state. Keep future updates in Oracle memory artifacts if the excluded set changes during later phases.

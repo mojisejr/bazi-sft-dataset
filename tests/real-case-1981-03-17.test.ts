@@ -6,20 +6,33 @@ import { buildSemanticChamberGraph } from "@/lib/bazi/semantic-chamber-graph";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
 
+const rawInput = RawInputSchema.parse({
+  birthDate: "1981-03-17",
+  birthTime: "10:22",
+  gender: "male",
+  province: "Bangkok",
+  calendarSystem: "solar",
+  timezone: "Asia/Bangkok",
+});
+
+let cachedChart: Awaited<ReturnType<typeof calculateBaziChart>> | null = null;
+let cachedGraph: ReturnType<typeof buildSemanticChamberGraph> | null = null;
+
+async function getChart() {
+  cachedChart ??= await calculateBaziChart(rawInput, createTestKnowledgeRepository());
+
+  return cachedChart;
+}
+
+async function getGraph() {
+  cachedGraph ??= buildSemanticChamberGraph(await getChart(), { quietGraph: false });
+
+  return cachedGraph;
+}
+
 describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   test("computes the expected four pillars", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
+    const result = await getChart();
 
     expect(result.fourPillars.year).toMatchObject({ stem: "辛", branch: "酉" });
     expect(result.fourPillars.month).toMatchObject({ stem: "辛", branch: "卯" });
@@ -28,18 +41,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("detects stem combination 甲己 (day + hour)", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
+    const result = await getChart();
 
     const reading = result.baseChartReading;
     expect(reading).toBeDefined();
@@ -52,18 +54,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("detects branch clash 卯酉 (month + year)", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
+    const result = await getChart();
 
     const reading = result.baseChartReading;
     expect(reading).toBeDefined();
@@ -102,18 +93,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("detects intra-pillar ผั่ว 甲午 (day pillar)", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
+    const result = await getChart();
 
     const reading = result.baseChartReading;
     expect(reading).toBeDefined();
@@ -128,18 +108,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("shows บุ่งเชียง marker on hour pillar", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
+    const result = await getChart();
 
     const reading = result.baseChartReading;
     expect(reading).toBeDefined();
@@ -152,18 +121,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("does NOT show กุ้ยนั้ง markers (no 丑 or 未 in pillars)", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
+    const result = await getChart();
 
     const reading = result.baseChartReading;
     expect(reading).toBeDefined();
@@ -175,20 +133,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("element-flow: 甲(wood) → 己(earth) hour stem = wealth/controlling/outward", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
-
-    const graph = buildSemanticChamberGraph(result, { quietGraph: false });
+    const graph = await getGraph();
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
     const hourStemFlow = flowEdges.find((edge) =>
@@ -202,20 +147,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("element-flow: 辛(metal) year stem = power/controlling/inward (metal克wood)", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
-
-    const graph = buildSemanticChamberGraph(result, { quietGraph: false });
+    const graph = await getGraph();
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
     const yearStemFlow = flowEdges.find((edge) =>
@@ -229,20 +161,7 @@ describe("Real-world test case: 17 March 1981, 10:22, Bangkok, male", () => {
   });
 
   test("element-flow: no water flow edges (water absent from stems)", async () => {
-    const repository = createTestKnowledgeRepository();
-    const result = await calculateBaziChart(
-      RawInputSchema.parse({
-        birthDate: "1981-03-17",
-        birthTime: "10:22",
-        gender: "male",
-        province: "Bangkok",
-        calendarSystem: "solar",
-        timezone: "Asia/Bangkok",
-      }),
-      repository,
-    );
-
-    const graph = buildSemanticChamberGraph(result, { quietGraph: false });
+    const graph = await getGraph();
     const flowEdges = graph.edges.filter((edge) => edge.data.layer === "element-flow");
 
     const stemFlowEdges = flowEdges.filter((edge) => edge.id.includes("-stem-role"));
