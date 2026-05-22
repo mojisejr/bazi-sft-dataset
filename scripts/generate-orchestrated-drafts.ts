@@ -29,15 +29,23 @@ type GenerateRecordSuccess = {
   completedChunkCount: number;
 };
 
+type GenerateRecordFailure = {
+  recordId: string;
+  message: string;
+};
+
 export type GenerateOrchestratedDraftsSummary = {
   status: "completed";
   runName: string | null;
+  totalAvailableCount: number;
   selectedCount: number;
+  skippedCount: number;
   processedCount: number;
   failedCount: number;
   limit: number | null;
   concurrency: number;
   results: GenerateRecordSuccess[];
+  failures: GenerateRecordFailure[];
 };
 
 export type GenerateOrchestratedDraftsDependencies = {
@@ -45,6 +53,7 @@ export type GenerateOrchestratedDraftsDependencies = {
   getRecordById?: (recordId: string) => Promise<ProofDatasetRecord | null>;
   generateDraft?: typeof generateAndSaveOrchestratedDraft;
   now?: () => Date;
+  log?: (message: string) => void;
 };
 
 const DEFAULT_ANNOTATOR_ID = "agent_orchestrator";
@@ -116,6 +125,10 @@ function resolveIntentDomain(record: ProofDatasetRecord) {
   return result.success ? result.data : undefined;
 }
 
+function createLogLine(message: string) {
+  return `[orchestrated-generator] ${message}`;
+}
+
 async function generateDraftForRecord(
   recordId: string,
   dependencies: Required<GenerateOrchestratedDraftsDependencies>,
@@ -167,21 +180,51 @@ export async function runGeneration(
     getRecordById: dependencies.getRecordById ?? ((recordId) => repository.getRecordById(recordId)),
     generateDraft: dependencies.generateDraft ?? generateAndSaveOrchestratedDraft,
     now: dependencies.now ?? (() => new Date()),
+    log: dependencies.log ?? console.log,
   };
   const draftRecords = await resolvedDependencies.listDraftRecords();
   const targetRecordIds = selectTargetRecordIds(draftRecords, options.limit);
   const results: GenerateRecordSuccess[] = [];
-  const failures: Array<{ recordId: string; message: string }> = [];
+  const failures: GenerateRecordFailure[] = [];
+  const skippedCount = Math.max(0, draftRecords.length - targetRecordIds.length);
+
+  resolvedDependencies.log(
+    createLogLine(
+      `starting run${options.runName ? ` "${options.runName}"` : ""} with ${draftRecords.length} active draft target(s); selected ${targetRecordIds.length} for this pass${options.limit ? ` (limit=${options.limit})` : ""}.`,
+    ),
+  );
+
+  if (skippedCount > 0) {
+    resolvedDependencies.log(
+      createLogLine(`skipping ${skippedCount} remaining active draft target(s) for a later pass.`),
+    );
+  }
+
+  if (targetRecordIds.length === 0) {
+    resolvedDependencies.log(createLogLine("no active draft targets found; nothing to process."));
+  }
 
   for (let index = 0; index < targetRecordIds.length; index += options.concurrency) {
     const currentBatch = targetRecordIds.slice(index, index + options.concurrency);
     const currentResults = await Promise.all(
       currentBatch.map(async (recordId) => {
         try {
-          return await generateDraftForRecord(recordId, resolvedDependencies);
+          resolvedDependencies.log(createLogLine(`processing record ${recordId}...`));
+          const result = await generateDraftForRecord(recordId, resolvedDependencies);
+
+          resolvedDependencies.log(
+            createLogLine(
+              `saved record ${result.savedRecordId} from target ${recordId} using ${result.model} (${result.completedChunkCount} chunk(s)).`,
+            ),
+          );
+
+          return result;
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
-          failures.push({ recordId, message });
+          const failure = { recordId, message } satisfies GenerateRecordFailure;
+
+          failures.push(failure);
+          resolvedDependencies.log(createLogLine(`failed record ${recordId}: ${message}`));
           return null;
         }
       }),
@@ -201,12 +244,15 @@ export async function runGeneration(
   return {
     status: "completed",
     runName: options.runName,
+    totalAvailableCount: draftRecords.length,
     selectedCount: targetRecordIds.length,
+    skippedCount,
     processedCount: results.length,
     failedCount: failures.length,
     limit: options.limit,
     concurrency: options.concurrency,
     results,
+    failures,
   };
 }
 
@@ -219,6 +265,8 @@ export async function main(argv = process.argv.slice(2)) {
   }
 
   const summary = await runGeneration(options);
+
+  console.log(createLogLine(`completed run with ${summary.processedCount} success(es), ${summary.failedCount} failure(s), and ${summary.skippedCount} skipped target(s).`));
 
   console.log(JSON.stringify(summary, null, 2));
 }

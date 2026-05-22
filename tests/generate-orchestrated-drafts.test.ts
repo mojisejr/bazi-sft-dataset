@@ -116,6 +116,7 @@ describe("generate orchestrated drafts script", () => {
       model: "gemini-3-flash-preview",
       generationSeed: 123,
     });
+    const log = vi.fn();
 
     const summary = await runGeneration(
       {
@@ -129,6 +130,7 @@ describe("generate orchestrated drafts script", () => {
         getRecordById,
         generateDraft,
         now: () => new Date("2026-05-22T05:29:00.000Z"),
+        log,
       },
     );
 
@@ -153,10 +155,24 @@ describe("generate orchestrated drafts script", () => {
         }),
       }),
     );
+    expect(log).toHaveBeenCalledWith(
+      '[orchestrated-generator] starting run "nightly" with 2 active draft target(s); selected 1 for this pass (limit=1).',
+    );
+    expect(log).toHaveBeenCalledWith(
+      "[orchestrated-generator] skipping 1 remaining active draft target(s) for a later pass.",
+    );
+    expect(log).toHaveBeenCalledWith(
+      "[orchestrated-generator] processing record 11111111-1111-4111-8111-111111111111...",
+    );
+    expect(log).toHaveBeenCalledWith(
+      "[orchestrated-generator] saved record 11111111-1111-4111-8111-111111111111 from target 11111111-1111-4111-8111-111111111111 using gemini-3-flash-preview (1 chunk(s)).",
+    );
     expect(summary).toEqual({
       status: "completed",
       runName: "nightly",
+      totalAvailableCount: 2,
       selectedCount: 1,
+      skippedCount: 1,
       processedCount: 1,
       failedCount: 0,
       limit: 1,
@@ -170,6 +186,7 @@ describe("generate orchestrated drafts script", () => {
           completedChunkCount: 1,
         },
       ],
+      failures: [],
     });
   });
 });
