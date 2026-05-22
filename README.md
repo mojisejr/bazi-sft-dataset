@@ -40,7 +40,14 @@ See `docs/oracle-ui-exemplar.md` for the full layer map, ownership rules, and mi
 1. Copy `.env.example` to `.env.local` and place the active Neon connection string in `DATABASE_URL`.
 2. Install dependencies with `npm install`.
 3. Start the app with `npm run dev`.
-4. Run the hard gate with `npm run build && npm run lint && npm run test`.
+4. Run the default hard gate with `npm run gate:default`.
+
+## Testing Gates
+
+- Default developer gate: `npm run gate:default`
+- Heavy verification lane: run `npm run gate:default` first, then `npm run gate:heavy-lane` when work touches corpus/build-wide truth
+- Feature-local fast slice: add `npx vitest run <affected test file>` on top of the default gate when the changed surface has a nearby focused test
+- Current lane matrix and the temporary known-red suites live in `docs/testing-gates.md`
 
 ## Database Scripts
 

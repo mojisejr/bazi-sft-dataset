@@ -355,25 +355,22 @@ erDiagram
 
 ### Default Developer Gate
 - งาน feature ปกติของ Bazi ต้องยึด default gate นี้เป็นสัญญาณหลักก่อนเดินงานต่อ:
-  1. `npm run build`
-  2. `npm run lint`
-  3. `npx vitest run <affected fast slice>`
+  1. `npm run gate:default`
+  2. `npx vitest run <affected fast slice>` เมื่อมี focused test ของ surface ที่เพิ่งแก้
 - ถ้างานแตะ runtime-critical path ต่อไปนี้ ให้รัน baseline runtime suite เพิ่ม แม้ไฟล์ที่แก้จะไม่ใช่ test โดยตรง:
   - `src/lib/bazi/symbolic-engine.ts`
   - `src/lib/bazi/dataset-records.ts`
   - `src/app/api/bazi/calculate/route.ts`
   - `src/app/api/dataset/**`
   - `src/lib/bazi/schema-types.ts`
-- canonical baseline runtime suite สำหรับงานกลุ่มนี้คือ:
-  - `npx vitest run tests/symbolic-engine.test.ts tests/symbolic-engine.e2e.test.ts tests/schema.test.ts tests/dataset-save-route.test.ts tests/dataset-purge-drafts-route.test.ts`
+- canonical baseline runtime suite ถูกล็อกไว้ใน `npm run test:runtime-critical` และถูกเรียกจาก `npm run gate:default`
 - `npm test` ทั้งชุดไม่ใช่ default gate สำหรับ feature slice ทั่วไป และไม่ควรใช้ block งานที่ไม่ได้แตะ corpus/build-wide surfaces
 
 ### Heavy Verification Lane
 - งานที่แตะ corpus-wide truth, build artifacts, หรือ deterministic full-range generators ต้องรัน heavy lane แยกจาก default gate
-- ตัวอย่าง heavy lane command / surface:
-  - `npm test`
-  - `npm run build:knowledge`
-  - suites ที่ rebuild artifact หรือ full-range truth เช่น `tests/real-case-1981-03-17.test.ts`, `tests/compile-knowledge.test.ts`, `tests/canonical-knowledge.test.ts`, `tests/solar-terms.test.ts`, `tests/orchestrator-gemini-runner.test.ts`
+- canonical heavy lane command คือ `npm run gate:heavy-lane`
+- heavy lane surface หลักถูกล็อกไว้ใน `npm run test:heavy-lane` และ `npm run build:knowledge`
+- `npm test` ทั้งชุดยังใช้ได้เป็น exploratory/full-suite signal แต่ไม่ใช่ canonical feature continuity gate
 - heavy lane เป็น required gate เมื่อมีการแก้ knowledge builders, corpus generation, compiled artifacts, seeding flow, หรือ orchestration path ที่กิน compute ทั้งก้อน
 
 ### Test Placement Rule
