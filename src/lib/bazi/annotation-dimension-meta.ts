@@ -3,6 +3,8 @@ import {
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
   type AnnotationDimensionName,
 } from "@/lib/bazi/schema-types";
+import { getBaziTopicDefinition } from "@/lib/bazi/knowledge/topic-registry";
+import { getTopicIdsForAnnotationDimension } from "@/lib/bazi/knowledge/topic-dimension-bridge";
 
 export type AnnotationDimensionMeta = {
   dimensionName: AnnotationDimensionName;
@@ -13,7 +15,7 @@ export type AnnotationDimensionMeta = {
   predictionPrompt: string;
 };
 
-export const ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
+const LEGACY_ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
   {
     dimensionName: "chart_foundation",
     step: 1,
@@ -136,8 +138,29 @@ export const ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
   },
 ] as const;
 
+function buildRegistryBackedTitle(
+  dimensionName: AnnotationDimensionName,
+  fallbackTitle: string,
+) {
+  const topicIds = getTopicIdsForAnnotationDimension(dimensionName);
+
+  if (topicIds.length === 0) {
+    return fallbackTitle;
+  }
+
+  const topicLabels = [...new Set(topicIds.map((topicId) => getBaziTopicDefinition(topicId).thaiLabel))];
+
+  return topicLabels.join(" / ");
+}
+
+export const ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] =
+  LEGACY_ANNOTATION_DIMENSION_META.map((dimension) => ({
+    ...dimension,
+    title: buildRegistryBackedTitle(dimension.dimensionName, dimension.title),
+  }));
+
 export const ANNOTATION_DIMENSION_TITLE_MAP = Object.fromEntries(
-  ANNOTATION_DIMENSION_META.map((dimension) => [dimension.dimensionName, dimension.title]),
+  LEGACY_ANNOTATION_DIMENSION_META.map((dimension) => [dimension.dimensionName, dimension.title]),
 ) as Record<AnnotationDimensionName, string>;
 
 export const ACTIVE_ANNOTATION_DIMENSION_META = ANNOTATION_DIMENSION_META.filter((dimension) =>
