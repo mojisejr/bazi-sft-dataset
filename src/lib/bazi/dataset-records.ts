@@ -15,7 +15,11 @@ import {
   type SaveDatasetStatus,
 } from "@/lib/bazi/dataset-request";
 import { type GenerateChunkedTopicDraftOptions, generateChunkedTopicDraft } from "@/lib/bazi/orchestrator/gemini-runner";
-import { mapTopicDraftToDraftAnnotationData } from "@/lib/bazi/orchestrator/draft-mapper";
+import {
+  mapTopicDraftToDraftAnnotationData,
+  mapTopicDraftWithProvenance,
+} from "@/lib/bazi/orchestrator/draft-mapper";
+import { summarizeProofCompositionProvenance } from "@/lib/bazi/orchestrator/proof-dimension-composer";
 import {
   AnnotationDataSchema,
   DraftAnnotationDataSchema,
@@ -153,6 +157,7 @@ export type GenerateAndSaveOrchestratedDraftDependencies = {
     options: GenerateChunkedTopicDraftOptions,
   ) => Promise<Awaited<ReturnType<typeof generateChunkedTopicDraft>>>;
   mapTopicDraft?: typeof mapTopicDraftToDraftAnnotationData;
+  mapTopicDraftWithProvenance?: typeof mapTopicDraftWithProvenance;
   repository?: DatasetRecordRepository;
 };
 
@@ -226,6 +231,8 @@ export async function generateAndSaveOrchestratedDraft(
 ): Promise<GenerateAndSaveOrchestratedDraftResult> {
   const generateTopicDraft = options.dependencies?.generateTopicDraft ?? generateChunkedTopicDraft;
   const mapTopicDraft = options.dependencies?.mapTopicDraft ?? mapTopicDraftToDraftAnnotationData;
+  const mapTopicDraftAndProvenance =
+    options.dependencies?.mapTopicDraftWithProvenance ?? mapTopicDraftWithProvenance;
   const repository = options.dependencies?.repository
     ?? options.repository
     ?? createDbDatasetRecordRepository(options.databaseUrl);
@@ -237,7 +244,10 @@ export async function generateAndSaveOrchestratedDraft(
     retry: options.retry,
     executeChunk: options.executeChunk,
   });
-  const annotationData = mapTopicDraft(generation.draftByTopic);
+  const mapped = options.dependencies?.mapTopicDraft
+    ? { annotationData: mapTopicDraft(generation.draftByTopic, { calculatedState: options.calculatedState }) }
+    : mapTopicDraftAndProvenance(generation.draftByTopic, { calculatedState: options.calculatedState });
+  const annotationData = mapped.annotationData;
   const metadata = createDatasetRecordMetadata({
     ...options.metadata,
     generation: {
@@ -247,6 +257,9 @@ export async function generateAndSaveOrchestratedDraft(
       generatedAt:
         options.metadata?.generation?.generatedAt
         ?? new Date().toISOString(),
+      composition: "provenance" in mapped
+        ? summarizeProofCompositionProvenance(mapped.provenance)
+        : options.metadata?.generation?.composition,
     },
   });
   const payload = SaveDatasetRequestSchema.parse({

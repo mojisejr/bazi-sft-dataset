@@ -37,6 +37,14 @@ describe("dataset metadata contract", () => {
           queueBatchId: "batch-01",
           queueSeed: 20260424,
           generatedAt: "2026-04-24T12:00:00.000Z",
+          composition: {
+            layer: "proof-dimension-composer",
+            version: "v1",
+            strategies: ["direct-topic-dimension", "shared-legacy-dimension"],
+            directCount: 9,
+            sharedCount: 3,
+            unmappedCount: 3,
+          },
         },
         revision: {
           supersedesRecordId: "8d4c63f0-c0d6-4c02-b520-c34074e6b7aa",
@@ -54,6 +62,10 @@ describe("dataset metadata contract", () => {
       generation: {
         source: "csv",
         model: "gemini-3-flash-preview",
+        composition: {
+          layer: "proof-dimension-composer",
+          directCount: 9,
+        },
       },
       revision: {
         supersedesRecordId: "8d4c63f0-c0d6-4c02-b520-c34074e6b7aa",
@@ -74,9 +86,20 @@ describe("dataset metadata contract", () => {
           generation: {
             source: "csv",
             model: "gemini-3-flash-preview",
+            composition: {
+              layer: "proof-dimension-composer",
+              directCount: 9,
+            },
           },
         },
         {
+          generation: {
+            composition: {
+              version: "v1",
+              sharedCount: 3,
+              unmappedCount: 3,
+            },
+          },
           revision: {
             supersedesRecordId: "8d4c63f0-c0d6-4c02-b520-c34074e6b7aa",
           },
@@ -92,6 +115,13 @@ describe("dataset metadata contract", () => {
       generation: {
         source: "csv",
         model: "gemini-3-flash-preview",
+        composition: {
+          layer: "proof-dimension-composer",
+          directCount: 9,
+          version: "v1",
+          sharedCount: 3,
+          unmappedCount: 3,
+        },
       },
       revision: {
         supersedesRecordId: "8d4c63f0-c0d6-4c02-b520-c34074e6b7aa",

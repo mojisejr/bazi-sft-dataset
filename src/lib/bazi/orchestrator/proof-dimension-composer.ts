@@ -42,6 +42,15 @@ export type ComposeProofDimensionsResult = {
   provenance: Record<AnnotationDimensionName, ProofDimensionProvenance>;
 };
 
+export type ProofCompositionMetadataSummary = {
+  layer: "proof-dimension-composer";
+  version: "v1";
+  strategies: ProofDimensionCompositionStrategy[];
+  directCount: number;
+  sharedCount: number;
+  unmappedCount: number;
+};
+
 function getDimensionMeta(dimensionName: AnnotationDimensionName) {
   return ANNOTATION_DIMENSION_META.find((entry) => entry.dimensionName === dimensionName);
 }
@@ -232,4 +241,19 @@ export function composeProofDimensions(
 
 export function getUnmappedLegacyDimensions() {
   return UNMAPPED_ANNOTATION_DIMENSIONS;
+}
+
+export function summarizeProofCompositionProvenance(
+  provenance: Record<AnnotationDimensionName, ProofDimensionProvenance>,
+): ProofCompositionMetadataSummary {
+  const values = Object.values(provenance);
+
+  return {
+    layer: "proof-dimension-composer",
+    version: "v1",
+    strategies: [...new Set(values.map((entry) => entry.strategy))],
+    directCount: values.filter((entry) => entry.strategy === "direct-topic-dimension").length,
+    sharedCount: values.filter((entry) => entry.strategy === "shared-legacy-dimension").length,
+    unmappedCount: values.filter((entry) => entry.strategy === "unmapped-legacy-dimension").length,
+  };
 }

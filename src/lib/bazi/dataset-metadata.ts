@@ -19,6 +19,14 @@ export const DatasetGenerationProvenanceSchema = z.object({
   queueBatchId: z.string().trim().min(1).optional(),
   queueSeed: z.number().int().nonnegative().optional(),
   generatedAt: z.string().trim().min(1).optional(),
+  composition: z.object({
+    layer: z.string().trim().min(1).optional(),
+    version: z.string().trim().min(1).optional(),
+    strategies: z.array(z.string().trim().min(1)).min(1).optional(),
+    directCount: z.number().int().nonnegative().optional(),
+    sharedCount: z.number().int().nonnegative().optional(),
+    unmappedCount: z.number().int().nonnegative().optional(),
+  }).strict().optional(),
 }).strict();
 
 export const DatasetRevisionLineageSchema = z.object({
@@ -78,6 +86,10 @@ export function mergeDatasetRecordMetadata(
     generation: compactOptionalObject({
       ...current?.generation,
       ...next.generation,
+      composition: compactOptionalObject({
+        ...current?.generation?.composition,
+        ...next.generation?.composition,
+      }),
     }),
     revision: compactOptionalObject({
       ...current?.revision,

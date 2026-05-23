@@ -63,6 +63,12 @@ describe("orchestrated draft persistence", () => {
           generation: expect.objectContaining({
             source: "queue",
             model: "gemini-3-flash-preview",
+            composition: expect.objectContaining({
+              layer: "proof-dimension-composer",
+              version: "v1",
+              sharedCount: 3,
+              unmappedCount: 3,
+            }),
           }),
         }),
       }),
@@ -71,6 +77,11 @@ describe("orchestrated draft persistence", () => {
     const savedPayload = vi.mocked(repository.saveRecord).mock.calls[0]?.[0];
 
     expect(savedPayload?.annotationData.dimensions).toHaveLength(15);
+    expect(
+      savedPayload?.annotationData.dimensions.find(
+        (dimension) => dimension.dimension_name === "personality_psychology",
+      )?.thought_process,
+    ).toContain("ยึดดิถี");
     expect(
       savedPayload?.annotationData.dimensions.find(
         (dimension) => dimension.dimension_name === "personality_psychology",
