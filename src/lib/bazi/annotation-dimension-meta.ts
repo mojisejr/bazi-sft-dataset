@@ -15,6 +15,24 @@ export type AnnotationDimensionMeta = {
   predictionPrompt: string;
 };
 
+export const PROOF_WORKSPACE_DIMENSION_ORDER = [
+  "personality_psychology",
+  "chart_foundation",
+  "ten_gods_reaction",
+  "balance_element",
+  "love_and_family",
+  "career_potential",
+  "wealth_and_investment",
+  "health_overview",
+  "pillar_relations",
+  "twelve_qi_cycle",
+  "major_luck_cycles",
+  "annual_star_energy",
+  "red_flags",
+  "actionable_advice",
+  "core_prediction",
+] as const satisfies readonly AnnotationDimensionName[];
+
 const LEGACY_ANNOTATION_DIMENSION_META: readonly AnnotationDimensionMeta[] = [
   {
     dimensionName: "chart_foundation",
@@ -174,3 +192,13 @@ export const REQUIRED_ANNOTATION_DIMENSION_META = ANNOTATION_DIMENSION_META.filt
     dimension.dimensionName as (typeof REQUIRED_ANNOTATION_DIMENSION_NAMES)[number],
   ),
 );
+
+export const PROOF_WORKSPACE_DIMENSION_META = PROOF_WORKSPACE_DIMENSION_ORDER.map((dimensionName) => {
+  const dimension = ANNOTATION_DIMENSION_META.find((entry) => entry.dimensionName === dimensionName);
+
+  if (!dimension) {
+    throw new Error(`Missing annotation dimension metadata for proof workspace order: ${dimensionName}`);
+  }
+
+  return dimension;
+});
