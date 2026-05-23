@@ -95,7 +95,7 @@
   }
 
   .proof-layout {
-    padding-bottom: calc(132px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 24px;
   }
 
   .proof-note-card--mobile {
@@ -108,7 +108,9 @@
   }
 
   .proof-dock {
+    position: static;
     padding: 0 12px calc(12px + env(safe-area-inset-bottom, 0px));
+    pointer-events: auto;
   }
 
   .proof-dock__surface {
