@@ -22,6 +22,10 @@ describe("orchestrator draft mapper", () => {
       parsed.dimensions.find((dimension) => dimension.dimension_name === "personality_psychology")
         ?.final_prediction,
     ).toBe("personality_baseline:draft");
+    expect(
+      parsed.dimensions.find((dimension) => dimension.dimension_name === "personality_psychology")
+        ?.thought_process,
+    ).not.toContain("Generated via Chunked Orchestrator");
   });
 
   test("merges shared legacy dimensions from multiple topic outputs", () => {
@@ -40,6 +44,7 @@ describe("orchestrator draft mapper", () => {
     expect(careerDimension?.final_prediction).toContain("suitable_career:draft");
     expect(careerDimension?.final_prediction).toContain("partnerships:draft");
     expect(careerDimension?.supporting_signals).toContain("mapping=shared-legacy-dimension");
+    expect(careerDimension?.thought_process).toContain("ต้องผสานทั้งสองหัวข้อ");
     expect(loveDimension?.final_prediction).toContain("family_dynamics:draft");
     expect(loveDimension?.final_prediction).toContain("love_life:draft");
   });
@@ -59,6 +64,7 @@ describe("orchestrator draft mapper", () => {
       "annual_star_energy",
       "red_flags",
     ]);
+    expect(annualStarDimension?.thought_process).toContain("explicit gap");
     expect(annualStarDimension?.final_prediction).toContain("ยังไม่มี topic ตรงจาก Step 3");
     expect(annualStarDimension?.confidence_note).toBe("awaiting-manual-proof-mapping");
   });
