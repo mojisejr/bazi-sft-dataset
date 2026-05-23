@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import {
-  ANNOTATION_DIMENSION_META,
   getAnnotationProgressSummary,
   type AnnotationDimensionDraftState,
   type AnnotationProgressSummary,
 } from "@/lib/bazi/annotation-store";
+import {
+  PROOF_WORKSPACE_DIMENSION_META,
+  PROOF_WORKSPACE_DIMENSION_ORDER,
+} from "@/lib/bazi/annotation-dimension-meta";
 import type { ProofDatasetRecord } from "@/lib/bazi/dataset-records";
 import type { SaveDatasetStatus } from "@/lib/bazi/dataset-request";
 import {
@@ -222,13 +225,14 @@ function extractAiStrengthClaim(annotationData: StoredAnnotationDataValue | null
 
 export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: ProofWorkspaceProps) {
   const router = useRouter();
+  const initialExpandedDimension = PROOF_WORKSPACE_DIMENSION_ORDER[0];
   const [isCaseContextOpen, setIsCaseContextOpen] = useState(false);
   const [isCalculationOpen, setIsCalculationOpen] = useState(false);
   const [dimensions, setDimensions] = useState<ProofDimensionDraftState>(() =>
     createProofDimensions(record.annotationData),
   );
   const [expandedDimensionName, setExpandedDimensionName] = useState<AnnotationDimensionName | null>(
-    ACTIVE_RLHF_DIMENSION_NAMES[0],
+    initialExpandedDimension,
   );
   const [sinsaeProofNote, setSinsaeProofNote] = useState(
     record.annotationData?.sinsaeProofNote ?? "",
@@ -546,7 +550,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
           </section>
 
           <div className="accordion-list">
-            {ANNOTATION_DIMENSION_META.map((dimension) => {
+            {PROOF_WORKSPACE_DIMENSION_META.map((dimension, visualStepIndex) => {
               const draft = dimensions[dimension.dimensionName];
               const currentCount =
                 draft.thoughtProcess.trim().length > 0 && draft.finalPrediction.trim().length > 0
@@ -573,7 +577,7 @@ export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: P
                     }
                     aria-expanded={isExpanded}
                   >
-                    <span className="accordion-index">{String(dimension.step).padStart(2, "0")}</span>
+                    <span className="accordion-index">{String(visualStepIndex + 1).padStart(2, "0")}</span>
 
                     <span className="accordion-copy">
                       <strong>{dimension.title}</strong>

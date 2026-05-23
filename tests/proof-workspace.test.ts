@@ -10,6 +10,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { ProofWorkspace } from "@/components/bazi/ProofWorkspace";
+import { PROOF_WORKSPACE_DIMENSION_META } from "@/lib/bazi/annotation-dimension-meta";
 import {
   createSaveProofDatasetHandler,
   type DatasetProofLookupRepository,
@@ -241,6 +242,35 @@ describe("ProofWorkspace", () => {
     expect(html).not.toContain("รายละเอียดที่ใช้ประกอบการตรวจ");
     expect(html).not.toContain("proofing hook");
     expect(html).not.toContain("Accept Annotation");
+  });
+
+  test("renders proof sections in proof-workspace order and expands the first proof section", () => {
+    const html = renderToStaticMarkup(
+      createElement(ProofWorkspace, {
+        record: createProofRecord(),
+        returnToPath: "/?workspace=queue",
+      }),
+    );
+
+    const firstDimension = PROOF_WORKSPACE_DIMENSION_META[0];
+    const secondDimension = PROOF_WORKSPACE_DIMENSION_META[1];
+    const thirdDimension = PROOF_WORKSPACE_DIMENSION_META[2];
+
+    expect(firstDimension).toBeDefined();
+    expect(secondDimension).toBeDefined();
+    expect(thirdDimension).toBeDefined();
+
+    const firstTitleIndex = html.indexOf(firstDimension!.title);
+    const secondTitleIndex = html.indexOf(secondDimension!.title);
+    const thirdTitleIndex = html.indexOf(thirdDimension!.title);
+
+    expect(firstTitleIndex).toBeGreaterThan(-1);
+    expect(secondTitleIndex).toBeGreaterThan(firstTitleIndex);
+    expect(thirdTitleIndex).toBeGreaterThan(secondTitleIndex);
+
+    expect(html).toContain(`accordion-index">01</span><span class="accordion-copy"><strong>${firstDimension!.title}</strong>`);
+    expect(html).toContain(firstDimension!.thoughtPrompt);
+    expect(html).not.toContain(secondDimension!.thoughtPrompt);
   });
 });
 
