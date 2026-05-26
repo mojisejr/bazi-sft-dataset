@@ -29,6 +29,13 @@
       "when": 1776437276719,
       "tag": "0003_phase53_annotator_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779769945972,
+      "tag": "0004_phase1_line_memory_auth",
+      "breakpoints": true
     }
   ]
 }

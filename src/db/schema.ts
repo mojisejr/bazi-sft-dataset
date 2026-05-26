@@ -293,6 +293,31 @@ export const baziDomainMatrices = pgTable("bazi_domain_matrices", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export type BaziChatHistoryMessage = {
+  role: "user" | "model";
+  content: string;
+};
+
+export const userLineMappings = pgTable("user_line_mappings", {
+  clerkUserId: text("clerk_user_id").primaryKey(),
+  lineUserId: text("line_user_id").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const baziChatHistories = pgTable("bazi_chat_histories", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  lineUserId: text("line_user_id").notNull().unique(),
+  messages: jsonb("messages")
+    .$type<BaziChatHistoryMessage[]>()
+    .notNull()
+    .default(sql`'[]'::jsonb`),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;
 export type InsertBaziCanonicalSource = typeof baziCanonicalSources.$inferInsert;
@@ -306,3 +331,7 @@ export type InsertBaziDayMasterProfile = typeof baziDayMasterProfiles.$inferInse
 export type InsertBaziDayMasterStrengthState = typeof baziDayMasterStrengthStates.$inferInsert;
 export type InsertBaziSixtyJiaziNarrative = typeof baziSixtyJiaziNarratives.$inferInsert;
 export type InsertBaziDomainMatrix = typeof baziDomainMatrices.$inferInsert;
+export type InsertUserLineMapping = typeof userLineMappings.$inferInsert;
+export type SelectUserLineMapping = typeof userLineMappings.$inferSelect;
+export type InsertBaziChatHistory = typeof baziChatHistories.$inferInsert;
+export type SelectBaziChatHistory = typeof baziChatHistories.$inferSelect;
