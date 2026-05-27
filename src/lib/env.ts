@@ -3,6 +3,10 @@ import { z } from "zod";
 const envSchema = z.object({
   DATABASE_URL: z.string().url().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
+  LINE_CHANNEL_ACCESS_TOKEN: z.string().min(1).optional(),
+  LINE_CHANNEL_SECRET: z.string().min(1).optional(),
+  LINE_LOGIN_URL: z.string().url().optional(),
+  OPEN_WEBUI_API_TOKEN: z.string().min(1).optional(),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1).optional(),
   CLERK_SECRET_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_CLERK_SIGN_IN_URL: z.string().min(1).optional(),
@@ -17,6 +21,10 @@ export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
   return envSchema.parse({
     DATABASE_URL: raw.DATABASE_URL,
     GEMINI_API_KEY: raw.GEMINI_API_KEY,
+    LINE_CHANNEL_ACCESS_TOKEN: raw.LINE_CHANNEL_ACCESS_TOKEN,
+    LINE_CHANNEL_SECRET: raw.LINE_CHANNEL_SECRET,
+    LINE_LOGIN_URL: raw.LINE_LOGIN_URL,
+    OPEN_WEBUI_API_TOKEN: raw.OPEN_WEBUI_API_TOKEN,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: raw.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: raw.CLERK_SECRET_KEY,
     NEXT_PUBLIC_CLERK_SIGN_IN_URL: raw.NEXT_PUBLIC_CLERK_SIGN_IN_URL,
@@ -46,4 +54,46 @@ export function getGeminiApiKey(raw: Partial<NodeJS.ProcessEnv> = process.env): 
   }
 
   return env.GEMINI_API_KEY;
+}
+
+export function getLineChannelAccessToken(
+  raw: Partial<NodeJS.ProcessEnv> = process.env,
+): string {
+  const env = readEnv(raw);
+
+  if (!env.LINE_CHANNEL_ACCESS_TOKEN) {
+    throw new Error("LINE_CHANNEL_ACCESS_TOKEN is required for LINE messaging API calls.");
+  }
+
+  return env.LINE_CHANNEL_ACCESS_TOKEN;
+}
+
+export function getLineChannelSecret(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
+  const env = readEnv(raw);
+
+  if (!env.LINE_CHANNEL_SECRET) {
+    throw new Error("LINE_CHANNEL_SECRET is required for LINE webhook validation.");
+  }
+
+  return env.LINE_CHANNEL_SECRET;
+}
+
+export function getLineLoginUrl(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
+  const env = readEnv(raw);
+
+  if (!env.LINE_LOGIN_URL) {
+    throw new Error("LINE_LOGIN_URL is required for LINE login prompts.");
+  }
+
+  return env.LINE_LOGIN_URL;
+}
+
+export function getOpenWebUiApiToken(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
+  const env = readEnv(raw);
+
+  if (!env.OPEN_WEBUI_API_TOKEN) {
+    throw new Error("OPEN_WEBUI_API_TOKEN is required for Open WebUI API access.");
+  }
+
+  return env.OPEN_WEBUI_API_TOKEN;
 }
