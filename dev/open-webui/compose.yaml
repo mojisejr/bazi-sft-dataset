@@ -1,0 +1,20 @@
+services:
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main-slim
+    container_name: bazi-open-webui
+    ports:
+      - "${OPEN_WEBUI_HOST_PORT:-3001}:8080"
+    environment:
+      OPENAI_API_BASE_URL: ${OPENAI_API_BASE_URL}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      WEBUI_AUTH: ${WEBUI_AUTH:-True}
+      ENABLE_OAUTH_SIGNUP: ${ENABLE_OAUTH_SIGNUP:-True}
+      OAUTH_CLIENT_ID: ${OAUTH_CLIENT_ID}
+      OAUTH_CLIENT_SECRET: ${OAUTH_CLIENT_SECRET}
+      OPENID_PROVIDER_URL: ${OPENID_PROVIDER_URL}
+      OAUTH_PROVIDER_NAME: ${OAUTH_PROVIDER_NAME:-Clerk}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data:/app/backend/data
+    restart: unless-stopped

@@ -53,6 +53,36 @@ describe("proxy", () => {
     expect(protect).not.toHaveBeenCalled();
   });
 
+  test("leaves the Open WebUI chat completions route public", async () => {
+    const proxyModule = await import("@/proxy");
+    const invokeProxy = proxyModule.proxy as unknown as (
+      auth: { protect: typeof protect },
+      request: { nextUrl: { pathname: string } },
+    ) => Promise<void>;
+
+    await invokeProxy(
+      { protect },
+      { nextUrl: { pathname: "/api/v1/chat/completions" } },
+    );
+
+    expect(protect).not.toHaveBeenCalled();
+  });
+
+  test("leaves the Open WebUI model list route public", async () => {
+    const proxyModule = await import("@/proxy");
+    const invokeProxy = proxyModule.proxy as unknown as (
+      auth: { protect: typeof protect },
+      request: { nextUrl: { pathname: string } },
+    ) => Promise<void>;
+
+    await invokeProxy(
+      { protect },
+      { nextUrl: { pathname: "/api/v1/models" } },
+    );
+
+    expect(protect).not.toHaveBeenCalled();
+  });
+
   test("keeps the nextjs matcher configured for app and api routes", async () => {
     const proxyModule = await import("@/proxy");
 
