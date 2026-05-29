@@ -20,6 +20,10 @@ function createBadRequestResponse(message: string, code = "bad_request") {
   );
 }
 
+function getForwardedUserId(req: Request) {
+  return req.headers.get("x-openwebui-user-id");
+}
+
 export async function POST(req: Request) {
   const unauthorizedResponse = validateApiToken(req);
 
@@ -41,7 +45,9 @@ export async function POST(req: Request) {
     return createBadRequestResponse(result.message, result.code);
   }
 
-  console.log("[open-webui] chat completions userId", result.userId);
+  const effectiveUserId = result.userId ?? getForwardedUserId(req);
+
+  console.log("[open-webui] chat completions userId", effectiveUserId);
 
   const dummyReply = buildDummyAssistantReply(result.latestUserMessage.content);
   const contentChunks = splitAssistantReplyIntoChunks(dummyReply);
