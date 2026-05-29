@@ -1,10 +1,12 @@
 import { ZodError } from "zod";
 
 import {
-  calculateBaziChart,
-  createDbKnowledgeRepository,
+  calculateBaziStateFromRawInput,
+} from "@/features/bazi-math/bazi-engine-adapter";
+import {
   type BaziKnowledgeRepository,
 } from "@/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
 type HandlerOptions = {
   repository?: BaziKnowledgeRepository;
@@ -15,7 +17,7 @@ export function createCalculateBaziHandler(options: HandlerOptions = {}) {
     try {
       const payload = await request.json();
       const repository = options.repository ?? createDbKnowledgeRepository();
-      const calculatedState = await calculateBaziChart(payload, repository);
+      const calculatedState = await calculateBaziStateFromRawInput(payload, { repository });
 
       return Response.json({ calculatedState }, { status: 200 });
     } catch (error) {

@@ -19,7 +19,8 @@ import {
   type ProofDatasetRecord,
 } from "../src/lib/bazi/dataset-records";
 import { generateGeminiDraftAnnotation } from "../src/lib/bazi/gemini-draft-generator";
-import { calculateBaziChart, createDbKnowledgeRepository } from "../src/lib/bazi/symbolic-engine";
+import { calculateBaziChart } from "../src/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "../src/lib/bazi/symbolic-engine.repository";
 
 type CliOptions = {
   sourceFile?: string;

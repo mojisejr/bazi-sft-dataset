@@ -11,8 +11,8 @@ import {
 } from "../src/lib/bazi/auto-labeling";
 import {
   calculateBaziChart,
-  createDbKnowledgeRepository,
 } from "../src/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "../src/lib/bazi/symbolic-engine.repository";
 
 type CliOptions = {
   count: number;

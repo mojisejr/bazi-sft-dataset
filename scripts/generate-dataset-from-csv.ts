@@ -13,8 +13,8 @@ import { parseThaiBaziCasesCsv } from "../src/lib/bazi/csv-case-loader";
 import { generateGeminiDraftAnnotation } from "../src/lib/bazi/gemini-draft-generator";
 import {
   calculateBaziChart,
-  createDbKnowledgeRepository,
 } from "../src/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "../src/lib/bazi/symbolic-engine.repository";
 
 type CliOptions = {
   input: string;

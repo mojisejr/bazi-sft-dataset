@@ -18,8 +18,8 @@ import {
 import { RawInputSchema } from "../src/lib/bazi/schema-types";
 import {
   calculateBaziChart,
-  createDbKnowledgeRepository,
 } from "../src/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "../src/lib/bazi/symbolic-engine.repository";
 
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quiet: true });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
