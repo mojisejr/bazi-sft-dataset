@@ -1,9 +1,11 @@
 import { validateApiToken } from "@/features/open-webui/api-guard";
 import { runChatPipeline } from "@/features/open-webui/chat-runner";
 import {
-  buildDummyAssistantReply,
-  createOpenAiSseStream,
-  splitAssistantReplyIntoChunks,
+  generateGeminiAssistantReply,
+  OpenWebUiGeminiError,
+} from "@/features/open-webui/gemini-adapter";
+import {
+  createGuardedOpenAiSseStream,
 } from "@/features/open-webui/sse-streamer";
 
 export const runtime = "edge";
@@ -49,10 +51,21 @@ export async function POST(req: Request) {
 
   console.log("[open-webui] chat completions userId", effectiveUserId);
 
-  const dummyReply = buildDummyAssistantReply(result.latestUserMessage.content);
-  const contentChunks = splitAssistantReplyIntoChunks(dummyReply);
+  const assistantReply = generateGeminiAssistantReply(result).catch((error) => {
+    if (error instanceof OpenWebUiGeminiError) {
+      throw error;
+    }
 
-  return new Response(createOpenAiSseStream({ contentChunks }), {
+    throw new OpenWebUiGeminiError(
+      "gemini_upstream_error",
+      error instanceof Error ? error.message : "Unexpected Gemini transport failure.",
+    );
+  });
+
+  return new Response(createGuardedOpenAiSseStream({
+    assistantReply,
+    abortSignal: req.signal,
+  }), {
     headers: {
       "Cache-Control": "no-cache, no-transform",
       Connection: "keep-alive",

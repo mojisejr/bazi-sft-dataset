@@ -54,6 +54,7 @@ export const ChatRunnerResultSchema = z.union([
 ]);
 
 export type NormalizedChatMessage = z.infer<typeof NormalizedChatMessageSchema>;
+export type ChatRunnerSuccess = z.infer<typeof ChatRunnerSuccessSchema>;
 export type ChatRunnerResult = z.infer<typeof ChatRunnerResultSchema>;
 
 function normalizeMessageContent(content: string | Array<{ type: "text"; text: string }>) {

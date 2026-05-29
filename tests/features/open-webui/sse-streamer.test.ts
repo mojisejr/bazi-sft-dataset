@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
   buildDummyAssistantReply,
+  createGuardedOpenAiSseStream,
   createOpenAiSseStream,
   splitAssistantReplyIntoChunks,
 } from "@/features/open-webui/sse-streamer";
@@ -78,6 +79,58 @@ describe("createOpenAiSseStream", () => {
     const delayedChunk = await delayedChunkPromise;
     expect(delayedChunk.done).toBe(false);
     expect(new TextDecoder().decode(delayedChunk.value)).toContain('"content":"สวัสดี"');
+  });
+});
+
+describe("createGuardedOpenAiSseStream", () => {
+  test("emits role, content deltas, stop, and [DONE] after the assistant reply resolves", async () => {
+    const output = await readStream(createGuardedOpenAiSseStream({
+      completionId: "chatcmpl-guarded",
+      created: 123,
+      model: "gemini-test",
+      assistantReply: Promise.resolve({
+        model: "gemini-test",
+        text: "สวัสดีโลก",
+      }),
+      chunkDelayMs: 0,
+    }));
+
+    const events = output.trim().split("\n\n");
+
+    expect(events).toEqual([
+      'data: {"id":"chatcmpl-guarded","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}',
+      'data: {"id":"chatcmpl-guarded","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{"content":"สวัสดีโลก"},"finish_reason":null}]}',
+      'data: {"id":"chatcmpl-guarded","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+      "data: [DONE]",
+    ]);
+  });
+
+  test("falls back to a terminal assistant message and closes on timeout", async () => {
+    const output = await readStream(createGuardedOpenAiSseStream({
+      completionId: "chatcmpl-timeout",
+      created: 123,
+      model: "gemini-test",
+      assistantReply: new Promise(() => undefined),
+      chunkDelayMs: 0,
+      timeoutMs: 5,
+      fallbackMessage: "timeout fallback",
+    }));
+    const events = output.trim().split("\n\n");
+
+    expect(events[0]).toBe(
+      'data: {"id":"chatcmpl-timeout","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}'
+    );
+
+    const contentEvents = events.slice(1, -2).map((event) => JSON.parse(event.replace("data: ", "")));
+    const reconstructedContent = contentEvents
+      .map((event) => event.choices[0]?.delta?.content ?? "")
+      .join("");
+
+    expect(reconstructedContent).toBe("timeout fallback");
+    expect(events.at(-2)).toBe(
+      'data: {"id":"chatcmpl-timeout","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}'
+    );
+    expect(events.at(-1)).toBe("data: [DONE]");
   });
 });
 
