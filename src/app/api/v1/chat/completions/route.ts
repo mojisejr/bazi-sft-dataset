@@ -21,7 +21,7 @@ import {
   createGuardedOpenAiSseStream,
 } from "@/features/open-webui/sse-streamer";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 function createBadRequestResponse(message: string, code = "bad_request") {
   return Response.json(

@@ -6,7 +6,11 @@ import {
   type CalculatedStateValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
-import type { BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
+import {
+  calculateBaziChart,
+  type BaziKnowledgeRepository,
+} from "@/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
 /**
  * Public payload type returned by the engine adapter. Aliased to the
@@ -85,41 +89,17 @@ export function buildRawInputFromBirthDate(
 }
 
 /**
- * Phase 8 will replace this with the real lunar-js / orthodox math engine.
+ * Run the orthodox math engine ({@link calculateBaziChart}) over a validated
+ * {@link RawInputValue}. Input parse failures map to `bazi_engine_invalid_input`;
+ * any real-engine computation failure maps to `bazi_engine_calculation_failed`.
  *
- * For Phase 2 we return a deterministic mock payload that satisfies
- * {@link CalculatedStateSchema} so downstream consumers can wire up against
- * the real type surface without needing the actual ephemeris yet.
- */
-function buildMockBaziStatePayload(_rawInput: RawInputValue): BaziStatePayload {
-  return CalculatedStateSchema.parse({
-    fourPillars: {
-      year: { stem: "癸", branch: "酉" },
-      month: { stem: "癸", branch: "亥" },
-      day: { stem: "己", branch: "酉" },
-      hour: { stem: "壬", branch: "申" },
-    },
-    dayMaster: "己",
-    strengthScore: 0,
-    tenGods: {},
-    twelveQi: {},
-    daYun: [],
-    shenSha: [],
-    elementMetaphors: [],
-    compatibilityMatrixProfiles: [],
-  });
-}
-
-/**
- * Phase 8 will replace this with the real lunar-js / orthodox math engine.
- *
- * Validates `payload` against {@link RawInputSchema} and returns a mock
- * {@link BaziStatePayload}. Repository is accepted for forward compatibility
- * with the real engine but is unused in the Phase 2 stub.
+ * When no `repository` is provided, a {@link createDbKnowledgeRepository} is
+ * constructed lazily here — never at module import time — so importing this
+ * module does not eagerly open a DB client.
  */
 export async function calculateBaziStateFromRawInput(
   payload: unknown,
-  _options: CalculateBaziStateFromRawInputOptions = {},
+  options: CalculateBaziStateFromRawInputOptions = {},
 ): Promise<BaziStatePayload> {
   let rawInput: RawInputValue;
   try {
@@ -134,19 +114,19 @@ export async function calculateBaziStateFromRawInput(
     );
   }
 
+  const repository = options.repository ?? createDbKnowledgeRepository();
+
   try {
-    return buildMockBaziStatePayload(rawInput);
+    return await calculateBaziChart(rawInput, repository);
   } catch (error) {
     throw new BaziEngineAdapterError(
       "bazi_engine_calculation_failed",
-      error instanceof Error ? error.message : "Mock engine failed.",
+      error instanceof Error ? error.message : "Bazi engine failed.",
     );
   }
 }
 
 /**
- * Phase 8 will replace this with the real lunar-js / orthodox math engine.
- *
  * Convenience overload accepting a JS `Date` + location. Normalizes to the
  * canonical {@link RawInputValue} via {@link buildRawInputFromBirthDate}
  * before delegating to {@link calculateBaziStateFromRawInput}.

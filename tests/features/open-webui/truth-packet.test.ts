@@ -1,10 +1,14 @@
 import { describe, expect, test } from "vitest";
 
+import { calculateBaziState } from "@/features/bazi-math/bazi-engine-adapter";
 import {
+  OpenWebUiTruthPacketSchema,
   selectOpenWebUiTruthPacket,
   stringifyOpenWebUiTruthPacket,
 } from "@/features/open-webui/truth-packet";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
+
+import { createTestKnowledgeRepository } from "../../helpers/bazi-test-knowledge-repository";
 
 const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
   fourPillars: {
@@ -190,5 +194,90 @@ describe("selectOpenWebUiTruthPacket", () => {
       requiresBaziConsult: false,
       confidence: 0.22,
     }, SAMPLE_BAZI_STATE)).toBeNull();
+  });
+});
+
+// Phase 8.3: prove the intent filter pulls fields from REAL engine output now
+// that the adapter drives `calculateBaziChart` (Phase 1) under nodejs (Phase 2).
+// The four pillars / dayMaster come from deterministic lunar math (no DB), so the
+// chart identity is genuinely real. DB-backed enrichment is provided by an injected
+// stub repository so the suite stays offline and deterministic. Optional fields the
+// stub cannot resolve must degrade gracefully (no crash), not be asserted as present.
+describe("selectOpenWebUiTruthPacket with live engine output (Phase 8.3)", () => {
+  // 1981-03-17 Bangkok → day master 甲, day pillar 甲午 (distinct from the fixed mock 己).
+  const LIVE_BIRTH = {
+    birthAt: new Date("1981-03-17T10:22:00+07:00"),
+    location: "Bangkok",
+    gender: "male" as const,
+  };
+
+  async function calculateLiveState() {
+    return calculateBaziState(LIVE_BIRTH.birthAt, LIVE_BIRTH.location, {
+      gender: LIVE_BIRTH.gender,
+      repository: createTestKnowledgeRepository(),
+    });
+  }
+
+  test("wealth intent: packet parses and anchors include real elementAnalysis", async () => {
+    const liveState = await calculateLiveState();
+
+    const packet = selectOpenWebUiTruthPacket({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.93,
+    }, liveState);
+
+    // (a) Schema-safe even when optional DB-backed fields are absent under the stub repo.
+    expect(() => OpenWebUiTruthPacketSchema.parse(packet)).not.toThrow();
+
+    // Chart identity reflects the live engine, not a fixed mock 己.
+    expect(packet?.chartIdentity.dayMaster).toBe(liveState.dayMaster);
+    expect(packet?.chartIdentity.dayMaster).not.toBe("己");
+
+    // (b) Wealth anchors always carry the finance-oriented elementAnalysis section
+    // sourced straight from the live engine output.
+    const elementAnchor = packet?.anchors.find((section) => section.key === "elementAnalysis");
+    expect(elementAnchor).toBeDefined();
+    expect(elementAnchor?.value).toEqual(liveState.elementAnalysis);
+
+    // financeTenGodHighlights is optional (only when a /财/ ten-god exists); if present
+    // it must mirror live ten-gods, otherwise its absence must not crash the packet.
+    const financeAnchor = packet?.anchors.find(
+      (section) => section.key === "financeTenGodHighlights",
+    );
+    if (financeAnchor) {
+      const matched = Object.values(financeAnchor.value as Record<string, string>);
+      expect(matched.every((tenGod) => /财/u.test(tenGod))).toBe(true);
+    }
+  });
+
+  test("love intent: spousePalace anchor mirrors the live day pillar", async () => {
+    const liveState = await calculateLiveState();
+
+    const packet = selectOpenWebUiTruthPacket({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.9,
+    }, liveState);
+
+    // (a) Parses without throwing under the stub repo.
+    expect(() => OpenWebUiTruthPacketSchema.parse(packet)).not.toThrow();
+
+    // (c) Love anchors lead with the day-pillar spouse palace from the live chart.
+    const spouseAnchor = packet?.anchors[0];
+    expect(spouseAnchor?.key).toBe("spousePalace");
+    expect(spouseAnchor?.value).toMatchObject({
+      stem: liveState.fourPillars.day.stem,
+      branch: liveState.fourPillars.day.branch,
+    });
+
+    // The day pillar identity is real (1981-03-17 → 甲午), never the fixed mock.
+    expect(liveState.fourPillars.day.stem).toBe("甲");
+    expect(liveState.fourPillars.day.branch).toBe("午");
+  });
+
+  test("live engine output satisfies the canonical CalculatedState schema", async () => {
+    const liveState = await calculateLiveState();
+    expect(() => CalculatedStateSchema.parse(liveState)).not.toThrow();
   });
 });
