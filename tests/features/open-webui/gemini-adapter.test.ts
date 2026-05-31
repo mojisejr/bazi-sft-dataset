@@ -6,9 +6,12 @@ import {
   DEFAULT_OPEN_WEBUI_GEMINI_MODEL,
   generateGeminiAssistantReply,
   getOpenWebUiGeminiConfig,
+  MUMATE_PERSONA_INSTRUCTION,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
+
+const FIXED_NOW = new Date("2026-05-31T09:00:00+07:00");
 
 const readyChatInput = {
   normalizedMessages: [
@@ -68,10 +71,25 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
   test("maps the triage transcript into a minimal Gemini prompt payload", () => {
     const payload = buildOpenWebUiGeminiPromptPayload(readyChatInput);
 
-    expect(payload.systemInstruction).toBe("You are a practical Bazi guide.");
+    expect(payload.systemInstruction).toContain(MUMATE_PERSONA_INSTRUCTION);
+    expect(payload.systemInstruction).toContain("You are a practical Bazi guide.");
     expect(payload.userPrompt).toContain("User: สวัสดีค่ะ");
     expect(payload.userPrompt).toContain("Assistant: สวัสดีค่ะ มีเรื่องไหนอยากดูเป็นพิเศษคะ");
     expect(payload.userPrompt).toContain("Latest user message: อยากรู้เรื่องงาน");
+  });
+
+  test("prepends the mumate persona instruction into the system instruction", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload(readyChatInput);
+
+    expect(payload.systemInstruction).toContain(MUMATE_PERSONA_INSTRUCTION);
+    expect(payload.systemInstruction.startsWith(MUMATE_PERSONA_INSTRUCTION)).toBe(true);
+  });
+
+  test("injects the fixed system clock line so time grounding is deterministic", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({ ...readyChatInput, now: FIXED_NOW });
+
+    expect(payload.userPrompt).toContain("[เวลาปัจจุบันของระบบ]");
+    expect(payload.userPrompt).toContain("ISO: 2026-05-31");
   });
 
   test("injects the routed intent summary when the phase 7 router already classified the request", () => {
@@ -159,10 +177,10 @@ describe("generateGeminiAssistantReply", () => {
     expect(generateContent).toHaveBeenCalledWith({
       model: "gemini-2.5-flash-lite",
       contents: expect.stringContaining("Intent routing: intent=career; requiresBaziConsult=true; confidence=0.91."),
-      config: {
-        systemInstruction: "You are a practical Bazi guide.",
+      config: expect.objectContaining({
+        systemInstruction: expect.stringContaining("You are a practical Bazi guide."),
         temperature: 0.4,
-      },
+      }),
     });
     expect(generateContent).toHaveBeenCalledWith(expect.objectContaining({
       contents: expect.stringContaining("Consult mode: bazi_consult."),

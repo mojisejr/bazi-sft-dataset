@@ -5,7 +5,7 @@ import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/o
 import { RawInputSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
-export const DEFAULT_OPEN_WEBUI_BAZI_EXTRACTOR_MODEL = "gemini-2.5-flash";
+export const DEFAULT_OPEN_WEBUI_BAZI_EXTRACTOR_MODEL = "gemini-3.1-flash-lite";
 
 const OPEN_WEBUI_BAZI_EXTRACTOR_JSON_SCHEMA = {
   type: "object",

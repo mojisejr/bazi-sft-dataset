@@ -6,11 +6,20 @@ import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
-export const DEFAULT_OPEN_WEBUI_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_OPEN_WEBUI_GEMINI_MODEL = "gemini-3.1-flash-lite";
 const DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION = [
   "You are the Bazi assistant inside an Open WebUI-compatible chat route.",
   "Reply helpfully and directly to the user's latest message.",
 ].join(" ");
+
+export const MUMATE_PERSONA_INSTRUCTION = [
+  "คุณคือ \"มูเมท (mumate)\" ผู้เชี่ยวชาญปาจื่อ (Bazi).",
+  "ห้ามมีอารัมภบทหรือเกริ่นนำ (เช่น \"จากข้อมูลที่ให้มา\") และห้ามลงท้ายแบบหุ่นยนต์ (เช่น \"หวังว่าจะเป็นประโยชน์\").",
+  "ตอบสั้น ตรงประเด็น ฟันธง ไม่มีน้ำ.",
+  "อธิบายด้วยอุปมาอุปไมยใกล้ตัว (ทำอาหาร, เปิดร้าน, กลจักร).",
+  "คิดเป็นชั้น: 1) หาดิถีแข็ง/อ่อน 2) หาธาตุสนับสนุน 3) วินิจฉัยด้วย 12 เซิงแซ.",
+  "ใช้คำลงท้ายผู้หญิง (ค่ะ/นะคะ) เป็นค่าเริ่มต้น.",
+].join("\n");
 
 type GeminiGenerateContentRequest = {
   model: string;
@@ -110,11 +119,24 @@ function formatConsultBirthContext(rawInput: RawInputValue) {
   ].join("\n");
 }
 
+function formatSystemClockLine(now: Date) {
+  const formatted = now.toLocaleString("th-TH", {
+    timeZone: "Asia/Bangkok",
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+  const isoDate = now.toISOString().slice(0, 10);
+
+  return `[เวลาปัจจุบันของระบบ]: ${formatted} (ISO: ${isoDate})`;
+}
+
 export function buildOpenWebUiGeminiPromptPayload(
   input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage"> & {
     executionContext?: OpenWebUiGeminiExecutionContext;
+    now?: Date;
   },
 ): OpenWebUiGeminiPromptPayload {
+  const now = input.now ?? new Date();
   const systemMessages = input.normalizedMessages
     .filter((message) => message.role === "system")
     .map((message) => message.content);
@@ -135,12 +157,14 @@ export function buildOpenWebUiGeminiPromptPayload(
 
   return {
     systemInstruction: [
+      MUMATE_PERSONA_INSTRUCTION,
       systemMessages.join("\n\n") || DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION,
       baziMissingFields.length > 0
         ? `ผู้ใช้ยังไม่ได้บอก: ${baziMissingFields.join(", ")}. ขอข้อมูลนั้นเพิ่มอย่างสุภาพ และห้ามเดาคำพยากรณ์.`
         : null,
     ].filter((section): section is string => section !== null).join("\n\n"),
     userPrompt: [
+      formatSystemClockLine(now),
       "Continue the conversation from this transcript.",
       conversationTranscript,
       intentClassification
@@ -180,12 +204,14 @@ export async function generateGeminiAssistantReply(
     env?: Partial<NodeJS.ProcessEnv>;
     generateContent?: GeminiGenerateContent;
     executionContext?: OpenWebUiGeminiExecutionContext;
+    now?: Date;
   } = {},
 ): Promise<OpenWebUiGeminiReply> {
   const config = getOpenWebUiGeminiConfig(options.env);
   const promptPayload = buildOpenWebUiGeminiPromptPayload({
     ...input,
     executionContext: options.executionContext,
+    now: options.now,
   });
   const generateContent = options.generateContent ?? createGeminiGenerateContent(config);
 

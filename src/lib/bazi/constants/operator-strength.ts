@@ -35,7 +35,7 @@ export const OPERATOR_STRENGTH_CLASS_BANDS = [
     id: "very-strong",
     label: "แข็งเกินไป",
     displayLabel: "ดิถีแข็งเกินไป",
-    minExclusive: 7,
+    minInclusive: 7,
     maxInclusive: Number.POSITIVE_INFINITY,
   },
 ] as const;

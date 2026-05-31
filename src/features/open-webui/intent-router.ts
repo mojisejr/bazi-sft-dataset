@@ -4,7 +4,7 @@ import { z } from "zod";
 import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
 import { getGeminiApiKey } from "@/lib/env";
 
-export const DEFAULT_OPEN_WEBUI_INTENT_MODEL = "gemini-2.5-flash";
+export const DEFAULT_OPEN_WEBUI_INTENT_MODEL = "gemini-3.1-flash-lite";
 
 const OPEN_WEBUI_INTENT_JSON_SCHEMA = {
   type: "object",

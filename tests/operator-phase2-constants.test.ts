@@ -64,5 +64,9 @@ describe("Phase 2 operator constants", () => {
       id: "very-strong",
       label: "แข็งเกินไป",
     });
+    expect(classifyOperatorStrengthScore(7)).toMatchObject({
+      id: "very-strong",
+      label: "แข็งเกินไป",
+    });
   });
 });
