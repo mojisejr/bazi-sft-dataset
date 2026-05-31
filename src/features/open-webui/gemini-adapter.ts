@@ -1,6 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
 import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
+import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
+import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
 export const DEFAULT_OPEN_WEBUI_GEMINI_MODEL = "gemini-2.5-flash";
@@ -29,6 +31,14 @@ export type GeminiGenerateContent = (
 export type OpenWebUiGeminiPromptPayload = {
   systemInstruction: string;
   userPrompt: string;
+};
+
+export type OpenWebUiGeminiExecutionContext = {
+  intentClassification?: OpenWebUiIntentClassification;
+  baziConsult?: {
+    rawInput: RawInputValue;
+    truthPacket: string | null;
+  } | null;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -87,8 +97,21 @@ export function getOpenWebUiGeminiConfig(
   return { apiKey, model };
 }
 
+function formatConsultBirthContext(rawInput: RawInputValue) {
+  return [
+    `- Birth date: ${rawInput.birthDate}`,
+    `- Birth time: ${rawInput.birthTime}`,
+    `- Gender: ${rawInput.gender}`,
+    `- Province: ${rawInput.province}`,
+    `- Calendar system: ${rawInput.calendarSystem ?? "solar"}`,
+    `- Timezone: ${rawInput.timezone ?? "Asia/Bangkok"}`,
+  ].join("\n");
+}
+
 export function buildOpenWebUiGeminiPromptPayload(
-  input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage">,
+  input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage"> & {
+    executionContext?: OpenWebUiGeminiExecutionContext;
+  },
 ): OpenWebUiGeminiPromptPayload {
   const systemMessages = input.normalizedMessages
     .filter((message) => message.role === "system")
@@ -97,15 +120,43 @@ export function buildOpenWebUiGeminiPromptPayload(
     .filter((message) => message.role !== "system")
     .map(formatConversationLine)
     .join("\n\n");
+  const intentClassification = input.executionContext?.intentClassification;
+  const baziConsult = input.executionContext?.baziConsult;
+  const consultMode = intentClassification?.requiresBaziConsult
+    ? baziConsult?.truthPacket
+      ? "bazi_consult"
+      : "bazi_consult_pending_context"
+    : intentClassification
+      ? "non_bazi_bypass"
+      : null;
 
   return {
     systemInstruction: systemMessages.join("\n\n") || DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION,
     userPrompt: [
       "Continue the conversation from this transcript.",
       conversationTranscript,
+      intentClassification
+        ? `Intent routing: intent=${intentClassification.intent}; requiresBaziConsult=${String(intentClassification.requiresBaziConsult)}; confidence=${intentClassification.confidence.toFixed(2)}.`
+        : null,
+      consultMode ? `Consult mode: ${consultMode}.` : null,
+      intentClassification?.requiresBaziConsult && baziConsult?.truthPacket
+        ? [
+          "Verified Bazi consult context:",
+          formatConsultBirthContext(baziConsult.rawInput),
+          "Truth packet:",
+          baziConsult.truthPacket,
+          "Use only this narrowed chart context for Bazi-specific claims. If more detail is needed, say what is missing instead of inventing it.",
+        ].join("\n")
+        : null,
+      intentClassification?.requiresBaziConsult && !baziConsult?.truthPacket
+        ? "No verified Bazi chart context is attached. Do not invent chart details; ask for the missing birth data or chart payload first."
+        : null,
+      intentClassification && !intentClassification.requiresBaziConsult
+        ? "This request does not require Bazi chart analysis. Reply normally without claiming chart-specific insights."
+        : null,
       `Latest user message: ${input.latestUserMessage.content}`,
       "Respond as the assistant.",
-    ].join("\n\n"),
+    ].filter((section): section is string => section !== null).join("\n\n"),
   };
 }
 
@@ -120,10 +171,14 @@ export async function generateGeminiAssistantReply(
   options: {
     env?: Partial<NodeJS.ProcessEnv>;
     generateContent?: GeminiGenerateContent;
+    executionContext?: OpenWebUiGeminiExecutionContext;
   } = {},
 ): Promise<OpenWebUiGeminiReply> {
   const config = getOpenWebUiGeminiConfig(options.env);
-  const promptPayload = buildOpenWebUiGeminiPromptPayload(input);
+  const promptPayload = buildOpenWebUiGeminiPromptPayload({
+    ...input,
+    executionContext: options.executionContext,
+  });
   const generateContent = options.generateContent ?? createGeminiGenerateContent(config);
 
   try {

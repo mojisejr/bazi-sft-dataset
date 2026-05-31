@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
+
 export const MAX_TRIAGE_TURNS = 2;
 
 const OpenWebUiRoleSchema = z.enum(["system", "user", "assistant"]);
@@ -14,6 +16,11 @@ const OpenWebUiMessageInputSchema = z.object({
   content: z.union([z.string(), z.array(OpenWebUiTextPartSchema)]),
 });
 
+const OpenWebUiBaziConsultContextSchema = z.object({
+  rawInput: RawInputSchema,
+  calculatedState: CalculatedStateSchema,
+});
+
 const OpenWebUiPayloadSchema = z.object({
   messages: z.array(OpenWebUiMessageInputSchema).min(1),
   user: z
@@ -21,6 +28,7 @@ const OpenWebUiPayloadSchema = z.object({
       id: z.string().trim().min(1).optional(),
     })
     .optional(),
+  baziConsult: OpenWebUiBaziConsultContextSchema.optional(),
 });
 
 export const NormalizedChatMessageSchema = z.object({
@@ -35,6 +43,7 @@ export const ChatRunnerSuccessSchema = z.object({
   normalizedMessages: z.array(NormalizedChatMessageSchema).min(1),
   triageMessages: z.array(NormalizedChatMessageSchema).min(1),
   latestUserMessage: NormalizedChatMessageSchema.extend({ role: z.literal("user") }),
+  baziConsult: OpenWebUiBaziConsultContextSchema.nullable(),
   streamPlan: z.object({
     transport: z.literal("sse"),
     status: z.literal("deferred"),
@@ -54,6 +63,7 @@ export const ChatRunnerResultSchema = z.union([
 ]);
 
 export type NormalizedChatMessage = z.infer<typeof NormalizedChatMessageSchema>;
+export type OpenWebUiBaziConsultContext = z.infer<typeof OpenWebUiBaziConsultContextSchema>;
 export type ChatRunnerSuccess = z.infer<typeof ChatRunnerSuccessSchema>;
 export type ChatRunnerResult = z.infer<typeof ChatRunnerResultSchema>;
 
@@ -155,6 +165,7 @@ export function runChatPipeline(payload: unknown): ChatRunnerResult {
     normalizedMessages,
     triageMessages,
     latestUserMessage,
+    baziConsult: parsedPayload.baziConsult ?? null,
     streamPlan: {
       transport: "sse",
       status: "deferred",

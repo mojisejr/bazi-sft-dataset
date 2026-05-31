@@ -5,6 +5,7 @@ import {
   DEFAULT_OPEN_WEBUI_GEMINI_MODEL,
   generateGeminiAssistantReply,
   getOpenWebUiGeminiConfig,
+  type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
 
@@ -21,6 +22,28 @@ const readyChatInput = {
     { role: "user", content: "อยากรู้เรื่องงาน" },
   ] as const,
   latestUserMessage: { role: "user", content: "อยากรู้เรื่องงาน" } as const,
+};
+
+const sampleExecutionContext: OpenWebUiGeminiExecutionContext = {
+  intentClassification: {
+    intent: "career",
+    requiresBaziConsult: true,
+    confidence: 0.91,
+  },
+  baziConsult: {
+    rawInput: {
+      birthDate: "1992-08-12",
+      birthTime: "09:15",
+      gender: "female",
+      province: "Bangkok",
+      calendarSystem: "solar",
+      timezone: "Asia/Bangkok",
+    },
+    truthPacket: JSON.stringify({
+      intent: "career",
+      anchors: [{ key: "careerTenGodHighlights" }],
+    }, null, 2),
+  },
 };
 
 describe("getOpenWebUiGeminiConfig", () => {
@@ -48,6 +71,47 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("User: สวัสดีค่ะ");
     expect(payload.userPrompt).toContain("Assistant: สวัสดีค่ะ มีเรื่องไหนอยากดูเป็นพิเศษคะ");
     expect(payload.userPrompt).toContain("Latest user message: อยากรู้เรื่องงาน");
+  });
+
+  test("injects the routed intent summary when the phase 7 router already classified the request", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: sampleExecutionContext,
+    });
+
+    expect(payload.userPrompt).toContain("Intent routing: intent=career; requiresBaziConsult=true; confidence=0.91.");
+    expect(payload.userPrompt).toContain("Consult mode: bazi_consult.");
+    expect(payload.userPrompt).toContain("Verified Bazi consult context:");
+    expect(payload.userPrompt).toContain("Truth packet:");
+    expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
+  });
+
+  test("marks non-Bazi traffic as bypassed and excludes chart context", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        intentClassification: {
+          intent: "chit_chat",
+          requiresBaziConsult: false,
+          confidence: 0.23,
+        },
+        baziConsult: {
+          rawInput: {
+            birthDate: "1992-08-12",
+            birthTime: "09:15",
+            gender: "female",
+            province: "Bangkok",
+            calendarSystem: "solar",
+            timezone: "Asia/Bangkok",
+          },
+          truthPacket: null,
+        },
+      },
+    });
+
+    expect(payload.userPrompt).toContain("Consult mode: non_bazi_bypass.");
+    expect(payload.userPrompt).toContain("This request does not require Bazi chart analysis.");
+    expect(payload.userPrompt).not.toContain("Truth packet:");
   });
 
   test("preserves earlier user turns so phase 5 browser truth can verify short-term recall", () => {
@@ -85,6 +149,7 @@ describe("generateGeminiAssistantReply", () => {
         OPEN_WEBUI_GEMINI_MODEL: "gemini-2.5-flash-lite",
       },
       generateContent,
+      executionContext: sampleExecutionContext,
     })).resolves.toEqual({
       model: "gemini-2.5-flash-lite",
       text: "ภาพรวมการงานปีนี้ดีขึ้นจากเดิมค่ะ",
@@ -92,12 +157,15 @@ describe("generateGeminiAssistantReply", () => {
 
     expect(generateContent).toHaveBeenCalledWith({
       model: "gemini-2.5-flash-lite",
-      contents: expect.stringContaining("Latest user message: อยากรู้เรื่องงาน"),
+      contents: expect.stringContaining("Intent routing: intent=career; requiresBaziConsult=true; confidence=0.91."),
       config: {
         systemInstruction: "You are a practical Bazi guide.",
         temperature: 0.4,
       },
     });
+    expect(generateContent).toHaveBeenCalledWith(expect.objectContaining({
+      contents: expect.stringContaining("Consult mode: bazi_consult."),
+    }));
   });
 
   test("wraps upstream failures with a named Gemini error path", async () => {
