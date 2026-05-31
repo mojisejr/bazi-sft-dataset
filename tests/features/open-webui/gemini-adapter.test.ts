@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
 import {
   buildOpenWebUiGeminiPromptPayload,
   DEFAULT_OPEN_WEBUI_GEMINI_MODEL,
@@ -15,13 +16,13 @@ const readyChatInput = {
     { role: "user", content: "สวัสดีค่ะ" },
     { role: "assistant", content: "สวัสดีค่ะ มีเรื่องไหนอยากดูเป็นพิเศษคะ" },
     { role: "user", content: "อยากรู้เรื่องงาน" },
-  ] as const,
+  ] as NormalizedChatMessage[],
   triageMessages: [
     { role: "user", content: "สวัสดีค่ะ" },
     { role: "assistant", content: "สวัสดีค่ะ มีเรื่องไหนอยากดูเป็นพิเศษคะ" },
     { role: "user", content: "อยากรู้เรื่องงาน" },
-  ] as const,
-  latestUserMessage: { role: "user", content: "อยากรู้เรื่องงาน" } as const,
+  ] as NormalizedChatMessage[],
+  latestUserMessage: { role: "user" as const, content: "อยากรู้เรื่องงาน" },
 };
 
 const sampleExecutionContext: OpenWebUiGeminiExecutionContext = {

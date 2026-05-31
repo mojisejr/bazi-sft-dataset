@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
+import { type BaziExtractionFieldKey } from "@/features/open-webui/bazi-extractor";
 import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
 import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
@@ -36,9 +37,10 @@ export type OpenWebUiGeminiPromptPayload = {
 export type OpenWebUiGeminiExecutionContext = {
   intentClassification?: OpenWebUiIntentClassification;
   baziConsult?: {
-    rawInput: RawInputValue;
+    rawInput: RawInputValue | null;
     truthPacket: string | null;
   } | null;
+  baziMissingFields?: BaziExtractionFieldKey[];
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -122,6 +124,7 @@ export function buildOpenWebUiGeminiPromptPayload(
     .join("\n\n");
   const intentClassification = input.executionContext?.intentClassification;
   const baziConsult = input.executionContext?.baziConsult;
+  const baziMissingFields = input.executionContext?.baziMissingFields ?? [];
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -131,7 +134,12 @@ export function buildOpenWebUiGeminiPromptPayload(
       : null;
 
   return {
-    systemInstruction: systemMessages.join("\n\n") || DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION,
+    systemInstruction: [
+      systemMessages.join("\n\n") || DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION,
+      baziMissingFields.length > 0
+        ? `ผู้ใช้ยังไม่ได้บอก: ${baziMissingFields.join(", ")}. ขอข้อมูลนั้นเพิ่มอย่างสุภาพ และห้ามเดาคำพยากรณ์.`
+        : null,
+    ].filter((section): section is string => section !== null).join("\n\n"),
     userPrompt: [
       "Continue the conversation from this transcript.",
       conversationTranscript,
@@ -139,7 +147,7 @@ export function buildOpenWebUiGeminiPromptPayload(
         ? `Intent routing: intent=${intentClassification.intent}; requiresBaziConsult=${String(intentClassification.requiresBaziConsult)}; confidence=${intentClassification.confidence.toFixed(2)}.`
         : null,
       consultMode ? `Consult mode: ${consultMode}.` : null,
-      intentClassification?.requiresBaziConsult && baziConsult?.truthPacket
+      intentClassification?.requiresBaziConsult && baziConsult?.truthPacket && baziConsult.rawInput
         ? [
           "Verified Bazi consult context:",
           formatConsultBirthContext(baziConsult.rawInput),

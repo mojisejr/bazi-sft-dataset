@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
 
+import { type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
 import {
   buildOpenWebUiIntentPromptPayload,
   DEFAULT_OPEN_WEBUI_INTENT_MODEL,
@@ -13,8 +14,8 @@ const readyIntentInput = {
     { role: "user", content: "สวัสดีค่ะ" },
     { role: "assistant", content: "สวัสดีค่ะ มีเรื่องไหนอยากดูเป็นพิเศษคะ" },
     { role: "user", content: "ปีนี้ความรักจะเป็นยังไง" },
-  ] as const,
-  latestUserMessage: { role: "user", content: "ปีนี้ความรักจะเป็นยังไง" } as const,
+  ] as NormalizedChatMessage[],
+  latestUserMessage: { role: "user" as const, content: "ปีนี้ความรักจะเป็นยังไง" },
 };
 
 describe("getOpenWebUiIntentRouterConfig", () => {

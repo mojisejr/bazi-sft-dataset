@@ -1,7 +1,56 @@
-import { describe, expect, test } from "vitest";
+import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
-import { buildOpenWebUiExecutionContext } from "@/app/api/v1/chat/completions/route";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
+
+vi.mock("@/features/open-webui/api-guard", () => ({
+  validateApiToken: vi.fn(() => null),
+}));
+
+const routeOpenWebUiIntentMock = vi.fn();
+vi.mock("@/features/open-webui/intent-router", async () => {
+  const actual = await vi.importActual<typeof import("@/features/open-webui/intent-router")>(
+    "@/features/open-webui/intent-router",
+  );
+  return {
+    ...actual,
+    routeOpenWebUiIntent: routeOpenWebUiIntentMock,
+  };
+});
+
+const extractOpenWebUiBaziContextMock = vi.fn();
+vi.mock("@/features/open-webui/bazi-extractor", async () => {
+  const actual = await vi.importActual<typeof import("@/features/open-webui/bazi-extractor")>(
+    "@/features/open-webui/bazi-extractor",
+  );
+  return {
+    ...actual,
+    extractOpenWebUiBaziContext: extractOpenWebUiBaziContextMock,
+  };
+});
+
+const calculateBaziStateFromRawInputMock = vi.fn();
+vi.mock("@/features/bazi-math/bazi-engine-adapter", async () => {
+  const actual = await vi.importActual<typeof import("@/features/bazi-math/bazi-engine-adapter")>(
+    "@/features/bazi-math/bazi-engine-adapter",
+  );
+  return {
+    ...actual,
+    calculateBaziStateFromRawInput: calculateBaziStateFromRawInputMock,
+  };
+});
+
+const generateGeminiAssistantReplyMock = vi.fn();
+vi.mock("@/features/open-webui/gemini-adapter", async () => {
+  const actual = await vi.importActual<typeof import("@/features/open-webui/gemini-adapter")>(
+    "@/features/open-webui/gemini-adapter",
+  );
+  return {
+    ...actual,
+    generateGeminiAssistantReply: generateGeminiAssistantReplyMock,
+  };
+});
+
+const { buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
 
 const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
   fourPillars: {
@@ -105,28 +154,211 @@ const SAMPLE_CHAT_RESULT = {
   },
 } as const;
 
+const SAMPLE_RAW_INPUT = {
+  birthDate: "1989-01-03",
+  birthTime: "08:45",
+  gender: "ชาย",
+  province: "จันทบุรี",
+};
+
+function buildJsonRequest(body: unknown) {
+  return new Request("http://localhost/api/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+async function consumeStream(response: Response) {
+  const reader = response.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+  }
+  buffer += decoder.decode();
+  return buffer;
+}
+
 describe("buildOpenWebUiExecutionContext", () => {
-  test("attaches a narrowed truth packet only for Bazi consult traffic", () => {
-    const executionContext = buildOpenWebUiExecutionContext(SAMPLE_CHAT_RESULT, {
-      intent: "wealth",
-      requiresBaziConsult: true,
-      confidence: 0.94,
+  test("attaches a narrowed truth packet when extraction completes", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: SAMPLE_CHAT_RESULT,
+      intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.94 },
+      extraction: {
+        fields: {
+          birthDate: SAMPLE_RAW_INPUT.birthDate,
+          birthTime: SAMPLE_RAW_INPUT.birthTime,
+          gender: SAMPLE_RAW_INPUT.gender,
+          province: SAMPLE_RAW_INPUT.province,
+        },
+        missingFields: [],
+        isComplete: true,
+        rawInput: SAMPLE_RAW_INPUT,
+      },
+      calculatedState: SAMPLE_CALCULATED_STATE,
     });
 
     expect(executionContext.intentClassification?.intent).toBe("wealth");
+    expect(executionContext.baziConsult?.rawInput?.birthDate).toBe(SAMPLE_RAW_INPUT.birthDate);
     expect(executionContext.baziConsult?.truthPacket).toContain('"intent": "wealth"');
-    expect(executionContext.baziConsult?.truthPacket).toContain('"financeTenGodHighlights"');
+    expect(executionContext.baziMissingFields).toBeUndefined();
   });
 
   test("keeps non-Bazi traffic stateless by bypassing truth-packet attachment", () => {
-    const executionContext = buildOpenWebUiExecutionContext(SAMPLE_CHAT_RESULT, {
-      intent: "chit_chat",
-      requiresBaziConsult: false,
-      confidence: 0.2,
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: SAMPLE_CHAT_RESULT,
+      intentClassification: { intent: "chit_chat", requiresBaziConsult: false, confidence: 0.2 },
     });
 
     expect(executionContext.intentClassification?.intent).toBe("chit_chat");
-    expect(executionContext.baziConsult?.rawInput.birthDate).toBe("1992-08-12");
+    expect(executionContext.baziConsult?.rawInput?.birthDate).toBe("1992-08-12");
     expect(executionContext.baziConsult?.truthPacket).toBeNull();
+  });
+
+  test("emits missingFields and null truth packet when extraction is incomplete", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: { baziConsult: null },
+      intentClassification: { intent: "love", requiresBaziConsult: true, confidence: 0.88 },
+      extraction: {
+        fields: { birthDate: "1989-01-03", birthTime: null, gender: null, province: null },
+        missingFields: ["birthTime", "gender", "province"],
+        isComplete: false,
+        rawInput: null,
+      },
+      calculatedState: null,
+    });
+
+    expect(executionContext.baziConsult).toEqual({ rawInput: null, truthPacket: null });
+    expect(executionContext.baziMissingFields).toEqual(["birthTime", "gender", "province"]);
+  });
+});
+
+describe("POST /api/v1/chat/completions (Action Loop)", () => {
+  beforeEach(() => {
+    routeOpenWebUiIntentMock.mockReset();
+    extractOpenWebUiBaziContextMock.mockReset();
+    calculateBaziStateFromRawInputMock.mockReset();
+    generateGeminiAssistantReplyMock.mockReset();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("chit_chat path streams a reply without extraction or calculation", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.5,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "สวัสดีค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "สวัสดี" }],
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(extractOpenWebUiBaziContextMock).not.toHaveBeenCalled();
+    expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
+    expect(generateGeminiAssistantReplyMock).toHaveBeenCalledTimes(1);
+    expect(body).toContain("[DONE]");
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.intentClassification.intent).toBe("chit_chat");
+    expect(executionContext.baziConsult).toBeNull();
+  });
+
+  test("bazi intent with missing fields skips calculation and passes baziMissingFields", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.9,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: { birthDate: "1989-01-03", birthTime: null, gender: null, province: null },
+      missingFields: ["birthTime", "gender", "province"],
+      isComplete: false,
+      rawInput: null,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ขอข้อมูลเพิ่มหน่อยค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "ดูดวงให้หน่อย เกิดปี 1989" }],
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(extractOpenWebUiBaziContextMock).toHaveBeenCalledTimes(1);
+    expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
+    expect(body).toContain("[DONE]");
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.baziConsult).toEqual({ rawInput: null, truthPacket: null });
+    expect(executionContext.baziMissingFields).toEqual(["birthTime", "gender", "province"]);
+  });
+
+  test("bazi intent with complete extraction calls calculator and attaches truth packet", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.97,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: { ...SAMPLE_RAW_INPUT },
+      missingFields: [],
+      isComplete: true,
+      rawInput: SAMPLE_RAW_INPUT,
+    });
+    calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "พยากรณ์เสร็จค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "เกิด 3 ม.ค. 2532 8:45 จันทบุรี ชาย" }],
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(calculateBaziStateFromRawInputMock).toHaveBeenCalledTimes(1);
+    expect(calculateBaziStateFromRawInputMock).toHaveBeenCalledWith(SAMPLE_RAW_INPUT);
+    expect(body).toContain("[DONE]");
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.baziConsult.rawInput).toEqual(SAMPLE_RAW_INPUT);
+    expect(typeof executionContext.baziConsult.truthPacket).toBe("string");
+    expect((executionContext.baziConsult.truthPacket as string).length).toBeGreaterThan(0);
+  });
+
+  test("extractor failure still flushes the SSE stream to [DONE]", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "general_reading",
+      requiresBaziConsult: true,
+      confidence: 0.8,
+    });
+    extractOpenWebUiBaziContextMock.mockRejectedValue(
+      new Error("Gemini extractor exploded"),
+    );
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "ดูดวงให้หน่อย" }],
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(generateGeminiAssistantReplyMock).not.toHaveBeenCalled();
+    expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
+    expect(body).toContain("[DONE]");
   });
 });

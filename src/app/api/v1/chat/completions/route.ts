@@ -1,4 +1,10 @@
+import { calculateBaziStateFromRawInput, type BaziStatePayload, BaziEngineAdapterError } from "@/features/bazi-math/bazi-engine-adapter";
 import { validateApiToken } from "@/features/open-webui/api-guard";
+import {
+  extractOpenWebUiBaziContext,
+  type OpenWebUiBaziExtraction,
+  OpenWebUiBaziExtractorError,
+} from "@/features/open-webui/bazi-extractor";
 import { type ChatRunnerSuccess, runChatPipeline } from "@/features/open-webui/chat-runner";
 import {
   generateGeminiAssistantReply,
@@ -33,22 +39,66 @@ function getForwardedUserId(req: Request) {
   return req.headers.get("x-openwebui-user-id");
 }
 
+export type BuildOpenWebUiExecutionContextInput = {
+  result: Pick<ChatRunnerSuccess, "baziConsult">;
+  intentClassification: OpenWebUiIntentClassification;
+  extraction?: OpenWebUiBaziExtraction | null;
+  calculatedState?: BaziStatePayload | null;
+};
+
 export function buildOpenWebUiExecutionContext(
-  result: Pick<ChatRunnerSuccess, "baziConsult">,
-  intentClassification: OpenWebUiIntentClassification,
+  input: BuildOpenWebUiExecutionContextInput,
 ): OpenWebUiGeminiExecutionContext {
-  const truthPacket = result.baziConsult && intentClassification.requiresBaziConsult
-    ? stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState)
-    : null;
+  const { result, intentClassification, extraction, calculatedState } = input;
+
+  if (!intentClassification.requiresBaziConsult) {
+    return {
+      intentClassification,
+      baziConsult: result.baziConsult
+        ? {
+          rawInput: result.baziConsult.rawInput,
+          truthPacket: null,
+        }
+        : null,
+    };
+  }
+
+  if (extraction && extraction.isComplete && extraction.rawInput && calculatedState) {
+    return {
+      intentClassification,
+      baziConsult: {
+        rawInput: extraction.rawInput,
+        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, calculatedState),
+      },
+    };
+  }
+
+  if (extraction && !extraction.isComplete) {
+    return {
+      intentClassification,
+      baziConsult: {
+        rawInput: null,
+        truthPacket: null,
+      },
+      baziMissingFields: extraction.missingFields,
+    };
+  }
+
+  // Fallback: requiresBaziConsult but no extraction was performed —
+  // honor any pre-attached consult payload from the chat runner.
+  if (result.baziConsult) {
+    return {
+      intentClassification,
+      baziConsult: {
+        rawInput: result.baziConsult.rawInput,
+        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState),
+      },
+    };
+  }
 
   return {
     intentClassification,
-    baziConsult: result.baziConsult
-      ? {
-        rawInput: result.baziConsult.rawInput,
-        truthPacket,
-      }
-      : null,
+    baziConsult: null,
   };
 }
 
@@ -79,7 +129,33 @@ export async function POST(req: Request) {
 
   const assistantReply = (async () => {
     const intentClassification = await routeOpenWebUiIntent(result);
-    const executionContext = buildOpenWebUiExecutionContext(result, intentClassification);
+
+    let extraction: OpenWebUiBaziExtraction | null = null;
+    let calculatedState: BaziStatePayload | null = null;
+
+    if (intentClassification.requiresBaziConsult) {
+      const existing = result.baziConsult?.rawInput
+        ? {
+          birthDate: result.baziConsult.rawInput.birthDate,
+          birthTime: result.baziConsult.rawInput.birthTime,
+          gender: result.baziConsult.rawInput.gender,
+          province: result.baziConsult.rawInput.province,
+        }
+        : undefined;
+
+      extraction = await extractOpenWebUiBaziContext(result, { existing });
+
+      if (extraction.isComplete && extraction.rawInput) {
+        calculatedState = await calculateBaziStateFromRawInput(extraction.rawInput);
+      }
+    }
+
+    const executionContext = buildOpenWebUiExecutionContext({
+      result,
+      intentClassification,
+      extraction,
+      calculatedState,
+    });
 
     return generateGeminiAssistantReply(result, { executionContext });
   })().catch((error) => {
@@ -87,7 +163,11 @@ export async function POST(req: Request) {
       throw error;
     }
 
-    if (error instanceof OpenWebUiIntentRouterError) {
+    if (
+      error instanceof OpenWebUiIntentRouterError
+      || error instanceof OpenWebUiBaziExtractorError
+      || error instanceof BaziEngineAdapterError
+    ) {
       throw new OpenWebUiGeminiError("gemini_upstream_error", error.message);
     }
 
@@ -100,6 +180,7 @@ export async function POST(req: Request) {
   return new Response(createGuardedOpenAiSseStream({
     assistantReply,
     abortSignal: req.signal,
+    timeoutMs: 35_000,
   }), {
     headers: {
       "Cache-Control": "no-cache, no-transform",
