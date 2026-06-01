@@ -105,6 +105,44 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
   });
 
+  test("constrains Bazi claims to the engine-derived Truth Packet under the mumate doctrine", () => {
+    const engineDerivedTruthPacket = JSON.stringify({
+      intent: "wealth",
+      chartIdentity: {
+        dayMaster: "甲",
+        fourPillars: {
+          day: { stem: "甲", branch: "午" },
+        },
+      },
+      anchors: [
+        { key: "elementAnalysis", value: { dominantElements: ["wood"] } },
+      ],
+      timing: [
+        { key: "currentDaYun", value: { influenceGradient: { ratioLabel: "90:10" } } },
+      ],
+    }, null, 2);
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        intentClassification: {
+          intent: "wealth",
+          requiresBaziConsult: true,
+          confidence: 0.92,
+        },
+        baziConsult: {
+          rawInput: sampleExecutionContext.baziConsult!.rawInput,
+          truthPacket: engineDerivedTruthPacket,
+        },
+      },
+    });
+
+    expect(payload.systemInstruction).toContain("Truth Packet เท่านั้น");
+    expect(payload.systemInstruction).toContain("ห้ามเติมความรู้ปาจื่อจากภายนอก");
+    expect(payload.userPrompt).toContain(engineDerivedTruthPacket);
+    expect(payload.userPrompt).toContain("Use only this narrowed chart context for Bazi-specific claims");
+    expect(payload.userPrompt).not.toContain("external Bazi theory");
+  });
+
   test("marks non-Bazi traffic as bypassed and excludes chart context", () => {
     const payload = buildOpenWebUiGeminiPromptPayload({
       ...readyChatInput,

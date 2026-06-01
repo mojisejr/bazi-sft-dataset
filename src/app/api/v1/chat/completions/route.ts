@@ -134,19 +134,23 @@ export async function POST(req: Request) {
     let calculatedState: BaziStatePayload | null = null;
 
     if (intentClassification.requiresBaziConsult) {
-      const existing = result.baziConsult?.rawInput
-        ? {
-          birthDate: result.baziConsult.rawInput.birthDate,
-          birthTime: result.baziConsult.rawInput.birthTime,
-          gender: result.baziConsult.rawInput.gender,
-          province: result.baziConsult.rawInput.province,
+      if (result.baziConsult?.calculatedState) {
+        calculatedState = result.baziConsult.calculatedState;
+      } else {
+        const existing = result.baziConsult?.rawInput
+          ? {
+            birthDate: result.baziConsult.rawInput.birthDate,
+            birthTime: result.baziConsult.rawInput.birthTime,
+            gender: result.baziConsult.rawInput.gender,
+            province: result.baziConsult.rawInput.province,
+          }
+          : undefined;
+
+        extraction = await extractOpenWebUiBaziContext(result, { existing });
+
+        if (extraction.isComplete && extraction.rawInput) {
+          calculatedState = await calculateBaziStateFromRawInput(extraction.rawInput);
         }
-        : undefined;
-
-      extraction = await extractOpenWebUiBaziContext(result, { existing });
-
-      if (extraction.isComplete && extraction.rawInput) {
-        calculatedState = await calculateBaziStateFromRawInput(extraction.rawInput);
       }
     }
 

@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   MAX_TRIAGE_TURNS,
+  normalizeMessageContent,
   runChatPipeline,
   sliceMessagesForTriage,
   type NormalizedChatMessage,
@@ -84,6 +85,35 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
 });
 
 describe("runChatPipeline", () => {
+  test("strips prior assistant bazi_logic blocks while preserving conversational text", () => {
+    const result = runChatPipeline({
+      messages: [
+        { role: "user", content: "อยากรู้เรื่องความรัก" },
+        {
+          role: "assistant",
+          content: "<bazi_logic>hidden packet trace\nwith old reasoning</bazi_logic>\n<reply>ได้ค่ะ เดี๋ยวดูให้จากข้อมูลเดิมนะคะ</reply>",
+        },
+        { role: "user", content: "แล้วเรื่องงานล่ะ" },
+      ],
+    });
+
+    expect(result.status).toBe("ready");
+
+    if (result.status !== "ready") {
+      throw new Error("Expected ready result.");
+    }
+
+    expect(result.normalizedMessages[1]).toEqual({
+      role: "assistant",
+      content: "<reply>ได้ค่ะ เดี๋ยวดูให้จากข้อมูลเดิมนะคะ</reply>",
+    });
+    expect(result.triageMessages[1]?.content).not.toContain("<bazi_logic>");
+    expect(normalizeMessageContent(
+      "<bazi_logic>ผู้ใช้พิมพ์มาเอง</bazi_logic> ขอถามต่อ",
+      "user",
+    )).toBe("<bazi_logic>ผู้ใช้พิมพ์มาเอง</bazi_logic> ขอถามต่อ");
+  });
+
   test("extracts user.id, keeps normalized history, and marks the result stream-ready", () => {
     const result = runChatPipeline({
       user: {

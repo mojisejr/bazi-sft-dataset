@@ -67,14 +67,22 @@ export type OpenWebUiBaziConsultContext = z.infer<typeof OpenWebUiBaziConsultCon
 export type ChatRunnerSuccess = z.infer<typeof ChatRunnerSuccessSchema>;
 export type ChatRunnerResult = z.infer<typeof ChatRunnerResultSchema>;
 
-function normalizeMessageContent(content: string | Array<{ type: "text"; text: string }>) {
-  const normalized = typeof content === "string"
+const BAZI_LOGIC_BLOCK_PATTERN = /<bazi_logic\b[^>]*>[\s\S]*?<\/bazi_logic>/giu;
+
+export function normalizeMessageContent(
+  content: string | Array<{ type: "text"; text: string }>,
+  role?: z.infer<typeof OpenWebUiRoleSchema>,
+) {
+  const text = typeof content === "string"
     ? content.trim()
     : content
       .map((part) => part.text.trim())
       .filter((part) => part.length > 0)
       .join("\n")
       .trim();
+  const normalized = role === "assistant"
+    ? text.replace(BAZI_LOGIC_BLOCK_PATTERN, "").trim()
+    : text;
 
   if (!normalized) {
     throw new Error("Message content must include text.");
@@ -86,7 +94,7 @@ function normalizeMessageContent(content: string | Array<{ type: "text"; text: s
 export function normalizeChatMessages(messages: readonly z.input<typeof OpenWebUiMessageInputSchema>[]) {
   return messages.map((message) => NormalizedChatMessageSchema.parse({
     role: message.role,
-    content: normalizeMessageContent(message.content),
+    content: normalizeMessageContent(message.content, message.role),
   }));
 }
 

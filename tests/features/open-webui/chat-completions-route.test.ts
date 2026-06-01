@@ -341,6 +341,46 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     expect((executionContext.baziConsult.truthPacket as string).length).toBeGreaterThan(0);
   });
 
+  test("bazi follow-up reuses cached calculatedState and emits a fresh intent-specific truth packet", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.95,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ความรักอ่านจากฐานคู่เดิมค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [
+        { role: "user", content: "เกิด 12/08/1992 เวลา 09:15 กรุงเทพ ผู้หญิง" },
+        {
+          role: "assistant",
+          content: "<bazi_logic>{\"intent\":\"wealth\"}</bazi_logic>\n<reply>เรื่องเงินมีแรงหนุนค่ะ</reply>",
+        },
+        { role: "user", content: "แล้วความรักล่ะ" },
+      ],
+      baziConsult: SAMPLE_CHAT_RESULT.baziConsult,
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(extractOpenWebUiBaziContextMock).not.toHaveBeenCalled();
+    expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
+    expect(body).toContain("[DONE]");
+
+    const [chatInput, options] = generateGeminiAssistantReplyMock.mock.calls[0];
+    expect(chatInput.normalizedMessages[1].content).toBe("<reply>เรื่องเงินมีแรงหนุนค่ะ</reply>");
+
+    const truthPacket = options.executionContext.baziConsult.truthPacket as string;
+    expect(options.executionContext.baziConsult.rawInput).toEqual(SAMPLE_CHAT_RESULT.baziConsult.rawInput);
+    expect(truthPacket).toContain('"intent": "love"');
+    expect(truthPacket).toContain('"spousePalace"');
+    expect(truthPacket).toContain('"loveCompatibilityProfile"');
+    expect(truthPacket).not.toContain('"financeTenGodHighlights"');
+  });
+
   test("extractor failure still flushes the SSE stream to [DONE]", async () => {
     routeOpenWebUiIntentMock.mockResolvedValue({
       intent: "general_reading",
