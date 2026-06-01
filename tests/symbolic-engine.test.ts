@@ -6,7 +6,10 @@ import {
   resolveDisplayStemPairStage,
   resolveDisplayTwelveQiStage,
 } from "@/lib/bazi/pillar-display";
-import { isForwardDaYunDirection } from "@/lib/bazi/symbolic-engine.birth";
+import {
+  calculateDaYunInfluenceGradient,
+  isForwardDaYunDirection,
+} from "@/lib/bazi/symbolic-engine.birth";
 import {
   buildGeneralizedInteractionState,
   calculateBaziChart,
@@ -21,6 +24,26 @@ afterEach(() => {
 });
 
 describe("calculateBaziChart", () => {
+  test("calculates a DaYun stem-to-branch influence gradient across the 10-year cycle", () => {
+    expect(calculateDaYunInfluenceGradient(24, 33, 24)).toEqual({
+      targetAge: 24,
+      cycleYearIndex: 0,
+      stemWeight: 0.9,
+      branchWeight: 0.1,
+      dominantSource: "stem",
+      ratioLabel: "90:10",
+    });
+
+    expect(calculateDaYunInfluenceGradient(24, 33, 33)).toEqual({
+      targetAge: 33,
+      cycleYearIndex: 9,
+      stemWeight: 0.1,
+      branchWeight: 0.9,
+      dominantSource: "branch",
+      ratioLabel: "10:90",
+    });
+  });
+
   test("lets combinations neutralize clashes before reducing seasonal month support", () => {
     const resolved = resolveBranchInteractionEffects({
       year: { stem: "甲", branch: "子", hiddenStems: [] },
@@ -249,6 +272,14 @@ describe("calculateBaziChart", () => {
       branch: "巳",
       isCurrent: true,
       currentPhase: "lower",
+      influenceGradient: {
+        targetAge: 33,
+        cycleYearIndex: 9,
+        stemWeight: 0.1,
+        branchWeight: 0.9,
+        dominantSource: "branch",
+        ratioLabel: "10:90",
+      },
       upperStageDisplay: resolveDisplayStemPairStage("己", "乙"),
       lowerStageDisplay: resolveDisplayTwelveQiStage("己", "巳"),
       upperPhase: {

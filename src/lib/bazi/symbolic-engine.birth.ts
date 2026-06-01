@@ -2,6 +2,7 @@ import { createRequire } from "node:module";
 
 import type {
   CalculationTraceValue,
+  DaYunInfluenceGradientValue,
   ExplainableValue,
   PillarValue,
   RawInputValue,
@@ -381,6 +382,36 @@ export function buildCurrentReferenceSolar(now = new Date()) {
   );
 }
 
+function roundWeight(value: number) {
+  return Number(value.toFixed(2));
+}
+
+export function calculateDaYunInfluenceGradient(
+  startAge: number,
+  endAge: number,
+  targetAge: number,
+): DaYunInfluenceGradientValue {
+  const cycleLength = Math.max(endAge - startAge, 1);
+  const clampedAge = Math.min(Math.max(targetAge, startAge), endAge);
+  const cycleYearIndex = Math.min(Math.max(clampedAge - startAge, 0), 9);
+  const stemWeight = roundWeight(0.9 - (0.8 * cycleYearIndex / cycleLength));
+  const branchWeight = roundWeight(1 - stemWeight);
+  const dominantSource = stemWeight > branchWeight
+    ? "stem"
+    : branchWeight > stemWeight
+      ? "branch"
+      : "balanced";
+
+  return {
+    targetAge: clampedAge,
+    cycleYearIndex,
+    stemWeight,
+    branchWeight,
+    dominantSource,
+    ratioLabel: `${Math.round(stemWeight * 100)}:${Math.round(branchWeight * 100)}`,
+  };
+}
+
 export function buildDaYunState(
   birthContext: NormalizedBirthContext,
   gender: string,
@@ -404,6 +435,7 @@ export function buildDaYunState(
       const upperPhaseEndAge = startAge + 4;
       const lowerPhaseStartAge = startAge + 5;
       const isCurrent = currentAge >= startAge && currentAge <= endAge;
+      const referenceAge = isCurrent ? currentAge : currentLiuNian?.getAge();
       const currentPhase = isCurrent
         ? currentAge <= upperPhaseEndAge
           ? "upper"
@@ -413,6 +445,9 @@ export function buildDaYunState(
             ? "upper"
             : "lower"
         : undefined;
+      const influenceGradient = referenceAge === undefined
+        ? undefined
+        : calculateDaYunInfluenceGradient(startAge, endAge, referenceAge);
 
       return {
         startAge,
@@ -421,6 +456,7 @@ export function buildDaYunState(
         branch,
         isCurrent,
         currentPhase,
+        influenceGradient,
         upperPhase: {
           startAge,
           endAge: upperPhaseEndAge,

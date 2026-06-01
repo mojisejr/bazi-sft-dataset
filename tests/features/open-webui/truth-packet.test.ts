@@ -40,6 +40,14 @@ const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
       currentPhase: "upper",
       upperStageDisplay: "冠带",
       lowerStageDisplay: "临官",
+      influenceGradient: {
+        targetAge: 42,
+        cycleYearIndex: 0,
+        stemWeight: 0.9,
+        branchWeight: 0.1,
+        dominantSource: "stem",
+        ratioLabel: "90:10",
+      },
     },
   ],
   liuNian: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
@@ -147,8 +155,11 @@ describe("selectOpenWebUiTruthPacket", () => {
         { key: "elementAnalysis" },
         { key: "financeTenGodHighlights", value: { yearStem: "正财", monthStem: "劫财" } },
       ],
-      support: [{ key: "sixtyJiaziCorePersona" }],
-      timing: [{ key: "currentDaYun" }, { key: "liuNian" }],
+      support: [],
+      timing: [
+        { key: "currentDaYun", value: { influenceGradient: SAMPLE_BAZI_STATE.daYun[0]?.influenceGradient } },
+        { key: "liuNian" },
+      ],
     });
 
     expect(stringifyOpenWebUiTruthPacket({
@@ -171,15 +182,39 @@ describe("selectOpenWebUiTruthPacket", () => {
       "loveCompatibilityProfile",
     ]);
     expect(packet?.support.map((section) => section.key)).toEqual([
-      "dayMasterStrengthProfile",
-      "elementAnalysis",
-      "sixtyJiaziCorePersona",
     ]);
     expect(stringifyOpenWebUiTruthPacket({
       intent: "love",
       requiresBaziConsult: true,
       confidence: 0.91,
     }, SAMPLE_BAZI_STATE)).not.toContain("shenSha");
+  });
+
+  test("keeps intent packets strictly scoped to their requested domain", () => {
+    const lovePacketText = stringifyOpenWebUiTruthPacket({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.91,
+    }, SAMPLE_BAZI_STATE);
+    const careerPacketText = stringifyOpenWebUiTruthPacket({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.88,
+    }, SAMPLE_BAZI_STATE);
+    const healthPacketText = stringifyOpenWebUiTruthPacket({
+      intent: "health",
+      requiresBaziConsult: true,
+      confidence: 0.87,
+    }, SAMPLE_BAZI_STATE);
+
+    expect(lovePacketText).toContain("spousePalace");
+    expect(lovePacketText).not.toContain("elementAnalysis");
+    expect(lovePacketText).not.toContain("careerTenGodHighlights");
+    expect(lovePacketText).not.toContain("seasonalInteraction");
+    expect(careerPacketText).not.toContain("loveCompatibilityProfile");
+    expect(careerPacketText).not.toContain("spousePalace");
+    expect(healthPacketText).not.toContain("relationshipTenGodHighlights");
+    expect(healthPacketText).not.toContain("financeTenGodHighlights");
   });
 
   test("returns null when the routed intent does not require Bazi consultation", () => {

@@ -17,6 +17,10 @@ const TruthPacketPillarSchema = PillarValueSchema.pick({
   branch: true,
   hiddenStems: true,
   tenGod: true,
+  sittingStage: true,
+  lookingStage: true,
+  upperStageDisplay: true,
+  lowerStageDisplay: true,
 });
 
 const OpenWebUiTruthPacketSectionSchema = z.object({
@@ -87,6 +91,7 @@ function buildTimingSections(payload: BaziStatePayload): OpenWebUiTruthPacketSec
       currentPhase: currentDaYun.currentPhase,
       upperStageDisplay: currentDaYun.upperStageDisplay,
       lowerStageDisplay: currentDaYun.lowerStageDisplay,
+      influenceGradient: currentDaYun.influenceGradient,
     }));
   }
 
@@ -173,6 +178,14 @@ function buildAnchorSections(
         anchors.push(careerTenGods);
       }
 
+      const workCompatibilityProfile = payload.compatibilityMatrixProfiles.find(
+        (profile) => profile.domain === "work",
+      );
+
+      if (workCompatibilityProfile) {
+        anchors.push(createSection("workCompatibilityProfile", workCompatibilityProfile));
+      }
+
       anchors.push(createSection("elementAnalysis", payload.elementAnalysis));
       return anchors;
     }
@@ -219,34 +232,9 @@ function buildSupportSections(
 
   switch (intent) {
     case "wealth":
-      if (payload.sixtyJiaziCorePersona) {
-        support.push(createSection("sixtyJiaziCorePersona", payload.sixtyJiaziCorePersona));
-      }
-      break;
-
     case "love":
-      if (payload.dayMasterStrengthProfile) {
-        support.push(createSection("dayMasterStrengthProfile", payload.dayMasterStrengthProfile));
-      }
-      support.push(createSection("elementAnalysis", payload.elementAnalysis));
-      if (payload.sixtyJiaziCorePersona) {
-        support.push(createSection("sixtyJiaziCorePersona", payload.sixtyJiaziCorePersona));
-      }
-      break;
-
     case "career":
-      if (payload.sixtyJiaziCorePersona) {
-        support.push(createSection("sixtyJiaziCorePersona", payload.sixtyJiaziCorePersona));
-      }
-      if (payload.seasonalInteraction) {
-        support.push(createSection("seasonalInteraction", payload.seasonalInteraction));
-      }
-      break;
-
     case "health":
-      if (payload.shenSha.length > 0) {
-        support.push(createSection("healthMarkers", payload.shenSha.slice(0, 3)));
-      }
       break;
 
     case "general_reading":

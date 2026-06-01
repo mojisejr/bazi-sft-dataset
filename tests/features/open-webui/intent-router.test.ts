@@ -43,6 +43,16 @@ describe("buildOpenWebUiIntentPromptPayload", () => {
     expect(payload.userPrompt).toContain("Assistant: สวัสดีค่ะ มีเรื่องไหนอยากดูเป็นพิเศษคะ");
     expect(payload.userPrompt).toContain("Latest user message: ปีนี้ความรักจะเป็นยังไง");
   });
+
+  test("includes domain guidelines for future follow-up re-distillation", () => {
+    const payload = buildOpenWebUiIntentPromptPayload(readyIntentInput);
+
+    expect(payload.systemInstruction).toContain("Use wealth for money");
+    expect(payload.systemInstruction).toContain("Use love for romance");
+    expect(payload.systemInstruction).toContain("Use career for job");
+    expect(payload.systemInstruction).toContain("Use health only when the user explicitly asks");
+    expect(payload.systemInstruction).toContain("re-distill the chart dynamically");
+  });
 });
 
 describe("routeOpenWebUiIntent", () => {

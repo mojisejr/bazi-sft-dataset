@@ -68,6 +68,18 @@ export const DaYunPhaseSchema = z.object({
   isCurrent: z.boolean().optional(),
 });
 
+export const DaYunInfluenceGradientSchema = z.object({
+  targetAge: z.number().int().nonnegative(),
+  cycleYearIndex: z.number().int().min(0).max(9),
+  stemWeight: z.number().min(0).max(1),
+  branchWeight: z.number().min(0).max(1),
+  dominantSource: z.enum(["stem", "branch", "balanced"]),
+  ratioLabel: z.string().trim().min(1),
+}).refine(
+  (value) => Math.abs((value.stemWeight + value.branchWeight) - 1) < 0.000001,
+  "DaYun influence gradient weights must sum to 1.",
+);
+
 export const DaYunPillarSchema = z.object({
   startAge: z.number().int().nonnegative(),
   endAge: z.number().int().nonnegative(),
@@ -79,6 +91,7 @@ export const DaYunPillarSchema = z.object({
   lowerStageDisplay: z.string().trim().min(1).optional(),
   upperPhase: DaYunPhaseSchema.optional(),
   lowerPhase: DaYunPhaseSchema.optional(),
+  influenceGradient: DaYunInfluenceGradientSchema.optional(),
 });
 
 export const ShenShaSchema = z.object({
@@ -581,6 +594,7 @@ export const RejectedAnnotationDataSchema = z
 
 export type PillarValue = z.infer<typeof PillarValueSchema>;
 export type DaYunPhaseValue = z.infer<typeof DaYunPhaseSchema>;
+export type DaYunInfluenceGradientValue = z.infer<typeof DaYunInfluenceGradientSchema>;
 export type DaYunPillarValue = z.infer<typeof DaYunPillarSchema>;
 export type ShenShaValue = z.infer<typeof ShenShaSchema>;
 export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSchema>;

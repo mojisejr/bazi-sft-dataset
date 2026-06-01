@@ -135,6 +135,11 @@ export function buildOpenWebUiIntentPromptPayload(
       "Return only JSON that matches the provided schema.",
       "Set requiresBaziConsult to true only when the user is asking for a Bazi reading, forecast, or interpretation.",
       "Use chit_chat for greetings, small talk, tooling questions, or requests that do not need Bazi analysis.",
+      "Classify follow-up questions by the newest requested Bazi domain so later turns can re-distill the chart dynamically.",
+      "Use wealth for money, income, investment, debt, assets, or business profit questions.",
+      "Use love for romance, partner, marriage, spouse, dating, or relationship compatibility questions.",
+      "Use career for job, role, boss, promotion, study-to-work direction, or professional reputation questions.",
+      "Use health only when the user explicitly asks about body, illness, fatigue, wellbeing, or medical-style life rhythm.",
       "Use general_reading when the user wants a broad Bazi reading without a narrower topic.",
     ].join(" "),
     userPrompt: [
