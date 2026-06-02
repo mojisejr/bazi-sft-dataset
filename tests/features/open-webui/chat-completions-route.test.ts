@@ -275,6 +275,35 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     expect(executionContext.baziConsult).toBeNull();
   });
 
+  test("route-level stream reconstruction emits only reply-safe content when Gemini returns tagged output", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.5,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: '<bazi_logic>{"intent":"chit_chat"}</bazi_logic>\n<reply>ตอบแบบปลอดภัยค่ะ</reply>',
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "สวัสดีอีกครั้ง" }],
+    }));
+
+    const body = await consumeStream(response);
+    const reconstructedContent = body
+      .trim()
+      .split("\n\n")
+      .slice(1, -2)
+      .map((event) => JSON.parse(event.replace("data: ", "")).choices[0]?.delta?.content ?? "")
+      .join("");
+
+    expect(reconstructedContent).toBe("ตอบแบบปลอดภัยค่ะ");
+    expect(body).not.toContain("<bazi_logic>");
+    expect(body).not.toContain("<reply>");
+    expect(body).toContain("[DONE]");
+  });
+
   test("bazi intent with missing fields skips calculation and passes baziMissingFields", async () => {
     routeOpenWebUiIntentMock.mockResolvedValue({
       intent: "love",

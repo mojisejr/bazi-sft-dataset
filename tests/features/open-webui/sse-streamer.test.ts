@@ -4,6 +4,7 @@ import {
   buildDummyAssistantReply,
   createGuardedOpenAiSseStream,
   createOpenAiSseStream,
+  sanitizeAssistantReplyForStreaming,
   splitAssistantReplyIntoChunks,
 } from "@/features/open-webui/sse-streamer";
 
@@ -83,6 +84,29 @@ describe("createOpenAiSseStream", () => {
 });
 
 describe("createGuardedOpenAiSseStream", () => {
+  test("streams only reply-safe content when the assistant reply includes internal tags", async () => {
+    const output = await readStream(createGuardedOpenAiSseStream({
+      completionId: "chatcmpl-tagged",
+      created: 123,
+      model: "gemini-test",
+      assistantReply: Promise.resolve({
+        model: "gemini-test",
+        text: '<bazi_logic>{"trace":"internal"}</bazi_logic>\n<reply>คำตอบสำหรับผู้ใช้ค่ะ</reply>',
+      }),
+      chunkDelayMs: 0,
+    }));
+
+    const events = output.trim().split("\n\n");
+    const reconstructedContent = events
+      .slice(1, -2)
+      .map((event) => JSON.parse(event.replace("data: ", "")).choices[0]?.delta?.content ?? "")
+      .join("");
+
+    expect(reconstructedContent).toBe("คำตอบสำหรับผู้ใช้ค่ะ");
+    expect(output).not.toContain("<bazi_logic>");
+    expect(output).not.toContain("<reply>");
+  });
+
   test("emits role, content deltas, stop, and [DONE] after the assistant reply resolves", async () => {
     const output = await readStream(createGuardedOpenAiSseStream({
       completionId: "chatcmpl-guarded",
@@ -132,6 +156,30 @@ describe("createGuardedOpenAiSseStream", () => {
     );
     expect(events.at(-1)).toBe("data: [DONE]");
   });
+
+  test("does not crash and still closes the stream when tags are malformed", async () => {
+    const output = await readStream(createGuardedOpenAiSseStream({
+      completionId: "chatcmpl-malformed",
+      created: 123,
+      model: "gemini-test",
+      assistantReply: Promise.resolve({
+        model: "gemini-test",
+        text: "<bazi_logic>internal trace\n<reply>คำตอบยังส่งได้ค่ะ",
+      }),
+      chunkDelayMs: 0,
+    }));
+
+    const events = output.trim().split("\n\n");
+    const reconstructedContent = events
+      .slice(1, -2)
+      .map((event) => JSON.parse(event.replace("data: ", "")).choices[0]?.delta?.content ?? "")
+      .join("");
+
+    expect(reconstructedContent).toBe("คำตอบยังส่งได้ค่ะ");
+    expect(output).not.toContain("<bazi_logic>");
+    expect(output).not.toContain("<reply>");
+    expect(events.at(-1)).toBe("data: [DONE]");
+  });
 });
 
 describe("buildDummyAssistantReply", () => {
@@ -150,5 +198,11 @@ describe("splitAssistantReplyIntoChunks", () => {
       "ync SS",
       "E",
     ]);
+  });
+});
+
+describe("sanitizeAssistantReplyForStreaming", () => {
+  test("keeps plain-text assistant replies unchanged", () => {
+    expect(sanitizeAssistantReplyForStreaming("สวัสดีค่ะ")).toBe("สวัสดีค่ะ");
   });
 });

@@ -68,6 +68,21 @@ describe("getOpenWebUiGeminiConfig", () => {
 });
 
 describe("buildOpenWebUiGeminiPromptPayload", () => {
+  test("includes concise-answer policy while preserving the two-block reasoning contract", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [{ role: "user", content: "ช่วยดูภาพรวมให้หน่อย" }],
+      triageMessages: [],
+      latestUserMessage: { role: "user", content: "ช่วยดูภาพรวมให้หน่อย" },
+      now: new Date("2026-06-02T14:00:00.000Z"),
+    });
+
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("## นโยบายความกระชับของคำตอบ");
+    expect(payload.systemInstruction).toContain("2-4 ประโยค");
+    expect(payload.systemInstruction).toContain("5-8 บรรทัด");
+    expect(payload.systemInstruction).toContain("ส่งออกเป็นสองบล็อกตามลำดับนี้เท่านั้น: <bazi_logic> แล้วตามด้วย <reply>");
+    expect(payload.systemInstruction).toContain("ห้ามสลับลำดับ ห้ามละบล็อก และห้ามเพิ่มบล็อกอื่นนอกเหนือจากสองบล็อกนี้");
+  });
+
   test("maps the triage transcript into a minimal Gemini prompt payload", () => {
     const payload = buildOpenWebUiGeminiPromptPayload(readyChatInput);
 
@@ -103,6 +118,45 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("Verified Bazi consult context:");
     expect(payload.userPrompt).toContain("Truth packet:");
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
+  });
+
+  test("preserves consult routing context and truth-packet constraints for bazi consults", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [
+        { role: "user", content: "ผมเกิด 3 ม.ค. 1989 เวลา 08:45 จันทบุรี ช่วยดูการเงิน" },
+        { role: "assistant", content: "<reply>รับข้อมูลแล้วค่ะ</reply>" },
+        { role: "user", content: "สรุปเรื่องการเงินให้หน่อย" },
+      ],
+      triageMessages: [],
+      latestUserMessage: { role: "user", content: "สรุปเรื่องการเงินให้หน่อย" },
+      executionContext: {
+        intentClassification: {
+          intent: "wealth",
+          requiresBaziConsult: true,
+          confidence: 0.94,
+        },
+        baziConsult: {
+          rawInput: {
+            birthDate: "1989-01-03",
+            birthTime: "08:45",
+            gender: "ชาย",
+            province: "จันทบุรี",
+            calendarSystem: "solar",
+            timezone: "Asia/Bangkok",
+          },
+          truthPacket: '{"intent":"wealth","summary":"ใช้ Truth Packet เท่านั้น"}',
+        },
+      },
+      now: new Date("2026-06-02T14:00:00.000Z"),
+    });
+
+    expect(payload.userPrompt).toContain("Intent routing: intent=wealth; requiresBaziConsult=true; confidence=0.94.");
+    expect(payload.userPrompt).toContain("Consult mode: bazi_consult.");
+    expect(payload.userPrompt).toContain("Verified Bazi consult context:");
+    expect(payload.userPrompt).toContain("- Birth date: 1989-01-03");
+    expect(payload.userPrompt).toContain("Truth packet:");
+    expect(payload.userPrompt).toContain('{"intent":"wealth","summary":"ใช้ Truth Packet เท่านั้น"}');
+    expect(payload.userPrompt).toContain("Use only this narrowed chart context for Bazi-specific claims.");
   });
 
   test("constrains Bazi claims to the engine-derived Truth Packet under the mumate doctrine", () => {

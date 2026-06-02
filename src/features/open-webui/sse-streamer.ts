@@ -45,11 +45,77 @@ type GuardedOpenAiSseStreamOptions = {
 
 const DEFAULT_CHUNK_DELAY_MS = 20;
 const DEFAULT_REPLY_CHUNK_SIZE = 12;
+const REPLY_BLOCK_PATTERN = /<reply>([\s\S]*?)<\/reply>/gi;
+const BAZI_LOGIC_OPEN_TAG_PATTERN = /<bazi_logic(?:\s[^>]*)?>/i;
+const BAZI_LOGIC_CLOSE_TAG_PATTERN = /<\/bazi_logic>/i;
+const REPLY_OPEN_TAG_PATTERN = /<reply>/i;
+const DANGLING_REPLY_TAG_PATTERN = /<\/?reply>/gi;
+const DANGLING_BAZI_LOGIC_TAG_PATTERN = /<\/?bazi_logic(?:\s[^>]*)?>/gi;
 
 function waitForChunkDelay(delayMs: number) {
   return new Promise<void>((resolve) => {
     setTimeout(resolve, delayMs);
   });
+}
+
+function extractReplyBlocks(reply: string) {
+  const replyBlocks = Array.from(reply.matchAll(REPLY_BLOCK_PATTERN))
+    .map((match) => match[1]?.trim() ?? "")
+    .filter(Boolean);
+
+  if (replyBlocks.length === 0) {
+    return null;
+  }
+
+  return replyBlocks.join("\n\n");
+}
+
+function stripBaziLogicSegments(reply: string) {
+  let sanitized = reply;
+
+  while (true) {
+    const openMatch = BAZI_LOGIC_OPEN_TAG_PATTERN.exec(sanitized);
+
+    if (!openMatch || openMatch.index === undefined) {
+      return sanitized.replace(DANGLING_BAZI_LOGIC_TAG_PATTERN, "");
+    }
+
+    const startIndex = openMatch.index;
+    const afterOpenTag = sanitized.slice(startIndex + openMatch[0].length);
+    const closeMatch = BAZI_LOGIC_CLOSE_TAG_PATTERN.exec(afterOpenTag);
+
+    if (closeMatch && closeMatch.index !== undefined) {
+      const endIndex = startIndex + openMatch[0].length + closeMatch.index + closeMatch[0].length;
+      sanitized = `${sanitized.slice(0, startIndex)}${sanitized.slice(endIndex)}`;
+      continue;
+    }
+
+    const replyMatch = REPLY_OPEN_TAG_PATTERN.exec(afterOpenTag);
+
+    if (replyMatch && replyMatch.index !== undefined) {
+      const replyIndex = startIndex + openMatch[0].length + replyMatch.index;
+      sanitized = `${sanitized.slice(0, startIndex)}${sanitized.slice(replyIndex)}`;
+      continue;
+    }
+
+    sanitized = sanitized.slice(0, startIndex);
+  }
+}
+
+export function sanitizeAssistantReplyForStreaming(reply: string) {
+  if (!reply) {
+    return "";
+  }
+
+  const extractedReply = extractReplyBlocks(reply);
+
+  if (extractedReply !== null) {
+    return extractedReply;
+  }
+
+  return stripBaziLogicSegments(reply)
+    .replace(DANGLING_REPLY_TAG_PATTERN, "")
+    .trim();
 }
 
 function encodeSseEvent(data: string) {
@@ -251,7 +317,8 @@ export function createGuardedOpenAiSseStream({
       }
 
       const effectiveModel = resolvedReply.model || model;
-      const contentChunks = splitAssistantReplyIntoChunks(resolvedReply.text);
+      const safeReplyText = sanitizeAssistantReplyForStreaming(resolvedReply.text);
+      const contentChunks = splitAssistantReplyIntoChunks(safeReplyText);
 
       await streamAssistantChunks({
         controller,
