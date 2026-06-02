@@ -14,6 +14,19 @@ async function ensureLineChatTables() {
 
   await sql`create extension if not exists pgcrypto;`;
   await sql`
+    create table if not exists bazi_user_profiles (
+      id uuid primary key default gen_random_uuid(),
+      clerk_user_id text not null unique,
+      line_user_id text unique,
+      birth_date text,
+      birth_time text,
+      gender text,
+      is_profile_complete boolean not null default false,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+  `;
+  await sql`
     create table if not exists user_line_mappings (
       clerk_user_id text primary key,
       line_user_id text not null unique,
@@ -23,11 +36,36 @@ async function ensureLineChatTables() {
   await sql`
     create table if not exists bazi_chat_histories (
       id uuid primary key default gen_random_uuid(),
-      line_user_id text not null unique,
+      clerk_user_id text unique,
+      line_user_id text unique,
+      context_summary text,
       messages jsonb not null default '[]'::jsonb,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
+  `;
+  await sql`
+    alter table bazi_chat_histories
+    add column if not exists clerk_user_id text,
+    add column if not exists context_summary text;
+  `;
+  await sql`
+    alter table bazi_chat_histories
+    alter column line_user_id drop not null;
+  `;
+  await sql`
+    do $$
+    begin
+      if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'bazi_chat_histories_clerk_user_id_unique'
+      ) then
+        alter table bazi_chat_histories
+        add constraint bazi_chat_histories_clerk_user_id_unique unique (clerk_user_id);
+      end if;
+    end
+    $$;
   `;
 }
 

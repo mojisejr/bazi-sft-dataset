@@ -36,6 +36,13 @@
       "when": 1779769945972,
       "tag": "0004_phase1_line_memory_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780410385870,
+      "tag": "0005_phase4_clerk_auth_tables",
+      "breakpoints": true
     }
   ]
 }

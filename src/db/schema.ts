@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   integer,
   jsonb,
@@ -304,9 +305,26 @@ export const userLineMappings = pgTable("user_line_mappings", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const baziUserProfiles = pgTable("bazi_user_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clerkUserId: text("clerk_user_id").notNull().unique(),
+  lineUserId: text("line_user_id").unique(),
+  birthDate: text("birth_date"),
+  birthTime: text("birth_time"),
+  gender: text("gender"),
+  isProfileComplete: boolean("is_profile_complete").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
 export const baziChatHistories = pgTable("bazi_chat_histories", {
   id: uuid("id").defaultRandom().primaryKey(),
-  lineUserId: text("line_user_id").notNull().unique(),
+  clerkUserId: text("clerk_user_id").unique(),
+  lineUserId: text("line_user_id").unique(),
+  contextSummary: text("context_summary"),
   messages: jsonb("messages")
     .$type<BaziChatHistoryMessage[]>()
     .notNull()
@@ -333,5 +351,7 @@ export type InsertBaziSixtyJiaziNarrative = typeof baziSixtyJiaziNarratives.$inf
 export type InsertBaziDomainMatrix = typeof baziDomainMatrices.$inferInsert;
 export type InsertUserLineMapping = typeof userLineMappings.$inferInsert;
 export type SelectUserLineMapping = typeof userLineMappings.$inferSelect;
+export type InsertBaziUserProfile = typeof baziUserProfiles.$inferInsert;
+export type SelectBaziUserProfile = typeof baziUserProfiles.$inferSelect;
 export type InsertBaziChatHistory = typeof baziChatHistories.$inferInsert;
 export type SelectBaziChatHistory = typeof baziChatHistories.$inferSelect;
