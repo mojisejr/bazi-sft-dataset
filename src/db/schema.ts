@@ -312,6 +312,7 @@ export const baziUserProfiles = pgTable("bazi_user_profiles", {
   birthDate: text("birth_date"),
   birthTime: text("birth_time"),
   gender: text("gender"),
+  province: text("province"),
   isProfileComplete: boolean("is_profile_complete").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })

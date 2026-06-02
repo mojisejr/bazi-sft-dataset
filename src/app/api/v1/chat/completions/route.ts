@@ -16,6 +16,12 @@ import {
   OpenWebUiIntentRouterError,
   routeOpenWebUiIntent,
 } from "@/features/open-webui/intent-router";
+import {
+  createBaziUserProfileRepository,
+  hasAnyBaziProfileField,
+  mergeBaziProfileFields,
+  toBaziProfileFields,
+} from "@/features/open-webui/profile-service";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
 import {
   createGuardedOpenAiSseStream,
@@ -124,34 +130,50 @@ export async function POST(req: Request) {
   }
 
   const effectiveUserId = result.userId ?? getForwardedUserId(req);
+  const profileRepository = effectiveUserId
+    ? createBaziUserProfileRepository()
+    : null;
 
   console.log("[open-webui] chat completions userId", effectiveUserId);
 
   const assistantReply = (async () => {
     const intentClassification = await routeOpenWebUiIntent(result);
+    const persistedProfile = effectiveUserId && profileRepository
+      ? await profileRepository.findByClerkUserId(effectiveUserId)
+      : null;
+    const existingProfileFields = mergeBaziProfileFields(
+      persistedProfile?.fields,
+      result.baziConsult?.rawInput ? toBaziProfileFields(result.baziConsult.rawInput) : null,
+    );
 
     let extraction: OpenWebUiBaziExtraction | null = null;
     let calculatedState: BaziStatePayload | null = null;
+    let profileFieldsToPersist = hasAnyBaziProfileField(existingProfileFields)
+      ? existingProfileFields
+      : null;
 
     if (intentClassification.requiresBaziConsult) {
       if (result.baziConsult?.calculatedState) {
         calculatedState = result.baziConsult.calculatedState;
       } else {
-        const existing = result.baziConsult?.rawInput
-          ? {
-            birthDate: result.baziConsult.rawInput.birthDate,
-            birthTime: result.baziConsult.rawInput.birthTime,
-            gender: result.baziConsult.rawInput.gender,
-            province: result.baziConsult.rawInput.province,
-          }
-          : undefined;
-
-        extraction = await extractOpenWebUiBaziContext(result, { existing });
+        extraction = await extractOpenWebUiBaziContext(result, {
+          existing: hasAnyBaziProfileField(existingProfileFields)
+            ? existingProfileFields
+            : undefined,
+        });
+        profileFieldsToPersist = extraction.fields;
 
         if (extraction.isComplete && extraction.rawInput) {
           calculatedState = await calculateBaziStateFromRawInput(extraction.rawInput);
         }
       }
+    }
+
+    if (effectiveUserId && profileRepository && profileFieldsToPersist) {
+      await profileRepository.upsertPartialByClerkUserId({
+        clerkUserId: effectiveUserId,
+        fields: profileFieldsToPersist,
+      });
     }
 
     const executionContext = buildOpenWebUiExecutionContext({

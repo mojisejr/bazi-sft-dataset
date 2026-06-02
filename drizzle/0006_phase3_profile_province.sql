@@ -1,0 +1,1 @@
+ALTER TABLE "bazi_user_profiles" ADD COLUMN IF NOT EXISTS "province" text;

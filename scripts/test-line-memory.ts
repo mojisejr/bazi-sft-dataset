@@ -21,10 +21,15 @@ async function ensureLineChatTables() {
       birth_date text,
       birth_time text,
       gender text,
+      province text,
       is_profile_complete boolean not null default false,
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
+  `;
+  await sql`
+    alter table bazi_user_profiles
+    add column if not exists province text;
   `;
   await sql`
     create table if not exists user_line_mappings (

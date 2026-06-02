@@ -50,6 +50,21 @@ vi.mock("@/features/open-webui/gemini-adapter", async () => {
   };
 });
 
+const findByClerkUserIdMock = vi.fn();
+const upsertPartialByClerkUserIdMock = vi.fn();
+vi.mock("@/features/open-webui/profile-service", async () => {
+  const actual = await vi.importActual<typeof import("@/features/open-webui/profile-service")>(
+    "@/features/open-webui/profile-service",
+  );
+  return {
+    ...actual,
+    createBaziUserProfileRepository: vi.fn(() => ({
+      findByClerkUserId: findByClerkUserIdMock,
+      upsertPartialByClerkUserId: upsertPartialByClerkUserIdMock,
+    })),
+  };
+});
+
 const { buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
 
 const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
@@ -169,6 +184,17 @@ function buildJsonRequest(body: unknown) {
   });
 }
 
+function buildJsonRequestWithHeaders(body: unknown, headers: HeadersInit) {
+  return new Request("http://localhost/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(body),
+  });
+}
+
 async function consumeStream(response: Response) {
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
@@ -242,6 +268,10 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     extractOpenWebUiBaziContextMock.mockReset();
     calculateBaziStateFromRawInputMock.mockReset();
     generateGeminiAssistantReplyMock.mockReset();
+    findByClerkUserIdMock.mockReset();
+    upsertPartialByClerkUserIdMock.mockReset();
+    findByClerkUserIdMock.mockResolvedValue(null);
+    upsertPartialByClerkUserIdMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -368,6 +398,158 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     expect(executionContext.baziConsult.rawInput).toEqual(SAMPLE_RAW_INPUT);
     expect(typeof executionContext.baziConsult.truthPacket).toBe("string");
     expect((executionContext.baziConsult.truthPacket as string).length).toBeGreaterThan(0);
+  });
+
+  test("persisted profile fields merge before calculation and persist the merged result", async () => {
+    findByClerkUserIdMock.mockResolvedValue({
+      clerkUserId: "clerk-123",
+      lineUserId: null,
+      fields: {
+        birthDate: null,
+        birthTime: null,
+        gender: "หญิง",
+        province: "กรุงเทพ",
+      },
+      isProfileComplete: false,
+    });
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.97,
+    });
+    extractOpenWebUiBaziContextMock.mockImplementation(async (_input, options) => ({
+      fields: {
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: options?.existing?.gender ?? null,
+        province: options?.existing?.province ?? null,
+      },
+      missingFields: [],
+      isComplete: true,
+      rawInput: {
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: options?.existing?.gender ?? "หญิง",
+        province: options?.existing?.province ?? "กรุงเทพ",
+      },
+    }));
+    calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "พยากรณ์เสร็จค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-123" },
+      messages: [{ role: "user", content: "เกิด 3 ม.ค. 2532 เวลา 08:45" }],
+    }));
+
+    await consumeStream(response);
+
+    expect(extractOpenWebUiBaziContextMock).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        existing: {
+          birthDate: null,
+          birthTime: null,
+          gender: "หญิง",
+          province: "กรุงเทพ",
+        },
+      }),
+    );
+    expect(calculateBaziStateFromRawInputMock).toHaveBeenCalledWith({
+      birthDate: "1989-01-03",
+      birthTime: "08:45",
+      gender: "หญิง",
+      province: "กรุงเทพ",
+    });
+    expect(upsertPartialByClerkUserIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-123",
+      fields: {
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: "หญิง",
+        province: "กรุงเทพ",
+      },
+    });
+  });
+
+  test("partial extraction persists by forwarded user id without crashing the missing-fields path", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.9,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: {
+        birthDate: "1989-01-03",
+        birthTime: null,
+        gender: "ชาย",
+        province: null,
+      },
+      missingFields: ["birthTime", "province"],
+      isComplete: false,
+      rawInput: null,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ขอข้อมูลเพิ่มหน่อยค่ะ",
+    });
+
+    const response = await POST(buildJsonRequestWithHeaders(
+      {
+        messages: [{ role: "user", content: "เกิด 3 ม.ค. 2532 ผู้ชาย" }],
+      },
+      { "x-openwebui-user-id": "forwarded-user-1" },
+    ));
+
+    await consumeStream(response);
+
+    expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
+    expect(upsertPartialByClerkUserIdMock).toHaveBeenCalledWith({
+      clerkUserId: "forwarded-user-1",
+      fields: {
+        birthDate: "1989-01-03",
+        birthTime: null,
+        gender: "ชาย",
+        province: null,
+      },
+    });
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.baziMissingFields).toEqual(["birthTime", "province"]);
+  });
+
+  test("missing effective user id keeps the route non-persistent", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.9,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: {
+        birthDate: "1989-01-03",
+        birthTime: null,
+        gender: null,
+        province: null,
+      },
+      missingFields: ["birthTime", "gender", "province"],
+      isComplete: false,
+      rawInput: null,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ขอข้อมูลเพิ่มหน่อยค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "ดูดวงให้หน่อย เกิดปี 1989" }],
+    }));
+
+    await consumeStream(response);
+
+    expect(findByClerkUserIdMock).not.toHaveBeenCalled();
+    expect(upsertPartialByClerkUserIdMock).not.toHaveBeenCalled();
   });
 
   test("bazi follow-up reuses cached calculatedState and emits a fresh intent-specific truth packet", async () => {

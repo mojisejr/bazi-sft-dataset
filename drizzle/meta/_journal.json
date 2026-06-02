@@ -43,6 +43,13 @@
       "when": 1780410385870,
       "tag": "0005_phase4_clerk_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780412700000,
+      "tag": "0006_phase3_profile_province",
+      "breakpoints": true
     }
   ]
 }
