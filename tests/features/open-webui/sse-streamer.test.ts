@@ -4,6 +4,7 @@ import {
   buildDummyAssistantReply,
   createGuardedOpenAiSseStream,
   createOpenAiSseStream,
+  type FinalizedGuardedAssistantReply,
   sanitizeAssistantReplyForStreaming,
   splitAssistantReplyIntoChunks,
 } from "@/features/open-webui/sse-streamer";
@@ -179,6 +180,35 @@ describe("createGuardedOpenAiSseStream", () => {
     expect(output).not.toContain("<bazi_logic>");
     expect(output).not.toContain("<reply>");
     expect(events.at(-1)).toBe("data: [DONE]");
+  });
+
+  test("reports the finalized visible reply through the side-effect hook after streaming", async () => {
+    const finalizedReplies: FinalizedGuardedAssistantReply[] = [];
+
+    await readStream(createGuardedOpenAiSseStream({
+      completionId: "chatcmpl-finalized",
+      created: 123,
+      model: "gemini-test",
+      assistantReply: Promise.resolve({
+        model: "gemini-test",
+        text: '<bazi_logic>{"trace":"internal"}</bazi_logic>\n<reply>คำตอบสุดท้ายค่ะ</reply>',
+      }),
+      chunkDelayMs: 0,
+      onFinalizedReply: (reply) => {
+        finalizedReplies.push(reply);
+      },
+    }));
+
+    await Promise.resolve();
+
+    expect(finalizedReplies).toEqual([
+      {
+        model: "gemini-test",
+        rawText: '<bazi_logic>{"trace":"internal"}</bazi_logic>\n<reply>คำตอบสุดท้ายค่ะ</reply>',
+        visibleText: "คำตอบสุดท้ายค่ะ",
+        usedFallback: false,
+      },
+    ]);
   });
 });
 

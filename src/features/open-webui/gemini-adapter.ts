@@ -23,6 +23,11 @@ export const MUMATE_PERSONA_INSTRUCTION = [
   "- ห้ามสร้างข้อสรุปเรื่องร่างกาย สุขภาพ การขับถ่าย โรค หรืออาการ จากการขาดธาตุหรือจากความเชื่อทั่วไป เว้นแต่ Truth Packet ระบุไว้ตรงๆ",
   "- ห้ามใช้หรืออ้างคำของสำนักอื่นที่ไม่เกี่ยว เช่น กวนซา, เจีย หงเฮ้ง หรือศัพท์นอกระบบที่ Truth Packet ไม่ได้ให้มา",
   "",
+  "## กฎ provenance ของหลักฐาน",
+  "- ถ้า section ใน Truth Packet มี provenance เป็น compatibility_profile ให้เล่าว่าเป็นสัญญาณหรือแนวโน้มจาก profile ระดับความเข้ากันได้เท่านั้น ห้ามยกระดับเป็นข้อเท็จจริงที่คำนวณตรงจากดวง",
+  "- ถ้า section มี provenance เป็น computed_chart_marker จึงค่อยกล่าวตรงได้ว่าเป็น marker หรือโครงสร้างที่มีอยู่ในดวง แต่ต้องยึดเฉพาะข้อความที่ Truth Packet ให้มา",
+  "- ห้ามนำ label จาก compatibility_profile ไปพูดเหมือนเป็นดาวหรือ marker คำนวณตรง เว้นแต่ Truth Packet มี computed_chart_marker นั้นแยกไว้ชัดเจน",
+  "",
   "## โครงสร้างคำตอบที่ต้องส่งออกทุกครั้ง",
   "- ส่งออกเป็นสองบล็อกตามลำดับนี้เท่านั้น: <bazi_logic> แล้วตามด้วย <reply>",
   "- <bazi_logic> คือ evidence trace สั้นๆ จาก Truth Packet ไม่ใช่รายงานยาว และห้ามใส่ข้ออ้างที่ไม่มีหลักฐาน",
@@ -89,6 +94,10 @@ export type OpenWebUiGeminiExecutionContext = {
     truthPacket: string | null;
   } | null;
   baziMissingFields?: BaziExtractionFieldKey[];
+  episodicMemory?: {
+    contextSummary: string | null;
+    messages: Array<Pick<NormalizedChatMessage, "role" | "content">>;
+  };
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -186,6 +195,7 @@ export function buildOpenWebUiGeminiPromptPayload(
   const intentClassification = input.executionContext?.intentClassification;
   const baziConsult = input.executionContext?.baziConsult;
   const baziMissingFields = input.executionContext?.baziMissingFields ?? [];
+  const episodicMemory = input.executionContext?.episodicMemory;
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -204,6 +214,18 @@ export function buildOpenWebUiGeminiPromptPayload(
     ].filter((section): section is string => section !== null).join("\n\n"),
     userPrompt: [
       formatSystemClockLine(now),
+      episodicMemory?.contextSummary
+        ? [
+          "Same-thread continuity summary:",
+          episodicMemory.contextSummary,
+        ].join("\n")
+        : null,
+      episodicMemory?.messages.length
+        ? [
+          "Same-thread episodic transcript from persisted memory:",
+          episodicMemory.messages.map(formatConversationLine).join("\n\n"),
+        ].join("\n")
+        : null,
       "Continue the conversation from this transcript.",
       conversationTranscript,
       intentClassification
@@ -216,6 +238,7 @@ export function buildOpenWebUiGeminiPromptPayload(
           formatConsultBirthContext(baziConsult.rawInput),
           "Truth packet:",
           baziConsult.truthPacket,
+          "Respect the packet provenance markers: compatibility_profile = profile-level evidence only; computed_chart_marker = direct chart fact only when explicitly present.",
           "Use only this narrowed chart context for Bazi-specific claims. If more detail is needed, say what is missing instead of inventing it.",
         ].join("\n")
         : null,

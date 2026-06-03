@@ -12,6 +12,13 @@ const OpenWebUiTruthPacketIntentSchema = z.enum([
   "general_reading",
 ]);
 
+const OpenWebUiTruthPacketSectionProvenanceSchema = z.enum([
+  "computed_chart_marker",
+  "compatibility_profile",
+  "supporting_context",
+  "timing_context",
+]);
+
 const TruthPacketPillarSchema = PillarValueSchema.pick({
   stem: true,
   branch: true,
@@ -25,6 +32,7 @@ const TruthPacketPillarSchema = PillarValueSchema.pick({
 
 const OpenWebUiTruthPacketSectionSchema = z.object({
   key: z.string().trim().min(1),
+  provenance: OpenWebUiTruthPacketSectionProvenanceSchema,
   value: z.unknown(),
 });
 
@@ -47,6 +55,7 @@ export const OpenWebUiTruthPacketSchema = z.object({
 export type OpenWebUiTruthPacket = z.infer<typeof OpenWebUiTruthPacketSchema>;
 
 type OpenWebUiTruthPacketIntent = z.infer<typeof OpenWebUiTruthPacketIntentSchema>;
+type OpenWebUiTruthPacketSectionProvenance = z.infer<typeof OpenWebUiTruthPacketSectionProvenanceSchema>;
 type OpenWebUiTruthPacketSection = z.infer<typeof OpenWebUiTruthPacketSectionSchema>;
 
 function toTruthPacketPillar(pillar: BaziStatePayload["fourPillars"]["year"]) {
@@ -70,8 +79,12 @@ function buildChartIdentity(payload: BaziStatePayload) {
   };
 }
 
-function createSection(key: string, value: unknown): OpenWebUiTruthPacketSection {
-  return { key, value };
+function createSection(
+  key: string,
+  value: unknown,
+  provenance: OpenWebUiTruthPacketSectionProvenance = "computed_chart_marker",
+): OpenWebUiTruthPacketSection {
+  return { key, provenance, value };
 }
 
 function getCurrentDaYun(payload: BaziStatePayload): DaYunPillarValue | null {
@@ -92,11 +105,11 @@ function buildTimingSections(payload: BaziStatePayload): OpenWebUiTruthPacketSec
       upperStageDisplay: currentDaYun.upperStageDisplay,
       lowerStageDisplay: currentDaYun.lowerStageDisplay,
       influenceGradient: currentDaYun.influenceGradient,
-    }));
+    }, "timing_context"));
   }
 
   if (payload.liuNian) {
-    sections.push(createSection("liuNian", toTruthPacketPillar(payload.liuNian)));
+    sections.push(createSection("liuNian", toTruthPacketPillar(payload.liuNian), "timing_context"));
   }
 
   return sections;
@@ -157,7 +170,11 @@ function buildAnchorSections(
       );
 
       if (loveCompatibilityProfile) {
-        anchors.push(createSection("loveCompatibilityProfile", loveCompatibilityProfile));
+        anchors.push(createSection(
+          "loveCompatibilityProfile",
+          loveCompatibilityProfile,
+          "compatibility_profile",
+        ));
       }
 
       return anchors;
@@ -183,7 +200,11 @@ function buildAnchorSections(
       );
 
       if (workCompatibilityProfile) {
-        anchors.push(createSection("workCompatibilityProfile", workCompatibilityProfile));
+        anchors.push(createSection(
+          "workCompatibilityProfile",
+          workCompatibilityProfile,
+          "compatibility_profile",
+        ));
       }
 
       anchors.push(createSection("elementAnalysis", payload.elementAnalysis));
@@ -242,6 +263,7 @@ function buildSupportSections(
         support.push(createSection(
           "readingOrderSteps",
           payload.baseChartReading.readingOrderSteps.slice(0, 4),
+          "supporting_context",
         ));
       }
       break;

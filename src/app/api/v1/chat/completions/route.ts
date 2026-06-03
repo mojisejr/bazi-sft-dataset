@@ -22,6 +22,10 @@ import {
   mergeBaziProfileFields,
   toBaziProfileFields,
 } from "@/features/open-webui/profile-service";
+import {
+  createBaziOpenWebUiEpisodicRepository,
+  type PersistedOpenWebUiThreadState,
+} from "@/features/open-webui/episodic-service";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
 import {
   createGuardedOpenAiSseStream,
@@ -50,16 +54,24 @@ export type BuildOpenWebUiExecutionContextInput = {
   intentClassification: OpenWebUiIntentClassification;
   extraction?: OpenWebUiBaziExtraction | null;
   calculatedState?: BaziStatePayload | null;
+  episodicMemory?: PersistedOpenWebUiThreadState | null;
 };
 
 export function buildOpenWebUiExecutionContext(
   input: BuildOpenWebUiExecutionContextInput,
 ): OpenWebUiGeminiExecutionContext {
   const { result, intentClassification, extraction, calculatedState } = input;
+  const episodicMemory = input.episodicMemory
+    ? {
+      contextSummary: input.episodicMemory.contextSummary,
+      messages: input.episodicMemory.messages,
+    }
+    : undefined;
 
   if (!intentClassification.requiresBaziConsult) {
     return {
       intentClassification,
+      episodicMemory,
       baziConsult: result.baziConsult
         ? {
           rawInput: result.baziConsult.rawInput,
@@ -72,6 +84,7 @@ export function buildOpenWebUiExecutionContext(
   if (extraction && extraction.isComplete && extraction.rawInput && calculatedState) {
     return {
       intentClassification,
+      episodicMemory,
       baziConsult: {
         rawInput: extraction.rawInput,
         truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, calculatedState),
@@ -82,6 +95,7 @@ export function buildOpenWebUiExecutionContext(
   if (extraction && !extraction.isComplete) {
     return {
       intentClassification,
+      episodicMemory,
       baziConsult: {
         rawInput: null,
         truthPacket: null,
@@ -95,6 +109,7 @@ export function buildOpenWebUiExecutionContext(
   if (result.baziConsult) {
     return {
       intentClassification,
+      episodicMemory,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
         truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState),
@@ -104,6 +119,7 @@ export function buildOpenWebUiExecutionContext(
 
   return {
     intentClassification,
+    episodicMemory,
     baziConsult: null,
   };
 }
@@ -133,13 +149,25 @@ export async function POST(req: Request) {
   const profileRepository = effectiveUserId
     ? createBaziUserProfileRepository()
     : null;
+  const episodicRepository = effectiveUserId && result.threadId
+    ? createBaziOpenWebUiEpisodicRepository()
+    : null;
 
-  console.log("[open-webui] chat completions userId", effectiveUserId);
+  console.log("[open-webui] chat completions context", {
+    userId: effectiveUserId,
+    threadId: result.threadId,
+  });
 
   const assistantReply = (async () => {
     const intentClassification = await routeOpenWebUiIntent(result);
     const persistedProfile = effectiveUserId && profileRepository
       ? await profileRepository.findByClerkUserId(effectiveUserId)
+      : null;
+    const episodicMemory = effectiveUserId && result.threadId && episodicRepository
+      ? await episodicRepository.findByClerkUserIdAndThreadId({
+        clerkUserId: effectiveUserId,
+        threadId: result.threadId,
+      })
       : null;
     const existingProfileFields = mergeBaziProfileFields(
       persistedProfile?.fields,
@@ -181,6 +209,7 @@ export async function POST(req: Request) {
       intentClassification,
       extraction,
       calculatedState,
+      episodicMemory,
     });
 
     return generateGeminiAssistantReply(result, { executionContext });
@@ -207,6 +236,22 @@ export async function POST(req: Request) {
     assistantReply,
     abortSignal: req.signal,
     timeoutMs: 35_000,
+    onFinalizedReply: async (reply) => {
+      if (!effectiveUserId || !result.threadId || !episodicRepository) {
+        return;
+      }
+
+      if (reply.usedFallback || !reply.visibleText.trim()) {
+        return;
+      }
+
+      await episodicRepository.appendFinalizedTurnByClerkUserIdAndThreadId({
+        clerkUserId: effectiveUserId,
+        threadId: result.threadId,
+        userMessage: result.latestUserMessage.content,
+        assistantReply: reply.visibleText,
+      });
+    },
   }), {
     headers: {
       "Cache-Control": "no-cache, no-transform",

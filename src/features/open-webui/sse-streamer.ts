@@ -32,6 +32,13 @@ type GuardedAssistantReply = {
   text: string;
 };
 
+export type FinalizedGuardedAssistantReply = {
+  model: string;
+  rawText: string;
+  visibleText: string;
+  usedFallback: boolean;
+};
+
 type GuardedOpenAiSseStreamOptions = {
   completionId?: string;
   created?: number;
@@ -41,6 +48,7 @@ type GuardedOpenAiSseStreamOptions = {
   timeoutMs?: number;
   abortSignal?: AbortSignal;
   fallbackMessage?: string;
+  onFinalizedReply?: (reply: FinalizedGuardedAssistantReply) => Promise<void> | void;
 };
 
 const DEFAULT_CHUNK_DELAY_MS = 20;
@@ -294,6 +302,7 @@ export function createGuardedOpenAiSseStream({
   timeoutMs = DEFAULT_GEMINI_STREAM_TIMEOUT_MS,
   abortSignal,
   fallbackMessage = DEFAULT_GEMINI_STREAM_ERROR_MESSAGE,
+  onFinalizedReply,
 }: GuardedOpenAiSseStreamOptions): ReadableStream<Uint8Array> {
   return new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -306,10 +315,12 @@ export function createGuardedOpenAiSseStream({
       }))));
 
       let resolvedReply: GuardedAssistantReply;
+      let usedFallback = false;
 
       try {
         resolvedReply = await resolveGuardedAssistantReply(assistantReply, timeoutMs, abortSignal);
       } catch {
+        usedFallback = true;
         resolvedReply = {
           model,
           text: fallbackMessage,
@@ -335,6 +346,17 @@ export function createGuardedOpenAiSseStream({
         model: effectiveModel,
         chunkDelayMs,
       });
+
+      if (onFinalizedReply) {
+        void Promise.resolve(onFinalizedReply({
+          model: effectiveModel,
+          rawText: resolvedReply.text,
+          visibleText: safeReplyText,
+          usedFallback,
+        })).catch((error) => {
+          console.error("[open-webui] finalized reply side effect failed", error);
+        });
+      }
     },
   });
 }

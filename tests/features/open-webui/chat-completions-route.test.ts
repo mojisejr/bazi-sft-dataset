@@ -65,6 +65,15 @@ vi.mock("@/features/open-webui/profile-service", async () => {
   };
 });
 
+const findByClerkUserIdAndThreadIdMock = vi.fn();
+const appendFinalizedTurnByClerkUserIdAndThreadIdMock = vi.fn();
+vi.mock("@/features/open-webui/episodic-service", () => ({
+  createBaziOpenWebUiEpisodicRepository: vi.fn(() => ({
+    findByClerkUserIdAndThreadId: findByClerkUserIdAndThreadIdMock,
+    appendFinalizedTurnByClerkUserIdAndThreadId: appendFinalizedTurnByClerkUserIdAndThreadIdMock,
+  })),
+}));
+
 const { buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
 
 const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
@@ -208,6 +217,15 @@ async function consumeStream(response: Response) {
   return buffer;
 }
 
+function reconstructSseContent(body: string) {
+  return body
+    .trim()
+    .split("\n\n")
+    .slice(1, -2)
+    .map((event) => JSON.parse(event.replace("data: ", "")).choices[0]?.delta?.content ?? "")
+    .join("");
+}
+
 describe("buildOpenWebUiExecutionContext", () => {
   test("attaches a narrowed truth packet when extraction completes", () => {
     const executionContext = buildOpenWebUiExecutionContext({
@@ -270,8 +288,12 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     generateGeminiAssistantReplyMock.mockReset();
     findByClerkUserIdMock.mockReset();
     upsertPartialByClerkUserIdMock.mockReset();
+    findByClerkUserIdAndThreadIdMock.mockReset();
+    appendFinalizedTurnByClerkUserIdAndThreadIdMock.mockReset();
     findByClerkUserIdMock.mockResolvedValue(null);
     upsertPartialByClerkUserIdMock.mockResolvedValue(null);
+    findByClerkUserIdAndThreadIdMock.mockResolvedValue(null);
+    appendFinalizedTurnByClerkUserIdAndThreadIdMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -518,6 +540,137 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
 
     const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
     expect(executionContext.baziMissingFields).toEqual(["birthTime", "province"]);
+  });
+
+  test("thread-scoped episodic memory hydrates only from the matching chat id", async () => {
+    findByClerkUserIdAndThreadIdMock.mockResolvedValue({
+      clerkUserId: "clerk-123",
+      threadId: "chat-thread-1",
+      contextSummary: "ผู้ใช้บอกวันเกิดครบแล้ว เหลือถามต่อเรื่องงาน",
+      messages: [
+        { role: "user", content: "เกิด 3 ม.ค. 2532 เวลา 08:45" },
+        { role: "assistant", content: "ได้ค่ะ จำข้อมูลพื้นฐานไว้แล้ว" },
+      ],
+    });
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.45,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ต่อเนื่องจากแชตเดิมค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-123" },
+      chat_id: "chat-thread-1",
+      messages: [{ role: "user", content: "ถามต่อเรื่องงาน" }],
+    }));
+
+    await consumeStream(response);
+
+    expect(findByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-123",
+      threadId: "chat-thread-1",
+    });
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.episodicMemory).toEqual({
+      contextSummary: "ผู้ใช้บอกวันเกิดครบแล้ว เหลือถามต่อเรื่องงาน",
+      messages: [
+        { role: "user", content: "เกิด 3 ม.ค. 2532 เวลา 08:45" },
+        { role: "assistant", content: "ได้ค่ะ จำข้อมูลพื้นฐานไว้แล้ว" },
+      ],
+    });
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-123",
+      threadId: "chat-thread-1",
+      userMessage: "ถามต่อเรื่องงาน",
+      assistantReply: "ต่อเนื่องจากแชตเดิมค่ะ",
+    });
+  });
+
+  test("missing thread identity fails closed to fresh-thread behavior", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.5,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "เริ่มคุยใหม่ได้ค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-456" },
+      messages: [{ role: "user", content: "ทักอีกครั้ง" }],
+    }));
+
+    await consumeStream(response);
+
+    expect(findByClerkUserIdAndThreadIdMock).not.toHaveBeenCalled();
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).not.toHaveBeenCalled();
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.episodicMemory).toBeUndefined();
+  });
+
+  test("episodic write failure does not break the visible SSE response path", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.45,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ยังตอบผู้ใช้ได้ตามปกติค่ะ",
+    });
+    appendFinalizedTurnByClerkUserIdAndThreadIdMock.mockRejectedValue(
+      new Error("db write failed"),
+    );
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-789" },
+      chat_id: "chat-thread-9",
+      messages: [{ role: "user", content: "ถามต่อค่ะ" }],
+    }));
+
+    const body = await consumeStream(response);
+    const reconstructedContent = reconstructSseContent(body);
+
+    expect(reconstructedContent).toBe("ยังตอบผู้ใช้ได้ตามปกติค่ะ");
+    expect(body).toContain("[DONE]");
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-789",
+      threadId: "chat-thread-9",
+      userMessage: "ถามต่อค่ะ",
+      assistantReply: "ยังตอบผู้ใช้ได้ตามปกติค่ะ",
+    });
+  });
+
+  test("fallback-only stream output is not persisted into episodic memory", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.45,
+    });
+    generateGeminiAssistantReplyMock.mockRejectedValue(
+      new Error("Gemini exploded"),
+    );
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-321" },
+      chat_id: "chat-thread-4",
+      messages: [{ role: "user", content: "ยังอยู่ไหม" }],
+    }));
+
+    const body = await consumeStream(response);
+    const reconstructedContent = reconstructSseContent(body);
+
+    expect(reconstructedContent).toBe("ขออภัยค่ะ ตอนนี้การเชื่อมต่อ Gemini ใช้เวลานานหรือมีปัญหา กรุณาลองใหม่อีกครั้ง");
+    expect(body).toContain("[DONE]");
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).not.toHaveBeenCalled();
   });
 
   test("missing effective user id keeps the route non-persistent", async () => {

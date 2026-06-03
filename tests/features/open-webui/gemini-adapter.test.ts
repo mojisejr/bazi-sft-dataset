@@ -45,7 +45,7 @@ const sampleExecutionContext: OpenWebUiGeminiExecutionContext = {
     },
     truthPacket: JSON.stringify({
       intent: "career",
-      anchors: [{ key: "careerTenGodHighlights" }],
+      anchors: [{ key: "careerTenGodHighlights", provenance: "computed_chart_marker" }],
     }, null, 2),
   },
 };
@@ -118,6 +118,7 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("Verified Bazi consult context:");
     expect(payload.userPrompt).toContain("Truth packet:");
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
+    expect(payload.userPrompt).toContain("Respect the packet provenance markers:");
   });
 
   test("preserves consult routing context and truth-packet constraints for bazi consults", () => {
@@ -156,7 +157,51 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("- Birth date: 1989-01-03");
     expect(payload.userPrompt).toContain("Truth packet:");
     expect(payload.userPrompt).toContain('{"intent":"wealth","summary":"ใช้ Truth Packet เท่านั้น"}');
+    expect(payload.userPrompt).toContain("Respect the packet provenance markers:");
     expect(payload.userPrompt).toContain("Use only this narrowed chart context for Bazi-specific claims.");
+  });
+
+  test("adds provenance framing rules so profile labels stay profile-level evidence", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [
+        { role: "user", content: "ดูเรื่องความรักให้หน่อย" },
+      ],
+      triageMessages: [],
+      latestUserMessage: { role: "user", content: "ดูเรื่องความรักให้หน่อย" },
+      executionContext: {
+        intentClassification: {
+          intent: "love",
+          requiresBaziConsult: true,
+          confidence: 0.93,
+        },
+        baziConsult: {
+          rawInput: sampleExecutionContext.baziConsult!.rawInput,
+          truthPacket: JSON.stringify({
+            intent: "love",
+            anchors: [
+              {
+                key: "loveCompatibilityProfile",
+                provenance: "compatibility_profile",
+                value: {
+                  entries: [{ label: "เทียนเต็ก" }],
+                },
+              },
+              {
+                key: "spousePalace",
+                provenance: "computed_chart_marker",
+                value: { stem: "己", branch: "巳" },
+              },
+            ],
+          }, null, 2),
+        },
+      },
+    });
+
+    expect(payload.systemInstruction).toContain("compatibility_profile");
+    expect(payload.systemInstruction).toContain("computed_chart_marker");
+    expect(payload.systemInstruction).toContain("ห้ามนำ label จาก compatibility_profile ไปพูดเหมือนเป็นดาวหรือ marker คำนวณตรง");
+    expect(payload.userPrompt).toContain('"provenance": "compatibility_profile"');
+    expect(payload.userPrompt).toContain("profile-level evidence only");
   });
 
   test("constrains Bazi claims to the engine-derived Truth Packet under the mumate doctrine", () => {

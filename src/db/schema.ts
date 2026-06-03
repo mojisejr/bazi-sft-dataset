@@ -323,8 +323,9 @@ export const baziUserProfiles = pgTable("bazi_user_profiles", {
 
 export const baziChatHistories = pgTable("bazi_chat_histories", {
   id: uuid("id").defaultRandom().primaryKey(),
-  clerkUserId: text("clerk_user_id").unique(),
+  clerkUserId: text("clerk_user_id"),
   lineUserId: text("line_user_id").unique(),
+  threadId: text("thread_id"),
   contextSummary: text("context_summary"),
   messages: jsonb("messages")
     .$type<BaziChatHistoryMessage[]>()

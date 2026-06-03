@@ -151,14 +151,14 @@ describe("selectOpenWebUiTruthPacket", () => {
     expect(packet).toMatchObject({
       intent: "wealth",
       anchors: [
-        { key: "dayMasterStrengthProfile" },
-        { key: "elementAnalysis" },
-        { key: "financeTenGodHighlights", value: { yearStem: "正财", monthStem: "劫财" } },
+        { key: "dayMasterStrengthProfile", provenance: "computed_chart_marker" },
+        { key: "elementAnalysis", provenance: "computed_chart_marker" },
+        { key: "financeTenGodHighlights", provenance: "computed_chart_marker", value: { yearStem: "正财", monthStem: "劫财" } },
       ],
       support: [],
       timing: [
-        { key: "currentDaYun", value: { influenceGradient: SAMPLE_BAZI_STATE.daYun[0]?.influenceGradient } },
-        { key: "liuNian" },
+        { key: "currentDaYun", provenance: "timing_context", value: { influenceGradient: SAMPLE_BAZI_STATE.daYun[0]?.influenceGradient } },
+        { key: "liuNian", provenance: "timing_context" },
       ],
     });
 
@@ -176,10 +176,10 @@ describe("selectOpenWebUiTruthPacket", () => {
       confidence: 0.91,
     }, SAMPLE_BAZI_STATE);
 
-    expect(packet?.anchors.map((section) => section.key)).toEqual([
-      "spousePalace",
-      "relationshipTenGodHighlights",
-      "loveCompatibilityProfile",
+    expect(packet?.anchors).toMatchObject([
+      { key: "spousePalace", provenance: "computed_chart_marker" },
+      { key: "relationshipTenGodHighlights", provenance: "computed_chart_marker" },
+      { key: "loveCompatibilityProfile", provenance: "compatibility_profile" },
     ]);
     expect(packet?.support.map((section) => section.key)).toEqual([
     ]);

@@ -28,6 +28,10 @@ const OpenWebUiPayloadSchema = z.object({
       id: z.string().trim().min(1).optional(),
     })
     .optional(),
+  chat_id: z.string().trim().min(1).optional(),
+  chatId: z.string().trim().min(1).optional(),
+  conversation_id: z.string().trim().min(1).optional(),
+  conversationId: z.string().trim().min(1).optional(),
   baziConsult: OpenWebUiBaziConsultContextSchema.optional(),
 });
 
@@ -40,6 +44,7 @@ export const ChatRunnerSuccessSchema = z.object({
   status: z.literal("ready"),
   phase: z.literal("phase-2"),
   userId: z.string().trim().min(1).nullable(),
+  threadId: z.string().trim().min(1).nullable(),
   normalizedMessages: z.array(NormalizedChatMessageSchema).min(1),
   triageMessages: z.array(NormalizedChatMessageSchema).min(1),
   latestUserMessage: NormalizedChatMessageSchema.extend({ role: z.literal("user") }),
@@ -68,6 +73,14 @@ export type ChatRunnerSuccess = z.infer<typeof ChatRunnerSuccessSchema>;
 export type ChatRunnerResult = z.infer<typeof ChatRunnerResultSchema>;
 
 const BAZI_LOGIC_BLOCK_PATTERN = /<bazi_logic\b[^>]*>[\s\S]*?<\/bazi_logic>/giu;
+
+function resolveThreadId(payload: z.infer<typeof OpenWebUiPayloadSchema>) {
+  return payload.chat_id
+    ?? payload.chatId
+    ?? payload.conversation_id
+    ?? payload.conversationId
+    ?? null;
+}
 
 export function normalizeMessageContent(
   content: string | Array<{ type: "text"; text: string }>,
@@ -170,6 +183,7 @@ export function runChatPipeline(payload: unknown): ChatRunnerResult {
     status: "ready",
     phase: "phase-2",
     userId: parsedPayload.user?.id ?? null,
+    threadId: resolveThreadId(parsedPayload),
     normalizedMessages,
     triageMessages,
     latestUserMessage,

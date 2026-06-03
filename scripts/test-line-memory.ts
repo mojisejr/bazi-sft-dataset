@@ -41,8 +41,9 @@ async function ensureLineChatTables() {
   await sql`
     create table if not exists bazi_chat_histories (
       id uuid primary key default gen_random_uuid(),
-      clerk_user_id text unique,
+      clerk_user_id text,
       line_user_id text unique,
+      thread_id text,
       context_summary text,
       messages jsonb not null default '[]'::jsonb,
       created_at timestamptz not null default now(),
@@ -52,6 +53,7 @@ async function ensureLineChatTables() {
   await sql`
     alter table bazi_chat_histories
     add column if not exists clerk_user_id text,
+    add column if not exists thread_id text,
     add column if not exists context_summary text;
   `;
   await sql`
@@ -61,13 +63,22 @@ async function ensureLineChatTables() {
   await sql`
     do $$
     begin
-      if not exists (
+      if exists (
         select 1
         from pg_constraint
         where conname = 'bazi_chat_histories_clerk_user_id_unique'
       ) then
         alter table bazi_chat_histories
-        add constraint bazi_chat_histories_clerk_user_id_unique unique (clerk_user_id);
+        drop constraint bazi_chat_histories_clerk_user_id_unique;
+      end if;
+
+      if not exists (
+        select 1
+        from pg_constraint
+        where conname = 'bazi_chat_histories_clerk_user_id_thread_id_unique'
+      ) then
+        alter table bazi_chat_histories
+        add constraint bazi_chat_histories_clerk_user_id_thread_id_unique unique (clerk_user_id, thread_id);
       end if;
     end
     $$;
