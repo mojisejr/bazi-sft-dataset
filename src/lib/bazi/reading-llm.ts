@@ -11,6 +11,13 @@ import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-type
  */
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
+/** โมเดล default ของ OpenCode Zen (OpenAI-compatible) — override ได้ผ่าน input.model */
+const DEFAULT_OPENCODE_MODEL = "claude-sonnet-4-5";
+/** base URL ของ OpenCode Zen — override ได้ด้วย env OPENCODE_BASE_URL */
+const OPENCODE_BASE_URL = process.env.OPENCODE_BASE_URL?.trim() || "https://opencode.ai/zen/v1";
+
+/** ค่ายผู้ให้บริการ LLM ที่รองรับสำหรับเรียบเรียงคำทำนาย */
+export type ReadingLlmProvider = "gemini" | "opencode";
 
 type ReadingTopicPrompt = {
   /** ชื่อบทที่ใช้เปิด */
@@ -111,13 +118,53 @@ export type ReadingTopicLlmInput = {
   engineSignals: string[];
   apiKey?: string;
   model?: string;
+  /** ค่ายผู้ให้บริการ LLM (default gemini) */
+  provider?: ReadingLlmProvider;
 };
 
-type GeminiGenerate = (request: {
+type GenerateRequest = {
   model: string;
   contents: string;
   config: { systemInstruction: string; temperature: number };
-}) => Promise<{ text?: string | null }>;
+};
+
+type GeminiGenerate = (request: GenerateRequest) => Promise<{ text?: string | null }>;
+
+/** เรียก OpenCode Zen (OpenAI-compatible /chat/completions) แล้ว map กลับเป็น { text } */
+async function generateViaOpenCode(
+  request: GenerateRequest,
+  apiKey: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ text?: string | null }> {
+  if (!apiKey) {
+    throw new Error("OpenCode Zen ต้องมี API key");
+  }
+  const response = await fetchImpl(`${OPENCODE_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: request.model,
+      temperature: request.config.temperature,
+      messages: [
+        { role: "system", content: request.config.systemInstruction },
+        { role: "user", content: request.contents },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`OpenCode Zen ตอบกลับผิดพลาด (${response.status}) ${detail}`.trim());
+  }
+
+  const data = (await response.json()) as {
+    choices?: Array<{ message?: { content?: string | null } }>;
+  };
+  return { text: data.choices?.[0]?.message?.content ?? null };
+}
 
 function buildSystemInstruction(prompt: ReadingTopicPrompt, sourceLabel: string | null): string {
   return [
@@ -157,10 +204,15 @@ export async function generateReadingTopicLlm(
     throw new Error(`ไม่มี prompt สำหรับหัวข้อ: ${input.topicId}`);
   }
 
-  const model = input.model?.trim() || DEFAULT_MODEL;
-  const generateContent =
+  const provider: ReadingLlmProvider = input.provider ?? "gemini";
+  const model =
+    input.model?.trim() || (provider === "opencode" ? DEFAULT_OPENCODE_MODEL : DEFAULT_MODEL);
+
+  const generateContent: GeminiGenerate =
     deps.generateContent
-    ?? ((request) => new GoogleGenAI({ apiKey: input.apiKey }).models.generateContent(request));
+    ?? (provider === "opencode"
+      ? (request) => generateViaOpenCode(request, input.apiKey)
+      : (request) => new GoogleGenAI({ apiKey: input.apiKey }).models.generateContent(request));
 
   const response = await generateContent({
     model,

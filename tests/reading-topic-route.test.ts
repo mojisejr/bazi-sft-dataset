@@ -48,6 +48,7 @@ function createRequest(body: unknown) {
 }
 
 describe("POST /api/reading/topic", () => {
+  // timeout เผื่อ: เทสต์นี้ import route graph (symbolic-engine + adapter) ครั้งแรก ซึ่งช้าตอน transform เต็มชุด
   test("engine mode คืน reading จาก calculatedState โดยไม่เรียก LLM", async () => {
     const { POST } = await import("@/app/api/reading/topic/route");
     const response = await POST(
@@ -63,7 +64,7 @@ describe("POST /api/reading/topic", () => {
     expect(body.source).toBe("engine");
     expect(body.reading.table.length).toBeGreaterThan(0);
     expect(body.reading.prose.length).toBeGreaterThan(0);
-  });
+  }, 20000);
 
   test("llm mode ที่ไม่มี apiKey → 400", async () => {
     const { POST } = await import("@/app/api/reading/topic/route");

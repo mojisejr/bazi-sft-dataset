@@ -8,11 +8,11 @@ import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import {
   TopicCard,
-  type RelationshipLineRow,
   type TopicReadingMode,
   type TopicReadingResult,
 } from "@/components/bazi/reading/TopicCard";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 import {
   applyFormFieldChange,
   buildPayload,
@@ -52,17 +52,18 @@ export function ReadingPathWorkspace() {
   const [topicStates, setTopicStates] = useState<Record<string, TopicEntryState>>({});
   // API key รวม (ช่องเดียว) ใช้ทั้งรายบทและรวมทุกบท
   const [apiKey, setApiKey] = useState("");
+  // ค่าย LLM ที่ใช้เรียบเรียง (ช่องเดียวด้านบน) — gemini หรือ opencode (OpenCode Zen)
+  const [provider, setProvider] = useState<ReadingLlmProvider>("gemini");
   // ควบคุม "รวมทุกบท"
   const [allMode, setAllMode] = useState<TopicReadingMode>("engine");
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
-  // บทเสริม: ตารางเส้นขีดความสัมพันธ์ (แสดงท้ายสุดหลังบท 15)
-  const [relationshipLines, setRelationshipLines] = useState<RelationshipLineRow[] | null>(null);
 
   const predictTopic = useCallback(
     async (
       topicId: string,
       mode: TopicReadingMode,
       apiKey: string | null,
+      provider: ReadingLlmProvider,
       input: RawInputValue,
       state: CalculatedStateValue,
     ) => {
@@ -80,6 +81,7 @@ export function ReadingPathWorkspace() {
             mode,
             rawInput: input,
             calculatedState: state,
+            provider,
             ...(apiKey ? { apiKey } : {}),
           }),
         });
@@ -111,28 +113,22 @@ export function ReadingPathWorkspace() {
       if (!rawInput || !calculatedState) {
         return;
       }
-      void predictTopic(topicId, mode, apiKey, rawInput, calculatedState);
+      void predictTopic(topicId, mode, apiKey, provider, rawInput, calculatedState);
     },
-    [rawInput, calculatedState, predictTopic],
+    [rawInput, calculatedState, predictTopic, provider],
   );
 
   const PREDICT_TOPICS = TOPIC_PATH.filter((topic) => topic.kind === "predict");
 
-  // ดึงตารางเส้นขีดความสัมพันธ์ (deterministic, engine) ครั้งเดียวหลังคำนวณ
-  async function loadRelationshipLines(input: RawInputValue, state: CalculatedStateValue) {
-    try {
-      const response = await fetch("/api/reading/topic", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ topicId: "turning_points", mode: "engine", rawInput: input, calculatedState: state }),
-      });
-      const body = (await response.json()) as { relationshipLines?: RelationshipLineRow[] };
-      if (response.ok && body.relationshipLines) {
-        setRelationshipLines(body.relationshipLines);
-      }
-    } catch {
-      // เงียบ — ตารางเสริมไม่ critical
+  // auto-run โหมด engine ทุกบทหลังคำนวณดวง → คำทำนายจาก knownlage ขึ้นเองแต่แรก
+  // (รวมบท turning_points ที่ผลลัพธ์มี relationshipLines มาด้วย → ตารางบทเสริมมาเองหลังบท 15)
+  async function runAllEngine(input: RawInputValue, state: CalculatedStateValue) {
+    setBatchProgress({ done: 0, total: PREDICT_TOPICS.length });
+    for (let index = 0; index < PREDICT_TOPICS.length; index += 1) {
+      await predictTopic(PREDICT_TOPICS[index].id, "engine", null, provider, input, state);
+      setBatchProgress({ done: index + 1, total: PREDICT_TOPICS.length });
     }
+    setBatchProgress(null);
   }
 
   async function handlePredictAll() {
@@ -146,7 +142,7 @@ export function ReadingPathWorkspace() {
     setBatchProgress({ done: 0, total: PREDICT_TOPICS.length });
     for (let index = 0; index < PREDICT_TOPICS.length; index += 1) {
       // ยิงทีละบทตามลำดับ เพื่อคุม cost (โดยเฉพาะโหมด llm) และโชว์ progress
-      await predictTopic(PREDICT_TOPICS[index].id, allMode, key, rawInput, calculatedState);
+      await predictTopic(PREDICT_TOPICS[index].id, allMode, key, provider, rawInput, calculatedState);
       setBatchProgress({ done: index + 1, total: PREDICT_TOPICS.length });
     }
     setBatchProgress(null);
@@ -157,6 +153,46 @@ export function ReadingPathWorkspace() {
     setFormState((current) => applyFormFieldChange(current, name, value));
   }
 
+  const [exporting, setExporting] = useState(false);
+
+  // ดาวน์โหลดรายงาน .docx — ใช้คำอ่านที่ generate แล้วบนหน้าจอ (รวมฉบับ LLM polish ถ้ามี)
+  async function handleExportDocx() {
+    if (!rawInput || !calculatedState || exporting) {
+      return;
+    }
+    setExporting(true);
+    try {
+      const readings: Record<string, string> = {};
+      for (const [topicId, entry] of Object.entries(topicStates)) {
+        const text = entry.result?.humanReading;
+        if (text) {
+          readings[topicId] = text;
+        }
+      }
+      const response = await fetch("/api/reading/export-docx", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ rawInput, calculatedState, readings }),
+      });
+      if (!response.ok) {
+        throw new Error("สร้างไฟล์ .docx ไม่สำเร็จ");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `reading-${rawInput.birthDate}-${rawInput.gender}.docx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // เงียบ — ปุ่มยังกดซ้ำได้
+    } finally {
+      setExporting(false);
+    }
+  }
+
   function handleReset() {
     setFormState(createDefaultFormState());
     setSubmissionState("idle");
@@ -164,8 +200,8 @@ export function ReadingPathWorkspace() {
     setRawInput(null);
     setCalculatedState(null);
     setTopicStates({});
-    setRelationshipLines(null);
     setApiKey("");
+    setProvider("gemini");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -197,8 +233,8 @@ export function ReadingPathWorkspace() {
       setCalculatedState(parsedState);
       setSubmissionState("ready");
       setTopicStates({});
-      setRelationshipLines(null);
-      void loadRelationshipLines(payload, parsedState);
+      // auto-run engine ทุกบททันที → คำทำนาย knownlage + ตารางบทเสริมขึ้นเองแต่แรก
+      void runAllEngine(payload, parsedState);
     } catch (error) {
       setSubmissionState("error");
       setCalcError(normalizeErrorMessage(error));
@@ -206,6 +242,8 @@ export function ReadingPathWorkspace() {
   }
 
   const isReady = Boolean(calculatedState && rawInput);
+  // ตารางบทเสริมมาจากผลบท turning_points ที่ auto-run แล้ว (ไม่ต้อง fetch แยกอีก)
+  const relationshipLines = topicStates["turning_points"]?.result?.relationshipLines ?? null;
 
   return (
     <div className="reading-path">
@@ -235,8 +273,21 @@ export function ReadingPathWorkspace() {
 
       {isReady && (
         <section className="reading-path__batch surface">
+          <label className="field field--compact reading-path__provider">
+            <span>ค่าย LLM (เลือกครั้งเดียว ใช้ร่วมทุกบท)</span>
+            <select
+              value={provider}
+              onChange={(event) => setProvider(event.target.value as ReadingLlmProvider)}
+            >
+              <option value="gemini">Gemini (Google)</option>
+              <option value="opencode">OpenCode Zen</option>
+            </select>
+          </label>
           <label className="field field--compact reading-path__apikey">
-            <span>Gemini API key (ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก)</span>
+            <span>
+              {provider === "opencode" ? "OpenCode Zen" : "Gemini"} API key
+              {" "}(ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก)
+            </span>
             <input
               type="password"
               autoComplete="off"
@@ -276,6 +327,14 @@ export function ReadingPathWorkspace() {
             </ActionButton>
             <ActionButton tone="secondary" type="button" onClick={() => window.print()}>
               พิมพ์รายงาน
+            </ActionButton>
+            <ActionButton
+              tone="secondary"
+              type="button"
+              disabled={exporting}
+              onClick={() => void handleExportDocx()}
+            >
+              {exporting ? "กำลังสร้าง .docx..." : "ดาวน์โหลด .docx"}
             </ActionButton>
           </div>
           {allMode === "llm" && (

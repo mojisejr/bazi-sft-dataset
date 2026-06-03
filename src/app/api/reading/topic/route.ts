@@ -43,6 +43,7 @@ const ReadingTopicRequestSchema = z
     calculatedState: CalculatedStateSchema.optional(),
     apiKey: z.string().trim().min(1).optional(),
     model: z.string().trim().min(1).optional(),
+    provider: z.enum(["gemini", "opencode"]).default("gemini"),
   })
   .refine((value) => value.rawInput || value.calculatedState, {
     message: "ต้องส่ง rawInput หรือ calculatedState อย่างน้อยหนึ่งอย่าง",
@@ -67,7 +68,8 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid request.", "invalid_payload");
   }
 
-  const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model } = parsed.data;
+  const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model, provider } =
+    parsed.data;
 
   if (mode === "llm" && !apiKey) {
     return badRequest("โหมด LLM ต้องมี API key", "missing_api_key");
@@ -120,6 +122,7 @@ export async function POST(req: Request) {
       engineSignals: engineSignalsFor(reading),
       apiKey,
       model,
+      provider,
     });
 
     return Response.json({
