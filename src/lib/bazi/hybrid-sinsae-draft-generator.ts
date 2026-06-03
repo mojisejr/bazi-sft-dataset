@@ -258,7 +258,7 @@ function buildFallbackUserPrompt(input: {
   ].join("\n");
 }
 
-async function generateFallbackDimensionWithGemini(input: {
+export async function generateFallbackDimensionWithGemini(input: {
   rawInput: RawInputValue;
   calculatedState: CalculatedStateValue;
   retrievalPacket: HybridRetrievalPacket;

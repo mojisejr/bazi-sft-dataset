@@ -1,0 +1,271 @@
+/* Stepwise Path Reading — หน้าอ่านดวงทีละหัวข้อ (/reading)
+   Ownership: feature-local ของ reading path เท่านั้น ไม่ใช้ร่วม surface อื่น */
+
+.reading-path {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6, 1.5rem);
+}
+
+/* CTA จากหน้า main ไปหน้าคำทำนาย 15 บท */
+.reading-cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 1rem);
+  flex-wrap: wrap;
+  margin: 0 auto var(--space-4, 1rem);
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+  width: 100%;
+  max-width: 64rem;
+  border: 1px solid var(--line-soft, rgba(120, 120, 140, 0.28));
+  border-radius: var(--radius-lg, 14px);
+  background: var(--surface-inset, rgba(120, 120, 140, 0.08));
+}
+
+.reading-cta__title {
+  margin: 0.1rem 0 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.reading-cta__action {
+  white-space: nowrap;
+}
+
+.reading-path__intro {
+  padding: var(--space-6, 1.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.reading-path__topics {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 1.25rem);
+}
+
+.topic-card {
+  padding: var(--space-5, 1.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.topic-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4, 1rem);
+  flex-wrap: wrap;
+}
+
+.topic-card__head h3 {
+  margin: 0.15rem 0;
+}
+
+.topic-card__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+}
+
+.topic-card__mode {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  border-radius: 999px;
+  background: var(--surface-inset, rgba(120, 120, 140, 0.12));
+}
+
+.mode-pill {
+  border: 0;
+  background: transparent;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--text-muted, inherit);
+}
+
+.mode-pill--active {
+  background: var(--surface-raised, #fff);
+  color: var(--text-strong, inherit);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.topic-card__apikey {
+  min-width: 16rem;
+  flex: 1 1 16rem;
+}
+
+.topic-card__result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.topic-card__tables {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.topic-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.topic-table caption {
+  text-align: left;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--text-muted, inherit);
+}
+
+.topic-table th,
+.topic-table td {
+  border: 1px solid var(--line-soft, rgba(120, 120, 140, 0.28));
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.topic-table th {
+  background: var(--surface-inset, rgba(120, 120, 140, 0.1));
+  font-weight: 600;
+}
+
+.topic-table tr[data-current="true"] td {
+  background: var(--state-ready-soft, rgba(80, 170, 120, 0.14));
+  font-weight: 600;
+}
+
+.topic-card__block h4 {
+  margin: 0 0 0.4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.topic-card__block p {
+  margin: 0 0 0.6rem;
+  line-height: 1.7;
+}
+
+.topic-card__block ul {
+  margin: 0;
+  padding-left: 1.2rem;
+  line-height: 1.6;
+}
+
+.topic-card__source {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--text-muted, inherit);
+}
+
+.topic-card__human {
+  border-left: 3px solid var(--state-ready, #50aa78);
+  padding-left: 0.9rem;
+}
+
+.topic-card__citation {
+  margin: 0.5rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted, inherit);
+  font-style: italic;
+}
+
+.reading-path__batch {
+  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
+}
+
+.reading-path__appendix {
+  padding: var(--space-5, 1.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.reading-path__apikey {
+  max-width: 28rem;
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.topic-card__hint {
+  font-size: 0.8rem;
+  color: var(--state-error, #c0392b);
+  align-self: center;
+}
+
+.reading-path__batch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+}
+
+.topic-card__human p {
+  line-height: 1.8;
+}
+
+.topic-card__audit {
+  font-size: 0.86rem;
+  color: var(--text-muted, inherit);
+}
+
+.topic-card__audit summary {
+  cursor: pointer;
+}
+
+.topic-card__empty {
+  color: var(--text-muted, inherit);
+  font-style: italic;
+}
+
+.topic-card__error {
+  color: var(--state-error, #c0392b);
+  margin: 0;
+}
+
+/* พื้นดวง (ReadingChartFoundation) */
+.reading-foundation {
+  padding: var(--space-5, 1.25rem);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.reading-foundation__identity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4, 1rem);
+}
+
+.reading-foundation__identity-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.5rem 0.9rem;
+  border-radius: var(--radius-md, 10px);
+  background: var(--surface-inset, rgba(120, 120, 140, 0.1));
+  min-width: 12rem;
+}
+
+.reading-foundation__day-master {
+  font-size: 1.15rem;
+}
+
+.reading-foundation__strength-note {
+  margin: 0;
+  line-height: 1.7;
+}
+
+.reading-foundation__dayun-heading {
+  margin-top: var(--space-2, 0.5rem);
+}

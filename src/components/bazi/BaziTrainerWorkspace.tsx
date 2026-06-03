@@ -12,6 +12,7 @@ import {
 
 import { AnnotationWorkspace } from "@/components/bazi/AnnotationWorkspace";
 import { BirthForm } from "@/components/bazi/BirthForm";
+import { ActionLink } from "@/components/bazi/primitives/Action";
 import { CalculatedBoard } from "@/components/bazi/CalculatedBoard";
 import { PendingDraftQueue } from "@/components/bazi/PendingDraftQueue";
 import { SystemHeader } from "@/components/bazi/SystemHeader";
@@ -71,6 +72,9 @@ export function BaziTrainerWorkspace({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceMode>(initialWorkspace);
+  // กัน hydration mismatch: หน้านี้พึ่ง client store (zustand) + Clerk ซึ่ง state อาจไม่ตรง SSR
+  // จึง render เฉพาะหลัง mount (SSR และ client-first-render เป็น shell เดียวกัน → hydrate ตรงเสมอ)
+  const [hasMounted, setHasMounted] = useState(false);
   const [pendingDraftRecords, setPendingDraftRecords] = useState<PendingDraftDatasetRecord[]>([]);
   const [pendingQueueReloadToken, setPendingQueueReloadToken] = useState(0);
   const [pendingQueueState, setPendingQueueState] = useState<
@@ -93,6 +97,10 @@ export function BaziTrainerWorkspace({
     initialCalculatedState,
     initialSubmissionState,
   });
+
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
   const annotationDimensions = useAnnotationStore((state) => state.dimensions);
   const expandedDimensionName = useAnnotationStore(
     (state) => state.expandedDimensionName,
@@ -206,9 +214,23 @@ export function BaziTrainerWorkspace({
     };
   }, [activeWorkspace, campaignLabel, pendingQueueReloadToken]);
 
+  if (!hasMounted) {
+    return <main className="trainer-page" aria-busy="true" />;
+  }
+
   return (
     <main className="trainer-page">
       <SystemHeader statusCopy={workspaceStatusCopy} />
+
+      <section className="reading-cta">
+        <div className="reading-cta__copy">
+          <p className="section-kicker">คำทำนายเชิงลึก</p>
+          <p className="reading-cta__title">อ่านดวงแบบทีละบท 15 หัวข้อ</p>
+        </div>
+        <ActionLink href="/reading" tone="primary" className="reading-cta__action">
+          ไปหน้าคำทำนาย 15 บท →
+        </ActionLink>
+      </section>
 
       <section className="workspace-switch-shell">
         <div className="workspace-switch" role="tablist" aria-label="workspace mode switch">
