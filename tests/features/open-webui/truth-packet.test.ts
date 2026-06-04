@@ -6,6 +6,7 @@ import {
   selectOpenWebUiTruthPacket,
   stringifyOpenWebUiTruthPacket,
 } from "@/features/open-webui/truth-packet";
+import { BAZI_ATOMIC_QUESTION_MATRIX_VERSION } from "@/lib/bazi/atomic-question-matrix";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
 import { createTestKnowledgeRepository } from "../../helpers/bazi-test-knowledge-repository";
@@ -194,7 +195,11 @@ describe("selectOpenWebUiTruthPacket", () => {
     }, SAMPLE_BAZI_STATE);
 
     expect(packet).toMatchObject({
-      intent: "wealth",
+      questionContext: {
+        canonicalBucket: "wealth",
+        selectionMode: "bucket_fallback",
+        matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+      },
       anchors: [
         { key: "dayMasterStrengthProfile", provenance: "computed_chart_marker" },
         { key: "elementAnalysis", provenance: "computed_chart_marker" },
@@ -244,6 +249,11 @@ describe("selectOpenWebUiTruthPacket", () => {
       confidence: 0.91,
     }, SAMPLE_BAZI_STATE);
 
+    expect(packet?.questionContext).toMatchObject({
+      canonicalBucket: "relationship",
+      selectionMode: "bucket_fallback",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
     expect(packet?.anchors).toMatchObject([
       { key: "spousePalace", provenance: "computed_chart_marker" },
       { key: "relationshipTenGodHighlights", provenance: "computed_chart_marker" },
@@ -283,6 +293,30 @@ describe("selectOpenWebUiTruthPacket", () => {
     expect(careerPacketText).not.toContain("spousePalace");
     expect(healthPacketText).not.toContain("relationshipTenGodHighlights");
     expect(healthPacketText).not.toContain("financeTenGodHighlights");
+  });
+
+  test("maps shell intents onto canonical doctrine packet buckets", () => {
+    const careerPacket = selectOpenWebUiTruthPacket({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.88,
+    }, SAMPLE_BAZI_STATE);
+    const generalReadingPacket = selectOpenWebUiTruthPacket({
+      intent: "general_reading",
+      requiresBaziConsult: true,
+      confidence: 0.9,
+    }, SAMPLE_BAZI_STATE);
+
+    expect(careerPacket?.questionContext).toMatchObject({
+      canonicalBucket: "work",
+      selectionMode: "bucket_fallback",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
+    expect(generalReadingPacket?.questionContext).toMatchObject({
+      canonicalBucket: "foundation",
+      selectionMode: "bucket_fallback",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
   });
 
   test("returns null when the routed intent does not require Bazi consultation", () => {

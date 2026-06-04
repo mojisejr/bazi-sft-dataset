@@ -15,6 +15,7 @@ export {
   BaziAtomicSupportStatusSchema,
 } from "./atomic-question-matrix/schemas";
 export type {
+  BaziAtomicCanonicalBucket,
   BaziAtomicQuestionMatrix,
   BaziAtomicQuestionMatrixEntry,
 } from "./atomic-question-matrix/types";
