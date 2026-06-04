@@ -64,6 +64,23 @@ function pillarTable(calculatedState: CalculatedStateValue): Table {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, stemRow, branchRow] });
 }
 
+function daYunTable(calculatedState: CalculatedStateValue): Table | null {
+  const pillars = [...calculatedState.daYun].sort((a, b) => a.startAge - b.startAge);
+  if (pillars.length === 0) {
+    return null;
+  }
+  const header = new TableRow({
+    children: [cell("ช่วงอายุ", { bold: true, width: 40 }), cell("เสาวัยจร (ราศีบน/ล่าง)", { bold: true, width: 60 })],
+  });
+  const body = pillars.map(
+    (pillar) =>
+      new TableRow({
+        children: [cell(`${pillar.startAge}-${pillar.endAge} ปี`), cell(`${pillar.stem}${pillar.branch}`)],
+      }),
+  );
+  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
+}
+
 function relationshipTable(calculatedState: CalculatedStateValue): Table {
   const rows = buildRelationshipLinesMapping(calculatedState);
   const header = new TableRow({
@@ -151,6 +168,15 @@ export function buildReadingDocument(
           }),
           textParagraph(`ดิถีประจำตัว: ${dm}${strength ? ` (${strength})` : ""}`, { bold: true }),
           pillarTable(calculatedState),
+          ...(daYunTable(calculatedState)
+            ? [
+                new Paragraph({
+                  spacing: { before: 240, after: 80 },
+                  children: [new TextRun({ text: "ตารางวัยจร (ถนนชีวิต ช่วงละ 10 ปี)", bold: true, size: 24, font: FONT })],
+                }),
+                daYunTable(calculatedState) as Table,
+              ]
+            : []),
           // ── 15 บท ──
           new Paragraph({
             heading: HeadingLevel.HEADING_1,

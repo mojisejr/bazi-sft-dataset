@@ -5,6 +5,13 @@ import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from 
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import {
+  CHAPTER_INTRO_TH,
+  CHAPTER_SUMMARY_TH,
+  ELEMENT_DEITY_BENEFIT_TH,
+  ELEMENT_SYMBOL_TH,
+  composeParagraphs,
+} from "@/lib/bazi/reading-phrases";
+import {
   BRANCH_TO_ELEMENT,
   CONTROLS,
   ELEMENT_LABELS_TH,
@@ -186,6 +193,7 @@ function resolveUsefulElements(calculatedState: CalculatedStateValue): ThaiEleme
     calculatedState.elementAnalysis.dominantElements.includes(element) ||
     resolveElementStrengthLabel(calculatedState, element) === "strong";
   const useOfficerControl = isExcess(officer) && !isExcess(output);
+  // ดิถีอ่อนมาตรฐาน: ส่งเสริม (印) + คู่ธาตุ (比劫); ถ้าดาวอำนาจล้น → ใช้ถ่ายเทคุมอำนาจ (食傷制杀)
   const weakUseful: SupportedElementValue[] = useOfficerControl ? [resource, output] : [resource, same];
 
   // ดิถีอ่อน/อ่อนมาก ต้องการ 印 (ธาตุส่งเสริม) เป็นหลัก + 比劫 (คู่ธาตุ) เสริม
@@ -405,10 +413,9 @@ function buildDayMasterImagery(calculatedState: CalculatedStateValue): string {
     text += ` ท่ามกลาง${ELEMENT_IMAGERY_TH[surrounding]}ที่โดดเด่นอยู่รายรอบ`;
   }
 
-  // สมดุลตามกำลังดิถี — ถ้าธาตุดิถีเองล้นเกิน ให้ถือว่าแรงเกินแม้ band จะระบุสมดุล
-  const dmExcess = resolveExcessElements(calculatedState).includes(elementTh);
-  const weakLike = (band === "very-weak" || band === "weak") && !dmExcess;
-  const strongLike = band === "very-strong" || band === "strong" || dmExcess;
+  // สมดุลตามกำลังดิถี — ยึด band รวม (ให้สอดคล้องกับย่อหน้าคำแนะนำและคำว่าดิถีแข็ง/อ่อน)
+  const weakLike = band === "very-weak" || band === "weak";
+  const strongLike = band === "very-strong" || band === "strong";
   if (weakLike) {
     text += " ทว่ากำลังของดิถียังไม่มากนัก จึงต้องการแรงหนุนมาเสริมให้แข็งแกร่ง";
   } else if (strongLike) {
@@ -459,7 +466,14 @@ function buildHealthReading(calculatedState: CalculatedStateValue): string | nul
   if (segments.length === 0) {
     return null;
   }
-  // (3) วิธีแก้ = เสริมธาตุที่ดวงต้องการ (useful god) ตามตำรา
+  // (3) ช่วงอายุที่ควรระวังสุขภาพ = วัยจรที่ 12 เชี่ยงแซตก (เจ๊าะ/ซี่/แป่/ซวย/หมอ)
+  const cautionAges = buildDaYunPhaseInfos(calculatedState)
+    .filter((phase) => phase.tier === "falling")
+    .map((phase) => `อายุ ${phase.ageRange} (${phase.symbol} → ${phase.qi})`);
+  if (cautionAges.length > 0) {
+    segments.push(`ช่วงอายุที่ควรใส่ใจสุขภาพเป็นพิเศษ (วัยจรสภาวะอ่อนแรง/ถดถอย): ${cautionAges.join(", ")}`);
+  }
+  // (4) วิธีแก้ = เสริมธาตุที่ดวงต้องการ (useful god) ตามตำรา
   const useful = resolveUsefulElements(calculatedState);
   if (useful.length > 0) {
     segments.push(`แนวทางดูแล: ปรับสมดุลด้วยธาตุที่ดวงต้องการ (${useful.join(" / ")}) เพื่อพยุงดิถีและลดผลของธาตุที่ล้นเกิน`);
@@ -509,34 +523,52 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     segments.push(`โชคลาภปรากฏที่ ${[...sources].join(" และ ")}`);
   }
 
-  // (3) ดิถีอ่อน → ต้องพยายามมากกว่าจะคว้าโอกาสเป็นผล + โฟกัสสิ่งที่ถนัดที่สุด
+  // (3) ลักษณะลาภผล — ดิถีแข็งคว้าเงินก้อน, ดิถีอ่อนเด่นรายได้สะสมต่อเนื่อง (passive)
+  segments.push(
+    dmWeak
+      ? "ลักษณะลาภผล: เด่นเรื่องรายได้แบบสะสมต่อเนื่อง (passive income) เช่น ค่าเช่า เงินเดือน ค่าคอมมิชชัน หรือรายได้ประจำหลายทางรวมกัน เริ่มทีละน้อยแล้วทบเป็นก้อนใหญ่ มากกว่าการเสี่ยงเงินก้อนครั้งเดียว"
+      : "ลักษณะลาภผล: เหมาะกับการคว้าเงินก้อนจากการลงทุนหรือธุรกิจที่ลงมือทำเอง กล้าตัดสินใจในจังหวะที่มั่นใจ",
+  );
+
+  // (4) ดิถีอ่อน → ต้องพยายามมากกว่าจะคว้าโอกาสเป็นผล + โฟกัสสิ่งที่ถนัดที่สุด
   if (dmWeak) {
     segments.push(
       "แต่เพราะดิถีอ่อน จึงต้องใช้แรงกาย แรงใจ และความพยายามมากกว่าคนอื่นในการเปลี่ยนโอกาสให้กลายเป็นผลลัพธ์จริง — เงื่อนไขสำคัญคือต้องโฟกัสสิ่งที่ตนถนัดและเชี่ยวชาญที่สุดเพียงทางเดียว ไม่ทำหลายอย่างพร้อมกัน",
     );
   }
 
-  // (4) แนบหลักการตามตำรา (wealth.txt) ถ้ามี
+  // (5) ช่วงวัยแห่งโชคลาภ = ช่วงที่ดาวลาภ (财) เข้าวัยจร — วัยเด็ก (<20) ตีเป็นเรื่องการเรียน/สอบ
+  const wealthTiming = findTimingByElement(
+    calculatedState,
+    wealth,
+    {
+      rising: "ช่วงเปิดโชคลาภ การเงินไหลเข้าดี เหมาะขยายงานหรือลงทุนตามกำลัง",
+      transitional: "โชคลาภเข้ามาแต่ผันผวน ควรเก็บออมและคุมรายจ่าย",
+      falling: "ระวังการเงินรั่วไหล ไม่ควรเสี่ยงลงทุนก้อนใหญ่",
+    },
+    {
+      youth: {
+        rising: "วัยเรียนช่วงรุ่ง มีโอกาสสอบติดโรงเรียน/มหาวิทยาลัยชั้นนำ หรือได้ทุนการศึกษา",
+        transitional: "การเรียนมีจังหวะขึ้นลง ควรตั้งใจสม่ำเสมอเพื่อผลสอบที่ดี",
+        falling: "ระวังเรื่องการเรียน/การสอบ อาจสอบไม่ติดหรือผลไม่เป็นไปตามหวัง ต้องทุ่มเทเป็นพิเศษ",
+      },
+    },
+  );
+  if (wealthTiming.length > 0) {
+    segments.push(`ช่วงวัยแห่งโชคลาภ (ดาวลาภธาตุ${wealthLabel} เข้าวัยจร):\n${wealthTiming.join("\n")}`);
+  }
+
+  // ช่องทางทำเงินจากดาวม้าเหิน (เอี้ยม่า) ถ้ามี
+  if (hasTravelingHorse(calculatedState)) {
+    segments.push(TRAVELING_HORSE_CHANNEL_TH);
+  }
+
+  // (6) แนบหลักการตามตำรา (wealth.txt) ถ้ามี
   const bookLine = parseWealthByBand()?.get(band);
   if (bookLine) {
     segments.push(`หลักการตามตำรา: ${bookLine}`);
   }
 
-  return segments.length > 0 ? segments.join("\n\n") : null;
-}
-
-function buildUsefulElementReading(
-  calculatedState: CalculatedStateValue,
-  section: Map<ThaiElement, string[]> | Map<ThaiElement, string> | null,
-  format: (element: ThaiElement, value: string[] | string) => string,
-): string | null {
-  if (!section) {
-    return null;
-  }
-  const useful = resolveUsefulElements(calculatedState);
-  const segments = useful
-    .map((element) => (section.has(element) ? format(element, section.get(element)!) : null))
-    .filter((segment): segment is string => Boolean(segment));
   return segments.length > 0 ? segments.join("\n\n") : null;
 }
 
@@ -640,16 +672,42 @@ function findCurrentDaYunPhase(calculatedState: CalculatedStateValue): CurrentPh
 }
 
 function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | null {
-  const phase = findCurrentDaYunPhase(calculatedState);
-  if (!phase) {
+  // เจาะลึกช่วงปัจจุบัน + ราว 20 ปีข้างหน้า (4 ช่วง 5 ปี) — ใช้ deepNote จากตารางวัยจรที่คิดครบ 3 มิติแล้ว
+  const rows = buildRelationshipLinesMapping(calculatedState);
+  if (rows.length === 0) {
     return null;
   }
-  const band = resolveStrengthBand(calculatedState);
-  const role = resolveRelationRole(dayMasterElement(calculatedState), phase.element);
-  // คำทำนายช่วงปัจจุบัน = บทบาทธาตุ × 12 เชี่ยงแซ × ดิถีแข็ง-อ่อน × วัย (ตามตำรา ต้องคิดควบคู่)
-  const startAge = Number.parseInt(phase.ageRange, 10);
-  const verdict = buildLuckPhaseVerdict(band, role, phase.qi, Number.isNaN(startAge) ? undefined : startAge);
-  return `ช่วงวัยจรปัจจุบัน ${phase.ageRange} (${phase.symbol} ธาตุ${elementLabel(phase.element)} เป็น${role} → ${phase.qi || "—"}): ${verdict}`;
+  const current = findCurrentDaYunPhase(calculatedState);
+  let startIndex = current ? rows.findIndex((row) => row.ageRange === current.ageRange) : 0;
+  if (startIndex < 0) {
+    startIndex = 0;
+  }
+  const window = rows.slice(startIndex, startIndex + 4);
+
+  const lead = current
+    ? `วิเคราะห์จังหวะชีวิตเจาะลึกตั้งแต่ช่วงปัจจุบัน (อายุ ${current.ageRange}) ต่อเนื่องไปอีกราว 20 ปีข้างหน้า โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี`
+    : "วิเคราะห์จังหวะชีวิตตามวัยจรช่วงละ 5 ปี โดยดูบทบาทธาตุควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี";
+
+  const lines = window.map((row) => {
+    const tag = current && row.ageRange === current.ageRange ? " ◆ ช่วงปัจจุบัน" : "";
+    return `อายุ ${row.ageRange}${tag} (${row.symbol} — ${row.relationLine}): ${row.deepNote}`;
+  });
+
+  // ปีจรปัจจุบัน (liu nian) — เน้นจังหวะของ "ปีนี้" ทับบนภาพวัยจร 10 ปี
+  const liuNian = calculatedState.liuNian;
+  let liuNianLine = "";
+  if (liuNian) {
+    const band = resolveStrengthBand(calculatedState);
+    const dm = dayMasterElement(calculatedState);
+    const lnElement = stemElement(liuNian.stem);
+    const lnRole = resolveRelationRole(dm, lnElement);
+    const lnQi = ((calculatedState.twelveQi as Record<string, string>).currentLiuNianBranch ?? "").trim();
+    const curAge = current ? Number.parseInt(current.ageRange, 10) : undefined;
+    const lnVerdict = buildLuckPhaseVerdict(band, lnRole, lnQi, Number.isNaN(curAge as number) ? undefined : curAge);
+    liuNianLine = `ปีจรปัจจุบัน (${liuNian.stem}${liuNian.branch} ธาตุ${elementLabel(lnElement)} เป็น${lnRole}${lnQi ? ` → ${lnQi}` : ""}): ${lnVerdict}`;
+  }
+
+  return [lead, ...lines, liuNianLine].filter(Boolean).join("\n\n");
 }
 
 // ───────── Rev6: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดวัยจร (Relationship Lines Mapping, อ้างอิง M.docx บทเสริม) ─────────
@@ -732,17 +790,17 @@ function resolveRoleEffect(band: StrengthBand, role: RelationRole): "support" | 
 // ผลลัพธ์ดี-ร้าย = (ตัวช่วย/ตัวดูดพลัง/สมดุล) × (รุ่ง/ผันผวน/ถดถอย)
 const VERDICT_MATRIX: Record<"support" | "drain" | "neutral", Record<QiTier, string>> = {
   support: {
-    rising: "เป็นช่วงได้รับการสนับสนุนเต็มที่ ดิถีมีกำลัง ควรรุกและคว้าโอกาสให้สุด",
+    rising: "[ยุคทอง] เป็นช่วงได้รับการสนับสนุนเต็มที่ ดิถีมีกำลัง ควรรุกและคว้าโอกาสให้สุด",
     transitional: "ตัวช่วยมีเข้ามาแต่ยังไม่นิ่ง ต้องประคองและเลือกที่พึ่งให้ดี",
     falling: "[เฝ้าระวัง] ตัวช่วยอ่อนแรงหรือกลายเป็นภาระ ต้องพึ่งตัวเองและตั้งรับ",
   },
   drain: {
-    rising: "มีโอกาสและผลงานเด่นชัด แต่ดึงพลังดิถีให้เหนื่อยล้า ควรหาคนช่วยแบ่งเบา",
+    rising: "[โอกาสมาพร้อมภาระ] มีโอกาสและผลงานเด่นชัด แต่ดึงพลังดิถีให้เหนื่อยล้า ควรหาคนช่วยแบ่งเบา",
     transitional: "เหนื่อยใจกับความผันผวน คุมผลลัพธ์ให้เป็นชิ้นเป็นอันได้ยาก",
     falling: "[เฝ้าระวัง] ทั้งเสียพลังและไม่เกิดผล เสี่ยงสุขภาพ/การเงินสะดุด ควรชะลอ",
   },
   neutral: {
-    rising: "จังหวะดี เดินหน้าตามแผนได้ ผลตอบแทนสมเหตุผล",
+    rising: "[จังหวะดี] เดินหน้าตามแผนได้ ผลตอบแทนสมเหตุผล",
     transitional: "ผันผวนปานกลาง ควรยืดหยุ่นตามสถานการณ์",
     falling: "ชะลอตัว ควรระมัดระวังและรักษาฐานเดิมเอาไว้",
   },
@@ -763,48 +821,108 @@ function buildLuckPhaseVerdict(
   return `${inflow} เข้ามาในสภาวะ${manifest} (${qi || "—"}) — ${verdict}`;
 }
 
+/** ข้อมูลโครงสร้างของแต่ละเฟสวัยจร (5 ปี) — ใช้ร่วมกันทั้งตารางวัยจร/บท12/ช่วงคู่/ช่วงหุ้นส่วน */
+type DaYunPhaseInfo = {
+  startAge: number;
+  ageRange: string;
+  symbol: string;
+  element: SupportedElementValue;
+  role: RelationRole;
+  qi: string;
+  tier: QiTier;
+};
+
+function buildDaYunPhaseInfos(calculatedState: CalculatedStateValue): DaYunPhaseInfo[] {
+  const dm = dayMasterElement(calculatedState);
+  const pillars = [...calculatedState.daYun].sort((a, b) => a.startAge - b.startAge);
+  const infos: DaYunPhaseInfo[] = [];
+  pillars.forEach((pillar, index) => {
+    const base = 5 + index * 10;
+    const raw: Array<{ symbol: string; element: SupportedElementValue; startAge: number; ageRange: string; qi: string }> = [];
+    if (pillar.upperPhase) {
+      raw.push({
+        symbol: pillar.upperPhase.symbol,
+        element: stemElement(pillar.upperPhase.symbol),
+        startAge: base,
+        ageRange: `${base}-${base + 4} ปี`,
+        qi: (pillar.upperPhase.twelveQiDisplay ?? "").trim(),
+      });
+    }
+    if (pillar.lowerPhase) {
+      raw.push({
+        symbol: pillar.lowerPhase.symbol,
+        element: branchElement(pillar.lowerPhase.symbol),
+        startAge: base + 5,
+        ageRange: `${base + 5}-${base + 9} ปี`,
+        qi: (pillar.lowerPhase.twelveQiDisplay ?? "").trim(),
+      });
+    }
+    for (const phase of raw) {
+      infos.push({
+        ...phase,
+        role: resolveRelationRole(dm, phase.element),
+        tier: classifyQiTier(phase.qi),
+      });
+    }
+  });
+  return infos;
+}
+
 /** ทุกเฟสวัยจร (5 ปี, normalize 5-9) → เส้นขีด + คำอธิบายดี-ร้าย */
 export function buildRelationshipLinesMapping(
   calculatedState: CalculatedStateValue,
 ): RelationshipLineRow[] {
   const band = resolveStrengthBand(calculatedState);
-  const dm = dayMasterElement(calculatedState);
-  const pillars = [...calculatedState.daYun].sort((a, b) => a.startAge - b.startAge);
+  return buildDaYunPhaseInfos(calculatedState).map((phase) => ({
+    ageRange: phase.ageRange,
+    symbol: phase.symbol,
+    relationLine: `${RELATION_ROLE_SHORT[phase.role]}${phase.qi ? ` → ${phase.qi}` : ""}`,
+    deepNote: buildLuckPhaseVerdict(band, phase.role, phase.qi, phase.startAge),
+  }));
+}
 
-  const rows: RelationshipLineRow[] = [];
-  pillars.forEach((pillar, index) => {
-    const base = 5 + index * 10;
-    const phases: Array<{ symbol: string; element: SupportedElementValue; startAge: number; age: string; qi: string }> = [];
-    if (pillar.upperPhase) {
-      phases.push({
-        symbol: pillar.upperPhase.symbol,
-        element: stemElement(pillar.upperPhase.symbol),
-        startAge: base,
-        age: `${base}-${base + 4} ปี`,
-        qi: (pillar.upperPhase.twelveQiDisplay ?? "").trim(),
-      });
-    }
-    if (pillar.lowerPhase) {
-      phases.push({
-        symbol: pillar.lowerPhase.symbol,
-        element: branchElement(pillar.lowerPhase.symbol),
-        startAge: base + 5,
-        age: `${base + 5}-${base + 9} ปี`,
-        qi: (pillar.lowerPhase.twelveQiDisplay ?? "").trim(),
-      });
-    }
-    for (const phase of phases) {
-      const role = resolveRelationRole(dm, phase.element);
-      // คำอธิบายดี-ร้าย = บทบาทธาตุ × 12 เชี่ยงแซ × ดิถีแข็ง-อ่อน × วัย (ตามตำรา ต้องคิดควบคู่กันเสมอ)
-      rows.push({
-        ageRange: phase.age,
-        symbol: phase.symbol,
-        relationLine: `${RELATION_ROLE_SHORT[role]}${phase.qi ? ` → ${phase.qi}` : ""}`,
-        deepNote: buildLuckPhaseVerdict(band, role, phase.qi, phase.startAge),
-      });
-    }
-  });
-  return rows;
+type TimingLabels = { rising: string; falling: string; transitional: string };
+type TimingOptions = {
+  /** ข้ามช่วงอายุที่น้อยกว่าค่านี้ (เช่น เรื่องคู่ ไม่ดูวัยเด็ก < 20) */
+  minAge?: number;
+  /** ถ้อยคำสำหรับวัยเรียน (< 20 ปี) — ใช้ตีความเป็นเรื่องการเรียน/สอบแทน */
+  youth?: TimingLabels;
+};
+
+function formatTimingLine(
+  phase: DaYunPhaseInfo,
+  labels: TimingLabels,
+  opts: TimingOptions,
+): string {
+  const useYouth = opts.youth && phase.startAge < SCHOOL_AGE_MAX;
+  const text = useYouth ? opts.youth![phase.tier] : labels[phase.tier];
+  return `อายุ ${phase.ageRange} (${phase.symbol} → ${phase.qi || "—"}): ${text}`;
+}
+
+/** ช่วงอายุที่ "ธาตุเป้าหมาย" (เช่น ดาวคู่ครอง/ดาวลาภ) เข้ามาในวัยจร พร้อมคุณภาพช่วง */
+function findTimingByElement(
+  calculatedState: CalculatedStateValue,
+  targetElement: SupportedElementValue,
+  labels: TimingLabels,
+  opts: TimingOptions = {},
+): string[] {
+  return buildDaYunPhaseInfos(calculatedState)
+    .filter((phase) => phase.element === targetElement)
+    .filter((phase) => opts.minAge == null || phase.startAge >= opts.minAge)
+    .map((phase) => formatTimingLine(phase, labels, opts));
+}
+
+/** ช่วงอายุที่ "บทบาทธาตุเป้าหมาย" (เช่น คู่ธาตุ=หุ้นส่วน) เด่นในวัยจร */
+function findTimingByRole(
+  calculatedState: CalculatedStateValue,
+  targetRole: RelationRole,
+  labels: TimingLabels,
+  opts: TimingOptions = {},
+): string[] {
+  return buildDaYunPhaseInfos(calculatedState)
+    .filter((phase) => phase.role === targetRole)
+    .filter((phase) => opts.minAge == null || phase.startAge >= opts.minAge)
+    .map((phase) => formatTimingLine(phase, labels, opts));
 }
 
 // ───────── Batch 3: ความรัก (love-family.txt) + หุ้นส่วน/ธุรกิจ (career-business.txt) ─────────
@@ -953,7 +1071,120 @@ function buildLoveReading(
         : "ขึ้นกับวัยจรที่เข้ามากระทบ"
   }`;
 
-  return [base, dynamic, seat].filter(Boolean).join("\n\n");
+  // ช่วงอายุที่ดาวคู่ครอง (ธาตุspouse) เข้ามาในวัยจร → จังหวะเรื่องคู่ (ดูตั้งแต่อายุ 20 ขึ้นไป วัยเด็กไม่ดูคู่)
+  const spouseTiming = findTimingByElement(
+    calculatedState,
+    spouse,
+    {
+      rising: "ช่วงเด่นเรื่องความรัก มีโอกาสพบคู่หรือพัฒนาความสัมพันธ์ให้จริงจัง",
+      transitional: "เรื่องคู่เข้ามาแต่ยังไม่นิ่ง ควรค่อย ๆ ดูใจ",
+      falling: "ระวังเรื่องคู่ ความสัมพันธ์อาจสะดุดหรือมีบททดสอบ",
+    },
+    { minAge: SCHOOL_AGE_MAX },
+  );
+  const timingBlock = spouseTiming.length > 0
+    ? `ช่วงอายุที่เด่นเรื่องคู่ (ดาวคู่ครองธาตุ${spouseLabel} เข้าวัยจร ตั้งแต่วัย 20 ปีขึ้นไป):\n${spouseTiming.join("\n")}`
+    : "";
+
+  return [base, dynamic, seat, timingBlock].filter(Boolean).join("\n\n");
+}
+
+/** บท 14 สี/ทิศ = สีตาม useful god + สีที่ควรเลี่ยง (officer) + สีกระเป๋า/รถ + ทิศมงคล */
+function buildColorsReading(calculatedState: CalculatedStateValue): string | null {
+  const section = parseSource7ElementSection("2.1", 3);
+  if (!section) {
+    return null;
+  }
+  const useful = resolveUsefulElements(calculatedState);
+  const usefulWithColor = useful.filter((element) => section.has(element));
+
+  const lines = usefulWithColor.map((element) => {
+    const [color, gem, amulet] = section.get(element)!;
+    return `ธาตุ${element} (useful god): สีมงคล ${color ?? "-"}; อัญมณี ${gem ?? "-"}; วัตถุมงคล ${amulet ?? "-"}`;
+  });
+
+  const usefulColors = usefulWithColor
+    .map((element) => section.get(element)![0])
+    .filter((color): color is string => Boolean(color));
+
+  // สีที่ควรเลี่ยง = สีของธาตุพิฆาตดิถี (officer)
+  const officerTh = elementLabel(resolveOfficerElement(dayMasterElement(calculatedState)));
+  const avoidColor = section.get(officerTh)?.[0];
+  const avoid = `สีที่ควรเลี่ยง: สีธาตุ${officerTh}${avoidColor ? ` (${avoidColor})` : ""} เพราะเป็นธาตุที่พิฆาตและกดดันดิถี`;
+
+  const extras: string[] = [];
+  if (usefulColors.length > 0) {
+    extras.push(
+      `สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต): เน้นสีธาตุ${usefulWithColor[0]} (${usefulColors[0]})`,
+    );
+    extras.push(`สีรถยนต์: ${usefulColors.join(" / ")}`);
+  }
+  extras.push(`ทิศมงคล: ${usefulWithColor.map((element) => ELEMENT_DIRECTION_TH[element]).join(" และ ")}`);
+
+  const symbols = usefulWithColor
+    .map((element) => ELEMENT_SYMBOL_TH[element])
+    .filter((symbol): symbol is string => Boolean(symbol));
+  if (symbols.length > 0) {
+    extras.push(`สัญลักษณ์มงคล: ${symbols.join(", ")}`);
+  }
+
+  return [...lines, avoid, ...extras].filter(Boolean).join("\n\n");
+}
+
+/** บท 15 องค์เทพ = สิ่งศักดิ์สิทธิ์ตาม useful god + สรรพคุณรายธาตุ + การทำบุญ */
+function buildDeitiesReading(calculatedState: CalculatedStateValue): string | null {
+  const section = parseSource7ElementSection("2.2", 2);
+  if (!section) {
+    return null;
+  }
+  const lines = resolveUsefulElements(calculatedState)
+    .filter((element) => section.has(element))
+    .map((element) => {
+      const [merit, deities] = section.get(element)!;
+      const benefit = ELEMENT_DEITY_BENEFIT_TH[element];
+      return `ธาตุ${element} (useful god): สิ่งศักดิ์สิทธิ์ ${deities ?? "-"}${benefit ? ` (ช่วยเรื่อง: ${benefit})` : ""}; การทำบุญ ${merit ?? "-"}`;
+    });
+  return lines.length > 0 ? lines.join("\n\n") : null;
+}
+
+/** บท 2 อาชีพ = กรอบ (ดิถีแข็ง-อ่อน + ดาวถ่ายเท=วิธีหาเงิน) + สายงานตามธาตุที่ดวงต้องการ */
+function buildCareerReading(calculatedState: CalculatedStateValue): string | null {
+  const careers = parseSource7Careers();
+  if (!careers) {
+    return null;
+  }
+  const dm = dayMasterElement(calculatedState);
+  const output = GENERATES[dm] as SupportedElementValue;
+  const band = resolveStrengthBand(calculatedState);
+  const dmWeak = band === "weak" || band === "very-weak";
+  const dmStrong = band === "strong" || band === "very-strong";
+
+  const frame = dmWeak
+    ? "ด้วยกำลังดิถีที่ไม่มากนัก ดวงนี้ไม่เหมาะกับการลุยเดี่ยวแบกทุกอย่างไว้คนเดียว ควรใช้ทักษะและความถนัด (ดาวถ่ายเท) เป็นเครื่องมือหาเงิน และทำงานในระบบที่มีคนช่วยซัพพอร์ต"
+    : dmStrong
+      ? "ด้วยกำลังดิถีที่เข้มแข็ง ดวงนี้ลงมือทำเองได้เต็มที่ ควรเลือกงานที่ได้ระบายพลังออกมาเป็นผลงานและทรัพย์อย่างต่อเนื่อง"
+      : "ด้วยสภาวะดิถีที่ค่อนข้างสมดุล ดวงนี้เลือกสายงานได้ยืดหยุ่นตามโอกาสที่เข้ามา";
+  const moneyWay = `วิธีหาเงินที่ถนัดที่สุดคือการใช้ “ดาวถ่ายเท” (ธาตุ${elementLabel(output)}) แปลงความรู้และทักษะให้กลายเป็นรายได้ มากกว่าการลงแรงกายแลกเงิน`;
+
+  const lists = resolveUsefulElements(calculatedState)
+    .map((element) => (careers.has(element) ? `อาชีพธาตุ${element} (useful god): ${careers.get(element)!}` : null))
+    .filter((segment): segment is string => Boolean(segment));
+
+  // อาชีพที่ควรเลี่ยง = ธาตุพิฆาตดิถี (officer) ซึ่งกดดัน/บั่นทอนกำลังดวง
+  const officer = resolveOfficerElement(dm);
+  const avoidTh = elementLabel(officer);
+  const avoid = careers.has(avoidTh)
+    ? `อาชีพที่ควรเลี่ยง (ธาตุ${avoidTh} = ธาตุที่พิฆาตดิถี): ${careers.get(avoidTh)!}`
+    : `อาชีพที่ควรเลี่ยงคือสายงานธาตุ${avoidTh} ซึ่งเป็นธาตุที่กดดันและบั่นทอนกำลังของดวง`;
+
+  // กลุ่มลูกค้า/ตลาด จากเสาปี (Target Market)
+  const yearElement = elementLabel(branchElement(calculatedState.fourPillars.year.branch));
+  const customer = `กลุ่มลูกค้า/ตลาดที่เข้ากับดวง (ดูจากเสาปี ธาตุ${yearElement}): ${YEAR_CUSTOMER_TH[yearElement]}`;
+
+  // ดาวม้าเหิน (เอี้ยม่า) → ช่องทางออนไลน์/ต่างประเทศ/เดินทาง
+  const horse = hasTravelingHorse(calculatedState) ? TRAVELING_HORSE_CHANNEL_TH : "";
+
+  return [frame, moneyWay, ...lists, avoid, customer, horse].filter(Boolean).join("\n\n");
 }
 
 function buildPartnershipReading(calculatedState: CalculatedStateValue): string | null {
@@ -961,8 +1192,29 @@ function buildPartnershipReading(calculatedState: CalculatedStateValue): string 
   if (!map) {
     return null;
   }
-  const verdict = map.get(resolveStrengthBand(calculatedState));
-  return verdict ? `แนวทางทำธุรกิจ/หุ้นส่วน: ${verdict}` : null;
+  const band = resolveStrengthBand(calculatedState);
+  const verdict = map.get(band);
+  if (!verdict) {
+    return null;
+  }
+  const dmWeak = band === "weak" || band === "very-weak";
+  const stance = dmWeak
+    ? "ด้วยกำลังดิถีที่ไม่มากนัก การมีหุ้นส่วนที่ไว้ใจได้จะช่วยแบ่งเบาภาระและเติมกำลังในส่วนที่ขาด ทำให้ธุรกิจเดินได้ไกลกว่าการลุยลำพัง"
+    : "ด้วยกำลังดิถีที่เข้มแข็ง คุณรันงานเองได้คล่อง การมีหุ้นส่วนควรเลือกเฉพาะคนที่เติมส่วนที่ขาดจริง ๆ ไม่จำเป็นต้องมีก็ได้";
+  const useful = resolveUsefulElements(calculatedState);
+  const partner = useful.length > 0
+    ? `หุ้นส่วนที่เข้ากันได้ดีคือคนที่มีคุณสมบัติแบบธาตุ${useful.join("หรือ")} ซึ่งช่วยเสริมจุดที่ดวงต้องการ`
+    : "";
+  // ช่วงอายุที่คู่ธาตุ (เพื่อน/หุ้นส่วน/คนร่วมงาน) เด่นในวัยจร
+  const partnerTiming = findTimingByRole(calculatedState, "คู่ธาตุ", {
+    rising: "ช่วงเด่นเรื่องหุ้นส่วน/ร่วมงาน มีโอกาสได้พันธมิตรดีและเงินก้อนจากการร่วมมือ",
+    transitional: "มีคนเข้ามาร่วมงานแต่ยังไม่นิ่ง ควรตกลงบทบาทให้ชัด",
+    falling: "ระวังเรื่องหุ้นส่วน อาจมีความขัดแย้งหรือถูกทิ้งภาระ",
+  });
+  const timingBlock = partnerTiming.length > 0
+    ? `ช่วงอายุที่เด่นเรื่องหุ้นส่วน/ผู้ร่วมงาน (คู่ธาตุเข้าวัยจร):\n${partnerTiming.join("\n")}`
+    : "";
+  return [stance, `แนวทางทำธุรกิจ/หุ้นส่วน: ${verdict}`, partner, timingBlock].filter(Boolean).join("\n\n");
 }
 
 // ───────── Batch 4: 5 บทที่เหลือ — derive จากกฎ engine (PILLAR_CONTEXT_MAP + relation + 12 เชี่ยงแซ) ─────────
@@ -991,6 +1243,41 @@ function inverseGenerate(dm: SupportedElementValue): SupportedElementValue {
     (element) => GENERATES[element] === dm,
   ) as SupportedElementValue;
 }
+
+/** ดาวอำนาจ (officer = ธาตุที่พิฆาตดิถี) — ใช้เป็น "ธาตุต้องห้าม" ในบทอาชีพ/สี */
+function resolveOfficerElement(dm: SupportedElementValue): SupportedElementValue {
+  return (Object.keys(CONTROLS) as SupportedElementValue[]).find(
+    (element) => CONTROLS[element] === dm,
+  ) as SupportedElementValue;
+}
+
+/** กลุ่มลูกค้า/ตลาด ตามธาตุของเสาปี (เสาปี = Target Market ตามตำรา) */
+const YEAR_CUSTOMER_TH: Record<ThaiElement, string> = {
+  "ไม้": "คนรักการเรียนรู้ สายการศึกษา สื่อ สิ่งพิมพ์ งานสร้างสรรค์ และคนที่ใส่ใจสิ่งแวดล้อม",
+  "ไฟ": "คนมีชื่อเสียง สายความงาม บันเทิง การตลาด และกลุ่มที่ตัดสินใจซื้อด้วยอารมณ์",
+  "ดิน": "คนมั่นคง สายอสังหาฯ เกษตร ราชการท้องถิ่น และครอบครัวที่เน้นความยั่งยืน",
+  "ทอง": "คนมีระเบียบและอำนาจ ข้าราชการ บุคคลในเครื่องแบบ สายการเงิน เทคโนโลยี และผู้มีตำแหน่ง",
+  "น้ำ": "คนเคลื่อนไหวตลอด สายค้าขาย บริการ ท่องเที่ยว ขนส่ง และลูกค้าออนไลน์",
+};
+
+/** มี "เอี้ยม่า / ม้าเหิน (驿马)" ในดวงไหม → ช่องทางเดินทาง/ออนไลน์/ต่างประเทศ */
+function hasTravelingHorse(calculatedState: CalculatedStateValue): boolean {
+  return (calculatedState.shenSha ?? []).some(
+    (star) => star.starName.includes("ม้าเหิน") || star.starName.includes("驿马"),
+  );
+}
+
+const TRAVELING_HORSE_CHANNEL_TH =
+  "ดวงนี้มีดาวม้าเหิน (เอี้ยม่า) เด่นเรื่องการเคลื่อนไหว ช่องทางทำเงินที่ถูกโฉลกคืองานออนไลน์ ต่างประเทศ การเดินทาง ขนส่ง/โลจิสติกส์ และตลาดที่เข้าถึงคนจำนวนมาก — ยิ่งขยับตัว เดินทาง หรือขยายตลาดไกล ดวงยิ่งเปิด";
+
+/** ทิศมงคลตามธาตุ (useful god → ทิศ) */
+const ELEMENT_DIRECTION_TH: Record<ThaiElement, string> = {
+  "ไม้": "ทิศตะวันออก",
+  "ไฟ": "ทิศใต้",
+  "ดิน": "ทิศตะวันตกเฉียงใต้และตะวันออกเฉียงเหนือ",
+  "ทอง": "ทิศตะวันตก",
+  "น้ำ": "ทิศเหนือ",
+};
 
 function pillarBranchQi(calculatedState: CalculatedStateValue, pillar: PillarKey): string {
   return (calculatedState.twelveQi[`${pillar}Branch`] ?? "").trim();
@@ -1146,11 +1433,33 @@ function buildDerivedPersonReading(
   }
 }
 
+/** ย่อหน้าปิดท้าย = บทสรุปเฉพาะของบทนั้น (ไม่ซ้ำกันทุกบท) */
+function buildChapterAdvice(_calculatedState: CalculatedStateValue, topicId: string): string {
+  return CHAPTER_SUMMARY_TH[topicId] ?? "";
+}
+
 /**
- * คืนข้อความผลการทำนายภาษามนุษย์ของหัวข้อ (deterministic จาก knownlage)
+ * คืนข้อความผลการทำนายภาษามนุษย์ของหัวข้อ (deterministic จาก knownlage + คลังถ้อยคำ)
+ * ห่อด้วย intro (คอนเซ็ปต์) + เนื้อหา engine + advice (คำแนะนำ) ให้เป็นร้อยแก้วเรียบเรียง
  * หรือ null ถ้ายังไม่มีองค์ความรู้สำหรับหัวข้อนั้น.
  */
 export function buildTopicHumanReading(
+  calculatedState: CalculatedStateValue,
+  topicId: string,
+  rawInput?: RawInputValue,
+): string | null {
+  const body = buildTopicReadingBody(calculatedState, topicId, rawInput);
+  if (body == null) {
+    return null;
+  }
+  return composeParagraphs([
+    CHAPTER_INTRO_TH[topicId],
+    body,
+    buildChapterAdvice(calculatedState, topicId),
+  ]);
+}
+
+function buildTopicReadingBody(
   calculatedState: CalculatedStateValue,
   topicId: string,
   rawInput?: RawInputValue,
@@ -1165,29 +1474,11 @@ export function buildTopicHumanReading(
     case "wealth_and_investment":
       return buildWealthReading(calculatedState);
     case "colors_directions":
-      return buildUsefulElementReading(
-        calculatedState,
-        parseSource7ElementSection("2.1", 3),
-        (element, value) => {
-          const [color, gem, amulet] = value as string[];
-          return `ธาตุ${element} (useful god): สีมงคล ${color ?? "-"}; อัญมณี ${gem ?? "-"}; วัตถุมงคล ${amulet ?? "-"}`;
-        },
-      );
+      return buildColorsReading(calculatedState);
     case "guardian_deities":
-      return buildUsefulElementReading(
-        calculatedState,
-        parseSource7ElementSection("2.2", 2),
-        (element, value) => {
-          const [merit, deities] = value as string[];
-          return `ธาตุ${element} (useful god): สิ่งศักดิ์สิทธิ์ ${deities ?? "-"}; การทำบุญ ${merit ?? "-"}`;
-        },
-      );
+      return buildDeitiesReading(calculatedState);
     case "career_potential":
-      return buildUsefulElementReading(
-        calculatedState,
-        parseSource7Careers(),
-        (element, value) => `อาชีพธาตุ${element} (useful god): ${value as string}`,
-      );
+      return buildCareerReading(calculatedState);
     case "turning_points":
       return buildLuckCycleReading(calculatedState);
     case "love_partner":

@@ -72,7 +72,9 @@ describe("topic-knowledge (knownlage human reading)", () => {
   test("Batch2: วัยจรคืน verdict ตาม band × บทบาทธาตุของเฟสปัจจุบัน", () => {
     const reading = buildTopicHumanReading(SAMPLE_STATE, "turning_points");
     expect(reading).not.toBeNull();
-    expect(reading).toContain("ช่วงวัยจรปัจจุบัน");
+    // คำทำนายวัยจรเจาะหลายช่วง (ปัจจุบัน + ข้างหน้า) พร้อมระบุช่วงปัจจุบัน
+    expect(reading).toContain("วิเคราะห์จังหวะชีวิต");
+    expect(reading).toContain("ช่วงปัจจุบัน");
   });
 
   test("Batch3: ความรักคืน verdict ตาม เพศ × band (ต้องมี rawInput.gender)", () => {
