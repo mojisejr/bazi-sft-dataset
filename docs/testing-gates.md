@@ -1,5 +1,55 @@
 # Bazi Testing Gates
 
+## Open WebUI Post-Phase-3 Baseline
+
+Use this baseline when the touched surface is the Open WebUI integration lane:
+
+- `src/app/api/v1/chat/completions/route.ts`
+- `src/features/open-webui/chat-runner.ts`
+- `src/features/open-webui/episodic-service.ts`
+- `src/features/open-webui/gemini-adapter.ts`
+- `src/features/open-webui/truth-packet.ts`
+
+The accepted post-Phase-3 gate for that lane is:
+
+1. `npm run gate:open-webui`
+
+`npm run gate:open-webui` expands to:
+
+1. `npm run build`
+2. `npm run lint`
+3. `npm run test:open-webui`
+
+For operational regression classification before reopening browser truth, run:
+
+1. `npm run test:open-webui-regression`
+
+`npm run test:open-webui-regression` is the minimal backend-lane pack for:
+
+- request identity forwarding and thread normalization
+- continuity reset / fail-closed behavior
+- finalized persistence vs explicit skip reasons
+
+The accepted runtime-only proof is already closed for the current local Open WebUI setup:
+
+- same-thread refresh/resume
+- finalized-write persistence after reload
+- new-profile isolation
+
+Treat older Open WebUI blocker narratives as historical-only unless fresh failing evidence appears. This includes the pre-closure `BT-10` blocker wording, `browser-truth-open` style status, and earlier recovery notes that assumed the local shell was still unproven.
+
+Do not reopen correctness internals from those historical notes by default. After this baseline, rerun browser truth only when deterministic gates pass but a runtime-only uncertainty still survives.
+
+## Release Packaging Boundary For Open WebUI Lane
+
+When packaging the Open WebUI release slice for review:
+
+- include the migration, production code, and deterministic test surfaces that belong to the closed Phase 3/Phase 4 chain
+- use `npm run gate:open-webui` as the canonical review gate for this lane
+- exclude repo-local runtime artifacts such as `.playwright-mcp/**` from the code change set
+
+The `.playwright-mcp/` directory is a local QA evidence sink, not release material. Keep runtime screenshots, text captures, and JSON reports there only as local evidence unless a human explicitly asks to ship them.
+
 ## Default Developer Gate
 
 Use `npm run gate:default` as the canonical continuity gate for ordinary feature work.

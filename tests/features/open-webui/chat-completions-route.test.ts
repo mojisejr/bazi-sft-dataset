@@ -81,6 +81,8 @@ vi.mock("@/features/open-webui/episodic-service", async () => {
 });
 
 const { buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
+const consoleInfoSpy = vi.spyOn(console, "info").mockImplementation(() => {});
+const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
   fourPillars: {
@@ -277,6 +279,16 @@ function reconstructSseContent(body: string) {
     .join("");
 }
 
+function expectOperationalEvent(event: string, detail: Record<string, unknown>) {
+  expect(consoleInfoSpy).toHaveBeenCalledWith(
+    "[open-webui] operational",
+    expect.objectContaining({
+      event,
+      ...detail,
+    }),
+  );
+}
+
 describe("buildOpenWebUiExecutionContext", () => {
   test("attaches a narrowed truth packet when extraction completes", () => {
     const executionContext = buildOpenWebUiExecutionContext({
@@ -390,6 +402,8 @@ describe("buildOpenWebUiExecutionContext", () => {
 
 describe("POST /api/v1/chat/completions (Action Loop)", () => {
   beforeEach(() => {
+    consoleInfoSpy.mockClear();
+    consoleErrorSpy.mockClear();
     routeOpenWebUiIntentMock.mockReset();
     extractOpenWebUiBaziContextMock.mockReset();
     calculateBaziStateFromRawInputMock.mockReset();
@@ -648,6 +662,16 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
 
     const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
     expect(executionContext.baziMissingFields).toEqual(["birthTime", "province"]);
+    expectOperationalEvent("request_context", {
+      userIdentitySource: "forwarded_header",
+      hasThreadId: false,
+      threadPersistenceEligible: false,
+    });
+    expectOperationalEvent("finalized_turn_nonpersistent", {
+      reason: "missing_thread_id",
+      userIdentitySource: "forwarded_header",
+      continuityDisposition: "stateless",
+    });
   });
 
   test("thread-scoped episodic memory hydrates only from the matching chat id", async () => {
@@ -812,6 +836,16 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
         },
       },
     });
+    expectOperationalEvent("continuity_plan", {
+      continuityDisposition: "reset_profile_conflict",
+      activeScopeRequestedDomain: "career",
+    });
+    expectOperationalEvent("finalized_turn_recorded", {
+      persistenceOutcome: "assistant_reply_persisted",
+      skipReason: null,
+      continuityDisposition: "reset_profile_conflict",
+      resetThreadState: true,
+    });
   });
 
   test("missing thread identity fails closed to fresh-thread behavior", async () => {
@@ -837,6 +871,11 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
 
     const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
     expect(executionContext.episodicMemory).toBeUndefined();
+    expectOperationalEvent("finalized_turn_nonpersistent", {
+      reason: "missing_thread_id",
+      userIdentitySource: "payload_user",
+      continuityDisposition: "stateless",
+    });
   });
 
   test("episodic write failure does not break the visible SSE response path", async () => {
@@ -898,6 +937,12 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
       threadId: "chat-thread-4",
       userMessage: "ยังอยู่ไหม",
       skipReason: "fallback_response",
+    });
+    expectOperationalEvent("finalized_turn_recorded", {
+      persistenceOutcome: "skip_recorded",
+      skipReason: "fallback_response",
+      continuityDisposition: "preserve",
+      resetThreadState: false,
     });
   });
 

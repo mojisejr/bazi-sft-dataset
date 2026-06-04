@@ -39,6 +39,16 @@ export const runtime = "nodejs";
 
 const PROFILE_BOUNDARY_KEYS = ["birthDate", "birthTime", "gender", "province"] as const;
 
+type OpenWebUiUserIdentitySource = "payload_user" | "forwarded_header" | "none";
+type OpenWebUiContinuityDisposition = "stateless" | "preserve" | "reset_requested_boundary" | "reset_profile_conflict";
+
+function logOpenWebUiOperationalEvent(event: string, detail: Record<string, unknown>) {
+  console.info("[open-webui] operational", {
+    event,
+    ...detail,
+  });
+}
+
 function createBadRequestResponse(message: string, code = "bad_request") {
   return Response.json(
     {
@@ -53,6 +63,52 @@ function createBadRequestResponse(message: string, code = "bad_request") {
 
 function getForwardedUserId(req: Request) {
   return req.headers.get("x-openwebui-user-id");
+}
+
+function resolveOpenWebUiUserIdentity(
+  req: Request,
+  payloadUserId: string | null | undefined,
+): { effectiveUserId: string | null; userIdentitySource: OpenWebUiUserIdentitySource } {
+  if (payloadUserId) {
+    return {
+      effectiveUserId: payloadUserId,
+      userIdentitySource: "payload_user" as const,
+    };
+  }
+
+  const forwardedUserId = getForwardedUserId(req);
+
+  if (forwardedUserId) {
+    return {
+      effectiveUserId: forwardedUserId,
+      userIdentitySource: "forwarded_header" as const,
+    };
+  }
+
+  return {
+    effectiveUserId: null,
+    userIdentitySource: "none" as const,
+  };
+}
+
+function getContinuityDisposition(input: {
+  hasPersistenceLane: boolean;
+  requestedFreshThreadBoundary: boolean;
+  hasProfileConflict: boolean;
+}): OpenWebUiContinuityDisposition {
+  if (!input.hasPersistenceLane) {
+    return "stateless";
+  }
+
+  if (input.requestedFreshThreadBoundary) {
+    return "reset_requested_boundary";
+  }
+
+  if (input.hasProfileConflict) {
+    return "reset_profile_conflict";
+  }
+
+  return "preserve";
 }
 
 export type BuildOpenWebUiExecutionContextInput = {
@@ -251,24 +307,28 @@ export async function POST(req: Request) {
     return createBadRequestResponse(result.message, result.code);
   }
 
-  const effectiveUserId = result.userId ?? getForwardedUserId(req);
+  const { effectiveUserId, userIdentitySource } = resolveOpenWebUiUserIdentity(req, result.userId);
   const profileRepository = effectiveUserId
     ? createBaziUserProfileRepository()
     : null;
   const episodicRepository = effectiveUserId && result.threadId
     ? createBaziOpenWebUiEpisodicRepository()
     : null;
+  const hasPersistenceLane = Boolean(effectiveUserId && result.threadId && episodicRepository);
 
-  console.log("[open-webui] chat completions context", {
-    userId: effectiveUserId,
-    threadId: result.threadId,
+  logOpenWebUiOperationalEvent("request_context", {
+    userIdentitySource,
+    hasThreadId: Boolean(result.threadId),
+    threadPersistenceEligible: hasPersistenceLane,
   });
 
   let continuityPersistencePlan: {
     shouldResetThreadState: boolean;
+    continuityDisposition: OpenWebUiContinuityDisposition;
     continuityState?: OpenWebUiContinuityState | null;
   } = {
     shouldResetThreadState: false,
+    continuityDisposition: hasPersistenceLane ? "preserve" : "stateless",
   };
 
   const assistantReply = (async () => {
@@ -323,12 +383,19 @@ export async function POST(req: Request) {
     const previousProfileBoundaryFields = episodicMemory?.continuityState?.profileFields
       ?? persistedProfile?.fields
       ?? null;
+    const hasProfileConflict = hasContinuityProfileConflict(nextProfileBoundaryFields, previousProfileBoundaryFields);
     const shouldResetThreadState = result.continuityBoundary.requestedFreshThreadBoundary
-      || hasContinuityProfileConflict(nextProfileBoundaryFields, previousProfileBoundaryFields);
+      || hasProfileConflict;
     const effectiveEpisodicMemory = shouldResetThreadState ? null : episodicMemory;
+    const continuityDisposition = getContinuityDisposition({
+      hasPersistenceLane,
+      requestedFreshThreadBoundary: result.continuityBoundary.requestedFreshThreadBoundary,
+      hasProfileConflict,
+    });
 
     continuityPersistencePlan = {
       shouldResetThreadState,
+      continuityDisposition,
       continuityState: intentClassification.requiresBaziConsult
         ? buildOpenWebUiContinuityState({
           intentClassification,
@@ -339,6 +406,14 @@ export async function POST(req: Request) {
           ? null
           : undefined,
     };
+
+    logOpenWebUiOperationalEvent("continuity_plan", {
+      continuityDisposition,
+      requiresBaziConsult: intentClassification.requiresBaziConsult,
+      hasPersistedProfile: Boolean(persistedProfile),
+      hasEpisodicMemory: Boolean(episodicMemory),
+      activeScopeRequestedDomain: continuityPersistencePlan.continuityState?.activeScope?.requestedDomain ?? null,
+    });
 
     const executionContext = buildOpenWebUiExecutionContext({
       result,
@@ -373,22 +448,54 @@ export async function POST(req: Request) {
     abortSignal: req.signal,
     timeoutMs: 35_000,
     onFinalizedReply: async (reply) => {
-      if (!effectiveUserId || !result.threadId || !episodicRepository) {
+      const clerkUserId = effectiveUserId;
+      const threadId = result.threadId;
+      const persistentEpisodicRepository = episodicRepository;
+      if (!clerkUserId || !threadId || !persistentEpisodicRepository) {
+        const reason = !clerkUserId
+          ? "missing_user_id"
+          : !threadId
+            ? "missing_thread_id"
+            : "missing_repository";
+
+        logOpenWebUiOperationalEvent("finalized_turn_nonpersistent", {
+          reason,
+          userIdentitySource,
+          continuityDisposition: continuityPersistencePlan.continuityDisposition,
+        });
         return;
       }
 
       const skipReason = getFinalizedReplySkipReason(reply);
 
-      await episodicRepository.appendFinalizedTurnByClerkUserIdAndThreadId({
-        clerkUserId: effectiveUserId,
-        threadId: result.threadId,
-        userMessage: result.latestUserMessage.content,
-        ...(skipReason ? { skipReason } : { assistantReply: reply.visibleText }),
-        ...(continuityPersistencePlan.shouldResetThreadState ? { resetThreadState: true } : {}),
-        ...(continuityPersistencePlan.continuityState !== undefined
-          ? { continuityState: continuityPersistencePlan.continuityState }
-          : {}),
-      });
+      try {
+        await persistentEpisodicRepository.appendFinalizedTurnByClerkUserIdAndThreadId({
+          clerkUserId,
+          threadId,
+          userMessage: result.latestUserMessage.content,
+          ...(skipReason ? { skipReason } : { assistantReply: reply.visibleText }),
+          ...(continuityPersistencePlan.shouldResetThreadState ? { resetThreadState: true } : {}),
+          ...(continuityPersistencePlan.continuityState !== undefined
+            ? { continuityState: continuityPersistencePlan.continuityState }
+            : {}),
+        });
+
+        logOpenWebUiOperationalEvent("finalized_turn_recorded", {
+          persistenceOutcome: skipReason ? "skip_recorded" : "assistant_reply_persisted",
+          skipReason,
+          continuityDisposition: continuityPersistencePlan.continuityDisposition,
+          resetThreadState: continuityPersistencePlan.shouldResetThreadState,
+        });
+      } catch (error) {
+        logOpenWebUiOperationalEvent("finalized_turn_persist_failed", {
+          persistenceOutcome: "append_failed",
+          skipReason,
+          continuityDisposition: continuityPersistencePlan.continuityDisposition,
+          errorName: error instanceof Error ? error.name : "UnknownError",
+        });
+
+        throw error;
+      }
     },
   }), {
     headers: {
