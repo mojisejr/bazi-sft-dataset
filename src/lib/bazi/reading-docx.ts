@@ -1,12 +1,18 @@
 import {
   AlignmentType,
+  BorderStyle,
   Document,
+  Footer,
   HeadingLevel,
+  PageBreak,
+  PageNumber,
   Packer,
   Paragraph,
+  ShadingType,
   Table,
   TableCell,
   TableRow,
+  TableOfContents,
   TextRun,
   WidthType,
 } from "docx";
@@ -16,6 +22,7 @@ import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import {
   buildRelationshipLinesMapping,
   buildTopicHumanReading,
+  type RelationshipLineRow,
 } from "@/lib/bazi/topic-knowledge";
 
 /**
@@ -70,19 +77,52 @@ function daYunTable(calculatedState: CalculatedStateValue): Table | null {
     return null;
   }
   const header = new TableRow({
-    children: [cell("ช่วงอายุ", { bold: true, width: 40 }), cell("เสาวัยจร (ราศีบน/ล่าง)", { bold: true, width: 60 })],
+    children: [
+      cell("ช่วงอายุ", { bold: true, width: 30 }),
+      cell("ราศี (บน/ล่าง)", { bold: true, width: 35 }),
+      cell("สภาวะ (12 เชี่ยงแซ)", { bold: true, width: 35 }),
+    ],
   });
-  const body = pillars.map(
-    (pillar) =>
-      new TableRow({
-        children: [cell(`${pillar.startAge}-${pillar.endAge} ปี`), cell(`${pillar.stem}${pillar.branch}`)],
-      }),
-  );
+  // แตกแต่ละเสาวัยจร (10 ปี) เป็นครึ่งก้าน 5 ปี + ครึ่งกิ่ง 5 ปี — ใช้อายุเริ่มวัยจรจริง (起运)
+  const body: TableRow[] = [];
+  pillars.forEach((pillar) => {
+    const phases: Array<{ ageRange: string; symbol: string; place: string; qi: string }> = [];
+    if (pillar.upperPhase) {
+      phases.push({
+        ageRange: `${pillar.upperPhase.startAge}-${pillar.upperPhase.endAge} ปี`,
+        symbol: pillar.upperPhase.symbol,
+        place: "ราศีบน",
+        qi: (pillar.upperPhase.twelveQiDisplay ?? "").trim(),
+      });
+    }
+    if (pillar.lowerPhase) {
+      phases.push({
+        ageRange: `${pillar.lowerPhase.startAge}-${pillar.lowerPhase.endAge} ปี`,
+        symbol: pillar.lowerPhase.symbol,
+        place: "ราศีล่าง",
+        qi: (pillar.lowerPhase.twelveQiDisplay ?? "").trim(),
+      });
+    }
+    for (const phase of phases) {
+      body.push(
+        new TableRow({
+          children: [
+            cell(phase.ageRange),
+            cell(`${phase.symbol} (${phase.place})`),
+            cell(phase.qi || "—"),
+          ],
+        }),
+      );
+    }
+  });
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
 }
 
-function relationshipTable(calculatedState: CalculatedStateValue): Table {
-  const rows = buildRelationshipLinesMapping(calculatedState);
+function relationshipTable(
+  calculatedState: CalculatedStateValue,
+  override?: RelationshipLineRow[],
+): Table {
+  const rows = override && override.length > 0 ? override : buildRelationshipLinesMapping(calculatedState);
   const header = new TableRow({
     children: [
       cell("ช่วงอายุ", { bold: true, width: 14 }),
@@ -130,36 +170,92 @@ function chapterParagraphs(
   return out;
 }
 
+/** สีหลักของรายงาน (โทนแดงเข้ม-ทอง สไตล์มงคลจีน) */
+const ACCENT = "8B1A1A";
+const ACCENT_SOFT = "F3E6CE";
+
+/** หน้าปก: กรอบสีพื้น + ชื่อรายงาน + ข้อมูลเกิด แล้วขึ้นหน้าใหม่ */
+function coverPage(rawInput: RawInputValue): Paragraph[] {
+  const genderTh = rawInput.gender === "male" ? "ชาย" : "หญิง";
+  const birthLine = `เกิดวันที่ ${rawInput.birthDate} เวลา ${rawInput.birthTime} น. เพศ ${genderTh}${rawInput.province ? ` (${rawInput.province})` : ""}`;
+  const banner = (text: string, opts: { size: number; bold?: boolean; color?: string }) =>
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 120, after: 120 },
+      shading: { type: ShadingType.CLEAR, fill: ACCENT_SOFT, color: "auto" },
+      border: {
+        top: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 },
+        bottom: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 },
+        left: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 },
+        right: { style: BorderStyle.SINGLE, size: 18, color: ACCENT, space: 8 },
+      },
+      children: [new TextRun({ text, bold: opts.bold, size: opts.size, color: opts.color, font: FONT })],
+    });
+
+  return [
+    new Paragraph({ spacing: { before: 1600, after: 0 }, children: [] }),
+    banner("☯ DNA ดวงจีน ☯", { size: 64, bold: true, color: ACCENT }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 240, after: 120 },
+      children: [new TextRun({ text: "รายงานพยากรณ์ชะตาชีวิต 15 มิติ", size: 28, color: ACCENT, font: FONT })],
+    }),
+    new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 720, after: 0 },
+      children: [new TextRun({ text: birthLine, size: 26, font: FONT })],
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
+/** หน้าสารบัญ: หัวเรื่อง + TOC field (Word เติมเลขหน้าให้เมื่อเปิด) แล้วขึ้นหน้าใหม่ */
+function tableOfContentsPage(): (Paragraph | TableOfContents)[] {
+  return [
+    new Paragraph({
+      spacing: { after: 200 },
+      children: [new TextRun({ text: "สารบัญ", bold: true, size: 40, color: ACCENT, font: FONT })],
+    }),
+    new TableOfContents("สารบัญ", {
+      hyperlink: true,
+      headingStyleRange: "1-2",
+    }),
+    new Paragraph({ children: [new PageBreak()] }),
+  ];
+}
+
 export function buildReadingDocument(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  options: { readings?: ReadingOverrides } = {},
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
 ): Document {
   const dm = calculatedState.dayMaster;
   const strength = calculatedState.dayMasterStrengthProfile?.displayLabel ?? "";
 
   return new Document({
+    // ให้ Word อัปเดต field (สารบัญ) อัตโนมัติเมื่อเปิดไฟล์
+    features: { updateFields: true },
     styles: { default: { document: { run: { font: FONT, size: 24 } } } },
     sections: [
       {
-        children: [
-          // ── ปก ──
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 240 },
-            children: [new TextRun({ text: "DNA ดวงจีน", bold: true, size: 56, font: FONT })],
-          }),
-          new Paragraph({
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 480 },
+        footers: {
+          default: new Footer({
             children: [
-              new TextRun({
-                text: `เกิดวันที่ ${rawInput.birthDate} เวลา ${rawInput.birthTime} น. เพศ ${rawInput.gender === "male" ? "ชาย" : "หญิง"}${rawInput.province ? ` (${rawInput.province})` : ""}`,
-                size: 24,
-                font: FONT,
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: "หน้า ", size: 18, color: "888888", font: FONT }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "888888", font: FONT }),
+                ],
               }),
             ],
           }),
+        },
+        children: [
+          // ── ปก ──
+          ...coverPage(rawInput),
+          // ── สารบัญ ──
+          ...tableOfContentsPage(),
           // ── แผ่นดวงชะตา ──
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
@@ -172,7 +268,7 @@ export function buildReadingDocument(
             ? [
                 new Paragraph({
                   spacing: { before: 240, after: 80 },
-                  children: [new TextRun({ text: "ตารางวัยจร (ถนนชีวิต ช่วงละ 10 ปี)", bold: true, size: 24, font: FONT })],
+                  children: [new TextRun({ text: "ตารางวัยจร (ถนนชีวิต ช่วงละ 5 ปี)", bold: true, size: 24, font: FONT })],
                 }),
                 daYunTable(calculatedState) as Table,
               ]
@@ -180,6 +276,7 @@ export function buildReadingDocument(
           // ── 15 บท ──
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
+            pageBreakBefore: true,
             spacing: { before: 360, after: 120 },
             children: [new TextRun({ text: "คู่มือชีวิต 15 มิติ", bold: true, size: 32, font: FONT })],
           }),
@@ -187,6 +284,7 @@ export function buildReadingDocument(
           // ── บทเสริม: ตารางวัยจร ──
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
+            pageBreakBefore: true,
             spacing: { before: 360, after: 120 },
             children: [
               new TextRun({
@@ -197,7 +295,7 @@ export function buildReadingDocument(
               }),
             ],
           }),
-          relationshipTable(calculatedState),
+          relationshipTable(calculatedState, options.relationshipLines),
         ],
       },
     ],
@@ -208,7 +306,7 @@ export function buildReadingDocument(
 export async function buildReadingDocxBuffer(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  options: { readings?: ReadingOverrides } = {},
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
 ): Promise<Buffer> {
   return Packer.toBuffer(buildReadingDocument(rawInput, calculatedState, options));
 }

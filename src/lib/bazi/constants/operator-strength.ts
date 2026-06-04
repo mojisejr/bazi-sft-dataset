@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import type { SupportedElement } from "@/lib/bazi/symbolic-engine.types";
 
+// เกณฑ์ band ต่อเนื่องไม่มีช่องว่าง (รองรับคะแนนเศษจากโบนัสราก 通根/得地 + ฤดู 得令)
+// ขอบล่างใช้ minExclusive = ขอบบนชั้นก่อนหน้า → คะแนนใด ๆ จัด band ได้เสมอ ไม่ตกช่องว่าง
 export const OPERATOR_STRENGTH_CLASS_BANDS = [
   {
     id: "very-weak",
@@ -14,28 +16,28 @@ export const OPERATOR_STRENGTH_CLASS_BANDS = [
     id: "weak",
     label: "ดวงอ่อน",
     displayLabel: "ดิถีอ่อน",
-    minInclusive: 2.25,
-    maxInclusive: 3.75,
+    minExclusive: 2,
+    maxInclusive: 4,
   },
   {
     id: "balanced",
     label: "สมดุล",
     displayLabel: "ดิถีสมดุล",
-    minInclusive: 4,
+    minExclusive: 4,
     maxInclusive: 5.5,
   },
   {
     id: "strong",
     label: "ดวงแข็ง",
     displayLabel: "ดิถีแข็ง",
-    minInclusive: 5.75,
+    minExclusive: 5.5,
     maxInclusive: 6.75,
   },
   {
     id: "very-strong",
     label: "แข็งเกินไป",
     displayLabel: "ดิถีแข็งเกินไป",
-    minInclusive: 7,
+    minExclusive: 6.75,
     maxInclusive: Number.POSITIVE_INFINITY,
   },
 ] as const;

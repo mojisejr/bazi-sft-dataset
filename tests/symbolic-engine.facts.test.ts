@@ -69,13 +69,13 @@ describe("symbolic-engine fact shell", () => {
     ]);
     expect(facts).toEqual([
       expect.objectContaining({ dependency: "day_master", resolved: true, summary: "己 (ดิน)" }),
-      expect.objectContaining({ dependency: "day_master_strength", resolved: true, summary: "อ่อนแอ | ดิถีอ่อน | score 3.75 | ดิถีดิน ดิถีอ่อน เพราะได้ชั้น หมกยก จากเดือนเกิด" }),
+      expect.objectContaining({ dependency: "day_master_strength", resolved: true, summary: "แข็งแรง/สมดุล | ดิถีสมดุล | score 4.58 | ดิถีดิน ดิถีสมดุล เพราะได้ชั้น หมกยก จากเดือนเกิด มีแรงหนุนจากฤดูและสาขาที่ส่งเสริมมากกว่าหักล้าง" }),
       expect.objectContaining({ dependency: "sixty_jiazi_persona", resolved: true, summary: "己巳 | Builds influence patiently, then turns preparation into visible results when timing opens." }),
       expect.objectContaining({ dependency: "hidden_stems", resolved: true, summary: "year=庚/壬/戊, month=庚/壬/戊, day=丙/庚/戊, hour=己/丁/乙" }),
       expect.objectContaining({ dependency: "element_balance", resolved: true, summary: "รวม ไม้: 1, ไฟ: 2, ดิน: 6, ทอง: 4, น้ำ: 3 | เด่น ดิน" }),
-      expect.objectContaining({ dependency: "useful_god", resolved: true, summary: "ไฟ — ดวงอ่อนจึงให้น้ำหนักกับธาตุส่งเสริมและธาตุคู่ก่อน" }),
-      expect.objectContaining({ dependency: "favorable_elements", resolved: true, summary: "ไฟ, ดิน" }),
-      expect.objectContaining({ dependency: "unfavorable_elements", resolved: true, summary: "ทอง, น้ำ, ไม้" }),
+      expect.objectContaining({ dependency: "useful_god", resolved: true, summary: "น้ำ — ดวงสมดุลใช้ธาตุงานและผลลัพธ์เพื่อขยับพลังให้เกิดประโยชน์" }),
+      expect.objectContaining({ dependency: "favorable_elements", resolved: true, summary: "ทอง, น้ำ, ไม้" }),
+      expect.objectContaining({ dependency: "unfavorable_elements", resolved: true, summary: "ไฟ, ดิน" }),
       expect.objectContaining({ dependency: "wealth_star", resolved: true, summary: "yearStem=正财, yearBranch=正财, monthBranch=正财, mingGongStem=正财" }),
       expect.objectContaining({ dependency: "power_star", resolved: true, summary: "hourBranch=七杀" }),
       expect.objectContaining({ dependency: "resource_star", resolved: true, summary: "dayBranch=正印, hourBranch=偏印" }),

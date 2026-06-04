@@ -7,6 +7,7 @@ import {
 import {
   buildCurrentReferenceSolar,
   buildDaYunState,
+  buildLiuNianSeries,
   buildLiuNianState,
   buildOrthodoxMingGongValue,
   buildPillarValue,
@@ -237,6 +238,13 @@ export async function calculateBaziChart(
         ...buildDynamicLuckStageDisplays(dayMasterStem, liuNian.stem, liuNian.branch),
       }
     : undefined;
+  // ปีจรรายปีแบบเต็ม (P-B) — กรอบปัจจุบัน → อีก 20 ปีข้างหน้า พร้อม 12 เชี่ยงแซของกิ่งปี
+  const liuNianSeries = buildLiuNianSeries(eightChar, rawInput.gender, ageSnapshot.thaiAge, 20).map(
+    (entry) => ({
+      ...entry,
+      twelveQiDisplay: localizeTwelveQiLabel(resolveTwelveQiStage(dayMasterStem, entry.branch)),
+    }),
+  );
   const canonicalTwelveQiState = {
     yearBranch: eightChar.getYearDiShi(),
     monthBranch: eightChar.getMonthDiShi(),
@@ -359,6 +367,7 @@ export async function calculateBaziChart(
     mingGong: enrichedMingGong,
     daYun: enrichedDaYunState,
     liuNian: enrichedLiuNian,
+    liuNianSeries,
     shenSha,
     dayMaster: dayMasterStem,
     strengthScore: strengthScore.value,

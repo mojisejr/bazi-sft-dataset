@@ -109,7 +109,8 @@ describe("topic-knowledge (knownlage human reading)", () => {
     const rows = buildRelationshipLinesMapping(SAMPLE_STATE);
     // 1 เสาวัยจร × 2 เฟส = 2 แถว
     expect(rows.length).toBe(2);
-    expect(rows[0]?.ageRange).toBe("5-9 ปี");
+    // ใช้อายุเริ่มวัยจรจริง (起运) จาก fixture (upperPhase.startAge = 40) ไม่ normalize เป็น 5
+    expect(rows[0]?.ageRange).toBe("40-44 ปี");
     expect(rows[0]?.relationLine.length).toBeGreaterThan(0);
     expect(rows[0]?.deepNote.length).toBeGreaterThan(0);
   });

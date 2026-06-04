@@ -20,7 +20,7 @@ import {
   buildTopicHumanReading,
   getTopicKnowledgeSourceLabel,
 } from "@/lib/bazi/topic-knowledge";
-import { generateReadingTopicLlm } from "@/lib/bazi/reading-llm";
+import { generateReadingTopicLlm, polishRelationshipLinesLlm } from "@/lib/bazi/reading-llm";
 
 export const runtime = "nodejs";
 
@@ -125,13 +125,31 @@ export async function POST(req: Request) {
       provider,
     });
 
+    // บทเสริม (วัยจร) ท้ายบท 15: ให้ LLM แต่งคำช่อง "คำอธิบายดี-ร้ายเชิงลึก" ด้วย
+    // (คง ageRange/symbol/relationLine + ป้าย [เฝ้าระวัง]/[ยุคทอง] เดิม; ถ้า LLM ล้มเหลว ใช้ของเดิม)
+    let polishedLines = relationshipLines;
+    if (relationshipLines && relationshipLines.length > 0) {
+      try {
+        polishedLines = await polishRelationshipLinesLlm({
+          rows: relationshipLines,
+          rawInput: rawInput!,
+          calculatedState,
+          apiKey,
+          model,
+          provider,
+        });
+      } catch {
+        polishedLines = relationshipLines;
+      }
+    }
+
     return Response.json({
       source: "llm",
       model: llm.model,
       reading, // คำอ่าน/ตาราง engine คงเดิม
       humanReading: llm.text, // ผลการทำนาย = ฉบับ LLM เรียบเรียงสไตล์ 1.docx
       sourceLabel,
-      ...(relationshipLines ? { relationshipLines } : {}),
+      ...(polishedLines ? { relationshipLines: polishedLines } : {}),
     });
   } catch (error) {
     return badRequest(

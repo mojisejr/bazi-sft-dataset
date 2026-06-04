@@ -73,6 +73,18 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
       },
     ],
     [
+      "己|แข็งแรง/สมดุล",
+      {
+        dayMaster: "己",
+        strengthState: "แข็งแรง/สมดุล",
+        sourceState: "แข็งแรง/สมดุล",
+        lookupState: "แข็งแรง/สมดุล",
+        narrative: "ดิถีดินหยินค่อนข้างสมดุล มีรากหนุนพอควร รับภาระและโอกาสได้เมื่อจังหวะเอื้อ",
+        qiLabel: "帝旺",
+        scoreText: "4.58",
+      },
+    ],
+    [
       "戊|แข็งแรง/สมดุล",
       {
         dayMaster: "戊",

@@ -15,6 +15,17 @@ const ExportDocxRequestSchema = z.object({
   calculatedState: CalculatedStateSchema.optional(),
   // คำอ่านที่ generate ไว้แล้ว (เช่นฉบับ LLM polish) ราย topicId → ใส่ในรายงานแทนผล engine
   readings: z.record(z.string(), z.string()).optional(),
+  // ตารางบทเสริม (วัยจร) ฉบับ LLM แต่งคำ → ใช้แทนผล engine ถ้ามี
+  relationshipLines: z
+    .array(
+      z.object({
+        ageRange: z.string(),
+        symbol: z.string(),
+        relationLine: z.string(),
+        deepNote: z.string(),
+      }),
+    )
+    .optional(),
 });
 
 function badRequest(message: string, code = "bad_request") {
@@ -34,7 +45,7 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid request.", "invalid_payload");
   }
 
-  const { rawInput, calculatedState: providedState, readings } = parsed.data;
+  const { rawInput, calculatedState: providedState, readings, relationshipLines } = parsed.data;
 
   let calculatedState: BaziStatePayload;
   try {
@@ -49,7 +60,10 @@ export async function POST(req: Request) {
     );
   }
 
-  const buffer = await buildReadingDocxBuffer(rawInput, calculatedState, { readings });
+  const buffer = await buildReadingDocxBuffer(rawInput, calculatedState, {
+    readings,
+    relationshipLines,
+  });
   const filename = `reading-${rawInput.birthDate}-${rawInput.gender}.docx`;
 
   return new Response(new Uint8Array(buffer), {

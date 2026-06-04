@@ -54,7 +54,9 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
     ?? strengthProfile?.displayBand
     ?? strengthProfile?.strengthState
     ?? "ยังไม่ระบุกำลัง";
-  const scoreText = strengthProfile?.scoreText ?? calculatedState.strengthScore.toFixed(2);
+  // ใช้คะแนนจาก engine (strengthScore) ให้ตรงกับระดับ/ป้ายที่จัดจากคะแนนเดียวกันเสมอ
+  // (profile.scoreText มาจาก lookup คนละสเกล จึงโชว์ไม่ตรงกับ displayLabel)
+  const scoreText = calculatedState.strengthScore.toFixed(2);
 
   return (
     <section className="surface reading-foundation" aria-label="พื้นดวง">
@@ -156,8 +158,7 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
         {[...calculatedState.daYun]
           .sort((a, b) => a.startAge - b.startAge)
           .map((entry, index) => {
-            // normalize อายุให้เริ่ม 5-9 เสมอ ตามดัชนีลำดับเสา
-            const base = 5 + index * 10;
+            // ใช้อายุเริ่มวัยจรจริง (起运) จากข้อมูลเสา ไม่ normalize
             const phases = [entry.upperPhase, entry.lowerPhase].filter(
               (phase): phase is DaYunPhaseValue => Boolean(phase),
             );
@@ -167,7 +168,7 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
                 key={`${entry.stem}-${entry.branch}-${index}`}
                 className={`dayun-card${entry.isCurrent ? " dayun-card--current" : ""}`}
               >
-                <span className="dayun-card__cycle">{formatAgeRange(base, base + 9)}</span>
+                <span className="dayun-card__cycle">{formatAgeRange(entry.startAge, entry.endAge)}</span>
                 {phases.length > 0 ? (
                   <div className="dayun-card__phase-stack">
                     {phases.map((phase) => (
@@ -176,9 +177,7 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
                         className={`dayun-card__phase${phase.isCurrent ? " dayun-card__phase--current" : ""}`}
                       >
                         <span className="dayun-card__phase-age">
-                          {phase.source === "stem"
-                            ? formatAgeRange(base, base + 4)
-                            : formatAgeRange(base + 5, base + 9)}
+                          {formatAgeRange(phase.startAge, phase.endAge)}
                         </span>
                         <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
                         <span className="dayun-card__phase-label">

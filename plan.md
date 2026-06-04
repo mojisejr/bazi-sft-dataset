@@ -3,42 +3,65 @@
 ---
 # ▶ สรุปล่าสุด + แผนถัดไป (อัปเดตรอบนี้)
 
-## สิ่งที่ทำเสร็จแล้ว (ภาพรวมทั้งหมด)
-- **Engine คำทำนาย deterministic ครบ 15 บท** (`src/lib/bazi/topic-knowledge.ts` + `reading-phrases.ts`): โครง intro → เนื้อหา engine → บทสรุปเฉพาะบท
-- **หลักวิชาที่ฝัง**: ดิถีแข็ง-อ่อน→useful god, 病药/食傷制杀, 12 เชี่ยงแซ 3 ระดับ, imagery ดิถี×ฤดู, ตำแหน่งเสา, คู่ครอง(ชาย=ลาภ/หญิง=อำนาจ), สุขภาพธาตุขาด-ล้น
-- **หัวข้อย่อยครบตาม your life code**: อาชีพไม่ควรทำ, สีเลี่ยง/กระเป๋า/รถ/ทิศ/สัญลักษณ์, สรรพคุณเทพรายธาตุ, ช่วงอายุพบคู่(≥20)/หุ้นส่วน, ป้ายยุคทอง/เฝ้าระวัง, ลาภผล(passive/ก้อน)+ช่วงวัยโชคลาภ, ช่วงเสี่ยงสุขภาพ
-- **ความสามารถใหม่ (ข้อ 4)**: ดาวเอี้ยม่า(驿马)→ช่องทางออนไลน์/ต่างประเทศ, liu nian ปีจรปัจจุบัน, mapping ธาตุเสาปี→กลุ่มลูกค้า
-- **กฎอายุ**: <20 ปี เรื่องคู่ไม่ดู / การเงิน-การงาน = การเรียน/สอบ/ติดโรงเรียนดัง
-- **บทสรุปต่อบทไม่ซ้ำกัน** (`CHAPTER_SUMMARY_TH`)
-- **Export .docx**: module + API route + CLI + ปุ่มใน UI (รับ override ฉบับ LLM)
-- **LLM**: provider Gemini + OpenCode Zen; `DEFAULT_MODEL = gemini-3.1-flash-lite` (แก้จาก preview เก่า)
-- **ทดสอบจริง 12 ดวงอ้างอิง** (M/1.docx, DNA 4, your-life-code 6) + LLM เจนผ่าน gemini-3.1-flash-lite เทียบ 2 เคส
-- **เทสต์**: 481 passed / 14 failed (14 เป็น corpus pre-existing ไม่เกี่ยวงานนี้)
+## ✅ สถานะล่าสุด — เสร็จครบทั้งหมด (อัปเดตรอบนี้)
 
-## ผล LLM เทียบ doc (gemini-3.1-flash-lite) — ช่องว่างที่เหลือ = ที่ prompt ล้วน
-1. บท1 บุคลิก **drift เป็น archetype** ("ผู้นำ") ทิ้งนิสัยจาก excerpt (เมตตา/ยอมคน)
-2. ยาวเกิน (4 ย่อหน้าใหญ่ทุกบท)
-3. คำลงท้าย "...ครับ" ทุกบท (ควรเป็นกลาง)
-4. บางครั้งอ้างตำราแข็งทื่อ
+**Engine + Knowledge (deterministic 15 บท)** — `topic-knowledge.ts`, `reading-phrases.ts`, `symbolic-engine.*`
+- หลักวิชาฝังครบ: ดิถีแข็ง-อ่อน→useful god, 病药/食傷制杀, 12 เชี่ยงแซ 3 ระดับ, imagery ดิถี×ฤดู, ตำแหน่งเสา, คู่ครอง(ชาย=ลาภ/หญิง=อำนาจ), สุขภาพขาด-ล้น, ดาวเอี้ยม่า/ดอกท้อ, กฎอายุ <20
+- **กำลังดิถี (band) ครบ 3 เสาตามตำรา**: 得令 (A2:ฤดู), 得地 (A2:ราก通根), 得势 (favorable ผิวบน) → band ต่อเนื่องไม่มีช่องว่าง
+- **วัยจรอิงอายุเริ่มจริง 起运** (A1: `yun.getStartYear()`) — บท 7/9/12 + ตารางวัยจร 5 ปี + พยากรณ์รายปี (liu nian 20 ปี) แม่นตามอายุจริง
+- **timing หลายปัจจัย** (A3): หุ้นส่วน = คู่ธาตุ + ดาวส่งเสริม(ผู้ใหญ่/ทุน) + **ดาวลาภ(เงินก้อนจากร่วมลงทุน)**
+- **พรสวรรค์แยก 食神/傷官 + 印** (A4) · **โชคลาภ: มรดก/ลูกค้าอายุน้อย/นายหน้า/เสน่ห์** (A5) · **mapping ลูกค้า/ช่องทาง** หลายดาว
 
-## ▶ แผนถัดไป (เสนอ)
+**LLM (เรียบเรียง)** — `reading-llm.ts`
+- สไตล์ **กระชับ scannable = กรอบสั้น + bullet + ปิด 1 บรรทัด** (เหมือน your life code) โทนข้อมูลล้วน
+- กฎเหล็ก: ห้ามเติมนิสัยนอก ground (B1), imagery เฉพาะบท1 (B2), **บท1 เรียงจุดบวกก่อน ระวัง ≤1 ข้อท้าย**, คงป้าย/อายุ/ตัวเลข/ธาตุเป๊ะ, ไม่อ้างแหล่ง, โทนตรงกำลังดิถี, ไม่ลงท้าย ครับ/ค่ะ
+- provider Gemini + OpenCode Zen; `DEFAULT_MODEL = gemini-3.1-flash-lite`
 
-### P-A: แก้ prompt LLM (ทำก่อน — คุ้มสุด)
-แก้ `buildSystemInstruction` + `buildUserPrompt` ใน `src/lib/bazi/reading-llm.ts`:
-- บังคับ **ยึดข้อเท็จจริง/นิสัยจาก excerpt เท่านั้น ห้ามเติม archetype ธาตุ**
-- คุมความยาว **2-3 ย่อหน้า กระชับ**
-- อ้างแหล่งครั้งเดียวแบบแนบเนียน (ห้ามขึ้นต้น "อย่างที่ตำรา...")
-- **คงป้าย [ยุคทอง]/[เฝ้าระวัง] + ช่วงอายุ/ตัวเลข/ธาตุ ตามที่ให้มาเป๊ะ**
-- โทน/คำลงท้ายเป็นกลาง (ไม่ผูกเพศ), โทนตรงกำลังดิถี (อ่อนอย่าเขียนให้ดูแข็ง)
-- Verify: เจนซ้ำ 2-3 ดวง เทียบว่า บท1 ตรง book, ≤3 ย่อหน้า, ป้าย/อายุไม่เพี้ยน (ต้องมี Gemini API key)
+**Export .docx** — ปกกรอบสีมงคล + สารบัญ(TOC) + เลขหน้า + ตารางวัยจร 5 ปี + บทเสริม(LLM แต่งคำ) + รับ override ฉบับ LLM
 
-### P-B: liu nian รายปีแบบเต็ม (deferred — engine feature ใหญ่)
-ปัจจุบันคิดปีปัจจุบัน 1 ปี. การพยากรณ์เหตุการณ์แม่นรายปีหลายปี ("อายุ 48-52 เห็นเงินก้อน") ต้องวนคำนวณเสาปีทุกปี + ปฏิสัมพันธ์รายปี (ใช้ lunar-javascript) — แยกเป็น engine module ใหม่
+**ตรวจสอบ**
+- เทสต์: **483 passed / 14 failed** (14 = corpus pre-existing ไม่เกี่ยวงานนี้) — 0 regression ตลอด
+- Verify จริง Gemini: `scripts/verify-reading-llm.ts` (ผ่านทุกเกณฑ์) + เทียบ your life code 6 เคสทีละบท (`out/ylc-compare/`)
 
-### P-C: ขัดเกลาเพิ่ม (ทางเลือก)
-- band classifier จูน threshold (case3 丙 score 4.25 ควร "แข็งมาก")
-- DOCX: ปกกราฟิก, ฝังฟอนต์ไทย, สารบัญ
-- mapping กลุ่มลูกค้า/ช่องทาง ละเอียดขึ้น (จากดาวหลายตำแหน่ง)
+## ▶ แผนถัดไป (เสนอ) — เรียงตามความคุ้ม
+
+### N1 — Commit + ความปลอดภัย (ทำก่อน, จำเป็น)
+- งานทั้ง session **ยังไม่ได้ commit เลย** → สร้าง branch + commit เป็นชุด (engine A1-A5 / prompt B1-B2+กระชับ / docx / liu nian) กันหาย
+- **Revoke Gemini API key** เก่าถ้าเคยหลุดในแชต แล้วออกใหม่
+
+### N2 — Production data backfill (กัน regression เงียบจาก A2)
+- A2 ทำให้บางดวง reclassify (เช่น 己 → "แข็งแรง/สมดุล") → **DB ต้องมี profile ครบทุก (dayMaster × strengthState)** ใน `bazi_day_master_strength_states` ไม่งั้น narrative fallback เป็น "score X"
+- ตรวจ/เติม profile ที่ขาด (เริ่มจาก state "แข็งแรง/สมดุล" ของดิถีที่พบบ่อย)
+
+### N3 — A2 รอบสอง: band ให้แม่นระดับ "แข็งมาก" (ทางเลือก, ต้องมี dataset)
+- ตอนนี้ band ถูกระดับหลัก แต่สิริกัญญาได้ "แข็ง" (doc "แข็งมาก") ต่าง 1 ระดับ
+- ต้องมี: **labeled dataset ครอบ "สมดุล/แข็งมาก" 3-5 ดวง** + เพิ่ม **โมเดล drainage/官杀 pressure** (ดวงถูกธาตุพิฆาตล้อมควรอ่อนแม้มีราก) — ดูรายละเอียด P2 → A2 ด้านล่าง
+
+### N4 — ขัดเกลาเพิ่ม (ทางเลือก)
+- บท5 พรสวรรค์: เน้น 傷官=วาทศิลป์ ให้ชัดขึ้นในบาง doc (เล็ก, โครงดวงถูกอยู่แล้ว)
+- DOCX: ฝังฟอนต์ Sarabun (OFL) จริง ถ้าจะแจกไฟล์ข้ามเครื่อง
+- รัน verify/เทียบ your life code ทั้ง 6 เคสเป็น regression ประจำหลังแก้ prompt
+
+---
+
+## บันทึกรายละเอียดงานที่ทำแล้ว (history)
+
+### P-A: prompt LLM — ✅ ทำ + VERIFIED
+- ยึด excerpt/ห้าม archetype, คงป้าย/อายุ/ธาตุเป๊ะ, โทนกลาง, ตรงกำลังดิถี, ไม่อ้างแหล่ง + ภายหลังปรับเป็น **กระชับ bullet** (สไตล์ your life code) + บท1 เรียงบวกก่อน
+- ✅ VERIFIED (`scripts/verify-reading-llm.ts`): บท1 ไม่ drift archetype, ไม่มี ครับ/ค่ะ, ไม่อ้างแหล่ง, กระชับมี bullet, คงป้าย
+
+### P-B: liu nian รายปีแบบเต็ม — ✅ ทำแล้ว (รอบล่าสุด)
+- `buildLiuNianSeries` ใน `symbolic-engine.birth.ts` — แบนปีจรจากทุกเสาวัยจร กรอบ [อายุปัจจุบัน, +20 ปี]
+- schema `liuNianSeries` (`LiuNianYearSchema`: year/age/stem/branch/twelveQiDisplay) — serialize ใน `symbolic-engine.ts` พร้อม 12 เชี่ยงแซของกิ่งปี
+- `buildLiuNianYearlyForecast` ใน `topic-knowledge.ts` — คิดบทบาทธาตุ+12เชี่ยงแซรายปี แล้ว**จับกลุ่มปีคุณภาพคล้ายกันเป็นช่วง** (เช่น "อายุ 52-53 ดาวลาภ → เฝ้าระวัง") แสดง พ.ศ./ค.ศ. ต่อท้ายบท 12; ไหลเข้า DOCX + เป็น ground ของ LLM อัตโนมัติ
+- เทสต์ `tests/liunian-series.test.ts`; full suite คงที่ 14 fail corpus เดิม (0 regression)
+
+### P-C: ขัดเกลาเพิ่ม (ทางเลือก) — ✅ ทำแล้ว (รอบล่าสุด)
+- ✅ **DOCX สวยขึ้น**: หน้าปกกรอบสีมงคล + สารบัญ (TOC field, Word เติมเลขหน้าเอง) + footer เลขหน้า + ขึ้นหน้าใหม่แต่ละหมวด (ฟอนต์ฝัง = ข้าม เพราะ Tahoma ลิขสิทธิ์ MS; ใช้ Sarabun OFL ได้ถ้าจะฝังจริง)
+- ✅ **band classifier แก้ที่ต้นเหตุ (เพิ่มน้ำหนักฤดู 得令)**: เพิ่ม `resolveSeasonalCommand` ใน `symbolic-engine.strength.ts` (+2 เมื่อดิถีเกิดตรงฤดูธาตุตัวเอง, บวกล้วนไม่ลงโทษ) → case3 丙 4.25→6.25 "ดิถีแข็ง" ถูกต้อง; + ปรับ `roleMap` band strong = [output, wealth] (食傷生财) ให้ตรง doc; **0 regression ใหม่** (full suite คงที่ 14 fail corpus เดิม)
+- ✅ **mapping ลูกค้า/ช่องทาง ละเอียดขึ้น**: เพิ่มกลุ่มที่นำเงินเข้า (ดาวลาภ財), ช่องทางสื่อสาร (ดาวถ่ายเท食傷 → `OUTPUT_CHANNEL_TH`), ช่องทางเสน่ห์ (ดาวดอกท้อ桃花) — เสริมจากเดิมที่ดูแค่เสาปี
+- ✅ **DOCX ตารางวัยจร 5 ปี** (เดิม 10 ปี) + ✅ **LLM แต่งคำตารางบทเสริม** + ✅ **score พื้นดวงใช้ engine score ให้ตรง band**
+- (deferred) resource-season bonus (印当令) — ข้ามเพราะกระทบ locked test 2018-12-08; ทำภายหลังพร้อมอัปเดต golden value
 
 ### ความปลอดภัย (ต้องทำ)
 **Revoke Gemini API key ที่เผยในแชต** แล้วออกใหม่ก่อนทดสอบ LLM รอบถัดไป
@@ -110,7 +133,20 @@
 เพราะ doc เป็นร้อยแก้วยาว — ต้องใช้ LLM ปิด gap "ถ้อยคำรายบท" (กลไก override พร้อมแล้ว)
 
 ### P2 — band classifier ละเอียดขึ้น
-`classifyOperatorStrengthScore` จัด score 4.25 (case3) เป็น "balanced" ทั้งที่ควร "แข็งมาก" — ปัจจุบันเลี่ยงผลกระทบด้วยการเช็ค `resolveExcessElements` ใน imagery แต่ระยะยาวควรจูน threshold (เสี่ยง: ใช้ทั่ว codebase ต้องมี test ครอบหนาแน่นก่อน)
+- ✅ **case3 4.25→6.25 "ดิถีแข็ง"** แก้แล้วด้วย seasonal command (得令 +2) ใน `symbolic-engine.strength.ts`
+
+#### ✅ A2 (band นับราก 通根/得地) — DONE (รอบล่าสุด)
+ปิดเสาที่ 3 ของกำลังดิถีแล้ว: `resolveRootContributions` ใน `symbolic-engine.strength.ts` นับ hidden stems (本气 0.3 / 中气 0.15 / 余气 0.1, 比劫根 เต็ม / 印根 ครึ่ง) + ทำ band ต่อเนื่องไม่มีช่องว่างใน `constants/operator-strength.ts` (รองรับคะแนนเศษ): very-weak≤2 / weak(2,4] / balanced(4,5.5] / strong(5.5,6.75] / very-strong(6.75,∞)
+
+**ผล — ดวง labeled ทุกตัวถูกหลักตำรา:** สิริกัญญา 壬 5.5→**6.25 แข็ง** (doc แข็งมาก) · dna3 丙 6.95 แข็งเกินไป · case1 辛 3.95 อ่อน (ดิน+น้ำ) · เจ้าชะตาB 庚 3.67 อ่อน (ดิน+ทอง) · กัญญา 甲 2.75 อ่อน
+
+**Re-bless แล้ว (มีหลักฐานจากคะแนนใหม่):** orthodox/e2e 4.5→4.65 · pinned 1992 己 3.75→4.58 (weak→balanced, รากดิน 未/巳/申 หลายตำแหน่ง) · real-case-1993 0.25→0.35 · เพิ่ม profile `己|แข็งแรง/สมดุล` ใน test repo กัน undefined
+**เทสต์อัปเดต:** orthodox-twelve-qi, symbolic-engine(.facts), e2e, real-case-1993, symbolic-engine (profile block + trace result), orchestrator-prompt-builder · full suite 14 fail corpus เดิม (0 regression)
+
+**หมายเหตุ/ข้อควรรู้รอบหน้า:**
+- 1992 己 ถูก reclassify weak→balanced (รากดินจริงหลายตำแหน่ง — defensible) → **production DB ต้องมี profile `己|แข็งแรง/สมดุล`** ไม่งั้น narrative fallback เป็น "score X"
+- สิริกัญญาได้ "แข็ง" (doc "แข็งมาก") — ต่าง 1 band ยอมรับได้; ถ้าจะให้ตรงเป๊ะอาจเพิ่ม drainage model + label dataset เพิ่ม
+- ยังไม่มีโมเดล drainage/官杀 pressure (case1 ไฟล้อมโลหะผ่านได้เพราะ root น้อย+ฤดูไม่หนุน พอดี) — ถ้าเจอเคส over-strengthen ในอนาคต ค่อยเพิ่ม
 
 ### P3 — DOCX ให้สวยใกล้ต้นฉบับ
 - เพิ่มตารางวัยจร 8 ช่วง (Da Yun) บนแผ่นดวง, หน้าปกมีกราฟิก, ฟอนต์ไทยฝังในไฟล์, สารบัญ 15 หมวด
@@ -119,8 +155,8 @@
 ### P4 — ไล่เทียบถ้อยคำรายบท 4-15 ทั้ง 4 ดวง
 ทำเป็น checklist ทีละบท เทียบ engine vs doc แล้วเพิ่ม knowledge ที่ขาด (เช่น บท12 turning points เจาะลึก 20 ปีข้างหน้าแบบ doc)
 
-### P5 — UI ครบวงจร
-ปุ่ม export อยู่แล้ว; ควรเพิ่ม progress ตอน LLM polish ทั้ง 15 บทก่อน export + preview
+### P5 — UI ครบวงจร — ✅ ทำแล้ว
+✅ เพิ่ม progress bar (วิช่วล) ตอนทำนาย/LLM polish รวมทุกบท + ปุ่ม "ดูตัวอย่างรายงาน" (preview เรียงตามลำดับไฟล์ .docx รวมตารางบทเสริม) ก่อนดาวน์โหลด — ใน `ReadingPathWorkspace.tsx` + CSS `path-reading.css`
 
 ---
 

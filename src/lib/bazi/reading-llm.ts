@@ -31,7 +31,7 @@ type ReadingTopicPrompt = {
 export const READING_TOPIC_PROMPTS: Record<string, ReadingTopicPrompt> = {
   chart_foundation: {
     heading: "พื้นฐานดวงชะตาที่ถูกกำหนด",
-    persona: "ซินแสที่อ่านแก่นตัวตนของเจ้าชะตาอย่างเข้าใจ ให้กำลังใจแต่ตรงไปตรงมา",
+    persona: "ซินแสที่อ่านแก่นตัวตนของเจ้าชะตาอย่างตรงไปตรงมาเชิงข้อมูล",
     focus: "อธิบายดิถี (ธาตุ/แข็ง-อ่อน) เป็นนิสัยพื้นฐาน จุดแข็ง จุดที่ควรระวัง และนิสัยเสริมดวงตามธาตุที่ส่งเสริม",
   },
   career_potential: {
@@ -41,12 +41,12 @@ export const READING_TOPIC_PROMPTS: Record<string, ReadingTopicPrompt> = {
   },
   wealth_and_investment: {
     heading: "โชคลาภที่ถูกทาง โอกาสรวยอยู่แค่เอื้อม",
-    persona: "ซินแสที่ชี้ช่องทางการเงินอย่างมีความหวังแต่สมจริง",
+    persona: "ซินแสที่ชี้ช่องทางการเงินอย่างสมจริงเชิงข้อมูล",
     focus: "ลักษณะโชคลาภ วิธีหาเงินที่เหมาะ จังหวะ และเงื่อนไขสำคัญ (เช่น โฟกัสสิ่งที่ถนัด)",
   },
   benefactor: {
     heading: "ผู้อุปถัมภ์ที่พร้อมช่วยเหลือคือใคร",
-    persona: "ซินแสที่ชี้ให้เห็นคนหนุนหลังอย่างอบอุ่น",
+    persona: "ซินแสที่ชี้ให้เห็นคนหนุนหลังอย่างตรงไปตรงมา",
     focus: "ผู้อุปถัมภ์มาในรูปแบบใด มาจากใคร (ผู้ใหญ่/ปู่ย่า/ลูกค้า) และควรวางตัวอย่างไรให้ได้รับการสนับสนุน",
   },
   talent: {
@@ -56,12 +56,12 @@ export const READING_TOPIC_PROMPTS: Record<string, ReadingTopicPrompt> = {
   },
   family: {
     heading: "ครอบครัวอันเป็นพื้นฐานสำคัญสำหรับชีวิต",
-    persona: "ซินแสที่อ่านรากฐานครอบครัวอย่างอบอุ่น",
+    persona: "ซินแสที่อ่านรากฐานครอบครัวอย่างตรงไปตรงมา",
     focus: "บทบาทพ่อแม่/ปู่ย่าและรากฐานที่ส่งต่อมา ความสัมพันธ์ในบ้าน และข้อแนะนำการดูแลคนในครอบครัว",
   },
   love_partner: {
     heading: "ความรัก / คู่ครองที่เหมาะสม",
-    persona: "ซินแสที่อ่านเรื่องหัวใจอย่างละเอียดอ่อน",
+    persona: "ซินแสที่อ่านเรื่องคู่ครองอย่างตรงไปตรงมาเชิงข้อมูล",
     focus: "โอกาสและรูปแบบความรัก ลักษณะคู่ครองที่เหมาะ และการประคองชีวิตคู่",
   },
   friends_foes: {
@@ -91,7 +91,7 @@ export const READING_TOPIC_PROMPTS: Record<string, ReadingTopicPrompt> = {
   },
   health: {
     heading: "การดูแลสุขภาพ เพื่อเตรียมความพร้อม",
-    persona: "ซินแสที่ห่วงใยสุขภาพอย่างอ่อนโยน",
+    persona: "ซินแสที่ชี้จุดสุขภาพอย่างตรงไปตรงมาเชิงข้อมูล",
     focus: "จุดอ่อนสุขภาพตามธาตุที่อ่อน และแนวทางดูแล/ปรับสมดุล",
   },
   colors_directions: {
@@ -101,7 +101,7 @@ export const READING_TOPIC_PROMPTS: Record<string, ReadingTopicPrompt> = {
   },
   guardian_deities: {
     heading: "องค์เทพที่คุ้มครองดวง ช่วยหนุนให้สำเร็จ",
-    persona: "ซินแสที่แนะนำสิ่งศักดิ์สิทธิ์อย่างเคารพ",
+    persona: "ซินแสที่ระบุองค์เทพและการทำบุญเชิงข้อมูล",
     focus: "องค์เทพและการทำบุญที่เสริมธาตุที่ดวงต้องการ",
   },
 };
@@ -166,23 +166,40 @@ async function generateViaOpenCode(
   return { text: data.choices?.[0]?.message?.content ?? null };
 }
 
-function buildSystemInstruction(prompt: ReadingTopicPrompt, sourceLabel: string | null): string {
+/** บทแรก (พื้นฐานดวง) เท่านั้นที่เปิดด้วยภาพเปรียบธรรมชาติของดิถีได้ บทอื่นห้ามเปิดซ้ำ */
+const IMAGERY_TOPIC_ID = "chart_foundation";
+
+function buildSystemInstruction(prompt: ReadingTopicPrompt, topicId: string): string {
+  const allowImagery = topicId === IMAGERY_TOPIC_ID;
   return [
     `คุณคือ${prompt.persona} กำลังเขียนรายงาน "DNA ดวงจีน" ให้ลูกค้าอ่าน`,
     `หัวข้อที่เขียน: "${prompt.heading}"`,
     "",
-    "สไตล์การเขียน (สำคัญมาก):",
-    "- ร้อยแก้วเล่าเรื่องลื่นไหลแบบซินแสที่อบอุ่นและให้กำลังใจ ใช้สรรพนาม \"คุณ\" ตลอด",
-    "- เปิดด้วยภาพเปรียบเทียบเชิงธรรมชาติ (เช่น เพชรพลอย ภูเขา สายน้ำ ต้นไม้ ดวงอาทิตย์) ถ้ามีในข้อมูลที่ให้มา แล้วค่อยขยายความเป็นชีวิตจริง",
-    "- ความยาว 2-4 ย่อหน้า ต่อเนื่องเป็นเรื่องเล่า ไม่ใช้ bullet ไม่ใช้หัวข้อย่อย ไม่สาดศัพท์เทคนิคดิบ (ถ้าจำเป็นต้องเอ่ยศัพท์ ให้แปลความหมายให้คนทั่วไปเข้าใจ)",
-    "- มีทั้งจุดแข็งและจุดที่ต้องระวัง แต่จบด้วยคำแนะนำเชิงสร้างสรรค์/ทางออก ไม่ตำหนิ ไม่ขู่",
+    "สไตล์การเขียน (สำคัญมาก — ต้องกระชับ อ่านง่าย):",
+    "- เขียนกระชับ ชัดเจน ตรงประเด็น เหมือนรายงานที่อ่านแล้วเข้าใจทันที ไม่ต้องปลอบใจ/ให้กำลังใจ ไม่ใช้คำฟุ่มเฟือย ไม่เปรียบเปรยเกินจำเป็น ไม่เล่าเรื่องยืดยาว ใช้สรรพนาม \"คุณ\"",
+    "- โครงสร้างต่อบท: (1) ประโยคกรอบสั้น 1 ประโยค บอกหลักของบทนี้ → (2) จุดสำคัญเป็น bullet ขึ้นต้นด้วย \"- \" → (3) คำแนะนำปิด 1 บรรทัด",
+    "- แต่ละ bullet สั้น เน้นคำสำคัญ ไม่ต้องเขียนเป็นประโยคเต็มที่ยืดยาว (ตัดคำขยาย/คำเชื่อมที่ไม่จำเป็นออก)",
+    "- ใช้ bullet กับสิ่งที่เป็นลิสต์ (เช่น อาชีพ สี ช่วงอายุ องค์เทพ) ตาม engine signal ที่ให้มา ห้ามยุบเป็นย่อหน้ายาว",
+    "- ความยาวรวมทั้งบทต้องสั้น (โดยรวมไม่เกินราว 150 คำ หรือไม่เกิน 8 bullet) ห้ามเขียนย่อหน้ายาวซ้ำความ",
+    allowImagery
+      ? "- บทนี้เปิดด้วยภาพเปรียบเชิงธรรมชาติของดิถีได้ไม่เกิน 1 ประโยคสั้น แล้วเข้าจุดสำคัญทันที"
+      : "- ห้ามเปิดบทด้วยภาพเปรียบธรรมชาติของดิถี (เช่น \"เปรียบดั่งต้นไม้ใหญ่/สายน้ำ/โลหะ...\") ให้เข้าจุดสำคัญของหัวข้อทันที",
+    ...(allowImagery
+      ? ["- บทบุคลิก: เรียงนิสัยจุดบวก/จุดแข็งขึ้นก่อนเสมอ แล้วค่อยสรุป \"จุดที่ควรระวัง\" สั้น ๆ เพียง 1 ข้อท้ายสุด ห้ามนำด้วยนิสัยเชิงลบ และห้ามใส่จุดลบเกิน 1 ข้อ"]
+      : []),
+    "- ไม่สาดศัพท์เทคนิคดิบ ถ้าจำเป็นต้องเอ่ยให้แปลสั้น ๆ ให้คนทั่วไปเข้าใจ",
+    "- บอกทั้งจุดแข็งและจุดที่ต้องระวังตามข้อมูล จบด้วยคำแนะนำเชิงปฏิบัติ ไม่ตำหนิ ไม่ขู่",
+    "- คำลงท้ายเป็นกลาง ไม่ลงท้ายว่า \"ครับ\"/\"ค่ะ\" ไม่ผูกน้ำเสียงกับเพศ",
+    "- น้ำเสียงตรงกับกำลังดิถีตามข้อมูล (ดิถีอ่อนอย่าเขียนให้ดูแข็งกร้าว ดิถีแข็งอย่าเขียนให้ดูเปราะบาง)",
     "",
     "กฎเหล็ก (ห้ามผิด):",
-    "- ใช้ได้เฉพาะข้อเท็จจริงใน excerpt ตำรา + engine signal ที่ให้มาเท่านั้น ห้ามแต่งเสา ราศี ดาว ธาตุ ช่วงอายุ หรือตัวเลขขึ้นเอง",
-    "- ถ้าข้อมูลระบุธาตุที่ดวงต้องการ (useful god) หรือช่วงเฝ้าระวัง ต้องคงสาระนั้นไว้ให้ครบ",
-    sourceLabel ? `- แทรกการอ้างอิงแหล่งความรู้อย่างเป็นธรรมชาติสักครั้ง: "${sourceLabel}"` : "- อ้างอิงหลักการอ่านดวงตาม signal ที่ให้มา",
+    "- ยึดข้อเท็จจริงและลักษณะนิสัยจาก excerpt ตำรา + engine signal ที่ให้มาเท่านั้น ห้ามแต่งเสา ราศี ดาว ธาตุ ช่วงอายุ หรือตัวเลขขึ้นเอง",
+    "- ห้ามเติมลักษณะนิสัยหรือจุดอ่อนที่ไม่ปรากฏใน excerpt/signal โดยเฉพาะนิสัยเชิงลบ (เช่น โกรธง่าย ดื้อรั้น ขี้สงสัย ใจร้อน) — ถ้าข้อมูลไม่ได้ระบุ ห้ามใส่เด็ดขาด",
+    "- ห้ามเติม archetype/บุคลิกสำเร็จรูปตามธาตุ (เช่น เหมาว่าธาตุไฟต้องเป็น \"ผู้นำ\") ให้บรรยายนิสัยตามที่ excerpt ระบุเท่านั้น ถ้า excerpt ว่านิสัยเมตตา/ยอมคน ก็คงไว้ ห้ามกลบด้วยภาพผู้นำ/นักสู้",
+    "- ถ้าข้อมูลระบุธาตุที่ดวงต้องการ (useful god), ป้าย [ยุคทอง]/[เฝ้าระวัง], ช่วงอายุ, ตัวเลข หรือธาตุใด ต้องคงค่าเหล่านั้นไว้ให้ครบและตรงเป๊ะตามที่ให้มา ห้ามดัดแปลง",
+    "- ห้ามเอ่ยถึงแหล่งที่มาของข้อมูลหรือชื่อไฟล์/เอกสารใด ๆ (เช่น M.docx, 1.docx, ชื่อตำรา) เด็ดขาด เขียนเป็นคำทำนายตรง ๆ ไม่ต้องอ้างอิงว่ามาจากไหน",
     "",
-    "ตอบเป็นข้อความล้วน (ย่อหน้าคั่นด้วยบรรทัดว่าง) เฉพาะหัวข้อนี้ ไม่ต้องมีหัวข้อกำกับหรือ JSON",
+    "ตอบเป็นข้อความล้วนเฉพาะหัวข้อนี้ (ประโยคกรอบ + bullet \"- \" + คำแนะนำปิด) ไม่ต้องมีหัวข้อกำกับ ไม่ต้องมี JSON",
   ].join("\n");
 }
 
@@ -193,10 +210,10 @@ function buildUserPrompt(input: ReadingTopicLlmInput, prompt: ReadingTopicPrompt
     `ข้อมูลเกิด: ${input.rawInput.birthDate} ${input.rawInput.birthTime} เพศ ${input.rawInput.gender}`,
     "",
     input.humanKnowledge
-      ? `excerpt ตำรา (แกนคำตอบ — เรียบเรียงใหม่ให้ลื่น คงสาระเดิม):\n${input.humanKnowledge}`
+      ? `excerpt ตำรา (แกนคำตอบ — เรียบเรียงใหม่ให้ลื่น คงสาระและนิสัยเดิมทุกข้อ ห้ามเพิ่มบุคลิกที่ไม่มีใน excerpt):\n${input.humanKnowledge}`
       : "ไม่มี excerpt ตำราตรงหัวข้อนี้ ให้เรียบเรียงจาก engine signal ด้านล่างตามหลักการ",
     "",
-    "engine signal (โครงสร้าง/วิธีอ่านจากดวงจริง — ใช้ยืนยันข้อเท็จจริง):",
+    "engine signal (โครงสร้าง/วิธีอ่านจากดวงจริง — ใช้ยืนยันข้อเท็จจริง คงป้าย/อายุ/ตัวเลข/ธาตุตามนี้เป๊ะ):",
     ...input.engineSignals.map((line) => `- ${line}`),
   ].join("\n");
 }
@@ -225,7 +242,7 @@ export async function generateReadingTopicLlm(
     model,
     contents: buildUserPrompt(input, prompt),
     config: {
-      systemInstruction: buildSystemInstruction(prompt, input.sourceLabel),
+      systemInstruction: buildSystemInstruction(prompt, input.topicId),
       temperature: 0.55,
     },
   });
@@ -236,4 +253,116 @@ export async function generateReadingTopicLlm(
   }
 
   return { text, model };
+}
+
+/** หนึ่งแถวของตารางบทเสริม (เส้นขีดความสัมพันธ์/วัยจร) ที่ส่งให้ LLM แต่งคำ */
+export type RelationshipLineForLlm = {
+  ageRange: string;
+  symbol: string;
+  relationLine: string;
+  deepNote: string;
+};
+
+export type RelationshipLinesLlmInput = {
+  rows: RelationshipLineForLlm[];
+  rawInput: RawInputValue;
+  calculatedState: CalculatedStateValue;
+  apiKey?: string;
+  model?: string;
+  provider?: ReadingLlmProvider;
+};
+
+function buildRelationshipLinesSystemInstruction(): string {
+  return [
+    "คุณคือซินแสที่เขียนตารางวิเคราะห์วัยจร (เส้นขีดความสัมพันธ์รายช่วง 5 ปี) ให้ลูกค้าอ่านในรายงาน \"DNA ดวงจีน\"",
+    "งานของคุณคือ \"แต่งคำ\" ช่อง \"คำอธิบายดี-ร้ายเชิงลึก\" ของแต่ละแถวให้กระชับ ชัดเจน เข้าใจง่าย (1-2 ประโยคสั้นต่อแถว ไม่ฟุ่มเฟือย)",
+    "",
+    "กฎเหล็ก (ห้ามผิด):",
+    "- รักษาสาระเดิมของแต่ละแถวไว้ครบ ห้ามสลับช่วงอายุ ห้ามแต่งเหตุการณ์/ตัวเลข/ธาตุที่ไม่มีในข้อมูลเดิม",
+    "- ถ้าข้อความเดิมมีป้าย [เฝ้าระวัง] หรือ [ยุคทอง] ต้องคงป้ายนั้นไว้เหมือนเดิมเป๊ะ",
+    "- โทน/คำลงท้ายเป็นกลาง ไม่ลงท้ายว่า \"ครับ\"/\"ค่ะ\"",
+    "- ห้ามเอ่ยถึงแหล่งที่มาของข้อมูลหรือชื่อไฟล์/เอกสารใด ๆ (เช่น M.docx)",
+    "- แต่ละช่องกระชับ 1-2 ประโยค",
+    "",
+    "รูปแบบคำตอบ: ตอบเป็น JSON array ของสตริงเท่านั้น (ไม่มีคำอธิบายอื่น ไม่มี code fence) โดยมีจำนวนสมาชิกเท่ากับจำนวนแถวที่ให้มา เรียงตามลำดับเดิม แต่ละสมาชิกคือข้อความ \"คำอธิบายดี-ร้ายเชิงลึก\" ที่แต่งใหม่ของแถวนั้น",
+  ].join("\n");
+}
+
+function buildRelationshipLinesUserPrompt(input: RelationshipLinesLlmInput): string {
+  const dm = input.calculatedState.dayMaster;
+  const strength = input.calculatedState.dayMasterStrengthProfile?.displayLabel ?? "";
+  return [
+    `ข้อมูลเกิด: ${input.rawInput.birthDate} ${input.rawInput.birthTime} เพศ ${input.rawInput.gender}`,
+    `ดิถี: ${dm}${strength ? ` (${strength})` : ""}`,
+    "",
+    "แถวในตาราง (index | ช่วงอายุ | เสาวัยจร | เส้นขีด | คำอธิบายเดิม):",
+    ...input.rows.map(
+      (row, index) =>
+        `${index} | ${row.ageRange} | ${row.symbol} | ${row.relationLine} | ${row.deepNote}`,
+    ),
+    "",
+    `ตอบเป็น JSON array ความยาว ${input.rows.length} ของคำอธิบายที่แต่งใหม่ เรียงตาม index 0..${input.rows.length - 1}`,
+  ].join("\n");
+}
+
+/** ดึง JSON array ของสตริงจากข้อความ LLM (เผื่อมี code fence/ข้อความห่อ) */
+function parseStringArray(text: string): string[] | null {
+  const trimmed = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  const start = trimmed.indexOf("[");
+  const end = trimmed.lastIndexOf("]");
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(trimmed.slice(start, end + 1)) as unknown;
+    if (Array.isArray(parsed) && parsed.every((item) => typeof item === "string")) {
+      return parsed as string[];
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+/**
+ * แต่งคำช่อง "คำอธิบายดี-ร้ายเชิงลึก" ของตารางบทเสริม (วัยจร) ด้วย LLM
+ * คง ageRange/symbol/relationLine เดิม เปลี่ยนเฉพาะ deepNote — ถ้า LLM ล้มเหลว/รูปแบบไม่ตรง คืนแถวเดิม
+ */
+export async function polishRelationshipLinesLlm(
+  input: RelationshipLinesLlmInput,
+  deps: { generateContent?: GeminiGenerate } = {},
+): Promise<RelationshipLineForLlm[]> {
+  if (input.rows.length === 0) {
+    return input.rows;
+  }
+
+  const provider: ReadingLlmProvider = input.provider ?? "gemini";
+  const model =
+    input.model?.trim() || (provider === "opencode" ? DEFAULT_OPENCODE_MODEL : DEFAULT_MODEL);
+
+  const generateContent: GeminiGenerate =
+    deps.generateContent
+    ?? (provider === "opencode"
+      ? (request) => generateViaOpenCode(request, input.apiKey)
+      : (request) => new GoogleGenAI({ apiKey: input.apiKey }).models.generateContent(request));
+
+  const response = await generateContent({
+    model,
+    contents: buildRelationshipLinesUserPrompt(input),
+    config: {
+      systemInstruction: buildRelationshipLinesSystemInstruction(),
+      temperature: 0.5,
+    },
+  });
+
+  const polished = parseStringArray(response.text?.trim() ?? "");
+  if (!polished || polished.length !== input.rows.length) {
+    // รูปแบบไม่ตรง — คงของเดิมไว้เพื่อไม่ให้ตารางเพี้ยน
+    return input.rows;
+  }
+
+  return input.rows.map((row, index) => {
+    const note = polished[index]?.trim();
+    return note ? { ...row, deepNote: note } : row;
+  });
 }

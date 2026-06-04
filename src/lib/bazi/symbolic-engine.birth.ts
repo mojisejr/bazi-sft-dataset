@@ -388,10 +388,15 @@ export function buildDaYunState(
   currentYear: number,
 ) {
   const eightChar = birthContext.solar.getLunar().getEightChar();
-  const initialStartAge = resolveManualDaYunStartAge(birthContext.solar, gender);
+  const yun = eightChar.getYun(normalizeGenderForYun(gender));
+  // 起运 (อายุเริ่มวัยจร) จริงจาก lunar-javascript; fallback กฎ 3 วัน=1 ปี ถ้าไลบรารีไม่ให้ค่า
+  const yunStartYear = yun.getStartYear?.();
+  const initialStartAge =
+    typeof yunStartYear === "number" && yunStartYear > 0
+      ? yunStartYear
+      : resolveManualDaYunStartAge(birthContext.solar, gender);
 
-  return eightChar
-    .getYun(normalizeGenderForYun(gender))
+  return yun
     .getDaYun()
     .filter((entry) => entry.getGanZhi().trim().length > 0)
     .map((entry, index) => {
@@ -459,6 +464,45 @@ export function buildLiuNianState(
     currentReferenceEightChar.getYear(),
     currentReferenceEightChar.getYearHideGan(),
   );
+}
+
+/**
+ * ชุดปีจร (liu nian) รายปีในกรอบเวลา [currentAge, currentAge + spanYears]
+ * แบนเอนทรีจากทุกเสาวัยจร (da yun) → ใช้ทำนายเหตุการณ์รายปีแบบเต็ม (P-B)
+ * คืนเฉพาะ {year, age, stem, branch}; 12 เชี่ยงแซ/บทบาทธาตุคิดต่อในชั้นบน
+ */
+export function buildLiuNianSeries(
+  eightChar: EightCharLike,
+  gender: string,
+  currentAge: number,
+  spanYears: number,
+) {
+  const minAge = Math.max(0, currentAge);
+  const maxAge = currentAge + spanYears;
+  const series: Array<{ year: number; age: number; stem: string; branch: string }> = [];
+  const seenYears = new Set<number>();
+
+  const daYunList = eightChar.getYun(normalizeGenderForYun(gender)).getDaYun();
+  for (const daYun of daYunList) {
+    if (daYun.getGanZhi().trim().length === 0) {
+      continue;
+    }
+    for (const liuNian of daYun.getLiuNian()) {
+      const age = liuNian.getAge();
+      if (age < minAge || age > maxAge) {
+        continue;
+      }
+      const ganZhi = liuNian.getGanZhi().trim();
+      if (!ganZhi || seenYears.has(liuNian.getYear())) {
+        continue;
+      }
+      const { stem, branch } = splitGanZhi(ganZhi);
+      seenYears.add(liuNian.getYear());
+      series.push({ year: liuNian.getYear(), age, stem, branch });
+    }
+  }
+
+  return series.sort((a, b) => a.year - b.year);
 }
 
 export function normalizeBirthContext(rawInput: RawInputValue): NormalizedBirthContext {

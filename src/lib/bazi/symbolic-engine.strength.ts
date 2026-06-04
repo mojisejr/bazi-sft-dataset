@@ -3,6 +3,8 @@ import type {
   ExplainableValue,
 } from "@/lib/bazi/schema-types";
 import {
+  BRANCH_HIDDEN_STEMS,
+  BRANCH_TO_ELEMENT,
   STEM_METAPHORS,
   STEM_TO_ELEMENT,
   SUPPORT_ELEMENT_METAPHORS,
@@ -209,6 +211,65 @@ function resolveHourMonthZoneAdjustment(stages: [string, string]) {
   return null;
 }
 
+/** น้ำหนัก 得令 (月令) — เกิดตรงฤดูธาตุตัวเอง คือปัจจัยกำลังดิถีที่ตำราให้น้ำหนักสูงสุด */
+const SEASONAL_COMMAND_SAME_SEASON_WEIGHT = 2;
+
+/**
+ * โบนัสฤดู 得令 (月令) — เพิ่มน้ำหนักเมื่อดิถีเกิดในฤดูของธาตุตัวเอง (เช่น ไฟเกิดหน้าร้อน 巳午)
+ * เป็นโบนัสบวกล้วน ไม่ลงโทษ เพื่อไม่ให้ดวงอ่อนยิ่งอ่อนและคุม blast radius
+ */
+function resolveSeasonalCommand(
+  dayMasterElement: SupportedElement,
+  monthBranch: string,
+): OperatorContribution | null {
+  const seasonElement = BRANCH_TO_ELEMENT[monthBranch as keyof typeof BRANCH_TO_ELEMENT];
+  if (seasonElement && seasonElement === dayMasterElement) {
+    return {
+      label: "seasonalCommand",
+      symbol: monthBranch,
+      weight: SEASONAL_COMMAND_SAME_SEASON_WEIGHT,
+      source: "zone",
+    };
+  }
+  return null;
+}
+
+/**
+ * โบนัสราก 得地 (通根) — นับ hidden stems ในกิ่งทั้ง 4 เสาที่เป็นธาตุดิถี (比劫根) หรือธาตุส่งเสริม (印根)
+ * ถ่วงตามตำแหน่ง 本气/中气/余气 — ปิดเสาที่ 3 ของกำลังดิถี (得令/得势 มีแล้ว)
+ */
+const ROOT_WEIGHT_BY_POSITION = [0.3, 0.15, 0.1] as const; // 本气, 中气, 余气
+
+function resolveRootContributions(
+  dayMasterElement: SupportedElement,
+  pillars: CalculatedStateValue["fourPillars"],
+): OperatorContribution[] {
+  const resourceElement = (Object.keys(GENERATES) as SupportedElement[]).find(
+    (element) => GENERATES[element] === dayMasterElement,
+  );
+  const out: OperatorContribution[] = [];
+  for (const key of ["year", "month", "day", "hour"] as const) {
+    const branch = pillars[key].branch;
+    const hidden = BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [];
+    hidden.forEach((stem, index) => {
+      const element = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
+      // 比劫根 (พ้องธาตุดิถี) ได้เต็มน้ำหนัก, 印根 (ธาตุส่งเสริม) ได้ครึ่งหนึ่ง
+      const factor = element === dayMasterElement ? 1 : element === resourceElement ? 0.5 : 0;
+      if (factor === 0) {
+        return;
+      }
+      const positionWeight = ROOT_WEIGHT_BY_POSITION[index] ?? 0.1;
+      out.push({
+        label: `root:${key}`,
+        symbol: `${branch}(${stem})`,
+        weight: Number((positionWeight * factor).toFixed(3)),
+        source: "branch",
+      });
+    });
+  }
+  return out;
+}
+
 function computeStrengthScoreBreakdown(
   dayMasterStem: string,
   pillars: CalculatedStateValue["fourPillars"],
@@ -281,9 +342,13 @@ function computeStrengthScoreBreakdown(
     score += contribution.weight;
   }
 
-  const hiddenContributions: OperatorContribution[] = [];
+  const hiddenContributions = resolveRootContributions(dayMasterElement, pillars);
+  for (const contribution of hiddenContributions) {
+    score += contribution.weight;
+  }
 
   const qiAdjustments = [
+    resolveSeasonalCommand(dayMasterElement, pillars.month.branch),
     resolveDayMonthZoneAdjustment([stages.day, stages.month]),
     resolveHourMonthZoneAdjustment([stages.hour, stages.month]),
     resolveZoneAdjustment(

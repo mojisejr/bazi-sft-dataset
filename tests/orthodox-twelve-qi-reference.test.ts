@@ -44,7 +44,7 @@ describe("orthodox twelve qi reference proof", () => {
       day: "养",
       hour: "胎",
     });
-    expect(strengthScore.value).toBe(4.5);
+    expect(strengthScore.value).toBe(4.65);
   });
 
   test("does not require repository twelve qi lookup once orthodox math is the source of truth", async () => {
@@ -86,6 +86,6 @@ describe("orthodox twelve qi reference proof", () => {
     );
     expect(result.twelveQi.currentDaYunBranch).toBeTruthy();
     expect(result.twelveQi.currentLiuNianBranch).toBeTruthy();
-    expect(result.strengthScore).toBe(4.5);
+    expect(result.strengthScore).toBe(4.65);
   });
 });

@@ -154,6 +154,7 @@ export function ReadingPathWorkspace() {
   }
 
   const [exporting, setExporting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
   // ดาวน์โหลดรายงาน .docx — ใช้คำอ่านที่ generate แล้วบนหน้าจอ (รวมฉบับ LLM polish ถ้ามี)
   async function handleExportDocx() {
@@ -169,10 +170,13 @@ export function ReadingPathWorkspace() {
           readings[topicId] = text;
         }
       }
+      // ตารางบทเสริม (วัยจร) — ใช้ฉบับที่ generate แล้ว (รวม LLM แต่งคำ ถ้ามี)
+      const relationshipLines =
+        topicStates["turning_points"]?.result?.relationshipLines ?? undefined;
       const response = await fetch("/api/reading/export-docx", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ rawInput, calculatedState, readings }),
+        body: JSON.stringify({ rawInput, calculatedState, readings, relationshipLines }),
       });
       if (!response.ok) {
         throw new Error("สร้างไฟล์ .docx ไม่สำเร็จ");
@@ -244,6 +248,10 @@ export function ReadingPathWorkspace() {
   const isReady = Boolean(calculatedState && rawInput);
   // ตารางบทเสริมมาจากผลบท turning_points ที่ auto-run แล้ว (ไม่ต้อง fetch แยกอีก)
   const relationshipLines = topicStates["turning_points"]?.result?.relationshipLines ?? null;
+  // จำนวนบทที่มีคำอ่านพร้อมแล้ว (ใช้คุมปุ่ม preview + แสดงความคืบหน้า)
+  const doneCount = PREDICT_TOPICS.filter(
+    (topic) => Boolean(topicStates[topic.id]?.result?.humanReading),
+  ).length;
 
   return (
     <div className="reading-path">
@@ -325,6 +333,14 @@ export function ReadingPathWorkspace() {
                 ? `กำลังทำนาย ${batchProgress.done}/${batchProgress.total}...`
                 : `ทำนายรวมทุกบท (${PREDICT_TOPICS.length} บท)`}
             </ActionButton>
+            <ActionButton
+              tone="secondary"
+              type="button"
+              disabled={doneCount === 0}
+              onClick={() => setShowPreview((value) => !value)}
+            >
+              {showPreview ? "ซ่อนตัวอย่าง" : `ดูตัวอย่างรายงาน (${doneCount}/${PREDICT_TOPICS.length})`}
+            </ActionButton>
             <ActionButton tone="secondary" type="button" onClick={() => window.print()}>
               พิมพ์รายงาน
             </ActionButton>
@@ -337,8 +353,65 @@ export function ReadingPathWorkspace() {
               {exporting ? "กำลังสร้าง .docx..." : "ดาวน์โหลด .docx"}
             </ActionButton>
           </div>
+          {batchProgress && (
+            <div
+              className="reading-path__progress"
+              role="progressbar"
+              aria-valuenow={batchProgress.done}
+              aria-valuemin={0}
+              aria-valuemax={batchProgress.total}
+              aria-label="ความคืบหน้าการทำนายรวมทุกบท"
+            >
+              <div
+                className="reading-path__progress-bar"
+                style={{ width: `${Math.round((batchProgress.done / batchProgress.total) * 100)}%` }}
+              />
+              <span className="reading-path__progress-label">
+                {allMode === "llm" ? "กำลังเรียบเรียงด้วย LLM" : "กำลังทำนาย"} {batchProgress.done}/{batchProgress.total} บท
+              </span>
+            </div>
+          )}
           {allMode === "llm" && (
             <p className="section-note">โหมด LLM รวมทุกบท = เรียก API {PREDICT_TOPICS.length} ครั้ง (ทีละบท)</p>
+          )}
+        </section>
+      )}
+
+      {isReady && showPreview && (
+        <section className="surface reading-path__preview" aria-label="ตัวอย่างรายงาน">
+          <SectionHeading
+            kicker="ตัวอย่างรายงาน (เรียงตามไฟล์ .docx)"
+            title="พรีวิวก่อนดาวน์โหลด"
+            titleLevel="h2"
+            note="ตรวจเนื้อหาทั้ง 15 บท (ฉบับบนจอ รวม LLM polish ถ้ามี) ตามลำดับที่จะออกในไฟล์ Word"
+          />
+          {PREDICT_TOPICS.map((topic) => {
+            const text = topicStates[topic.id]?.result?.humanReading;
+            return (
+              <article key={topic.id} className="reading-path__preview-chapter">
+                <h3>บทที่ {topic.chapter}: {topic.title}</h3>
+                {text
+                  ? text.split("\n\n").map((para, index) => <p key={index}>{para}</p>)
+                  : <p className="section-note">(ยังไม่ได้ทำนายบทนี้)</p>}
+              </article>
+            );
+          })}
+          {relationshipLines && relationshipLines.length > 0 && (
+            <article className="reading-path__preview-chapter">
+              <h3>บทเสริม: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ (วัยจรช่วงละ 5 ปี)</h3>
+              <table className="topic-table">
+                <thead>
+                  <tr><th>ช่วงอายุ</th><th>เสาวัยจร</th><th>เส้นขีด</th><th>คำอธิบาย</th></tr>
+                </thead>
+                <tbody>
+                  {relationshipLines.map((row, index) => (
+                    <tr key={`${row.ageRange}-${index}`}>
+                      <td>{row.ageRange}</td><td>{row.symbol}</td><td>{row.relationLine}</td><td>{row.deepNote}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </article>
           )}
         </section>
       )}
@@ -369,7 +442,7 @@ export function ReadingPathWorkspace() {
             kicker="บทเสริม (ต่อจากบทที่ 15)"
             title="ตารางวิเคราะห์เส้นขีดความสัมพันธ์ — หมวดช่วงอายุและวัยจร"
             titleLevel="h2"
-            note="อ้างอิงโครงสร้างจาก M.docx (Relationship Lines Mapping) — ประเมินตามดิถีและสภาวะวัยจรแต่ละช่วง 5 ปี"
+            note="ประเมินตามดิถีและสภาวะวัยจรแต่ละช่วง 5 ปี (บทบาทธาตุ × 12 เชี่ยงแซ × กำลังดิถี)"
           />
           <table className="topic-table">
             <thead>

@@ -35,7 +35,7 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     expect(result.fourPillars.day).toMatchObject({ stem: "己", branch: "酉" });
     expect(result.fourPillars.hour).toMatchObject({ stem: "壬", branch: "申" });
     expect(result.dayMaster).toBe("己");
-    expect(result.strengthScore).toBe(0.25);
+    expect(result.strengthScore).toBe(0.35);
     expect(result.dayMasterStrengthProfile).toMatchObject({
       strengthState: "อ่อนแอ",
       displayLabel: "ดิถีอ่อนเกินไป",

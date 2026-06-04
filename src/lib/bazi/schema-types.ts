@@ -81,6 +81,16 @@ export const DaYunPillarSchema = z.object({
   lowerPhase: DaYunPhaseSchema.optional(),
 });
 
+/** ปีจร (liu nian) รายปี — ใช้พยากรณ์เหตุการณ์รายปีแบบเต็ม (P-B) */
+export const LiuNianYearSchema = z.object({
+  year: z.number().int(),
+  age: z.number().int().nonnegative(),
+  stem: z.string().trim().min(1),
+  branch: z.string().trim().min(1),
+  /** 12 เชี่ยงแซของกิ่งปีเทียบดิถี (label ไทย) — คิดในชั้น engine */
+  twelveQiDisplay: z.string().trim().min(1).optional(),
+});
+
 export const ShenShaSchema = z.object({
   starName: z.string().trim().min(1),
   relatedPillar: z.string().trim().min(1),
@@ -471,6 +481,7 @@ export const CalculatedStateSchema = z.object({
   mingGong: PillarValueSchema.optional(),
   daYun: z.array(DaYunPillarSchema).default([]),
   liuNian: PillarValueSchema.optional(),
+  liuNianSeries: z.array(LiuNianYearSchema).default([]),
   shenSha: z.array(ShenShaSchema).default([]),
   dayMaster: z.string().trim().min(1),
   strengthScore: z.number().finite(),
@@ -589,6 +600,7 @@ export type AgeSnapshotValue = z.infer<typeof AgeSnapshotSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
 export type SupportedElementValue = z.infer<typeof SupportedElementSchema>;
 export type DayMasterStrengthProfileValue = z.infer<typeof DayMasterStrengthProfileSchema>;
+export type LiuNianYearValue = z.infer<typeof LiuNianYearSchema>;
 export type ElementCountsValue = z.infer<typeof ElementCountsSchema>;
 export type ElementSeasonalSupportValue = z.infer<typeof ElementSeasonalSupportSchema>;
 export type ElementStrengthLevelValue = z.infer<typeof ElementStrengthLevelSchema>;
