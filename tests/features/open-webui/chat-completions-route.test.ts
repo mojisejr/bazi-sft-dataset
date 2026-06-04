@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
+import {
+  PHASE_3D_RELATIONSHIP_RESOLVER_FIXTURES,
+} from "../../helpers/atomic-question-resolver-fixtures";
+
 vi.mock("@/features/open-webui/api-guard", () => ({
   validateApiToken: vi.fn(() => null),
 }));
@@ -218,6 +222,16 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
 });
 
 const SAMPLE_CHAT_RESULT = {
+  latestUserMessage: {
+    role: "user",
+    content: "เกิด 12/08/1992 เวลา 09:15 กรุงเทพ ผู้หญิง ช่วยดูให้หน่อย",
+  },
+  triageMessages: [
+    {
+      role: "user",
+      content: "เกิด 12/08/1992 เวลา 09:15 กรุงเทพ ผู้หญิง ช่วยดูให้หน่อย",
+    },
+  ],
   baziConsult: {
     rawInput: {
       birthDate: "1992-08-12",
@@ -310,13 +324,102 @@ describe("buildOpenWebUiExecutionContext", () => {
 
     expect(executionContext.intentClassification?.intent).toBe("wealth");
     expect(executionContext.baziConsult?.rawInput?.birthDate).toBe(SAMPLE_RAW_INPUT.birthDate);
-    expect(executionContext.baziConsult?.truthPacket).toContain('"intent": "wealth"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"canonicalBucket": "wealth"');
     expect(executionContext.baziConsult?.truthPacket).toContain('"activeTimingWindow"');
     expect(executionContext.baziConsult?.truthPacket).toContain('"35-39"');
     expect(executionContext.baziConsult?.truthPacket).toContain('"40-44"');
     expect(executionContext.baziConsult?.truthPacket).toContain('"45-49"');
     expect(executionContext.baziConsult?.truthPacket).not.toContain('"50-54"');
     expect(executionContext.baziMissingFields).toBeUndefined();
+  });
+
+  test("routes career job-switch wording into atomic selection mode without moving resolver logic into the route", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: {
+        ...SAMPLE_CHAT_RESULT,
+        latestUserMessage: {
+          role: "user",
+          content: "Should I change jobs now or wait for a safer window?",
+        },
+        triageMessages: [
+          {
+            role: "assistant",
+            content: "Tell me what you are considering.",
+          },
+          {
+            role: "user",
+            content: "I am thinking about resigning and moving teams.",
+          },
+          {
+            role: "user",
+            content: "Should I change jobs now or wait for a safer window?",
+          },
+        ],
+      },
+      intentClassification: { intent: "career", requiresBaziConsult: true, confidence: 0.94 },
+      calculatedState: SAMPLE_CALCULATED_STATE,
+    });
+
+    expect(executionContext.baziConsult?.truthPacket).toContain('"selectionMode": "atomic_job"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"jobId": "work.job_switch_timing"');
+  });
+
+  test("keeps mixed career wording on bucket fallback when resolver confidence is ambiguous", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: {
+        ...SAMPLE_CHAT_RESULT,
+        latestUserMessage: {
+          role: "user",
+          content: "Should I change jobs now or stay in a role that fits me better?",
+        },
+        triageMessages: [
+          {
+            role: "user",
+            content: "I want to know what kind of work suits me too.",
+          },
+          {
+            role: "user",
+            content: "Should I change jobs now or stay in a role that fits me better?",
+          },
+        ],
+      },
+      intentClassification: { intent: "career", requiresBaziConsult: true, confidence: 0.91 },
+      calculatedState: SAMPLE_CALCULATED_STATE,
+    });
+
+    expect(executionContext.baziConsult?.truthPacket).toContain('"selectionMode": "bucket_fallback"');
+    expect(executionContext.baziConsult?.truthPacket).not.toContain('"jobId"');
+  });
+
+  test("keeps relationship fixtures consistent through the route execution-context path", () => {
+    const executionContexts = PHASE_3D_RELATIONSHIP_RESOLVER_FIXTURES.map((fixture) => buildOpenWebUiExecutionContext({
+      result: {
+        ...SAMPLE_CHAT_RESULT,
+        latestUserMessage: {
+          role: "user",
+          content: fixture.currentChatEvidence.latestUserMessage,
+        },
+        triageMessages: [
+          ...fixture.currentChatEvidence.recentMessages.map((content) => ({
+            role: "user" as const,
+            content,
+          })),
+          {
+            role: "user" as const,
+            content: fixture.currentChatEvidence.latestUserMessage,
+          },
+        ],
+      },
+      intentClassification: fixture.intentClassification,
+      calculatedState: SAMPLE_CALCULATED_STATE,
+    }));
+
+    expect(executionContexts[0].baziConsult?.truthPacket).toContain('"selectionMode": "atomic_job"');
+    expect(executionContexts[0].baziConsult?.truthPacket).toContain('"jobId": "relationship.partner_profile"');
+    expect(executionContexts[1].baziConsult?.truthPacket).toContain('"selectionMode": "atomic_job"');
+    expect(executionContexts[1].baziConsult?.truthPacket).toContain('"jobId": "relationship.timing_window"');
+    expect(executionContexts[2].baziConsult?.truthPacket).toContain('"selectionMode": "bucket_fallback"');
+    expect(executionContexts[2].baziConsult?.truthPacket).not.toContain('"jobId"');
   });
 
   test("passes persisted active scope through the execution context instead of relying only on summary text", () => {
@@ -384,7 +487,19 @@ describe("buildOpenWebUiExecutionContext", () => {
 
   test("emits missingFields and null truth packet when extraction is incomplete", () => {
     const executionContext = buildOpenWebUiExecutionContext({
-      result: { baziConsult: null },
+      result: {
+        baziConsult: null,
+        latestUserMessage: {
+          role: "user",
+          content: "ดูความรักให้หน่อย",
+        },
+        triageMessages: [
+          {
+            role: "user",
+            content: "ดูความรักให้หน่อย",
+          },
+        ],
+      },
       intentClassification: { intent: "love", requiresBaziConsult: true, confidence: 0.88 },
       extraction: {
         fields: { birthDate: "1989-01-03", birthTime: null, gender: null, province: null },
@@ -1040,7 +1155,7 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
 
     const truthPacket = options.executionContext.baziConsult.truthPacket as string;
     expect(options.executionContext.baziConsult.rawInput).toEqual(SAMPLE_CHAT_RESULT.baziConsult.rawInput);
-    expect(truthPacket).toContain('"intent": "love"');
+    expect(truthPacket).toContain('"canonicalBucket": "relationship"');
     expect(truthPacket).toContain('"spousePalace"');
     expect(truthPacket).toContain('"loveCompatibilityProfile"');
     expect(truthPacket).not.toContain('"financeTenGodHighlights"');

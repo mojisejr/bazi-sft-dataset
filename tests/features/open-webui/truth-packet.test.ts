@@ -9,6 +9,9 @@ import {
 import { BAZI_ATOMIC_QUESTION_MATRIX_VERSION } from "@/lib/bazi/atomic-question-matrix";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
+import {
+  PHASE_3D_RELATIONSHIP_RESOLVER_FIXTURES,
+} from "../../helpers/atomic-question-resolver-fixtures";
 import { createTestKnowledgeRepository } from "../../helpers/bazi-test-knowledge-repository";
 
 const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
@@ -317,6 +320,74 @@ describe("selectOpenWebUiTruthPacket", () => {
       selectionMode: "bucket_fallback",
       matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
     });
+  });
+
+  test("resolves career job-switch wording into an atomic work packet before composition", () => {
+    const packet = selectOpenWebUiTruthPacket({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.92,
+    }, SAMPLE_BAZI_STATE, {
+      latestUserMessage: "Should I change jobs now or wait for a safer window?",
+      recentMessages: ["I am thinking about resigning and moving teams."],
+    });
+
+    expect(packet?.questionContext).toMatchObject({
+      canonicalBucket: "work",
+      jobId: "work.job_switch_timing",
+      selectionMode: "atomic_job",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
+    expect(packet?.anchors.map((section) => section.key)).toContain("careerTenGodHighlights");
+    expect(packet?.timing.map((section) => section.key)).toContain("activeTimingWindow");
+  });
+
+  test("fails closed to bucket fallback when career wording mixes fit and job-switch signals", () => {
+    const packet = selectOpenWebUiTruthPacket({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.9,
+    }, SAMPLE_BAZI_STATE, {
+      latestUserMessage: "Should I change jobs now or stay in a role that fits me better?",
+      recentMessages: ["I want to know what kind of work suits me too."],
+    });
+
+    expect(packet?.questionContext).toMatchObject({
+      canonicalBucket: "work",
+      selectionMode: "bucket_fallback",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
+    expect(packet?.questionContext.jobId).toBeUndefined();
+  });
+
+  test("keeps relationship fixtures consistent through the Open WebUI adapter seam", () => {
+    const packets = PHASE_3D_RELATIONSHIP_RESOLVER_FIXTURES.map((fixture) => ({
+      fixture,
+      packet: selectOpenWebUiTruthPacket(
+        fixture.intentClassification,
+        SAMPLE_BAZI_STATE,
+        fixture.currentChatEvidence,
+      ),
+    }));
+
+    expect(packets[0]?.packet?.questionContext).toMatchObject({
+      canonicalBucket: "relationship",
+      selectionMode: "atomic_job",
+      jobId: "relationship.partner_profile",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
+    expect(packets[1]?.packet?.questionContext).toMatchObject({
+      canonicalBucket: "relationship",
+      selectionMode: "atomic_job",
+      jobId: "relationship.timing_window",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
+    expect(packets[2]?.packet?.questionContext).toMatchObject({
+      canonicalBucket: "relationship",
+      selectionMode: "bucket_fallback",
+      matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+    });
+    expect(packets[2]?.packet?.questionContext.jobId).toBeUndefined();
   });
 
   test("returns null when the routed intent does not require Bazi consultation", () => {

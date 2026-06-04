@@ -30,7 +30,10 @@ import {
   type OpenWebUiFinalizedTurnSkipReason,
   type PersistedOpenWebUiThreadState,
 } from "@/features/open-webui/episodic-service";
-import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
+import {
+  stringifyOpenWebUiTruthPacket,
+  type OpenWebUiTruthPacketChatEvidence,
+} from "@/features/open-webui/truth-packet";
 import {
   createGuardedOpenAiSseStream,
 } from "@/features/open-webui/sse-streamer";
@@ -112,17 +115,41 @@ function getContinuityDisposition(input: {
 }
 
 export type BuildOpenWebUiExecutionContextInput = {
-  result: Pick<ChatRunnerSuccess, "baziConsult">;
+  result: Pick<ChatRunnerSuccess, "baziConsult" | "latestUserMessage" | "triageMessages">;
   intentClassification: OpenWebUiIntentClassification;
   extraction?: OpenWebUiBaziExtraction | null;
   calculatedState?: BaziStatePayload | null;
   episodicMemory?: PersistedOpenWebUiThreadState | null;
 };
 
+function buildOpenWebUiTruthPacketChatEvidence(
+  result: Pick<ChatRunnerSuccess, "latestUserMessage" | "triageMessages">,
+): OpenWebUiTruthPacketChatEvidence {
+  let latestUserMessageIndex = -1;
+
+  result.triageMessages.forEach((message, index) => {
+    if (
+      message.role === "user"
+      && message.content === result.latestUserMessage.content
+    ) {
+      latestUserMessageIndex = index;
+    }
+  });
+
+  return {
+    latestUserMessage: result.latestUserMessage.content,
+    recentMessages: result.triageMessages
+      .filter((_, index) => index !== latestUserMessageIndex)
+      .map((message) => message.content)
+      .slice(-5),
+  };
+}
+
 export function buildOpenWebUiExecutionContext(
   input: BuildOpenWebUiExecutionContextInput,
 ): OpenWebUiGeminiExecutionContext {
   const { result, intentClassification, extraction, calculatedState } = input;
+  const truthPacketChatEvidence = buildOpenWebUiTruthPacketChatEvidence(result);
   const episodicMemory = input.episodicMemory
     ? {
       contextSummary: input.episodicMemory.contextSummary,
@@ -150,7 +177,7 @@ export function buildOpenWebUiExecutionContext(
       episodicMemory,
       baziConsult: {
         rawInput: extraction.rawInput,
-        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, calculatedState),
+        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, calculatedState, truthPacketChatEvidence),
       },
     };
   }
@@ -175,7 +202,7 @@ export function buildOpenWebUiExecutionContext(
       episodicMemory,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
-        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState),
+        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState, truthPacketChatEvidence),
       },
     };
   }
