@@ -81,6 +81,10 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.systemInstruction).toContain("5-8 บรรทัด");
     expect(payload.systemInstruction).toContain("ส่งออกเป็นสองบล็อกตามลำดับนี้เท่านั้น: <bazi_logic> แล้วตามด้วย <reply>");
     expect(payload.systemInstruction).toContain("ห้ามสลับลำดับ ห้ามละบล็อก และห้ามเพิ่มบล็อกอื่นนอกเหนือจากสองบล็อกนี้");
+    expect(payload.systemInstruction).toContain("ตรวจกำลังดิถีให้ชัดก่อนข้ามไปเรื่องงาน ความรัก หรือจังหวะเวลา");
+    expect(payload.systemInstruction).toContain("ค่อยดูชง เฮ้ง ไห่ ผั่ว ภาคี และแรงปฏิสัมพันธ์ที่ Truth Packet ให้มา");
+    expect(payload.systemInstruction).toContain("ใช้ 12 เชี่ยงแซเป็นตัวขยายจังหวะและน้ำหนักของสิ่งที่อ่านมาแล้ว");
+    expect(payload.systemInstruction).toContain("เก็บกุ้ยนั้ง บุ่งเชียง และดาวประกอบการอ่านไว้เป็นตัวเสริมท้ายเมื่อ Packet มีจริง");
   });
 
   test("maps the triage transcript into a minimal Gemini prompt payload", () => {
@@ -191,8 +195,7 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
       },
     });
 
-    expect(payload.systemInstruction).toContain("ถ้าคำถามเป็นเรื่องสุขภาพและ Truth Packet มีข้อมูลพอ");
-    expect(payload.systemInstruction).toContain("ห้ามปฏิเสธแบบตั้งการ์ดเพียงเพราะเป็นหัวข้อสุขภาพ");
+    expect(payload.systemInstruction).not.toContain("ถ้าคำถามเป็นเรื่องสุขภาพและ Truth Packet มีข้อมูลพอ");
     expect(payload.userPrompt).toContain("Scoped answer contract:");
     expect(payload.userPrompt).toContain("Primary requested domain: health. Stay inside this domain unless the user explicitly asks to compare another domain");
     expect(payload.userPrompt).toContain("Primary age window: 35-39. Treat this as the answer window unless the user explicitly asks about another period or a future transition.");
@@ -275,9 +278,10 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
       },
     });
 
-    expect(payload.systemInstruction).toContain("compatibility_profile");
-    expect(payload.systemInstruction).toContain("computed_chart_marker");
-    expect(payload.systemInstruction).toContain("ห้ามนำ label จาก compatibility_profile ไปพูดเหมือนเป็นดาวหรือ marker คำนวณตรง");
+    expect(payload.systemInstruction).toContain("compatibility_profile = profile-level evidence only");
+    expect(payload.systemInstruction).toContain("computed_chart_marker = direct chart fact only");
+    expect(payload.systemInstruction).toContain("supporting_context = supporting evidence only");
+    expect(payload.systemInstruction).toContain("timing_context = timing-only evidence");
     expect(payload.userPrompt).toContain('"provenance": "compatibility_profile"');
     expect(payload.userPrompt).toContain("profile-level evidence only");
   });

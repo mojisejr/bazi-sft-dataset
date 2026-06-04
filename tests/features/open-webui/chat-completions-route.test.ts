@@ -284,6 +284,24 @@ async function consumeStream(response: Response) {
   return buffer;
 }
 
+async function buildPromptPayloadFromGeminiRouteCall(callIndex = 0) {
+  const geminiCall = generateGeminiAssistantReplyMock.mock.calls[callIndex];
+
+  if (!geminiCall) {
+    throw new Error("Expected generateGeminiAssistantReply to be called before building the prompt payload.");
+  }
+
+  const { buildOpenWebUiGeminiPromptPayload } = await vi.importActual<typeof import("@/features/open-webui/gemini-adapter")>(
+    "@/features/open-webui/gemini-adapter",
+  );
+
+  return buildOpenWebUiGeminiPromptPayload({
+    ...geminiCall[0],
+    executionContext: geminiCall[1].executionContext,
+    now: new Date("2026-06-04T09:00:00+07:00"),
+  });
+}
+
 function reconstructSseContent(body: string) {
   return body
     .trim()
@@ -657,6 +675,101 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     expect(executionContext.baziConsult.rawInput).toEqual(SAMPLE_RAW_INPUT);
     expect(typeof executionContext.baziConsult.truthPacket).toBe("string");
     expect((executionContext.baziConsult.truthPacket as string).length).toBeGreaterThan(0);
+  });
+
+  test("career runtime path keeps canonical school order and scoped domain guardrails in the final Gemini payload", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.97,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: { ...SAMPLE_RAW_INPUT },
+      missingFields: [],
+      isComplete: true,
+      rawInput: SAMPLE_RAW_INPUT,
+    });
+    calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "พยากรณ์เสร็จค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "ควรเปลี่ยนงานตอนนี้ไหม" }],
+    }));
+
+    await consumeStream(response);
+
+    const promptPayload = await buildPromptPayloadFromGeminiRouteCall();
+
+    expect(promptPayload.systemInstruction).toContain("ตรวจกำลังดิถีให้ชัดก่อนข้ามไปเรื่องงาน ความรัก หรือจังหวะเวลา");
+    expect(promptPayload.systemInstruction).toContain("ไล่ปฏิกิริยาธาตุทั้ง 5 และ role evidence ตามหัวข้อที่ผู้ใช้ถาม");
+    expect(promptPayload.systemInstruction).toContain("ค่อยดูชง เฮ้ง ไห่ ผั่ว ภาคี และแรงปฏิสัมพันธ์ที่ Truth Packet ให้มา");
+    expect(promptPayload.userPrompt).toContain("Primary requested domain: career. Stay inside this domain unless the user explicitly asks to compare another domain");
+    expect(promptPayload.userPrompt).toContain("Do not drift into unrelated lifestyle commentary, romance, money, health, or personality advice when the current request is career-only or otherwise domain-bounded.");
+  });
+
+  test("relationship runtime path preserves compatibility-profile provenance wording in the final Gemini payload", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "love",
+      requiresBaziConsult: true,
+      confidence: 0.95,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: { ...SAMPLE_RAW_INPUT },
+      missingFields: [],
+      isComplete: true,
+      rawInput: SAMPLE_RAW_INPUT,
+    });
+    calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "พยากรณ์เสร็จค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "คนแบบไหนเหมาะกับความรักของฉัน" }],
+    }));
+
+    await consumeStream(response);
+
+    const promptPayload = await buildPromptPayloadFromGeminiRouteCall();
+
+    expect(promptPayload.systemInstruction).toContain("compatibility_profile = profile-level evidence only; speak as tendency or signal, not as a directly computed chart fact.");
+    expect(promptPayload.systemInstruction).toContain("computed_chart_marker = direct chart fact only when the Truth Packet explicitly gives that marker or structure.");
+    expect(promptPayload.userPrompt).toContain('"provenance": "compatibility_profile"');
+    expect(promptPayload.userPrompt).toContain('"loveCompatibilityProfile"');
+  });
+
+  test("health runtime path keeps direct but non-diagnostic caution in the final Gemini payload", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "health",
+      requiresBaziConsult: true,
+      confidence: 0.94,
+    });
+    extractOpenWebUiBaziContextMock.mockResolvedValue({
+      fields: { ...SAMPLE_RAW_INPUT },
+      missingFields: [],
+      isComplete: true,
+      rawInput: SAMPLE_RAW_INPUT,
+    });
+    calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "พยากรณ์เสร็จค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "ช่วงอายุนี้สุขภาพต้องระวังอะไรบ้าง" }],
+    }));
+
+    await consumeStream(response);
+
+    const promptPayload = await buildPromptPayloadFromGeminiRouteCall();
+
+    expect(promptPayload.userPrompt).toContain("Primary requested domain: health. Stay inside this domain unless the user explicitly asks to compare another domain");
+    expect(promptPayload.userPrompt).toContain("Health response contract: answer directly with practical cautions and self-care guidance when the Truth Packet supports it; do not diagnose disease, do not claim certainty, and do not refuse only because the topic is health.");
   });
 
   test("persisted profile fields merge before calculation and persist the merged result", async () => {

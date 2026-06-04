@@ -3,10 +3,18 @@ import { GoogleGenAI } from "@google/genai";
 import { type BaziExtractionFieldKey } from "@/features/open-webui/bazi-extractor";
 import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
 import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
+import {
+  buildBaziSchoolScopedAnswerContractPromptBlock,
+  getBaziSchoolProvenancePromptLines,
+  getBaziSchoolReasoningFlowPromptLines,
+} from "@/lib/bazi/atomic-question-answer-contract";
+import { BaziDoctrinePacketSchema } from "@/lib/bazi/atomic-question-doctrine-packet";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
 export const DEFAULT_OPEN_WEBUI_GEMINI_MODEL = "gemini-3.1-flash-lite";
+const BAZI_SCHOOL_REASONING_FLOW_PROMPT_LINES = getBaziSchoolReasoningFlowPromptLines();
+const BAZI_SCHOOL_PROVENANCE_PROMPT_LINES = getBaziSchoolProvenancePromptLines();
 const DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION = [
   "You are the Bazi assistant inside an Open WebUI-compatible chat route.",
   "Reply helpfully and directly to the user's latest message.",
@@ -22,14 +30,9 @@ export const MUMATE_PERSONA_INSTRUCTION = [
   "- ถ้า Truth Packet ไม่มีตัวแปรที่จำเป็น ให้บอกว่ายังสรุปไม่ได้และถามข้อมูลเพิ่ม ห้ามเดา",
   "- ห้ามสร้างข้อสรุปเรื่องร่างกาย สุขภาพ การขับถ่าย โรค หรืออาการ จากการขาดธาตุหรือจากความเชื่อทั่วไป เว้นแต่ Truth Packet ระบุไว้ตรงๆ",
   "- ห้ามใช้หรืออ้างคำของสำนักอื่นที่ไม่เกี่ยว เช่น กวนซา, เจีย หงเฮ้ง หรือศัพท์นอกระบบที่ Truth Packet ไม่ได้ให้มา",
-  "- ถ้าคำถามถูก route มาเป็นเรื่องงาน การเงิน ความรัก หรือสุขภาพ ให้ตอบอยู่ในโดเมนนั้นก่อน ห้ามไหลไปโดเมนอื่นหรือ lifestyle ทั่วไป เว้นแต่ผู้ใช้ขอเองหรือ Truth Packet ผูกเหตุไว้ตรงๆ",
-  "- ถ้ามี active age window หรือ timing window ถูกแนบมา ให้ยึดช่วงนั้นเป็นแกนหลักของคำตอบก่อน ห้ามสลับไปช่วงอื่นเองถ้าผู้ใช้ไม่ได้ถาม",
-  "- ถ้าคำถามเป็นเรื่องสุขภาพและ Truth Packet มีข้อมูลพอ ให้ตอบเป็นข้อควรระวังและแนวดูแลตัวเองที่ใช้ได้จริงอย่างตรงไปตรงมาได้ แต่ห้ามวินิจฉัยโรค ห้ามชี้ขาดว่าเป็นแน่ และห้ามปฏิเสธแบบตั้งการ์ดเพียงเพราะเป็นหัวข้อสุขภาพ",
   "",
   "## กฎ provenance ของหลักฐาน",
-  "- ถ้า section ใน Truth Packet มี provenance เป็น compatibility_profile ให้เล่าว่าเป็นสัญญาณหรือแนวโน้มจาก profile ระดับความเข้ากันได้เท่านั้น ห้ามยกระดับเป็นข้อเท็จจริงที่คำนวณตรงจากดวง",
-  "- ถ้า section มี provenance เป็น computed_chart_marker จึงค่อยกล่าวตรงได้ว่าเป็น marker หรือโครงสร้างที่มีอยู่ในดวง แต่ต้องยึดเฉพาะข้อความที่ Truth Packet ให้มา",
-  "- ห้ามนำ label จาก compatibility_profile ไปพูดเหมือนเป็นดาวหรือ marker คำนวณตรง เว้นแต่ Truth Packet มี computed_chart_marker นั้นแยกไว้ชัดเจน",
+  ...BAZI_SCHOOL_PROVENANCE_PROMPT_LINES.map((line) => `- ${line}`),
   "",
   "## โครงสร้างคำตอบที่ต้องส่งออกทุกครั้ง",
   "- ส่งออกเป็นสองบล็อกตามลำดับนี้เท่านั้น: <bazi_logic> แล้วตามด้วย <reply>",
@@ -39,11 +42,8 @@ export const MUMATE_PERSONA_INSTRUCTION = [
   "",
   "## Sinsae reasoning flow ใน <bazi_logic>",
   "1. อ่าน Truth Packet ก่อน และระบุว่ามี/ไม่มีข้อมูลสำคัญอะไร",
-  "2. ตรวจดิถี (Day Master) และความแข็ง/อ่อนก่อนเสมอ เพราะเป็นฐานบุคลิกและความสำเร็จ",
-  "3. ระบุตัวถ่ายเทเป็นกริยา (Verb) ของพฤติกรรมหลัก ก่อนข้ามไปเรื่องอื่น",
-  "4. ใช้ 12 เซงแซ / 12 Qi เป็นคำขยาย (Adjective) เพื่อปรับระดับและน้ำหนักของพฤติกรรม",
-  "5. ตรวจเส้นแรงความสัมพันธ์ เช่น ตัวถ่ายเทไปหาลาภ คู่ ครอบครัว หรืองาน ตามหัวข้อที่ผู้ใช้ถาม",
-  "6. ค่อยสรุปเป็น <reply> โดยถ่ายทอดเฉพาะสิ่งที่ flow ข้างบนรองรับ",
+  ...BAZI_SCHOOL_REASONING_FLOW_PROMPT_LINES.map((line, index) => `${index + 2}. ${line}`),
+  `${BAZI_SCHOOL_REASONING_FLOW_PROMPT_LINES.length + 2}. ค่อยสรุปเป็น <reply> โดยถ่ายทอดเฉพาะสิ่งที่ flow ข้างบนรองรับ`,
   "",
   "## รูปแบบคำตอบ: สนทนาแบบคน ไม่ใช่โครงสร้างรายงาน",
   "- ห้ามใช้หัวข้อรายงาน (เช่น \"สรุป:\", \"วิเคราะห์:\", \"จากข้อมูลที่ให้มา\")",
@@ -200,35 +200,23 @@ function buildScopedAnswerContract(
   }
 
   const activeScope = executionContext?.episodicMemory?.activeScope;
-  const requestedDomain = activeScope?.requestedDomain ?? intentClassification.intent;
-  const lines: string[] = [];
+  let packet = null;
 
-  if (requestedDomain !== "general_reading") {
-    lines.push(
-      `- Primary requested domain: ${requestedDomain}. Stay inside this domain unless the user explicitly asks to compare another domain or the Truth Packet explicitly proves a cross-domain link.`,
-    );
-    lines.push(
-      "- Do not drift into unrelated lifestyle commentary, romance, money, health, or personality advice when the current request is work-only or otherwise domain-bounded.",
-    );
+  if (executionContext?.baziConsult?.truthPacket) {
+    try {
+      packet = BaziDoctrinePacketSchema.parse(JSON.parse(executionContext.baziConsult.truthPacket));
+    } catch {
+      packet = null;
+    }
   }
 
-  if (activeScope?.currentAgeWindow) {
-    lines.push(
-      `- Primary age window: ${activeScope.currentAgeWindow.label}. Treat this as the answer window unless the user explicitly asks about another period or a future transition.`,
-    );
-  }
-
-  if (requestedDomain === "health") {
-    lines.push(
-      "- Health response contract: answer directly with practical cautions and self-care guidance when the Truth Packet supports it; do not diagnose disease, do not claim certainty, and do not refuse only because the topic is health.",
-    );
-  }
-
-  if (lines.length === 0) {
-    return null;
-  }
-
-  return ["Scoped answer contract:", ...lines].join("\n");
+  return buildBaziSchoolScopedAnswerContractPromptBlock({
+    packet,
+    runtimeContext: {
+      requestedDomain: activeScope?.requestedDomain ?? intentClassification.intent,
+      currentAgeWindowLabel: activeScope?.currentAgeWindow?.label ?? null,
+    },
+  });
 }
 
 export function buildOpenWebUiGeminiPromptPayload(
