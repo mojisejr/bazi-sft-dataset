@@ -45,6 +45,10 @@ export const ChatRunnerSuccessSchema = z.object({
   phase: z.literal("phase-2"),
   userId: z.string().trim().min(1).nullable(),
   threadId: z.string().trim().min(1).nullable(),
+  continuityBoundary: z.object({
+    requestedFreshThreadBoundary: z.boolean(),
+    reason: z.enum(["explicit_new_case", "none"]),
+  }),
   normalizedMessages: z.array(NormalizedChatMessageSchema).min(1),
   triageMessages: z.array(NormalizedChatMessageSchema).min(1),
   latestUserMessage: NormalizedChatMessageSchema.extend({ role: z.literal("user") }),
@@ -73,6 +77,7 @@ export type ChatRunnerSuccess = z.infer<typeof ChatRunnerSuccessSchema>;
 export type ChatRunnerResult = z.infer<typeof ChatRunnerResultSchema>;
 
 const BAZI_LOGIC_BLOCK_PATTERN = /<bazi_logic\b[^>]*>[\s\S]*?<\/bazi_logic>/giu;
+const EXPLICIT_NEW_CASE_PATTERN = /(?:\b(?:new|fresh)\s+case\b|\bnew\s+profile\b|เปิด(?:เคส|ดวง)ใหม่|เริ่ม(?:เคส|ดวง)ใหม่|(?:เคส|ดวง|โปรไฟล์)ใหม่|คนละคน|อีกคนหนึ่ง)/iu;
 
 function resolveThreadId(payload: z.infer<typeof OpenWebUiPayloadSchema>) {
   return payload.chat_id
@@ -139,6 +144,10 @@ export function sliceMessagesForTriage(
   return conversationalMessages.slice(startIndex);
 }
 
+export function detectExplicitFreshThreadBoundary(content: string) {
+  return EXPLICIT_NEW_CASE_PATTERN.test(content.trim());
+}
+
 export function runChatPipeline(payload: unknown): ChatRunnerResult {
   let parsedPayload: z.infer<typeof OpenWebUiPayloadSchema>;
 
@@ -184,6 +193,12 @@ export function runChatPipeline(payload: unknown): ChatRunnerResult {
     phase: "phase-2",
     userId: parsedPayload.user?.id ?? null,
     threadId: resolveThreadId(parsedPayload),
+    continuityBoundary: {
+      requestedFreshThreadBoundary: detectExplicitFreshThreadBoundary(latestUserMessage.content),
+      reason: detectExplicitFreshThreadBoundary(latestUserMessage.content)
+        ? "explicit_new_case"
+        : "none",
+    },
     normalizedMessages,
     triageMessages,
     latestUserMessage,

@@ -2,9 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildRollingOpenWebUiThreadState,
+  createOpenWebUiProfileFingerprint,
   normalizeOpenWebUiThreadId,
   OPEN_WEBUI_EPISODIC_RECENT_MESSAGE_LIMIT,
   OPEN_WEBUI_EPISODIC_SUMMARY_HEADER,
+  sanitizeOpenWebUiContinuityState,
   sanitizeOpenWebUiPersistedTurn,
   sanitizeOpenWebUiEpisodicMessages,
 } from "@/features/open-webui/episodic-service";
@@ -67,6 +69,89 @@ describe("episodic-service", () => {
     expect(nextState.messages.at(-1)).toEqual({
       role: "assistant",
       content: "ค่อย ๆ ขยับจากงานที่ใช้ทักษะเดิมก่อนค่ะ",
+    });
+  });
+
+  test("buildRollingOpenWebUiThreadState can rebuild from a fresh boundary instead of inheriting stale turns", () => {
+    const nextState = buildRollingOpenWebUiThreadState({
+      previousSummary: "Same-thread visible continuity:\n- User: โปรไฟล์เดิม",
+      existingMessages: [
+        { role: "user", content: "โปรไฟล์เดิม" },
+        { role: "assistant", content: "ตอบของโปรไฟล์เดิม" },
+      ],
+      appendedMessages: [
+        { role: "user", content: "เปิดเคสใหม่ เกิด 3 ม.ค. 1989" },
+        { role: "assistant", content: "รับเคสใหม่แล้วค่ะ" },
+      ],
+      resetThreadState: true,
+    });
+
+    expect(nextState.contextSummary).toBeNull();
+    expect(nextState.messages).toEqual([
+      { role: "user", content: "เปิดเคสใหม่ เกิด 3 ม.ค. 1989" },
+      { role: "assistant", content: "รับเคสใหม่แล้วค่ะ" },
+    ]);
+  });
+
+  test("buildRollingOpenWebUiThreadState records explicit skip reasons when finalized persistence degrades", () => {
+    const nextState = buildRollingOpenWebUiThreadState({
+      previousSummary: null,
+      existingMessages: [],
+      appendedMessages: [
+        { role: "user", content: "ยังอยู่ไหม" },
+      ],
+      summaryNotes: ["- Continuity note: assistant reply was not persisted (reason: fallback_response)."],
+    });
+
+    expect(nextState.contextSummary).toBe([
+      OPEN_WEBUI_EPISODIC_SUMMARY_HEADER,
+      "- Continuity note: assistant reply was not persisted (reason: fallback_response).",
+    ].join("\n"));
+    expect(nextState.messages).toEqual([
+      { role: "user", content: "ยังอยู่ไหม" },
+    ]);
+  });
+
+  test("sanitizeOpenWebUiContinuityState keeps compact active scope and profile fingerprint", () => {
+    expect(sanitizeOpenWebUiContinuityState({
+      profileFields: {
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: "ชาย",
+        province: "จันทบุรี",
+      },
+      profileFingerprint: createOpenWebUiProfileFingerprint({
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: "ชาย",
+        province: "จันทบุรี",
+      }),
+      activeScope: {
+        requestedDomain: "career",
+        currentAgeWindow: {
+          startAge: 40,
+          endAge: 44,
+          currentPhase: "upper",
+          label: "40-44",
+        },
+      },
+    })).toEqual({
+      profileFields: {
+        birthDate: "1989-01-03",
+        birthTime: "08:45",
+        gender: "ชาย",
+        province: "จันทบุรี",
+      },
+      profileFingerprint: "1989-01-03::08:45::ชาย::จันทบุรี",
+      activeScope: {
+        requestedDomain: "career",
+        currentAgeWindow: {
+          startAge: 40,
+          endAge: 44,
+          currentPhase: "upper",
+          label: "40-44",
+        },
+      },
     });
   });
 });

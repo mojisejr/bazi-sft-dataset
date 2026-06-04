@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   MAX_TRIAGE_TURNS,
+  detectExplicitFreshThreadBoundary,
   normalizeMessageContent,
   runChatPipeline,
   sliceMessagesForTriage,
@@ -107,6 +108,10 @@ describe("runChatPipeline", () => {
       role: "assistant",
       content: "<reply>ได้ค่ะ เดี๋ยวดูให้จากข้อมูลเดิมนะคะ</reply>",
     });
+    expect(result.continuityBoundary).toEqual({
+      requestedFreshThreadBoundary: false,
+      reason: "none",
+    });
     expect(result.triageMessages[1]?.content).not.toContain("<bazi_logic>");
     expect(normalizeMessageContent(
       "<bazi_logic>ผู้ใช้พิมพ์มาเอง</bazi_logic> ขอถามต่อ",
@@ -140,6 +145,10 @@ describe("runChatPipeline", () => {
     }
 
     expect(result.userId).toBe("open-webui-user-123");
+    expect(result.continuityBoundary).toEqual({
+      requestedFreshThreadBoundary: false,
+      reason: "none",
+    });
     expect(result.normalizedMessages).toEqual([
       { role: "system", content: "You are Bazi assistant." },
       { role: "user", content: "อยากรู้ดวงการงาน" },
@@ -222,6 +231,25 @@ describe("runChatPipeline", () => {
       message: "Chat payload must contain at least one user message.",
     });
   });
+
+  test("marks an explicit new-case turn so the route can fail closed on stale thread continuity", () => {
+    const result = runChatPipeline({
+      messages: [
+        { role: "user", content: "เปิดเคสใหม่ให้คนละคน เกิด 03/01/1989 เวลา 08:45" },
+      ],
+    });
+
+    expect(result.status).toBe("ready");
+
+    if (result.status !== "ready") {
+      throw new Error("Expected ready result.");
+    }
+
+    expect(result.continuityBoundary).toEqual({
+      requestedFreshThreadBoundary: true,
+      reason: "explicit_new_case",
+    });
+  });
 });
 
 describe("sliceMessagesForTriage", () => {
@@ -240,5 +268,10 @@ describe("sliceMessagesForTriage", () => {
       { role: "assistant", content: "a2" },
       { role: "user", content: "u3" },
     ]);
+  });
+
+  test("detectExplicitFreshThreadBoundary matches narrow explicit reset language only", () => {
+    expect(detectExplicitFreshThreadBoundary("เปิดเคสใหม่ให้คนละคน")).toBe(true);
+    expect(detectExplicitFreshThreadBoundary("ถามต่อเรื่องงานค่ะ")).toBe(false);
   });
 });

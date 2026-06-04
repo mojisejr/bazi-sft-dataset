@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import { baziChatHistories } from "@/db/schema";
+import { type BaziProfileFields } from "@/features/open-webui/profile-service";
 import { sanitizeAssistantReplyForStreaming } from "@/features/open-webui/sse-streamer";
 
 export type OpenWebUiEpisodicMessage = {
@@ -9,10 +10,29 @@ export type OpenWebUiEpisodicMessage = {
   content: string;
 };
 
+export type OpenWebUiActiveScope = {
+  requestedDomain: "wealth" | "love" | "career" | "health" | "general_reading" | "chit_chat";
+  currentAgeWindow: {
+    startAge: number;
+    endAge: number;
+    currentPhase: "upper" | "lower" | null;
+    label: string;
+  } | null;
+};
+
+export type OpenWebUiContinuityState = {
+  profileFingerprint: string | null;
+  profileFields: BaziProfileFields | null;
+  activeScope: OpenWebUiActiveScope | null;
+};
+
+export type OpenWebUiFinalizedTurnSkipReason = "fallback_response" | "empty_visible_reply";
+
 export type PersistedOpenWebUiThreadState = {
   clerkUserId: string;
   threadId: string;
   contextSummary: string | null;
+  continuityState: OpenWebUiContinuityState | null;
   messages: OpenWebUiEpisodicMessage[];
 };
 
@@ -25,15 +45,21 @@ export type BaziOpenWebUiEpisodicRepository = {
     clerkUserId: string;
     threadId: string;
     userMessage: string;
-    assistantReply: string;
+    assistantReply?: string | null;
+    resetThreadState?: boolean;
+    continuityState?: OpenWebUiContinuityState | null;
+    skipReason?: OpenWebUiFinalizedTurnSkipReason | null;
   }) => Promise<PersistedOpenWebUiThreadState | null>;
 };
 
 export const OPEN_WEBUI_EPISODIC_RECENT_MESSAGE_LIMIT = 6;
 export const OPEN_WEBUI_EPISODIC_SUMMARY_HEADER = "Same-thread visible continuity:";
 export const OPEN_WEBUI_EPISODIC_SUMMARY_MAX_CHARS = 1_200;
+const OPEN_WEBUI_CONTINUITY_NOTE_PREFIX = "- Continuity note:";
 
 const VALID_STORED_ROLES = new Set(["user", "assistant", "model"]);
+const VALID_ACTIVE_SCOPE_DOMAINS = new Set(["wealth", "love", "career", "health", "general_reading", "chit_chat"]);
+const VALID_CURRENT_PHASES = new Set(["upper", "lower"]);
 
 function normalizeText(value: string | null | undefined) {
   if (typeof value !== "string") {
@@ -43,6 +69,112 @@ function normalizeText(value: string | null | undefined) {
   const trimmed = value.trim();
 
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeProfileFields(fields: Partial<BaziProfileFields> | null | undefined) {
+  if (!fields) {
+    return null;
+  }
+
+  const normalized = {
+    birthDate: normalizeText(fields.birthDate),
+    birthTime: normalizeText(fields.birthTime),
+    gender: normalizeText(fields.gender),
+    province: normalizeText(fields.province),
+  } satisfies BaziProfileFields;
+
+  return normalized.birthDate || normalized.birthTime || normalized.gender || normalized.province
+    ? normalized
+    : null;
+}
+
+export function createOpenWebUiProfileFingerprint(fields: Partial<BaziProfileFields> | null | undefined) {
+  const normalized = normalizeProfileFields(fields);
+
+  if (!normalized) {
+    return null;
+  }
+
+  return [
+    normalized.birthDate ?? "",
+    normalized.birthTime ?? "",
+    normalized.gender ?? "",
+    normalized.province ?? "",
+  ].join("::");
+}
+
+function sanitizeOpenWebUiActiveScope(value: unknown): OpenWebUiActiveScope | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const requestedDomain = typeof candidate.requestedDomain === "string" && VALID_ACTIVE_SCOPE_DOMAINS.has(candidate.requestedDomain)
+    ? candidate.requestedDomain as OpenWebUiActiveScope["requestedDomain"]
+    : null;
+
+  if (!requestedDomain) {
+    return null;
+  }
+
+  let currentAgeWindow: OpenWebUiActiveScope["currentAgeWindow"] = null;
+
+  if (candidate.currentAgeWindow && typeof candidate.currentAgeWindow === "object") {
+    const ageWindow = candidate.currentAgeWindow as Record<string, unknown>;
+    const startAge = typeof ageWindow.startAge === "number" && Number.isFinite(ageWindow.startAge)
+      ? ageWindow.startAge
+      : null;
+    const endAge = typeof ageWindow.endAge === "number" && Number.isFinite(ageWindow.endAge)
+      ? ageWindow.endAge
+      : null;
+    const label = normalizeText(typeof ageWindow.label === "string" ? ageWindow.label : null);
+    const currentPhase = typeof ageWindow.currentPhase === "string" && VALID_CURRENT_PHASES.has(ageWindow.currentPhase)
+      ? ageWindow.currentPhase as "upper" | "lower"
+      : null;
+
+    if (startAge !== null && endAge !== null && label) {
+      currentAgeWindow = {
+        startAge,
+        endAge,
+        currentPhase,
+        label,
+      };
+    }
+  }
+
+  return {
+    requestedDomain,
+    currentAgeWindow,
+  };
+}
+
+export function sanitizeOpenWebUiContinuityState(value: unknown): OpenWebUiContinuityState | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const profileFields = normalizeProfileFields(
+    candidate.profileFields && typeof candidate.profileFields === "object"
+      ? candidate.profileFields as Partial<BaziProfileFields>
+      : null,
+  );
+  const activeScope = sanitizeOpenWebUiActiveScope(candidate.activeScope);
+  const profileFingerprint = normalizeText(
+    typeof candidate.profileFingerprint === "string"
+      ? candidate.profileFingerprint
+      : createOpenWebUiProfileFingerprint(profileFields),
+  );
+
+  if (!profileFields && !activeScope && !profileFingerprint) {
+    return null;
+  }
+
+  return {
+    profileFingerprint,
+    profileFields,
+    activeScope,
+  };
 }
 
 function sanitizePersistedTurnContent(
@@ -69,6 +201,24 @@ function formatSummaryLine(message: OpenWebUiEpisodicMessage) {
   return `- ${label}: ${compactContent}`;
 }
 
+function formatContinuityNote(note: string) {
+  return `${OPEN_WEBUI_CONTINUITY_NOTE_PREFIX} ${note}`;
+}
+
+function formatFinalizedTurnSkipNote(reason: OpenWebUiFinalizedTurnSkipReason) {
+  return formatContinuityNote(`assistant reply was not persisted (reason: ${reason}).`);
+}
+
+function normalizeSummaryNotes(notes: string[] | null | undefined) {
+  if (!Array.isArray(notes)) {
+    return [];
+  }
+
+  return notes
+    .map((note) => normalizeText(note))
+    .filter((note): note is string => note !== null);
+}
+
 function parseExistingSummaryLines(summary: string | null | undefined) {
   const normalized = normalizeText(summary);
 
@@ -85,10 +235,12 @@ function parseExistingSummaryLines(summary: string | null | undefined) {
 function buildContextSummary(
   previousSummary: string | null,
   archivedMessages: OpenWebUiEpisodicMessage[],
+  summaryNotes: string[] = [],
 ) {
   const lines = [
     ...parseExistingSummaryLines(previousSummary),
     ...archivedMessages.map(formatSummaryLine),
+    ...summaryNotes,
   ];
 
   if (lines.length === 0) {
@@ -143,14 +295,21 @@ export function buildRollingOpenWebUiThreadState(input: {
   previousSummary: string | null;
   existingMessages: OpenWebUiEpisodicMessage[];
   appendedMessages: OpenWebUiEpisodicMessage[];
+  resetThreadState?: boolean;
+  summaryNotes?: string[];
 }) {
-  const combinedMessages = [...input.existingMessages, ...input.appendedMessages]
+  const baselineMessages = input.resetThreadState ? [] : input.existingMessages;
+  const previousSummary = input.resetThreadState ? null : input.previousSummary;
+  const summaryNotes = normalizeSummaryNotes(input.summaryNotes);
+  const combinedMessages = [...baselineMessages, ...input.appendedMessages]
     .map((message) => sanitizeOpenWebUiPersistedTurn(message))
     .filter((message): message is OpenWebUiEpisodicMessage => message !== null);
 
   if (combinedMessages.length <= OPEN_WEBUI_EPISODIC_RECENT_MESSAGE_LIMIT) {
     return {
-      contextSummary: normalizeText(input.previousSummary),
+      contextSummary: summaryNotes.length > 0
+        ? buildContextSummary(previousSummary, [], summaryNotes)
+        : normalizeText(previousSummary),
       messages: combinedMessages,
     };
   }
@@ -160,7 +319,7 @@ export function buildRollingOpenWebUiThreadState(input: {
   const recentMessages = combinedMessages.slice(archivedCount);
 
   return {
-    contextSummary: buildContextSummary(input.previousSummary, archivedMessages),
+    contextSummary: buildContextSummary(previousSummary, archivedMessages, summaryNotes),
     messages: recentMessages,
   };
 }
@@ -223,6 +382,7 @@ export function createBaziOpenWebUiEpisodicRepository(
           clerkUserId: baziChatHistories.clerkUserId,
           threadId: baziChatHistories.threadId,
           contextSummary: baziChatHistories.contextSummary,
+          continuityState: baziChatHistories.continuityState,
           messages: baziChatHistories.messages,
         })
         .from(baziChatHistories)
@@ -240,6 +400,7 @@ export function createBaziOpenWebUiEpisodicRepository(
         clerkUserId: history.clerkUserId,
         threadId,
         contextSummary: normalizeText(history.contextSummary),
+        continuityState: sanitizeOpenWebUiContinuityState(history.continuityState),
         messages: sanitizeOpenWebUiEpisodicMessages(history.messages),
       };
     },
@@ -251,14 +412,23 @@ export function createBaziOpenWebUiEpisodicRepository(
         role: "user",
         content: input.userMessage,
       });
-      const assistantReply = sanitizeOpenWebUiPersistedTurn({
-        role: "assistant",
-        content: input.assistantReply,
-      });
+      const assistantReply = input.skipReason
+        ? null
+        : sanitizeOpenWebUiPersistedTurn({
+          role: "assistant",
+          content: input.assistantReply,
+        });
 
-      if (!clerkUserId || !threadId || !userMessage || !assistantReply) {
+      if (!clerkUserId || !threadId || !userMessage) {
         return null;
       }
+
+      const summaryNotes = input.skipReason
+        ? [formatFinalizedTurnSkipNote(input.skipReason)]
+        : [];
+      const appendedMessages = assistantReply
+        ? [userMessage, assistantReply]
+        : [userMessage];
 
       const previousState = await this.findByClerkUserIdAndThreadId({
         clerkUserId,
@@ -267,8 +437,13 @@ export function createBaziOpenWebUiEpisodicRepository(
       const nextState = buildRollingOpenWebUiThreadState({
         previousSummary: previousState?.contextSummary ?? null,
         existingMessages: previousState?.messages ?? [],
-        appendedMessages: [userMessage, assistantReply],
+        appendedMessages,
+        resetThreadState: input.resetThreadState,
+        summaryNotes,
       });
+      const nextContinuityState = input.continuityState === undefined
+        ? (input.resetThreadState ? null : previousState?.continuityState ?? null)
+        : input.continuityState;
 
       const [history] = await db
         .insert(baziChatHistories)
@@ -276,6 +451,7 @@ export function createBaziOpenWebUiEpisodicRepository(
           clerkUserId,
           threadId,
           contextSummary: nextState.contextSummary,
+          continuityState: nextContinuityState,
           messages: nextState.messages.map((message) => ({
             role: message.role === "assistant" ? "model" : message.role,
             content: message.content,
@@ -285,6 +461,7 @@ export function createBaziOpenWebUiEpisodicRepository(
           target: [baziChatHistories.clerkUserId, baziChatHistories.threadId],
           set: {
             contextSummary: nextState.contextSummary,
+            continuityState: nextContinuityState,
             messages: nextState.messages.map((message) => ({
               role: message.role === "assistant" ? "model" : message.role,
               content: message.content,
@@ -296,6 +473,7 @@ export function createBaziOpenWebUiEpisodicRepository(
           clerkUserId: baziChatHistories.clerkUserId,
           threadId: baziChatHistories.threadId,
           contextSummary: baziChatHistories.contextSummary,
+          continuityState: baziChatHistories.continuityState,
           messages: baziChatHistories.messages,
         });
 
@@ -307,6 +485,7 @@ export function createBaziOpenWebUiEpisodicRepository(
         clerkUserId: history.clerkUserId,
         threadId: history.threadId,
         contextSummary: normalizeText(history.contextSummary),
+        continuityState: sanitizeOpenWebUiContinuityState(history.continuityState),
         messages: sanitizeOpenWebUiEpisodicMessages(history.messages),
       };
     },

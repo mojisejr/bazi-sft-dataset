@@ -2,7 +2,12 @@ import { z } from "zod";
 
 import { type BaziStatePayload } from "@/features/bazi-math/bazi-engine-adapter";
 import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
-import { type DaYunPillarValue, PillarValueSchema } from "@/lib/bazi/schema-types";
+import {
+  type AgeSnapshotValue,
+  type DaYunPhaseValue,
+  type DaYunPillarValue,
+  PillarValueSchema,
+} from "@/lib/bazi/schema-types";
 
 const OpenWebUiTruthPacketIntentSchema = z.enum([
   "wealth",
@@ -58,6 +63,24 @@ type OpenWebUiTruthPacketIntent = z.infer<typeof OpenWebUiTruthPacketIntentSchem
 type OpenWebUiTruthPacketSectionProvenance = z.infer<typeof OpenWebUiTruthPacketSectionProvenanceSchema>;
 type OpenWebUiTruthPacketSection = z.infer<typeof OpenWebUiTruthPacketSectionSchema>;
 
+type OpenWebUiTimingWindowValue = {
+  startAge: number;
+  endAge: number;
+  label: string;
+  source: "stem" | "branch";
+  symbol: string;
+  twelveQiDisplay: string | null;
+  isCurrent: boolean;
+  daYun: {
+    startAge: number;
+    endAge: number;
+    stem: string;
+    branch: string;
+    isCurrent: boolean;
+    currentPhase: "upper" | "lower" | null;
+  };
+};
+
 function toTruthPacketPillar(pillar: BaziStatePayload["fourPillars"]["year"]) {
   return TruthPacketPillarSchema.parse({
     stem: pillar.stem,
@@ -87,6 +110,148 @@ function createSection(
   return { key, provenance, value };
 }
 
+function formatAgeWindowLabel(startAge: number, endAge: number) {
+  return `${startAge}-${endAge}`;
+}
+
+function buildDaYunPhaseValue(
+  pillar: DaYunPillarValue,
+  phaseKey: "upper" | "lower",
+): DaYunPhaseValue {
+  if (phaseKey === "upper") {
+    return {
+      startAge: pillar.upperPhase?.startAge ?? pillar.startAge,
+      endAge: pillar.upperPhase?.endAge ?? Math.min(pillar.endAge, pillar.startAge + 4),
+      symbol: pillar.upperPhase?.symbol ?? pillar.stem,
+      source: pillar.upperPhase?.source ?? "stem",
+      twelveQiDisplay: pillar.upperPhase?.twelveQiDisplay ?? pillar.upperStageDisplay,
+      isCurrent: pillar.upperPhase?.isCurrent ?? pillar.currentPhase === "upper",
+    };
+  }
+
+  return {
+    startAge: pillar.lowerPhase?.startAge ?? Math.min(pillar.endAge, pillar.startAge + 5),
+    endAge: pillar.lowerPhase?.endAge ?? pillar.endAge,
+    symbol: pillar.lowerPhase?.symbol ?? pillar.branch,
+    source: pillar.lowerPhase?.source ?? "branch",
+    twelveQiDisplay: pillar.lowerPhase?.twelveQiDisplay ?? pillar.lowerStageDisplay,
+    isCurrent: pillar.lowerPhase?.isCurrent ?? pillar.currentPhase === "lower",
+  };
+}
+
+function toTimingWindowValue(
+  pillar: DaYunPillarValue,
+  phaseKey: "upper" | "lower",
+): OpenWebUiTimingWindowValue {
+  const phase = buildDaYunPhaseValue(pillar, phaseKey);
+
+  return {
+    startAge: phase.startAge,
+    endAge: phase.endAge,
+    label: formatAgeWindowLabel(phase.startAge, phase.endAge),
+    source: phase.source,
+    symbol: phase.symbol,
+    twelveQiDisplay: phase.twelveQiDisplay ?? null,
+    isCurrent: phase.isCurrent ?? false,
+    daYun: {
+      startAge: pillar.startAge,
+      endAge: pillar.endAge,
+      stem: pillar.stem,
+      branch: pillar.branch,
+      isCurrent: pillar.isCurrent ?? false,
+      currentPhase: pillar.currentPhase ?? null,
+    },
+  };
+}
+
+function buildTimingWindows(payload: BaziStatePayload): OpenWebUiTimingWindowValue[] {
+  return payload.daYun.flatMap((pillar) => ([
+    toTimingWindowValue(pillar, "upper"),
+    toTimingWindowValue(pillar, "lower"),
+  ].filter((window) => window.startAge <= window.endAge)));
+}
+
+function buildAgeSnapshotSection(ageSnapshot: AgeSnapshotValue): OpenWebUiTruthPacketSection {
+  return createSection("ageSnapshot", ageSnapshot, "timing_context");
+}
+
+function buildCurrentDaYunSection(currentDaYun: DaYunPillarValue): OpenWebUiTruthPacketSection {
+  const upperPhase = toTimingWindowValue(currentDaYun, "upper");
+  const lowerPhase = toTimingWindowValue(currentDaYun, "lower");
+
+  return createSection("currentDaYun", {
+    startAge: currentDaYun.startAge,
+    endAge: currentDaYun.endAge,
+    stem: currentDaYun.stem,
+    branch: currentDaYun.branch,
+    currentPhase: currentDaYun.currentPhase,
+    upperStageDisplay: currentDaYun.upperStageDisplay,
+    lowerStageDisplay: currentDaYun.lowerStageDisplay,
+    influenceGradient: currentDaYun.influenceGradient,
+    upperPhase,
+    lowerPhase,
+  }, "timing_context");
+}
+
+function getActiveTimingWindow(
+  payload: BaziStatePayload,
+  timingWindows: OpenWebUiTimingWindowValue[],
+): OpenWebUiTimingWindowValue | null {
+  const currentWindow = timingWindows.find((window) => window.isCurrent);
+
+  if (currentWindow) {
+    return currentWindow;
+  }
+
+  const currentDaYun = getCurrentDaYun(payload);
+
+  if (!currentDaYun) {
+    return null;
+  }
+
+  return toTimingWindowValue(
+    currentDaYun,
+    currentDaYun.currentPhase === "lower" ? "lower" : "upper",
+  );
+}
+
+function buildNextTimingWindows(
+  payload: BaziStatePayload,
+  timingWindows: OpenWebUiTimingWindowValue[],
+  activeTimingWindow: OpenWebUiTimingWindowValue | null,
+): OpenWebUiTimingWindowValue[] {
+  if (timingWindows.length === 0) {
+    return [];
+  }
+
+  if (activeTimingWindow) {
+    const activeWindowIndex = timingWindows.findIndex((window) => (
+      window.daYun.startAge === activeTimingWindow.daYun.startAge
+      && window.startAge === activeTimingWindow.startAge
+      && window.endAge === activeTimingWindow.endAge
+    ));
+
+    if (activeWindowIndex >= 0) {
+      return timingWindows.slice(activeWindowIndex + 1, activeWindowIndex + 3);
+    }
+  }
+
+  const currentDaYun = getCurrentDaYun(payload);
+
+  if (!currentDaYun) {
+    return timingWindows.slice(0, 2);
+  }
+
+  const firstCurrentWindowIndex = timingWindows.findIndex(
+    (window) => window.daYun.startAge === currentDaYun.startAge,
+  );
+
+  return timingWindows.slice(
+    firstCurrentWindowIndex >= 0 ? firstCurrentWindowIndex : 0,
+    (firstCurrentWindowIndex >= 0 ? firstCurrentWindowIndex : 0) + 2,
+  );
+}
+
 function getCurrentDaYun(payload: BaziStatePayload): DaYunPillarValue | null {
   return payload.daYun.find((pillar) => pillar.isCurrent) ?? payload.daYun.at(-1) ?? null;
 }
@@ -94,18 +259,24 @@ function getCurrentDaYun(payload: BaziStatePayload): DaYunPillarValue | null {
 function buildTimingSections(payload: BaziStatePayload): OpenWebUiTruthPacketSection[] {
   const sections: OpenWebUiTruthPacketSection[] = [];
   const currentDaYun = getCurrentDaYun(payload);
+  const timingWindows = buildTimingWindows(payload);
+  const activeTimingWindow = getActiveTimingWindow(payload, timingWindows);
+  const nextTimingWindows = buildNextTimingWindows(payload, timingWindows, activeTimingWindow);
+
+  if (payload.ageSnapshot) {
+    sections.push(buildAgeSnapshotSection(payload.ageSnapshot));
+  }
 
   if (currentDaYun) {
-    sections.push(createSection("currentDaYun", {
-      startAge: currentDaYun.startAge,
-      endAge: currentDaYun.endAge,
-      stem: currentDaYun.stem,
-      branch: currentDaYun.branch,
-      currentPhase: currentDaYun.currentPhase,
-      upperStageDisplay: currentDaYun.upperStageDisplay,
-      lowerStageDisplay: currentDaYun.lowerStageDisplay,
-      influenceGradient: currentDaYun.influenceGradient,
-    }, "timing_context"));
+    sections.push(buildCurrentDaYunSection(currentDaYun));
+  }
+
+  if (activeTimingWindow) {
+    sections.push(createSection("activeTimingWindow", activeTimingWindow, "timing_context"));
+  }
+
+  if (nextTimingWindows.length > 0) {
+    sections.push(createSection("nextTimingWindows", nextTimingWindows, "timing_context"));
   }
 
   if (payload.liuNian) {

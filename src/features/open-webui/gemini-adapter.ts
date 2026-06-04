@@ -22,6 +22,9 @@ export const MUMATE_PERSONA_INSTRUCTION = [
   "- ถ้า Truth Packet ไม่มีตัวแปรที่จำเป็น ให้บอกว่ายังสรุปไม่ได้และถามข้อมูลเพิ่ม ห้ามเดา",
   "- ห้ามสร้างข้อสรุปเรื่องร่างกาย สุขภาพ การขับถ่าย โรค หรืออาการ จากการขาดธาตุหรือจากความเชื่อทั่วไป เว้นแต่ Truth Packet ระบุไว้ตรงๆ",
   "- ห้ามใช้หรืออ้างคำของสำนักอื่นที่ไม่เกี่ยว เช่น กวนซา, เจีย หงเฮ้ง หรือศัพท์นอกระบบที่ Truth Packet ไม่ได้ให้มา",
+  "- ถ้าคำถามถูก route มาเป็นเรื่องงาน การเงิน ความรัก หรือสุขภาพ ให้ตอบอยู่ในโดเมนนั้นก่อน ห้ามไหลไปโดเมนอื่นหรือ lifestyle ทั่วไป เว้นแต่ผู้ใช้ขอเองหรือ Truth Packet ผูกเหตุไว้ตรงๆ",
+  "- ถ้ามี active age window หรือ timing window ถูกแนบมา ให้ยึดช่วงนั้นเป็นแกนหลักของคำตอบก่อน ห้ามสลับไปช่วงอื่นเองถ้าผู้ใช้ไม่ได้ถาม",
+  "- ถ้าคำถามเป็นเรื่องสุขภาพและ Truth Packet มีข้อมูลพอ ให้ตอบเป็นข้อควรระวังและแนวดูแลตัวเองที่ใช้ได้จริงอย่างตรงไปตรงมาได้ แต่ห้ามวินิจฉัยโรค ห้ามชี้ขาดว่าเป็นแน่ และห้ามปฏิเสธแบบตั้งการ์ดเพียงเพราะเป็นหัวข้อสุขภาพ",
   "",
   "## กฎ provenance ของหลักฐาน",
   "- ถ้า section ใน Truth Packet มี provenance เป็น compatibility_profile ให้เล่าว่าเป็นสัญญาณหรือแนวโน้มจาก profile ระดับความเข้ากันได้เท่านั้น ห้ามยกระดับเป็นข้อเท็จจริงที่คำนวณตรงจากดวง",
@@ -97,6 +100,15 @@ export type OpenWebUiGeminiExecutionContext = {
   episodicMemory?: {
     contextSummary: string | null;
     messages: Array<Pick<NormalizedChatMessage, "role" | "content">>;
+    activeScope: {
+      requestedDomain: "wealth" | "love" | "career" | "health" | "general_reading" | "chit_chat";
+      currentAgeWindow: {
+        startAge: number;
+        endAge: number;
+        currentPhase: "upper" | "lower" | null;
+        label: string;
+      } | null;
+    } | null;
   };
 };
 
@@ -178,6 +190,47 @@ function formatSystemClockLine(now: Date) {
   return `[เวลาปัจจุบันของระบบ]: ${formatted} (ISO: ${isoDate})`;
 }
 
+function buildScopedAnswerContract(
+  executionContext: OpenWebUiGeminiExecutionContext | undefined,
+): string | null {
+  const intentClassification = executionContext?.intentClassification;
+
+  if (!intentClassification?.requiresBaziConsult) {
+    return null;
+  }
+
+  const activeScope = executionContext?.episodicMemory?.activeScope;
+  const requestedDomain = activeScope?.requestedDomain ?? intentClassification.intent;
+  const lines: string[] = [];
+
+  if (requestedDomain !== "general_reading") {
+    lines.push(
+      `- Primary requested domain: ${requestedDomain}. Stay inside this domain unless the user explicitly asks to compare another domain or the Truth Packet explicitly proves a cross-domain link.`,
+    );
+    lines.push(
+      "- Do not drift into unrelated lifestyle commentary, romance, money, health, or personality advice when the current request is work-only or otherwise domain-bounded.",
+    );
+  }
+
+  if (activeScope?.currentAgeWindow) {
+    lines.push(
+      `- Primary age window: ${activeScope.currentAgeWindow.label}. Treat this as the answer window unless the user explicitly asks about another period or a future transition.`,
+    );
+  }
+
+  if (requestedDomain === "health") {
+    lines.push(
+      "- Health response contract: answer directly with practical cautions and self-care guidance when the Truth Packet supports it; do not diagnose disease, do not claim certainty, and do not refuse only because the topic is health.",
+    );
+  }
+
+  if (lines.length === 0) {
+    return null;
+  }
+
+  return ["Scoped answer contract:", ...lines].join("\n");
+}
+
 export function buildOpenWebUiGeminiPromptPayload(
   input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage"> & {
     executionContext?: OpenWebUiGeminiExecutionContext;
@@ -196,6 +249,7 @@ export function buildOpenWebUiGeminiPromptPayload(
   const baziConsult = input.executionContext?.baziConsult;
   const baziMissingFields = input.executionContext?.baziMissingFields ?? [];
   const episodicMemory = input.executionContext?.episodicMemory;
+  const scopedAnswerContract = buildScopedAnswerContract(input.executionContext);
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -220,12 +274,22 @@ export function buildOpenWebUiGeminiPromptPayload(
           episodicMemory.contextSummary,
         ].join("\n")
         : null,
+      episodicMemory?.activeScope
+        ? [
+          "Same-thread active scope:",
+          `- Requested domain: ${episodicMemory.activeScope.requestedDomain}`,
+          episodicMemory.activeScope.currentAgeWindow
+            ? `- Current age window: ${episodicMemory.activeScope.currentAgeWindow.label} (phase: ${episodicMemory.activeScope.currentAgeWindow.currentPhase ?? "unknown"})`
+            : "- Current age window: unavailable",
+        ].join("\n")
+        : null,
       episodicMemory?.messages.length
         ? [
           "Same-thread episodic transcript from persisted memory:",
           episodicMemory.messages.map(formatConversationLine).join("\n\n"),
         ].join("\n")
         : null,
+      scopedAnswerContract,
       "Continue the conversation from this transcript.",
       conversationTranscript,
       intentClassification

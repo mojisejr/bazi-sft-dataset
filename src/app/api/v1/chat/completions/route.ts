@@ -24,6 +24,10 @@ import {
 } from "@/features/open-webui/profile-service";
 import {
   createBaziOpenWebUiEpisodicRepository,
+  createOpenWebUiProfileFingerprint,
+  type OpenWebUiActiveScope,
+  type OpenWebUiContinuityState,
+  type OpenWebUiFinalizedTurnSkipReason,
   type PersistedOpenWebUiThreadState,
 } from "@/features/open-webui/episodic-service";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
@@ -32,6 +36,8 @@ import {
 } from "@/features/open-webui/sse-streamer";
 
 export const runtime = "nodejs";
+
+const PROFILE_BOUNDARY_KEYS = ["birthDate", "birthTime", "gender", "province"] as const;
 
 function createBadRequestResponse(message: string, code = "bad_request") {
   return Response.json(
@@ -64,6 +70,7 @@ export function buildOpenWebUiExecutionContext(
   const episodicMemory = input.episodicMemory
     ? {
       contextSummary: input.episodicMemory.contextSummary,
+      activeScope: input.episodicMemory.continuityState?.activeScope ?? null,
       messages: input.episodicMemory.messages,
     }
     : undefined;
@@ -124,6 +131,105 @@ export function buildOpenWebUiExecutionContext(
   };
 }
 
+function normalizeContinuityProfileFields(
+  fields: Partial<ReturnType<typeof mergeBaziProfileFields>> | null | undefined,
+) {
+  const normalized = mergeBaziProfileFields(fields ?? null);
+
+  return hasAnyBaziProfileField(normalized) ? normalized : null;
+}
+
+function hasContinuityProfileConflict(
+  nextFields: Partial<ReturnType<typeof mergeBaziProfileFields>> | null | undefined,
+  previousFields: Partial<ReturnType<typeof mergeBaziProfileFields>> | null | undefined,
+) {
+  const normalizedNextFields = normalizeContinuityProfileFields(nextFields);
+  const normalizedPreviousFields = normalizeContinuityProfileFields(previousFields);
+
+  if (!normalizedNextFields || !normalizedPreviousFields) {
+    return false;
+  }
+
+  return PROFILE_BOUNDARY_KEYS.some((key) => (
+    normalizedNextFields[key] !== null
+    && normalizedPreviousFields[key] !== null
+    && normalizedNextFields[key] !== normalizedPreviousFields[key]
+  ));
+}
+
+function buildOpenWebUiActiveScope(
+  intentClassification: OpenWebUiIntentClassification,
+  calculatedState: BaziStatePayload | null,
+): OpenWebUiActiveScope | null {
+  if (!intentClassification.requiresBaziConsult) {
+    return null;
+  }
+
+  const currentDaYun = calculatedState?.daYun.find((pillar) => pillar.isCurrent) ?? calculatedState?.daYun.at(-1) ?? null;
+
+  if (!currentDaYun) {
+    return {
+      requestedDomain: intentClassification.intent,
+      currentAgeWindow: null,
+    };
+  }
+
+  let startAge = currentDaYun.startAge;
+  let endAge = currentDaYun.endAge;
+
+  if (currentDaYun.currentPhase === "upper") {
+    endAge = Math.min(currentDaYun.endAge, currentDaYun.startAge + 4);
+  }
+
+  if (currentDaYun.currentPhase === "lower") {
+    startAge = Math.min(currentDaYun.endAge, currentDaYun.startAge + 5);
+  }
+
+  return {
+    requestedDomain: intentClassification.intent,
+    currentAgeWindow: {
+      startAge,
+      endAge,
+      currentPhase: currentDaYun.currentPhase ?? null,
+      label: `${startAge}-${endAge}`,
+    },
+  };
+}
+
+function buildOpenWebUiContinuityState(input: {
+  intentClassification: OpenWebUiIntentClassification;
+  calculatedState: BaziStatePayload | null;
+  profileFields: Partial<ReturnType<typeof mergeBaziProfileFields>> | null | undefined;
+}): OpenWebUiContinuityState | null {
+  const profileFields = normalizeContinuityProfileFields(input.profileFields);
+  const activeScope = buildOpenWebUiActiveScope(input.intentClassification, input.calculatedState);
+
+  if (!profileFields && !activeScope) {
+    return null;
+  }
+
+  return {
+    profileFingerprint: createOpenWebUiProfileFingerprint(profileFields),
+    profileFields,
+    activeScope,
+  };
+}
+
+function getFinalizedReplySkipReason(reply: {
+  usedFallback: boolean;
+  visibleText: string;
+}): OpenWebUiFinalizedTurnSkipReason | null {
+  if (reply.usedFallback) {
+    return "fallback_response";
+  }
+
+  if (!reply.visibleText.trim()) {
+    return "empty_visible_reply";
+  }
+
+  return null;
+}
+
 export async function POST(req: Request) {
   const unauthorizedResponse = validateApiToken(req);
 
@@ -157,6 +263,13 @@ export async function POST(req: Request) {
     userId: effectiveUserId,
     threadId: result.threadId,
   });
+
+  let continuityPersistencePlan: {
+    shouldResetThreadState: boolean;
+    continuityState?: OpenWebUiContinuityState | null;
+  } = {
+    shouldResetThreadState: false,
+  };
 
   const assistantReply = (async () => {
     const intentClassification = await routeOpenWebUiIntent(result);
@@ -204,12 +317,35 @@ export async function POST(req: Request) {
       });
     }
 
+    const nextProfileBoundaryFields = result.baziConsult?.rawInput
+      ? toBaziProfileFields(result.baziConsult.rawInput)
+      : extraction?.fields ?? null;
+    const previousProfileBoundaryFields = episodicMemory?.continuityState?.profileFields
+      ?? persistedProfile?.fields
+      ?? null;
+    const shouldResetThreadState = result.continuityBoundary.requestedFreshThreadBoundary
+      || hasContinuityProfileConflict(nextProfileBoundaryFields, previousProfileBoundaryFields);
+    const effectiveEpisodicMemory = shouldResetThreadState ? null : episodicMemory;
+
+    continuityPersistencePlan = {
+      shouldResetThreadState,
+      continuityState: intentClassification.requiresBaziConsult
+        ? buildOpenWebUiContinuityState({
+          intentClassification,
+          calculatedState,
+          profileFields: profileFieldsToPersist,
+        })
+        : shouldResetThreadState
+          ? null
+          : undefined,
+    };
+
     const executionContext = buildOpenWebUiExecutionContext({
       result,
       intentClassification,
       extraction,
       calculatedState,
-      episodicMemory,
+      episodicMemory: effectiveEpisodicMemory,
     });
 
     return generateGeminiAssistantReply(result, { executionContext });
@@ -241,15 +377,17 @@ export async function POST(req: Request) {
         return;
       }
 
-      if (reply.usedFallback || !reply.visibleText.trim()) {
-        return;
-      }
+      const skipReason = getFinalizedReplySkipReason(reply);
 
       await episodicRepository.appendFinalizedTurnByClerkUserIdAndThreadId({
         clerkUserId: effectiveUserId,
         threadId: result.threadId,
         userMessage: result.latestUserMessage.content,
-        assistantReply: reply.visibleText,
+        ...(skipReason ? { skipReason } : { assistantReply: reply.visibleText }),
+        ...(continuityPersistencePlan.shouldResetThreadState ? { resetThreadState: true } : {}),
+        ...(continuityPersistencePlan.continuityState !== undefined
+          ? { continuityState: continuityPersistencePlan.continuityState }
+          : {}),
       });
     },
   }), {

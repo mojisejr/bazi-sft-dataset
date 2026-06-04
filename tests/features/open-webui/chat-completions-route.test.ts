@@ -67,12 +67,18 @@ vi.mock("@/features/open-webui/profile-service", async () => {
 
 const findByClerkUserIdAndThreadIdMock = vi.fn();
 const appendFinalizedTurnByClerkUserIdAndThreadIdMock = vi.fn();
-vi.mock("@/features/open-webui/episodic-service", () => ({
-  createBaziOpenWebUiEpisodicRepository: vi.fn(() => ({
-    findByClerkUserIdAndThreadId: findByClerkUserIdAndThreadIdMock,
-    appendFinalizedTurnByClerkUserIdAndThreadId: appendFinalizedTurnByClerkUserIdAndThreadIdMock,
-  })),
-}));
+vi.mock("@/features/open-webui/episodic-service", async () => {
+  const actual = await vi.importActual<typeof import("@/features/open-webui/episodic-service")>(
+    "@/features/open-webui/episodic-service",
+  );
+  return {
+    ...actual,
+    createBaziOpenWebUiEpisodicRepository: vi.fn(() => ({
+      findByClerkUserIdAndThreadId: findByClerkUserIdAndThreadIdMock,
+      appendFinalizedTurnByClerkUserIdAndThreadId: appendFinalizedTurnByClerkUserIdAndThreadIdMock,
+    })),
+  };
+});
 
 const { buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
 
@@ -82,6 +88,11 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
     month: { stem: "戊", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
     day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
     hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
+  },
+  ageSnapshot: {
+    referenceDate: "2026-06-03",
+    thaiAge: 37,
+    chineseAge: 38,
   },
   dayMaster: "己",
   strengthScore: 3.07,
@@ -98,14 +109,54 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
   },
   daYun: [
     {
-      startAge: 42,
-      endAge: 51,
+      startAge: 35,
+      endAge: 44,
       stem: "辛",
       branch: "酉",
       isCurrent: true,
       currentPhase: "upper",
       upperStageDisplay: "冠带",
       lowerStageDisplay: "临官",
+      upperPhase: {
+        startAge: 35,
+        endAge: 39,
+        symbol: "辛",
+        source: "stem",
+        isCurrent: true,
+        twelveQiDisplay: "冠带",
+      },
+      lowerPhase: {
+        startAge: 40,
+        endAge: 44,
+        symbol: "酉",
+        source: "branch",
+        isCurrent: false,
+        twelveQiDisplay: "临官",
+      },
+    },
+    {
+      startAge: 45,
+      endAge: 54,
+      stem: "壬",
+      branch: "戌",
+      upperStageDisplay: "帝旺",
+      lowerStageDisplay: "衰",
+      upperPhase: {
+        startAge: 45,
+        endAge: 49,
+        symbol: "壬",
+        source: "stem",
+        isCurrent: false,
+        twelveQiDisplay: "帝旺",
+      },
+      lowerPhase: {
+        startAge: 50,
+        endAge: 54,
+        symbol: "戌",
+        source: "branch",
+        isCurrent: false,
+        twelveQiDisplay: "衰",
+      },
     },
   ],
   liuNian: { stem: "丙", branch: "午", hiddenStems: ["丁", "己"] },
@@ -248,7 +299,64 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContext.intentClassification?.intent).toBe("wealth");
     expect(executionContext.baziConsult?.rawInput?.birthDate).toBe(SAMPLE_RAW_INPUT.birthDate);
     expect(executionContext.baziConsult?.truthPacket).toContain('"intent": "wealth"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"activeTimingWindow"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"35-39"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"40-44"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"45-49"');
+    expect(executionContext.baziConsult?.truthPacket).not.toContain('"50-54"');
     expect(executionContext.baziMissingFields).toBeUndefined();
+  });
+
+  test("passes persisted active scope through the execution context instead of relying only on summary text", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: SAMPLE_CHAT_RESULT,
+      intentClassification: { intent: "career", requiresBaziConsult: true, confidence: 0.94 },
+      calculatedState: SAMPLE_CALCULATED_STATE,
+      episodicMemory: {
+        clerkUserId: "clerk-123",
+        threadId: "chat-thread-1",
+        contextSummary: "ดูเรื่องงานต่อจาก scope เดิม",
+        continuityState: {
+          profileFingerprint: "1992-08-12::09:15::female::Bangkok",
+          profileFields: {
+            birthDate: "1992-08-12",
+            birthTime: "09:15",
+            gender: "female",
+            province: "Bangkok",
+          },
+          activeScope: {
+            requestedDomain: "career",
+            currentAgeWindow: {
+              startAge: 42,
+              endAge: 46,
+              currentPhase: "upper",
+              label: "42-46",
+            },
+          },
+        },
+        messages: [
+          { role: "user", content: "ดูเรื่องงานต่อ" },
+          { role: "assistant", content: "ได้ค่ะ ต่อจาก scope เดิมให้" },
+        ],
+      },
+    });
+
+    expect(executionContext.episodicMemory).toEqual({
+      contextSummary: "ดูเรื่องงานต่อจาก scope เดิม",
+      activeScope: {
+        requestedDomain: "career",
+        currentAgeWindow: {
+          startAge: 42,
+          endAge: 46,
+          currentPhase: "upper",
+          label: "42-46",
+        },
+      },
+      messages: [
+        { role: "user", content: "ดูเรื่องงานต่อ" },
+        { role: "assistant", content: "ได้ค่ะ ต่อจาก scope เดิมให้" },
+      ],
+    });
   });
 
   test("keeps non-Bazi traffic stateless by bypassing truth-packet attachment", () => {
@@ -547,6 +655,24 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
       clerkUserId: "clerk-123",
       threadId: "chat-thread-1",
       contextSummary: "ผู้ใช้บอกวันเกิดครบแล้ว เหลือถามต่อเรื่องงาน",
+      continuityState: {
+        profileFingerprint: "1989-01-03::08:45::ชาย::จันทบุรี",
+        profileFields: {
+          birthDate: "1989-01-03",
+          birthTime: "08:45",
+          gender: "ชาย",
+          province: "จันทบุรี",
+        },
+        activeScope: {
+          requestedDomain: "career",
+          currentAgeWindow: {
+            startAge: 42,
+            endAge: 46,
+            currentPhase: "upper",
+            label: "42-46",
+          },
+        },
+      },
       messages: [
         { role: "user", content: "เกิด 3 ม.ค. 2532 เวลา 08:45" },
         { role: "assistant", content: "ได้ค่ะ จำข้อมูลพื้นฐานไว้แล้ว" },
@@ -578,6 +704,15 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
     expect(executionContext.episodicMemory).toEqual({
       contextSummary: "ผู้ใช้บอกวันเกิดครบแล้ว เหลือถามต่อเรื่องงาน",
+      activeScope: {
+        requestedDomain: "career",
+        currentAgeWindow: {
+          startAge: 42,
+          endAge: 46,
+          currentPhase: "upper",
+          label: "42-46",
+        },
+      },
       messages: [
         { role: "user", content: "เกิด 3 ม.ค. 2532 เวลา 08:45" },
         { role: "assistant", content: "ได้ค่ะ จำข้อมูลพื้นฐานไว้แล้ว" },
@@ -588,6 +723,94 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
       threadId: "chat-thread-1",
       userMessage: "ถามต่อเรื่องงาน",
       assistantReply: "ต่อเนื่องจากแชตเดิมค่ะ",
+    });
+  });
+
+  test("changed-profile turns fail closed and rebuild continuity instead of hydrating stale thread state", async () => {
+    findByClerkUserIdAndThreadIdMock.mockResolvedValue({
+      clerkUserId: "clerk-222",
+      threadId: "chat-thread-2",
+      contextSummary: "โปรไฟล์เก่าเรื่องงาน",
+      continuityState: {
+        profileFingerprint: "1992-08-12::09:15::female::Bangkok",
+        profileFields: {
+          birthDate: "1992-08-12",
+          birthTime: "09:15",
+          gender: "female",
+          province: "Bangkok",
+        },
+        activeScope: {
+          requestedDomain: "career",
+          currentAgeWindow: {
+            startAge: 42,
+            endAge: 46,
+            currentPhase: "upper",
+            label: "42-46",
+          },
+        },
+      },
+      messages: [
+        { role: "user", content: "โปรไฟล์เดิม" },
+        { role: "assistant", content: "สรุปเรื่องงานจากโปรไฟล์เดิม" },
+      ],
+    });
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.94,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "รับโปรไฟล์ใหม่แล้วค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-222" },
+      chat_id: "chat-thread-2",
+      messages: [
+        { role: "user", content: "เกิด 3 ม.ค. 2532 เวลา 08:45 จันทบุรี ผู้ชาย" },
+      ],
+      baziConsult: {
+        rawInput: {
+          birthDate: "1989-01-03",
+          birthTime: "08:45",
+          gender: "ชาย",
+          province: "จันทบุรี",
+          calendarSystem: "solar",
+          timezone: "Asia/Bangkok",
+        },
+        calculatedState: SAMPLE_CALCULATED_STATE,
+      },
+    }));
+
+    await consumeStream(response);
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.episodicMemory).toBeUndefined();
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-222",
+      threadId: "chat-thread-2",
+      userMessage: "เกิด 3 ม.ค. 2532 เวลา 08:45 จันทบุรี ผู้ชาย",
+      assistantReply: "รับโปรไฟล์ใหม่แล้วค่ะ",
+      resetThreadState: true,
+      continuityState: {
+        profileFingerprint: "1989-01-03::08:45::ชาย::จันทบุรี",
+        profileFields: {
+          birthDate: "1989-01-03",
+          birthTime: "08:45",
+          gender: "ชาย",
+          province: "จันทบุรี",
+        },
+        activeScope: {
+          requestedDomain: "career",
+          currentAgeWindow: {
+            startAge: 35,
+            endAge: 39,
+            currentPhase: "upper",
+            label: "35-39",
+          },
+        },
+      },
     });
   });
 
@@ -649,7 +872,7 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     });
   });
 
-  test("fallback-only stream output is not persisted into episodic memory", async () => {
+  test("fallback-only stream output records an explicit skip reason instead of failing silently", async () => {
     routeOpenWebUiIntentMock.mockResolvedValue({
       intent: "chit_chat",
       requiresBaziConsult: false,
@@ -670,7 +893,40 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
 
     expect(reconstructedContent).toBe("ขออภัยค่ะ ตอนนี้การเชื่อมต่อ Gemini ใช้เวลานานหรือมีปัญหา กรุณาลองใหม่อีกครั้ง");
     expect(body).toContain("[DONE]");
-    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).not.toHaveBeenCalled();
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-321",
+      threadId: "chat-thread-4",
+      userMessage: "ยังอยู่ไหม",
+      skipReason: "fallback_response",
+    });
+  });
+
+  test("empty visible reply records an explicit skip reason instead of appending a blank assistant turn", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.45,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: '<bazi_logic>{"trace":"internal"}</bazi_logic>',
+    });
+
+    const response = await POST(buildJsonRequest({
+      user: { id: "clerk-654" },
+      chat_id: "chat-thread-5",
+      messages: [{ role: "user", content: "ช่วยต่อให้หน่อย" }],
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(body).toContain("[DONE]");
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-654",
+      threadId: "chat-thread-5",
+      userMessage: "ช่วยต่อให้หน่อย",
+      skipReason: "empty_visible_reply",
+    });
   });
 
   test("missing effective user id keeps the route non-persistent", async () => {

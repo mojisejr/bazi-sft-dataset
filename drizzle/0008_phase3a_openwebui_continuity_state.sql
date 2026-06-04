@@ -1,0 +1,1 @@
+ALTER TABLE "bazi_chat_histories" ADD COLUMN "continuity_state" jsonb;

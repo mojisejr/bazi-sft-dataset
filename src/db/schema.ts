@@ -327,6 +327,7 @@ export const baziChatHistories = pgTable("bazi_chat_histories", {
   lineUserId: text("line_user_id").unique(),
   threadId: text("thread_id"),
   contextSummary: text("context_summary"),
+  continuityState: jsonb("continuity_state").$type<Record<string, unknown> | null>(),
   messages: jsonb("messages")
     .$type<BaziChatHistoryMessage[]>()
     .notNull()

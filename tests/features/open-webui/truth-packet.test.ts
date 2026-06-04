@@ -17,6 +17,11 @@ const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
     day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
     hour: { stem: "辛", branch: "未", hiddenStems: ["己", "丁", "乙"] },
   },
+  ageSnapshot: {
+    referenceDate: "2026-06-03",
+    thaiAge: 37,
+    chineseAge: 38,
+  },
   dayMaster: "己",
   strengthScore: 3.07,
   tenGods: {
@@ -32,8 +37,8 @@ const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
   },
   daYun: [
     {
-      startAge: 42,
-      endAge: 51,
+      startAge: 35,
+      endAge: 44,
       stem: "辛",
       branch: "酉",
       isCurrent: true,
@@ -47,6 +52,46 @@ const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
         branchWeight: 0.1,
         dominantSource: "stem",
         ratioLabel: "90:10",
+      },
+      upperPhase: {
+        startAge: 35,
+        endAge: 39,
+        symbol: "辛",
+        source: "stem",
+        isCurrent: true,
+        twelveQiDisplay: "冠带",
+      },
+      lowerPhase: {
+        startAge: 40,
+        endAge: 44,
+        symbol: "酉",
+        source: "branch",
+        isCurrent: false,
+        twelveQiDisplay: "临官",
+      },
+    },
+    {
+      startAge: 45,
+      endAge: 54,
+      stem: "壬",
+      branch: "戌",
+      upperStageDisplay: "帝旺",
+      lowerStageDisplay: "衰",
+      upperPhase: {
+        startAge: 45,
+        endAge: 49,
+        symbol: "壬",
+        source: "stem",
+        isCurrent: false,
+        twelveQiDisplay: "帝旺",
+      },
+      lowerPhase: {
+        startAge: 50,
+        endAge: 54,
+        symbol: "戌",
+        source: "branch",
+        isCurrent: false,
+        twelveQiDisplay: "衰",
       },
     },
   ],
@@ -157,7 +202,25 @@ describe("selectOpenWebUiTruthPacket", () => {
       ],
       support: [],
       timing: [
-        { key: "currentDaYun", provenance: "timing_context", value: { influenceGradient: SAMPLE_BAZI_STATE.daYun[0]?.influenceGradient } },
+        { key: "ageSnapshot", provenance: "timing_context", value: { thaiAge: 37, chineseAge: 38 } },
+        {
+          key: "currentDaYun",
+          provenance: "timing_context",
+          value: {
+            influenceGradient: SAMPLE_BAZI_STATE.daYun[0]?.influenceGradient,
+            upperPhase: { label: "35-39" },
+            lowerPhase: { label: "40-44" },
+          },
+        },
+        { key: "activeTimingWindow", provenance: "timing_context", value: { label: "35-39" } },
+        {
+          key: "nextTimingWindows",
+          provenance: "timing_context",
+          value: [
+            { label: "40-44" },
+            { label: "45-49" },
+          ],
+        },
         { key: "liuNian", provenance: "timing_context" },
       ],
     });
@@ -167,6 +230,11 @@ describe("selectOpenWebUiTruthPacket", () => {
       requiresBaziConsult: true,
       confidence: 0.94,
     }, SAMPLE_BAZI_STATE)).not.toContain("baseChartReading");
+    expect(stringifyOpenWebUiTruthPacket({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.94,
+    }, SAMPLE_BAZI_STATE)).not.toContain("50-54");
   });
 
   test("returns a relationship-focused packet anchored on spouse palace and love compatibility", () => {

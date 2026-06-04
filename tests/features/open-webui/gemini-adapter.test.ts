@@ -121,6 +121,84 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("Respect the packet provenance markers:");
   });
 
+  test("includes persisted active scope so continuity is not inferred only from recap text", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        ...sampleExecutionContext,
+        episodicMemory: {
+          contextSummary: "ผู้ใช้คุยเรื่องงานต่อเนื่องจากเคสเดิม",
+          activeScope: {
+            requestedDomain: "career",
+            currentAgeWindow: {
+              startAge: 42,
+              endAge: 46,
+              currentPhase: "upper",
+              label: "42-46",
+            },
+          },
+          messages: [
+            { role: "user", content: "ถามต่อเรื่องงาน" },
+            { role: "assistant", content: "ได้ค่ะ จะต่อจาก scope เดิมให้" },
+          ],
+        },
+      },
+    });
+
+    expect(payload.userPrompt).toContain("Same-thread active scope:");
+    expect(payload.userPrompt).toContain("- Requested domain: career");
+    expect(payload.userPrompt).toContain("- Current age window: 42-46 (phase: upper)");
+    expect(payload.userPrompt).toContain("Scoped answer contract:");
+    expect(payload.userPrompt).toContain("Primary requested domain: career. Stay inside this domain unless the user explicitly asks to compare another domain");
+    expect(payload.userPrompt).toContain("Primary age window: 42-46. Treat this as the answer window unless the user explicitly asks about another period or a future transition.");
+    expect(payload.userPrompt).toContain("Do not drift into unrelated lifestyle commentary, romance, money, health, or personality advice");
+  });
+
+  test("adds direct but non-diagnostic health guidance for health-only consults", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [
+        { role: "user", content: "ช่วงอายุนี้สุขภาพต้องระวังอะไรบ้าง" },
+      ],
+      triageMessages: [],
+      latestUserMessage: { role: "user", content: "ช่วงอายุนี้สุขภาพต้องระวังอะไรบ้าง" },
+      executionContext: {
+        intentClassification: {
+          intent: "health",
+          requiresBaziConsult: true,
+          confidence: 0.95,
+        },
+        baziConsult: {
+          rawInput: sampleExecutionContext.baziConsult!.rawInput,
+          truthPacket: JSON.stringify({
+            intent: "health",
+            timing: [{ key: "activeTimingWindow", value: { label: "35-39" } }],
+            anchors: [{ key: "seasonalInteraction", value: { note: "ไฟแห้ง" } }],
+          }, null, 2),
+        },
+        episodicMemory: {
+          contextSummary: "คุยต่อเรื่องสุขภาพในช่วงอายุปัจจุบัน",
+          activeScope: {
+            requestedDomain: "health",
+            currentAgeWindow: {
+              startAge: 35,
+              endAge: 39,
+              currentPhase: "upper",
+              label: "35-39",
+            },
+          },
+          messages: [],
+        },
+      },
+    });
+
+    expect(payload.systemInstruction).toContain("ถ้าคำถามเป็นเรื่องสุขภาพและ Truth Packet มีข้อมูลพอ");
+    expect(payload.systemInstruction).toContain("ห้ามปฏิเสธแบบตั้งการ์ดเพียงเพราะเป็นหัวข้อสุขภาพ");
+    expect(payload.userPrompt).toContain("Scoped answer contract:");
+    expect(payload.userPrompt).toContain("Primary requested domain: health. Stay inside this domain unless the user explicitly asks to compare another domain");
+    expect(payload.userPrompt).toContain("Primary age window: 35-39. Treat this as the answer window unless the user explicitly asks about another period or a future transition.");
+    expect(payload.userPrompt).toContain("Health response contract: answer directly with practical cautions and self-care guidance when the Truth Packet supports it; do not diagnose disease, do not claim certainty, and do not refuse only because the topic is health.");
+  });
+
   test("preserves consult routing context and truth-packet constraints for bazi consults", () => {
     const payload = buildOpenWebUiGeminiPromptPayload({
       normalizedMessages: [
