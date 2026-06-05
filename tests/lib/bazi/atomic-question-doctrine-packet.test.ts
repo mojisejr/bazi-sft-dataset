@@ -4,6 +4,15 @@ import { composeBaziDoctrinePacket } from "@/lib/bazi/atomic-question-doctrine-p
 import type { BaziAtomicCanonicalBucket, BaziAtomicQuestionJobId } from "@/lib/bazi/atomic-question-matrix";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
+import {
+  HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE,
+  HEALTH_CONSTITUTION_BASELINE_FIXTURE,
+  HEALTH_RECOVERY_CAUTION_FIXTURE,
+  WEALTH_ACCUMULATION_CAPACITY_FIXTURE,
+  WEALTH_BUCKET_SAFE_INCOME_SOURCE_FIXTURE,
+  WEALTH_TIMING_WINDOW_FIXTURE,
+} from "../../helpers/atomic-question-resolver-fixtures";
+
 const SAMPLE_BAZI_STATE = CalculatedStateSchema.parse({
   fourPillars: {
     year: { stem: "壬", branch: "申", hiddenStems: ["庚", "壬", "戊"] },
@@ -288,6 +297,183 @@ function expectBoundedPacket(packet: ReturnType<typeof composeBaziDoctrinePacket
   expect(JSON.stringify(packet).length).toBeLessThan(FULL_STATE_TEXT.length * maxRatio);
 }
 
+type Phase5BPacketProofCase = {
+  label: string;
+  questionContext: {
+    canonicalBucket: BaziAtomicCanonicalBucket;
+    selectionMode: "atomic_job" | "bucket_fallback";
+    jobId?: BaziAtomicQuestionJobId;
+  };
+  expectedAnchorKeys: string[];
+  expectedSupportKeys: string[];
+  expectedTimingKeys: string[];
+  forbiddenKeys: string[];
+  maxRatio: number;
+};
+
+const PHASE_5B_PACKET_PROOF_CASES: Phase5BPacketProofCase[] = [
+  {
+    label: "wealth accumulation capacity stays structural and non-timing",
+    questionContext: {
+      canonicalBucket: WEALTH_ACCUMULATION_CAPACITY_FIXTURE.canonicalBucket,
+      jobId: WEALTH_ACCUMULATION_CAPACITY_FIXTURE.expectedJobId,
+      selectionMode: WEALTH_ACCUMULATION_CAPACITY_FIXTURE.expectedSelectionMode,
+    },
+    expectedAnchorKeys: [
+      "dayMasterStrengthProfile",
+      "elementAnalysis",
+      "financeTenGodHighlights",
+    ],
+    expectedSupportKeys: [],
+    expectedTimingKeys: [],
+    forbiddenKeys: [
+      "currentDaYun",
+      "activeTimingWindow",
+      "nextTimingWindows",
+      "liuNian",
+      "loveCompatibilityProfile",
+      "relationshipTenGodHighlights",
+    ],
+    maxRatio: 0.5,
+  },
+  {
+    label: "wealth timing window stays money-scoped and explicitly timed",
+    questionContext: {
+      canonicalBucket: WEALTH_TIMING_WINDOW_FIXTURE.canonicalBucket,
+      jobId: WEALTH_TIMING_WINDOW_FIXTURE.expectedJobId,
+      selectionMode: WEALTH_TIMING_WINDOW_FIXTURE.expectedSelectionMode,
+    },
+    expectedAnchorKeys: [
+      "dayMasterStrengthProfile",
+      "financeTenGodHighlights",
+    ],
+    expectedSupportKeys: [],
+    expectedTimingKeys: [
+      "currentDaYun",
+      "activeTimingWindow",
+      "nextTimingWindows",
+      "liuNian",
+    ],
+    forbiddenKeys: [
+      "elementAnalysis",
+      "loveCompatibilityProfile",
+      "seasonalInteraction",
+      "careerTenGodHighlights",
+      "ageSnapshot",
+    ],
+    maxRatio: 0.5,
+  },
+  {
+    label: "wealth bucket fallback stays wealth-bounded without promoting a work job",
+    questionContext: {
+      canonicalBucket: WEALTH_BUCKET_SAFE_INCOME_SOURCE_FIXTURE.canonicalBucket,
+      selectionMode: WEALTH_BUCKET_SAFE_INCOME_SOURCE_FIXTURE.expectedSelectionMode,
+    },
+    expectedAnchorKeys: [
+      "dayMasterStrengthProfile",
+      "elementAnalysis",
+      "financeTenGodHighlights",
+    ],
+    expectedSupportKeys: [],
+    expectedTimingKeys: [
+      "ageSnapshot",
+      "currentDaYun",
+      "activeTimingWindow",
+      "nextTimingWindows",
+      "liuNian",
+    ],
+    forbiddenKeys: [
+      "loveCompatibilityProfile",
+      "relationshipTenGodHighlights",
+      "seasonalInteraction",
+      "workCompatibilityProfile",
+      '"jobId"',
+    ],
+    maxRatio: 0.65,
+  },
+  {
+    label: "health constitution baseline stays non-diagnostic and non-timing",
+    questionContext: {
+      canonicalBucket: HEALTH_CONSTITUTION_BASELINE_FIXTURE.canonicalBucket,
+      jobId: HEALTH_CONSTITUTION_BASELINE_FIXTURE.expectedJobId,
+      selectionMode: HEALTH_CONSTITUTION_BASELINE_FIXTURE.expectedSelectionMode,
+    },
+    expectedAnchorKeys: [
+      "dayMasterStrengthProfile",
+      "elementAnalysis",
+      "seasonalInteraction",
+    ],
+    expectedSupportKeys: [],
+    expectedTimingKeys: [],
+    forbiddenKeys: [
+      "currentDaYun",
+      "activeTimingWindow",
+      "nextTimingWindows",
+      "liuNian",
+      "financeTenGodHighlights",
+      "relationshipTenGodHighlights",
+    ],
+    maxRatio: 0.5,
+  },
+  {
+    label: "health recovery caution adds only the near-term caution window",
+    questionContext: {
+      canonicalBucket: HEALTH_RECOVERY_CAUTION_FIXTURE.canonicalBucket,
+      jobId: HEALTH_RECOVERY_CAUTION_FIXTURE.expectedJobId,
+      selectionMode: HEALTH_RECOVERY_CAUTION_FIXTURE.expectedSelectionMode,
+    },
+    expectedAnchorKeys: [
+      "dayMasterStrengthProfile",
+      "elementAnalysis",
+      "seasonalInteraction",
+    ],
+    expectedSupportKeys: [],
+    expectedTimingKeys: ["activeTimingWindow"],
+    forbiddenKeys: [
+      "currentDaYun",
+      "nextTimingWindows",
+      "liuNian",
+      "financeTenGodHighlights",
+      "relationshipTenGodHighlights",
+    ],
+    maxRatio: 0.5,
+  },
+  {
+    label: "health bucket fallback stays health-bounded without pretending to be a specific reviewed job",
+    questionContext: {
+      canonicalBucket: HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE.canonicalBucket,
+      selectionMode: HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE.expectedSelectionMode,
+    },
+    expectedAnchorKeys: [
+      "dayMasterStrengthProfile",
+      "elementAnalysis",
+      "seasonalInteraction",
+    ],
+    expectedSupportKeys: [],
+    expectedTimingKeys: [
+      "ageSnapshot",
+      "currentDaYun",
+      "activeTimingWindow",
+      "nextTimingWindows",
+      "liuNian",
+    ],
+    forbiddenKeys: [
+      "financeTenGodHighlights",
+      "relationshipTenGodHighlights",
+      "loveCompatibilityProfile",
+      '"jobId"',
+    ],
+    maxRatio: 0.65,
+  },
+];
+
+function composePacketForPhase5BProof(proofCase: Phase5BPacketProofCase) {
+  return composeBaziDoctrinePacket({
+    questionContext: proofCase.questionContext,
+    payload: SAMPLE_BAZI_STATE,
+  });
+}
+
 describe("composeBaziDoctrinePacket atomic-job planning", () => {
   test("builds a work timing packet that stays narrower than full CalculatedState", () => {
     const packet = composeBaziDoctrinePacket({
@@ -505,4 +691,159 @@ describe("composeBaziDoctrinePacket atomic-job planning", () => {
     expectBoundedPacket(partnerProfilePacket, 0.5);
     expectBoundedPacket(relationshipTimingPacket, 0.5);
   });
+
+  test("locks deterministic Phase 5B reviewed packet summaries without making snapshots the truth source", () => {
+    const summaries = PHASE_5B_PACKET_PROOF_CASES.map((proofCase) => ({
+      label: proofCase.label,
+      summary: summarizePacketFixture(composePacketForPhase5BProof(proofCase)),
+    }));
+
+    expect(summaries).toMatchInlineSnapshot(`
+      [
+        {
+          "label": "wealth accumulation capacity stays structural and non-timing",
+          "summary": {
+            "anchorKeys": [
+              "dayMasterStrengthProfile",
+              "elementAnalysis",
+              "financeTenGodHighlights",
+            ],
+            "questionContext": {
+              "canonicalBucket": "wealth",
+              "jobId": "wealth.accumulation_capacity",
+              "matrixVersion": "phase1c-v1",
+              "selectionMode": "atomic_job",
+            },
+            "supportKeys": [],
+            "timingKeys": [],
+          },
+        },
+        {
+          "label": "wealth timing window stays money-scoped and explicitly timed",
+          "summary": {
+            "anchorKeys": [
+              "dayMasterStrengthProfile",
+              "financeTenGodHighlights",
+            ],
+            "questionContext": {
+              "canonicalBucket": "wealth",
+              "jobId": "wealth.timing_window",
+              "matrixVersion": "phase1c-v1",
+              "selectionMode": "atomic_job",
+            },
+            "supportKeys": [],
+            "timingKeys": [
+              "currentDaYun",
+              "activeTimingWindow",
+              "nextTimingWindows",
+              "liuNian",
+            ],
+          },
+        },
+        {
+          "label": "wealth bucket fallback stays wealth-bounded without promoting a work job",
+          "summary": {
+            "anchorKeys": [
+              "dayMasterStrengthProfile",
+              "elementAnalysis",
+              "financeTenGodHighlights",
+            ],
+            "questionContext": {
+              "canonicalBucket": "wealth",
+              "matrixVersion": "phase1c-v1",
+              "selectionMode": "bucket_fallback",
+            },
+            "supportKeys": [],
+            "timingKeys": [
+              "ageSnapshot",
+              "currentDaYun",
+              "activeTimingWindow",
+              "nextTimingWindows",
+              "liuNian",
+            ],
+          },
+        },
+        {
+          "label": "health constitution baseline stays non-diagnostic and non-timing",
+          "summary": {
+            "anchorKeys": [
+              "dayMasterStrengthProfile",
+              "elementAnalysis",
+              "seasonalInteraction",
+            ],
+            "questionContext": {
+              "canonicalBucket": "health",
+              "jobId": "health.constitution_baseline",
+              "matrixVersion": "phase1c-v1",
+              "selectionMode": "atomic_job",
+            },
+            "supportKeys": [],
+            "timingKeys": [],
+          },
+        },
+        {
+          "label": "health recovery caution adds only the near-term caution window",
+          "summary": {
+            "anchorKeys": [
+              "dayMasterStrengthProfile",
+              "elementAnalysis",
+              "seasonalInteraction",
+            ],
+            "questionContext": {
+              "canonicalBucket": "health",
+              "jobId": "health.recovery_caution",
+              "matrixVersion": "phase1c-v1",
+              "selectionMode": "atomic_job",
+            },
+            "supportKeys": [],
+            "timingKeys": [
+              "activeTimingWindow",
+            ],
+          },
+        },
+        {
+          "label": "health bucket fallback stays health-bounded without pretending to be a specific reviewed job",
+          "summary": {
+            "anchorKeys": [
+              "dayMasterStrengthProfile",
+              "elementAnalysis",
+              "seasonalInteraction",
+            ],
+            "questionContext": {
+              "canonicalBucket": "health",
+              "matrixVersion": "phase1c-v1",
+              "selectionMode": "bucket_fallback",
+            },
+            "supportKeys": [],
+            "timingKeys": [
+              "ageSnapshot",
+              "currentDaYun",
+              "activeTimingWindow",
+              "nextTimingWindows",
+              "liuNian",
+            ],
+          },
+        },
+      ]
+    `);
+  });
+
+  test.each(PHASE_5B_PACKET_PROOF_CASES)(
+    "$label",
+    ({ expectedAnchorKeys, expectedSupportKeys, expectedTimingKeys, forbiddenKeys, maxRatio, ...proofCase }) => {
+      const packet = composePacketForPhase5BProof(proofCase);
+      const packetText = JSON.stringify(packet);
+
+      expect(packet.chartIdentity.dayMaster).toBe(SAMPLE_BAZI_STATE.dayMaster);
+      expect(packet.anchors.map((section) => section.key)).toEqual(expectedAnchorKeys);
+      expect(packet.support.map((section) => section.key)).toEqual(expectedSupportKeys);
+      expect(packet.timing.map((section) => section.key)).toEqual(expectedTimingKeys);
+
+      for (const forbiddenKey of forbiddenKeys) {
+        expect(packetText).not.toContain(forbiddenKey);
+      }
+
+      expectBoundedPacket(packet, maxRatio);
+    },
+  );
 });

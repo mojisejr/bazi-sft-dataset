@@ -6,10 +6,12 @@ import {
   selectOpenWebUiTruthPacket,
   stringifyOpenWebUiTruthPacket,
 } from "@/features/open-webui/truth-packet";
+import { selectBaziDoctrinePacketForCanonicalQuestion } from "@/lib/bazi/atomic-question-doctrine-harness";
 import { BAZI_ATOMIC_QUESTION_MATRIX_VERSION } from "@/lib/bazi/atomic-question-matrix";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
 import {
+  PHASE_5A_DETERMINISTIC_PROOF_INVENTORY,
   PHASE_3D_RELATIONSHIP_RESOLVER_FIXTURES,
 } from "../../helpers/atomic-question-resolver-fixtures";
 import { createTestKnowledgeRepository } from "../../helpers/bazi-test-knowledge-repository";
@@ -388,6 +390,40 @@ describe("selectOpenWebUiTruthPacket", () => {
       matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
     });
     expect(packets[2]?.packet?.questionContext.jobId).toBeUndefined();
+  });
+
+  test("keeps the Phase 5A reviewed inventory contract-equivalent to the shell-agnostic doctrine harness", () => {
+    const packets = PHASE_5A_DETERMINISTIC_PROOF_INVENTORY.map((fixture) => ({
+      fixture,
+      adapterPacket: selectOpenWebUiTruthPacket(
+        fixture.intentClassification,
+        SAMPLE_BAZI_STATE,
+        fixture.currentChatEvidence,
+      ),
+      harnessPacket: selectBaziDoctrinePacketForCanonicalQuestion({
+        canonicalBucket: fixture.canonicalBucket,
+        payload: SAMPLE_BAZI_STATE,
+        currentChatEvidence: fixture.currentChatEvidence,
+      }),
+    }));
+
+    for (const { fixture, adapterPacket, harnessPacket } of packets) {
+      expect(adapterPacket).toEqual(harnessPacket);
+
+      expect(adapterPacket?.questionContext).toMatchObject({
+        canonicalBucket: fixture.canonicalBucket,
+        selectionMode: fixture.expectedSelectionMode,
+        matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+      });
+
+      if (fixture.expectedSelectionMode === "atomic_job") {
+        expect(adapterPacket?.questionContext).toMatchObject({
+          jobId: fixture.expectedJobId,
+        });
+      } else {
+        expect(adapterPacket?.questionContext.jobId).toBeUndefined();
+      }
+    }
   });
 
   test("returns null when the routed intent does not require Bazi consultation", () => {

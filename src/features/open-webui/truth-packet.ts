@@ -2,15 +2,12 @@ import { type BaziStatePayload } from "@/features/bazi-math/bazi-engine-adapter"
 import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
 import {
   BaziDoctrinePacketSchema,
-  composeBaziDoctrinePacket,
-  createBaziBucketFallbackDoctrinePacketQuestionContext,
   type BaziDoctrinePacket,
-  type BaziDoctrinePacketQuestionContext,
 } from "@/lib/bazi/atomic-question-doctrine-packet";
+import { selectBaziDoctrinePacketForCanonicalQuestion } from "@/lib/bazi/atomic-question-doctrine-harness";
 import { type BaziAtomicCanonicalBucket } from "@/lib/bazi/atomic-question-matrix";
 import {
   BaziAtomicQuestionResolverChatEvidenceSchema,
-  resolveBaziAtomicQuestion,
   type BaziAtomicQuestionResolverChatEvidence,
 } from "@/lib/bazi/atomic-question-resolver";
 
@@ -51,36 +48,6 @@ function resolveOpenWebUiCanonicalBucket(
   return mapOpenWebUiIntentToCanonicalBucket(classification.intent);
 }
 
-function resolveOpenWebUiQuestionContext(
-  classification: OpenWebUiIntentClassification,
-  currentChatEvidence?: OpenWebUiTruthPacketChatEvidence,
-): BaziDoctrinePacketQuestionContext | null {
-  const canonicalBucket = resolveOpenWebUiCanonicalBucket(classification);
-
-  if (!canonicalBucket) {
-    return null;
-  }
-
-  if (!currentChatEvidence) {
-    return createBaziBucketFallbackDoctrinePacketQuestionContext(canonicalBucket);
-  }
-
-  const selection = resolveBaziAtomicQuestion({
-    canonicalBucket,
-    currentChatEvidence,
-  });
-
-  if (selection.selectionMode === "atomic_job") {
-    return {
-      canonicalBucket: selection.canonicalBucket,
-      jobId: selection.jobId,
-      selectionMode: "atomic_job",
-    };
-  }
-
-  return createBaziBucketFallbackDoctrinePacketQuestionContext(selection.canonicalBucket);
-}
-
 // Open WebUI remains an adapter: it maps routed shell intent to the canonical
 // doctrine packet context and leaves packet ownership below src/lib/bazi.
 export function selectOpenWebUiTruthPacket(
@@ -88,15 +55,16 @@ export function selectOpenWebUiTruthPacket(
   payload: BaziStatePayload,
   currentChatEvidence?: OpenWebUiTruthPacketChatEvidence,
 ): OpenWebUiTruthPacket | null {
-  const questionContext = resolveOpenWebUiQuestionContext(classification, currentChatEvidence);
+  const canonicalBucket = resolveOpenWebUiCanonicalBucket(classification);
 
-  if (!questionContext) {
+  if (!canonicalBucket) {
     return null;
   }
 
-  return composeBaziDoctrinePacket({
-    questionContext,
+  return selectBaziDoctrinePacketForCanonicalQuestion({
+    canonicalBucket,
     payload,
+    currentChatEvidence,
   });
 }
 

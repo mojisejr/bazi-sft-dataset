@@ -7,9 +7,14 @@ import {
 } from "@/lib/bazi/atomic-question-resolver";
 
 import {
+  HEALTH_CONSTITUTION_BASELINE_FIXTURE,
+  HEALTH_RECOVERY_CAUTION_FIXTURE,
+  PHASE_5A_DETERMINISTIC_PROOF_INVENTORY,
   RELATIONSHIP_AMBIGUOUS_FALLBACK_FIXTURE,
   RELATIONSHIP_PARTNER_PROFILE_FIXTURE,
   RELATIONSHIP_TIMING_WINDOW_FIXTURE,
+  WEALTH_ACCUMULATION_CAPACITY_FIXTURE,
+  WEALTH_TIMING_WINDOW_FIXTURE,
 } from "../../helpers/atomic-question-resolver-fixtures";
 
 describe("resolveBaziAtomicQuestion", () => {
@@ -110,6 +115,80 @@ describe("resolveBaziAtomicQuestion", () => {
     });
     expect(partnerProfile).not.toMatchObject({
       jobId: "relationship.timing_window",
+    });
+  });
+
+  test("expands the deterministic proof inventory across reviewed wealth and health jobs plus bucket-safe neighbors", () => {
+    for (const fixture of PHASE_5A_DETERMINISTIC_PROOF_INVENTORY) {
+      const result = resolveBaziAtomicQuestion({
+        canonicalBucket: fixture.canonicalBucket,
+        currentChatEvidence: fixture.currentChatEvidence,
+      });
+
+      expect(result).toMatchObject({
+        canonicalBucket: fixture.canonicalBucket,
+        selectionMode: fixture.expectedSelectionMode,
+      });
+
+      if (fixture.expectedSelectionMode === "atomic_job") {
+        expect(result).toMatchObject({
+          jobId: fixture.expectedJobId,
+        });
+      } else {
+        expect(result).toMatchObject({
+          fallbackReason: fixture.expectedFallbackReason,
+        });
+      }
+    }
+  });
+
+  test("keeps wealth accumulation and timing-window questions as distinct resolver outcomes", () => {
+    const accumulationCapacity = resolveBaziAtomicQuestion({
+      canonicalBucket: WEALTH_ACCUMULATION_CAPACITY_FIXTURE.canonicalBucket,
+      currentChatEvidence: WEALTH_ACCUMULATION_CAPACITY_FIXTURE.currentChatEvidence,
+    });
+    const timingWindow = resolveBaziAtomicQuestion({
+      canonicalBucket: WEALTH_TIMING_WINDOW_FIXTURE.canonicalBucket,
+      currentChatEvidence: WEALTH_TIMING_WINDOW_FIXTURE.currentChatEvidence,
+    });
+
+    expect(accumulationCapacity).toMatchObject({
+      selectionMode: "atomic_job",
+      canonicalBucket: "wealth",
+      jobId: "wealth.accumulation_capacity",
+    });
+    expect(timingWindow).toMatchObject({
+      selectionMode: "atomic_job",
+      canonicalBucket: "wealth",
+      jobId: "wealth.timing_window",
+    });
+    expect(accumulationCapacity).not.toMatchObject({
+      jobId: "wealth.timing_window",
+    });
+  });
+
+  test("keeps health baseline and recovery caution as distinct resolver outcomes", () => {
+    const constitutionBaseline = resolveBaziAtomicQuestion({
+      canonicalBucket: HEALTH_CONSTITUTION_BASELINE_FIXTURE.canonicalBucket,
+      currentChatEvidence: HEALTH_CONSTITUTION_BASELINE_FIXTURE.currentChatEvidence,
+    });
+    const recoveryCaution = resolveBaziAtomicQuestion({
+      canonicalBucket: HEALTH_RECOVERY_CAUTION_FIXTURE.canonicalBucket,
+      currentChatEvidence: HEALTH_RECOVERY_CAUTION_FIXTURE.currentChatEvidence,
+    });
+
+    expect(constitutionBaseline).toMatchObject({
+      selectionMode: "atomic_job",
+      canonicalBucket: "health",
+      jobId: "health.constitution_baseline",
+    });
+    expect(recoveryCaution).toMatchObject({
+      selectionMode: "atomic_job",
+      canonicalBucket: "health",
+      jobId: "health.recovery_caution",
+    });
+    expect(constitutionBaseline).not.toMatchObject({
+      jobId: "health.recovery_caution",
     });
   });
 

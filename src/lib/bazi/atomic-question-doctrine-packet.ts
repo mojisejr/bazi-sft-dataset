@@ -396,6 +396,11 @@ function applyEvidenceHint(
     addTimingKeys(plan, ["liuNian"]);
   }
 
+  if (normalizedHint.includes("timingsectionswhentheplanisnearterm")) {
+    addTimingKeys(plan, ["activeTimingWindow"]);
+    return;
+  }
+
   if (normalizedHint.includes("timingsections")) {
     addTimingKeys(plan, [
       "currentDaYun",

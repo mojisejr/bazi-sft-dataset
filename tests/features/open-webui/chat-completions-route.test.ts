@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { selectBaziDoctrinePacketForCanonicalQuestion } from "@/lib/bazi/atomic-question-doctrine-harness";
 import { CalculatedStateSchema } from "@/lib/bazi/schema-types";
 
 import {
+  PHASE_5A_DETERMINISTIC_PROOF_INVENTORY,
   PHASE_3D_RELATIONSHIP_RESOLVER_FIXTURES,
 } from "../../helpers/atomic-question-resolver-fixtures";
 
@@ -438,6 +440,42 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContexts[1].baziConsult?.truthPacket).toContain('"jobId": "relationship.timing_window"');
     expect(executionContexts[2].baziConsult?.truthPacket).toContain('"selectionMode": "bucket_fallback"');
     expect(executionContexts[2].baziConsult?.truthPacket).not.toContain('"jobId"');
+  });
+
+  test("serializes the shell-agnostic doctrine harness verbatim for the Phase 5A reviewed inventory", () => {
+    const executionContexts = PHASE_5A_DETERMINISTIC_PROOF_INVENTORY.map((fixture) => ({
+      fixture,
+      executionContext: buildOpenWebUiExecutionContext({
+        result: {
+          ...SAMPLE_CHAT_RESULT,
+          latestUserMessage: {
+            role: "user",
+            content: fixture.currentChatEvidence.latestUserMessage,
+          },
+          triageMessages: [
+            ...fixture.currentChatEvidence.recentMessages.map((content) => ({
+              role: "user" as const,
+              content,
+            })),
+            {
+              role: "user" as const,
+              content: fixture.currentChatEvidence.latestUserMessage,
+            },
+          ],
+        },
+        intentClassification: fixture.intentClassification,
+        calculatedState: SAMPLE_CALCULATED_STATE,
+      }),
+      expectedPacket: selectBaziDoctrinePacketForCanonicalQuestion({
+        canonicalBucket: fixture.canonicalBucket,
+        payload: SAMPLE_CALCULATED_STATE,
+        currentChatEvidence: fixture.currentChatEvidence,
+      }),
+    }));
+
+    for (const { executionContext, expectedPacket } of executionContexts) {
+      expect(executionContext.baziConsult?.truthPacket).toBe(JSON.stringify(expectedPacket, null, 2));
+    }
   });
 
   test("passes persisted active scope through the execution context instead of relying only on summary text", () => {
