@@ -37,6 +37,30 @@ type TopicEntryState = {
 
 const EMPTY_TOPIC_STATE: TopicEntryState = { status: "idle", result: null, error: null };
 
+/**
+ * บทที่ต้อง "ครบ-ห้ามตัด" ตามคำกำชับซินแซ — บังคับใช้ผล engine ใน doc export เสมอ
+ * ไม่ส่ง LLM polish เป็น override เพราะชั้น LLM มักย่อ/ตัดรายการอาชีพและจัดธาตุผิด
+ * (บทที่ 1 นิสัยพื้นฐาน: ราศีบน/ล่าง/เซี่ยงแซจากชุดข้อมูล, บทที่ 2 อาชีพ: Useful God + Market เซี่ยงแซเต็ม)
+ */
+// หมายเหตุ: ใช้ TOPIC_PATH id (คีย์เดียวกับ topicStates / readings override) ไม่ใช่ BAZI_TOPIC_IDS
+const ENGINE_ONLY_TOPIC_IDS = new Set<string>([
+  "chart_foundation", // บท 1 นิสัยพื้นฐาน
+  "career_potential", // บท 2 อาชีพ
+  "wealth_and_investment", // บท 3 โชคลาภ
+  "benefactor", // บท 4 ผู้อุปถัมภ์
+  "talent", // บท 5 พรสวรรค์
+  "family", // บท 6 ครอบครัว
+  "love_partner", // บท 7 ความรัก/คู่ครอง
+  "friends_foes", // บท 8 เพื่อน/ศัตรู
+  "partnership", // บท 9 หุ้นส่วน
+  "subordinates", // บท 10 ลูกน้อง/บริวาร
+  "education", // บท 11 การเรียน
+  "turning_points", // บท 12 ช่วงอายุดี/ระวัง
+  "health", // บท 13 สุขภาพ
+  "colors_directions", // บท 14 สี/ทิศ
+  "guardian_deities", // บท 15 องค์เทพ/เสริมดวง
+]);
+
 const RESET_ACTION_COPY = {
   label: "ผูกดวงใหม่",
   detail: "ล้างข้อมูลเกิดและคำอ่านทุกหัวข้อ เพื่อเริ่มเคสใหม่",
@@ -165,6 +189,10 @@ export function ReadingPathWorkspace() {
     try {
       const readings: Record<string, string> = {};
       for (const [topicId, entry] of Object.entries(topicStates)) {
+        // บท engine-only: ข้ามไม่ส่ง override → doc export จะ render จากผล engine ที่ครบถ้วน
+        if (ENGINE_ONLY_TOPIC_IDS.has(topicId)) {
+          continue;
+        }
         const text = entry.result?.humanReading;
         if (text) {
           readings[topicId] = text;

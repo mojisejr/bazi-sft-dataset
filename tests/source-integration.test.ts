@@ -62,9 +62,11 @@ describe("source integration — ซินแซ corrections from ai gen M.docx"
     const { raw, result } = await readM();
     const wealth = buildTopicHumanReading(result, "wealth_and_investment", raw)!;
     expect(wealth).toContain("โชคลาภปรากฏหลายทาง");
-    // หลักปี 癸酉 → แป่ ; หลักเดือน 癸亥 → ตี้อ๋วง
-    expect(wealth).toContain("癸酉 → แป่");
-    expect(wealth).toContain("癸亥 → ตี้อ๋วง");
+    // อ่าน 2 เซียงแซต่อตำแหน่ง: ตัวแรก (เทียบดิถี ~80%) + ตัวขยาย self-seat (~20%)
+    // ราศีบน 癸 × กิ่งวัน 酉 → แป่ ; ราศีล่าง 亥 × ก้านวัน 己 → ทอ ; self-seat 癸亥 = ตี้อ๋วง
+    expect(wealth).toContain("ราศีบน 癸 → แป่");
+    expect(wealth).toContain("ราศีล่าง 亥 → ทอ");
+    expect(wealth).toContain("ตี้อ๋วง");
   });
 
   test("บท8 เพื่อน/ศัตรู: สแกน 7 ตำแหน่งตาม 12 เชี่ยงแซ ทายตามความหมายของเสา", async () => {
@@ -91,12 +93,14 @@ describe("source integration — ซินแซ corrections from ai gen M.docx"
     expect(subordinates).not.toContain("มีคุณภาพ");
   });
 
-  test("บท12 วัยจร: มีตารางเส้นขีด 8 ตัว (วัยจรเทียบทีละตัวอักษรตามความหมายเสา)", async () => {
+  test("บท12 วัยจร: อ่านสั้น — ช่วงวัยจร (บทบาทธาตุ + 12 เซียงแซ) ไม่มีบล็อก 8 ตัว/พยากรณ์รายปี", async () => {
     const { raw, result } = await readM();
     const turning = buildTopicHumanReading(result, "turning_points", raw)!;
-    expect(turning).toContain("เทียบทีละตัวอักษรในผัง");
-    expect(turning).toContain("การงาน/พ่อแม่/ธุรกิจ");
-    expect(turning).toContain("สิ่งที่ทำ/บริวาร/รุ่นน้อง");
+    // ตามคำกำชับให้ "อ่านสั้น" — คงเฉพาะวิเคราะห์จังหวะชีวิตช่วงวัยจร
+    expect(turning).toContain("วิเคราะห์จังหวะชีวิต");
+    // ตัดบล็อกยาวออก (บทเสริม 8 ตัว + พยากรณ์รายปี 20 ปี)
+    expect(turning).not.toContain("เทียบทีละตัวอักษรในผัง");
+    expect(turning).not.toContain("พยากรณ์ปีจร");
   });
 
   test("ตำราเคี้ยงคุง: ค้น reference เป็น fallback ได้ (วัยจร)", () => {

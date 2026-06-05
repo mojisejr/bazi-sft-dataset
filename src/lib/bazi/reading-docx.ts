@@ -20,6 +20,7 @@ import {
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import {
+  buildDaYunTableRows,
   buildRelationshipLinesMapping,
   buildTopicHumanReading,
   type RelationshipLineRow,
@@ -56,65 +57,47 @@ function pillarTable(calculatedState: CalculatedStateValue): Table {
   const header = new TableRow({
     children: [
       cell("เสา", { bold: true, width: 25 }),
-      cell("เสาปี", { bold: true, width: 19 }),
-      cell("เสาเดือน", { bold: true, width: 19 }),
-      cell("เสาวัน (ดิถี)", { bold: true, width: 19 }),
       cell("เสายาม", { bold: true, width: 18 }),
+      cell("เสาวัน (ดิถี)", { bold: true, width: 19 }),
+      cell("เสาเดือน", { bold: true, width: 19 }),
+      cell("เสาปี", { bold: true, width: 19 }),
     ],
   });
   const stemRow = new TableRow({
-    children: [cell("ราศีบน (ฟ้า)", { bold: true }), cell(p.year.stem), cell(p.month.stem), cell(p.day.stem), cell(p.hour.stem)],
+    children: [cell("ราศีบน (ฟ้า)", { bold: true }), cell(p.hour.stem), cell(p.day.stem), cell(p.month.stem), cell(p.year.stem)],
   });
   const branchRow = new TableRow({
-    children: [cell("ราศีล่าง (ดิน)", { bold: true }), cell(p.year.branch), cell(p.month.branch), cell(p.day.branch), cell(p.hour.branch)],
+    children: [cell("ราศีล่าง (ดิน)", { bold: true }), cell(p.hour.branch), cell(p.day.branch), cell(p.month.branch), cell(p.year.branch)],
   });
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, stemRow, branchRow] });
 }
 
 function daYunTable(calculatedState: CalculatedStateValue): Table | null {
-  const pillars = [...calculatedState.daYun].sort((a, b) => a.startAge - b.startAge);
-  if (pillars.length === 0) {
+  const rows = buildDaYunTableRows(calculatedState);
+  if (rows.length === 0) {
     return null;
   }
   const header = new TableRow({
     children: [
-      cell("ช่วงอายุ", { bold: true, width: 30 }),
-      cell("ราศี (บน/ล่าง)", { bold: true, width: 35 }),
-      cell("สภาวะ (12 เชี่ยงแซ)", { bold: true, width: 35 }),
+      cell("ช่วงอายุ", { bold: true, width: 22 }),
+      cell("ราศี (บน/ล่าง)", { bold: true, width: 28 }),
+      cell("สภาวะ (12 เชี่ยงแซ)", { bold: true, width: 28 }),
+      cell("ปฏิกิริยา", { bold: true, width: 22 }),
     ],
   });
-  // แตกแต่ละเสาวัยจร (10 ปี) เป็นครึ่งก้าน 5 ปี + ครึ่งกิ่ง 5 ปี — ใช้อายุเริ่มวัยจรจริง (起运)
-  const body: TableRow[] = [];
-  pillars.forEach((pillar) => {
-    const phases: Array<{ ageRange: string; symbol: string; place: string; qi: string }> = [];
-    if (pillar.upperPhase) {
-      phases.push({
-        ageRange: `${pillar.upperPhase.startAge}-${pillar.upperPhase.endAge} ปี`,
-        symbol: pillar.upperPhase.symbol,
-        place: "ราศีบน",
-        qi: (pillar.upperPhase.twelveQiDisplay ?? "").trim(),
-      });
-    }
-    if (pillar.lowerPhase) {
-      phases.push({
-        ageRange: `${pillar.lowerPhase.startAge}-${pillar.lowerPhase.endAge} ปี`,
-        symbol: pillar.lowerPhase.symbol,
-        place: "ราศีล่าง",
-        qi: (pillar.lowerPhase.twelveQiDisplay ?? "").trim(),
-      });
-    }
-    for (const phase of phases) {
-      body.push(
-        new TableRow({
-          children: [
-            cell(phase.ageRange),
-            cell(`${phase.symbol} (${phase.place})`),
-            cell(phase.qi || "—"),
-          ],
-        }),
-      );
-    }
-  });
+  // แต่ละเสาวัยจร (10 ปี) แตกเป็นครึ่งก้าน 5 ปี + ครึ่งกิ่ง 5 ปี
+  // คอลัมน์ "ปฏิกิริยา" = บทบาทธาตุวัยจรเทียบดิถี (คู่ธาตุ/ถ่ายเท/โชคลาภ/พิฆาต/ส่งเสริม) — อ้างบทเสริมหลังบทที่ 15
+  const body = rows.map(
+    (row) =>
+      new TableRow({
+        children: [
+          cell(row.ageRange),
+          cell(`${row.symbol} (${row.place})`),
+          cell(row.qi || "—"),
+          cell(row.reaction),
+        ],
+      }),
+  );
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
 }
 
@@ -125,16 +108,15 @@ function relationshipTable(
   const rows = override && override.length > 0 ? override : buildRelationshipLinesMapping(calculatedState);
   const header = new TableRow({
     children: [
-      cell("ช่วงอายุ", { bold: true, width: 14 }),
-      cell("เสาวัยจร", { bold: true, width: 12 }),
-      cell("เส้นขีดที่ทำงาน", { bold: true, width: 24 }),
-      cell("คำอธิบายดี-ร้ายเชิงลึก", { bold: true, width: 50 }),
+      cell("ช่วงอายุ", { bold: true, width: 16 }),
+      cell("เสาวัยจร", { bold: true, width: 14 }),
+      cell("คำอธิบายดี-ร้ายเชิงลึก", { bold: true, width: 70 }),
     ],
   });
   const body = rows.map(
     (row) =>
       new TableRow({
-        children: [cell(row.ageRange), cell(row.symbol), cell(row.relationLine), cell(row.deepNote)],
+        children: [cell(row.ageRange), cell(row.symbol), cell(row.deepNote)],
       }),
   );
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });

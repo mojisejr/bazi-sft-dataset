@@ -616,9 +616,12 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
         (entry) => entry.labelThai === normalizeQi(record.qiLabel),
       )?.contextTag
     : undefined;
+  // fallback: ถ้าไม่มี record ของคู่ ก้าน|กิ่ง (เช่น 甲辰 ที่ขาดในไฟล์ 60 กะจื่อ)
+  // ให้ใช้นิสัยระดับ "ก้านดิถี" แทน เพื่อให้บท 1 มีนิสัยพื้นฐานเสมอ ไม่เหลือแค่ภาพเปรียบ
+  const stemText = record?.stemText || index?.stemText.get(calculatedState.dayMaster) || "";
   const segments = [
     imagery,
-    record?.stemText ? `ดิถี ${calculatedState.dayMaster}: ${record.stemText}` : null,
+    stemText ? `ดิถี ${calculatedState.dayMaster}: ${stemText}` : null,
     record?.branchText ? `ราศีล่างวัน ${calculatedState.fourPillars.day.branch}: ${record.branchText}` : null,
     record?.elementText
       ? `${record.elementLabel} ${record.qiLabel}${qiKeyword ? ` (แก่นเชี่ยงแซ: ${qiKeyword})` : ""}: ${record.elementText}`
@@ -697,16 +700,48 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
 
   // หาตำแหน่งที่ดาวลาภปรากฏ (ราศีบน/ล่าง ทั้ง 4 เสา) แล้วสรุปเป็น "แหล่งโชคลาภ"
   // + อ่านความหมายตาม 12 เชี่ยงแซของแต่ละตำแหน่ง (วิธีทายซินแซ: โชคลาภหลายทาง อ่านทีละตำแหน่ง)
+  // ความชัดเจนของโชคลาภตามตำแหน่งเสา: ปี/เดือน = ชั้นนอก เห็นชัด/เปิดเผย; วัน/ยาม = ชั้นใน แอบซ่อน/ไม่ชัด
+  const WEALTH_VISIBILITY: Record<PillarKey, string> = {
+    year: "เห็นชัด",
+    month: "เห็นชัด",
+    day: "แอบซ่อน ไม่ชัดเจน",
+    hour: "แอบซ่อน ไม่ชัดเจน",
+  };
+  // อ่านแต่ละตำแหน่งดาวลาภด้วย 2 เซียงแซ:
+  //  ตัวแรก (~80%) = เซียงแซเทียบดิถี — ช่องก้าน: ก้านตำแหน่ง×กิ่งวัน / ช่องกิ่ง: ก้านวัน×กิ่งตำแหน่ง
+  //  ตัวหลัง (~20%) = self-seat (自坐) ก้านเสานั้น×กิ่งเสานั้น → "ขยาย/เสริมแรง" แนวโน้มของตัวแรก
+  const dayStem = calculatedState.fourPillars.day.stem;
+  const dayBranch = calculatedState.fourPillars.day.branch;
   const sources = new Set<string>();
   const positionWealthLines: string[] = [];
   for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
     const value = calculatedState.fourPillars[pillar];
-    if (stemElement(value.stem) === wealth || branchElement(value.branch) === wealth) {
-      sources.add(WEALTH_SOURCE_TH[pillar]);
-      const posQi = resolveDisplayTwelveQiStage(value.stem, value.branch);
-      if (QI_WEALTH_TH[posQi]) {
-        positionWealthLines.push(`• ${WEALTH_SOURCE_TH[pillar]} (${value.stem}${value.branch} → ${posQi}): ${QI_WEALTH_TH[posQi]}`);
+    const selfSeatQi = resolveDisplayTwelveQiStage(value.stem, value.branch); // 自坐 = ตัวขยาย
+    const cells: Array<{ symbol: string; place: string; primaryQi: string }> = [];
+    if (stemElement(value.stem) === wealth) {
+      cells.push({ symbol: value.stem, place: "ราศีบน", primaryQi: resolveDisplayTwelveQiStage(value.stem, dayBranch) });
+    }
+    if (branchElement(value.branch) === wealth) {
+      cells.push({ symbol: value.branch, place: "ราศีล่าง", primaryQi: resolveDisplayTwelveQiStage(dayStem, value.branch) });
+    }
+    if (cells.length === 0) {
+      continue;
+    }
+    sources.add(WEALTH_SOURCE_TH[pillar]);
+    for (const c of cells) {
+      const meaning = QI_WEALTH_TH[c.primaryQi];
+      if (!meaning) {
+        continue;
       }
+      const amp =
+        selfSeatQi && selfSeatQi !== c.primaryQi
+          ? ` ขยายด้วยเซียงแซ ${selfSeatQi} (~20%)`
+          : selfSeatQi
+            ? ` (ตัวแรกซ้อนตัวขยายเป็น ${selfSeatQi} เหมือนกัน ยิ่งตอกย้ำแนวโน้มนี้)`
+            : "";
+      positionWealthLines.push(
+        `• ${WEALTH_SOURCE_TH[pillar]} ${c.place} ${c.symbol} → ${c.primaryQi} (~80%)${amp} / ${WEALTH_VISIBILITY[pillar]}: ${meaning}`,
+      );
     }
   }
 
@@ -1065,13 +1100,9 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
     liuNianLine = `ปีจรปัจจุบัน (${liuNian.stem}${liuNian.branch} ธาตุ${elementLabel(lnElement)} เป็น${lnRole}${lnQi ? ` → ${lnQi}` : ""}): ${lnVerdict}`;
   }
 
-  // บทเสริม "8 ตัว": วัยจรปัจจุบันเทียบทีละตัวอักษรในผังตามความหมายของเสา
-  const characterBreakdown = buildDaYunCharacterBreakdown(calculatedState);
-
-  // พยากรณ์รายปีแบบเต็ม 20 ปีข้างหน้า (P-B)
-  const yearlyForecast = buildLiuNianYearlyForecast(calculatedState);
-
-  return [lead, ...lines, characterBreakdown, liuNianLine, yearlyForecast].filter(Boolean).join("\n\n");
+  // บท 12 อ่านสั้น: ช่วงวัยจร (บทบาทธาตุ เช่น ลาภ + 12 เซียงแซ เช่น หมกยก) + ปีจรปัจจุบันเท่านั้น
+  // (ตัดบทเสริม 8 ตัว + พยากรณ์รายปี 20 ปี ออกตามคำกำชับให้สั้น — ยังมีตารางวัยจรเต็มในบทเสริมหลังบท 15)
+  return [lead, ...lines, liuNianLine].filter(Boolean).join("\n\n");
 }
 
 // ───────── Rev6: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดวัยจร (Relationship Lines Mapping, อ้างอิง M.docx บทเสริม) ─────────
@@ -1190,6 +1221,7 @@ type DaYunPhaseInfo = {
   startAge: number;
   ageRange: string;
   symbol: string;
+  place: string;
   element: SupportedElementValue;
   role: RelationRole;
   qi: string;
@@ -1202,10 +1234,11 @@ function buildDaYunPhaseInfos(calculatedState: CalculatedStateValue): DaYunPhase
   const infos: DaYunPhaseInfo[] = [];
   pillars.forEach((pillar) => {
     // ใช้อายุเริ่มวัยจรจริง (起运) จาก phase.startAge/endAge ไม่ normalize เป็น 5/15/25
-    const raw: Array<{ symbol: string; element: SupportedElementValue; startAge: number; ageRange: string; qi: string }> = [];
+    const raw: Array<{ symbol: string; place: string; element: SupportedElementValue; startAge: number; ageRange: string; qi: string }> = [];
     if (pillar.upperPhase) {
       raw.push({
         symbol: pillar.upperPhase.symbol,
+        place: "ราศีบน",
         element: stemElement(pillar.upperPhase.symbol),
         startAge: pillar.upperPhase.startAge,
         ageRange: `${pillar.upperPhase.startAge}-${pillar.upperPhase.endAge} ปี`,
@@ -1215,6 +1248,7 @@ function buildDaYunPhaseInfos(calculatedState: CalculatedStateValue): DaYunPhase
     if (pillar.lowerPhase) {
       raw.push({
         symbol: pillar.lowerPhase.symbol,
+        place: "ราศีล่าง",
         element: branchElement(pillar.lowerPhase.symbol),
         startAge: pillar.lowerPhase.startAge,
         ageRange: `${pillar.lowerPhase.startAge}-${pillar.lowerPhase.endAge} ปี`,
@@ -1230,6 +1264,34 @@ function buildDaYunPhaseInfos(calculatedState: CalculatedStateValue): DaYunPhase
     }
   });
   return infos;
+}
+
+/** ป้าย "ปฏิกิริยา" คู่ธาตุ/ถ่ายเท/โชคลาภ/พิฆาต/ส่งเสริม (จากบทบาทธาตุวัยจรเทียบดิถี) */
+const RELATION_ROLE_REACTION: Record<RelationRole, string> = {
+  "คู่ธาตุ": "คู่ธาตุ",
+  "ธาตุถ่ายเท": "ถ่ายเท",
+  "ธาตุพิฆาต": "โชคลาภ",
+  "พิฆาตธาตุ": "พิฆาต",
+  "ธาตุส่งเสริม": "ส่งเสริม",
+};
+
+/** แถวตารางวัยจร (ช่วงละ 5 ปี) พร้อมคอลัมน์ "ปฏิกิริยา" — ใช้ใน doc export */
+export type DaYunTableRow = {
+  ageRange: string;
+  symbol: string;
+  place: string;
+  qi: string;
+  reaction: string;
+};
+
+export function buildDaYunTableRows(calculatedState: CalculatedStateValue): DaYunTableRow[] {
+  return buildDaYunPhaseInfos(calculatedState).map((phase) => ({
+    ageRange: phase.ageRange,
+    symbol: phase.symbol,
+    place: phase.place,
+    qi: phase.qi,
+    reaction: RELATION_ROLE_REACTION[phase.role],
+  }));
 }
 
 /** ทุกเฟสวัยจร (5 ปี, normalize 5-9) → เส้นขีด + คำอธิบายดี-ร้าย */
@@ -1443,7 +1505,16 @@ function buildLoveReading(
         : "ขึ้นกับวัยจรที่เข้ามากระทบ"
   }`;
 
-  // ช่วงอายุที่ดาวคู่ครอง (ธาตุspouse) เข้ามาในวัยจร → จังหวะเรื่องคู่ (ดูตั้งแต่อายุ 20 ขึ้นไป วัยเด็กไม่ดูคู่)
+  // จำนวนตำแหน่งที่ดาวคู่ครองปรากฏ — มากตำแหน่ง = โอกาสพบคนรักหลายคน/มีตัวเลือกมาก
+  const spouseCount = (["year", "month", "day", "hour"] as PillarKey[]).reduce((n, p) => {
+    const v = calculatedState.fourPillars[p];
+    return n + (stemElement(v.stem) === spouse ? 1 : 0) + (branchElement(v.branch) === spouse ? 1 : 0);
+  }, 0);
+  const abundanceLine = spouseCount >= 3
+    ? `ดาวคู่ครอง (ธาตุ${spouseLabel}) ปรากฏหลายตำแหน่งในดวง (${spouseCount} จุด) — มีโอกาสพบคนรักหรือมีผู้เข้ามาชอบได้บ่อยและมีตัวเลือกมาก ${gender === "male" ? "ฝ่ายชายมักมีผู้เข้ามาหลายคน" : "มักมีผู้เข้ามาจีบหลายคน"} ควรเลือกให้รอบคอบและระวังความสัมพันธ์ซับซ้อน`
+    : "";
+
+  // ช่วงอายุที่ดาวคู่ครอง (ธาตุspouse) เข้ามาในวัยจร → จังหวะเรื่องคู่ (ก่อน 20 = รักในวัยเรียน)
   const spouseTiming = findTimingByElement(
     calculatedState,
     spouse,
@@ -1452,13 +1523,19 @@ function buildLoveReading(
       transitional: "เรื่องคู่เข้ามาแต่ยังไม่นิ่ง ควรค่อย ๆ ดูใจ",
       falling: "ระวังเรื่องคู่ ความสัมพันธ์อาจสะดุดหรือมีบททดสอบ",
     },
-    { minAge: SCHOOL_AGE_MAX },
+    {
+      youth: {
+        rising: "วัยเรียนช่วงนี้มีเสน่ห์ มีคนเข้ามาชอบ เป็นรักในวัยเรียนที่สดใส",
+        transitional: "วัยเรียนมีความรู้สึกดี ๆ เข้ามาแต่ยังไม่จริงจัง เป็นรักในวัยเรียน",
+        falling: "วัยเรียนอาจมีรักที่สะดุดหรือผิดหวังเล็ก ๆ เป็นบทเรียนความรักช่วงเรียน",
+      },
+    },
   );
   const timingBlock = spouseTiming.length > 0
-    ? `ช่วงอายุที่เด่นเรื่องคู่ (ดาวคู่ครองธาตุ${spouseLabel} เข้าวัยจร ตั้งแต่วัย 20 ปีขึ้นไป):\n${spouseTiming.join("\n")}`
+    ? `ช่วงอายุที่เด่นเรื่องคู่/ความรัก (ดาวคู่ครองธาตุ${spouseLabel} เข้าวัยจร — ก่อน 20 ปีตีเป็นรักในวัยเรียน):\n${spouseTiming.join("\n")}`
     : "";
 
-  return [base, dayPillarLine, dynamic, seat, timingBlock].filter(Boolean).join("\n\n");
+  return [base, dayPillarLine, dynamic, abundanceLine, seat, timingBlock].filter(Boolean).join("\n\n");
 }
 
 /** บท 14 สี/ทิศ = สีตาม useful god + สีที่ควรเลี่ยง (officer) + สีกระเป๋า/รถ + ทิศมงคล */
@@ -1500,8 +1577,15 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
   }
   if (carColor) {
     extras.push(`สีรถยนต์ / ของเคลื่อนไหวได้ — เทียบดิถี ${dayStem} กับราศีบนหลักยาม ${hourStem}: ${carColor}`);
-  } else if (usefulColors.length > 0) {
-    extras.push(`สีรถยนต์: ${usefulColors.join(" / ")}`);
+  } else {
+    // fallback สีรถ: ยึด "ธาตุส่งเสริม" (印 = ธาตุที่หล่อเลี้ยงดิถี) ไม่ใช่ useful god ทุกตัว (เช่นไม่เอาคู่ธาตุ)
+    const resourceTh = elementLabel(inverseGenerate(dayMasterElement(calculatedState)));
+    const resourceColor = section.get(resourceTh)?.[0];
+    if (resourceColor) {
+      extras.push(`สีรถยนต์ / ของเคลื่อนไหวได้: เน้นสีธาตุ${resourceTh} (${resourceColor}) ตามธาตุส่งเสริมดวง`);
+    } else if (usefulColors.length > 0) {
+      extras.push(`สีรถยนต์: ${usefulColors.join(" / ")}`);
+    }
   }
   extras.push(`ทิศมงคล: ${usefulWithColor.map((element) => ELEMENT_DIRECTION_TH[element]).join(" และ ")}`);
 
@@ -1518,13 +1602,24 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
 // เชี่ยงแซดีตาม Source7 §5 (custom เทพ) — กว้างกว่า GOOD_QI: รวม หมอ/ทอ/เอี้ยง ด้วย
 const GOOD_QI_ENHANCE = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง"]);
 
-/** Source7 §5: เทพเฉพาะดวง — วน 8 ตัวอักษร (ราศีบน-ล่าง 4 เสา) ที่ขึ้นเชี่ยงแซดี → เทพประจำตัวอักษรนั้น */
+/** สิ่งที่เทพประจำตัวอักษร "หนุน" ตามบทบาทธาตุของตัวอักษรนั้นเทียบดิถี */
+const DEITY_ROLE_BENEFIT_TH: Record<RelationRole, string> = {
+  "คู่ธาตุ": "หนุนเรื่องเพื่อน พี่น้อง หุ้นส่วน และคนรอบตัว",
+  "ธาตุส่งเสริม": "หนุนเรื่องผู้ใหญ่อุปถัมภ์ สุขภาพ การเรียนรู้ และแรงสนับสนุน",
+  "ธาตุถ่ายเท": "หนุนเรื่องการเจรจา การทำงาน และการแสดงผลงาน",
+  "ธาตุพิฆาต": "หนุนเรื่องโชคลาภ การลงทุน และทรัพย์สิน",
+  "พิฆาตธาตุ": "หนุนเรื่องอำนาจ ตำแหน่งหน้าที่ และการงาน",
+};
+
+/** Source7 §5: เทพเฉพาะดวง — วน 8 ตัวอักษร (ราศีบน-ล่าง 4 เสา) ที่ขึ้นเชี่ยงแซดี → เทพประจำตัวอักษรนั้น
+ *  + ความหมายเพิ่มตามบทบาทธาตุ (ผู้ใหญ่/สุขภาพ/เจรจา-ทำงาน/ลงทุน/โชคลาภ) */
 function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
   const tables = parseSource7CustomDeities();
   if (!tables) {
     return [];
   }
   const dmStem = calculatedState.dayMaster;
+  const dmEl = dayMasterElement(calculatedState);
   const out: string[] = [];
   const seen = new Set<string>();
   for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
@@ -1534,7 +1629,8 @@ function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
     const stemDeity = tables.upper.get(stem);
     if (stemDeity && GOOD_QI_ENHANCE.has(stemQi) && !seen.has(stemDeity)) {
       seen.add(stemDeity);
-      out.push(`ราศีบน${PILLAR_LABEL_TH[pillar]} ${stem} (${stemQi}): ${stemDeity}`);
+      const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, stemElement(stem))];
+      out.push(`ราศีบน${PILLAR_LABEL_TH[pillar]} ${stem} (${stemQi}): ${stemDeity} — ${benefit}`);
     }
     // ราศีล่าง (branch): ใช้ 12 เชี่ยงแซที่ engine คำนวณไว้ของกิ่งเสานั้น
     const branchQi = pillarBranchQi(calculatedState, pillar)
@@ -1542,7 +1638,8 @@ function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
     const branchDeity = tables.lower.get(branch);
     if (branchDeity && GOOD_QI_ENHANCE.has(branchQi) && !seen.has(branchDeity)) {
       seen.add(branchDeity);
-      out.push(`ราศีล่าง${PILLAR_LABEL_TH[pillar]} ${branch} (${branchQi}): ${branchDeity}`);
+      const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, branchElement(branch))];
+      out.push(`ราศีล่าง${PILLAR_LABEL_TH[pillar]} ${branch} (${branchQi}): ${branchDeity} — ${benefit}`);
     }
   }
   return out;
@@ -1833,36 +1930,68 @@ function buildBenefactorReading(calculatedState: CalculatedStateValue): string |
       [value.branch, branchElement(value.branch)],
     ] as Array<[string, SupportedElementValue]>) {
       if (element === resource || element === power) {
-        const role = element === resource ? "ดาวส่งเสริม (ผู้ใหญ่หนุน)" : "ดาวอำนาจ (ผู้มีอำนาจ)";
+        // ดาวอำนาจ (官杀) อ่านเป็น "ตำแหน่ง/สายงาน" ที่หนุนดวง (เหมาะแนวมนุษย์เงินเดือน) ไม่ใช่อำนาจดิบ
+        const role =
+          element === resource
+            ? "ดาวส่งเสริม (ผู้ใหญ่/ความรู้หนุนหลัง)"
+            : "ดาวอำนาจ-ตำแหน่ง (โอกาสจากสายงาน/ตำแหน่งหน้าที่ เหมาะแนวมนุษย์เงินเดือนหรือทำงานในระบบ)";
         hits.push(`${PILLAR_LABEL_TH[pillar]} ${symbol} ธาตุ${elementLabel(element)} = ${role} → ${PILLAR_CONTEXT_MAP[pillar].traditionalPerson}`);
       }
     }
   }
 
-  const lead = `ผู้อุปถัมภ์ดูจากดาวส่งเสริม (ธาตุ${elementLabel(resource)}) และดาวอำนาจ (ธาตุ${elementLabel(power)}) โดยเฉพาะที่เสาปี/เดือน ซึ่งแทนผู้ใหญ่และปู่ย่าตระกูล`;
+  // แนวทางเรียกผู้อุปถัมภ์ = สร้างบารมีด้วย "คุณธรรมประจำธาตุส่งเสริม" (印 = สิ่งที่หล่อเลี้ยงดิถี)
+  const cultivate = `แนวทางสร้างผู้อุปถัมภ์: สั่งสมบารมีด้วยคุณธรรมประจำธาตุส่งเสริม (ธาตุ${elementLabel(resource)}) — ${RESOURCE_VIRTUE_TH[elementLabel(resource)]} ยิ่งบ่มเพาะสิ่งเหล่านี้ ดาวส่งเสริมยิ่งแข็ง ผู้ใหญ่และโอกาสจะเข้ามาเองตามจังหวะ`;
+
+  const lead = `ผู้อุปถัมภ์ดูจากดาวส่งเสริม (ธาตุ${elementLabel(resource)}) และดาวอำนาจ-ตำแหน่ง (ธาตุ${elementLabel(power)}) โดยเฉพาะที่เสาปี/เดือน ซึ่งแทนผู้ใหญ่และปู่ย่าตระกูล`;
   if (hits.length === 0) {
-    return `${lead}\n\nบนชั้นหลักไม่พบดาวส่งเสริม/อำนาจที่เสาปี-เดือนชัดเจน จึงมักต้องอาศัยความพยายามของตนเองเป็นหลัก ผู้อุปถัมภ์จะมาเป็นจังหวะตามวัยจรที่ธาตุส่งเสริมเข้ามา`;
+    return `${lead}\n\nบนชั้นหลักไม่พบดาวส่งเสริม/อำนาจที่เสาปี-เดือนชัดเจน จึงมักต้องอาศัยความพยายามของตนเองเป็นหลัก ผู้อุปถัมภ์จะมาเป็นจังหวะตามวัยจรที่ธาตุส่งเสริมเข้ามา\n\n${cultivate}`;
   }
-  return `${lead}\n\n${hits.join("\n")}`;
+  return `${lead}\n\n${hits.join("\n")}\n\n${cultivate}`;
 }
 
-/** บท 6 ครอบครัว = เสาเดือน (พ่อแม่) + เสาปี (ปู่ย่า) + ปฏิกิริยาที่เกี่ยวข้อง */
+/** คุณธรรมประจำธาตุ (五常) ที่ใช้บ่มเพาะดาวส่งเสริม (印) เพื่อเรียกบารมี/ผู้อุปถัมภ์ */
+const RESOURCE_VIRTUE_TH: Record<ThaiElement, string> = {
+  "ไม้": "เมตตากรุณา (仁) ช่วยเหลือเกื้อกูล ใจกว้าง และใฝ่เรียนรู้พัฒนาตน",
+  "ไฟ": "มีมารยาทสัมมาคารวะ (礼) อ่อนน้อมต่อผู้ใหญ่ ให้ความรู้/สั่งสอน ปฏิบัติธรรม และนั่งสมาธิ",
+  "ดิน": "ซื่อสัตย์รักษาคำพูด (信) หนักแน่นน่าเชื่อถือ และกตัญญูต่อผู้มีพระคุณ",
+  "ทอง": "เที่ยงธรรมมีหลักการ (义) รับผิดชอบ มีวินัย และยึดความถูกต้องเป็นที่ตั้ง",
+  "น้ำ": "ใฝ่ปัญญา (智) หมั่นศึกษาหาความรู้ ยืดหยุ่น และมองการณ์ไกล",
+};
+
+/** ความหมายของครอบครัว/ผู้ใหญ่ในบ้านตาม 12 เซียงแซ (self-seat ของเสา) — มีคำแปล ไม่ใช่แค่ชื่อสภาวะ */
+const QI_FAMILY_TH: Record<string, string> = {
+  "เชี่ยงแซ": "ครอบครัวที่ค่อย ๆ เติบโตและส่งต่อสิ่งดีให้รุ่นต่อไป บรรยากาศหนุนการเรียนรู้และพัฒนา",
+  "หมกยก": "ครอบครัวมีรสนิยม รักสวยรักงาม แต่บรรยากาศและอารมณ์ในบ้านแปรปรวนได้ง่าย",
+  "กวงตั่ว": "ครอบครัวมีหน้ามีตา ใส่ใจภาพลักษณ์และเกียรติของวงศ์ตระกูล",
+  "ลิ่มกัว": "ครอบครัวมีระเบียบวินัย ยึดหน้าที่การงาน/ตำแหน่งเป็นหลักของบ้าน",
+  "ตี้อ๋วง": "ผู้ใหญ่ในบ้านมีพลังและบารมีสูง มีอำนาจและใช้อารมณ์-ความเด็ดขาดนำบ้าน (หรือพ่อแม่พัฒนาตัวจนรุ่งเรืองถึงจุดสูงสุด)",
+  "ซวย": "ผู้ใหญ่ในบ้านเริ่มผ่อนแรง ต้องการการดูแลและประคองมากขึ้น",
+  "แป่": "บ้านมีภาระดูแลสุขภาพผู้ใหญ่ ต้องเอาใจใส่เรื่องกายและใจของคนในครอบครัว",
+  "ซี่": "ครอบครัวเงียบสงบ ต่างคนต่างพื้นที่ ผูกพันแบบไม่แสดงออกตรง ๆ",
+  "หมอ": "ครอบครัวสะสมทรัพย์/มรดกเก็บไว้ส่งต่อ เน้นความมั่นคงและการสืบทอดระยะยาว",
+  "เจ๊าะ": "ความสัมพันธ์ในบ้านมีจังหวะห่าง-ขาด ต้องหมั่นประคองความเชื่อมโยงไว้",
+  "ทอ": "ครอบครัวอยู่ช่วงตั้งต้น/เปลี่ยนผ่าน มีสมาชิกใหม่หรือการเริ่มต้นรอบใหม่",
+  "เอี้ยง": "ครอบครัวเน้นการบ่มเพาะดูแลกันต่อเนื่อง อบอุ่นแบบค่อยเป็นค่อยไป",
+};
+
+/** บท 6 ครอบครัว = เสาเดือน (พ่อแม่) + เสาปี (ปู่ย่า) อ่านตาม 12 เซียงแซ พร้อมคำแปล (พ่อ=ราศีบน แม่=ราศีล่าง) */
 function buildFamilyReading(calculatedState: CalculatedStateValue): string | null {
   const month = calculatedState.fourPillars.month;
   const year = calculatedState.fourPillars.year;
-  const segments = [
-    `ครอบครัวอ่านจากเสาเดือนเป็นหลัก (${PILLAR_CONTEXT_MAP.month.traditionalPerson}) และเสาปี (${PILLAR_CONTEXT_MAP.year.traditionalPerson})`,
-    `เสาเดือน ${month.stem}${month.branch} ธาตุ${elementLabel(stemElement(month.stem))} เป็นฐานพ่อแม่/ครอบครัวและสภาพแวดล้อมที่เติบโตมา`,
-    `เสาปี ${year.stem}${year.branch} ธาตุ${elementLabel(stemElement(year.stem))} สะท้อนรากเหง้าวงศ์ตระกูลและพื้นฐานที่ส่งต่อมา`,
-  ];
+  const monthQi = resolveDisplayTwelveQiStage(month.stem, month.branch); // self-seat ของเสาพ่อแม่
+  const yearQi = resolveDisplayTwelveQiStage(year.stem, year.branch); // self-seat ของเสาปู่ย่าตายาย
 
-  const relations = calculatedState.interactionState?.relations ?? [];
-  const familyRelations = relations.filter((relation) =>
-    relation.participantEntityIds?.some((id) => id.includes("year") || id.includes("month")),
-  );
-  if (familyRelations.length > 0) {
-    segments.push(`ปฏิกิริยาที่แตะฐานครอบครัว: ${[...new Set(familyRelations.map((relation) => relation.label))].join(", ")} (ดูเป็นจังหวะกระทบความสัมพันธ์ในบ้าน)`);
-  }
+  const segments = [
+    `ครอบครัวอ่านจากเสาเดือนเป็นหลัก (พ่อแม่) และเสาปี (ปู่ย่าตายาย/วงศ์ตระกูล)`,
+    // ภาพรวมพ่อแม่จาก self-seat เสาเดือน
+    `เสาเดือน ${month.stem}${month.branch} (${monthQi}): ${QI_FAMILY_TH[monthQi] ?? "บรรยากาศพ่อแม่/ครอบครัวตามจังหวะของเสานี้"}`,
+    // พ่อ = ราศีบนหลักเดือน (ก้าน = บทบาทที่แสดงออก/นำ); แม่ = ราศีล่างหลักเดือน (กิ่ง = ฐานหลักภายในบ้าน)
+    `พ่อ (ราศีบนหลักเดือน ${month.stem} ธาตุ${elementLabel(stemElement(month.stem))}): เป็นบทบาทที่แสดงออกและขับเคลื่อนบ้าน มักขยันและเป็นผู้นำทิศทางของครอบครัว`,
+    `แม่ (ราศีล่างหลักเดือน ${month.branch} ธาตุ${elementLabel(branchElement(month.branch))}): เป็นฐานหลักภายในบ้าน มักมีอำนาจในการดูแลและตัดสินเรื่องในครอบครัว`,
+    // ปู่ย่าตายาย/รากเหง้าจาก self-seat เสาปี
+    `เสาปี ${year.stem}${year.branch} (${yearQi}): ${QI_FAMILY_TH[yearQi] ?? "รากเหง้าวงศ์ตระกูลที่ส่งต่อมา"} — สะท้อนพื้นฐานและสิ่งที่บรรพบุรุษส่งต่อให้`,
+  ];
   return segments.join("\n\n");
 }
 
@@ -1882,9 +2011,9 @@ const MIXED_QI = new Set(["หมกยก", "แป่"]);
 /** อ่าน 7 ตัวอักษรที่เหลือ (ยกเว้นดิถี) ตาม 12 เชี่ยงแซ → มิตร/ศัตรู/ต้องประคอง ตามความหมายของเสา */
 function scanPositionRelations(
   calculatedState: CalculatedStateValue,
-): Array<{ pillar: PillarKey; char: string; qi: string; kind: "friend" | "foe" | "manage" }> {
+): Array<{ pillar: PillarKey; char: string; element: string; qi: string; kind: "friend" | "foe" | "manage" }> {
   const dmStem = calculatedState.dayMaster;
-  const out: Array<{ pillar: PillarKey; char: string; qi: string; kind: "friend" | "foe" | "manage" }> = [];
+  const out: Array<{ pillar: PillarKey; char: string; element: string; qi: string; kind: "friend" | "foe" | "manage" }> = [];
   const positions: Array<{ pillar: PillarKey; layer: "stem" | "branch" }> = [
     { pillar: "year", layer: "stem" },
     { pillar: "year", layer: "branch" },
@@ -1897,6 +2026,7 @@ function scanPositionRelations(
   for (const { pillar, layer } of positions) {
     const value = calculatedState.fourPillars[pillar];
     const char = layer === "stem" ? value.stem : value.branch;
+    const element = elementLabel(layer === "stem" ? stemElement(char) : branchElement(char));
     const qi = layer === "branch"
       ? pillarBranchQi(calculatedState, pillar)
       : resolveDisplayStemPairStage(dmStem, char);
@@ -1905,7 +2035,7 @@ function scanPositionRelations(
     }
     const kind = GOOD_QI_ENHANCE.has(qi) ? "friend" : FOE_QI.has(qi) ? "foe" : MIXED_QI.has(qi) ? "manage" : null;
     if (kind) {
-      out.push({ pillar, char, qi, kind });
+      out.push({ pillar, char, element, qi, kind });
     }
   }
   return out;
@@ -1915,13 +2045,13 @@ function buildFriendsReading(calculatedState: CalculatedStateValue): string | nu
   const lead =
     "เพื่อน/ศัตรูดูจาก “ตัวอักษรในผัง” ที่ขึ้น 12 เชี่ยงแซ — ตำแหน่งที่ขึ้นเชี่ยงแซดีคือมิตรแท้/ผู้สนับสนุน ส่วนตำแหน่งที่เชี่ยงแซเสีย (ซวย/ซี่/เจ๊าะ) คือคู่แข่ง/ศัตรู และทายตามความหมายของเสานั้น";
   const scan = scanPositionRelations(calculatedState);
-  const lines = scan.map(({ pillar, char, qi, kind }) => {
+  const lines = scan.map(({ pillar, char, element, qi, kind }) => {
     const who = FRIEND_POSITION_TH[pillar];
     const verdict = kind === "friend"
-      ? `มิตรแท้/ผู้สนับสนุน — ${who} เข้ามาหนุน`
+      ? `มิตรแท้/ผู้สนับสนุน — ${who} (ธาตุ${element}) เข้ามาหนุน`
       : kind === "foe"
-        ? `ระวังเป็นคู่แข่ง/ศัตรู — แรงเสียดทานจาก${who}`
-        : `${who} แบบที่ต้องคอยประคองและเคลียร์ปัญหา (ดี-ร้ายปนกัน)`;
+        ? `ระวังเป็นคู่แข่ง/ศัตรู — แรงเสียดทานจาก${who} (ธาตุ${element})`
+        : `${who} (ธาตุ${element}) แบบที่ต้องคอยประคองและเคลียร์ปัญหา (ดี-ร้ายปนกัน)`;
     return `${PILLAR_LABEL_TH[pillar]} ${char} (${qi}) = ${verdict}`;
   });
   if (lines.length === 0) {
@@ -1964,21 +2094,65 @@ function buildSubordinateReading(calculatedState: CalculatedStateValue): string 
 
   return [
     `ลูกน้อง/บริวารดูจากเสายาม (${PILLAR_CONTEXT_MAP.hour.businessPerson}) ร่วมกับดาวถ่ายเท (ธาตุ${elementLabel(output)}) อ่านตาม 12 เชี่ยงแซ ดีคือดี เสียคือเสีย`,
-    `เสายาม ${hour.stem}${hour.branch} ธาตุ${elementLabel(stemElement(hour.stem))}${qi ? ` ช่วง ${qi}` : ""} = ฐานของบริวารและผลงานที่สร้างต่อ`,
+    // บรรทัดฐานเป็นกลาง (ไม่ตัดสินดี/ร้ายเอง) — คุณภาพอ่านจากเซียงแซในบรรทัดถัดไป กันขัดแย้งเมื่อเซียงแซไม่ดี
+    `เสายาม ${hour.stem}${hour.branch} ธาตุ${elementLabel(stemElement(hour.stem))}${qi ? ` (เซียงแซ ${qi})` : ""} = ฐานของลูกน้อง/บริวารและผลงาน — คุณภาพอ่านจากเซียงแซดังนี้:`,
     hourVerdict,
     ...outputLines,
   ].join("\n\n");
 }
 
-/** บท 11 การเรียน = ดาวถ่ายเท (output) + วิชา useful element */
+/** คณะ/สาขา/คอสตามธาตุ (สรุปจาก "อาชีพของธาตุต่างเทียบการเรียนคณะ สาขา คอสเรียน") — แนะนำสายเรียนจริง */
+const FACULTY_BY_ELEMENT_TH: Record<ThaiElement, string> = {
+  "ดิน": "วิศวกรรมโยธา/สำรวจ, สถาปัตยกรรม/ภูมิสถาปัตย์, ธุรกิจอสังหาริมทรัพย์, วัสดุศาสตร์/ธรณีวิทยา/วิศวกรรมเหมืองแร่-เซรามิก, สัตวแพทย์/สัตวศาสตร์-ปฐพีวิทยา-เกษตร, ทันตแพทย์/ออร์โธปิดิกส์ (ฟัน-กระดูก-ผิวหนัง); ปวช.ช่างก่อสร้าง-โยธา; คอสอสังหาฯ/ประเมินราคา/เครื่องหนัง",
+  "ทอง": "วิศวกรรมโลหการ/เครื่องกล/ยานยนต์/อุตสาหการ/ไฟฟ้า-อิเล็กทรอนิกส์, วิทยาการคอมพิวเตอร์, อัญมณีวิทยา/ออกแบบเครื่องประดับ, นิติศาสตร์-รัฐศาสตร์, รร.นายร้อย/นายเรือ/ตำรวจ, การเงิน; ปวช.ช่างยนต์-กลโรงงาน-เชื่อมโลหะ; คอส CNC/ซ่อมอิเล็กทรอนิกส์",
+  "น้ำ": "พาณิชยศาสตร์-บัญชี/บริหารธุรกิจ/เศรษฐศาสตร์, โลจิสติกส์-ซัพพลายเชน, การท่องเที่ยว-โรงแรม, นิเทศศาสตร์(การตลาด/ออนไลน์), วิทยาศาสตร์ทางทะเล/ประมง; สายค้าขาย-บริการ-ขนส่ง-ลูกค้าออนไลน์",
+  "ไม้": "ครุศาสตร์/ศึกษาศาสตร์(พัฒนาหลักสูตร/สื่อ), อักษรศาสตร์-ศิลปศาสตร์-มนุษยศาสตร์(ภาษา/นักเขียน/นักแปล), นิเทศ-วารสารศาสตร์(การพิมพ์), เกษตร-วนศาสตร์, แพทย์แผนไทย/เภสัช(สมุนไพร), สังคมสงเคราะห์ศาสตร์, ออกแบบ/สถาปัตย์งานไม้",
+  "ไฟ": "แพทย์/พยาบาล/เภสัชศาสตร์, วิทยาศาสตร์เครื่องสำอาง, ทัศนมาตรศาสตร์(สายตา/แว่น), ครุศาสตร์(ครู/ติวเตอร์/นักวิชาการ), นิเทศ-ศิลปกรรม(สื่อ/ภาพ/ดีไซน์), วิศวกรรมไฟฟ้า/พลังงาน, โหราศาสตร์-ที่ปรึกษา-นักวางกลยุทธ์",
+};
+
+/** บท 11 การเรียน = ดาวถ่ายเท (output) อ่านตาม 12 เซียงแซ (ดี=เรียนได้ใช้) + แนะนำคณะ/วิชาตามธาตุ useful */
 function buildEducationReading(calculatedState: CalculatedStateValue): string | null {
   const dm = dayMasterElement(calculatedState);
   const output = GENERATES[dm] as SupportedElementValue;
+  const outputLabel = elementLabel(output);
   const useful = resolveUsefulElements(calculatedState);
-  return [
-    `การเรียนอ่านจากดาวถ่ายเท (ธาตุ${elementLabel(output)}) ซึ่งคือการนำสมอง/ทักษะออกมาใช้ ยิ่งช่วง 12 เชี่ยงแซดียิ่งเรียนแล้วได้ใช้จริง`,
-    `วิชาที่ควรเน้นคือวิชาธาตุ ${useful.join(" / ")} (useful god ของดวงนี้) เพราะช่วยแปลงความรู้เป็นความสำเร็จ ไม่ใช่เรียนเพื่อรู้เฉย ๆ`,
-  ].join("\n\n");
+
+  const segments: string[] = [
+    `การเรียนอ่านจาก "ดาวถ่ายเท" (ธาตุ${outputLabel}) = การนำสมอง/ทักษะออกมาใช้ ยิ่ง 12 เซียงแซดี ยิ่งเรียนตรงสายแล้วได้ใช้หาเงินจริง ถ้าเซียงแซไม่ดี มักเรียนแล้วไม่ได้ใช้สายตรง ต้องไปหาเงินตามแนวของเซียงแซนั้นแทน`,
+  ];
+
+  // อ่านเซียงแซของดาวถ่ายเทตามตำแหน่ง (self-seat) → เรียนแล้วได้ใช้/ไม่ได้ใช้
+  const outLines: string[] = [];
+  for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
+    const value = calculatedState.fourPillars[pillar];
+    if (stemElement(value.stem) !== output && branchElement(value.branch) !== output) {
+      continue;
+    }
+    const qi = resolveDisplayTwelveQiStage(value.stem, value.branch);
+    const verdict = GOOD_QI_ENHANCE.has(qi)
+      ? "เรียนตรงสายแล้วได้ใช้ทำมาหากินจริง แปลงความรู้เป็นรายได้ได้ดี"
+      : qi === "ซวย" || qi === "เจ๊าะ"
+        ? "เรียนแล้วมักไม่ได้ใช้สายตรง (เซียงแซนี้แก้ยากที่สุด) ควรปรับไปหาเงินตามแนวของเซียงแซนี้แทนการฝืนสายเดิม"
+        : FOE_QI.has(qi)
+          ? "เรียนแล้วได้ใช้ไม่เต็มที่ ต้องหาเวที/จังหวะที่ใช่จึงจะแปลงเป็นรายได้"
+          : "เรียนแล้วได้ใช้ตามจังหวะ ควรเลือกสายที่ถนัดและฝึกต่อเนื่อง";
+    outLines.push(`${PILLAR_LABEL_TH[pillar]} (ดาวถ่ายเท ธาตุ${outputLabel}, ${qi}) = ${verdict}`);
+  }
+  if (outLines.length > 0) {
+    segments.push(outLines.join("\n"));
+  }
+
+  // แนะนำคณะ/สาขา/คอสจริงตามธาตุที่ดวงต้องการ (useful god)
+  segments.push(
+    `ควรเรียนสายที่ตรงกับธาตุที่ดวงต้องการ (useful god: ${useful.join(" / ")}) เพื่อแปลงความรู้เป็นรายได้:`,
+  );
+  for (const el of useful) {
+    if (FACULTY_BY_ELEMENT_TH[el]) {
+      segments.push(`• สายธาตุ${el} — ${FACULTY_BY_ELEMENT_TH[el]}`);
+    }
+  }
+
+  return segments.join("\n\n");
 }
 
 /** บท 5 พรสวรรค์ = ดาวถ่ายเท (output) + สภาวะ 12 เชี่ยงแซ (ทักษะ/วิเคราะห์/สื่อสาร ไม่ใช่บุคลิกทั่วไป) */
@@ -1988,65 +2162,67 @@ const OUTPUT_STAR_TALENT_TH = {
   hurting: "พรสวรรค์แบบ “ดาวถ่ายเทต่างขั้ว (傷官)” — เฉียบคมและมีวาทศิลป์ เด่นเรื่องการพูด โน้มน้าว นำเสนอ แสดงออก คิดนอกกรอบและสร้างสรรค์สิ่งใหม่ (ควรระวังความหยิ่งในความสามารถและคำพูดที่ตรงเกินไป)",
 } as const;
 
+/** ความหมายพรสวรรค์ตาม 12 เซียงแซ — อ่านเชิงบวก (ศักยภาพ/ความถนัด) สั้นกระชับ */
+const QI_TALENT_POS_TH: Record<string, string> = {
+  "เชี่ยงแซ": "เรียนรู้ไว ต่อยอดทักษะได้เรื่อย ๆ เก่งงานริเริ่มและพัฒนาสิ่งใหม่",
+  "หมกยก": "ไวต่อรสนิยมและอารมณ์คน เก่งงานสื่อสาร นำเสนอ ศิลปะ และเสน่ห์การพูด",
+  "กวงตั่ว": "ทักษะที่สั่งสมจนมีชื่อเสียง เก่งสร้างภาพลักษณ์และผลงานที่ได้รับการยอมรับ",
+  "ลิ่มกัว": "ความเชี่ยวชาญระดับมืออาชีพ พร้อมรับงานใหญ่และบทบาทที่มีความรับผิดชอบ",
+  "ตี้อ๋วง": "พลังความสามารถเต็มเปี่ยม โดดเด่นจนเป็นผู้นำ/ตัวจริงในสายงานนั้น",
+  "ซวย": "ความประณีตลึกซึ้ง เก่งงานละเอียดและงานที่ต้องใช้ประสบการณ์กลั่นกรอง",
+  "แป่": "เข้าใจปัญหาคนได้ลึก เก่งวิเคราะห์ ให้คำปรึกษา การสอน และแก้ปัญหาเฉพาะทาง",
+  "ซี่": "สมาธิจดจ่อสูง เชี่ยวชาญเจาะลึกเฉพาะทางจนเป็นผู้รู้จริง",
+  "หมอ": "เก่งสะสม รวบรวม และจัดเก็บความรู้ เด่นงานวิจัย คลังข้อมูล และงานเชิงลึก",
+  "เจ๊าะ": "คิดแหวกแนวสุดขั้ว เก่งพลิกสถานการณ์และสร้างสรรค์สิ่งที่ไม่มีใครทำ",
+  "ทอ": "เต็มไปด้วยไอเดียตั้งต้น เก่งบ่มเพาะโปรเจกต์และมองเห็นโอกาสใหม่",
+  "เอี้ยง": "เก่งดูแลบ่มเพาะต่อเนื่อง สร้างผลงานที่ค่อย ๆ โตอย่างยั่งยืน",
+};
+
 function buildTalentReading(calculatedState: CalculatedStateValue): string | null {
   const dm = dayMasterElement(calculatedState);
   const output = GENERATES[dm] as SupportedElementValue;
   const dmYang = YANG_STEM_SET.has(calculatedState.dayMaster);
-  const resource = inverseGenerate(dm); // ธาตุส่งเสริม (印) = ปัญญา/วิเคราะห์
-  const lead = `พรสวรรค์ดูจากดาวถ่ายเท (ธาตุ${elementLabel(output)}) คือการนำสมอง ทักษะ การวิเคราะห์ และการสื่อสารออกมาแก้ปัญหาและต่อยอด ยิ่งช่วง 12 เชี่ยงแซดี ยิ่งสร้างสรรค์สิ่งใหม่ได้ต่อเนื่อง`;
 
   const hits: string[] = [];
   let sawEating = false;
   let sawHurting = false;
-  let sawResource = false;
   for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
     const value = calculatedState.fourPillars[pillar];
-    if (branchElement(value.branch) === output) {
-      const samePolarity = YANG_BRANCH_SET.has(value.branch) === dmYang;
-      if (samePolarity) {
-        sawEating = true;
-      } else {
-        sawHurting = true;
-      }
-      const qi = pillarBranchQi(calculatedState, pillar);
-      const nuance = GOOD_QI.has(qi)
-        ? "ดึงศักยภาพออกมาเป็นผลงานที่พัฒนาต่อเนื่อง"
-        : qi === "หมกยก"
-          ? "ถนัดรับฟัง วิเคราะห์ และกลั่นกรองปัญหาของผู้อื่น (ผันผวนแต่ลึกซึ้ง)"
-          : BAD_QI.has(qi)
-            ? "ทักษะมีอยู่แต่ติดขัด ต้องหาเวทีหรือจังหวะที่เหมาะจึงจะเปล่งประกาย"
-            : "ใช้ทักษะได้ตามจังหวะ ควรฝึกฝนสม่ำเสมอ";
-      hits.push(`${PILLAR_LABEL_TH[pillar]} ${value.branch} (ดาวถ่ายเท ธาตุ${elementLabel(output)}${qi ? `, ${qi}` : ""}) = ${nuance}`);
+    const onStem = stemElement(value.stem) === output;
+    const onBranch = branchElement(value.branch) === output;
+    if (!onStem && !onBranch) {
+      continue;
     }
-    if (stemElement(value.stem) === output) {
-      if (YANG_STEM_SET.has(value.stem) === dmYang) {
-        sawEating = true;
-      } else {
-        sawHurting = true;
-      }
-      hits.push(`${PILLAR_LABEL_TH[pillar]} ${value.stem} (ดาวถ่ายเท ธาตุ${elementLabel(output)} ราศีบน) = ทักษะที่แสดงออกชัดและหยิบใช้ได้ทันที`);
+    if (onStem) {
+      if (YANG_STEM_SET.has(value.stem) === dmYang) sawEating = true;
+      else sawHurting = true;
     }
-    if (stemElement(value.stem) === resource || branchElement(value.branch) === resource) {
-      sawResource = true;
+    if (onBranch) {
+      if (YANG_BRANCH_SET.has(value.branch) === dmYang) sawEating = true;
+      else sawHurting = true;
     }
+    // qi ตามตำแหน่ง: กิ่งใช้ 12 เซียงแซที่ engine คำนวณ (pillarBranchQi), ก้านใช้คู่ดิถี-ราศีบน
+    const qi = onBranch
+      ? pillarBranchQi(calculatedState, pillar)
+      : resolveDisplayStemPairStage(calculatedState.dayMaster, value.stem);
+    const meaning = QI_TALENT_POS_TH[qi] ?? "ใช้ทักษะได้ดีตามจังหวะที่เหมาะ";
+    const cell = onStem && onBranch ? `${value.stem}${value.branch}` : onStem ? value.stem : value.branch;
+    hits.push(`${PILLAR_LABEL_TH[pillar]} ${cell} (ดาวถ่ายเท ธาตุ${elementLabel(output)}${qi ? `, ${qi}` : ""}): ${meaning}`);
   }
 
-  // ระบุชนิดพรสวรรค์ตามขั้วดาวถ่ายเท + เติมมิติปัญญา/วิเคราะห์จากดาวส่งเสริม (印)
+  // ชนิดพรสวรรค์ตามขั้วดาวถ่ายเท — เป็นหัวใจของบท (สรุปสั้น ไม่มีน้ำ)
   const typeLines: string[] = [];
-  if (sawEating) {
-    typeLines.push(OUTPUT_STAR_TALENT_TH.eating);
-  }
   if (sawHurting) {
     typeLines.push(OUTPUT_STAR_TALENT_TH.hurting);
   }
-  if (sawResource) {
-    typeLines.push(`เสริมด้วยดาวส่งเสริม (ธาตุ${elementLabel(resource)}) ทำให้มีพรสวรรค์ด้านการเรียนรู้เร็ว วิเคราะห์ลึก และวางแผนอย่างเป็นระบบ`);
+  if (sawEating) {
+    typeLines.push(OUTPUT_STAR_TALENT_TH.eating);
   }
 
-  if (hits.length === 0) {
-    return `${lead}\n\nไม่พบดาวถ่ายเทเด่นบนชั้นหลัก พรสวรรค์จะแสดงออกชัดเป็นช่วงตามวัยจรที่ดาวถ่ายเทเข้ามา${typeLines.length ? `\n\n${typeLines.join("\n")}` : ""}`;
+  if (hits.length === 0 && typeLines.length === 0) {
+    return `พรสวรรค์เด่นจะแสดงออกเป็นช่วงตามวัยจรที่ดาวถ่ายเท (ธาตุ${elementLabel(output)}) เข้ามา`;
   }
-  return `${lead}\n\n${hits.join("\n")}${typeLines.length ? `\n\n${typeLines.join("\n")}` : ""}`;
+  return [...typeLines, ...hits].join("\n\n");
 }
 
 function buildDerivedPersonReading(
