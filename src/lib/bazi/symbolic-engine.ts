@@ -1,29 +1,14 @@
 import {
   CalculatedStateSchema,
-  RawInputSchema,
-  type AgeSnapshotValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import {
-  buildCurrentReferenceSolar,
-  buildDaYunState,
-  buildLiuNianState,
-  buildOrthodoxMingGongValue,
-  buildPillarValue,
-  isForwardDaYunDirection,
-  normalizeBirthContext,
-  normalizeGenderForYun,
-  resolveTwelveQiStage,
 } from "@/lib/bazi/symbolic-engine.birth";
 export { HONG_KONG_TIMEZONE } from "@/lib/bazi/symbolic-engine.constants";
 import {
   ELEMENT_LABELS_TH,
   STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
-import {
-  buildGeneralizedInteractionState,
-  resolveBranchInteractionEffects,
-} from "@/lib/bazi/symbolic-engine.interactions";
 export {
   buildGeneralizedInteractionState,
   resolveBranchInteractionEffects,
@@ -33,6 +18,13 @@ import {
   normalizeCorpusBranchSymbol,
 } from "@/lib/bazi/symbolic-engine.matrix";
 export { buildCompatibilityMatrixProfiles } from "@/lib/bazi/symbolic-engine.matrix";
+import {
+  calculateBaziFactState,
+} from "@/lib/bazi/symbolic-engine.os-core";
+export {
+  calculateBaziFactState,
+  calculateBaziStructuralState,
+} from "@/lib/bazi/symbolic-engine.os-core";
 import { buildShenShaState } from "@/lib/bazi/symbolic-engine.shen-sha";
 import {
   buildPrecedenceNoteSignals,
@@ -42,27 +34,19 @@ import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
 import { renderContextRuleNoteEnglish } from "@/lib/bazi/symbolic-engine.context-notes";
 import {
   buildElementMetaphors,
-  buildStrengthScoreExplainable,
 } from "@/lib/bazi/symbolic-engine.strength";
 import {
   buildDayMasterStrengthVocabulary,
 } from "@/lib/bazi/strength-state-vocabulary";
+export {
+  buildSource1OperatingSystemContract,
+  buildSource1StrengthContract,
+  SOURCE1_CONTRACT_FIELDS,
+  SOURCE1_GOLDEN_REFERENCE_CASE,
+} from "@/lib/bazi/source1-operating-system-contract";
 import {
-  buildElementAnalysis,
 } from "@/lib/bazi/symbolic-engine.seasonal";
-import {
-  formatStagePair,
-  getBranchTranslation,
-  resolveDisplayStemPairStage,
-  getStemElementTranslation,
-  localizeTwelveQiLabel,
-  resolveDisplayTwelveQiStage,
-  resolveTenGodForStem,
-} from "@/lib/bazi/pillar-display";
-import type {
-  BaziKnowledgeRepository,
-  BaziStructuralState,
-} from "@/lib/bazi/symbolic-engine.types";
+import type { BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine.types";
 export type {
   BaziKnowledgeRepository,
   BaziStructuralState,
@@ -95,313 +79,88 @@ function buildNarrativeReason(
   return parts.join(" ");
 }
 
-function buildAgeSnapshot(
-  birthContext: ReturnType<typeof normalizeBirthContext>,
-  currentReferenceSolar: ReturnType<typeof buildCurrentReferenceSolar>,
-): AgeSnapshotValue {
-  const birthYear = birthContext.solar.getYear();
-  const birthMonth = birthContext.solar.getMonth();
-  const birthDay = birthContext.solar.getDay();
-  const currentYear = currentReferenceSolar.getYear();
-  const currentMonth = currentReferenceSolar.getMonth();
-  const currentDay = currentReferenceSolar.getDay();
-  const hasReachedBirthday = currentMonth > birthMonth
-    || (currentMonth === birthMonth && currentDay >= birthDay);
-  const thaiAge = Math.max(currentYear - birthYear - (hasReachedBirthday ? 0 : 1), 0);
-
-  return {
-    referenceDate: [
-      currentYear,
-      String(currentMonth).padStart(2, "0"),
-      String(currentDay).padStart(2, "0"),
-    ].join("-"),
-    thaiAge,
-    chineseAge: thaiAge + 1,
-  };
-}
-
-function enrichPillar(
-  pillar: BaziStructuralState["fourPillars"][keyof BaziStructuralState["fourPillars"]],
-  options: {
-    dayMasterStem: string;
-    stemTenGod?: string;
-    lookingStage?: string;
-    hideUpperStage?: boolean;
-    hideLowerContext?: boolean;
-  },
-) {
-  const sittingStage = resolveDisplayTwelveQiStage(pillar.stem, pillar.branch) || undefined;
-  const upperStagePrimary = options.hideUpperStage
-    ? undefined
-    : resolveDisplayStemPairStage(options.dayMasterStem, pillar.stem) || undefined;
-  const lowerStagePrimary = options.lookingStage ? localizeTwelveQiLabel(options.lookingStage) : undefined;
-
-  return {
-    ...pillar,
-    tenGod: options.stemTenGod,
-    stemTranslation: getStemElementTranslation(pillar.stem) ?? undefined,
-    branchTranslation: getBranchTranslation(pillar.branch) ?? undefined,
-    sittingStage,
-    lookingStage: lowerStagePrimary,
-    upperStagePrimary,
-    upperStageContext: upperStagePrimary ? sittingStage : undefined,
-    upperStageDisplay: upperStagePrimary ? formatStagePair(upperStagePrimary, sittingStage) : undefined,
-    lowerStagePrimary,
-    lowerStageContext: lowerStagePrimary ? sittingStage : undefined,
-    lowerStageDisplay: options.hideLowerContext
-      ? lowerStagePrimary
-      : (lowerStagePrimary ? formatStagePair(lowerStagePrimary, sittingStage) : undefined),
-  };
-}
-
-function buildDynamicLuckStageDisplays(
-  dayMasterStem: string,
-  targetStem: string,
-  targetBranch: string,
-) {
-  return {
-    upperStageDisplay: resolveDisplayStemPairStage(dayMasterStem, targetStem) || undefined,
-    lowerStageDisplay: resolveDisplayTwelveQiStage(dayMasterStem, targetBranch) || undefined,
-  };
-}
-
-export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
-  const rawInput = RawInputSchema.parse(payload);
-  const birthContext = normalizeBirthContext(rawInput);
-  const eightChar = birthContext.solar.getLunar().getEightChar();
-  const pillars = {
-    year: buildPillarValue(eightChar.getYear(), eightChar.getYearHideGan()),
-    month: buildPillarValue(eightChar.getMonth(), eightChar.getMonthHideGan()),
-    day: buildPillarValue(eightChar.getDay(), eightChar.getDayHideGan()),
-    hour: buildPillarValue(eightChar.getTime(), eightChar.getTimeHideGan()),
-  };
-
-  return {
-    fourPillars: pillars,
-    dayMaster: pillars.day.stem,
-  };
-}
-
 export async function calculateBaziChart(
   payload: RawInputValue,
   repository: BaziKnowledgeRepository,
 ) {
-  const rawInput = RawInputSchema.parse(payload);
-  const birthContext = normalizeBirthContext(rawInput);
-  const lunar = birthContext.solar.getLunar();
-  const eightChar = lunar.getEightChar();
-  const forwardDirection = isForwardDaYunDirection(lunar as Parameters<typeof isForwardDaYunDirection>[0], rawInput.gender);
-  const currentReferenceSolar = buildCurrentReferenceSolar();
-  const currentReferenceEightChar = currentReferenceSolar.getLunar().getEightChar();
-  const currentYear = currentReferenceSolar.getYear();
-  const structuralState = calculateBaziStructuralState(rawInput);
-  const pillars = structuralState.fourPillars;
-  const dayMasterStem = structuralState.dayMaster;
-  const ageSnapshot = buildAgeSnapshot(birthContext, currentReferenceSolar);
-  const mingGong = buildOrthodoxMingGongValue(birthContext);
-  const daYunState = buildDaYunState(
-    birthContext,
-    rawInput.gender,
-    ageSnapshot.thaiAge,
-    currentYear,
-  );
-  const currentDaYunEntry = eightChar
-    .getYun(normalizeGenderForYun(rawInput.gender))
-    .getDaYun()
-    .find((entry) => entry.getGanZhi().trim().length > 0 && entry.getLiuNian().some((liuNian) => liuNian.getYear() === currentYear));
-  const liuNian = buildLiuNianState(currentDaYunEntry, currentYear, currentReferenceEightChar);
-  const currentDaYunPillar = daYunState.find((entry) => entry.isCurrent);
-  const enrichedDaYunState = daYunState.map((entry) => {
-    const dynamicDisplays = buildDynamicLuckStageDisplays(dayMasterStem, entry.stem, entry.branch);
-
-    return {
-      ...entry,
-      ...dynamicDisplays,
-      upperPhase: entry.upperPhase
-        ? {
-            ...entry.upperPhase,
-            twelveQiDisplay: dynamicDisplays.upperStageDisplay,
-          }
-        : undefined,
-      lowerPhase: entry.lowerPhase
-        ? {
-            ...entry.lowerPhase,
-            twelveQiDisplay: dynamicDisplays.lowerStageDisplay,
-          }
-        : undefined,
-    };
-  });
-  const enrichedLiuNian = liuNian
-    ? {
-        ...liuNian,
-        ...buildDynamicLuckStageDisplays(dayMasterStem, liuNian.stem, liuNian.branch),
-      }
-    : undefined;
-  const canonicalTwelveQiState = {
-    yearBranch: eightChar.getYearDiShi(),
-    monthBranch: eightChar.getMonthDiShi(),
-    dayBranch: eightChar.getDayDiShi(),
-    hourBranch: eightChar.getTimeDiShi(),
-    mingGongBranch: resolveTwelveQiStage(dayMasterStem, mingGong.value.branch),
-    ...(currentDaYunPillar
-      ? { currentDaYunBranch: resolveTwelveQiStage(dayMasterStem, currentDaYunPillar.branch) }
-      : {}),
-    ...(liuNian?.branch
-      ? { currentLiuNianBranch: resolveTwelveQiStage(dayMasterStem, liuNian.branch) }
-      : {}),
-  };
-  const twelveQiState = Object.fromEntries(
-    Object.entries(canonicalTwelveQiState).map(([key, value]) => [key, localizeTwelveQiLabel(value)]),
-  );
-  const enrichedPillars = {
-    year: enrichPillar(pillars.year, {
-      dayMasterStem,
-      stemTenGod: eightChar.getYearShiShenGan(),
-      lookingStage: canonicalTwelveQiState.yearBranch,
-    }),
-    month: enrichPillar(pillars.month, {
-      dayMasterStem,
-      stemTenGod: eightChar.getMonthShiShenGan(),
-      lookingStage: canonicalTwelveQiState.monthBranch,
-    }),
-    day: enrichPillar(pillars.day, {
-      dayMasterStem,
-      stemTenGod: "ดิถี",
-      lookingStage: canonicalTwelveQiState.dayBranch,
-      hideUpperStage: true,
-      hideLowerContext: true,
-    }),
-    hour: enrichPillar(pillars.hour, {
-      dayMasterStem,
-      stemTenGod: eightChar.getTimeShiShenGan(),
-      lookingStage: canonicalTwelveQiState.hourBranch,
-    }),
-  };
-  const mingGongSittingStage = resolveDisplayTwelveQiStage(mingGong.value.stem, mingGong.value.branch) || undefined;
-  const mingGongUpperPrimary = resolveDisplayStemPairStage(dayMasterStem, mingGong.value.stem) || undefined;
-  const mingGongLowerPrimary = localizeTwelveQiLabel(canonicalTwelveQiState.mingGongBranch) || undefined;
-  const enrichedMingGong = {
-    ...mingGong.value,
-    tenGod: resolveTenGodForStem(dayMasterStem, mingGong.value.stem) || undefined,
-    stemTranslation: getStemElementTranslation(mingGong.value.stem) ?? undefined,
-    branchTranslation: getBranchTranslation(mingGong.value.branch) ?? undefined,
-    sittingStage: mingGongSittingStage,
-    lookingStage: mingGongLowerPrimary,
-    upperStagePrimary: mingGongUpperPrimary,
-    upperStageContext: mingGongUpperPrimary ? mingGongSittingStage : undefined,
-    upperStageDisplay: mingGongUpperPrimary ? formatStagePair(mingGongUpperPrimary, mingGongSittingStage) : undefined,
-    lowerStagePrimary: mingGongLowerPrimary,
-    lowerStageContext: mingGongLowerPrimary ? mingGongSittingStage : undefined,
-    lowerStageDisplay: mingGongLowerPrimary ? formatStagePair(mingGongLowerPrimary, mingGongSittingStage) : undefined,
-  };
-  const interactionResolution = resolveBranchInteractionEffects(pillars);
-  const interactionState = buildGeneralizedInteractionState({
-    pillars,
-    dayMasterStem,
-    twelveQiByBranch: {
-      year: canonicalTwelveQiState.yearBranch,
-      month: canonicalTwelveQiState.monthBranch,
-      day: canonicalTwelveQiState.dayBranch,
-      hour: canonicalTwelveQiState.hourBranch,
-    },
-    resolution: interactionResolution,
-  });
-  interactionResolution.interactionState = interactionState;
-  const elementAnalysis = buildElementAnalysis(pillars);
-  const strengthScore = buildStrengthScoreExplainable(
-    dayMasterStem,
-    pillars,
-    {
-      year: canonicalTwelveQiState.yearBranch,
-      month: canonicalTwelveQiState.monthBranch,
-      day: canonicalTwelveQiState.dayBranch,
-      hour: canonicalTwelveQiState.hourBranch,
-    },
-    interactionResolution,
-  );
-  const strengthVocabulary = buildDayMasterStrengthVocabulary(strengthScore.value);
+  const factState = calculateBaziFactState(payload);
+  const strengthVocabulary = buildDayMasterStrengthVocabulary(factState.strengthScore);
   const [dayMasterStrengthProfile, persona, solarTerms, loveMatrixRows, workMatrixRows] = await Promise.all([
-    repository.findDayMasterStrengthProfile(dayMasterStem, strengthVocabulary.lookupState, strengthScore.value),
-    repository.findSixtyJiaziPersona(dayMasterStem, pillars.day.branch),
-    repository.findSolarTermBoundaryContext(birthContext.birthAtHongKong),
+    repository.findDayMasterStrengthProfile(
+      factState.dayMaster,
+      strengthVocabulary.repositoryLookupState,
+      factState.strengthScore,
+    ),
+    repository.findSixtyJiaziPersona(factState.dayMaster, factState.structuralState.fourPillars.day.branch),
+    repository.findSolarTermBoundaryContext(factState.birthContext.birthAtHongKong),
     repository.findDomainMatrixRows("love"),
     repository.findDomainMatrixRows("work"),
   ]);
-  const compatibilityMatrixProfiles = buildCompatibilityMatrixProfiles(dayMasterStem, [
+  const compatibilityMatrixProfiles = buildCompatibilityMatrixProfiles(factState.dayMaster, [
     ...loveMatrixRows,
     ...workMatrixRows,
   ]);
   const precedenceNoteSignals = buildPrecedenceNoteSignals(
-    birthContext.birthAtHongKong,
+    factState.birthContext.birthAtHongKong,
     solarTerms,
     persona,
-    interactionResolution,
+    factState.interactionResolution,
   );
   const shenSha = buildShenShaState({
-    pillars,
-    dayMasterStem,
-    mingGong: mingGong.value,
-    liuNian: enrichedLiuNian,
-    currentDaYun: currentDaYunPillar,
+    pillars: factState.structuralState.fourPillars,
+    dayMasterStem: factState.dayMaster,
+    mingGong: factState.mingGong,
+    liuNian: factState.liuNian,
+    currentDaYun: factState.currentDaYun,
   });
   const baseChartReading = buildBaseChartReading({
-    dayMasterStem,
-    pillars: enrichedPillars,
+    dayMasterStem: factState.dayMaster,
+    pillars: factState.fourPillars,
     shenSha,
-    resolution: interactionResolution,
+    resolution: factState.interactionResolution,
     precedenceSignals: precedenceNoteSignals,
-    interactionState,
+    interactionState: factState.interactionState,
   });
 
   const calculatedState = CalculatedStateSchema.parse({
-    fourPillars: enrichedPillars,
-    ageSnapshot,
-    mingGong: enrichedMingGong,
-    daYun: enrichedDaYunState,
-    liuNian: enrichedLiuNian,
+    fourPillars: factState.fourPillars,
+    ageSnapshot: factState.ageSnapshot,
+    mingGong: factState.mingGong,
+    daYun: factState.daYun,
+    liuNian: factState.liuNian,
     shenSha,
-    dayMaster: dayMasterStem,
-    strengthScore: strengthScore.value,
-    tenGods: {
-      yearStem: eightChar.getYearShiShenGan(),
-      yearBranch: String(eightChar.getYearShiShenZhi()),
-      monthStem: eightChar.getMonthShiShenGan(),
-      monthBranch: String(eightChar.getMonthShiShenZhi()),
-      dayStem: eightChar.getDayShiShenGan(),
-      dayBranch: String(eightChar.getDayShiShenZhi()),
-      hourStem: eightChar.getTimeShiShenGan(),
-      hourBranch: String(eightChar.getTimeShiShenZhi()),
-      mingGongStem: enrichedMingGong.tenGod ?? "",
-    },
-    twelveQi: twelveQiState,
-    elementMetaphors: buildElementMetaphors(dayMasterStem),
-    elementAnalysis,
+    dayMaster: factState.dayMaster,
+    strengthScore: factState.strengthScore,
+    tenGods: factState.roleOfElementFacts.tenGods,
+    twelveQi: factState.twelveQi.display,
+    elementMetaphors: buildElementMetaphors(factState.dayMaster),
+    elementAnalysis: factState.elementAnalysis,
     dayMasterStrengthProfile: dayMasterStrengthProfile
       ? {
           dayMaster: dayMasterStrengthProfile.dayMaster,
+          bandId: strengthVocabulary.bandId,
+          semanticId: strengthVocabulary.semanticId,
           strengthState: dayMasterStrengthProfile.lookupState,
           sourceState: dayMasterStrengthProfile.sourceState ?? undefined,
           lookupState: dayMasterStrengthProfile.lookupState,
+          repositoryLookupState: strengthVocabulary.repositoryLookupState,
           displayBand: strengthVocabulary.displayBand,
           displayLabel: strengthVocabulary.displayLabel,
           narrative: dayMasterStrengthProfile.narrative,
           narrativeReason: buildNarrativeReason(
-            dayMasterStem,
-            strengthScore.value,
-            twelveQiState.monthBranch,
+            factState.dayMaster,
+            factState.strengthScore,
+            factState.twelveQi.display.monthBranch,
             strengthVocabulary.displayLabel,
           ),
           qiLabel: dayMasterStrengthProfile.qiLabel ?? undefined,
           scoreText: dayMasterStrengthProfile.scoreText ?? undefined,
         }
       : undefined,
-    explainable: {
-      mingGong,
-      strengthScore,
-    },
+    explainable: factState.explainable,
     sixtyJiaziCorePersona: persona?.combinedNarrative
       ? {
-          code: `${pillars.day.stem}${pillars.day.branch}`,
+          code: `${factState.structuralState.fourPillars.day.stem}${factState.structuralState.fourPillars.day.branch}`,
           narrative: persona.combinedNarrative,
           heavenNarrative: persona.dayMasterNarrative ?? undefined,
           earthNarrative: persona.branchNarrative ?? undefined,
@@ -416,10 +175,10 @@ export async function calculateBaziChart(
           precedenceNoteSignals,
         }
       : undefined,
-    interactionState,
+    interactionState: factState.interactionState,
     baseChartReading,
     compatibilityMatrixProfiles,
-    isForwardDirection: forwardDirection,
+    isForwardDirection: factState.isForwardDirection,
   });
 
   return calculatedState;

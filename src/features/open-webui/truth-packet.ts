@@ -10,12 +10,18 @@ import {
   BaziAtomicQuestionResolverChatEvidenceSchema,
   type BaziAtomicQuestionResolverChatEvidence,
 } from "@/lib/bazi/atomic-question-resolver";
+import {
+  isBaziCallerContract,
+  type BaziCallerContract,
+} from "@/lib/bazi/symbolic-engine.caller-contract";
 
 export const OpenWebUiTruthPacketSchema = BaziDoctrinePacketSchema;
 export const OpenWebUiTruthPacketChatEvidenceSchema = BaziAtomicQuestionResolverChatEvidenceSchema;
 
 export type OpenWebUiTruthPacket = BaziDoctrinePacket;
 export type OpenWebUiTruthPacketChatEvidence = BaziAtomicQuestionResolverChatEvidence;
+
+type OpenWebUiTruthPacketSource = BaziStatePayload | BaziCallerContract;
 
 function mapOpenWebUiIntentToCanonicalBucket(
   intent: Exclude<OpenWebUiIntentClassification["intent"], "chit_chat">,
@@ -52,7 +58,7 @@ function resolveOpenWebUiCanonicalBucket(
 // doctrine packet context and leaves packet ownership below src/lib/bazi.
 export function selectOpenWebUiTruthPacket(
   classification: OpenWebUiIntentClassification,
-  payload: BaziStatePayload,
+  source: OpenWebUiTruthPacketSource,
   currentChatEvidence?: OpenWebUiTruthPacketChatEvidence,
 ): OpenWebUiTruthPacket | null {
   const canonicalBucket = resolveOpenWebUiCanonicalBucket(classification);
@@ -63,17 +69,19 @@ export function selectOpenWebUiTruthPacket(
 
   return selectBaziDoctrinePacketForCanonicalQuestion({
     canonicalBucket,
-    payload,
+    ...(isBaziCallerContract(source)
+      ? { callerContract: source }
+      : { payload: source }),
     currentChatEvidence,
   });
 }
 
 export function stringifyOpenWebUiTruthPacket(
   classification: OpenWebUiIntentClassification,
-  payload: BaziStatePayload,
+  source: OpenWebUiTruthPacketSource,
   currentChatEvidence?: OpenWebUiTruthPacketChatEvidence,
 ): string | null {
-  const truthPacket = selectOpenWebUiTruthPacket(classification, payload, currentChatEvidence);
+  const truthPacket = selectOpenWebUiTruthPacket(classification, source, currentChatEvidence);
 
   return truthPacket ? JSON.stringify(truthPacket, null, 2) : null;
 }

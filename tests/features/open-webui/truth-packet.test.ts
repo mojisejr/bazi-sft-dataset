@@ -1,6 +1,10 @@
 import { describe, expect, test } from "vitest";
 
-import { calculateBaziState } from "@/features/bazi-math/bazi-engine-adapter";
+import {
+  buildBaziCallerContractFromRawInput,
+  buildRawInputFromBirthDate,
+  calculateBaziState,
+} from "@/features/bazi-math/bazi-engine-adapter";
 import {
   OpenWebUiTruthPacketSchema,
   selectOpenWebUiTruthPacket,
@@ -518,6 +522,37 @@ describe("selectOpenWebUiTruthPacket with live engine output (Phase 8.3)", () =>
     // The day pillar identity is real (1981-03-17 → 甲午), never the fixed mock.
     expect(liveState.fourPillars.day.stem).toBe("甲");
     expect(liveState.fourPillars.day.branch).toBe("午");
+  });
+
+  test("caller-contract input stays packet-equivalent to legacy payload input and exposes overlay hand-off order", async () => {
+    const rawInput = buildRawInputFromBirthDate(
+      LIVE_BIRTH.birthAt,
+      LIVE_BIRTH.location,
+      { gender: LIVE_BIRTH.gender },
+    );
+    const liveState = await calculateLiveState();
+    const callerContract = buildBaziCallerContractFromRawInput(rawInput, liveState);
+
+    const legacyPacket = selectOpenWebUiTruthPacket({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.88,
+    }, liveState);
+    const contractPacket = selectOpenWebUiTruthPacket({
+      intent: "career",
+      requiresBaziConsult: true,
+      confidence: 0.88,
+    }, callerContract);
+
+    expect(contractPacket).toEqual(legacyPacket);
+    expect(callerContract.overlayReadiness.overlaySequence).toEqual([
+      "source-2",
+      "source-5",
+      "source-6",
+      "source-4",
+      "source-3",
+      "source-7",
+    ]);
   });
 
   test("live engine output satisfies the canonical CalculatedState schema", async () => {

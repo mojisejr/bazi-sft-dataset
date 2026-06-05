@@ -107,4 +107,44 @@ describe("symbolic-engine fact shell", () => {
       sourcePaths: [],
     });
   });
+
+  test("routes useful-god guidance from typed band semantics instead of display strings", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T04:00:00.000Z"));
+
+    const chart = await calculateBaziChart(
+      {
+        birthDate: "1992-08-21",
+        birthTime: "14:35",
+        gender: "female",
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Hong_Kong",
+      },
+      createTestKnowledgeRepository(),
+    );
+
+    const strongGuidance = getEngineFactsForDependencies(
+      {
+        ...chart,
+        dayMasterStrengthProfile: {
+          ...chart.dayMasterStrengthProfile!,
+          bandId: "strong",
+          semanticId: "channel",
+          strengthState: "อ่อนแอ",
+          sourceState: "ดวงแข็ง",
+          lookupState: "อ่อนแอ",
+          repositoryLookupState: "แข็งแรง/สมดุล",
+          displayLabel: "ดิถีอ่อน",
+        },
+      },
+      ["useful_god"],
+    )[0];
+
+    expect(strongGuidance).toMatchObject({
+      dependency: "useful_god",
+      resolved: true,
+      summary: "น้ำ — ดวงแข็งจึงควรถ่ายแรงออกผ่านทรัพย์ ผลลัพธ์ และความรับผิดชอบ ไม่ย้อนเพิ่มกำลัง",
+    });
+  });
 });

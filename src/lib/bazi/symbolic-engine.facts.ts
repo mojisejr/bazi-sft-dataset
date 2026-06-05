@@ -14,6 +14,7 @@ import {
   type EngineFactDTO,
   type EngineFactMap,
 } from "@/lib/bazi/knowledge/topic-types";
+import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import {
   CONTROLS,
   ELEMENT_LABELS_TH,
@@ -197,7 +198,8 @@ function getControllingElement(targetElement: SupportedElement) {
 
 function buildSupportGuidance(calculatedState: CalculatedStateValue) {
   const dayMasterElement = getDayMasterElement(calculatedState);
-  const strengthState = calculatedState.dayMasterStrengthProfile?.strengthState ?? "";
+  const strengthBandId = calculatedState.dayMasterStrengthProfile?.bandId
+    ?? classifyOperatorStrengthScore(calculatedState.strengthScore).id;
 
   if (!dayMasterElement) {
     return null;
@@ -212,7 +214,16 @@ function buildSupportGuidance(calculatedState: CalculatedStateValue) {
     return null;
   }
 
-  if (strengthState === "อ่อนแอ") {
+  if (strengthBandId === "very-weak") {
+    return {
+      usefulGod: resourceElement,
+      favorable: [resourceElement, dayMasterElement],
+      unfavorable: [outputElement, wealthElement, powerElement],
+      rationale: "ดิถีอ่อนเกินไปจึงต้องอุ้มกำลังด้วยธาตุส่งเสริมก่อน แล้วค่อยคืนแกนให้ธาตุคู่",
+    };
+  }
+
+  if (strengthBandId === "weak") {
     return {
       usefulGod: resourceElement,
       favorable: [resourceElement, dayMasterElement],
@@ -221,7 +232,16 @@ function buildSupportGuidance(calculatedState: CalculatedStateValue) {
     };
   }
 
-  if (strengthState === "แข็งแรงมากเกินไป") {
+  if (strengthBandId === "strong") {
+    return {
+      usefulGod: wealthElement,
+      favorable: [wealthElement, outputElement, powerElement],
+      unfavorable: [resourceElement, dayMasterElement],
+      rationale: "ดวงแข็งจึงควรถ่ายแรงออกผ่านทรัพย์ ผลลัพธ์ และความรับผิดชอบ ไม่ย้อนเพิ่มกำลัง",
+    };
+  }
+
+  if (strengthBandId === "very-strong") {
     return {
       usefulGod: outputElement,
       favorable: [outputElement, wealthElement, powerElement],

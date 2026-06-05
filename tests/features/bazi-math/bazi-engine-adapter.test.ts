@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   BaziStatePayloadSchema,
+  buildBaziCallerContractFromRawInput,
   buildRawInputFromBirthDate,
   calculateBaziState,
 } from "@/features/bazi-math/bazi-engine-adapter";
@@ -131,5 +132,45 @@ describe("bazi engine adapter", () => {
 
     // The mock always returned 己; the live engine varies per input.
     expect(calculatedState.dayMaster).not.toBe(CANONICAL_ADAPTER_CASE.expectedContract.dayMaster);
+  });
+
+  test("builds a caller contract that preserves calculatedState compatibility while locking overlay order", async () => {
+    const rawInput = buildRawInputFromBirthDate(
+      SECOND_ADAPTER_CASE.birthAt,
+      SECOND_ADAPTER_CASE.location,
+      SECOND_ADAPTER_CASE.options,
+    );
+    const calculatedState = await calculateBaziState(
+      SECOND_ADAPTER_CASE.birthAt,
+      SECOND_ADAPTER_CASE.location,
+      {
+        ...SECOND_ADAPTER_CASE.options,
+        repository: createTestKnowledgeRepository(),
+      },
+    );
+
+    const callerContract = buildBaziCallerContractFromRawInput(rawInput, calculatedState);
+
+    expect(() => BaziStatePayloadSchema.parse(callerContract.calculatedState)).not.toThrow();
+    expect(callerContract.sharedPacketSpine.selection.families).toEqual([
+      "strength",
+      "role-of-element",
+      "twelve-qi-texture",
+      "conflict-context",
+      "timing",
+      "useful-god-master-key-readiness",
+    ]);
+    expect(callerContract.overlayReadiness).toMatchObject({
+      sourceContract: "source1",
+      status: "ready-for-downstream-overlays",
+      overlaySequence: [
+        "source-2",
+        "source-5",
+        "source-6",
+        "source-4",
+        "source-3",
+        "source-7",
+      ],
+    });
   });
 });

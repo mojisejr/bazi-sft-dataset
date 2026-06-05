@@ -45,4 +45,25 @@ describe("buildCanonicalKnowledgeDataset", () => {
     expect(dataset.warnings).not.toContain("time-solar-term-source-missing");
     expect(dataset.warnings).toEqual([]);
   });
+
+  test("annotates day-master strength rows with explicit compiled ownership and typed semantic coverage", () => {
+    const dataset = getDataset();
+    const row = dataset.dayMasterStrengthStates.find((entry) => (
+      Array.isArray(entry.metadata.bandCoverage)
+      && entry.metadata.bandCoverage.length > 0
+    ));
+
+    expect(row).toBeDefined();
+    expect(row?.metadata).toMatchObject({
+      knowledgeBoundary: {
+        bandSemantics: "constants/operator-strength",
+        compiledLookupSemantics: "strength-state-vocabulary",
+        compiledCorpusTable: "canonical-knowledge.dayMasterStrengthStates",
+        repositoryLookup: "symbolic-engine.repository.findDayMasterStrengthProfile",
+      },
+      repositoryLookupState: expect.anything(),
+      bandCoverage: expect.any(Array),
+      semanticCoverage: expect.any(Array),
+    });
+  });
 });

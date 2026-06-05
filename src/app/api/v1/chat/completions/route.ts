@@ -1,4 +1,9 @@
-import { calculateBaziStateFromRawInput, type BaziStatePayload, BaziEngineAdapterError } from "@/features/bazi-math/bazi-engine-adapter";
+import {
+  BaziEngineAdapterError,
+  buildBaziCallerContractFromRawInput,
+  calculateBaziStateFromRawInput,
+  type BaziStatePayload,
+} from "@/features/bazi-math/bazi-engine-adapter";
 import { validateApiToken } from "@/features/open-webui/api-guard";
 import {
   extractOpenWebUiBaziContext,
@@ -195,12 +200,21 @@ export function buildOpenWebUiExecutionContext(
   }
 
   if (extraction && extraction.isComplete && extraction.rawInput && calculatedState) {
+    const callerContract = buildBaziCallerContractFromRawInput(
+      extraction.rawInput,
+      calculatedState,
+    );
+
     return {
       intentClassification,
       episodicMemory,
       baziConsult: {
         rawInput: extraction.rawInput,
-        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, calculatedState, truthPacketChatEvidence),
+        truthPacket: stringifyOpenWebUiTruthPacket(
+          intentClassification,
+          callerContract,
+          truthPacketChatEvidence,
+        ),
       },
     };
   }
@@ -220,12 +234,21 @@ export function buildOpenWebUiExecutionContext(
   // Fallback: requiresBaziConsult but no extraction was performed —
   // honor any pre-attached consult payload from the chat runner.
   if (result.baziConsult) {
+    const callerContract = buildBaziCallerContractFromRawInput(
+      result.baziConsult.rawInput,
+      result.baziConsult.calculatedState,
+    );
+
     return {
       intentClassification,
       episodicMemory,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
-        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState, truthPacketChatEvidence),
+        truthPacket: stringifyOpenWebUiTruthPacket(
+          intentClassification,
+          callerContract,
+          truthPacketChatEvidence,
+        ),
       },
     };
   }

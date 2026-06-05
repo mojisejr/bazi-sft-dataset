@@ -10,12 +10,30 @@ import {
   type BaziAtomicQuestionResolverChatEvidence,
 } from "@/lib/bazi/atomic-question-resolver";
 import { type CalculatedStateValue } from "@/lib/bazi/schema-types";
+import {
+  assertBaziCallerContractSupportsCanonicalBucket,
+  type BaziCallerContract,
+} from "@/lib/bazi/symbolic-engine.caller-contract";
 
 export type BaziDoctrineHarnessInput = {
   canonicalBucket: BaziAtomicCanonicalBucket;
-  payload: CalculatedStateValue;
+  payload?: CalculatedStateValue;
+  callerContract?: BaziCallerContract;
   currentChatEvidence?: BaziAtomicQuestionResolverChatEvidence;
 };
+
+function resolveDoctrinePayload(input: BaziDoctrineHarnessInput): CalculatedStateValue {
+  if (input.callerContract) {
+    assertBaziCallerContractSupportsCanonicalBucket(input.callerContract, input.canonicalBucket);
+    return input.callerContract.calculatedState;
+  }
+
+  if (input.payload) {
+    return input.payload;
+  }
+
+  throw new Error("Bazi doctrine harness requires either payload or callerContract.");
+}
 
 export function resolveBaziDoctrinePacketQuestionContext(
   canonicalBucket: BaziAtomicCanonicalBucket,
@@ -49,6 +67,6 @@ export function selectBaziDoctrinePacketForCanonicalQuestion(
       input.canonicalBucket,
       input.currentChatEvidence,
     ),
-    payload: input.payload,
+    payload: resolveDoctrinePayload(input),
   });
 }

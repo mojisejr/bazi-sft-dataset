@@ -40,6 +40,10 @@ export const OPERATOR_STRENGTH_CLASS_BANDS = [
   },
 ] as const;
 
+export type OperatorStrengthBand = (typeof OPERATOR_STRENGTH_CLASS_BANDS)[number];
+
+export type OperatorStrengthBandId = OperatorStrengthBand["id"];
+
 export const OperatorStrengthClassSchema = z.enum([
   "อ่อนเกินไป",
   "ดวงอ่อน",

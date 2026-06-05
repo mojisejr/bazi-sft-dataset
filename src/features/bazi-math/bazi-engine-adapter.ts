@@ -6,6 +6,12 @@ import {
   type CalculatedStateValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
+export {
+  BaziCallerContractSchema,
+  type BaziCallerContract,
+  type BaziSourceOverlayReadinessContract,
+  buildBaziCallerContractFromRawInput,
+} from "@/lib/bazi/symbolic-engine.caller-contract";
 import {
   calculateBaziChart,
   type BaziKnowledgeRepository,

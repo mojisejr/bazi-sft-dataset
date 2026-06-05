@@ -1,5 +1,11 @@
 import type {
+  AgeSnapshotValue,
+  CalculatedStateExplainableValue,
+  CalculationTraceValue,
   CalculatedStateValue,
+  ElementAnalysisValue,
+  RawInputValue,
+  SeasonalInteractionValue,
   ContextRuleNoteValue,
   GeneralizedElementInteractionTypeValue,
   GeneralizedInteractionDayMasterEffectValue,
@@ -269,3 +275,48 @@ export type MingGongMonthAdjustment = {
 };
 
 export type BaziStructuralState = Pick<CalculatedStateValue, "fourPillars" | "dayMaster">;
+
+export type BaziTwelveQiFactState = {
+  raw: {
+    yearBranch: string;
+    monthBranch: string;
+    dayBranch: string;
+    hourBranch: string;
+    mingGongBranch: string;
+    currentDaYunBranch?: string;
+    currentLiuNianBranch?: string;
+  };
+  display: CalculatedStateValue["twelveQi"];
+};
+
+export type BaziRoleOfElementFacts = {
+  tenGods: CalculatedStateValue["tenGods"];
+  seasonalInteraction: SeasonalInteractionValue;
+};
+
+export type BaziTraceMetadata = {
+  mingGong?: CalculationTraceValue;
+  strengthScore?: CalculationTraceValue;
+};
+
+export type BaziOsCoreFactState = {
+  input: RawInputValue;
+  birthContext: NormalizedBirthContext;
+  structuralState: BaziStructuralState;
+  fourPillars: CalculatedStateValue["fourPillars"];
+  dayMaster: string;
+  strengthScore: number;
+  roleOfElementFacts: BaziRoleOfElementFacts;
+  twelveQi: BaziTwelveQiFactState;
+  interactionResolution: BranchInteractionResolution;
+  interactionState: GeneralizedInteractionState;
+  daYun: CalculatedStateValue["daYun"];
+  currentDaYun?: CalculatedStateValue["daYun"][number];
+  liuNian?: CalculatedStateValue["liuNian"];
+  ageSnapshot: AgeSnapshotValue;
+  mingGong: CalculatedStateValue["mingGong"];
+  traceMetadata: BaziTraceMetadata;
+  explainable: CalculatedStateExplainableValue;
+  elementAnalysis: ElementAnalysisValue;
+  isForwardDirection: boolean;
+};

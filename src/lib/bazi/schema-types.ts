@@ -235,9 +235,12 @@ export const SixtyJiaziCorePersonaSchema = z.object({
 
 export const DayMasterStrengthProfileSchema = z.object({
   dayMaster: z.string().trim().min(1),
+  bandId: z.string().trim().min(1).optional(),
+  semanticId: z.string().trim().min(1).optional(),
   strengthState: z.string().trim().min(1),
   sourceState: z.string().trim().min(1).optional(),
   lookupState: z.string().trim().min(1).optional(),
+  repositoryLookupState: z.string().trim().min(1).optional(),
   displayBand: z.string().trim().min(1).optional(),
   displayLabel: z.string().trim().min(1).optional(),
   narrative: z.string().trim().min(1),

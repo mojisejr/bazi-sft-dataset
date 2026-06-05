@@ -24,14 +24,33 @@ describe("resolveCanonicalDayMasterStrengthState", () => {
     expect(resolveCanonicalDayMasterStrengthState(" ")).toBeNull();
     expect(resolveCanonicalDayMasterStrengthState("รูปแบบโดยสังเขป")).toBeNull();
   });
+
+  test("keeps exact band coverage and explicit semantic coverage separate from compiled lookup state", () => {
+    expect(resolveCanonicalDayMasterStrengthState("ดวงแข็ง")).toMatchObject({
+      lookupState: "แข็งแรง/สมดุล",
+      repositoryLookupState: "แข็งแรง/สมดุล",
+      bandCoverage: ["strong"],
+      semanticCoverage: ["channel"],
+    });
+
+    expect(resolveCanonicalDayMasterStrengthState("แข็งแรง/สมดุล")).toMatchObject({
+      lookupState: "แข็งแรง/สมดุล",
+      bandCoverage: ["balanced", "strong"],
+      semanticCoverage: ["circulate", "channel"],
+    });
+  });
 });
 
 describe("buildDayMasterStrengthVocabulary", () => {
   test("keeps display band and canonical lookup state separate", () => {
     expect(buildDayMasterStrengthVocabulary(3.75)).toEqual({
+      bandId: "weak",
+      semanticId: "reinforce",
       displayBand: "ดวงอ่อน",
       displayLabel: "ดิถีอ่อน",
       lookupState: "อ่อนแอ",
+      repositoryLookupState: "อ่อนแอ",
+      sourceState: "ดวงอ่อน",
     });
   });
 });

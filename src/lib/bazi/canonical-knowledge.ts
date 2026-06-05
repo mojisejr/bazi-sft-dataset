@@ -5,6 +5,10 @@ import path from "node:path";
 import { parse as parseCsv } from "csv-parse/sync";
 
 import { buildGeneratedSolarTermRows } from "./solar-terms";
+import {
+  DAY_MASTER_STRENGTH_KNOWLEDGE_BOUNDARY,
+  resolveCanonicalDayMasterStrengthState,
+} from "./strength-state-vocabulary";
 
 const DISTILLED_CORPUS_SEGMENTS = [
   ".tmp",
@@ -701,21 +705,31 @@ function buildDayMasterStrengthStates(
     return rows
       .map((rawCells, rowIndex) => ({ rawCells, rowIndex }))
       .filter(({ rawCells }) => rawCells.some((cell) => cell.length > 0))
-      .map(({ rawCells, rowIndex }) => ({
-        sourcePath: relativePath,
-        sourceVariant,
-        dayMasterCode: code,
-        dayMasterChinese: chinese,
-        strengthState: rawCells[0] || null,
-        scoreText: rawCells.find((cell) => /^\d+(\.\d+)?$/.test(cell)) ?? null,
-        qiLabel: rawCells.find((cell) => /เชี่ยงแซ|หมกยก|ลิ่มกัว|ตี้อ๋วง|ซวย|แป่|ซี่|หมอ|เจ๊าะ|ทอ|เอี้ยง|กวงตั่ว/u.test(cell)) ?? null,
-        narrativeSummary: findNarrativeCell(rawCells),
-        rowOrder: rowIndex + 1,
-        rawCells,
-        metadata: {
-          folder: path.basename(path.dirname(fullPath)),
-        },
-      }));
+      .map(({ rawCells, rowIndex }) => {
+        const strengthState = rawCells[0] || null;
+        const scoreText = rawCells.find((cell) => /^\d+(\.\d+)?$/.test(cell)) ?? null;
+        const resolvedStrength = resolveCanonicalDayMasterStrengthState(strengthState ?? scoreText);
+
+        return {
+          sourcePath: relativePath,
+          sourceVariant,
+          dayMasterCode: code,
+          dayMasterChinese: chinese,
+          strengthState,
+          scoreText,
+          qiLabel: rawCells.find((cell) => /เชี่ยงแซ|หมกยก|ลิ่มกัว|ตี้อ๋วง|ซวย|แป่|ซี่|หมอ|เจ๊าะ|ทอ|เอี้ยง|กวงตั่ว/u.test(cell)) ?? null,
+          narrativeSummary: findNarrativeCell(rawCells),
+          rowOrder: rowIndex + 1,
+          rawCells,
+          metadata: {
+            folder: path.basename(path.dirname(fullPath)),
+            knowledgeBoundary: DAY_MASTER_STRENGTH_KNOWLEDGE_BOUNDARY,
+            repositoryLookupState: resolvedStrength?.repositoryLookupState ?? null,
+            bandCoverage: resolvedStrength?.bandCoverage ?? [],
+            semanticCoverage: resolvedStrength?.semanticCoverage ?? [],
+          },
+        };
+      });
   });
 }
 
