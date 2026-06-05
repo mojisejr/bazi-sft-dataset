@@ -3,6 +3,10 @@ import path from "node:path";
 
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import {
+  resolveDisplayStemPairStage,
+  resolveDisplayTwelveQiStage,
+} from "@/lib/bazi/pillar-display";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import {
   CHAPTER_INTRO_TH,
@@ -18,6 +22,7 @@ import {
   GENERATES,
   PILLAR_CONTEXT_MAP,
   STEM_TO_ELEMENT,
+  TWELVE_QI_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
 
 /**
@@ -334,6 +339,170 @@ function parseSource7ElementSection(marker: string, fieldCount: number): Map<Tha
   return map.size > 0 ? map : null;
 }
 
+/** Source7 §3.1/§3.2: ตารางสีของใช้ — key `${ดิถี}|${ราศีบนอ้างอิง}` → สีที่แนะนำ
+ * §3.1 (กระเป๋า/มือถือ) = ดิถี × ราศีบนหลักเดือน (4 บรรทัด/แถว: ดิถี, ราศีบน, สี, สัตว์)
+ * §3.2 (รถ/ของเคลื่อนไหวได้) = ดิถี × ราศีบนหลักยาม (3 บรรทัด/แถว: ดิถี, ราศีบน, สี)
+ */
+function parseSource7ColorTable(marker: string): Map<string, string> | null {
+  const lines = readExtractedLines("source7-enhancement.txt");
+  if (!lines) {
+    return null;
+  }
+  const start = lines.findIndex((line) => line.startsWith(marker));
+  if (start === -1) {
+    return null;
+  }
+  const map = new Map<string, string>();
+  let dayStem: string | null = null;
+  let upperStems: string[] | null = null;
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line) {
+      continue;
+    }
+    // เริ่ม section ถัดไป → จบ
+    if (/^\d+(\.\d+)?\s/.test(line)) {
+      break;
+    }
+    if (HEAVENLY_STEMS.includes(line)) {
+      dayStem = line;
+      upperStems = null;
+      continue;
+    }
+    if (!dayStem) {
+      continue;
+    }
+    // บรรทัดกลุ่มราศีบน เช่น "甲, 乙"
+    const stemGroup = line.split(",").map((token) => token.trim()).filter((token) => HEAVENLY_STEMS.includes(token));
+    if (stemGroup.length > 0 && !upperStems) {
+      upperStems = stemGroup;
+      continue;
+    }
+    // บรรทัดถัดมา = สีที่แนะนำ (บรรทัดแรกหลังกลุ่มราศีบน)
+    if (upperStems) {
+      for (const upper of upperStems) {
+        map.set(`${dayStem}|${upper}`, line);
+      }
+      upperStems = null;
+    }
+  }
+  return map.size > 0 ? map : null;
+}
+
+/** Source7 §5: เทพประจำราศีบน (10 ราศีบน) และราศีล่าง (12 ราศีล่าง) สำหรับเทพเฉพาะดวง */
+function parseSource7CustomDeities(): { upper: Map<string, string>; lower: Map<string, string> } | null {
+  const lines = readExtractedLines("source7-custom.txt");
+  if (!lines) {
+    return null;
+  }
+  const upper = new Map<string, string>();
+  const lower = new Map<string, string>();
+  let bucket: "upper" | "lower" | null = null;
+  for (const line of lines) {
+    if (line.startsWith("# DEITY_UPPER")) {
+      bucket = "upper";
+      continue;
+    }
+    if (line.startsWith("# DEITY_LOWER")) {
+      bucket = "lower";
+      continue;
+    }
+    if (!bucket || line.startsWith("#")) {
+      continue;
+    }
+    const [key, deity] = line.split("|").map((part) => part.trim());
+    if (!key || !deity) {
+      continue;
+    }
+    (bucket === "upper" ? upper : lower).set(key, deity);
+  }
+  return upper.size > 0 || lower.size > 0 ? { upper, lower } : null;
+}
+
+/** love-day-pillar.txt: `${ดิถี}|${ราศีล่างวัน}` → {qi, คู่ครอง, ปฏิกิริยา} (sheet หลักวันเท่านั้น) */
+function parseLoveDayPillar(): Map<string, { qi: string; spouse: string; reaction: string }> | null {
+  const lines = readExtractedLines("love-day-pillar.txt");
+  if (!lines) {
+    return null;
+  }
+  const map = new Map<string, { qi: string; spouse: string; reaction: string }>();
+  for (const line of lines) {
+    if (!line || line.startsWith("#")) {
+      continue;
+    }
+    const [head, spouse, reaction] = line.split("|").map((part) => part.trim());
+    const tokens = head.split(/\s+/);
+    if (tokens.length < 3) {
+      continue;
+    }
+    const [stem, branch, qi] = tokens;
+    if (!HEAVENLY_STEMS.includes(stem) || !EARTHLY_BRANCHES.includes(branch)) {
+      continue;
+    }
+    map.set(`${stem}|${branch}`, {
+      qi,
+      spouse: (spouse ?? "").replace(/[/\s]+$/, ""),
+      reaction: (reaction ?? "").replace(/[/\s]+$/, ""),
+    });
+  }
+  return map.size > 0 ? map : null;
+}
+
+// ───────── ตำราโหราศาสตร์เคี้ยงคุง — reference พื้นฐาน (fallback เมื่อหัวข้อไม่มีองค์ความรู้เฉพาะ) ─────────
+
+/** คำค้นต่อหัวข้อ สำหรับดึง excerpt จากตำราเคี้ยงคุงเป็น fallback */
+const KHEANGKHUNG_TOPIC_KEYWORDS: Record<string, string[]> = {
+  chart_foundation: ["ดิถี", "ลักษณะ", "นิสัย"],
+  career_potential: ["การงาน", "อาชีพ"],
+  wealth_and_investment: ["โชคลาภ", "ทรัพย์"],
+  benefactor: ["ผู้ใหญ่", "อุปถัมภ์", "สนับสนุน"],
+  talent: ["พรสวรรค์", "ความสามารถ", "ถ่ายเท"],
+  family: ["ครอบครัว", "บิดามารดา", "พ่อแม่"],
+  love_partner: ["คู่ครอง", "ความรัก"],
+  friends_foes: ["เพื่อน", "มิตร"],
+  partnership: ["หุ้นส่วน", "ร่วม"],
+  subordinates: ["บริวาร", "ลูกน้อง"],
+  education: ["เรียน", "ศึกษา"],
+  turning_points: ["วัยจร", "ปีจร"],
+  health: ["สุขภาพ", "โรค", "ร่างกาย"],
+  colors_directions: ["สี", "ทิศ"],
+  guardian_deities: ["เทพ", "สิ่งศักดิ์สิทธิ์", "ไหว้"],
+};
+
+/** ค้นบรรทัดเนื้อหาในตำราเคี้ยงคุงที่ตรงคำค้น (เนื้อยาวพอ ไม่ใช่หัวข้อ) → คืน excerpt สูงสุด limit บรรทัด */
+export function findKheangkhungReference(keywords: string[], limit = 2): string | null {
+  const lines = readExtractedLines("kheangkhung-reference.txt");
+  if (!lines || keywords.length === 0) {
+    return null;
+  }
+  const matched: string[] = [];
+  for (const line of lines) {
+    if (line.length < 24 || line.startsWith("#")) {
+      continue;
+    }
+    if (keywords.some((keyword) => line.includes(keyword))) {
+      matched.push(line);
+      if (matched.length >= limit) {
+        break;
+      }
+    }
+  }
+  return matched.length > 0 ? matched.join("\n") : null;
+}
+
+/** fallback ข้อความหัวข้อจากตำราเคี้ยงคุง เมื่อ builder หลักไม่มีองค์ความรู้ (คืน null ถ้าไม่พบ) */
+function buildKheangkhungFallback(topicId: string): string | null {
+  const keywords = KHEANGKHUNG_TOPIC_KEYWORDS[topicId];
+  if (!keywords) {
+    return null;
+  }
+  const excerpt = findKheangkhungReference(keywords, 2);
+  return excerpt ? `อ้างอิงตำราโหราศาสตร์เคี้ยงคุง (พื้นฐาน):\n${excerpt}` : null;
+}
+
+/** หัวข้อที่ null = "ขาด input" (ไม่ใช่ขาดความรู้) จึงไม่ fallback (เช่น ความรักต้องมีเพศ) */
+const KHEANGKHUNG_FALLBACK_EXCLUDE = new Set(["love_partner"]);
+
 /** Source7 2.3: ธาตุ{E}: {อาชีพ} (บรรทัดเดียวต่อธาตุ) */
 function parseSource7Careers(): Map<ThaiElement, string> | null {
   const lines = readExtractedLines("source7-enhancement.txt");
@@ -439,11 +608,21 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
   const record = index?.byStemBranch.get(
     `${calculatedState.dayMaster}|${calculatedState.fourPillars.day.branch}`,
   );
+  // keyword 12 เชี่ยงแซ (เช่น เชี่ยงแซ = กำเนิดใหม่/พัฒนา) — ตามคำกำชับซินแซให้เน้นแก่นของเชี่ยงแซ
+  // (normalize สะกด เซี่ยงแซ/เชี่ยงแซ ที่ต่างกันระหว่างไฟล์นิสัยกับ constants)
+  const normalizeQi = (label: string) => label.replace(/เซี่ยงแซ/g, "เชี่ยงแซ");
+  const qiKeyword = record?.qiLabel
+    ? Object.values(TWELVE_QI_CONTEXT_MAP).find(
+        (entry) => entry.labelThai === normalizeQi(record.qiLabel),
+      )?.contextTag
+    : undefined;
   const segments = [
     imagery,
     record?.stemText ? `ดิถี ${calculatedState.dayMaster}: ${record.stemText}` : null,
     record?.branchText ? `ราศีล่างวัน ${calculatedState.fourPillars.day.branch}: ${record.branchText}` : null,
-    record?.elementText ? `${record.elementLabel} ${record.qiLabel}: ${record.elementText}` : null,
+    record?.elementText
+      ? `${record.elementLabel} ${record.qiLabel}${qiKeyword ? ` (แก่นเชี่ยงแซ: ${qiKeyword})` : ""}: ${record.elementText}`
+      : null,
   ].filter((segment): segment is string => Boolean(segment));
   return segments.length > 0 ? segments.join("\n\n") : null;
 }
@@ -464,6 +643,21 @@ function buildHealthReading(calculatedState: CalculatedStateValue): string | nul
     if (!weakSet.has(element)) {
       segments.push(`ธาตุ${element}มากเกินไป: ${EXCESS_HEALTH_TH[element]}`);
     }
+  }
+
+  // (2b) ตำแหน่งที่ 12 เชี่ยงแซตกหนัก (เจ๊าะ=สูญสิ้น / ซวย=ถดถอย) → ธาตุ/อวัยวะตำแหน่งนั้นต้องระวัง
+  const BAD_HEALTH_QI = new Set(["เจ๊าะ", "ซวย"]);
+  for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
+    const value = calculatedState.fourPillars[pillar];
+    const posQi = resolveDisplayTwelveQiStage(value.stem, value.branch);
+    if (!BAD_HEALTH_QI.has(posQi)) {
+      continue;
+    }
+    const organElement = elementLabel(branchElement(value.branch));
+    const organ = map.get(organElement);
+    segments.push(
+      `${PILLAR_LABEL_TH[pillar]} (${value.stem}${value.branch} → ${posQi}) สภาวะตก ระวังสุขภาพด้านธาตุ${organElement}${organ ? `: ${organ}` : ""}`,
+    );
   }
 
   if (segments.length === 0) {
@@ -502,11 +696,17 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
   const wealthStrength = resolveElementStrengthLabel(calculatedState, wealth);
 
   // หาตำแหน่งที่ดาวลาภปรากฏ (ราศีบน/ล่าง ทั้ง 4 เสา) แล้วสรุปเป็น "แหล่งโชคลาภ"
+  // + อ่านความหมายตาม 12 เชี่ยงแซของแต่ละตำแหน่ง (วิธีทายซินแซ: โชคลาภหลายทาง อ่านทีละตำแหน่ง)
   const sources = new Set<string>();
+  const positionWealthLines: string[] = [];
   for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
     const value = calculatedState.fourPillars[pillar];
     if (stemElement(value.stem) === wealth || branchElement(value.branch) === wealth) {
       sources.add(WEALTH_SOURCE_TH[pillar]);
+      const posQi = resolveDisplayTwelveQiStage(value.stem, value.branch);
+      if (QI_WEALTH_TH[posQi]) {
+        positionWealthLines.push(`• ${WEALTH_SOURCE_TH[pillar]} (${value.stem}${value.branch} → ${posQi}): ${QI_WEALTH_TH[posQi]}`);
+      }
     }
   }
 
@@ -521,9 +721,10 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     segments.push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) มีกำลังปานกลาง ค่อย ๆ สะสมได้ตามความสม่ำเสมอ`);
   }
 
-  // (2) แหล่งโชคลาภตามตำแหน่งเสา
+  // (2) แหล่งโชคลาภตามตำแหน่งเสา + อ่านแต่ละตำแหน่งตาม 12 เชี่ยงแซ
   if (sources.size > 0) {
-    segments.push(`โชคลาภปรากฏที่ ${[...sources].join(" และ ")}`);
+    const header = `โชคลาภปรากฏหลายทาง ที่ ${[...sources].join(" และ ")} — อ่านความหมายแต่ละตำแหน่ง:`;
+    segments.push(positionWealthLines.length > 0 ? `${header}\n${positionWealthLines.join("\n")}` : `โชคลาภปรากฏที่ ${[...sources].join(" และ ")}`);
   }
 
   // (3) ลักษณะลาภผล — ดิถีแข็งคว้าเงินก้อน, ดิถีอ่อนเด่นรายได้สะสมต่อเนื่อง (passive)
@@ -787,6 +988,47 @@ function buildLiuNianYearlyForecast(calculatedState: CalculatedStateValue): stri
   return [lead, ...lines].join("\n");
 }
 
+// ความหมายของเสาในตารางเส้นขีดวัยจร (8 ตัว) — วัยจรเทียบทีละตัวตามความหมายของเสา
+const DAYUN_DIMENSION_TH: Record<PillarKey, string> = {
+  year: "ลูกค้า/สังคม/ผู้ใหญ่",
+  month: "การงาน/พ่อแม่/ธุรกิจ",
+  day: "ภาพรวมตัวเองและคู่",
+  hour: "สิ่งที่ทำ/บริวาร/รุ่นน้อง",
+};
+
+const QI_TIER_OUTCOME_TH: Record<QiTier, string> = {
+  rising: "ส่งเสริม รุ่งเรืองขึ้น",
+  transitional: "ผันผวน ต้องประคอง",
+  falling: "อ่อนแรง ถดถอย ระวังสะดุด",
+};
+
+/** บทเสริม "8 ตัว": วัยจรปัจจุบันเทียบทีละตัวอักษรในผัง → 12 เชี่ยงแซ ทายตามความหมายของเสา */
+function buildDaYunCharacterBreakdown(calculatedState: CalculatedStateValue): string {
+  const current = calculatedState.daYun.find((pillar) => pillar.isCurrent);
+  if (!current) {
+    return "";
+  }
+  const daYunStem = current.stem;
+  const lines: string[] = [];
+  for (const pillar of ["day", "month", "year", "hour"] as PillarKey[]) {
+    const value = calculatedState.fourPillars[pillar];
+    const stemQi = resolveDisplayStemPairStage(daYunStem, value.stem);
+    const branchQi = resolveDisplayTwelveQiStage(daYunStem, value.branch);
+    const parts = [
+      stemQi ? `${value.stem}→${stemQi}` : "",
+      branchQi ? `${value.branch}→${branchQi}` : "",
+    ].filter(Boolean);
+    const worstTier = [stemQi, branchQi]
+      .filter(Boolean)
+      .map(classifyQiTier)
+      .sort((a, b) => (a === "falling" ? -1 : b === "falling" ? 1 : 0))[0] ?? "transitional";
+    lines.push(`${DAYUN_DIMENSION_TH[pillar]} (${parts.join(", ")}): ${QI_TIER_OUTCOME_TH[worstTier]}`);
+  }
+  return lines.length > 0
+    ? `เจาะวัยจรปัจจุบัน (${daYunStem}${current.branch}) เทียบทีละตัวอักษรในผังตามความหมายของเสา:\n${lines.join("\n")}`
+    : "";
+}
+
 function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | null {
   // เจาะลึกช่วงปัจจุบัน + ราว 20 ปีข้างหน้า (4 ช่วง 5 ปี) — ใช้ deepNote จากตารางวัยจรที่คิดครบ 3 มิติแล้ว
   const rows = buildRelationshipLinesMapping(calculatedState);
@@ -823,10 +1065,13 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
     liuNianLine = `ปีจรปัจจุบัน (${liuNian.stem}${liuNian.branch} ธาตุ${elementLabel(lnElement)} เป็น${lnRole}${lnQi ? ` → ${lnQi}` : ""}): ${lnVerdict}`;
   }
 
+  // บทเสริม "8 ตัว": วัยจรปัจจุบันเทียบทีละตัวอักษรในผังตามความหมายของเสา
+  const characterBreakdown = buildDaYunCharacterBreakdown(calculatedState);
+
   // พยากรณ์รายปีแบบเต็ม 20 ปีข้างหน้า (P-B)
   const yearlyForecast = buildLiuNianYearlyForecast(calculatedState);
 
-  return [lead, ...lines, liuNianLine, yearlyForecast].filter(Boolean).join("\n\n");
+  return [lead, ...lines, characterBreakdown, liuNianLine, yearlyForecast].filter(Boolean).join("\n\n");
 }
 
 // ───────── Rev6: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดวัยจร (Relationship Lines Mapping, อ้างอิง M.docx บทเสริม) ─────────
@@ -1181,6 +1426,14 @@ function buildLoveReading(
   }
 
   const dayBranch = calculatedState.fourPillars.day.branch;
+
+  // ตารางหลักวัน (ความรัก: หลักวันเท่านั้น) — ดิถี×ราศีล่างวัน → คำทำนายคู่ครองตรงตามตำรา
+  const dayPillarTable = parseLoveDayPillar();
+  const dayPillarVerdict = dayPillarTable?.get(`${calculatedState.dayMaster}|${dayBranch}`);
+  const dayPillarLine = dayPillarVerdict
+    ? `ลักษณะคู่ครอง (ตารางหลักวัน ${calculatedState.dayMaster}${dayBranch} → ${dayPillarVerdict.qi}): ${dayPillarVerdict.spouse}${dayPillarVerdict.reaction && dayPillarVerdict.reaction !== "-" ? ` — ${dayPillarVerdict.reaction}` : ""}`
+    : "";
+
   const seatQi = pillarBranchQi(calculatedState, "day");
   const seat = `จานคู่ (ราศีล่างหลักวัน ${dayBranch}${seatQi ? ` → ${seatQi}` : ""}): ${
     GOOD_QI.has(seatQi)
@@ -1205,7 +1458,7 @@ function buildLoveReading(
     ? `ช่วงอายุที่เด่นเรื่องคู่ (ดาวคู่ครองธาตุ${spouseLabel} เข้าวัยจร ตั้งแต่วัย 20 ปีขึ้นไป):\n${spouseTiming.join("\n")}`
     : "";
 
-  return [base, dynamic, seat, timingBlock].filter(Boolean).join("\n\n");
+  return [base, dayPillarLine, dynamic, seat, timingBlock].filter(Boolean).join("\n\n");
 }
 
 /** บท 14 สี/ทิศ = สีตาม useful god + สีที่ควรเลี่ยง (officer) + สีกระเป๋า/รถ + ทิศมงคล */
@@ -1232,10 +1485,22 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
   const avoid = `สีที่ควรเลี่ยง: สีธาตุ${officerTh}${avoidColor ? ` (${avoidColor})` : ""} เพราะเป็นธาตุที่พิฆาตและกดดันดิถี`;
 
   const extras: string[] = [];
-  if (usefulColors.length > 0) {
-    extras.push(
-      `สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต): เน้นสีธาตุ${usefulWithColor[0]} (${usefulColors[0]})`,
-    );
+  // สีของใช้เฉพาะเจาะจง — Source7 §3.1 (กระเป๋า=ดิถี×ราศีบนเดือน), §3.2 (รถ=ดิถี×ราศีบนยาม)
+  const dayStem = calculatedState.dayMaster;
+  const monthStem = calculatedState.fourPillars.month.stem;
+  const hourStem = calculatedState.fourPillars.hour.stem;
+  const bagTable = parseSource7ColorTable("3.1");
+  const carTable = parseSource7ColorTable("3.2");
+  const bagColor = bagTable?.get(`${dayStem}|${monthStem}`);
+  const carColor = carTable?.get(`${dayStem}|${hourStem}`);
+  if (bagColor) {
+    extras.push(`สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต) — เทียบดิถี ${dayStem} กับราศีบนหลักเดือน ${monthStem}: ${bagColor}`);
+  } else if (usefulColors.length > 0) {
+    extras.push(`สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต): เน้นสีธาตุ${usefulWithColor[0]} (${usefulColors[0]})`);
+  }
+  if (carColor) {
+    extras.push(`สีรถยนต์ / ของเคลื่อนไหวได้ — เทียบดิถี ${dayStem} กับราศีบนหลักยาม ${hourStem}: ${carColor}`);
+  } else if (usefulColors.length > 0) {
     extras.push(`สีรถยนต์: ${usefulColors.join(" / ")}`);
   }
   extras.push(`ทิศมงคล: ${usefulWithColor.map((element) => ELEMENT_DIRECTION_TH[element]).join(" และ ")}`);
@@ -1250,20 +1515,65 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
   return [...lines, avoid, ...extras].filter(Boolean).join("\n\n");
 }
 
-/** บท 15 องค์เทพ = สิ่งศักดิ์สิทธิ์ตาม useful god + สรรพคุณรายธาตุ + การทำบุญ */
+// เชี่ยงแซดีตาม Source7 §5 (custom เทพ) — กว้างกว่า GOOD_QI: รวม หมอ/ทอ/เอี้ยง ด้วย
+const GOOD_QI_ENHANCE = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง"]);
+
+/** Source7 §5: เทพเฉพาะดวง — วน 8 ตัวอักษร (ราศีบน-ล่าง 4 เสา) ที่ขึ้นเชี่ยงแซดี → เทพประจำตัวอักษรนั้น */
+function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
+  const tables = parseSource7CustomDeities();
+  if (!tables) {
+    return [];
+  }
+  const dmStem = calculatedState.dayMaster;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
+    const { stem, branch } = calculatedState.fourPillars[pillar];
+    // ราศีบน (stem): เชี่ยงแซเทียบดิถี-กับ-ราศีบน
+    const stemQi = resolveDisplayStemPairStage(dmStem, stem);
+    const stemDeity = tables.upper.get(stem);
+    if (stemDeity && GOOD_QI_ENHANCE.has(stemQi) && !seen.has(stemDeity)) {
+      seen.add(stemDeity);
+      out.push(`ราศีบน${PILLAR_LABEL_TH[pillar]} ${stem} (${stemQi}): ${stemDeity}`);
+    }
+    // ราศีล่าง (branch): ใช้ 12 เชี่ยงแซที่ engine คำนวณไว้ของกิ่งเสานั้น
+    const branchQi = pillarBranchQi(calculatedState, pillar)
+      || resolveDisplayTwelveQiStage(dmStem, branch);
+    const branchDeity = tables.lower.get(branch);
+    if (branchDeity && GOOD_QI_ENHANCE.has(branchQi) && !seen.has(branchDeity)) {
+      seen.add(branchDeity);
+      out.push(`ราศีล่าง${PILLAR_LABEL_TH[pillar]} ${branch} (${branchQi}): ${branchDeity}`);
+    }
+  }
+  return out;
+}
+
+/** บท 15 องค์เทพ = เทพเฉพาะดวง (8 ตัวอักษรเชี่ยงแซดี, Source7 §5) นำ + สิ่งศักดิ์สิทธิ์ตาม useful god */
 function buildDeitiesReading(calculatedState: CalculatedStateValue): string | null {
   const section = parseSource7ElementSection("2.2", 2);
   if (!section) {
     return null;
   }
-  const lines = resolveUsefulElements(calculatedState)
+  const elementLines = resolveUsefulElements(calculatedState)
     .filter((element) => section.has(element))
     .map((element) => {
       const [merit, deities] = section.get(element)!;
       const benefit = ELEMENT_DEITY_BENEFIT_TH[element];
       return `ธาตุ${element} (useful god): สิ่งศักดิ์สิทธิ์ ${deities ?? "-"}${benefit ? ` (ช่วยเรื่อง: ${benefit})` : ""}; การทำบุญ ${merit ?? "-"}`;
     });
-  return lines.length > 0 ? lines.join("\n\n") : null;
+  if (elementLines.length === 0) {
+    return null;
+  }
+
+  const custom = buildCustomDeities(calculatedState);
+  const blocks: string[] = [];
+  if (custom.length > 0) {
+    blocks.push(
+      `เทพคุ้มครองดวงเฉพาะดวง (เลือกจากตัวอักษรในผังที่ขึ้นเชี่ยงแซดี):\n${custom.join("\n")}`,
+    );
+  }
+  blocks.push(`สิ่งศักดิ์สิทธิ์ตามธาตุที่ดวงต้องการ (useful god):\n${elementLines.join("\n\n")}`);
+  return blocks.join("\n\n");
 }
 
 /** บท 2 อาชีพ = กรอบ (ดิถีแข็ง-อ่อน + ดาวถ่ายเท=วิธีหาเงิน) + สายงานตามธาตุที่ดวงต้องการ */
@@ -1296,9 +1606,16 @@ function buildCareerReading(calculatedState: CalculatedStateValue): string | nul
     ? `อาชีพที่ควรเลี่ยง (ธาตุ${avoidTh} = ธาตุที่พิฆาตดิถี): ${careers.get(avoidTh)!}`
     : `อาชีพที่ควรเลี่ยงคือสายงานธาตุ${avoidTh} ซึ่งเป็นธาตุที่กดดันและบั่นทอนกำลังของดวง`;
 
-  // กลุ่มลูกค้า/ตลาด จากเสาปี (Target Market = สังคม/ฐานคนรอบตัว)
+  // Target/Market — วิธีทายที่ซินแซกำชับ: ดู 12 เชี่ยงแซของเสาปี (ราศีบน-vs-ล่าง)
+  const yearPillar = calculatedState.fourPillars.year;
+  const yearQi = resolveDisplayTwelveQiStage(yearPillar.stem, yearPillar.branch);
+  const marketLine = QI_MARKET_TH[yearQi]
+    ? `กลุ่มลูกค้า/ตลาดเป้าหมาย (Target/Market — ดูเชี่ยงแซเสาปี ${yearPillar.stem}${yearPillar.branch} → ${yearQi}): ${QI_MARKET_TH[yearQi]}`
+    : "";
+
+  // กลุ่มลูกค้า/ตลาด จากเสาปี (เสริมตามธาตุ = สังคม/ฐานคนรอบตัว)
   const yearElement = elementLabel(branchElement(calculatedState.fourPillars.year.branch));
-  const customer = `กลุ่มลูกค้า/ตลาดที่เข้ากับดวง (ดูจากเสาปี ธาตุ${yearElement}): ${YEAR_CUSTOMER_TH[yearElement]}`;
+  const customer = `กลุ่มลูกค้าตามธาตุเสาปี (ธาตุ${yearElement}): ${YEAR_CUSTOMER_TH[yearElement]}`;
 
   // กลุ่มที่ "นำเงินเข้า" จากดาวลาภ (财 = ธาตุที่ดิถีพิฆาต) — ตลาดที่ยอมจ่ายให้ดวงนี้จริง
   const wealthLabel = elementLabel(CONTROLS[dm] as SupportedElementValue);
@@ -1315,7 +1632,7 @@ function buildCareerReading(calculatedState: CalculatedStateValue): string | nul
   // ดาวม้าเหิน (เอี้ยม่า) → ช่องทางออนไลน์/ต่างประเทศ/เดินทาง
   const horse = hasTravelingHorse(calculatedState) ? TRAVELING_HORSE_CHANNEL_TH : "";
 
-  return [frame, moneyWay, ...lists, avoid, customer, wealthCustomer, outputChannel, peach, horse]
+  return [frame, moneyWay, ...lists, avoid, marketLine, customer, wealthCustomer, outputChannel, peach, horse]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -1331,8 +1648,18 @@ function buildPartnershipReading(calculatedState: CalculatedStateValue): string 
     return null;
   }
   const dmWeak = band === "weak" || band === "very-weak";
+
+  // ราศีล่างวัน × 12 เชี่ยงแซ → "ควรมีหุ้นส่วนหรือไม่" (วิธีเดียวกับบท8: ดีมีได้ เสียมีไม่ได้)
+  const dayBranch = calculatedState.fourPillars.day.branch;
+  const dayQi = pillarBranchQi(calculatedState, "day");
+  const seatVerdict = GOOD_QI_ENHANCE.has(dayQi)
+    ? `ราศีล่างหลักวัน ${dayBranch} (${dayQi}) ขึ้นเชี่ยงแซดี → มีหุ้นส่วน/ผู้ร่วมงานได้ และมักได้คนที่ส่งเสริมกัน`
+    : FOE_QI.has(dayQi)
+      ? `ราศีล่างหลักวัน ${dayBranch} (${dayQi}) ขึ้นเชี่ยงแซเสีย → ควรระวังการมีหุ้นส่วน เสี่ยงขัดแย้งหรือถูกทิ้งภาระ ทำเองหรือจ้างเป็นงาน ๆ จะปลอดภัยกว่า`
+      : `ราศีล่างหลักวัน ${dayBranch}${dayQi ? ` (${dayQi})` : ""} อยู่ระดับกลาง → มีหุ้นส่วนได้แต่ต้องเลือกและตกลงบทบาทให้ชัด`;
+
   const stance = dmWeak
-    ? "ด้วยกำลังดิถีที่ไม่มากนัก การมีหุ้นส่วนที่ไว้ใจได้จะช่วยแบ่งเบาภาระและเติมกำลังในส่วนที่ขาด ทำให้ธุรกิจเดินได้ไกลกว่าการลุยลำพัง"
+    ? "ด้วยกำลังดิถีที่ไม่มากนัก การมีหุ้นส่วนที่ไว้ใจได้จะช่วยแบ่งเบาภาระและเติมกำลังในส่วนที่ขาด ทำให้ธุรกิจเดินได้ไกลกว่าการลุยลำพัง โดยเฉพาะคนที่เป็นผู้ใหญ่กว่าหรือเป็นพี่เลี้ยงคอยชี้แนะ"
     : "ด้วยกำลังดิถีที่เข้มแข็ง คุณรันงานเองได้คล่อง การมีหุ้นส่วนควรเลือกเฉพาะคนที่เติมส่วนที่ขาดจริง ๆ ไม่จำเป็นต้องมีก็ได้";
   const useful = resolveUsefulElements(calculatedState);
   const partner = useful.length > 0
@@ -1368,7 +1695,7 @@ function buildPartnershipReading(calculatedState: CalculatedStateValue): string 
   const capitalBlock = capitalTiming.length > 0
     ? `ช่วงอายุที่เด่นเรื่องทุน/เงินก้อนจากการร่วมมือ (ดาวลาภเข้าวัยจร):\n${capitalTiming.join("\n")}`
     : "";
-  return [stance, `แนวทางทำธุรกิจ/หุ้นส่วน: ${verdict}`, partner, timingBlock, backerBlock, capitalBlock].filter(Boolean).join("\n\n");
+  return [seatVerdict, stance, `แนวทางทำธุรกิจ/หุ้นส่วน: ${verdict}`, partner, timingBlock, backerBlock, capitalBlock].filter(Boolean).join("\n\n");
 }
 
 // ───────── Batch 4: 5 บทที่เหลือ — derive จากกฎ engine (PILLAR_CONTEXT_MAP + relation + 12 เชี่ยงแซ) ─────────
@@ -1421,6 +1748,39 @@ const OUTPUT_CHANNEL_TH: Record<ThaiElement, string> = {
   "ดิน": "การบอกต่อแบบปากต่อปาก ความน่าเชื่อถือ ของจริงจับต้องได้ และฐานลูกค้าประจำที่ดูแลระยะยาว",
   "ทอง": "ระบบ แบรนด์ที่คมชัด ข้อมูล/ตัวเลขชัดเจน และช่องทางที่ดูพรีเมียมมีมาตรฐาน",
   "น้ำ": "โซเชียลมีเดีย การสื่อสารแบบลื่นไหล เครือข่าย และช่องทางออนไลน์ที่กระจายตัวเร็ว",
+};
+
+/** Target/Market ตาม 12 เชี่ยงแซของเสาปี (ราศีบน-vs-ล่าง) — ตามวิธีทายที่ซินแซกำชับ
+ * เช่น แป่ = ลูกค้าทางไกล/ออนไลน์ + สุขภาพ + ของทันสมัย */
+const QI_MARKET_TH: Record<string, string> = {
+  "เชี่ยงแซ": "ลูกค้ากลุ่มใหม่ ตลาดเกิดใหม่ที่ขยายฐานเพิ่มได้เรื่อย ๆ (upscale ได้ต่อเนื่อง)",
+  "หมกยก": "ลูกค้าสายไลฟ์สไตล์ ความงาม บริการที่ต้องคอยดูแลปรับจูน กลุ่มที่เปลี่ยนรสนิยมบ่อย",
+  "กวงตั่ว": "ลูกค้าที่ซื้อด้วยภาพลักษณ์/แบรนด์/ความน่าเชื่อถือ กลุ่มที่ใส่ใจสถานะ",
+  "ลิ่มกัว": "ลูกค้าองค์กร ราชการ ผู้มีตำแหน่ง และกลุ่มที่ต้องการมาตรฐาน/สัญญาเป็นทางการ",
+  "ตี้อ๋วง": "ตลาดใหญ่ กำลังซื้อสูง ขยายสเกลได้มาก เหมาะลุยตลาดหลัก/ลูกค้ารายใหญ่",
+  "ซวย": "ลูกค้ากลุ่มที่ต้องประคองดูแลต่อเนื่อง ตลาดเริ่มอิ่มตัว เน้นรักษาฐานเดิม",
+  "แป่": "ลูกค้าทางไกล/ออนไลน์/ต่างถิ่น รวมถึงกลุ่มสุขภาพ-คนป่วย และสินค้าทันสมัย/เทคโนโลยี/แฟชั่น",
+  "ซี่": "ลูกค้ากลุ่มเฉพาะ (นิช) ตลาดนิ่ง เน้นสินค้าจำเป็นหรือของที่ขาดไม่ได้",
+  "หมอ": "ลูกค้ากลุ่มสะสม คลังสินค้า ของเก่า อสังหาฯ และธุรกิจที่เก็บกักมูลค่าไว้ยาว ๆ",
+  "เจ๊าะ": "ลูกค้าเปลี่ยนหน้าบ่อย ตลาดผันผวน ต้องหากลุ่มใหม่และปรับตัวเสมอ",
+  "ทอ": "ลูกค้ากลุ่มเริ่มต้น/บ่มเพาะ ธุรกิจค่อย ๆ โตจากเล็กไปใหญ่ เก็บทีละนิด",
+  "เอี้ยง": "ลูกค้ากลุ่มที่ต้องบำรุงดูแลระยะยาว เช่น สมาชิก ซับสคริปชัน หรือบริการต่อเนื่อง",
+};
+
+/** ลักษณะลาภผลตาม 12 เชี่ยงแซของตำแหน่งที่ดาวลาภปรากฏ — โชคลาภหลายทาง อ่านตามแต่ละตำแหน่ง */
+const QI_WEALTH_TH: Record<string, string> = {
+  "เชี่ยงแซ": "โชคลาภสายใหม่ที่ค่อย ๆ โตและต่อยอดเพิ่มได้เรื่อย ๆ",
+  "หมกยก": "เงินที่มาจากบริการ/เสน่ห์ แต่ไม่นิ่ง ต้องคอยปรับจูนและดูแล",
+  "กวงตั่ว": "ลาภจากภาพลักษณ์ ชื่อเสียง และความน่าเชื่อถือที่สั่งสมไว้",
+  "ลิ่มกัว": "ลาภจากตำแหน่ง อำนาจหน้าที่ หรือดีลที่เป็นทางการ",
+  "ตี้อ๋วง": "ลาภก้อนใหญ่ในจังหวะรุ่ง กำลังซื้อสูง ขยายได้มาก",
+  "ซวย": "ลาภที่เริ่มแผ่ว ต้องประคอง ระวังรายจ่ายกัดกร่อน",
+  "แป่": "ลาภจากทางไกล/ออนไลน์ หรือจากการแก้ปัญหา/ดูแลคนป่วย มักมาแบบเงินหมุน",
+  "ซี่": "ลาภเฉพาะทาง ตลาดนิ่ง ต้องเจาะกลุ่มที่จำเป็นจริง",
+  "หมอ": "ลาภแบบสะสม เก็บกักเป็นคลัง/ทรัพย์สินเก่า ค่อย ๆ เพิ่มมูลค่า",
+  "เจ๊าะ": "ลาภผันผวน ได้มาเสียไป ต้องหาแหล่งใหม่อยู่เสมอ",
+  "ทอ": "ลาภเริ่มต้นเล็ก ๆ ค่อยสะสมจากน้อยไปมาก (เก็บเล็กผสมน้อย)",
+  "เอี้ยง": "ลาภจากการบำรุงดูแลระยะยาว รายได้ต่อเนื่องแบบสมาชิก/ซับสคริปชัน",
 };
 
 /** ช่องทางจากดาวดอกท้อ (桃花) — ใช้เสน่ห์/ภาพลักษณ์/คอนเทนต์ดึงคน */
@@ -1507,41 +1867,106 @@ function buildFamilyReading(calculatedState: CalculatedStateValue): string | nul
 }
 
 /** บท 8 เพื่อน/ศัตรู = คู่ธาตุ (same) + 12 เชี่ยงแซ ดี→เพื่อน เสีย→ศัตรู */
-function buildFriendsReading(calculatedState: CalculatedStateValue): string | null {
-  const dm = dayMasterElement(calculatedState);
-  const carriers: string[] = [];
-  for (const pillar of ["year", "month", "hour"] as PillarKey[]) {
+// ตำแหน่งเสา → กลุ่มคนที่เกี่ยวข้องในบท "เพื่อน/ศัตรู" (ใช้ตำแหน่งทาย ตามวิธีซินแซ)
+const FRIEND_POSITION_TH: Record<PillarKey, string> = {
+  year: "คนในสังคม/เพื่อนร่วมรุ่น/วงกว้างภายนอก",
+  month: "พี่น้อง เพื่อนร่วมงาน และคนแวดล้อมการงาน",
+  day: "คู่ครองและคนใกล้ชิดที่สุด",
+  hour: "ลูกน้อง รุ่นน้อง และบริวาร",
+};
+
+// 12 เชี่ยงแซเสีย (ศัตรู) และ 50/50 (ต้องประคอง) ตาม Source/ซินแซ
+const FOE_QI = new Set(["ซวย", "ซี่", "เจ๊าะ"]);
+const MIXED_QI = new Set(["หมกยก", "แป่"]);
+
+/** อ่าน 7 ตัวอักษรที่เหลือ (ยกเว้นดิถี) ตาม 12 เชี่ยงแซ → มิตร/ศัตรู/ต้องประคอง ตามความหมายของเสา */
+function scanPositionRelations(
+  calculatedState: CalculatedStateValue,
+): Array<{ pillar: PillarKey; char: string; qi: string; kind: "friend" | "foe" | "manage" }> {
+  const dmStem = calculatedState.dayMaster;
+  const out: Array<{ pillar: PillarKey; char: string; qi: string; kind: "friend" | "foe" | "manage" }> = [];
+  const positions: Array<{ pillar: PillarKey; layer: "stem" | "branch" }> = [
+    { pillar: "year", layer: "stem" },
+    { pillar: "year", layer: "branch" },
+    { pillar: "month", layer: "stem" },
+    { pillar: "month", layer: "branch" },
+    { pillar: "day", layer: "branch" }, // ราศีล่างวัน (ข้ามราศีบนวัน = ดิถีเอง)
+    { pillar: "hour", layer: "stem" },
+    { pillar: "hour", layer: "branch" },
+  ];
+  for (const { pillar, layer } of positions) {
     const value = calculatedState.fourPillars[pillar];
-    const branchIsSame = branchElement(value.branch) === dm;
-    const stemIsSame = stemElement(value.stem) === dm;
-    if (!branchIsSame && !stemIsSame) {
+    const char = layer === "stem" ? value.stem : value.branch;
+    const qi = layer === "branch"
+      ? pillarBranchQi(calculatedState, pillar)
+      : resolveDisplayStemPairStage(dmStem, char);
+    if (!qi) {
       continue;
     }
-    const qi = pillarBranchQi(calculatedState, pillar);
-    const verdict = GOOD_QI.has(qi) ? "เพื่อนหนุน (เชี่ยงแซดี)" : BAD_QI.has(qi) ? "คู่แข่ง/ศัตรูแย่งชิง (เชี่ยงแซเสีย)" : "เพื่อนแบบกลาง ๆ";
-    carriers.push(`${PILLAR_LABEL_TH[pillar]} ${stemIsSame ? value.stem : value.branch} (คู่ธาตุ${elementLabel(dm)}${qi ? `, ${qi}` : ""}) = ${verdict}`);
+    const kind = GOOD_QI_ENHANCE.has(qi) ? "friend" : FOE_QI.has(qi) ? "foe" : MIXED_QI.has(qi) ? "manage" : null;
+    if (kind) {
+      out.push({ pillar, char, qi, kind });
+    }
   }
-  const lead = "เพื่อน/ศัตรูดูจากคู่ธาตุ (ธาตุเดียวกับดิถี): คู่ธาตุที่อยู่ช่วง 12 เชี่ยงแซดีคือเพื่อนที่หนุน ถ้าเชี่ยงแซเสียคือคู่แข่งที่แย่งทรัพยากร";
-  if (carriers.length === 0) {
-    return `${lead}\n\nไม่พบคู่ธาตุเด่นบนชั้นหลัก เพื่อน/คู่แข่งจึงมีบทบาทไม่มากในโครงดวงหลัก แต่เข้ามาเป็นช่วงตามวัยจรที่คู่ธาตุปรากฏ`;
-  }
-  return `${lead}\n\n${carriers.join("\n")}`;
+  return out;
 }
 
-/** บท 10 ลูกน้อง/บริวาร = เสายาม + ดาวถ่ายเท (output) */
+function buildFriendsReading(calculatedState: CalculatedStateValue): string | null {
+  const lead =
+    "เพื่อน/ศัตรูดูจาก “ตัวอักษรในผัง” ที่ขึ้น 12 เชี่ยงแซ — ตำแหน่งที่ขึ้นเชี่ยงแซดีคือมิตรแท้/ผู้สนับสนุน ส่วนตำแหน่งที่เชี่ยงแซเสีย (ซวย/ซี่/เจ๊าะ) คือคู่แข่ง/ศัตรู และทายตามความหมายของเสานั้น";
+  const scan = scanPositionRelations(calculatedState);
+  const lines = scan.map(({ pillar, char, qi, kind }) => {
+    const who = FRIEND_POSITION_TH[pillar];
+    const verdict = kind === "friend"
+      ? `มิตรแท้/ผู้สนับสนุน — ${who} เข้ามาหนุน`
+      : kind === "foe"
+        ? `ระวังเป็นคู่แข่ง/ศัตรู — แรงเสียดทานจาก${who}`
+        : `${who} แบบที่ต้องคอยประคองและเคลียร์ปัญหา (ดี-ร้ายปนกัน)`;
+    return `${PILLAR_LABEL_TH[pillar]} ${char} (${qi}) = ${verdict}`;
+  });
+  if (lines.length === 0) {
+    return `${lead}\n\nผังหลักไม่มีตำแหน่งเด่นด้านมิตร/ศัตรูชัดเจน เพื่อนและคู่แข่งจึงเข้ามาเป็นช่วงตามวัยจร`;
+  }
+  return `${lead}\n\n${lines.join("\n")}`;
+}
+
+/** บท 10 ลูกน้อง/บริวาร = เสายาม (ฐานบริวาร) + ดาวถ่ายเท (output) อ่านตาม 12 เชี่ยงแซ ดีคือดี เสียคือเสีย */
 function buildSubordinateReading(calculatedState: CalculatedStateValue): string | null {
   const dm = dayMasterElement(calculatedState);
   const output = GENERATES[dm] as SupportedElementValue;
   const hour = calculatedState.fourPillars.hour;
   const qi = pillarBranchQi(calculatedState, "hour");
+
+  // (1) ฐานบริวารหลัก = เสายาม
+  const hourVerdict = GOOD_QI_ENHANCE.has(qi)
+    ? "เชี่ยงแซดีที่เสายาม: บริวาร/ทีมงานมีคุณภาพ ช่วยแปลงงานเป็นผลลัพธ์ได้ดี"
+    : FOE_QI.has(qi)
+      ? "เชี่ยงแซเสียที่เสายาม: ต้องดูแลบริวารใกล้ชิด อาจมีปัญหาคนในทีมหรือภาระจุกจิก"
+      : MIXED_QI.has(qi)
+        ? "เชี่ยงแซ50/50 ที่เสายาม: บริวารแบบที่ต้องคอยขัดเกลาและประคอง เหนื่อยกับการดูแลคน (เหมือนน้ำขุ่นที่ต้องกรองก่อนใช้)"
+        : "บริวารทำงานได้ตามจังหวะ ควรมอบหมายงานที่ตรงทักษะ";
+
+  // (2) ดาวถ่ายเท (output) ตามตำแหน่ง = ลูกน้อง/ผลงาน อ่านตาม 12 เชี่ยงแซ (ไม่รวมเสาวัน = ตัวเอง/คู่)
+  const outputLines: string[] = [];
+  for (const pillar of ["year", "month", "hour"] as PillarKey[]) {
+    const value = calculatedState.fourPillars[pillar];
+    if (branchElement(value.branch) !== output && stemElement(value.stem) !== output) {
+      continue;
+    }
+    const oqi = pillarBranchQi(calculatedState, pillar);
+    const tone = GOOD_QI_ENHANCE.has(oqi)
+      ? "ลูกน้อง/ผลงานช่วงนี้เดินได้ดี ส่งต่อเป็นผลลัพธ์ได้"
+      : FOE_QI.has(oqi)
+        ? "ลูกน้อง/ผลงานติดขัด ต้องคุมใกล้ชิด"
+        : "ลูกน้อง/ผลงานต้องคอยประคองและขัดเกลา";
+    outputLines.push(`${PILLAR_LABEL_TH[pillar]} (ดาวถ่ายเทธาตุ${elementLabel(output)}${oqi ? `, ${oqi}` : ""}) = ${tone}`);
+  }
+
   return [
-    `ลูกน้อง/บริวารดูจากเสายาม (${PILLAR_CONTEXT_MAP.hour.businessPerson}) ร่วมกับดาวถ่ายเท (ธาตุ${elementLabel(output)})`,
+    `ลูกน้อง/บริวารดูจากเสายาม (${PILLAR_CONTEXT_MAP.hour.businessPerson}) ร่วมกับดาวถ่ายเท (ธาตุ${elementLabel(output)}) อ่านตาม 12 เชี่ยงแซ ดีคือดี เสียคือเสีย`,
     `เสายาม ${hour.stem}${hour.branch} ธาตุ${elementLabel(stemElement(hour.stem))}${qi ? ` ช่วง ${qi}` : ""} = ฐานของบริวารและผลงานที่สร้างต่อ`,
-    GOOD_QI.has(qi)
-      ? "เชี่ยงแซดีที่เสายาม: บริวาร/ทีมงานมีคุณภาพ ช่วยแปลงงานเป็นผลลัพธ์ได้ดี"
-      : BAD_QI.has(qi)
-        ? "เชี่ยงแซเสียที่เสายาม: ต้องดูแลบริวารใกล้ชิด อาจมีปัญหาคนในทีมหรือภาระจุกจิก"
-        : "บริวารทำงานได้ตามปกติ ควรมอบหมายงานที่ตรงทักษะ",
+    hourVerdict,
+    ...outputLines,
   ].join("\n\n");
 }
 
@@ -1659,9 +2084,16 @@ export function buildTopicHumanReading(
   topicId: string,
   rawInput?: RawInputValue,
 ): string | null {
-  const body = buildTopicReadingBody(calculatedState, topicId, rawInput);
+  let body = buildTopicReadingBody(calculatedState, topicId, rawInput);
   if (body == null) {
-    return null;
+    // fallback: ดึงพื้นฐานจากตำราเคี้ยงคุง (ยกเว้นหัวข้อที่ null เพราะขาด input เช่น ความรักต้องมีเพศ)
+    if (KHEANGKHUNG_FALLBACK_EXCLUDE.has(topicId)) {
+      return null;
+    }
+    body = buildKheangkhungFallback(topicId);
+    if (body == null) {
+      return null;
+    }
   }
   return composeParagraphs([
     CHAPTER_INTRO_TH[topicId],

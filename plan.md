@@ -20,27 +20,64 @@
 **Export .docx** — ปกกรอบสีมงคล + สารบัญ(TOC) + เลขหน้า + ตารางวัยจร 5 ปี + บทเสริม(LLM แต่งคำ) + รับ override ฉบับ LLM
 
 **ตรวจสอบ**
-- เทสต์: **483 passed / 14 failed** (14 = corpus pre-existing ไม่เกี่ยวงานนี้) — 0 regression ตลอด
-- Verify จริง Gemini: `scripts/verify-reading-llm.ts` (ผ่านทุกเกณฑ์) + เทียบ your life code 6 เคสทีละบท (`out/ylc-compare/`)
+- เทสต์: **499 passed / 14 failed** (14 = corpus pre-existing/ENOENT ไม่เกี่ยวงานนี้) — 0 regression ตลอด
+- Verify จริง Gemini: `scripts/verify-reading-llm.ts` (ผ่านทุกเกณฑ์) + `scripts/compare-llm-vs-aigen.ts` (เทียบ ai gen M.docx ทีละบท) + เทียบ your life code 6 เคส
+
+## 🧾 สรุปงาน session ล่าสุด (ยังไม่ commit — ดู N1)
+1. **N2** strength profile coverage audit (live DB ครบ 30/30) — `scripts/audit-strength-state-coverage.ts`
+2. **N3** 从强 dominance model (สิริกัญญา 6.25→7.0 แข็งมาก) — `symbolic-engine.strength.ts`, `operator-strength.ts`, `tests/strength-band-labeled.test.ts`
+3. **N5** ฝัง source จริง 4 ไฟล์ + ซินแซ-corrections 15 บท (รายละเอียดด้านล่าง) — `topic-knowledge.ts`, `pillar-display.ts` (reuse), `reading-phrases.ts`, `scripts/extract-source-docs.py`, `knownlage/extracted/{love-day-pillar,source7-custom,kheangkhung-reference}.txt`
+4. **structural บท 8/9/10/12** + **ตำราเคี้ยงคุง fallback** + **LLM prompt คงตารางบท 3/12**
+5. เทสต์ใหม่ `tests/source-integration.test.ts` (11) · อัปเดต `tests/real-case-1993-11-24.test.ts` (subordinate)
+
+### N5 — ฝัง Source จริง + ซินแซ-corrections (จาก example/ai gen M.docx) — ✅ DONE (รอบนี้)
+ดึง source ต้นทางใน `docs/` + คำแก้ของซินแซในไฟล์ ai-gen เข้า engine deterministic:
+- **Phase 0:** `scripts/extract-source-docs.py` → extract เป็น `knownlage/extracted/{love-day-pillar,source7-custom,kheangkhung-reference}.txt`
+- **บท15 เทพ custom (Source7 §5):** `buildCustomDeities` — วน 8 ตัวอักษรในผังที่ขึ้นเชี่ยงแซดี (`GOOD_QI_ENHANCE`) → เทพประจำราศีบน/ล่าง (ตาราง 6/7) นำหน้า แล้วตามด้วยเทพรายธาตุเดิม
+- **บท14 สีของใช้ (Source7 §3.1/§3.2):** `parseSource7ColorTable` — สีกระเป๋า=ดิถี×ราศีบนเดือน, สีรถ=ดิถี×ราศีบนยาม จากตารางจริง
+- **บท7 ความรัก (xlsx หลักวันเท่านั้น):** `parseLoveDayPillar` — ดิถี×ราศีล่างวัน → คำทำนายคู่ครองตรงตำรา แทรกนำ
+- **บท1 บุคลิก:** เติม keyword 12 เชี่ยงแซ (`TWELVE_QI_CONTEXT_MAP`, normalize สะกด เซ/เช) เน้นแก่นเชี่ยงแซ (พัฒนา/เกิดใหม่)
+- **วิธีการทาย (structural):** บท2 Target/Market = 12 เชี่ยงแซเสาปี (`QI_MARKET_TH`) · บท3 โชคลาภหลายตำแหน่งตาม 12 เชี่ยงแซ (`QI_WEALTH_TH`) · บท13 ตำแหน่งเจ๊าะ/ซวย → อวัยวะตำแหน่งนั้น
+- **structural บท 8/9/10/12 เชิงลึก (รอบนี้):** บท8 สแกน 7 ตำแหน่ง × 12 เชี่ยงแซ → มิตร/ศัตรู/ต้องประคอง ตามความหมายเสา (`scanPositionRelations`) · บท9 นำด้วยราศีล่างวัน × เชี่ยงแซ (มีได้/ไม่ได้) · บท10 หมกยก/แป่ ที่เสายาม = บริวารต้องขัดเกลา (แก้ที่ ai-gen ฟ้องว่าทายผิด) + สแกนดาวถ่ายเทรายตำแหน่ง · บท12 บทเสริม "8 ตัว" — วัยจรปัจจุบันเทียบทีละตัวอักษร (`buildDaYunCharacterBreakdown`: ภาพรวม/การงาน/ลูกค้า-ผู้ใหญ่/บริวาร)
+- **ตำราเคี้ยงคุง runtime fallback:** `findKheangkhungReference(keywords)` (export) + `buildKheangkhungFallback(topicId)` + `KHEANGKHUNG_TOPIC_KEYWORDS` — wire ใน `buildTopicHumanReading`: ถ้า builder หลักคืน null (ขาดองค์ความรู้) ดึง excerpt จากตำราเคี้ยงคุงแทน (ยกเว้น love_partner ที่ null เพราะขาดเพศ)
+- **เทสต์:** `tests/source-integration.test.ts` (11) ผ่าน + อัปเดต real-case-1993 (subordinate หมกยก→ขัดเกลา) · full suite **499 passed / 14 failed** (14 = corpus ENOENT เดิม, 0 regression) · export `out/M-check.docx` มีเนื้อหาใหม่ครบ
+- **LLM prompt — คงตารางบท 3/12:** engine ไม่ต้องแก้ (ground ครบแล้ว) — แก้เฉพาะ `reading-llm.ts`: เพิ่ม `preserveDetail` ใน `ReadingTopicPrompt` + set ที่ wealth/turning_points → `buildSystemInstruction` ผ่อนเพดาน 150 คำ บังคับคงทุก bullet ของตาราง (บท3 โชคลาภ ปี/เดือน/ยาม, บท12 ตาราง 8 ตัว 4 มิติ + ป้าย [ยุคทอง]/[เฝ้าระวัง]) · gen ใหม่ยืนยันตารางครบ บทอื่นยังกระชับเดิม · เครื่องมือ verify: `scripts/compare-llm-vs-aigen.ts`
 
 ## ▶ แผนถัดไป (เสนอ) — เรียงตามความคุ้ม
 
 ### N1 — Commit + ความปลอดภัย (ทำก่อน, จำเป็น)
-- งานทั้ง session **ยังไม่ได้ commit เลย** → สร้าง branch + commit เป็นชุด (engine A1-A5 / prompt B1-B2+กระชับ / docx / liu nian) กันหาย
+- งาน session ล่าสุด **ยังไม่ได้ commit** → สร้าง branch + commit เป็นชุดตามหัวข้อ กันหาย เสนอแยกเป็น:
+  1. `feat(strength): 从强 dominance + coverage audit` (N2+N3)
+  2. `feat(knowledge): ingest source7 §5/§3 + love day-pillar + 60-persona keyword` (N5 data + บท1/7/14/15)
+  3. `feat(reading): position×12-qi structural บท2/3/8/9/10/12/13` (วิธีการทาย)
+  4. `feat(knowledge): kheangkhung reference fallback`
+  5. `feat(reading-llm): preserveDetail คงตารางบท3/12`
 - **Revoke Gemini API key** เก่าถ้าเคยหลุดในแชต แล้วออกใหม่
+- หมายเหตุ: `out/` gitignored แล้ว · `docs/Source7…docx` ที่ขึ้น modified เป็นการแก้ของผู้ใช้เอง (ไม่ใช่จากงานนี้)
 
-### N2 — Production data backfill (กัน regression เงียบจาก A2)
+### N2 — Production data backfill (กัน regression เงียบจาก A2) — ✅ DONE (รอบนี้)
 - A2 ทำให้บางดวง reclassify (เช่น 己 → "แข็งแรง/สมดุล") → **DB ต้องมี profile ครบทุก (dayMaster × strengthState)** ใน `bazi_day_master_strength_states` ไม่งั้น narrative fallback เป็น "score X"
-- ตรวจ/เติม profile ที่ขาด (เริ่มจาก state "แข็งแรง/สมดุล" ของดิถีที่พบบ่อย)
+- ✅ สร้าง `scripts/audit-strength-state-coverage.ts` (`npm run db:audit:strength`) ตรวจ coverage จริงบน live DB ตาม resolver เดียวกับ repository
+- ✅ **ผล: live DB ครบ 30/30 (10 ดิถี × 3 canonical state)** — ไม่มี combo ขาด, ไม่มี "score X" fallback แล้ว; script เป็น guard รัน reseed ครั้งถัดไป (exit 1 ถ้าขาด)
 
-### N3 — A2 รอบสอง: band ให้แม่นระดับ "แข็งมาก" (ทางเลือก, ต้องมี dataset)
-- ตอนนี้ band ถูกระดับหลัก แต่สิริกัญญาได้ "แข็ง" (doc "แข็งมาก") ต่าง 1 ระดับ
-- ต้องมี: **labeled dataset ครอบ "สมดุล/แข็งมาก" 3-5 ดวง** + เพิ่ม **โมเดล drainage/官杀 pressure** (ดวงถูกธาตุพิฆาตล้อมควรอ่อนแม้มีราก) — ดูรายละเอียด P2 → A2 ด้านล่าง
+### N3 — A2 รอบสอง: band ระดับ "แข็งมาก" — ✅ DONE (รอบนี้)
+- ✅ เพิ่มโมเดล **从强 dominance** (`resolveDominanceBonus` ใน `symbolic-engine.strength.ts` + `OPERATOR_DOMINANCE` ใน `operator-strength.ts`): นับสัดส่วนธาตุพวกพ้อง(比劫)+อุปถัมภ์(印) จาก 8 หน่วย (ราศีบน4 + 本气ราศีล่าง4) → ≥0.7 +0.75, ≥0.6 +0.5
+- ✅ **gate ที่ baseScore ≥ 5.5** (ขอบล่าง band แข็ง) → ดวงสมดุล/อ่อน (locked golden ทุกตัว ≤4.65) ไม่ถูกแตะ = **0 regression by construction**
+- ✅ ผล: สิริกัญญา 壬 **6.25 แข็ง → 7.0 แข็งมาก** (ตรง doc) · ดวงอื่นคงเดิมเป๊ะ
+- ✅ labeled dataset `tests/strength-band-labeled.test.ts` (5 ดวง your life code) ผูก band + กัน dominance รั่ว
+- (ยังไม่ทำ) **drainage/官杀 penalty** ด้านลบ — เลี่ยงไว้เพราะกระทบ golden ดวงสมดุล/อ่อนได้ ต้องมี dataset กว้างกว่านี้ก่อน; dominance ฝั่งบวกครอบเคสที่ doc ฟ้องแล้ว
 
 ### N4 — ขัดเกลาเพิ่ม (ทางเลือก)
 - บท5 พรสวรรค์: เน้น 傷官=วาทศิลป์ ให้ชัดขึ้นในบาง doc (เล็ก, โครงดวงถูกอยู่แล้ว)
 - DOCX: ฝังฟอนต์ Sarabun (OFL) จริง ถ้าจะแจกไฟล์ข้ามเครื่อง
 - รัน verify/เทียบ your life code ทั้ง 6 เคสเป็น regression ประจำหลังแก้ prompt
+
+### N6 — ข้อเสนอต่อยอด (จาก session ล่าสุด)
+- **drainage/官杀 penalty** (N3 ฝั่งลบ) — ดวงถูกธาตุพิฆาตล้อมควรอ่อนลงแม้มีราก; ต้องมี labeled dataset กว้างก่อน กัน golden ดวงสมดุล/อ่อนพัง
+- **บท1 keyword เชี่ยงแซใน LLM** — ground มี "แก่นเชี่ยงแซ" แล้ว แต่ LLM ยังพาราเฟรส; ถ้าต้องการให้คงคำ พิจารณาเพิ่ม instruction บท1 ใน `reading-llm.ts`
+- **ซินแซ-corrections เชิงคำ (รายละเอียดปลีกย่อย)** ที่ยังไม่ลง: บท1 "ดิถีอ่อน=คิดได้แต่ทำไม่สำเร็จ/ไร้กำลัง" (ตอนนี้ยังมีคำว่า รักษาคำพูด/ซื่อสัตย์ ตาม source ธาตุดิน) — ปรับโทนตามดิถีอ่อนได้ถ้าต้องการ
+- **wire `kheangkhung-reference.txt` ให้ลึกขึ้น** — ปัจจุบันเป็น fallback เมื่อ builder คืน null เท่านั้น; อนาคตอาจใช้ enrich ทุกบท (ระวัง prompt bloat) หรือทำ CLI ค้นตำราให้ผู้เขียน
+- **regression LLM ประจำ** — รัน `scripts/compare-llm-vs-aigen.ts` หลังแก้ prompt ทุกครั้ง
 
 ---
 

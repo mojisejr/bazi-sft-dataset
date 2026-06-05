@@ -177,12 +177,13 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     expect(byAge("20-24 ปี").deepNote).not.toContain("การเรียนในวัยนี้");
   });
 
-  // หมกยก (沐浴) = สภาวะผันผวน ไม่ใช่ "เชี่ยงแซดี" → เสายาม 申 หมกยก ต้องไม่ตีว่าบริวารมีคุณภาพ
-  test("subordinate reading treats หมกยก at hour pillar as neutral, not good", async () => {
+  // หมกยก (沐浴) ที่เสายาม = บริวารที่ต้องคอยขัดเกลา (ตามที่ซินแซแก้ใน ai gen M.docx) ไม่ใช่ "มีคุณภาพ/ฐานมั่นคง"
+  test("subordinate reading reads หมกยก at hour pillar as needing-management, not good", async () => {
     const repository = createTestKnowledgeRepository();
     const result = await calculateBaziChart(RawInputSchema.parse(BIRTH_INPUT), repository);
     const subordinates = buildTopicHumanReading(result, "subordinates", RawInputSchema.parse(BIRTH_INPUT));
-    expect(subordinates).toContain("ตามปกติ");
+    expect(subordinates).toContain("ขัดเกลา");
+    // เสายาม 申 หมกยก ต้องไม่ตีว่าบริวารมีคุณภาพ (ดาวถ่ายเทเสาวันไม่ถูกนับเป็นบริวาร)
     expect(subordinates).not.toContain("มีคุณภาพ");
   });
 

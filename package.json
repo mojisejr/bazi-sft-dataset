@@ -27,6 +27,7 @@
     "db:studio": "drizzle-kit studio",
     "db:check:phase16": "tsx scripts/check-phase16-db-state.ts",
     "db:check:metadata": "tsx scripts/check-phase6-db-state.ts",
+    "db:audit:strength": "tsx scripts/audit-strength-state-coverage.ts",
     "db:validate:line-memory": "tsx scripts/test-line-memory.ts",
     "db:seed:solar-terms": "tsx scripts/seed-time-solar-terms.ts",
     "db:seed:solar-terms:dry": "tsx scripts/seed-time-solar-terms.ts --dry-run",

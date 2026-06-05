@@ -13,6 +13,7 @@ import {
 } from "@/lib/bazi/symbolic-engine.constants";
 import {
   OPERATOR_BAD_QI_PENALTIES,
+  OPERATOR_DOMINANCE,
   OPERATOR_FAVORABLE_BRANCHES,
   OPERATOR_FAVORABLE_STEMS,
   OPERATOR_GOOD_QI_BONUSES,
@@ -270,6 +271,66 @@ function resolveRootContributions(
   return out;
 }
 
+/**
+ * โบนัสครอบงำ 从强 (得势 ขั้นสุด) — เมื่อธาตุพวกพ้อง (比劫) + ธาตุอุปถัมภ์ (印) ครอบงำผัง
+ * จนเกือบไร้ธาตุถ่ายเท/ข่ม (食傷財官) ดิถีย่อมยกจาก "แข็ง" → "แข็งมาก" ตามตำรา
+ * นับหน่วยธาตุจากราศีบนทั้ง 4 + ราศีล่างชั้น本气 ทั้ง 4 (รวม 8 หน่วย) แล้ววัดสัดส่วนฝ่ายหนุน
+ * เปิดเฉพาะดวงที่ฐานคะแนนแตะแดน "แข็ง" แล้ว (baseScore >= minBaseScore) จึงไม่กระทบดวงสมดุล/อ่อน
+ */
+function resolveDominanceBonus(
+  dayMasterElement: SupportedElement,
+  pillars: CalculatedStateValue["fourPillars"],
+  baseScore: number,
+): OperatorContribution | null {
+  if (baseScore < OPERATOR_DOMINANCE.minBaseScore) {
+    return null;
+  }
+
+  const resourceElement = (Object.keys(GENERATES) as SupportedElement[]).find(
+    (element) => GENERATES[element] === dayMasterElement,
+  );
+  const isSupportive = (element: SupportedElement | undefined) =>
+    element === dayMasterElement || element === resourceElement;
+
+  let supportive = 0;
+  let total = 0;
+  for (const key of ["year", "month", "day", "hour"] as const) {
+    const stemElement = STEM_TO_ELEMENT[pillars[key].stem as keyof typeof STEM_TO_ELEMENT];
+    if (stemElement) {
+      total += 1;
+      if (isSupportive(stemElement)) {
+        supportive += 1;
+      }
+    }
+
+    const mainHidden = (BRANCH_HIDDEN_STEMS[pillars[key].branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [])[0];
+    const branchElement = STEM_TO_ELEMENT[mainHidden as keyof typeof STEM_TO_ELEMENT];
+    if (branchElement) {
+      total += 1;
+      if (isSupportive(branchElement)) {
+        supportive += 1;
+      }
+    }
+  }
+
+  if (total === 0) {
+    return null;
+  }
+
+  const supportiveShare = supportive / total;
+  const tier = OPERATOR_DOMINANCE.tiers.find((candidate) => supportiveShare >= candidate.minSupportiveShare);
+  if (!tier) {
+    return null;
+  }
+
+  return {
+    label: "dominance",
+    symbol: `${supportive}/${total}`,
+    weight: tier.bonus,
+    source: "zone",
+  };
+}
+
 function computeStrengthScoreBreakdown(
   dayMasterStem: string,
   pillars: CalculatedStateValue["fourPillars"],
@@ -392,6 +453,13 @@ function computeStrengthScoreBreakdown(
   for (const adjustment of relationAdjustments) {
     score += adjustment.weight;
     penalties.clashes += Math.abs(adjustment.weight);
+  }
+
+  // 从强 dominance: คิดจากฐานคะแนนหลังรวมทุกปัจจัย แล้วยก band แข็ง → แข็งมาก
+  const dominanceBonus = resolveDominanceBonus(dayMasterElement, pillars, score);
+  if (dominanceBonus) {
+    score += dominanceBonus.weight;
+    qiAdjustments.push(dominanceBonus);
   }
 
   return {

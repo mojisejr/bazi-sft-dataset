@@ -124,6 +124,19 @@ export const OPERATOR_BAD_QI_PENALTIES = {
   yearZone: 0.25,
 } as const;
 
+// โบนัสดิถี "แข็งมาก" (从强/印比ครอบงำ) — เพิ่มเมื่อธาตุพวกพ้อง (比劫) + ธาตุอุปถัมภ์ (印)
+// ครอบงำผังจนเกือบไร้ธาตุถ่ายเท/ข่ม (食傷財官) เพื่อยก band ดิถีแข็ง → แข็งมากตามตำรา
+// เปิดเฉพาะดวงที่ฐานคะแนนอยู่ในแดน "แข็ง" แล้ว (>= STRONG ขอบล่าง) จึงไม่กระทบดวงสมดุล/อ่อน
+export const OPERATOR_DOMINANCE = {
+  /** ฐานคะแนนขั้นต่ำที่จะพิจารณาโบนัสครอบงำ (= ขอบล่าง band "แข็ง") */
+  minBaseScore: 5.5,
+  /** สัดส่วนธาตุพวกพ้อง+อุปถัมภ์ขั้นต่ำ และโบนัสที่ได้ (เรียงจากเข้มไปเบา) */
+  tiers: [
+    { minSupportiveShare: 0.7, bonus: 0.75 },
+    { minSupportiveShare: 0.6, bonus: 0.5 },
+  ],
+} as const;
+
 export const OPERATOR_RELATION_PENALTIES = {
   dayBranchVsDayMasterPo: 0.25,
   monthBranchVsDayMasterPo: 0.25,
