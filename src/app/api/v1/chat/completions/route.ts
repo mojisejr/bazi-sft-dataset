@@ -5,7 +5,11 @@ import {
   type OpenWebUiBaziExtraction,
   OpenWebUiBaziExtractorError,
 } from "@/features/open-webui/bazi-extractor";
-import { type ChatRunnerSuccess, runChatPipeline } from "@/features/open-webui/chat-runner";
+import {
+  detectSyntheticOpenWebUiMetadataPrompt,
+  type ChatRunnerSuccess,
+  runChatPipeline,
+} from "@/features/open-webui/chat-runner";
 import {
   generateGeminiAssistantReply,
   type OpenWebUiGeminiExecutionContext,
@@ -25,6 +29,7 @@ import {
 import {
   createBaziOpenWebUiEpisodicRepository,
   createOpenWebUiProfileFingerprint,
+  normalizeOpenWebUiThreadId,
   type OpenWebUiActiveScope,
   type OpenWebUiContinuityState,
   type OpenWebUiFinalizedTurnSkipReason,
@@ -68,6 +73,20 @@ function getForwardedUserId(req: Request) {
   return req.headers.get("x-openwebui-user-id");
 }
 
+const OPEN_WEBUI_FORWARDED_CHAT_ID_HEADER_NAMES = ["x-openwebui-chat-id"] as const;
+
+function getForwardedOpenWebUiChatId(req: Request) {
+  for (const headerName of OPEN_WEBUI_FORWARDED_CHAT_ID_HEADER_NAMES) {
+    const chatId = normalizeOpenWebUiThreadId(req.headers.get(headerName));
+
+    if (chatId) {
+      return chatId;
+    }
+  }
+
+  return null;
+}
+
 function resolveOpenWebUiUserIdentity(
   req: Request,
   payloadUserId: string | null | undefined,
@@ -92,6 +111,10 @@ function resolveOpenWebUiUserIdentity(
     effectiveUserId: null,
     userIdentitySource: "none" as const,
   };
+}
+
+function resolveOpenWebUiThreadIdentity(req: Request, payloadThreadId: string | null | undefined) {
+  return normalizeOpenWebUiThreadId(payloadThreadId) ?? getForwardedOpenWebUiChatId(req);
 }
 
 function getContinuityDisposition(input: {
@@ -334,19 +357,23 @@ export async function POST(req: Request) {
     return createBadRequestResponse(result.message, result.code);
   }
 
+  const syntheticMetadataPromptKind = detectSyntheticOpenWebUiMetadataPrompt(result.latestUserMessage.content);
+
   const { effectiveUserId, userIdentitySource } = resolveOpenWebUiUserIdentity(req, result.userId);
+  const effectiveThreadId = resolveOpenWebUiThreadIdentity(req, result.threadId);
   const profileRepository = effectiveUserId
     ? createBaziUserProfileRepository()
     : null;
-  const episodicRepository = effectiveUserId && result.threadId
+  const episodicRepository = effectiveUserId && effectiveThreadId
     ? createBaziOpenWebUiEpisodicRepository()
     : null;
-  const hasPersistenceLane = Boolean(effectiveUserId && result.threadId && episodicRepository);
+  const hasPersistenceLane = Boolean(effectiveUserId && effectiveThreadId && episodicRepository);
 
   logOpenWebUiOperationalEvent("request_context", {
     userIdentitySource,
-    hasThreadId: Boolean(result.threadId),
+    hasThreadId: Boolean(effectiveThreadId),
     threadPersistenceEligible: hasPersistenceLane,
+    syntheticMetadataPromptKind,
   });
 
   let continuityPersistencePlan: {
@@ -363,10 +390,10 @@ export async function POST(req: Request) {
     const persistedProfile = effectiveUserId && profileRepository
       ? await profileRepository.findByClerkUserId(effectiveUserId)
       : null;
-    const episodicMemory = effectiveUserId && result.threadId && episodicRepository
+    const episodicMemory = effectiveUserId && effectiveThreadId && episodicRepository
       ? await episodicRepository.findByClerkUserIdAndThreadId({
         clerkUserId: effectiveUserId,
-        threadId: result.threadId,
+        threadId: effectiveThreadId,
       })
       : null;
     const existingProfileFields = mergeBaziProfileFields(
@@ -476,7 +503,7 @@ export async function POST(req: Request) {
     timeoutMs: 35_000,
     onFinalizedReply: async (reply) => {
       const clerkUserId = effectiveUserId;
-      const threadId = result.threadId;
+      const threadId = effectiveThreadId;
       const persistentEpisodicRepository = episodicRepository;
       if (!clerkUserId || !threadId || !persistentEpisodicRepository) {
         const reason = !clerkUserId
@@ -487,6 +514,16 @@ export async function POST(req: Request) {
 
         logOpenWebUiOperationalEvent("finalized_turn_nonpersistent", {
           reason,
+          userIdentitySource,
+          continuityDisposition: continuityPersistencePlan.continuityDisposition,
+        });
+        return;
+      }
+
+      if (syntheticMetadataPromptKind) {
+        logOpenWebUiOperationalEvent("finalized_turn_nonpersistent", {
+          reason: "synthetic_metadata_prompt",
+          syntheticMetadataPromptKind,
           userIdentitySource,
           continuityDisposition: continuityPersistencePlan.continuityDisposition,
         });

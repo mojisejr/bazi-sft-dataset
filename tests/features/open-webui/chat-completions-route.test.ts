@@ -323,6 +323,17 @@ function expectOperationalEvent(event: string, detail: Record<string, unknown>) 
   );
 }
 
+const SYNTHETIC_FOLLOW_UP_PROMPT = `### Task:
+Suggest 3-5 relevant follow-up questions or prompts that the user might naturally ask next in this conversation as a **user**, based on the chat history, to help continue or deepen the discussion.
+### Guidelines:
+- Write all follow-up questions from the user's point of view, directed to the assistant.
+- Response must be a JSON object with a "follow_ups" key containing an array of strings, no extra text or formatting.
+### Chat History:
+<chat_history>
+USER: เกิด 12 ส.ค. 1992 เวลา 09:15 กรุงเทพ ผู้หญิง ช่วยดูภาพรวมเรื่องงานให้หน่อย
+ASSISTANT: ได้ค่ะ เดี๋ยวดูภาพรวมให้
+</chat_history>`;
+
 describe("buildOpenWebUiExecutionContext", () => {
   test("attaches a narrowed truth packet when extraction completes", () => {
     const executionContext = buildOpenWebUiExecutionContext({
@@ -940,6 +951,91 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     });
   });
 
+  test("forwarded chat id header restores thread-scoped persistence when payload omits chat_id", async () => {
+    findByClerkUserIdAndThreadIdMock.mockResolvedValue({
+      clerkUserId: "forwarded-user-2",
+      threadId: "forwarded-chat-2",
+      contextSummary: "จำเคสเดิมจาก forwarded chat id",
+      continuityState: {
+        profileFingerprint: "1989-01-03::08:45::ชาย::จันทบุรี",
+        profileFields: {
+          birthDate: "1989-01-03",
+          birthTime: "08:45",
+          gender: "ชาย",
+          province: "จันทบุรี",
+        },
+        activeScope: {
+          requestedDomain: "career",
+          currentAgeWindow: {
+            startAge: 42,
+            endAge: 46,
+            currentPhase: "upper",
+            label: "42-46",
+          },
+        },
+      },
+      messages: [
+        { role: "user", content: "เคสเดิม" },
+        { role: "assistant", content: "จำบริบทเดิมไว้แล้วค่ะ" },
+      ],
+    });
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.45,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "ต่อจากเคสเดิมได้ค่ะ",
+    });
+
+    const response = await POST(buildJsonRequestWithHeaders(
+      {
+        messages: [{ role: "user", content: "ถามต่อจากเคสเดิม" }],
+      },
+      {
+        "x-openwebui-user-id": "forwarded-user-2",
+        "x-openwebui-chat-id": "forwarded-chat-2",
+      },
+    ));
+
+    await consumeStream(response);
+
+    expect(findByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "forwarded-user-2",
+      threadId: "forwarded-chat-2",
+    });
+
+    const executionContext = generateGeminiAssistantReplyMock.mock.calls[0][1].executionContext;
+    expect(executionContext.episodicMemory).toEqual({
+      contextSummary: "จำเคสเดิมจาก forwarded chat id",
+      activeScope: {
+        requestedDomain: "career",
+        currentAgeWindow: {
+          startAge: 42,
+          endAge: 46,
+          currentPhase: "upper",
+          label: "42-46",
+        },
+      },
+      messages: [
+        { role: "user", content: "เคสเดิม" },
+        { role: "assistant", content: "จำบริบทเดิมไว้แล้วค่ะ" },
+      ],
+    });
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "forwarded-user-2",
+      threadId: "forwarded-chat-2",
+      userMessage: "ถามต่อจากเคสเดิม",
+      assistantReply: "ต่อจากเคสเดิมได้ค่ะ",
+    });
+    expectOperationalEvent("request_context", {
+      userIdentitySource: "forwarded_header",
+      hasThreadId: true,
+      threadPersistenceEligible: true,
+    });
+  });
+
   test("thread-scoped episodic memory hydrates only from the matching chat id", async () => {
     findByClerkUserIdAndThreadIdMock.mockResolvedValue({
       clerkUserId: "clerk-123",
@@ -1013,6 +1109,63 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
       threadId: "chat-thread-1",
       userMessage: "ถามต่อเรื่องงาน",
       assistantReply: "ต่อเนื่องจากแชตเดิมค่ะ",
+    });
+  });
+
+  test("normal same-thread turns persist while synthetic follow-up helper prompts fail closed out of episodic history", async () => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "chit_chat",
+      requiresBaziConsult: false,
+      confidence: 0.45,
+    });
+    generateGeminiAssistantReplyMock
+      .mockResolvedValueOnce({
+        model: "gemini-2.5-flash",
+        text: "ต่อจากเคสเดิมได้ค่ะ",
+      })
+      .mockResolvedValueOnce({
+        model: "gemini-2.5-flash",
+        text: '{"follow_ups":["ควรระวังอะไรเพิ่มไหมคะ?"]}',
+      });
+
+    const persistedTurnResponse = await POST(buildJsonRequest({
+      user: { id: "clerk-same-thread" },
+      chat_id: "chat-thread-same-thread",
+      messages: [{ role: "user", content: "ถามต่อเรื่องงานให้หน่อย" }],
+    }));
+
+    await consumeStream(persistedTurnResponse);
+
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).toHaveBeenCalledWith({
+      clerkUserId: "clerk-same-thread",
+      threadId: "chat-thread-same-thread",
+      userMessage: "ถามต่อเรื่องงานให้หน่อย",
+      assistantReply: "ต่อจากเคสเดิมได้ค่ะ",
+    });
+
+    appendFinalizedTurnByClerkUserIdAndThreadIdMock.mockClear();
+    consoleInfoSpy.mockClear();
+
+    const syntheticPromptResponse = await POST(buildJsonRequest({
+      user: { id: "clerk-same-thread" },
+      chat_id: "chat-thread-same-thread",
+      messages: [
+        { role: "user", content: "ถามต่อเรื่องงานให้หน่อย" },
+        { role: "assistant", content: "ต่อจากเคสเดิมได้ค่ะ" },
+        { role: "user", content: SYNTHETIC_FOLLOW_UP_PROMPT },
+      ],
+    }));
+
+    const body = await consumeStream(syntheticPromptResponse);
+
+    expect(reconstructSseContent(body)).toBe('{"follow_ups":["ควรระวังอะไรเพิ่มไหมคะ?"]}');
+    expect(body).toContain("[DONE]");
+    expect(appendFinalizedTurnByClerkUserIdAndThreadIdMock).not.toHaveBeenCalled();
+    expectOperationalEvent("finalized_turn_nonpersistent", {
+      reason: "synthetic_metadata_prompt",
+      syntheticMetadataPromptKind: "follow_ups",
+      userIdentitySource: "payload_user",
+      continuityDisposition: "preserve",
     });
   });
 

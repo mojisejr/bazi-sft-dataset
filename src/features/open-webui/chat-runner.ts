@@ -4,6 +4,8 @@ import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
 
 export const MAX_TRIAGE_TURNS = 2;
 
+export type OpenWebUiSyntheticMetadataPromptKind = "title" | "tags" | "follow_ups";
+
 const OpenWebUiRoleSchema = z.enum(["system", "user", "assistant"]);
 
 const OpenWebUiTextPartSchema = z.object({
@@ -78,6 +80,14 @@ export type ChatRunnerResult = z.infer<typeof ChatRunnerResultSchema>;
 
 const BAZI_LOGIC_BLOCK_PATTERN = /<bazi_logic\b[^>]*>[\s\S]*?<\/bazi_logic>/giu;
 const EXPLICIT_NEW_CASE_PATTERN = /(?:\b(?:new|fresh)\s+case\b|\bnew\s+profile\b|เปิด(?:เคส|ดวง)ใหม่|เริ่ม(?:เคส|ดวง)ใหม่|(?:เคส|ดวง|โปรไฟล์)ใหม่|คนละคน|อีกคนหนึ่ง)/iu;
+const SYNTHETIC_METADATA_PROMPT_MARKERS = ["### task:", "### chat history:", "<chat_history>"] as const;
+
+function hasSyntheticMetadataPromptScaffold(content: string) {
+  const normalized = content.trim().toLowerCase();
+
+  return SYNTHETIC_METADATA_PROMPT_MARKERS.every((marker) => normalized.includes(marker))
+    && normalized.includes("json");
+}
 
 function resolveThreadId(payload: z.infer<typeof OpenWebUiPayloadSchema>) {
   return payload.chat_id
@@ -146,6 +156,39 @@ export function sliceMessagesForTriage(
 
 export function detectExplicitFreshThreadBoundary(content: string) {
   return EXPLICIT_NEW_CASE_PATTERN.test(content.trim());
+}
+
+export function detectSyntheticOpenWebUiMetadataPrompt(
+  content: string,
+): OpenWebUiSyntheticMetadataPromptKind | null {
+  const normalized = content.trim().toLowerCase();
+
+  if (!hasSyntheticMetadataPromptScaffold(content)) {
+    return null;
+  }
+
+  if (normalized.includes("follow-up") && normalized.includes('"follow_ups"')) {
+    return "follow_ups";
+  }
+
+  if (normalized.includes('"tags"') && normalized.includes("tag")) {
+    return "tags";
+  }
+
+  if (
+    normalized.includes("title")
+    && (
+      normalized.includes("3-5 word")
+      || normalized.includes("3 to 5 word")
+      || normalized.includes("concise title")
+      || normalized.includes("short title")
+      || normalized.includes('"title"')
+    )
+  ) {
+    return "title";
+  }
+
+  return null;
 }
 
 export function runChatPipeline(payload: unknown): ChatRunnerResult {

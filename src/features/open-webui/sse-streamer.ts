@@ -348,7 +348,7 @@ export function createGuardedOpenAiSseStream({
       });
 
       if (onFinalizedReply) {
-        void Promise.resolve(onFinalizedReply({
+        await Promise.resolve(onFinalizedReply({
           model: effectiveModel,
           rawText: resolvedReply.text,
           visibleText: safeReplyText,

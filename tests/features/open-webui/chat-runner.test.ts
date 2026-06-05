@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import {
   MAX_TRIAGE_TURNS,
+  detectSyntheticOpenWebUiMetadataPrompt,
   detectExplicitFreshThreadBoundary,
   normalizeMessageContent,
   runChatPipeline,
@@ -249,6 +250,20 @@ describe("runChatPipeline", () => {
       requestedFreshThreadBoundary: true,
       reason: "explicit_new_case",
     });
+  });
+
+  test("detects Open WebUI follow-up helper prompts so persistence can fail closed", () => {
+    expect(detectSyntheticOpenWebUiMetadataPrompt(`### Task:
+Suggest 3-5 relevant follow-up questions or prompts that the user might naturally ask next in this conversation as a **user**.
+### Guidelines:
+- Response must be a JSON object with a "follow_ups" key containing an array of strings.
+### Chat History:
+<chat_history>
+USER: ดูเรื่องงานให้หน่อย
+ASSISTANT: ได้ค่ะ
+</chat_history>`)).toBe("follow_ups");
+
+    expect(detectSyntheticOpenWebUiMetadataPrompt("ถามต่อเรื่องงานใน 6 เดือนนี้")).toBeNull();
   });
 });
 
