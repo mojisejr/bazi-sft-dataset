@@ -47,8 +47,6 @@ const FORBIDDEN_REPORT_TERMS = [
   "day master",
   "ครับ",
   "ค่ะ",
-  "ตี้อ๋วง",
-  "ลิ่มกัว",
 ] as const;
 
 export const PERSONALITY_TRUTH_HIERARCHY = [
@@ -62,6 +60,29 @@ const OWNERSHIP_CERTAINTY_LABELS = {
   authored: "ยืนยันจากข้อความหลักของตำรา",
   "shared-granularity": "ใช้เป็นบริบทเสริมเท่านั้น",
   "classified-gap": "ห้ามขยายความเพิ่มจากช่องว่างนี้",
+} as const;
+
+const CHINESE_TERM_GLOSSARY = {
+  "帝旺": {
+    thaiLabel: "ตี้อ๋วง",
+    meaning: "พลังขึ้นถึงจุดสูง",
+  },
+  "臨官": {
+    thaiLabel: "ลิ่มกัว",
+    meaning: "จังหวะยืนกำลังและคุมตัวเองได้",
+  },
+  "临官": {
+    thaiLabel: "ลิ่มกัว",
+    meaning: "จังหวะยืนกำลังและคุมตัวเองได้",
+  },
+  "衰": {
+    thaiLabel: "ซวย",
+    meaning: "พลังเริ่มถอย",
+  },
+  "绝": {
+    thaiLabel: "เจวี๋ย",
+    meaning: "จังหวะพลังขาดหรืออ่อนแรงมาก",
+  },
 } as const;
 
 const PersonalityBridgeBlockSchema = z.object({
@@ -207,13 +228,27 @@ function formatOwnershipCertaintyLabel(status: keyof typeof OWNERSHIP_CERTAINTY_
   return OWNERSHIP_CERTAINTY_LABELS[status];
 }
 
+function formatChineseTermHint(label: string | null | undefined) {
+  if (!label) {
+    return null;
+  }
+
+  const glossaryEntry = CHINESE_TERM_GLOSSARY[label as keyof typeof CHINESE_TERM_GLOSSARY];
+
+  if (!glossaryEntry) {
+    return `${label} (ใช้คำจีนนี้ได้เมื่ออธิบายความหมายไทยต่อทันที)`;
+  }
+
+  return `${glossaryEntry.thaiLabel} (${label}) = ${glossaryEntry.meaning}`;
+}
+
 function buildLaneGuardrailLines(focusPayload: PersonalityFocusPayload) {
   return [
     `- routing owner: ${formatOwnershipCertaintyLabel(focusPayload.source2Overlay.routing.narrative.ownership.status)}; เขียนเป็นแกนนิสัยหลักได้`,
     `- refinement owner: ${formatOwnershipCertaintyLabel(focusPayload.source2Overlay.refinement.dayPillarAdvice.ownership.status)}; ใช้เป็นสีของอารมณ์และบุคลิกย่อยเท่านั้น`,
     `- evidence owner: ${formatOwnershipCertaintyLabel(focusPayload.source2Overlay.evidence.twelveQi.advice.ownership.status)}; ต้องใช้คำอย่าง "มีแนวโน้ม", "อาจ", หรือ "ควรระวัง" แทนคำฟันธง`,
     "- ถ้าข้อความเตือนอยู่ใน refinement หรือ evidence ห้ามยกระดับเป็นตัวตนหลักของเจ้าชะตา",
-    "- ห้ามเพิ่มศัพท์เทคนิคจีนหรือชื่อดาวที่ไม่ได้ปรากฏตรง ๆ ใน payload",
+    "- ถ้าจะใช้ศัพท์จีน ให้ใช้เฉพาะคำที่มีอยู่ตรง ๆ ใน payload และอธิบายความหมายไทยต่อทันที",
     "- ห้ามเดาเรื่องความรัก เพศสัมพันธ์ สถานะทางสังคม หรือโชคชะตาด้านอื่น ถ้า routing ไม่ได้ยืนยันตรง ๆ",
     "- ถ้าสัญญาณรองขัดกับ routing ให้ยึด routing แล้วลดน้ำหนักสัญญาณรองทันที",
   ];
@@ -254,6 +289,11 @@ function buildPromptPayload(focusPayload: PersonalityFocusPayload) {
       missingElements: elementBalance?.missingElements ?? [],
       season: seasonalInteraction?.seasonLabel ?? null,
       seasonalMetaphor: seasonalInteraction?.metaphor ?? null,
+      precisionTerms: [
+        formatChineseTermHint(focusPayload.source2Overlay.routing.strengthProfile?.qiLabel ?? null),
+        formatChineseTermHint(focusPayload.evidence.twelveQi.dayBranchStage),
+        formatChineseTermHint(focusPayload.evidence.twelveQi.monthBranchStage),
+      ].filter((term): term is string => Boolean(term)),
     },
   };
 }
@@ -295,7 +335,7 @@ export function buildPersonalityPocSystemInstruction() {
     "Use Source 2 evidence and supporting packets only as context modifiers, not as replacement identity.",
     "When refinement or evidence contain warnings, phrase them as tendencies or cautions, never as fixed identity.",
     "If a lane is not authored, reduce certainty immediately and write with softer language such as มีแนวโน้ม, อาจ, or ควรระวัง.",
-    "Do not introduce Chinese technical labels, star names, or stage names unless they already appear explicitly in the payload text that the human can read.",
+    "When a Chinese technical label already appears explicitly in the payload and helps precision, you may mention it once in Thai followed by the Chinese characters in parentheses, then explain its meaning in plain Thai immediately.",
     "Do not infer romance, sexuality, fame, social rank, or life-domain destiny unless the routing text states it directly.",
     "Ignore interactionState, current events, and annual timing for this task.",
     "You own the interpretation and the sinsae wording. Do not leave semantic expansion to the caller.",
@@ -304,7 +344,9 @@ export function buildPersonalityPocSystemInstruction() {
     "Each bridge block must contain a short Thai title, a human-readable signal line grounded in the payload, a sinsae explanation, and the personality impact it creates.",
     "Each bridge block should move in this flow: what the chart shows, what it means, and what kind of temperament it creates.",
     "final_prediction must read like a real sinsae talking to a client about temperament, inner drive, blind spots, and emotional patterning.",
-    "Write final_prediction as 3 or 4 compact Thai paragraphs, flowing naturally without numbered headings or explicit section labels.",
+    "Make the voice sound like one sinsae speaking directly to one client, not like a report narrator.",
+    "Prefer direct and decisive Thai wording for routing-backed traits. Do not over-hedge when the routing lane is clearly authored.",
+    "Write final_prediction as 2 or 3 medium Thai paragraphs, flowing naturally without numbered headings or explicit section labels.",
     "Across those paragraphs, cover these six ideas in one smooth reading when the payload supports them: reading frame, core temperament, behavior texture, main caution, practical advice, and optional element-balance support.",
     "The optional element-balance support must stay gentle and symbolic. Do not turn it into superstition sales or guaranteed outcomes.",
     "The practical advice must sound usable in daily life, not abstract moral preaching.",
@@ -331,10 +373,12 @@ export function buildPersonalityPocUserPrompt(
     "Each bridge block must include title, signal, explanation, and personality_impact.",
     "Write supporting_signals as Thai evidence lines, not enum-style fragments.",
     "Let reviewSummary serve as the opening frame, and let final_prediction serve as the closing client-facing passage.",
-    "Write final_prediction as a smooth client-facing reading in 3 or 4 short paragraphs.",
+    "Write final_prediction as a smooth client-facing reading in 2 or 3 medium paragraphs.",
+    "Make it sound like you are talking to the client directly, not filing a report.",
     "Do not write explicit headers like Intent, Core Reading, Risk, Action, or Symbolic Layer.",
     "Still make the reading feel complete by naturally covering: opening frame, core personality, expressed behavior, caution, practical advice, and optional element-balance support.",
     "If the payload does not support one of those ideas strongly, keep it brief instead of forcing symmetry.",
+    "If a Chinese term from the payload sharpens the reading, write the Thai term first and put the Chinese characters in parentheses once, then explain the meaning in ordinary Thai.",
     "Never write terms like missing: metal, dominant: water, payload, schema, JSON, model, AI, or Day Master.",
     "Use routing as the only lane that can speak in definite personality language.",
     "Use refinement and evidence only as tendency, texture, caution, or context.",
@@ -464,22 +508,14 @@ function buildClientFacingReadingParagraphs(response: PersonalityPocResponse) {
   const openingParagraph = normalizeReportParagraph(
     `จากโครงสร้างนิสัยพื้นฐานของดวงนี้ ${response.reviewSummary}`,
   );
-  const bridgeParagraphs = response.personality.bridge_blocks.map((block) => normalizeReportParagraph(
-    `${block.explanation} ${block.personality_impact}`,
-  ));
   const closingParagraphs = response.personality.final_prediction
     .split(/\n{2,}/)
     .map((paragraph) => normalizeReportParagraph(paragraph))
     .filter((paragraph) => paragraph.length > 0);
-  const confidenceParagraph = response.personality.confidence_note
-    ? normalizeReportParagraph(`โดยรวม ${response.personality.confidence_note}`)
-    : null;
 
   return [
     openingParagraph,
-    ...bridgeParagraphs,
     ...closingParagraphs,
-    ...(confidenceParagraph ? [confidenceParagraph] : []),
   ];
 }
 

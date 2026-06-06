@@ -229,13 +229,15 @@ describe("personality prompt poc helpers", () => {
     expect(instruction).toContain("Source 2 routing first");
     expect(instruction).toContain("Stable-trait claims may come only from Source 2 routing");
     expect(instruction).toContain("When refinement or evidence contain warnings, phrase them as tendencies or cautions");
-    expect(instruction).toContain("Do not introduce Chinese technical labels");
+    expect(instruction).toContain("you may mention it once in Thai followed by the Chinese characters in parentheses");
     expect(instruction).toContain("Do not infer romance, sexuality, fame, social rank, or life-domain destiny unless the routing text states it directly");
     expect(instruction).toContain("Ignore interactionState");
     expect(instruction).toContain("Do not use gendered polite particles");
     expect(instruction).toContain("You own the interpretation and the sinsae wording");
     expect(instruction).toContain("reviewSummary should act as the opening frame of the reading");
-    expect(instruction).toContain("Write final_prediction as 3 or 4 compact Thai paragraphs");
+    expect(instruction).toContain("Make the voice sound like one sinsae speaking directly to one client");
+    expect(instruction).toContain("Prefer direct and decisive Thai wording for routing-backed traits");
+    expect(instruction).toContain("Write final_prediction as 2 or 3 medium Thai paragraphs");
     expect(instruction).toContain("cover these six ideas in one smooth reading");
     expect(instruction).toContain("let final_prediction focus more on caution, guidance, and the emotional takeaway");
     expect(prompt).toContain("personality_psychology dimension only");
@@ -245,11 +247,14 @@ describe("personality prompt poc helpers", () => {
     expect(prompt).toContain("Curated Source 2 personality payload");
     expect(prompt).toContain("Lane guardrails:");
     expect(prompt).toContain("Let reviewSummary serve as the opening frame, and let final_prediction serve as the closing client-facing passage");
-    expect(prompt).toContain("Write final_prediction as a smooth client-facing reading in 3 or 4 short paragraphs");
+    expect(prompt).toContain("Write final_prediction as a smooth client-facing reading in 2 or 3 medium paragraphs");
+    expect(prompt).toContain("Make it sound like you are talking to the client directly, not filing a report");
+    expect(prompt).toContain("If a Chinese term from the payload sharpens the reading");
     expect(prompt).toContain("Do not write explicit headers like Intent, Core Reading, Risk, Action, or Symbolic Layer");
     expect(prompt).toContain("routing owner: ยืนยันจากข้อความหลักของตำรา; เขียนเป็นแกนนิสัยหลักได้");
     expect(prompt).toContain("evidence owner: ใช้เป็นบริบทเสริมเท่านั้น; ต้องใช้คำอย่าง \"มีแนวโน้ม\", \"อาจ\", หรือ \"ควรระวัง\" แทนคำฟันธง");
     expect(prompt).toContain("Do not turn side warnings into identity labels");
+    expect(prompt).toContain('"precisionTerms"');
     expect(prompt).toContain('"role": "แกนนิสัยหลัก"');
     expect(prompt).toContain('"role": "สีบุคลิกย่อย"');
     expect(prompt).toContain('"role": "บริบทเสริมและข้อควรระวัง"');
@@ -288,7 +293,7 @@ describe("personality prompt poc helpers", () => {
     })).toThrow("Forbidden report term detected");
   });
 
-  test("rejects technical jargon that should not leak into the final sinsae wording", () => {
+  test("allows Chinese precision terms when they are paired with readable Thai meaning", () => {
     expect(() => PersonalityPocResponseSchema.parse({
       reviewSummary: "สรุปภาพรวมปกติ",
       personality: {
@@ -296,14 +301,14 @@ describe("personality prompt poc helpers", () => {
         bridge_blocks: [
           {
             title: "แกนแรก",
-            signal: "ตี้อ๋วงเด่น",
-            explanation: "คุณมีตี้อ๋วงในดวง",
+            signal: "ตี้อ๋วง (帝旺) เด่น หมายถึงพลังขึ้นถึงจุดสูง",
+            explanation: "คุณมีตี้อ๋วง (帝旺) ในดวง จึงแปลว่าช่วงพลังด้านในขึ้นแรงและมั่นใจมากเป็นพิเศษ",
             personality_impact: "จึงทำให้ใจแข็ง",
           },
           {
             title: "แกนสอง",
-            signal: "กะจื่อวันหนุนแรงขับ",
-            explanation: "พอมาเจอแรงขับภายใน",
+            signal: "ลิ่มกัว (臨官) หนุนแรงขับ",
+            explanation: "พอมาเจอลิ่มกัว (臨官) จึงแปลว่าเป็นจังหวะที่ยืนกำลังและคุมตัวเองได้ดี",
             personality_impact: "จึงทำให้ไม่ยอมแพ้ง่าย",
           },
           {
@@ -313,10 +318,10 @@ describe("personality prompt poc helpers", () => {
             personality_impact: "จึงทำให้เปิดใจช้า",
           },
         ],
-        final_prediction: "เป็นคนมีตี้อ๋วงและลิ่มกัวชัด",
-        supporting_signals: ["ตี้อ๋วงเด่น"],
+        final_prediction: "เป็นคนที่มีตี้อ๋วง (帝旺) เด่น จึงกล้าตัดสินใจในเรื่องที่ตัวเองมั่นใจ และเมื่อเจอลิ่มกัว (臨官) ก็ยิ่งทำให้การวางตัวดูนิ่งแต่มีอำนาจในตัว",
+        supporting_signals: ["ตี้อ๋วง (帝旺) เด่น"],
       },
-    })).toThrow("Forbidden report term detected");
+    })).not.toThrow();
   });
 
   test("formats a preflight report in sinsae-readable Thai without debug headings", () => {
@@ -369,7 +374,7 @@ describe("personality prompt poc helpers", () => {
               personality_impact: "จึงทำให้คนรอบตัวรู้สึกว่าเข้าถึงช้า แต่ถ้าไว้ใจแล้วจะไปยาว",
             },
           ],
-          final_prediction: "คุณเป็นคนคิดลึก มีแรงขับเงียบ และถ้าจัดระบบชีวิตให้ดี ศักยภาพจะออกผลชัดมาก",
+          final_prediction: "คุณเป็นคนคิดลึกและถือแกนของตัวเองชัด เวลามั่นใจแล้วจะเดินเกมค่อนข้างเด็ดขาด ไม่ใช่คนเปลี่ยนใจง่าย แต่ข้อเสียคือถ้ากดดันสะสมมากไปก็จะเก็บอาการจนคนรอบตัวอ่านใจยาก\n\nในเชิงจังหวะของดวงยังมีภาพของตี้อ๋วง (帝旺) ซ่อนอยู่ คือพลังด้านในขึ้นได้แรงเมื่อถึงเวลาของตัวเอง จึงเหมาะกับการใช้ชีวิตแบบมีจังหวะ มีระบบ และค่อย ๆ เปิดเกมในสิ่งที่มั่นใจมากกว่าฝืนเร่งทุกเรื่องพร้อมกัน",
           supporting_signals: ["ดิถีค่อนข้างมั่นคง", "กะจื่อวัน己巳"],
           confidence_note: "มั่นใจระดับสูง เพราะแกนดิถีกับฐานวันไปในทิศเดียวกัน",
         },
@@ -382,8 +387,8 @@ describe("personality prompt poc helpers", () => {
     expect(report).toContain("สัญญาณ: ดิถีค่อนข้างมั่นคงและรับแรงกดดันได้");
     expect(report).toContain("จึงทำให้:");
     expect(report).toContain("คำทำนายพร้อมส่งลูกค้า\nจากโครงสร้างนิสัยพื้นฐานของดวงนี้ แกนนิสัยชัดแต่ต้องอาศัยวินัยมาช่วยประคอง");
-    expect(report).toContain("\n\nคุณเป็นคนธาตุดินที่มีแกนชัด รับแรงกดดันได้ แต่จะปิดใจเมื่อถูกบีบมากเกินไป");
-    expect(report).toContain("\n\nคุณเป็นคนคิดลึก มีแรงขับเงียบ และถ้าจัดระบบชีวิตให้ดี ศักยภาพจะออกผลชัดมาก");
+    expect(report).toContain("\n\nคุณเป็นคนคิดลึกและถือแกนของตัวเองชัด เวลามั่นใจแล้วจะเดินเกมค่อนข้างเด็ดขาด");
+    expect(report).toContain("ตี้อ๋วง (帝旺)");
     expect(report).toContain("ภาคผนวกเทคนิค");
     expect(report).toContain("- รุ่นที่ใช้: gemini-3-flash-preview");
     expect(report).not.toContain("สัญญาณประกอบที่ AI ถือไว้");
