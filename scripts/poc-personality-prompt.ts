@@ -6,7 +6,7 @@ import { config as loadEnv } from "dotenv";
 import {
   DEFAULT_PERSONALITY_POC_MODEL,
   PERSONALITY_TRUTH_HIERARCHY,
-  buildPersonalityFocusPayload,
+  buildPersonalityFocusPayloadFromCalculatedState,
   formatPersonalityPocGeneratedReport,
   formatPersonalityPocPreflightReport,
   generatePersonalityPromptPoc,
@@ -43,7 +43,11 @@ export async function main(argv = process.argv.slice(2)) {
   const options = parseCliOptions(argv);
   const repository = createDbKnowledgeRepository();
   const calculatedState = await calculateBaziChart(DEFAULT_TEST_CASE, repository);
-  const focusPayload = buildPersonalityFocusPayload(calculatedState);
+  const focusPayload = await buildPersonalityFocusPayloadFromCalculatedState({
+    rawInput: DEFAULT_TEST_CASE,
+    calculatedState,
+    repository,
+  });
 
   console.log(formatPersonalityPocPreflightReport({
     rawInput: DEFAULT_TEST_CASE,

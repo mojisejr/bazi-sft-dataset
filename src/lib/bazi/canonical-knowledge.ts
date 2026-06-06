@@ -6,6 +6,10 @@ import { parse as parseCsv } from "csv-parse/sync";
 
 import { buildGeneratedSolarTermRows } from "./solar-terms";
 import {
+  buildDayMasterStrengthSource2Metadata,
+  buildSixtyJiaziSource2Metadata,
+} from "./source2-knowledge-ownership";
+import {
   DAY_MASTER_STRENGTH_KNOWLEDGE_BOUNDARY,
   resolveCanonicalDayMasterStrengthState,
 } from "./strength-state-vocabulary";
@@ -708,6 +712,7 @@ function buildDayMasterStrengthStates(
       .map(({ rawCells, rowIndex }) => {
         const strengthState = rawCells[0] || null;
         const scoreText = rawCells.find((cell) => /^\d+(\.\d+)?$/.test(cell)) ?? null;
+        const narrativeSummary = findNarrativeCell(rawCells);
         const resolvedStrength = resolveCanonicalDayMasterStrengthState(strengthState ?? scoreText);
 
         return {
@@ -718,7 +723,7 @@ function buildDayMasterStrengthStates(
           strengthState,
           scoreText,
           qiLabel: rawCells.find((cell) => /เชี่ยงแซ|หมกยก|ลิ่มกัว|ตี้อ๋วง|ซวย|แป่|ซี่|หมอ|เจ๊าะ|ทอ|เอี้ยง|กวงตั่ว/u.test(cell)) ?? null,
-          narrativeSummary: findNarrativeCell(rawCells),
+          narrativeSummary,
           rowOrder: rowIndex + 1,
           rawCells,
           metadata: {
@@ -727,6 +732,11 @@ function buildDayMasterStrengthStates(
             repositoryLookupState: resolvedStrength?.repositoryLookupState ?? null,
             bandCoverage: resolvedStrength?.bandCoverage ?? [],
             semanticCoverage: resolvedStrength?.semanticCoverage ?? [],
+            source2Knowledge: buildDayMasterStrengthSource2Metadata({
+              sourcePath: relativePath,
+              rowOrder: rowIndex + 1,
+              narrativeSummary,
+            }),
           },
         };
       });
@@ -751,6 +761,8 @@ function buildSixtyJiaziNarratives(
     const dayMasterRow = payloadRows[index];
     const branchRow = payloadRows[index + 1];
     const combinedRow = payloadRows[index + 2];
+    const rowGroup = records.length + 1;
+    const combinedNarrative = combinedRow[3] || null;
 
     if (!dayMasterRow?.[0] || !branchRow?.[0]) {
       continue;
@@ -758,7 +770,7 @@ function buildSixtyJiaziNarratives(
 
     records.push({
       sourcePath: relativePath,
-      rowGroup: records.length + 1,
+      rowGroup,
       dayMasterCode: dayMasterRow[0],
       dayMasterChinese: dayMasterRow[1] || dayMasterRow[0],
       branchCode: branchRow[0],
@@ -767,9 +779,15 @@ function buildSixtyJiaziNarratives(
       twelveQiLabel: combinedRow[1] || null,
       dayMasterNarrative: dayMasterRow[3] || null,
       branchNarrative: branchRow[3] || null,
-      combinedNarrative: combinedRow[3] || null,
+      combinedNarrative,
       rawCells: [...dayMasterRow, ...branchRow, ...combinedRow],
-      metadata: {},
+      metadata: {
+        source2Knowledge: buildSixtyJiaziSource2Metadata({
+          sourcePath: relativePath,
+          rowGroup,
+          combinedNarrative,
+        }),
+      },
     });
   }
 

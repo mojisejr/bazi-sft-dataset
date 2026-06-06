@@ -8,6 +8,11 @@ import {
   baziTimeSolarTerms,
 } from "@/db/schema";
 import type { BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
+import {
+  buildSource2DayPillarAdviceInput,
+  buildSource2RoutingNarrativeInput,
+  buildSource2TwelveQiAdviceInput,
+} from "@/lib/bazi/source2-knowledge-ownership";
 import { resolveCanonicalDayMasterStrengthState } from "@/lib/bazi/strength-state-vocabulary";
 
 export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledgeRepository {
@@ -46,6 +51,8 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
     async findSixtyJiaziPersona(dayMasterChinese, branchChinese) {
       const [persona] = await db
         .select({
+          sourcePath: baziSixtyJiaziNarratives.sourcePath,
+          rowGroup: baziSixtyJiaziNarratives.rowGroup,
           dayMasterChinese: baziSixtyJiaziNarratives.dayMasterChinese,
           branchChinese: baziSixtyJiaziNarratives.branchChinese,
           elementTone: baziSixtyJiaziNarratives.elementTone,
@@ -53,6 +60,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
           dayMasterNarrative: baziSixtyJiaziNarratives.dayMasterNarrative,
           branchNarrative: baziSixtyJiaziNarratives.branchNarrative,
           combinedNarrative: baziSixtyJiaziNarratives.combinedNarrative,
+          metadata: baziSixtyJiaziNarratives.metadata,
         })
         .from(baziSixtyJiaziNarratives)
         .where(
@@ -63,18 +71,44 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
         )
         .limit(1);
 
-      return persona ?? null;
+      if (!persona) {
+        return null;
+      }
+
+      return {
+        dayMasterChinese: persona.dayMasterChinese,
+        branchChinese: persona.branchChinese,
+        elementTone: persona.elementTone,
+        twelveQiLabel: persona.twelveQiLabel,
+        dayMasterNarrative: persona.dayMasterNarrative,
+        branchNarrative: persona.branchNarrative,
+        combinedNarrative: persona.combinedNarrative,
+        dayPillarAdvice: buildSource2DayPillarAdviceInput({
+          sourcePath: persona.sourcePath,
+          rowGroup: persona.rowGroup,
+          combinedNarrative: persona.combinedNarrative,
+          metadata: persona.metadata,
+        }),
+        twelveQiAdvice: buildSource2TwelveQiAdviceInput({
+          sourcePath: persona.sourcePath,
+          rowGroup: persona.rowGroup,
+          combinedNarrative: persona.combinedNarrative,
+          metadata: persona.metadata,
+        }),
+      };
     },
 
     async findDayMasterStrengthProfile(dayMasterChinese, strengthState, strengthScore) {
       const [profile] = await db
         .select({
+          sourcePath: baziDayMasterStrengthStates.sourcePath,
           dayMaster: baziDayMasterStrengthStates.dayMasterChinese,
           strengthState: baziDayMasterStrengthStates.strengthState,
           narrative: baziDayMasterStrengthStates.narrativeSummary,
           qiLabel: baziDayMasterStrengthStates.qiLabel,
           scoreText: baziDayMasterStrengthStates.scoreText,
           rowOrder: baziDayMasterStrengthStates.rowOrder,
+          metadata: baziDayMasterStrengthStates.metadata,
         })
         .from(baziDayMasterStrengthStates)
         .where(
@@ -89,12 +123,14 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
       if (!profile?.dayMaster || !profile.strengthState || !profile.narrative) {
         const fallbackRows = await db
           .select({
+            sourcePath: baziDayMasterStrengthStates.sourcePath,
             dayMaster: baziDayMasterStrengthStates.dayMasterChinese,
             strengthState: baziDayMasterStrengthStates.strengthState,
             narrative: baziDayMasterStrengthStates.narrativeSummary,
             qiLabel: baziDayMasterStrengthStates.qiLabel,
             scoreText: baziDayMasterStrengthStates.scoreText,
             rowOrder: baziDayMasterStrengthStates.rowOrder,
+            metadata: baziDayMasterStrengthStates.metadata,
           })
           .from(baziDayMasterStrengthStates)
           .where(
@@ -159,6 +195,12 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
           narrative: fallbackProfile.narrative,
           qiLabel: fallbackProfile.qiLabel,
           scoreText: fallbackProfile.scoreText,
+          routingNarrative: buildSource2RoutingNarrativeInput({
+            sourcePath: fallbackProfile.sourcePath,
+            rowOrder: fallbackProfile.rowOrder,
+            narrative: fallbackProfile.narrative,
+            metadata: fallbackProfile.metadata,
+          }),
         };
       }
 
@@ -173,6 +215,12 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
         narrative,
         qiLabel: profile.qiLabel,
         scoreText: profile.scoreText,
+        routingNarrative: buildSource2RoutingNarrativeInput({
+          sourcePath: profile.sourcePath,
+          rowOrder: profile.rowOrder,
+          narrative,
+          metadata: profile.metadata,
+        }),
       };
     },
 

@@ -64,6 +64,42 @@ describe("buildCanonicalKnowledgeDataset", () => {
       repositoryLookupState: expect.anything(),
       bandCoverage: expect.any(Array),
       semanticCoverage: expect.any(Array),
+      source2Knowledge: {
+        routingNarrative: expect.objectContaining({
+          lane: "routing",
+          ownerTable: "bazi_day_master_strength_states",
+          ownerField: "narrative_summary",
+        }),
+      },
+    });
+  });
+
+  test("classifies 癸亥 Source 2 advice ownership without inventing a standalone 12 Qi advice row", () => {
+    const dataset = getDataset();
+    const row = dataset.sixtyJiaziNarratives.find((entry) => (
+      entry.dayMasterChinese === "癸" && entry.branchChinese === "亥"
+    ));
+
+    expect(row).toBeDefined();
+    expect(row?.combinedNarrative).toContain("ควร");
+    expect(row?.metadata).toMatchObject({
+      source2Knowledge: {
+        dayPillarAdvice: {
+          lane: "refinement",
+          ownerTable: "bazi_sixty_jiazi_narratives",
+          ownerField: "combined_narrative",
+          status: "authored",
+        },
+        twelveQiAdvice: {
+          lane: "evidence",
+          ownerTable: "typed-constant",
+          ownerField: "SOURCE2_TWELVE_QI_ADVICE_POLICY",
+          status: "shared-granularity",
+          fallbackOwnerTable: "bazi_sixty_jiazi_narratives",
+          fallbackOwnerField: "combined_narrative",
+          gapCode: "no-standalone-twelve-qi-advice",
+        },
+      },
     });
   });
 });

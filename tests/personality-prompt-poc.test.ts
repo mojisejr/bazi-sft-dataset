@@ -9,7 +9,149 @@ import {
   buildPersonalityPocSystemInstruction,
   buildPersonalityPocUserPrompt,
 } from "@/lib/bazi/personality-prompt-poc";
-import { CalculatedStateSchema, type RawInputValue } from "@/lib/bazi/schema-types";
+import { type RawInputValue } from "@/lib/bazi/schema-types";
+
+const SAMPLE_SOURCE2_OVERLAY = {
+  sourceId: "source-2",
+  status: "ready",
+  routing: {
+    routeFrom: "dayMasterStrengthProfile",
+    dayMaster: "己",
+    strengthProfile: {
+      dayMaster: "己",
+      strengthState: "แข็งแรง/สมดุล",
+      sourceState: "แข็งแรง/สมดุล",
+      lookupState: "แข็งแรง/สมดุล",
+      displayLabel: "ดิถีค่อนข้างมั่นคง",
+      narrative: "ดิถีดินหยินมีแกนตัวตนชัด รับแรงกดดันได้ แต่จะดื้อเงียบเมื่อรู้สึกว่าถูกบีบมากเกินไป",
+      qiLabel: "帝旺",
+      scoreText: "3.25",
+    },
+    narrative: {
+      text: "ดิถีดินหยินมีแกนตัวตนชัด รับแรงกดดันได้ แต่จะดื้อเงียบเมื่อรู้สึกว่าถูกบีบมากเกินไป",
+      ownership: {
+        lane: "routing",
+        ownerTable: "bazi_day_master_strength_states",
+        ownerField: "narrative_summary",
+        status: "authored",
+        note: "Routing narrative is authored in the strength-state corpus.",
+      },
+    },
+  },
+  refinement: {
+    routeFrom: "sixtyJiaziCorePersona",
+    dayPillarCode: "己巳",
+    corePersona: {
+      code: "己巳",
+      narrative: "เป็นดินที่เก็บพลังและแสดงผลเมื่อจังหวะเปิด จึงดูนิ่งภายนอกแต่มีแรงขับภายในสูง",
+      heavenNarrative: null,
+      earthNarrative: null,
+      elementTone: null,
+      twelveQiLabel: "帝旺",
+      semanticNotes: [],
+      precedenceNotes: ["ใช้แกนดิถีเป็นตัวตั้ง ก่อนค่อยแต้มสีจาก 60 Jiazi"],
+      precedenceNoteSignals: [],
+    },
+    dayPillarAdvice: {
+      text: "เป็นดินที่เก็บพลังและแสดงผลเมื่อจังหวะเปิด จึงดูนิ่งภายนอกแต่มีแรงขับภายในสูง",
+      ownership: {
+        lane: "refinement",
+        ownerTable: "bazi_sixty_jiazi_narratives",
+        ownerField: "combined_narrative",
+        status: "authored",
+        note: "The combined 60 Jiazi narrative is the authored Source 2 owner.",
+      },
+    },
+  },
+  evidence: {
+    twelveQi: {
+      dayBranchStage: "帝旺",
+      monthBranchStage: "绝",
+      toneLabel: "帝旺",
+      advice: {
+        text: "จังหวะชี่วันค่อนข้างเร่งพลังด้านใน ทำให้ความมั่นใจจะออกมาตอนที่พร้อมแล้ว",
+        ownership: {
+          lane: "evidence",
+          ownerTable: "typed-constant",
+          ownerField: "SOURCE2_TWELVE_QI_ADVICE_POLICY",
+          status: "shared-granularity",
+          note: "Source 2 has no standalone authored 12 Qi advice lane.",
+        },
+      },
+      precedenceNoteSignals: [],
+    },
+    supportingPackets: [
+      {
+        family: "role-of-element",
+        sections: {
+          roles: {
+            provenance: "source1_contract",
+            sourceFieldIds: ["seasonal-interaction"],
+            value: {
+              tenGods: {},
+              seasonalInteraction: {
+                dayMasterStem: "己",
+                dayMasterElement: "earth",
+                monthBranch: "子",
+                season: "winter",
+                phase: "peak",
+                seasonLabel: "ฤดูหนาวกลางฤดู",
+                metaphor: "ดินเย็นที่ต้องอาศัยไฟค่อย ๆ อุ่นก่อนจะแสดงพลังได้เต็มที่",
+              },
+            },
+          },
+          elementBalance: {
+            provenance: "computed_fact_state",
+            sourceFieldIds: ["element-analysis"],
+            value: {
+              dominantElements: ["earth"],
+              missingElements: [],
+              elementStrengths: [
+                {
+                  element: "earth",
+                  rooted: true,
+                  seasonalSupport: "seasonal-support",
+                  strength: "strong",
+                },
+                {
+                  element: "fire",
+                  rooted: true,
+                  seasonalSupport: "seasonal-drained",
+                  strength: "weak",
+                },
+              ],
+            },
+          },
+        },
+      },
+      {
+        family: "twelve-qi-texture",
+        sections: {
+          texture: {
+            provenance: "computed_fact_state",
+            sourceFieldIds: ["twelve-qi"],
+            value: {
+              raw: {
+                yearBranch: "衰",
+                monthBranch: "绝",
+                dayBranch: "帝旺",
+                hourBranch: "衰",
+                mingGongBranch: "衰",
+              },
+              display: {
+                yearBranch: "衰",
+                monthBranch: "绝",
+                dayBranch: "帝旺",
+                hourBranch: "衰",
+                mingGongBranch: "衰",
+              },
+            },
+          },
+        },
+      },
+    ],
+  },
+} as const;
 
 const SAMPLE_RAW_INPUT: RawInputValue = {
   birthDate: "1989-01-03",
@@ -20,107 +162,16 @@ const SAMPLE_RAW_INPUT: RawInputValue = {
   timezone: "Asia/Bangkok",
 };
 
-const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
-  fourPillars: {
-    year: { stem: "戊", branch: "辰", hiddenStems: ["戊", "乙", "癸"] },
-    month: { stem: "甲", branch: "子", hiddenStems: ["癸"] },
-    day: { stem: "己", branch: "巳", hiddenStems: ["丙", "庚", "戊"] },
-    hour: { stem: "戊", branch: "辰", hiddenStems: ["戊", "乙", "癸"] },
-  },
-  dayMaster: "己",
-  strengthScore: 3.25,
-  tenGods: {
-    yearStem: "劫财",
-    monthStem: "正官",
-    hourStem: "劫财",
-  },
-  twelveQi: {
-    yearBranch: "衰",
-    monthBranch: "绝",
-    dayBranch: "帝旺",
-    hourBranch: "衰",
-  },
-  elementAnalysis: {
-    visibleCounts: {
-      wood: 1,
-      fire: 0,
-      earth: 2,
-      metal: 0,
-      water: 1,
-    },
-    hiddenCounts: {
-      wood: 2,
-      fire: 1,
-      earth: 3,
-      metal: 1,
-      water: 2,
-    },
-    totalCounts: {
-      wood: 3,
-      fire: 1,
-      earth: 5,
-      metal: 1,
-      water: 3,
-    },
-    missingElements: [],
-    dominantElements: ["earth"],
-    elementStrengths: [
-      {
-        element: "earth",
-        rooted: true,
-        seasonalSupport: "seasonal-support",
-        strength: "strong",
-      },
-      {
-        element: "fire",
-        rooted: true,
-        seasonalSupport: "seasonal-drained",
-        strength: "weak",
-      },
-    ],
-  },
-  seasonalInteraction: {
-    dayMasterStem: "己",
-    dayMasterElement: "earth",
-    monthBranch: "子",
-    season: "winter",
-    phase: "peak",
-    seasonLabel: "ฤดูหนาวกลางฤดู",
-    metaphor: "ดินเย็นที่ต้องอาศัยไฟค่อย ๆ อุ่นก่อนจะแสดงพลังได้เต็มที่",
-  },
-  dayMasterStrengthProfile: {
-    dayMaster: "己",
-    strengthState: "แข็งแรง/สมดุล",
-    sourceState: "แข็งแรง/สมดุล",
-    lookupState: "แข็งแรง/สมดุล",
-    displayLabel: "ดิถีค่อนข้างมั่นคง",
-    narrative: "ดิถีดินหยินมีแกนตัวตนชัด รับแรงกดดันได้ แต่จะดื้อเงียบเมื่อรู้สึกว่าถูกบีบมากเกินไป",
-    qiLabel: "帝旺",
-    scoreText: "3.25",
-  },
-  sixtyJiaziCorePersona: {
-    code: "己巳",
-    narrative: "เป็นดินที่เก็บพลังและแสดงผลเมื่อจังหวะเปิด จึงดูนิ่งภายนอกแต่มีแรงขับภายในสูง",
-    precedenceNotes: ["ใช้แกนดิถีเป็นตัวตั้ง ก่อนค่อยแต้มสีจาก 60 Jiazi"],
-  },
-  interactionState: {
-    version: "v3-phase-1",
-    entities: [{ id: "day", type: "pillar", symbol: "己巳", label: "日柱" }],
-    relations: [],
-    outcomes: [],
-    qualifiers: [],
-  },
-});
-
 describe("personality prompt poc helpers", () => {
   test("builds a focused payload without interaction noise", () => {
-    const payload = buildPersonalityFocusPayload(SAMPLE_CALCULATED_STATE);
+    const payload = buildPersonalityFocusPayload(SAMPLE_SOURCE2_OVERLAY);
 
     expect(Object.keys(payload)).toEqual([
+      "source2Overlay",
       "dayMasterStrengthProfile",
       "sixtyJiaziCorePersona",
-      "elementAnalysis",
-      "seasonalInteraction",
+      "evidence",
+      "supportingPackets",
     ]);
     expect(payload.dayMasterStrengthProfile?.displayLabel).toBe("ดิถีค่อนข้างมั่นคง");
     expect("interactionState" in payload).toBe(false);
@@ -170,17 +221,33 @@ describe("personality prompt poc helpers", () => {
 
   test("states the hierarchy clearly in the system instruction and user prompt", () => {
     const instruction = buildPersonalityPocSystemInstruction();
-    const prompt = buildPersonalityPocUserPrompt(SAMPLE_RAW_INPUT, SAMPLE_CALCULATED_STATE);
+    const prompt = buildPersonalityPocUserPrompt(
+      SAMPLE_RAW_INPUT,
+      buildPersonalityFocusPayload(SAMPLE_SOURCE2_OVERLAY),
+    );
 
-    expect(instruction).toContain("dayMasterStrengthProfile first");
+    expect(instruction).toContain("Source 2 routing first");
+    expect(instruction).toContain("Stable-trait claims may come only from Source 2 routing");
+    expect(instruction).toContain("When refinement or evidence contain warnings, phrase them as tendencies or cautions");
+    expect(instruction).toContain("Do not introduce Chinese technical labels");
+    expect(instruction).toContain("Do not infer romance, sexuality, fame, social rank, or life-domain destiny unless the routing text states it directly");
     expect(instruction).toContain("Ignore interactionState");
     expect(instruction).toContain("Do not use gendered polite particles");
     expect(instruction).toContain("You own the interpretation and the sinsae wording");
     expect(prompt).toContain("personality_psychology dimension only");
     expect(prompt).toContain("คุณเป็นคน... / พอมาเจอ... / จึงทำให้...");
     expect(prompt).toContain("Return exactly 3 or 4 bridge_blocks");
-    expect(prompt).toContain("dayMasterStrengthProfile -> sixtyJiaziCorePersona -> elementAnalysis -> seasonalInteraction");
-    expect(prompt).toContain("Focused personality payload");
+    expect(prompt).toContain("source2.routing -> source2.refinement -> source2.evidence -> source2.supportingPackets");
+    expect(prompt).toContain("Curated Source 2 personality payload");
+    expect(prompt).toContain("Lane guardrails:");
+    expect(prompt).toContain("routing owner: ยืนยันจากข้อความหลักของตำรา; เขียนเป็นแกนนิสัยหลักได้");
+    expect(prompt).toContain("evidence owner: ใช้เป็นบริบทเสริมเท่านั้น; ต้องใช้คำอย่าง \"มีแนวโน้ม\", \"อาจ\", หรือ \"ควรระวัง\" แทนคำฟันธง");
+    expect(prompt).toContain("Do not turn side warnings into identity labels");
+    expect(prompt).toContain('"role": "แกนนิสัยหลัก"');
+    expect(prompt).toContain('"role": "สีบุคลิกย่อย"');
+    expect(prompt).toContain('"role": "บริบทเสริมและข้อควรระวัง"');
+    expect(prompt).not.toContain('"source2Overlay"');
+    expect(prompt).not.toContain('"supportingPackets"');
   });
 
   test("rejects report content that leaks forbidden dev wording", () => {
@@ -214,16 +281,53 @@ describe("personality prompt poc helpers", () => {
     })).toThrow("Forbidden report term detected");
   });
 
+  test("rejects technical jargon that should not leak into the final sinsae wording", () => {
+    expect(() => PersonalityPocResponseSchema.parse({
+      reviewSummary: "สรุปภาพรวมปกติ",
+      personality: {
+        thought_process: "ใช้ภาษาซินแสปกติ",
+        bridge_blocks: [
+          {
+            title: "แกนแรก",
+            signal: "ตี้อ๋วงเด่น",
+            explanation: "คุณมีตี้อ๋วงในดวง",
+            personality_impact: "จึงทำให้ใจแข็ง",
+          },
+          {
+            title: "แกนสอง",
+            signal: "กะจื่อวันหนุนแรงขับ",
+            explanation: "พอมาเจอแรงขับภายใน",
+            personality_impact: "จึงทำให้ไม่ยอมแพ้ง่าย",
+          },
+          {
+            title: "แกนสาม",
+            signal: "ฤดูหนาวแต้มอารมณ์",
+            explanation: "ด้านในคิดนาน",
+            personality_impact: "จึงทำให้เปิดใจช้า",
+          },
+        ],
+        final_prediction: "เป็นคนมีตี้อ๋วงและลิ่มกัวชัด",
+        supporting_signals: ["ตี้อ๋วงเด่น"],
+      },
+    })).toThrow("Forbidden report term detected");
+  });
+
   test("formats a preflight report in sinsae-readable Thai without debug headings", () => {
     const report = formatPersonalityPocPreflightReport({
       rawInput: SAMPLE_RAW_INPUT,
-      focusPayload: buildPersonalityFocusPayload(SAMPLE_CALCULATED_STATE),
+      focusPayload: buildPersonalityFocusPayload(SAMPLE_SOURCE2_OVERLAY),
     });
 
     expect(report).toContain("=== รายงานเตรียมอ่านนิสัยพื้นฐาน ===");
     expect(report).toContain("แกนหลักของดวง");
     expect(report).toContain("สัญญาณที่ใช้ในการอ่าน");
     expect(report).toContain("ลำดับการอ่าน");
+    expect(report).toContain("Source 2 routing (แกนนิสัยหลัก)");
+    expect(report).toContain("Source 2 refinement (สีบุคลิกย่อย)");
+    expect(report).toContain("หลักฐาน 12 ชี่ (ใช้เป็นบริบทเสริม)");
+    expect(report).toContain("ความพร้อมส่งต่อ");
+    expect(report).toContain("source-5 ใช้ Source 2 routing เป็นแกนนิสัยหลักได้แล้ว");
+    expect(report).toContain("Source 2 evidence และ supporting packets ใช้เป็นบริบทเสริมได้");
     expect(report).not.toContain("payload");
     expect(report).not.toContain("schema");
     expect(report).not.toContain("JSON");
@@ -232,7 +336,7 @@ describe("personality prompt poc helpers", () => {
   test("formats a generated report with bridge blocks and client-facing ending", () => {
     const report = formatPersonalityPocGeneratedReport({
       rawInput: SAMPLE_RAW_INPUT,
-      focusPayload: buildPersonalityFocusPayload(SAMPLE_CALCULATED_STATE),
+      focusPayload: buildPersonalityFocusPayload(SAMPLE_SOURCE2_OVERLAY),
       model: "gemini-3-flash-preview",
       response: {
         reviewSummary: "แกนนิสัยชัดแต่ต้องอาศัยวินัยมาช่วยประคอง",

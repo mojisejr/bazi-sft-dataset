@@ -22,6 +22,7 @@ import type {
   InteractionStateValue,
   PillarValue,
 } from "@/lib/bazi/schema-types";
+import type { Source2AdviceInput } from "@/lib/bazi/source2-knowledge-ownership";
 
 export type MatrixDomain = "love" | "work";
 
@@ -230,6 +231,8 @@ export type SixtyJiaziPersonaRecord = {
   dayMasterNarrative: string | null;
   branchNarrative: string | null;
   combinedNarrative: string | null;
+  dayPillarAdvice: Source2AdviceInput;
+  twelveQiAdvice: Source2AdviceInput;
 };
 
 export type DayMasterStrengthProfileRecord = {
@@ -240,6 +243,7 @@ export type DayMasterStrengthProfileRecord = {
   narrative: string;
   qiLabel: string | null;
   scoreText: string | null;
+  routingNarrative: Source2AdviceInput;
 };
 
 export type DomainMatrixRecord = {

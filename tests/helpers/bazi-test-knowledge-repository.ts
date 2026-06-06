@@ -1,4 +1,9 @@
 import type { BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
+import {
+  buildSource2DayPillarAdviceInput,
+  buildSource2RoutingNarrativeInput,
+  buildSource2TwelveQiAdviceInput,
+} from "@/lib/bazi/source2-knowledge-ownership";
 
 export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
   const matrixHeader = [
@@ -34,27 +39,55 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
     [
       [
         "戊|戌",
-        {
+        (() => {
+          const combinedNarrative = "Acts like a stabilizer under pressure and becomes more useful when responsibility increases.";
+
+          return {
           dayMasterChinese: "戊",
           branchChinese: "戌",
           elementTone: "earth",
           twelveQiLabel: "墓",
           dayMasterNarrative: null,
           branchNarrative: null,
-          combinedNarrative: "Acts like a stabilizer under pressure and becomes more useful when responsibility increases.",
-        },
+          combinedNarrative,
+          dayPillarAdvice: buildSource2DayPillarAdviceInput({
+            sourcePath: "tests/helpers/bazi-test-knowledge-repository.ts",
+            rowGroup: 1,
+            combinedNarrative,
+          }),
+          twelveQiAdvice: buildSource2TwelveQiAdviceInput({
+            sourcePath: "tests/helpers/bazi-test-knowledge-repository.ts",
+            rowGroup: 1,
+            combinedNarrative,
+          }),
+        };
+        })(),
       ],
       [
         "己|巳",
-        {
+        (() => {
+          const combinedNarrative = "Builds influence patiently, then turns preparation into visible results when timing opens.";
+
+          return {
           dayMasterChinese: "己",
           branchChinese: "巳",
           elementTone: "fire",
           twelveQiLabel: "帝旺",
           dayMasterNarrative: null,
           branchNarrative: null,
-          combinedNarrative: "Builds influence patiently, then turns preparation into visible results when timing opens.",
-        },
+          combinedNarrative,
+          dayPillarAdvice: buildSource2DayPillarAdviceInput({
+            sourcePath: "tests/helpers/bazi-test-knowledge-repository.ts",
+            rowGroup: 2,
+            combinedNarrative,
+          }),
+          twelveQiAdvice: buildSource2TwelveQiAdviceInput({
+            sourcePath: "tests/helpers/bazi-test-knowledge-repository.ts",
+            rowGroup: 2,
+            combinedNarrative,
+          }),
+        };
+        })(),
       ],
     ] as const,
   );
@@ -62,27 +95,45 @@ export function createTestKnowledgeRepository(): BaziKnowledgeRepository {
   const dayMasterStrengthProfiles = new Map<string, Awaited<ReturnType<BaziKnowledgeRepository["findDayMasterStrengthProfile"]>>>([
     [
       "己|อ่อนแอ",
-      {
+      (() => {
+        const narrative = "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี";
+
+        return {
         dayMaster: "己",
         strengthState: "อ่อนแอ",
         sourceState: "อ่อนแอ",
         lookupState: "อ่อนแอ",
-        narrative: "ดิถีดินหยินกำลังอ่อน ต้องอาศัยแรงหนุนและจังหวะที่ค่อยเป็นค่อยไปจึงจะออกผลดี",
+        narrative,
         qiLabel: "帝旺",
         scoreText: "3.75",
-      },
+        routingNarrative: buildSource2RoutingNarrativeInput({
+          sourcePath: "tests/helpers/bazi-test-knowledge-repository.ts",
+          rowOrder: 1,
+          narrative,
+        }),
+      };
+      })(),
     ],
     [
       "戊|แข็งแรง/สมดุล",
-      {
+      (() => {
+        const narrative = "ดิถีดินหยางค่อนข้างสมดุล รับทั้งภาระและโอกาสได้เมื่อบริบทไม่เหวี่ยงเกินไป";
+
+        return {
         dayMaster: "戊",
         strengthState: "แข็งแรง/สมดุล",
         sourceState: "แข็งแรง/สมดุล",
         lookupState: "แข็งแรง/สมดุล",
-        narrative: "ดิถีดินหยางค่อนข้างสมดุล รับทั้งภาระและโอกาสได้เมื่อบริบทไม่เหวี่ยงเกินไป",
+        narrative,
         qiLabel: "养",
         scoreText: "4.50",
-      },
+        routingNarrative: buildSource2RoutingNarrativeInput({
+          sourcePath: "tests/helpers/bazi-test-knowledge-repository.ts",
+          rowOrder: 2,
+          narrative,
+        }),
+      };
+      })(),
     ],
   ]);
 
