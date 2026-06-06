@@ -1,19 +1,33 @@
 import { describe, expect, test } from "vitest";
 
 import {
-  RelationReadingResponseSchema,
-  buildDayMasterRelationBrief,
   buildDayMasterRelationPacket,
+} from "@/lib/bazi/day-master-relation-reading-poc";
+import {
+  buildDayMasterRelationReadingFactsFromUpstream,
+  buildDayMasterRelationReadingSeam,
+} from "@/lib/bazi/day-master-relation-reading-facts";
+import {
+  RelationReadingResponseSchema,
   buildDayMasterRelationPocSystemInstruction,
   buildDayMasterRelationPocUserPrompt,
+} from "@/lib/bazi/day-master-relation-reading-generator";
+import {
+  assertDayMasterRelationResponseEvidenceRefs,
+  buildDayMasterRelationBrief,
+  buildDayMasterRelationBriefFromReadingSeam,
+} from "@/lib/bazi/day-master-relation-reading-interpretation";
+import {
   formatDayMasterRelationPocBriefPreview,
   formatDayMasterRelationPocGeneratedReport,
   formatDayMasterRelationPocPreflightReport,
-} from "@/lib/bazi/day-master-relation-reading-poc";
+} from "@/lib/bazi/day-master-relation-reading-presentation";
+import { buildSource5RelationshipOverlay } from "@/lib/bazi/source5-relationship-overlay";
 import {
   PILLAR_CONTEXT_MAP,
   VERTICAL_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
+import { buildBaziCallerContractFromRawInput } from "@/lib/bazi/symbolic-engine.caller-contract";
 import {
   calculateBaziStructuralState,
   resolveBranchInteractionEffects,
@@ -157,6 +171,74 @@ describe("day master relation reading poc", () => {
     expect(instruction).toContain("evidence_refs");
     expect(prompt).toContain("Do not break the Step 1-6 order.");
     expect(prompt).toContain("Stepwise reading brief:");
+  });
+
+  test("freezes one explicit reading seam before brief generation without changing legacy brief output", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const callerContract = buildBaziCallerContractFromRawInput(SAMPLE_RAW_INPUT, SAMPLE_CALCULATED_STATE);
+    const source5RelationshipOverlay = buildSource5RelationshipOverlay(callerContract);
+    const seam = buildDayMasterRelationReadingSeam({
+      rawInput: SAMPLE_RAW_INPUT,
+      packet,
+      callerContract,
+      source5RelationshipOverlay,
+    });
+
+    const seamBrief = buildDayMasterRelationBriefFromReadingSeam(seam);
+    const legacyBrief = buildDayMasterRelationBrief(SAMPLE_RAW_INPUT, packet);
+
+    expect(seam.source5RelationshipOverlay?.sourceId).toBe("source-5");
+    expect(seam.callerContract?.overlayReadiness.steps.find((step) => step.sourceId === "source-5")?.handoffStatus).toBe("ready");
+    expect(seamBrief).toEqual(legacyBrief);
+  });
+
+  test("builds composite reading facts from upstream inputs without changing packet semantics", () => {
+    const callerContract = buildBaziCallerContractFromRawInput(SAMPLE_RAW_INPUT, SAMPLE_CALCULATED_STATE);
+    const facts = buildDayMasterRelationReadingFactsFromUpstream({
+      rawInput: SAMPLE_RAW_INPUT,
+      calculatedState: SAMPLE_CALCULATED_STATE,
+      packetBuilder: buildDayMasterRelationPacket,
+      callerContract,
+    });
+
+    expect(facts.packet).toEqual(buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE));
+    expect(facts.source5RelationshipOverlay?.sourceId).toBe("source-5");
+    expect(facts.source5RelationshipOverlay?.steps.length).toBeGreaterThan(0);
+  });
+
+  test("guards response evidence refs against the extracted interpretation brief contract", () => {
+    const callerContract = buildBaziCallerContractFromRawInput(SAMPLE_RAW_INPUT, SAMPLE_CALCULATED_STATE);
+    const seam = buildDayMasterRelationReadingFactsFromUpstream({
+      rawInput: SAMPLE_RAW_INPUT,
+      calculatedState: SAMPLE_CALCULATED_STATE,
+      packetBuilder: buildDayMasterRelationPacket,
+      callerContract,
+    });
+    const brief = buildDayMasterRelationBriefFromReadingSeam(seam);
+
+    expect(() => assertDayMasterRelationResponseEvidenceRefs({
+      step_readings: brief.steps.map((step, index) => ({
+        evidence_refs: index === 0 ? ["S999-unknown"] : step.evidenceRefs.slice(0, 1),
+      })),
+    }, brief)).toThrow("Unknown evidence ref returned by Gemini");
+
+    expect(() => assertDayMasterRelationResponseEvidenceRefs({
+      step_readings: brief.steps.map((step) => ({
+        evidence_refs: step.evidenceRefs.slice(0, 1),
+      })),
+    }, brief)).not.toThrow();
+  });
+
+  test("rejects source 5 overlay on the reading seam when caller contract is missing", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const callerContract = buildBaziCallerContractFromRawInput(SAMPLE_RAW_INPUT, SAMPLE_CALCULATED_STATE);
+    const source5RelationshipOverlay = buildSource5RelationshipOverlay(callerContract);
+
+    expect(() => buildDayMasterRelationReadingSeam({
+      rawInput: SAMPLE_RAW_INPUT,
+      packet,
+      source5RelationshipOverlay,
+    })).toThrow("Source 5 reading seam requires callerContract");
   });
 
   test("rejects reading output that leaks forbidden dev wording", () => {

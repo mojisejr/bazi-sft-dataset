@@ -1,8 +1,6 @@
-import { createHash } from "node:crypto";
-
-import { GoogleGenAI } from "@google/genai";
-import { z } from "zod";
-
+import {
+  RelationReadingPacketSchema,
+} from "@/lib/bazi/day-master-relation-reading-packet";
 import { getCanonicalFivePhaseRelationLabel } from "@/lib/bazi/lexicon/school-lexicon";
 import {
   BRANCH_HIDDEN_STEMS,
@@ -24,31 +22,15 @@ import {
 } from "@/lib/bazi/symbolic-engine.constants";
 import { renderContextRuleNoteThai } from "@/lib/bazi/context-dictionary";
 import { YANG_STEMS } from "@/lib/bazi/pillar-display";
-import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
+import {
+  type CalculatedStateValue,
+  type SupportedElementValue,
+} from "@/lib/bazi/schema-types";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
-import { getGeminiApiKey } from "@/lib/env";
-
-export const DEFAULT_DAY_MASTER_RELATION_POC_MODEL = "gemini-3-flash-preview";
-
-const FORBIDDEN_READING_TERMS = [
-  "payload",
-  "schema",
-  "json",
-  "model",
-  "ai",
-  "enum",
-  "debug",
-  "assistant",
-  "analysis",
-  "ครับ",
-  "ค่ะ",
-] as const;
-const ENGLISH_SCENE_KEY_PATTERN = /[A-Za-z_]/;
 
 const PILLAR_SEQUENCE = ["year", "month", "day", "hour"] as const;
 const RELATION_SEQUENCE = ["same", "resource", "output", "power", "wealth"] as const;
-const READING_STEP_ORDER = [1, 2, 3, 4, 5, 6] as const;
 
 const PILLAR_LABELS = {
   year: "ปี",
@@ -103,205 +85,24 @@ const MODIFIER_FAMILY_LABEL_THAI: Record<string, string> = {
   "earthly-branch-fang-ju": "จู้",
 };
 
-const RelationKeySchema = z.enum(["same", "resource", "output", "power", "wealth"]);
-const ReadingStepKeySchema = z.enum([
-  "balance-core",
-  "day-pillar-identity",
-  "standard-energies",
-  "result-wealth",
-  "context-mapping",
-  "advanced-signals",
-]);
-
-const RelationSummarySchema = z.object({
-  relationKey: RelationKeySchema,
-  relationLabelThai: z.string().trim().min(1),
-  semanticMeaningThai: z.string().trim().min(1),
-  targetElement: z.enum(["wood", "fire", "earth", "metal", "water"]),
-  targetElementLabelThai: z.string().trim().min(1),
-  carrierSummaryThai: z.string().trim().min(1),
-  strongestCarrierThai: z.string().trim().min(1),
-  targetCount: z.number().int().nonnegative(),
-});
-
-const EightSlotRowSchema = z.object({
-  slotKey: z.string().trim().min(1),
-  positionLabelThai: z.string().trim().min(1),
-  layerLabelThai: z.string().trim().min(1),
-  symbol: z.string().trim().min(1),
-  symbolThai: z.string().trim().min(1),
-  element: z.enum(["wood", "fire", "earth", "metal", "water"]),
-  elementLabelThai: z.string().trim().min(1),
-  relationLabelThai: z.string().trim().min(1),
-  hiddenStemSummaryThai: z.string().trim().min(1),
-  contextThai: z.string().trim().min(1),
-});
-
-const AuditEvidenceSchema = z.object({
-  id: z.string().trim().min(1),
-  labelThai: z.string().trim().min(1),
-  detailThai: z.string().trim().min(1),
-  categoryThai: z.string().trim().min(1),
-});
-
-const StepInsightSchema = z.object({
-  stepNumber: z.number().int().min(1).max(6),
-  stepKey: ReadingStepKeySchema,
-  titleThai: z.string().trim().min(1),
-  summaryThai: z.string().trim().min(1),
-  auditFocusThai: z.string().trim().min(1),
-  evidenceIds: z.array(z.string().trim().min(1)).min(1),
-  evidenceLines: z.array(z.string().trim().min(1)).min(1),
-});
-
-export const RelationReadingPacketSchema = z.object({
-  version: z.literal("bazi-stepwise-cli-v2"),
-  mode: z.literal("stepwise-school-reading"),
-  chartAnchor: z.object({
-    dayMasterStem: z.string().trim().min(1),
-    dayMasterElement: z.enum(["wood", "fire", "earth", "metal", "water"]),
-    dayMasterElementLabelThai: z.string().trim().min(1),
-    dayMasterStrengthLabelThai: z.string().trim().min(1),
-    dayMasterStrengthScore: z.number().finite(),
-    dayBranch: z.string().trim().min(1),
-    dayBranchLabelThai: z.string().trim().min(1),
-    balanceNarrativeThai: z.string().trim().min(1),
-    identityNarrativeThai: z.string().trim().min(1),
-  }),
-  eightSlots: z.array(EightSlotRowSchema).length(8),
-  relationSummary: z.array(RelationSummarySchema).length(5),
-  stepInsights: z.array(StepInsightSchema).length(6),
-  evidenceCatalog: z.array(AuditEvidenceSchema).min(6),
-  advancedSignals: z.array(z.string().trim().min(1)).min(1),
-});
-
-const BriefStepSchema = z.object({
-  stepNumber: z.number().int().min(1).max(6),
-  titleThai: z.string().trim().min(1),
-  briefThai: z.string().trim().min(1),
-  evidenceRefs: z.array(z.string().trim().min(1)).min(1),
-  evidenceLines: z.array(z.string().trim().min(1)).min(1),
-});
-
-export const DayMasterRelationBriefSchema = z.object({
-  version: z.literal("bazi-stepwise-brief-v2"),
-  openingDoctrineThai: z.string().trim().min(1),
-  chartAnchor: z.object({
-    dayMasterStem: z.string().trim().min(1),
-    dayMasterElementLabelThai: z.string().trim().min(1),
-    dayMasterStrengthLabelThai: z.string().trim().min(1),
-    dayMasterStrengthScore: z.number().finite(),
-    dayBranchLabelThai: z.string().trim().min(1),
-  }),
-  steps: z.array(BriefStepSchema).length(6),
-});
-
-const StepReadingSchema = z.object({
-  step_number: z.number().int().min(1).max(6),
-  heading_thai: z.string().trim().min(1),
-  teacher_reading: z.string().trim().min(1),
-  life_meaning: z.string().trim().min(1),
-  caution: z.string().trim().min(1),
-  evidence_refs: z.array(z.string().trim().min(1)).min(1),
-});
-
-export const RelationReadingResponseSchema = z.object({
-  openingSummary: z.string().trim().min(1),
-  step_readings: z.array(StepReadingSchema).length(6),
-  closing_reading: z.string().trim().min(1),
-}).superRefine((response, context) => {
-  const fields = [
-    response.openingSummary,
-    response.closing_reading,
-    ...response.step_readings.flatMap((step) => [
-      step.heading_thai,
-      step.teacher_reading,
-      step.life_meaning,
-      step.caution,
-      ...step.evidence_refs,
-    ]),
-  ];
-
-  for (const field of fields) {
-    const normalized = field.toLowerCase();
-    for (const forbiddenTerm of FORBIDDEN_READING_TERMS) {
-      if (normalized.includes(forbiddenTerm)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `Forbidden reading term detected: ${forbiddenTerm}`,
-        });
-      }
-    }
-  }
-
-  const seenStepNumbers = new Set<number>();
-  response.step_readings.forEach((step, index) => {
-    if (ENGLISH_SCENE_KEY_PATTERN.test(step.heading_thai)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["step_readings", index, "heading_thai"],
-        message: "Step heading must stay Thai-only on the visible surface.",
-      });
-    }
-
-    if (seenStepNumbers.has(step.step_number)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["step_readings", index, "step_number"],
-        message: "Each reading step must appear exactly once.",
-      });
-    }
-    seenStepNumbers.add(step.step_number);
-  });
-
-  for (const requiredStep of READING_STEP_ORDER) {
-    if (!seenStepNumbers.has(requiredStep)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: `Missing required reading step: ${requiredStep}`,
-      });
-    }
-  }
-});
-
-const RELATION_READING_RESPONSE_JSON_SCHEMA = {
-  type: "object",
-  properties: {
-    openingSummary: { type: "string" },
-    step_readings: {
-      type: "array",
-      minItems: 6,
-      maxItems: 6,
-      items: {
-        type: "object",
-        properties: {
-          step_number: { type: "integer" },
-          heading_thai: { type: "string" },
-          teacher_reading: { type: "string" },
-          life_meaning: { type: "string" },
-          caution: { type: "string" },
-          evidence_refs: {
-            type: "array",
-            items: { type: "string" },
-            minItems: 1,
-          },
-        },
-        required: ["step_number", "heading_thai", "teacher_reading", "life_meaning", "caution", "evidence_refs"],
-      },
-    },
-    closing_reading: { type: "string" },
-  },
-  required: ["openingSummary", "step_readings", "closing_reading"],
-} as const;
-
-export type RelationReadingPacket = z.infer<typeof RelationReadingPacketSchema>;
-export type DayMasterRelationBrief = z.infer<typeof DayMasterRelationBriefSchema>;
-export type RelationReadingResponse = z.infer<typeof RelationReadingResponseSchema>;
-
-type RelationKey = z.infer<typeof RelationKeySchema>;
+type RelationKey = "same" | "resource" | "output" | "power" | "wealth";
 type PillarKey = (typeof PILLAR_SEQUENCE)[number];
-type RelationSummary = z.infer<typeof RelationSummarySchema>;
-type AuditEvidence = z.infer<typeof AuditEvidenceSchema>;
+type RelationSummary = {
+  relationKey: RelationKey;
+  relationLabelThai: string;
+  semanticMeaningThai: string;
+  targetElement: SupportedElementValue;
+  targetElementLabelThai: string;
+  carrierSummaryThai: string;
+  strongestCarrierThai: string;
+  targetCount: number;
+};
+type AuditEvidence = {
+  id: string;
+  labelThai: string;
+  detailThai: string;
+  categoryThai: string;
+};
 type RelationTarget = {
   carrierKey: string;
   pillarKey: PillarKey;
@@ -397,14 +198,6 @@ type Step3PowerVector = {
   subtypeBadges: Array<{ carrierLabel: string; pillarKey: string; subtypeLabel: string }>;
 };
 
-function buildSeed(rawInput: RawInputValue) {
-  const digest = createHash("sha256")
-    .update(JSON.stringify(rawInput))
-    .digest();
-
-  return digest.readUInt32BE(0) % 2_147_483_647;
-}
-
 function getStemElement(stem: string): SupportedElementValue {
   return (STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT] ?? "wood") as SupportedElementValue;
 }
@@ -423,14 +216,6 @@ function formatElementListThai(elements: readonly SupportedElementValue[], fallb
   }
 
   return elements.map((element) => getElementLabelThai(element)).join(", ");
-}
-
-function formatGenderThai(gender: string) {
-  return gender === "female" ? "หญิง" : gender === "male" ? "ชาย" : gender;
-}
-
-function formatProvinceThai(province: string) {
-  return province === "Bangkok" ? "กรุงเทพมหานคร" : province;
 }
 
 function getRelationKey(dayMasterElement: SupportedElementValue, targetElement: SupportedElementValue): RelationKey {
@@ -1853,303 +1638,3 @@ export function buildDayMasterRelationPacket(calculatedState: CalculatedStateVal
   });
 }
 
-export function buildDayMasterRelationBrief(_rawInput: RawInputValue, packet: RelationReadingPacket) {
-  return DayMasterRelationBriefSchema.parse({
-    version: "bazi-stepwise-brief-v2",
-    openingDoctrineThai: "อ่านตาม Step 1 ถึง 6 เท่านั้น: สมดุล -> หลักวัน -> พลังมาตรฐาน -> ผลลัพธ์/โชคลาภ -> บริบทสี่เสา -> สัญญาณขั้นสูง โดยใช้ศัพท์สำนักก่อนและห้ามให้ prose แซง fact",
-    chartAnchor: {
-      dayMasterStem: packet.chartAnchor.dayMasterStem,
-      dayMasterElementLabelThai: packet.chartAnchor.dayMasterElementLabelThai,
-      dayMasterStrengthLabelThai: packet.chartAnchor.dayMasterStrengthLabelThai,
-      dayMasterStrengthScore: packet.chartAnchor.dayMasterStrengthScore,
-      dayBranchLabelThai: packet.chartAnchor.dayBranchLabelThai,
-    },
-    steps: packet.stepInsights.map((step) => ({
-      stepNumber: step.stepNumber,
-      titleThai: step.titleThai,
-      briefThai: step.summaryThai,
-      evidenceRefs: step.evidenceIds,
-      evidenceLines: step.evidenceLines,
-    })),
-  });
-}
-
-function renderTable(headers: string[], rows: string[][]) {
-  const widths = headers.map((header, index) => Math.max(
-    header.length,
-    ...rows.map((row) => (row[index] ?? "").length),
-  ));
-  const renderRow = (cells: string[]) => `| ${cells.map((cell, index) => cell.padEnd(widths[index])).join(" | ")} |`;
-  const separator = `|-${widths.map((width) => "-".repeat(width)).join("-|-")}-|`;
-
-  return [renderRow(headers), separator, ...rows.map(renderRow)].join("\n");
-}
-
-function formatEightSlotTable(packet: RelationReadingPacket) {
-  return renderTable(
-    ["ตำแหน่ง", "ชั้น", "จีน", "ไทย", "ธาตุ (ขั้ว)", "relation ต่อดิถี", "ธาตุแฝง", "บริบท"],
-    packet.eightSlots.map((row) => [
-      row.positionLabelThai,
-      row.layerLabelThai,
-      row.symbol,
-      row.symbolThai,
-      row.elementLabelThai,
-      row.relationLabelThai,
-      row.hiddenStemSummaryThai,
-      row.contextThai,
-    ]),
-  );
-}
-
-function formatRelationSummaryTable(packet: RelationReadingPacket) {
-  return renderTable(
-    ["relation", "ความหมาย", "ธาตุที่มองหา", "พบตรงไหนบ้าง", "จุดเด่น", "จำนวน"],
-    packet.relationSummary.map((row) => [
-      row.relationLabelThai,
-      row.semanticMeaningThai,
-      row.targetElementLabelThai,
-      row.carrierSummaryThai,
-      row.strongestCarrierThai,
-      String(row.targetCount),
-    ]),
-  );
-}
-
-function formatEvidenceCatalog(packet: RelationReadingPacket, evidenceIds: string[]) {
-  return evidenceIds.map((evidenceId) => {
-    const evidence = packet.evidenceCatalog.find((entry) => entry.id === evidenceId);
-    if (!evidence) {
-      return `- [${evidenceId}] ไม่มีหลักฐานที่ map ได้`;
-    }
-
-    return `- [${evidence.id}] ${evidence.labelThai}: ${evidence.detailThai}`;
-  });
-}
-
-function formatVisibleStepHeading(stepNumber: number, headingThai: string) {
-  const normalized = headingThai.trim();
-  if (!normalized || ENGLISH_SCENE_KEY_PATTERN.test(normalized)) {
-    return `ขั้นที่ ${stepNumber}`;
-  }
-
-  return `ขั้นที่ ${stepNumber}: ${normalized}`;
-}
-
-export function buildDayMasterRelationPocSystemInstruction() {
-  return [
-    "You are a senior Thai Bazi master writing a six-step reading from a deterministic brief.",
-    "Write every visible field in Thai.",
-    "You must never invent or recalculate facts beyond the brief.",
-    "Respect this exact six-step order only: step 1 balance/core, step 2 day pillar identity, step 3 standard energies/actions, step 4 result and wealth, step 5 context mapping, step 6 advanced analytics.",
-    "Each step_reading must contain one Thai heading, one teacher_reading, one life_meaning line, one caution line, and evidence_refs that exist in the brief.",
-    "Use school wording first, then plain Thai explanation second.",
-    "Keep visible headings Thai-only. Never use English words, transliteration, snake_case, or section codes.",
-    "If evidence is thin, say less instead of inventing.",
-    "Do not mention JSON, schema, payload, model, AI, enum, debug language, or generic assistant framing.",
-    "Do not use polite particles such as ครับ or ค่ะ.",
-    "Return JSON only.",
-  ].join(" ");
-}
-
-export function buildDayMasterRelationPocUserPrompt(rawInput: RawInputValue, brief: DayMasterRelationBrief) {
-  return [
-    "Create one Thai Bazi reading from the deterministic brief below.",
-    "Keep the opening and closing concise, but make each of the 6 steps read like a real sinsae teaching through the chart.",
-    "Do not break the Step 1-6 order.",
-    "Do not leak English scene identifiers, snake_case labels, or generic assistant wording onto the visible surface.",
-    "Do not invent health, timing, marriage, or money claims unless the brief directly supports them.",
-    "evidence_refs must reuse only the ids already present in the brief.",
-    "Return exactly the JSON shape requested by the system instruction.",
-    "",
-    "Raw input:",
-    JSON.stringify(rawInput, null, 2),
-    "",
-    "Stepwise reading brief:",
-    JSON.stringify(brief, null, 2),
-  ].join("\n");
-}
-
-export function formatDayMasterRelationPocPreflightReport(options: {
-  rawInput: RawInputValue;
-  packet: RelationReadingPacket;
-  maxVisibleStep?: number;
-}) {
-  const visibleSteps = options.packet.stepInsights
-    .filter((step) => !options.maxVisibleStep || step.stepNumber <= options.maxVisibleStep);
-  return [
-    "=== รายงานตรวจฐานคำนวณแบบ Stepwise ===",
-    "",
-    "ข้อมูลนำเข้า",
-    `- วันเกิด: ${options.rawInput.birthDate} เวลา ${options.rawInput.birthTime}`,
-    `- เพศ: ${formatGenderThai(options.rawInput.gender)}`,
-    `- จังหวัด: ${formatProvinceThai(options.rawInput.province)}`,
-    `- ระบบปฏิทิน: ${options.rawInput.calendarSystem ?? "solar"}`,
-    `- เขตเวลา: ${options.rawInput.timezone ?? "Asia/Bangkok"}`,
-    "",
-    "แกนดวงที่ใช้เป็นจุดตั้งต้น",
-    `- ดิถี: ${options.packet.chartAnchor.dayMasterStem} ธาตุ${options.packet.chartAnchor.dayMasterElementLabelThai}`,
-    `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai} (คะแนน: ${options.packet.chartAnchor.dayMasterStrengthScore.toFixed(2)})`,
-    `- หลักวันราศีล่าง: ${options.packet.chartAnchor.dayBranch} (${options.packet.chartAnchor.dayBranchLabelThai})`,
-    "",
-    ...visibleSteps.flatMap((step) => [
-      `Step ${step.stepNumber}: ${step.titleThai}`,
-      `- สรุป: ${step.summaryThai}`,
-      `- จุดที่ใช้ตรวจ: ${step.auditFocusThai}`,
-      ...formatEvidenceCatalog(options.packet, step.evidenceIds),
-      "",
-    ]),
-    "ตาราง 8 ช่อง",
-    formatEightSlotTable(options.packet),
-    "",
-    "ตาราง relation ของดิถี",
-    formatRelationSummaryTable(options.packet),
-  ].join("\n");
-}
-
-export function formatDayMasterRelationPocBriefPreview(options: {
-  rawInput: RawInputValue;
-  brief: DayMasterRelationBrief;
-  model?: string;
-  maxVisibleStep?: number;
-}) {
-  const visibleSteps = options.brief.steps
-    .filter((step) => !options.maxVisibleStep || step.stepNumber <= options.maxVisibleStep);
-
-  return [
-    "=== คู่มือชั้นคำอ่านสำหรับ LLM ===",
-    "",
-    `- วันเกิด: ${options.rawInput.birthDate} เวลา ${options.rawInput.birthTime}`,
-    `- ดิถี: ${options.brief.chartAnchor.dayMasterStem} ธาตุ${options.brief.chartAnchor.dayMasterElementLabelThai}`,
-    `- กำลังดวง: ${options.brief.chartAnchor.dayMasterStrengthLabelThai} (คะแนน: ${options.brief.chartAnchor.dayMasterStrengthScore.toFixed(2)})`,
-    `- หลักวันราศีล่าง: ${options.brief.chartAnchor.dayBranchLabelThai}`,
-    `- หลักการเปิดอ่าน: ${options.brief.openingDoctrineThai}`,
-    ...(options.model ? [`- รุ่นที่ใช้: ${options.model}`] : []),
-    "",
-    ...visibleSteps.flatMap((step) => [
-      `Step ${step.stepNumber}: ${step.titleThai}`,
-      `- brief: ${step.briefThai}`,
-      `- evidence refs: ${step.evidenceRefs.join(", ")}`,
-      ...step.evidenceLines.map((line) => `  - ${line}`),
-      "",
-    ]),
-  ].join("\n");
-}
-
-export function formatDayMasterRelationPocGeneratedReport(options: {
-  rawInput: RawInputValue;
-  packet: RelationReadingPacket;
-  brief: DayMasterRelationBrief;
-  response: RelationReadingResponse;
-  model: string;
-  includeAuditAppendix?: boolean;
-  includeBriefPreview?: boolean;
-  maxVisibleStep?: number;
-}) {
-  const visibleReadings = options.response.step_readings
-    .filter((step) => !options.maxVisibleStep || step.step_number <= options.maxVisibleStep);
-  const visibleInsights = options.packet.stepInsights
-    .filter((step) => !options.maxVisibleStep || step.stepNumber <= options.maxVisibleStep);
-
-  return [
-    "=== รายงานอ่านดวงแบบซินแส Stepwise ===",
-    "",
-    "ข้อมูลตั้งต้น",
-    `- วันเกิด: ${options.rawInput.birthDate} เวลา ${options.rawInput.birthTime}`,
-    `- เพศ: ${formatGenderThai(options.rawInput.gender)}`,
-    `- จังหวัด: ${formatProvinceThai(options.rawInput.province)}`,
-    `- ดิถี: ${options.packet.chartAnchor.dayMasterStem} ธาตุ${options.packet.chartAnchor.dayMasterElementLabelThai}`,
-    `- กำลังดวง: ${options.packet.chartAnchor.dayMasterStrengthLabelThai} (คะแนน: ${options.packet.chartAnchor.dayMasterStrengthScore.toFixed(2)})`,
-    `- หลักวันราศีล่าง: ${options.packet.chartAnchor.dayBranch} (${options.packet.chartAnchor.dayBranchLabelThai})`,
-    "",
-    "คำอ่านเปิดดวง",
-    options.response.openingSummary,
-    "",
-    ...visibleReadings.flatMap((step) => [
-      formatVisibleStepHeading(step.step_number, step.heading_thai),
-      `   ${step.teacher_reading}`,
-      `   ความหมายต่อชีวิต: ${step.life_meaning}`,
-      `   ข้อควรระวัง: ${step.caution}`,
-      "",
-    ]),
-    "คำอ่านสรุป",
-    options.response.closing_reading,
-    ...(options.includeBriefPreview
-      ? [
-          "",
-          formatDayMasterRelationPocBriefPreview({
-            rawInput: options.rawInput,
-            brief: options.brief,
-            model: options.model,
-          }),
-        ]
-      : []),
-    ...(options.includeAuditAppendix
-      ? [
-          "",
-          "=== คู่มือหลักฐานแบบ Audit Companion ===",
-          "",
-          ...visibleInsights.flatMap((step) => [
-            `Step ${step.stepNumber}: ${step.titleThai}`,
-            ...formatEvidenceCatalog(options.packet, step.evidenceIds),
-            "",
-          ]),
-          "ตาราง relation ของดิถี",
-          formatRelationSummaryTable(options.packet),
-          "",
-          `- รุ่นที่ใช้: ${options.model}`,
-        ]
-      : []),
-  ].join("\n");
-}
-
-function assertResponseEvidenceRefs(response: RelationReadingResponse, brief: DayMasterRelationBrief) {
-  const allowedEvidenceRefs = new Set(brief.steps.flatMap((step) => step.evidenceRefs));
-
-  response.step_readings.forEach((step) => {
-    step.evidence_refs.forEach((reference) => {
-      if (!allowedEvidenceRefs.has(reference)) {
-        throw new Error(`Unknown evidence ref returned by Gemini: ${reference}`);
-      }
-    });
-  });
-}
-
-export async function generateDayMasterRelationReadingPoc(options: {
-  rawInput: RawInputValue;
-  calculatedState: CalculatedStateValue;
-  apiKey?: string;
-  model?: string;
-}) {
-  const apiKey = options.apiKey ?? getGeminiApiKey();
-  const model = options.model?.trim() || DEFAULT_DAY_MASTER_RELATION_POC_MODEL;
-  const packet = buildDayMasterRelationPacket(options.calculatedState);
-  const brief = buildDayMasterRelationBrief(options.rawInput, packet);
-  const prompt = buildDayMasterRelationPocUserPrompt(options.rawInput, brief);
-  const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model,
-    contents: prompt,
-    config: {
-      systemInstruction: buildDayMasterRelationPocSystemInstruction(),
-      responseMimeType: "application/json",
-      responseJsonSchema: RELATION_READING_RESPONSE_JSON_SCHEMA,
-      temperature: 0.35,
-      seed: buildSeed(options.rawInput),
-    },
-  });
-  const responseText = response.text?.trim();
-
-  if (!responseText) {
-    throw new Error("Gemini returned an empty relation reading response.");
-  }
-
-  const parsedResponse = RelationReadingResponseSchema.parse(JSON.parse(responseText) as unknown);
-  assertResponseEvidenceRefs(parsedResponse, brief);
-
-  return {
-    model,
-    packet,
-    brief,
-    response: parsedResponse,
-  };
-}

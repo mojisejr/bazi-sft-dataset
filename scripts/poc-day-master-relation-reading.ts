@@ -5,13 +5,15 @@ import { config as loadEnv } from "dotenv";
 
 import {
   DEFAULT_DAY_MASTER_RELATION_POC_MODEL,
-  buildDayMasterRelationBrief,
-  buildDayMasterRelationPacket,
+} from "@/lib/bazi/day-master-relation-reading-generator";
+import { generateDayMasterRelationReadingPoc } from "@/lib/bazi/day-master-relation-reading-generator-runner";
+import { buildDayMasterRelationBrief } from "@/lib/bazi/day-master-relation-reading-interpretation";
+import {
   formatDayMasterRelationPocBriefPreview,
   formatDayMasterRelationPocGeneratedReport,
   formatDayMasterRelationPocPreflightReport,
-  generateDayMasterRelationReadingPoc,
-} from "@/lib/bazi/day-master-relation-reading-poc";
+} from "@/lib/bazi/day-master-relation-reading-presentation";
+import { buildDayMasterRelationPacket } from "@/lib/bazi/day-master-relation-reading-poc";
 import { RawInputSchema } from "@/lib/bazi/schema-types";
 import { calculateBaziChart } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";

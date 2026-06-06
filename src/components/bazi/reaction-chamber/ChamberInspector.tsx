@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from "motion/react";
 
-import type { RelationReadingPacket } from "@/lib/bazi/day-master-relation-reading-poc";
+import type { RelationReadingPacket } from "@/lib/bazi/day-master-relation-reading-packet";
 import type {
   BaseChartReactionBadgeValue,
 } from "@/lib/bazi/schema-types";
