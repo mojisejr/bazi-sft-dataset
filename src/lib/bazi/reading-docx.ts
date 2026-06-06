@@ -81,8 +81,8 @@ function daYunTable(calculatedState: CalculatedStateValue): Table | null {
     children: [
       cell("ช่วงอายุ", { bold: true, width: 22 }),
       cell("ราศี (บน/ล่าง)", { bold: true, width: 28 }),
-      cell("สภาวะ (12 เชี่ยงแซ)", { bold: true, width: 28 }),
       cell("ปฏิกิริยา", { bold: true, width: 22 }),
+      cell("สภาวะ (12 เชี่ยงแซ)", { bold: true, width: 28 }),
     ],
   });
   // แต่ละเสาวัยจร (10 ปี) แตกเป็นครึ่งก้าน 5 ปี + ครึ่งกิ่ง 5 ปี
@@ -93,8 +93,8 @@ function daYunTable(calculatedState: CalculatedStateValue): Table | null {
         children: [
           cell(row.ageRange),
           cell(`${row.symbol} (${row.place})`),
-          cell(row.qi || "—"),
           cell(row.reaction),
+          cell(row.qi || "—"),
         ],
       }),
   );

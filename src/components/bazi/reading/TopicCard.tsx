@@ -51,6 +51,7 @@ function RelationTable({ reading }: { reading: TopicEngineReading }) {
             <th>ช่วงอายุ</th>
             <th>เสาวัยจร</th>
             <th>ราศี</th>
+            <th>ปฏิกิริยา</th>
             <th>สภาวะ 12 เชี่ยงแซ</th>
           </tr>
         </thead>
@@ -60,6 +61,7 @@ function RelationTable({ reading }: { reading: TopicEngineReading }) {
               <td>{row.ageRange}{row.isCurrent ? " ●" : ""}</td>
               <td>{row.symbol}</td>
               <td>{row.source}</td>
+              <td>{row.reaction}</td>
               <td>{row.stage}</td>
             </tr>
           ))}

@@ -177,30 +177,33 @@ export function ReadingPathWorkspace() {
     setFormState((current) => applyFormFieldChange(current, name, value));
   }
 
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"engine" | "llm" | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
-  // ดาวน์โหลดรายงาน .docx — ใช้คำอ่านที่ generate แล้วบนหน้าจอ (รวมฉบับ LLM polish ถ้ามี)
-  async function handleExportDocx() {
+  // ดาวน์โหลดรายงาน .docx — แยก 2 ฉบับ:
+  //   "engine" = ผล engine ล้วนทุกบท (ครบ-ไม่ตัด ตามคำกำชับซินแซ)
+  //   "llm"    = ใส่ผล LLM เฉพาะบทที่ผู้ใช้ทำนายด้วย LLM ไว้ ที่เหลือ fallback engine
+  async function handleExportDocx(variant: "engine" | "llm") {
     if (!rawInput || !calculatedState || exporting) {
       return;
     }
-    setExporting(true);
+    setExporting(variant);
     try {
       const readings: Record<string, string> = {};
-      for (const [topicId, entry] of Object.entries(topicStates)) {
-        // บท engine-only: ข้ามไม่ส่ง override → doc export จะ render จากผล engine ที่ครบถ้วน
-        if (ENGINE_ONLY_TOPIC_IDS.has(topicId)) {
-          continue;
-        }
-        const text = entry.result?.humanReading;
-        if (text) {
-          readings[topicId] = text;
+      if (variant === "llm") {
+        for (const [topicId, entry] of Object.entries(topicStates)) {
+          const text = entry.result?.humanReading;
+          // เอาเฉพาะบทที่ผู้ใช้สั่งทำนายด้วย LLM เอง ที่เหลือปล่อยให้ engine render
+          if (text && entry.result?.source === "llm") {
+            readings[topicId] = text;
+          }
         }
       }
-      // ตารางบทเสริม (วัยจร) — ใช้ฉบับที่ generate แล้ว (รวม LLM แต่งคำ ถ้ามี)
+      // ตารางบทเสริม (วัยจร): ฉบับ LLM ใช้ที่ generate แล้ว (รวม LLM แต่งคำ ถ้ามี); ฉบับ engine ปล่อยให้ engine คำนวณเอง
       const relationshipLines =
-        topicStates["turning_points"]?.result?.relationshipLines ?? undefined;
+        variant === "llm"
+          ? (topicStates["turning_points"]?.result?.relationshipLines ?? undefined)
+          : undefined;
       const response = await fetch("/api/reading/export-docx", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -221,7 +224,7 @@ export function ReadingPathWorkspace() {
     } catch {
       // เงียบ — ปุ่มยังกดซ้ำได้
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   }
 
@@ -375,10 +378,18 @@ export function ReadingPathWorkspace() {
             <ActionButton
               tone="secondary"
               type="button"
-              disabled={exporting}
-              onClick={() => void handleExportDocx()}
+              disabled={exporting !== null}
+              onClick={() => void handleExportDocx("engine")}
             >
-              {exporting ? "กำลังสร้าง .docx..." : "ดาวน์โหลด .docx"}
+              {exporting === "engine" ? "กำลังสร้าง .docx..." : "ดาวน์โหลด .docx (engine)"}
+            </ActionButton>
+            <ActionButton
+              tone="secondary"
+              type="button"
+              disabled={exporting !== null}
+              onClick={() => void handleExportDocx("llm")}
+            >
+              {exporting === "llm" ? "กำลังสร้าง .docx..." : "ดาวน์โหลด .docx (LLM)"}
             </ActionButton>
           </div>
           {batchProgress && (

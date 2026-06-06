@@ -181,7 +181,7 @@ describe("calculateBaziChart", () => {
     );
 
     expect(result.dayMaster).toBe("己");
-    expect(result.strengthScore).toBe(4.58);
+    expect(result.strengthScore).toBe(3.5);
     expect(result.ageSnapshot).toEqual({
       referenceDate: "2026-06-15",
       thaiAge: 33,
@@ -209,7 +209,7 @@ describe("calculateBaziChart", () => {
         TRACE_STEP_KEYS.mingGong.finalize,
       ],
     });
-    expect(result.explainable.strengthScore?.value).toBe(4.58);
+    expect(result.explainable.strengthScore?.value).toBe(3.5);
     expect(result.explainable.strengthScore?.trace).toMatchObject({
       engine: "orthodox-override",
       ruleName: "StrengthScore_WeightedSeasonalSupport",
@@ -313,20 +313,16 @@ describe("calculateBaziChart", () => {
           starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
           relatedPillar: "เดือน",
         }),
-        expect.objectContaining({
-          starName: "ดอกท้อ (桃花)",
-          relatedPillar: "ปีจร",
-        }),
       ]),
     );
     expect(result.dayMasterStrengthProfile).toMatchObject({
       dayMaster: "己",
-      strengthState: "แข็งแรง/สมดุล",
-      sourceState: "แข็งแรง/สมดุล",
-      lookupState: "แข็งแรง/สมดุล",
-      displayBand: "สมดุล",
-      displayLabel: "ดิถีสมดุล",
-      narrative: expect.stringContaining("ดิถีดินหยินค่อนข้างสมดุล"),
+      strengthState: "อ่อนแอ",
+      sourceState: "อ่อนแอ",
+      lookupState: "อ่อนแอ",
+      displayBand: "ดวงอ่อน",
+      displayLabel: "ดิถีอ่อน",
+      narrative: expect.stringContaining("ดิถีดินหยินกำลังอ่อน"),
     });
     expect(result.sixtyJiaziCorePersona).toMatchObject({
       code: "己巳",
@@ -410,7 +406,7 @@ describe("calculateBaziChart", () => {
       monthBranchTwelveQiStage: "沐浴",
       qiAdjustments: expect.any(Array),
       relationAdjustments: expect.any(Array),
-      result: 4.58,
+      result: 3.5,
     });
     expect(result.explainable.strengthScore?.trace?.rawVariables).not.toHaveProperty("hiddenContributions");
     expect(Array.isArray(result.explainable.strengthScore?.trace?.rawVariables?.visibleContributions)).toBe(true);

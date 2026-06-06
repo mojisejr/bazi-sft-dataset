@@ -4,7 +4,6 @@ import type {
 } from "@/lib/bazi/schema-types";
 import {
   BRANCH_HIDDEN_STEMS,
-  BRANCH_TO_ELEMENT,
   STEM_METAPHORS,
   STEM_TO_ELEMENT,
   SUPPORT_ELEMENT_METAPHORS,
@@ -12,11 +11,10 @@ import {
   GENERATES,
 } from "@/lib/bazi/symbolic-engine.constants";
 import {
-  OPERATOR_BAD_QI_PENALTIES,
   OPERATOR_DOMINANCE,
   OPERATOR_FAVORABLE_BRANCHES,
   OPERATOR_FAVORABLE_STEMS,
-  OPERATOR_GOOD_QI_BONUSES,
+  OPERATOR_PO_STEM_BRANCH,
   OPERATOR_RELATION_PENALTIES,
   OPERATOR_STRENGTH_POSITION_WEIGHTS,
 } from "@/lib/bazi/constants";
@@ -69,7 +67,8 @@ function isOperatorContribution(
   return value !== null;
 }
 
-const GOOD_QI_STAGE_LABELS = new Set(["冠带", "临官", "帝旺", "胎", "养"]);
+// เชี่ยงแซตัวดีตามสเปก: เชี่ยงแซ(长生) กวงตั่ว(冠带) ลิ่มกัว(临官) ตี้อ๋วง(帝旺) ทอ(胎) เอี้ยง(养)
+const GOOD_QI_STAGE_LABELS = new Set(["长生", "冠带", "临官", "帝旺", "胎", "养"]);
 const BAD_QI_STAGE_LABELS = new Set(["沐浴", "衰", "病", "死", "绝"]);
 
 function hasFavorableStem(dayMasterElement: SupportedElement, stem: string) {
@@ -114,7 +113,13 @@ function hasGeneralizedBranchClash(
   ));
 }
 
-function hasActiveClash(
+/** ตรวจว่าคู่กิ่งนี้อยู่ใน active list ใด (ชง/เฮ้ง/ผั่ว) — เทียบทั้งสองทิศ */
+function pairInList(list: string[], left: string, right: string) {
+  return list.includes(`${left}${right}`) || list.includes(`${right}${left}`);
+}
+
+/** "ชง" (冲 clash) หรือ "เฮ้ง" (刑 punishment) ระหว่างสองกิ่ง */
+function hasActiveConflict(
   interactionResolution: BranchInteractionResolution,
   left: string,
   right: string,
@@ -124,157 +129,42 @@ function hasActiveClash(
   }
 
   const label = normalizePairKey(left, right).replace("|", "");
-
-  return interactionResolution.activeClashes.includes(label);
-}
-
-function resolveZoneAdjustment(
-  zoneLabel: string,
-  stages: string[],
-  bonusWeight: number,
-  penaltyWeight: number,
-): OperatorContribution | null {
-  const hasGoodQi = stages.some((stage) => GOOD_QI_STAGE_LABELS.has(stage));
-  const hasBadQi = stages.some((stage) => BAD_QI_STAGE_LABELS.has(stage));
-
-  if (hasGoodQi && !hasBadQi) {
-    return {
-      label: zoneLabel,
-      symbol: stages.join(","),
-      weight: bonusWeight,
-      source: "zone",
-    };
+  if (interactionResolution.activeClashes.includes(label)) {
+    return true;
   }
 
-  if (hasBadQi && !hasGoodQi) {
-    return {
-      label: zoneLabel,
-      symbol: stages.join(","),
-      weight: -penaltyWeight,
-      source: "zone",
-    };
-  }
-
-  return null;
-}
-
-function resolveDayMonthZoneAdjustment(stages: [string, string]) {
-  const [dayStage, monthStage] = stages;
-  const bothGood = GOOD_QI_STAGE_LABELS.has(dayStage) && GOOD_QI_STAGE_LABELS.has(monthStage);
-  const bothBad = BAD_QI_STAGE_LABELS.has(dayStage) && BAD_QI_STAGE_LABELS.has(monthStage);
-
-  if (bothGood) {
-    return {
-      label: "dayMonthBranchZone",
-      symbol: stages.join(","),
-      weight: OPERATOR_GOOD_QI_BONUSES.dayMonthBranchZone,
-      source: "zone" as const,
-    };
-  }
-
-  if (bothBad) {
-    return {
-      label: "dayMonthBranchZone",
-      symbol: stages.join(","),
-      weight: -OPERATOR_BAD_QI_PENALTIES.dayMonthBranchZone,
-      source: "zone" as const,
-    };
-  }
-
-  return null;
-}
-
-function resolveHourMonthZoneAdjustment(stages: [string, string]) {
-  const [hourStage, monthStage] = stages;
-  const hourGood = GOOD_QI_STAGE_LABELS.has(hourStage);
-  const monthGood = GOOD_QI_STAGE_LABELS.has(monthStage);
-  const hourBad = BAD_QI_STAGE_LABELS.has(hourStage);
-  const monthBad = BAD_QI_STAGE_LABELS.has(monthStage);
-
-  if (hourGood || monthGood) {
-    return {
-      label: "hourMonthStemZone",
-      symbol: stages.join(","),
-      weight: OPERATOR_GOOD_QI_BONUSES.hourMonthStemZone,
-      source: "zone" as const,
-    };
-  }
-
-  if (hourBad && monthBad) {
-    return {
-      label: "hourMonthStemZone",
-      symbol: stages.join(","),
-      weight: -OPERATOR_BAD_QI_PENALTIES.hourZone,
-      source: "zone" as const,
-    };
-  }
-
-  return null;
-}
-
-/** น้ำหนัก 得令 (月令) — เกิดตรงฤดูธาตุตัวเอง คือปัจจัยกำลังดิถีที่ตำราให้น้ำหนักสูงสุด */
-const SEASONAL_COMMAND_SAME_SEASON_WEIGHT = 2;
-
-/**
- * โบนัสฤดู 得令 (月令) — เพิ่มน้ำหนักเมื่อดิถีเกิดในฤดูของธาตุตัวเอง (เช่น ไฟเกิดหน้าร้อน 巳午)
- * เป็นโบนัสบวกล้วน ไม่ลงโทษ เพื่อไม่ให้ดวงอ่อนยิ่งอ่อนและคุม blast radius
- */
-function resolveSeasonalCommand(
-  dayMasterElement: SupportedElement,
-  monthBranch: string,
-): OperatorContribution | null {
-  const seasonElement = BRANCH_TO_ELEMENT[monthBranch as keyof typeof BRANCH_TO_ELEMENT];
-  if (seasonElement && seasonElement === dayMasterElement) {
-    return {
-      label: "seasonalCommand",
-      symbol: monthBranch,
-      weight: SEASONAL_COMMAND_SAME_SEASON_WEIGHT,
-      source: "zone",
-    };
-  }
-  return null;
+  return pairInList(interactionResolution.activePunishments, left, right);
 }
 
 /**
- * โบนัสราก 得地 (通根) — นับ hidden stems ในกิ่งทั้ง 4 เสาที่เป็นธาตุดิถี (比劫根) หรือธาตุส่งเสริม (印根)
- * ถ่วงตามตำแหน่ง 本气/中气/余气 — ปิดเสาที่ 3 ของกำลังดิถี (得令/得势 มีแล้ว)
+ * "ผั่ว" (破) ตามตำราเคี้ยงคุง = คู่ "ราศีบน(ก้าน) × ราศีล่าง(กิ่ง)" เฉพาะคู่
+ * เช่น 戊×寅, 乙×巳, 丙×辰 — ใช้ตรวจ "ดิถี (ก้านหลักวัน) ผั่วกับราศีล่าง" ของตำแหน่งนั้น
  */
-const ROOT_WEIGHT_BY_POSITION = [0.3, 0.15, 0.1] as const; // 本气, 中气, 余气
+function isPoStemBranch(stem: string, branch: string) {
+  return (OPERATOR_PO_STEM_BRANCH[stem] ?? []).includes(branch);
+}
 
-function resolveRootContributions(
-  dayMasterElement: SupportedElement,
-  pillars: CalculatedStateValue["fourPillars"],
-): OperatorContribution[] {
-  const resourceElement = (Object.keys(GENERATES) as SupportedElement[]).find(
-    (element) => GENERATES[element] === dayMasterElement,
-  );
+/**
+ * โซนเชี่ยงแซ ±0.25 ตามสเปก: ในหนึ่งโซน ถ้ามีตำแหน่งใดเป็น "เชี่ยงแซตัวดี" ให้ +0.25
+ * และถ้ามีตำแหน่งใดเป็น "เชี่ยงแซตัวเสีย" ให้ −0.25 (เป็นอิสระต่อกัน → โซนผสมหักลบเป็น 0)
+ *   ตัวดี = เชี่ยงแซ/กวงตั่ว/ลิ่มกัว/ตี้อ๋วง/ทอ/เอี้ยง ; ตัวเสีย = หมกยก/ซวย/แป่/ซี่/เจ๊าะ
+ */
+function resolveZoneQiAdjustments(zoneLabel: string, stages: string[]): OperatorContribution[] {
   const out: OperatorContribution[] = [];
-  for (const key of ["year", "month", "day", "hour"] as const) {
-    const branch = pillars[key].branch;
-    const hidden = BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [];
-    hidden.forEach((stem, index) => {
-      const element = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
-      // 比劫根 (พ้องธาตุดิถี) ได้เต็มน้ำหนัก, 印根 (ธาตุส่งเสริม) ได้ครึ่งหนึ่ง
-      const factor = element === dayMasterElement ? 1 : element === resourceElement ? 0.5 : 0;
-      if (factor === 0) {
-        return;
-      }
-      const positionWeight = ROOT_WEIGHT_BY_POSITION[index] ?? 0.1;
-      out.push({
-        label: `root:${key}`,
-        symbol: `${branch}(${stem})`,
-        weight: Number((positionWeight * factor).toFixed(3)),
-        source: "branch",
-      });
-    });
+  const symbol = stages.join(",");
+  if (stages.some((stage) => GOOD_QI_STAGE_LABELS.has(stage))) {
+    out.push({ label: `${zoneLabel}:good`, symbol, weight: 0.25, source: "zone" });
+  }
+  if (stages.some((stage) => BAD_QI_STAGE_LABELS.has(stage))) {
+    out.push({ label: `${zoneLabel}:bad`, symbol, weight: -0.25, source: "zone" });
   }
   return out;
 }
 
 /**
- * โบนัสครอบงำ 从强 (得势 ขั้นสุด) — เมื่อธาตุพวกพ้อง (比劫) + ธาตุอุปถัมภ์ (印) ครอบงำผัง
- * จนเกือบไร้ธาตุถ่ายเท/ข่ม (食傷財官) ดิถีย่อมยกจาก "แข็ง" → "แข็งมาก" ตามตำรา
- * นับหน่วยธาตุจากราศีบนทั้ง 4 + ราศีล่างชั้น本气 ทั้ง 4 (รวม 8 หน่วย) แล้ววัดสัดส่วนฝ่ายหนุน
+ * โบนัสครอบงำ 从强 (印比ครอบงำ) — เมื่อธาตุพวกพ้อง (比劫) + ธาตุอุปถัมภ์ (印) ครอบงำผัง
+ * จนเกือบไร้ธาตุถ่ายเท/ข่ม (食傷財官) ดิถีย่อมยกขึ้นแดน "แข็งมาก" ตามตำรา
+ * นับหน่วยธาตุจากราศีบนทั้ง 4 + ราศีล่างชั้น 本气 ทั้ง 4 (รวม 8 หน่วย) แล้ววัดสัดส่วนฝ่ายหนุน
  * เปิดเฉพาะดวงที่ฐานคะแนนแตะแดน "แข็ง" แล้ว (baseScore >= minBaseScore) จึงไม่กระทบดวงสมดุล/อ่อน
  */
 function resolveDominanceBonus(
@@ -403,29 +293,42 @@ function computeStrengthScoreBreakdown(
     score += contribution.weight;
   }
 
-  const hiddenContributions = resolveRootContributions(dayMasterElement, pillars);
-  for (const contribution of hiddenContributions) {
-    score += contribution.weight;
-  }
+  // สเปกความแข็งแรงไม่นับโบนัสรากธาตุ (通根) — ใช้เฉพาะคะแนนตำแหน่ง 7 ช่อง + เชี่ยงแซ + ความสัมพันธ์
+  const hiddenContributions: OperatorContribution[] = [];
 
+  // โซนเชี่ยงแซ ±0.25 (อิสระต่อโซน): โซนใดมีเชี่ยงแซตัวดี +0.25, มีเชี่ยงแซตัวเสีย −0.25
+  //  โซน A = ราศีล่างหลักวัน + ราศีล่างหลักเดือน ; โซน B = หลักยาม + ราศีบนหลักเดือน ; โซน C = หลักปี
   const qiAdjustments = [
-    resolveSeasonalCommand(dayMasterElement, pillars.month.branch),
-    resolveDayMonthZoneAdjustment([stages.day, stages.month]),
-    resolveHourMonthZoneAdjustment([stages.hour, stages.month]),
-    resolveZoneAdjustment(
-      "yearZone",
-      [stages.year],
-      OPERATOR_GOOD_QI_BONUSES.yearZone,
-      OPERATOR_BAD_QI_PENALTIES.yearZone,
-    ),
-  ].filter(isOperatorContribution) as OperatorContribution[];
+    ...resolveZoneQiAdjustments("dayMonthBranchZone", [stages.day, stages.month]),
+    ...resolveZoneQiAdjustments("hourMonthStemZone", [stages.hour, stages.month]),
+    ...resolveZoneQiAdjustments("yearZone", [stages.year]),
+  ];
 
   for (const adjustment of qiAdjustments) {
     score += adjustment.weight;
   }
 
+  // ความสัมพันธ์ที่หักคะแนน (−0.25 ต่อรายการ ตามสเปก):
+  //  • ดิถี (ก้านหลักวัน) "ผั่ว" (破) กับราศีล่างหลักวัน และ/หรือ ราศีล่างหลักเดือน (ก้าน×กิ่ง)
+  //  • ราศีล่างหลักเดือน–หลักวัน และ ราศีล่างหลักวัน–หลักยาม "ชง/เฮ้ง" (冲/刑)
   const relationAdjustments = [
-    hasActiveClash(interactionResolution, pillars.month.branch, pillars.day.branch)
+    isPoStemBranch(dayMasterStem, pillars.day.branch)
+      ? {
+          label: "dayBranchVsDayMasterPo",
+          symbol: `${dayMasterStem}破${pillars.day.branch}`,
+          weight: -OPERATOR_RELATION_PENALTIES.dayBranchVsDayMasterPo,
+          source: "relation" as const,
+        }
+      : null,
+    isPoStemBranch(dayMasterStem, pillars.month.branch)
+      ? {
+          label: "monthBranchVsDayMasterPo",
+          symbol: `${dayMasterStem}破${pillars.month.branch}`,
+          weight: -OPERATOR_RELATION_PENALTIES.monthBranchVsDayMasterPo,
+          source: "relation" as const,
+        }
+      : null,
+    hasActiveConflict(interactionResolution, pillars.month.branch, pillars.day.branch)
       ? {
           label: "monthBranchVsDayBranchConflict",
           symbol: `${pillars.month.branch}${pillars.day.branch}`,
@@ -433,7 +336,7 @@ function computeStrengthScoreBreakdown(
           source: "relation" as const,
         }
       : null,
-    hasActiveClash(interactionResolution, pillars.day.branch, pillars.hour.branch)
+    hasActiveConflict(interactionResolution, pillars.day.branch, pillars.hour.branch)
       ? {
           label: "dayBranchVsHourBranchConflict",
           symbol: `${pillars.day.branch}${pillars.hour.branch}`,
@@ -455,7 +358,7 @@ function computeStrengthScoreBreakdown(
     penalties.clashes += Math.abs(adjustment.weight);
   }
 
-  // 从强 dominance: คิดจากฐานคะแนนหลังรวมทุกปัจจัย แล้วยก band แข็ง → แข็งมาก
+  // 从强 dominance: คิดจากฐานคะแนนหลังรวมทุกปัจจัย แล้วยกแดนแข็ง → แข็งมาก
   const dominanceBonus = resolveDominanceBonus(dayMasterElement, pillars, score);
   if (dominanceBonus) {
     score += dominanceBonus.weight;

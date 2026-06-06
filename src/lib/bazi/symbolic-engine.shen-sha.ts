@@ -5,9 +5,7 @@ import type {
 
 import {
   NOBLEMAN_BRANCHES_BY_DAY_STEM,
-  PEACH_BLOSSOM_BRANCH_BY_GROUP,
   SHEN_SHA_COPY,
-  TRAVELING_HORSE_BRANCH_BY_GROUP,
   WEN_CHANG_BRANCH_BY_DAY_STEM,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type { ReferencePillar } from "@/lib/bazi/symbolic-engine.types";
@@ -74,21 +72,6 @@ export function buildShenShaState(args: {
     }
   }
 
-  const peachBlossomBranch = PEACH_BLOSSOM_BRANCH_BY_GROUP[
-    pillars.day.branch as keyof typeof PEACH_BLOSSOM_BRANCH_BY_GROUP
-  ];
-  if (peachBlossomBranch) {
-    for (const match of findReferenceMatches(referencePillars, peachBlossomBranch)) {
-      pushShenSha(
-        shenSha,
-        seen,
-        SHEN_SHA_COPY.peachBlossom.starName,
-        match.label,
-        SHEN_SHA_COPY.peachBlossom.meaning,
-      );
-    }
-  }
-
   const wenChangBranch = WEN_CHANG_BRANCH_BY_DAY_STEM[
     dayMasterStem as keyof typeof WEN_CHANG_BRANCH_BY_DAY_STEM
   ];
@@ -100,21 +83,6 @@ export function buildShenShaState(args: {
         SHEN_SHA_COPY.wenChang.starName,
         match.label,
         SHEN_SHA_COPY.wenChang.meaning,
-      );
-    }
-  }
-
-  const travelingHorseBranch = TRAVELING_HORSE_BRANCH_BY_GROUP[
-    pillars.day.branch as keyof typeof TRAVELING_HORSE_BRANCH_BY_GROUP
-  ];
-  if (travelingHorseBranch) {
-    for (const match of findReferenceMatches(referencePillars, travelingHorseBranch)) {
-      pushShenSha(
-        shenSha,
-        seen,
-        SHEN_SHA_COPY.travelingHorse.starName,
-        match.label,
-        SHEN_SHA_COPY.travelingHorse.meaning,
       );
     }
   }

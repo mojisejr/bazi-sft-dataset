@@ -28,7 +28,7 @@ describe("calculateBaziChart ground-truth fixtures", () => {
     );
 
     expect.soft(result.mingGong).toMatchObject({ stem: "庚", branch: "申" });
-    expect.soft(result.strengthScore).toBe(4.65);
+    expect.soft(result.strengthScore).toBe(4.25);
   });
 
   test("matches expert case1 with fixed-offset Bangkok normalization", async () => {

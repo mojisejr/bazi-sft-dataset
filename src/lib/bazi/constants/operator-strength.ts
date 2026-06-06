@@ -17,13 +17,13 @@ export const OPERATOR_STRENGTH_CLASS_BANDS = [
     label: "ดวงอ่อน",
     displayLabel: "ดิถีอ่อน",
     minExclusive: 2,
-    maxInclusive: 4,
+    maxInclusive: 3.75,
   },
   {
     id: "balanced",
     label: "สมดุล",
     displayLabel: "ดิถีสมดุล",
-    minExclusive: 4,
+    minExclusive: 3.75,
     maxInclusive: 5.5,
   },
   {
@@ -108,7 +108,7 @@ export const OPERATOR_FAVORABLE_BRANCHES = Object.fromEntries(
   ]),
 ) as Readonly<Record<SupportedElement, string[]>>;
 
-export const OPERATOR_GOOD_QI_LABELS = ["กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "ทอ", "เอี้ยง"] as const;
+export const OPERATOR_GOOD_QI_LABELS = ["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "ทอ", "เอี้ยง"] as const;
 
 export const OPERATOR_BAD_QI_LABELS = ["หมกยก", "ซวย", "แป่", "ซี่", "เจ๊าะ"] as const;
 
@@ -127,13 +127,14 @@ export const OPERATOR_BAD_QI_PENALTIES = {
 // โบนัสดิถี "แข็งมาก" (从强/印比ครอบงำ) — เพิ่มเมื่อธาตุพวกพ้อง (比劫) + ธาตุอุปถัมภ์ (印)
 // ครอบงำผังจนเกือบไร้ธาตุถ่ายเท/ข่ม (食傷財官) เพื่อยก band ดิถีแข็ง → แข็งมากตามตำรา
 // เปิดเฉพาะดวงที่ฐานคะแนนอยู่ในแดน "แข็ง" แล้ว (>= STRONG ขอบล่าง) จึงไม่กระทบดวงสมดุล/อ่อน
+// (โบนัสตั้งให้แรงพอยก 从强格 ขึ้นแดน "แข็งมาก" เพราะคะแนนหลักไม่นับ 通根 แล้ว)
 export const OPERATOR_DOMINANCE = {
   /** ฐานคะแนนขั้นต่ำที่จะพิจารณาโบนัสครอบงำ (= ขอบล่าง band "แข็ง") */
   minBaseScore: 5.5,
   /** สัดส่วนธาตุพวกพ้อง+อุปถัมภ์ขั้นต่ำ และโบนัสที่ได้ (เรียงจากเข้มไปเบา) */
   tiers: [
-    { minSupportiveShare: 0.7, bonus: 0.75 },
-    { minSupportiveShare: 0.6, bonus: 0.5 },
+    { minSupportiveShare: 0.7, bonus: 1.75 },
+    { minSupportiveShare: 0.6, bonus: 1.0 },
   ],
 } as const;
 
@@ -142,6 +143,21 @@ export const OPERATOR_RELATION_PENALTIES = {
   monthBranchVsDayMasterPo: 0.25,
   monthBranchVsDayBranchConflict: 0.25,
   dayBranchVsHourBranchConflict: 0.25,
+} as const;
+
+// การผั่ว (破) ตามตำราเคี้ยงคุง = ความสัมพันธ์ "ราศีบน(ก้าน) × ราศีล่าง(กิ่ง)" เฉพาะคู่
+// (ไม่ใช่กิ่ง-กิ่ง) ใช้ตรวจ "ดิถีผั่วกับราศีล่างหลักวัน/หลักเดือน" เพื่อหักคะแนนกำลังดิถี
+export const OPERATOR_PO_STEM_BRANCH: Record<string, readonly string[]> = {
+  甲: ["午"],
+  乙: ["巳"],
+  丙: ["辰"],
+  丁: ["卯"],
+  戊: ["寅"],
+  己: ["丑", "亥"],
+  庚: ["子", "戌"],
+  辛: ["酉"],
+  壬: ["申"],
+  癸: ["未"],
 } as const;
 
 export function classifyOperatorStrengthScore(score: number) {

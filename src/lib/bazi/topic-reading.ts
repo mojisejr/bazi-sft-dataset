@@ -9,6 +9,7 @@ import {
   type TopicDefinition,
 } from "@/lib/bazi/topic-path";
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
+import { resolveDaYunReaction } from "@/lib/bazi/topic-knowledge";
 
 export {
   TOPIC_PATH,
@@ -60,6 +61,8 @@ export type DaYunRow = {
   symbol: string;
   /** ราศีบน (ก้าน) หรือ ราศีล่าง (กิ่ง) */
   source: string;
+  /** ปฏิกิริยา (บทบาทธาตุของช่วงนี้เทียบดิถี) — แสดงก่อนสภาวะตามวิธีอ่าน M.docx */
+  reaction: string;
   /** สภาวะ 12 เชี่ยงแซของช่วงนี้ */
   stage: string;
   isCurrent: boolean;
@@ -146,6 +149,7 @@ function buildDaYunRows(calculatedState: CalculatedStateValue): DaYunRow[] {
         ageRange: normalizedDaYunAgeRange(index, "stem"),
         symbol: pillar.upperPhase.symbol,
         source: "ราศีบน (ก้าน)",
+        reaction: resolveDaYunReaction(calculatedState, pillar.upperPhase.symbol, "stem"),
         stage: emptyToDash(pillar.upperPhase.twelveQiDisplay),
         isCurrent: pillar.upperPhase.isCurrent ?? false,
       });
@@ -153,6 +157,7 @@ function buildDaYunRows(calculatedState: CalculatedStateValue): DaYunRow[] {
         ageRange: normalizedDaYunAgeRange(index, "branch"),
         symbol: pillar.lowerPhase.symbol,
         source: "ราศีล่าง (กิ่ง)",
+        reaction: resolveDaYunReaction(calculatedState, pillar.lowerPhase.symbol, "branch"),
         stage: emptyToDash(pillar.lowerPhase.twelveQiDisplay),
         isCurrent: pillar.lowerPhase.isCurrent ?? false,
       });
@@ -164,6 +169,7 @@ function buildDaYunRows(calculatedState: CalculatedStateValue): DaYunRow[] {
       ageRange: normalizedDaYunAgeRange(index, "full"),
       symbol: `${pillar.stem}${pillar.branch}`,
       source: "เสาวัยจร",
+      reaction: resolveDaYunReaction(calculatedState, pillar.stem, "stem"),
       stage: emptyToDash(pillar.upperStageDisplay ?? pillar.lowerStageDisplay),
       isCurrent: pillar.isCurrent ?? false,
     });

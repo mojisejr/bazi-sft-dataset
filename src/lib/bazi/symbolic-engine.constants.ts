@@ -237,36 +237,6 @@ export const WEN_CHANG_BRANCH_BY_DAY_STEM = {
   癸: "卯",
 } as const;
 
-export const PEACH_BLOSSOM_BRANCH_BY_GROUP = {
-  申: "酉",
-  子: "酉",
-  辰: "酉",
-  寅: "卯",
-  午: "卯",
-  戌: "卯",
-  巳: "午",
-  酉: "午",
-  丑: "午",
-  亥: "子",
-  卯: "子",
-  未: "子",
-} as const;
-
-export const TRAVELING_HORSE_BRANCH_BY_GROUP = {
-  申: "寅",
-  子: "寅",
-  辰: "寅",
-  寅: "申",
-  午: "申",
-  戌: "申",
-  巳: "亥",
-  酉: "亥",
-  丑: "亥",
-  亥: "巳",
-  卯: "巳",
-  未: "巳",
-} as const;
-
 export function normalizeBranchPairKey(left: string, right: string): string {
   const leftIndex = BRANCH_ORDER.indexOf(left as (typeof BRANCH_ORDER)[number]);
   const rightIndex = BRANCH_ORDER.indexOf(right as (typeof BRANCH_ORDER)[number]);
@@ -599,16 +569,8 @@ export const SHEN_SHA_COPY = {
     starName: "ขุนนาง/อุปถัมภ์ (天乙贵人)",
     meaning: "ดาวอุปถัมภ์ ชี้จังหวะที่มีผู้ใหญ่ค้ำชู คนแนะนำ หรือแรงสนับสนุนเข้ามาช่วยเปิดทาง",
   },
-  peachBlossom: {
-    starName: "ดอกท้อ (桃花)",
-    meaning: "ดาวเสน่ห์และแรงดึงดูด ชี้พลังด้านภาพลักษณ์ สังคม ความนิยม และความสัมพันธ์",
-  },
   wenChang: {
     starName: "บุ่งเชียง/วิชาการ (文昌)",
     meaning: "ดาววิชาการ การคิดเชิงระบบ การเขียน การเรียนรู้ และงานที่ต้องใช้ปัญญาหรือชื่อเสียงทางความรู้",
-  },
-  travelingHorse: {
-    starName: "ม้าเหิน (驿马)",
-    meaning: "ดาวการเคลื่อนไหว การเดินทาง การโยกย้าย และโอกาสที่เกิดจากการเปลี่ยนจังหวะชีวิตหรือสถานที่",
   },
 } as const;

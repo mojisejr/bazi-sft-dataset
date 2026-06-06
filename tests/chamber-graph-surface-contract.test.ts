@@ -96,6 +96,8 @@ describe("chamber graph surface contract", () => {
     expect(markerNodes.length).toBeGreaterThanOrEqual(1);
     expect(graph.edges.length).toBeGreaterThan(0);
     expect(graph.schoolClusters.length).toBeGreaterThan(0);
-    expect(graph.hiddenSecondaryOverlays.length).toBeGreaterThanOrEqual(1);
+    // ดาว tier "secondary" (เดิม = ดอกท้อ/ม้าเหิน) ถูกถอดออกจากวิชาแล้ว → ปกติว่าง
+    // กุ้ยนั้ง/บุ่นเชียงเป็น tier "visible" จึงไม่ถูกนับที่นี่
+    expect(graph.hiddenSecondaryOverlays.length).toBeGreaterThanOrEqual(0);
   });
 });

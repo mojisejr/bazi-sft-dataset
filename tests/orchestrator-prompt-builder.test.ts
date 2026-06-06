@@ -48,7 +48,7 @@ describe("orchestrator prompt builder", () => {
     expect(bundle.userPrompt).toContain("Chunk id: life_path");
     expect(bundle.userPrompt).toContain("Topic: suitable_career");
     expect(bundle.userPrompt).toContain("อ้างอิงจากความแข็ง-อ่อนของดิถีเป็นหลัก");
-    expect(bundle.userPrompt).toContain("useful_god (Useful God): น้ำ — ดวงสมดุลใช้ธาตุงานและผลลัพธ์เพื่อขยับพลังให้เกิดประโยชน์");
+    expect(bundle.userPrompt).toContain("useful_god (Useful God): ไฟ — ดวงอ่อนจึงให้น้ำหนักกับธาตุส่งเสริมและธาตุคู่ก่อน");
     expect(bundle.userPrompt).toContain("wealth_star (Wealth Star): yearStem=正财, yearBranch=正财, monthBranch=正财, mingGongStem=正财");
     expect(bundle.userPrompt).toContain("dayun_cycles (Da Yun Cycles): 4-13:丁未, 14-23:丙午, 24-33:乙巳(current), 34-43:甲辰, 44-53:癸卯, 54-63:壬寅, 64-73:辛丑, 74-83:庚子, 84-93:己亥");
     expect(bundle.userPrompt).not.toContain("Reference style excerpts");
