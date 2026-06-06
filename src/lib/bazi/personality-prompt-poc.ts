@@ -287,6 +287,7 @@ export function buildPersonalityPocSystemInstruction() {
   return [
     "You are a senior Thai Bazi master writing only the 'นิสัยพื้นฐาน' dimension for human sinsae review.",
     "Write every field in Thai.",
+    "reviewSummary should act as the opening frame of the reading in 1 or 2 natural Thai sentences.",
     "Treat the truth hierarchy as strict precedence: Source 2 routing first, Source 2 refinement second, Source 2 evidence third, Source 2 supporting packets fourth.",
     "Stable-trait claims may come only from Source 2 routing.",
     "Never let refinement, evidence, or packet context override the primary personality axis from Source 2 routing.",
@@ -303,6 +304,11 @@ export function buildPersonalityPocSystemInstruction() {
     "Each bridge block must contain a short Thai title, a human-readable signal line grounded in the payload, a sinsae explanation, and the personality impact it creates.",
     "Each bridge block should move in this flow: what the chart shows, what it means, and what kind of temperament it creates.",
     "final_prediction must read like a real sinsae talking to a client about temperament, inner drive, blind spots, and emotional patterning.",
+    "Write final_prediction as 3 or 4 compact Thai paragraphs, flowing naturally without numbered headings or explicit section labels.",
+    "Across those paragraphs, cover these six ideas in one smooth reading when the payload supports them: reading frame, core temperament, behavior texture, main caution, practical advice, and optional element-balance support.",
+    "The optional element-balance support must stay gentle and symbolic. Do not turn it into superstition sales or guaranteed outcomes.",
+    "The practical advice must sound usable in daily life, not abstract moral preaching.",
+    "If reviewSummary already covers the opening frame, let final_prediction focus more on caution, guidance, and the emotional takeaway instead of repeating the whole reading.",
     "Do not use gendered polite particles such as ครับ or ค่ะ in the generated report.",
     "supporting_signals must be short Thai factual lines that a human reader can understand immediately from the provided payload.",
     "Do not write developer language such as payload, schema, JSON, model, AI, missing:, dominant:, or Day Master.",
@@ -324,6 +330,11 @@ export function buildPersonalityPocUserPrompt(
     "Return exactly 3 or 4 bridge_blocks so the explanation is already expanded before any formatter sees it.",
     "Each bridge block must include title, signal, explanation, and personality_impact.",
     "Write supporting_signals as Thai evidence lines, not enum-style fragments.",
+    "Let reviewSummary serve as the opening frame, and let final_prediction serve as the closing client-facing passage.",
+    "Write final_prediction as a smooth client-facing reading in 3 or 4 short paragraphs.",
+    "Do not write explicit headers like Intent, Core Reading, Risk, Action, or Symbolic Layer.",
+    "Still make the reading feel complete by naturally covering: opening frame, core personality, expressed behavior, caution, practical advice, and optional element-balance support.",
+    "If the payload does not support one of those ideas strongly, keep it brief instead of forcing symmetry.",
     "Never write terms like missing: metal, dominant: water, payload, schema, JSON, model, AI, or Day Master.",
     "Use routing as the only lane that can speak in definite personality language.",
     "Use refinement and evidence only as tendency, texture, caution, or context.",
@@ -443,6 +454,35 @@ function buildBridgeBlockLines(response: PersonalityPocResponse) {
   ]);
 }
 
+function normalizeReportParagraph(text: string) {
+  return text
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildClientFacingReadingParagraphs(response: PersonalityPocResponse) {
+  const openingParagraph = normalizeReportParagraph(
+    `จากโครงสร้างนิสัยพื้นฐานของดวงนี้ ${response.reviewSummary}`,
+  );
+  const bridgeParagraphs = response.personality.bridge_blocks.map((block) => normalizeReportParagraph(
+    `${block.explanation} ${block.personality_impact}`,
+  ));
+  const closingParagraphs = response.personality.final_prediction
+    .split(/\n{2,}/)
+    .map((paragraph) => normalizeReportParagraph(paragraph))
+    .filter((paragraph) => paragraph.length > 0);
+  const confidenceParagraph = response.personality.confidence_note
+    ? normalizeReportParagraph(`โดยรวม ${response.personality.confidence_note}`)
+    : null;
+
+  return [
+    openingParagraph,
+    ...bridgeParagraphs,
+    ...closingParagraphs,
+    ...(confidenceParagraph ? [confidenceParagraph] : []),
+  ];
+}
+
 function buildDownstreamReadinessLines() {
   return [
     `- ${SOURCE2_DOWNSTREAM_READINESS.nextOverlay} ใช้ Source 2 routing เป็นแกนนิสัยหลักได้แล้ว`,
@@ -502,7 +542,7 @@ export function formatPersonalityPocGeneratedReport(options: {
     options.response.reviewSummary,
     "",
     "คำทำนายพร้อมส่งลูกค้า",
-    options.response.personality.final_prediction,
+    buildClientFacingReadingParagraphs(options.response).join("\n\n"),
     ...(options.response.personality.confidence_note
       ? ["", "หมายเหตุความมั่นใจ", options.response.personality.confidence_note]
       : []),
