@@ -236,10 +236,17 @@ describe("personality prompt poc helpers", () => {
     expect(instruction).toContain("You own the interpretation and the sinsae wording");
     expect(instruction).toContain("reviewSummary should act as the opening frame of the reading");
     expect(instruction).toContain("Make the voice sound like one sinsae speaking directly to one client");
+    expect(instruction).toContain("Do not drift into therapist, psychologist, or life-coach language");
     expect(instruction).toContain("Prefer direct and decisive Thai wording for routing-backed traits");
+    expect(instruction).toContain("let the reading open with firm phrasing such as ดวงนี้เป็นคน");
+    expect(instruction).toContain("Keep Chinese labels sparse");
     expect(instruction).toContain("Write final_prediction as 2 or 3 medium Thai paragraphs");
     expect(instruction).toContain("cover these six ideas in one smooth reading");
+    expect(instruction).toContain("Keep practical advice inside the prediction as a short steering note or caution");
+    expect(instruction).toContain("Do not write coaching openers such as คำแนะนำสำหรับ");
+    expect(instruction).toContain("Describe what this temperament will keep causing if unmanaged");
     expect(instruction).toContain("let final_prediction focus more on caution, guidance, and the emotional takeaway");
+    expect(instruction).toContain("Let the final paragraph land on one firm takeaway sentence");
     expect(prompt).toContain("personality_psychology dimension only");
     expect(prompt).toContain("คุณเป็นคน... / พอมาเจอ... / จึงทำให้...");
     expect(prompt).toContain("Return exactly 3 or 4 bridge_blocks");
@@ -249,12 +256,21 @@ describe("personality prompt poc helpers", () => {
     expect(prompt).toContain("Let reviewSummary serve as the opening frame, and let final_prediction serve as the closing client-facing passage");
     expect(prompt).toContain("Write final_prediction as a smooth client-facing reading in 2 or 3 medium paragraphs");
     expect(prompt).toContain("Make it sound like you are talking to the client directly, not filing a report");
+    expect(prompt).toContain("Open the reading with a firm sinsae cadence such as ดวงนี้...");
+    expect(prompt).toContain("Avoid therapist, psychologist, or generic self-help coaching tone");
+    expect(prompt).toContain("End the reading with one decisive takeaway sentence rather than a soft invitation");
     expect(prompt).toContain("If a Chinese term from the payload sharpens the reading");
+    expect(prompt).toContain("Keep Chinese terms sparse and precise");
+    expect(prompt).toContain("Keep advice inside the prediction as a short caution or steering note");
+    expect(prompt).toContain("Do not open a paragraph with phrases like คำแนะนำสำหรับ");
+    expect(prompt).toContain("Describe the likely consequence of this temperament if left unchecked");
     expect(prompt).toContain("Do not write explicit headers like Intent, Core Reading, Risk, Action, or Symbolic Layer");
     expect(prompt).toContain("routing owner: ยืนยันจากข้อความหลักของตำรา; เขียนเป็นแกนนิสัยหลักได้");
     expect(prompt).toContain("evidence owner: ใช้เป็นบริบทเสริมเท่านั้น; ต้องใช้คำอย่าง \"มีแนวโน้ม\", \"อาจ\", หรือ \"ควรระวัง\" แทนคำฟันธง");
     expect(prompt).toContain("Do not turn side warnings into identity labels");
     expect(prompt).toContain('"precisionTerms"');
+    expect(prompt).toContain("ตี้อ๋วง (帝旺) = พลังขึ้นถึงจุดสูง");
+    expect(prompt).toContain("เจวี๋ย (绝) = จังหวะพลังขาดหรืออ่อนแรงมาก");
     expect(prompt).toContain('"role": "แกนนิสัยหลัก"');
     expect(prompt).toContain('"role": "สีบุคลิกย่อย"');
     expect(prompt).toContain('"role": "บริบทเสริมและข้อควรระวัง"');
@@ -386,11 +402,91 @@ describe("personality prompt poc helpers", () => {
     expect(report).toContain("1. ดิถีเป็นแกนใหญ่");
     expect(report).toContain("สัญญาณ: ดิถีค่อนข้างมั่นคงและรับแรงกดดันได้");
     expect(report).toContain("จึงทำให้:");
-    expect(report).toContain("คำทำนายพร้อมส่งลูกค้า\nจากโครงสร้างนิสัยพื้นฐานของดวงนี้ แกนนิสัยชัดแต่ต้องอาศัยวินัยมาช่วยประคอง");
+    expect(report).toContain("คำทำนายพร้อมส่งลูกค้า\nดวงนี้เห็นชัดว่า แกนนิสัยชัดแต่ต้องอาศัยวินัยมาช่วยประคอง");
     expect(report).toContain("\n\nคุณเป็นคนคิดลึกและถือแกนของตัวเองชัด เวลามั่นใจแล้วจะเดินเกมค่อนข้างเด็ดขาด");
     expect(report).toContain("ตี้อ๋วง (帝旺)");
     expect(report).toContain("ภาคผนวกเทคนิค");
     expect(report).toContain("- รุ่นที่ใช้: gemini-3-flash-preview");
     expect(report).not.toContain("สัญญาณประกอบที่ AI ถือไว้");
+  });
+
+  test("keeps a routed opening cadence without duplicating leading sinsae phrasing", () => {
+    const report = formatPersonalityPocGeneratedReport({
+      rawInput: SAMPLE_RAW_INPUT,
+      focusPayload: buildPersonalityFocusPayload(SAMPLE_SOURCE2_OVERLAY),
+      model: "gemini-3-flash-preview",
+      response: {
+        reviewSummary: "ดวงนี้เป็นคนแกนชัดและไม่ยอมปล่อยทิศทางชีวิตให้ใครคุมง่าย",
+        personality: {
+          thought_process: "ยึด routing เป็นแกน",
+          bridge_blocks: [
+            {
+              title: "แกนแรก",
+              signal: "ดิถีมั่นคง",
+              explanation: "คุณถือแกนของตัวเองชัด",
+              personality_impact: "จึงทำให้ไม่เปลี่ยนใจง่าย",
+            },
+            {
+              title: "แกนสอง",
+              signal: "ฐานวันเติมแรงขับ",
+              explanation: "ข้างในมีแรงผลักต่อเนื่อง",
+              personality_impact: "จึงทำให้เดินหน้าตอนมั่นใจแล้วไม่ถอยง่าย",
+            },
+            {
+              title: "แกนสาม",
+              signal: "ฤดูกาลทำให้เปิดช้า",
+              explanation: "ต้องใช้เวลาอุ่นใจก่อน",
+              personality_impact: "จึงทำให้คนอื่นอ่านใจช้า",
+            },
+          ],
+          final_prediction: "คุณมีจังหวะคิดก่อนขยับ แต่ถ้าเชื่อแล้วจะเอาจริงและเอายาว",
+          supporting_signals: ["ดิถีมั่นคง"],
+        },
+      },
+    });
+
+    expect(report).toContain("คำทำนายพร้อมส่งลูกค้า\nดวงนี้เป็นคนแกนชัดและไม่ยอมปล่อยทิศทางชีวิตให้ใครคุมง่าย");
+    expect(report).not.toContain("ดวงนี้เห็นชัดว่า ดวงนี้เป็นคน");
+  });
+
+  test("normalizes coaching-style paragraph openers into firmer prediction cadence", () => {
+    const report = formatPersonalityPocGeneratedReport({
+      rawInput: SAMPLE_RAW_INPUT,
+      focusPayload: buildPersonalityFocusPayload(SAMPLE_SOURCE2_OVERLAY),
+      model: "gemini-3-flash-preview",
+      response: {
+        reviewSummary: "แกนนิสัยชัดและข้างในไม่ปล่อยง่าย",
+        personality: {
+          thought_process: "ยึด routing เป็นแกน",
+          bridge_blocks: [
+            {
+              title: "แกนแรก",
+              signal: "ดิถีมั่นคง",
+              explanation: "คุณถือแกนของตัวเองชัด",
+              personality_impact: "จึงทำให้ไม่เปลี่ยนใจง่าย",
+            },
+            {
+              title: "แกนสอง",
+              signal: "ฐานวันเติมแรงขับ",
+              explanation: "ข้างในมีแรงผลักต่อเนื่อง",
+              personality_impact: "จึงทำให้เดินหน้าตอนมั่นใจแล้วไม่ถอยง่าย",
+            },
+            {
+              title: "แกนสาม",
+              signal: "ฤดูกาลทำให้เปิดช้า",
+              explanation: "ต้องใช้เวลาอุ่นใจก่อน",
+              personality_impact: "จึงทำให้คนอื่นอ่านใจช้า",
+            },
+          ],
+          final_prediction: "คำแนะนำสำหรับการปรับสมดุลคือการตั้งวินัยให้แน่นขึ้นและไม่ปล่อยอารมณ์นำทุกจังหวะ\n\nจงจำไว้ว่าถ้าปล่อยให้ความดื้อเงียบคุมเกมมากไป สุดท้ายจะพลาดจังหวะของตัวเอง",
+          supporting_signals: ["ดิถีมั่นคง"],
+        },
+      },
+    });
+
+    expect(report).toContain("จุดที่ดวงนี้ต้องคุมให้ได้คือ การตั้งวินัยให้แน่นขึ้นและไม่ปล่อยอารมณ์นำทุกจังหวะ");
+    expect(report).toContain("แกนสำคัญของดวงนี้คือ ถ้าปล่อยให้ความดื้อเงียบคุมเกมมากไป สุดท้ายจะพลาดจังหวะของตัวเอง");
+    expect(report).not.toContain("คำแนะนำสำหรับการปรับสมดุลคือ");
+    expect(report).not.toContain("จงจำไว้ว่");
   });
 });

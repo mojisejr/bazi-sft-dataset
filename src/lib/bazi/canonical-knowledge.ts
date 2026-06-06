@@ -176,6 +176,43 @@ type MarkdownTable = {
   rows: string[][];
 };
 
+type CanonicalChinesePrecisionTermRecord = {
+  thaiLabel: string;
+  meaning: string;
+  aliases?: string[];
+};
+
+const CANONICAL_CHINESE_PRECISION_TERM_GLOSSARY = {
+  "帝旺": {
+    thaiLabel: "ตี้อ๋วง",
+    meaning: "พลังขึ้นถึงจุดสูง",
+  },
+  "臨官": {
+    thaiLabel: "ลิ่มกัว",
+    meaning: "จังหวะยืนกำลังและคุมตัวเองได้",
+    aliases: ["临官"],
+  },
+  "衰": {
+    thaiLabel: "ซวย",
+    meaning: "พลังเริ่มถอย",
+  },
+  "绝": {
+    thaiLabel: "เจวี๋ย",
+    meaning: "จังหวะพลังขาดหรืออ่อนแรงมาก",
+  },
+} as const satisfies Record<string, CanonicalChinesePrecisionTermRecord>;
+
+const CANONICAL_CHINESE_PRECISION_TERM_LOOKUP = new Map(
+  Object.entries(CANONICAL_CHINESE_PRECISION_TERM_GLOSSARY).flatMap(([label, entry]) => {
+    const aliases = "aliases" in entry ? entry.aliases ?? [] : [];
+
+    return [
+      [label, entry],
+      ...aliases.map((alias) => [alias, entry] as const),
+    ];
+  }),
+);
+
 export type BaziCanonicalKnowledgeDataset = {
   sources: CanonicalSourceRecord[];
   referenceDocuments: ReferenceDocumentRecord[];
@@ -190,6 +227,20 @@ export type BaziCanonicalKnowledgeDataset = {
   domainMatrices: DomainMatrixRecord[];
   warnings: string[];
 };
+
+export function formatCanonicalChinesePrecisionTermHint(label: string | null | undefined) {
+  if (!label) {
+    return null;
+  }
+
+  const glossaryEntry = CANONICAL_CHINESE_PRECISION_TERM_LOOKUP.get(label);
+
+  if (!glossaryEntry) {
+    return `${label} (ใช้คำจีนนี้ได้เมื่ออธิบายความหมายไทยต่อทันที)`;
+  }
+
+  return `${glossaryEntry.thaiLabel} (${label}) = ${glossaryEntry.meaning}`;
+}
 
 function toRelativeWorkspacePath(fullPath: string, workspaceRoot: string) {
   return path.relative(workspaceRoot, fullPath).replace(/\\/g, "/");

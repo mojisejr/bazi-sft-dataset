@@ -4,6 +4,9 @@ import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import {
+  formatCanonicalChinesePrecisionTermHint,
+} from "@/lib/bazi/canonical-knowledge";
+import {
   getElementRootLabel,
   getElementSeasonalSupportLabel,
   getElementStrengthLabel,
@@ -60,29 +63,6 @@ const OWNERSHIP_CERTAINTY_LABELS = {
   authored: "ยืนยันจากข้อความหลักของตำรา",
   "shared-granularity": "ใช้เป็นบริบทเสริมเท่านั้น",
   "classified-gap": "ห้ามขยายความเพิ่มจากช่องว่างนี้",
-} as const;
-
-const CHINESE_TERM_GLOSSARY = {
-  "帝旺": {
-    thaiLabel: "ตี้อ๋วง",
-    meaning: "พลังขึ้นถึงจุดสูง",
-  },
-  "臨官": {
-    thaiLabel: "ลิ่มกัว",
-    meaning: "จังหวะยืนกำลังและคุมตัวเองได้",
-  },
-  "临官": {
-    thaiLabel: "ลิ่มกัว",
-    meaning: "จังหวะยืนกำลังและคุมตัวเองได้",
-  },
-  "衰": {
-    thaiLabel: "ซวย",
-    meaning: "พลังเริ่มถอย",
-  },
-  "绝": {
-    thaiLabel: "เจวี๋ย",
-    meaning: "จังหวะพลังขาดหรืออ่อนแรงมาก",
-  },
 } as const;
 
 const PersonalityBridgeBlockSchema = z.object({
@@ -229,17 +209,7 @@ function formatOwnershipCertaintyLabel(status: keyof typeof OWNERSHIP_CERTAINTY_
 }
 
 function formatChineseTermHint(label: string | null | undefined) {
-  if (!label) {
-    return null;
-  }
-
-  const glossaryEntry = CHINESE_TERM_GLOSSARY[label as keyof typeof CHINESE_TERM_GLOSSARY];
-
-  if (!glossaryEntry) {
-    return `${label} (ใช้คำจีนนี้ได้เมื่ออธิบายความหมายไทยต่อทันที)`;
-  }
-
-  return `${glossaryEntry.thaiLabel} (${label}) = ${glossaryEntry.meaning}`;
+  return formatCanonicalChinesePrecisionTermHint(label);
 }
 
 function buildLaneGuardrailLines(focusPayload: PersonalityFocusPayload) {
@@ -327,7 +297,7 @@ export function buildPersonalityPocSystemInstruction() {
   return [
     "You are a senior Thai Bazi master writing only the 'นิสัยพื้นฐาน' dimension for human sinsae review.",
     "Write every field in Thai.",
-    "reviewSummary should act as the opening frame of the reading in 1 or 2 natural Thai sentences.",
+    "reviewSummary should act as the opening frame of the reading in 1 or 2 natural Thai sentences that sound like the first verdict a sinsae gives after seeing the chart.",
     "Treat the truth hierarchy as strict precedence: Source 2 routing first, Source 2 refinement second, Source 2 evidence third, Source 2 supporting packets fourth.",
     "Stable-trait claims may come only from Source 2 routing.",
     "Never let refinement, evidence, or packet context override the primary personality axis from Source 2 routing.",
@@ -336,6 +306,7 @@ export function buildPersonalityPocSystemInstruction() {
     "When refinement or evidence contain warnings, phrase them as tendencies or cautions, never as fixed identity.",
     "If a lane is not authored, reduce certainty immediately and write with softer language such as มีแนวโน้ม, อาจ, or ควรระวัง.",
     "When a Chinese technical label already appears explicitly in the payload and helps precision, you may mention it once in Thai followed by the Chinese characters in parentheses, then explain its meaning in plain Thai immediately.",
+    "Keep Chinese labels sparse: use only the one term that materially sharpens the point, and never stack unexplained labels.",
     "Do not infer romance, sexuality, fame, social rank, or life-domain destiny unless the routing text states it directly.",
     "Ignore interactionState, current events, and annual timing for this task.",
     "You own the interpretation and the sinsae wording. Do not leave semantic expansion to the caller.",
@@ -345,12 +316,18 @@ export function buildPersonalityPocSystemInstruction() {
     "Each bridge block should move in this flow: what the chart shows, what it means, and what kind of temperament it creates.",
     "final_prediction must read like a real sinsae talking to a client about temperament, inner drive, blind spots, and emotional patterning.",
     "Make the voice sound like one sinsae speaking directly to one client, not like a report narrator.",
+    "Do not drift into therapist, psychologist, or life-coach language.",
     "Prefer direct and decisive Thai wording for routing-backed traits. Do not over-hedge when the routing lane is clearly authored.",
+    "When the routing lane is authored, let the reading open with firm phrasing such as ดวงนี้เป็นคน..., พื้นดวงแบบนี้..., or เจ้าชะตาคนนี้....",
     "Write final_prediction as 2 or 3 medium Thai paragraphs, flowing naturally without numbered headings or explicit section labels.",
     "Across those paragraphs, cover these six ideas in one smooth reading when the payload supports them: reading frame, core temperament, behavior texture, main caution, practical advice, and optional element-balance support.",
     "The optional element-balance support must stay gentle and symbolic. Do not turn it into superstition sales or guaranteed outcomes.",
     "The practical advice must sound usable in daily life, not abstract moral preaching.",
+    "Keep practical advice inside the prediction as a short steering note or caution, not as a separate coaching paragraph.",
+    "Do not write coaching openers such as คำแนะนำสำหรับ..., คุณควร..., or จงจำไว้ว่....",
+    "Describe what this temperament will keep causing if unmanaged, rather than teaching a self-improvement lesson.",
     "If reviewSummary already covers the opening frame, let final_prediction focus more on caution, guidance, and the emotional takeaway instead of repeating the whole reading.",
+    "Let the final paragraph land on one firm takeaway sentence, not an open-ended encouragement.",
     "Do not use gendered polite particles such as ครับ or ค่ะ in the generated report.",
     "supporting_signals must be short Thai factual lines that a human reader can understand immediately from the provided payload.",
     "Do not write developer language such as payload, schema, JSON, model, AI, missing:, dominant:, or Day Master.",
@@ -375,10 +352,17 @@ export function buildPersonalityPocUserPrompt(
     "Let reviewSummary serve as the opening frame, and let final_prediction serve as the closing client-facing passage.",
     "Write final_prediction as a smooth client-facing reading in 2 or 3 medium paragraphs.",
     "Make it sound like you are talking to the client directly, not filing a report.",
+    "Open the reading with a firm sinsae cadence such as ดวงนี้..., พื้นดวงแบบนี้..., or เจ้าชะตาคนนี้... when the routing lane is authored.",
+    "Avoid therapist, psychologist, or generic self-help coaching tone.",
+    "End the reading with one decisive takeaway sentence rather than a soft invitation.",
     "Do not write explicit headers like Intent, Core Reading, Risk, Action, or Symbolic Layer.",
     "Still make the reading feel complete by naturally covering: opening frame, core personality, expressed behavior, caution, practical advice, and optional element-balance support.",
     "If the payload does not support one of those ideas strongly, keep it brief instead of forcing symmetry.",
     "If a Chinese term from the payload sharpens the reading, write the Thai term first and put the Chinese characters in parentheses once, then explain the meaning in ordinary Thai.",
+    "Keep Chinese terms sparse and precise: one grounded term per idea is enough, and explain it immediately in Thai.",
+    "Keep advice inside the prediction as a short caution or steering note, not a separate advice paragraph.",
+    "Do not open a paragraph with phrases like คำแนะนำสำหรับ..., คุณควร..., or จงจำไว้ว่....",
+    "Describe the likely consequence of this temperament if left unchecked, instead of sounding like a workshop coach.",
     "Never write terms like missing: metal, dominant: water, payload, schema, JSON, model, AI, or Day Master.",
     "Use routing as the only lane that can speak in definite personality language.",
     "Use refinement and evidence only as tendency, texture, caution, or context.",
@@ -504,13 +488,29 @@ function normalizeReportParagraph(text: string) {
     .trim();
 }
 
+function buildOpeningFrameParagraph(reviewSummary: string) {
+  const normalizedSummary = normalizeReportParagraph(reviewSummary);
+
+  if (/^(ดวงนี้|พื้นดวงนี้|พื้นดวงแบบนี้|เจ้าชะตาคนนี้|เจ้าชะตา)/.test(normalizedSummary)) {
+    return normalizedSummary;
+  }
+
+  return `ดวงนี้เห็นชัดว่า ${normalizedSummary}`;
+}
+
+function normalizePredictionParagraphCadence(paragraph: string) {
+  return normalizeReportParagraph(paragraph)
+    .replace(/^คำแนะนำสำหรับ[^ ]*คือ\s*/u, "จุดที่ดวงนี้ต้องคุมให้ได้คือ ")
+    .replace(/^คำแนะนำสำหรับการปรับสมดุลคือ\s*/u, "จุดที่ดวงนี้ต้องคุมให้ได้คือ ")
+    .replace(/^คุณควร\s*/u, "จุดที่ควรทำคือ ")
+    .replace(/^จงจำไว้ว่(?:า)?\s*/u, "แกนสำคัญของดวงนี้คือ ");
+}
+
 function buildClientFacingReadingParagraphs(response: PersonalityPocResponse) {
-  const openingParagraph = normalizeReportParagraph(
-    `จากโครงสร้างนิสัยพื้นฐานของดวงนี้ ${response.reviewSummary}`,
-  );
+  const openingParagraph = buildOpeningFrameParagraph(response.reviewSummary);
   const closingParagraphs = response.personality.final_prediction
     .split(/\n{2,}/)
-    .map((paragraph) => normalizeReportParagraph(paragraph))
+    .map((paragraph) => normalizePredictionParagraphCadence(paragraph))
     .filter((paragraph) => paragraph.length > 0);
 
   return [

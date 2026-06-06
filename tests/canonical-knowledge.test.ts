@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vitest";
 
-import { buildCanonicalKnowledgeDataset } from "@/lib/bazi/canonical-knowledge";
+import {
+  buildCanonicalKnowledgeDataset,
+  formatCanonicalChinesePrecisionTermHint,
+} from "@/lib/bazi/canonical-knowledge";
 
 let cachedDataset: ReturnType<typeof buildCanonicalKnowledgeDataset> | null = null;
 
@@ -11,6 +14,15 @@ function getDataset() {
 }
 
 describe("buildCanonicalKnowledgeDataset", () => {
+  test("formats canonical Chinese precision terms through the narrow glossary helper", () => {
+    expect(formatCanonicalChinesePrecisionTermHint("帝旺")).toBe("ตี้อ๋วง (帝旺) = พลังขึ้นถึงจุดสูง");
+    expect(formatCanonicalChinesePrecisionTermHint("临官")).toBe("ลิ่มกัว (临官) = จังหวะยืนกำลังและคุมตัวเองได้");
+    expect(formatCanonicalChinesePrecisionTermHint("未知")).toBe(
+      "未知 (ใช้คำจีนนี้ได้เมื่ออธิบายความหมายไทยต่อทันที)",
+    );
+    expect(formatCanonicalChinesePrecisionTermHint(null)).toBeNull();
+  });
+
   test("extracts canonical records from the current Mootech corpus", () => {
     const dataset = getDataset();
 
