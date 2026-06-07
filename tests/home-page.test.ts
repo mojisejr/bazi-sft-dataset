@@ -17,6 +17,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import {
+  default as HomePage,
   BaziTrainerWorkspace,
   createDefaultFormState,
   getResetActionCopy,
@@ -53,6 +54,26 @@ describe("BaziTrainerWorkspace", () => {
     expect(html).toContain("00-59");
     expect(html).not.toContain("ระบบปฏิทิน");
     expect(html).not.toContain("Asia/Hong_Kong");
+  });
+
+  test("HomePage defaults the root route to the manual app surface", async () => {
+    const page = await HomePage({});
+    const html = renderToStaticMarkup(page);
+
+    expect(html).toContain("พยากรณ์เอง");
+    expect(html).toContain("ตั้งข้อมูลเพื่อเปิดแกนดวงและจังหวะการเดินของเคสนี้");
+    expect(html).not.toContain("กำลังโหลด draft queue จากฐานข้อมูล");
+  });
+
+  test("HomePage switches the root route to queue mode only when searchParams asks for it", async () => {
+    const page = await HomePage({
+      searchParams: Promise.resolve({ workspace: "queue" }),
+    });
+    const html = renderToStaticMarkup(page);
+
+    expect(html).toContain("พร้อมตรวจงาน AI");
+    expect(html).toContain("กำลังโหลด draft queue จากฐานข้อมูล");
+    expect(html).not.toContain("ตั้งข้อมูลเพื่อเปิดแกนดวงและจังหวะการเดินของเคสนี้");
   });
 
   test("requires confirmation only for active unfinished dataset sessions", () => {
