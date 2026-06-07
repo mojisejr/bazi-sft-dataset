@@ -83,14 +83,23 @@ export function isForwardDaYunDirection(lunar: LunarLike, gender: string) {
   return normalizeGenderForYun(gender) === 1 ? isYangYearStem : !isYangYearStem;
 }
 
+// 12 節 (สารทใหญ่ที่ขึ้นเดือนใหม่) — ใช้นับ 起运 เท่านั้น (ไม่นับ 中氣/สารทเล็ก) ตาม ตำรา24สารท.docx
+// lunar-javascript คืนทั้งชื่อจีน (ปีปัจจุบัน) และ romanized (boundary ปีก่อน/ถัดไป) → ครอบทั้งสองแบบ
+const SECTIONAL_JIE_QI = new Set([
+  "立春", "惊蛰", "清明", "立夏", "芒种", "小暑", "立秋", "白露", "寒露", "立冬", "大雪", "小寒",
+  "LI_CHUN", "JING_ZHE", "QING_MING", "LI_XIA", "MANG_ZHONG", "XIAO_SHU",
+  "LI_QIU", "BAI_LU", "HAN_LU", "LI_DONG", "DA_XUE", "XIAO_HAN",
+]);
+
 function resolveManualDaYunStartAge(
   solar: SolarInstance,
   gender: string,
 ) {
   const lunar = solar.getLunar() as LunarLike;
   const birthAtLocal = buildSolarDateTimeString(solar);
-  const boundaries = Object.values(lunar.getJieQiTable())
-    .map((entry) => entry.toYmdHms())
+  const boundaries = Object.entries(lunar.getJieQiTable())
+    .filter(([name]) => SECTIONAL_JIE_QI.has(name))
+    .map(([, entry]) => entry.toYmdHms())
     .filter((entry) => entry.trim().length > 0)
     .sort((left, right) => left.localeCompare(right));
   const targetBoundary = isForwardDaYunDirection(lunar, gender)

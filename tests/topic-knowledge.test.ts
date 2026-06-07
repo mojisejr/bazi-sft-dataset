@@ -123,6 +123,19 @@ describe("topic-knowledge (knownlage human reading)", () => {
     expect(reading).toContain("เชี่ยงแซ");
   });
 
+  test("education: enrich ด้วยระดับการศึกษาตามเชี่ยงแซดาวถ่ายเท (Step 6.2)", () => {
+    const reading = buildTopicHumanReading(SAMPLE_STATE, "education");
+    expect(reading).not.toBeNull();
+    expect(reading).toContain("Step 6.2");
+    expect(reading).toContain("ดาวถ่ายเทตกเชี่ยงแซ");
+  });
+
+  test("talent: enrich ด้วยมิติวาทศิลป์จากดาวถ่ายเท (Step 6.2)", () => {
+    const reading = buildTopicHumanReading(SAMPLE_STATE, "talent");
+    expect(reading).not.toBeNull();
+    expect(reading).toContain("วาทศิลป์/การสื่อสาร");
+  });
+
   test("coverage: ทุกหัวข้อ predict มีองค์ความรู้แล้ว (16 บท)", () => {
     const coverage = getTopicKnowledgeCoverage();
     expect(coverage.length).toBe(16);

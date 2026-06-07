@@ -1,6 +1,14 @@
+import { existsSync } from "node:fs";
+
 import { describe, expect, test } from "vitest";
 
-import { buildCompiledKnowledgeArtifact } from "../scripts/compile-knowledge";
+import {
+  buildCompiledKnowledgeArtifact,
+  resolveDistilledCorpusRoot,
+} from "../scripts/compile-knowledge";
+
+// corpus ต้นทาง (../../.tmp/p-pol/Mootech AI/all_distilled) ไม่ ship มากับ repo → skip เมื่อไม่มี
+const corpusMissing = !existsSync(resolveDistilledCorpusRoot());
 
 let cachedArtifact: ReturnType<typeof buildCompiledKnowledgeArtifact> | null = null;
 
@@ -10,7 +18,7 @@ function getArtifact() {
   return cachedArtifact;
 }
 
-describe("compile-knowledge", () => {
+describe.skipIf(corpusMissing)("compile-knowledge", () => {
   test("builds compiled topic knowledge from the distilled corpus", () => {
     const artifact = getArtifact();
 

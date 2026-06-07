@@ -1,6 +1,32 @@
 # แผนงานระบบทำนายดวงจีน (Bazi) + Export DOCX
 
 ---
+# 🆕 สรุปงาน session 2026-06-07 (รอบ 2) — ปิดงานค้างข้อ 2/3/4
+
+ผู้ใช้สั่ง "ทำ 2-3 ก่อน" + ชี้ว่า **辰 มีอยู่จริงใน xlsx ครบ 60** (บันทึกเดิมสรุปผิด)
+
+## ข้อ 4 — 60-กะจื่อ ขาด 辰: **เป็นบั๊ก parser ไม่ใช่ต้นฉบับขาด** ✅
+- รากปัญหา 2 จุด encoding ในไฟล์ `ลักษณะนิสัย60แบบ_ราศีบน-ล่าง_12เซี่ยงแซ.txt` (และ xlsx):
+  1. กิ่ง 辰 เก็บเป็น **CJK Compatibility Ideograph U+F971** ≠ 辰 มาตรฐาน U+8FB0 → `EARTHLY_BRANCHES.includes` fail → record กิ่ง 辰 ถูก drop
+  2. ธาตุ "น้ำ" 12 บรรทัดสะกดเป็น **"น้ํา" (นิคหิต U+0E4D + สระอา U+0E32 แทนสระอำ U+0E33)** → `ELEMENT_WORDS.has` fail → 12 combos ธาตุน้ำหายไป
+- **แก้ใน `parsePersonalityFile` (`topic-knowledge.ts`):** `.normalize("NFKC").replace(/ํา/g,"ำ")` ตอนอ่านไฟล์ → parser ได้ **ครบ 60/60** (辰 ครบ 5: 甲辰丙辰戊辰庚辰壬辰) โดยไม่ต้องแก้ไฟล์ข้อมูล · golden tests ผ่านครบ 0 regression
+- **บันทึกเดิม "ต้นฉบับขาด 辰" = ผิด** (search ด้วย codepoint ผิด) → แก้ memory `sixty-jiazi-chen-encoding`
+
+## ข้อ 3 — extract docx 12 เชี่ยงแซ → md ✅
+- **NEW `scripts/extract-twelve-qi-docx.py`** — แปลง 2 docx (`ตาราง 12 เชี่ยงแซ.docx`, `ระบบ 12 เชี่ยงแซ 十二長生.docx`) เป็น md (NFKC + แก้สระอำ + ตาราง→markdown) วาง mirror ที่ `knownlage/distilled/<relativePath>` ตรงกับ path ที่ `twelve-qi-cycle.ts` อ้าง
+- **`hybrid-retrieval.ts`:** เพิ่ม `resolveDistilledMirrorFile` + ทำ `resolveAllDistilledFile` ให้ existence-aware (external corpus → repo-local mirror → external default) → hybrid-retrieval ดึง 12 เชี่ยงแซได้แม้ external corpus ไม่อยู่บนเครื่อง
+- เทสต์ใหม่ `tests/hybrid-retrieval.test.ts` (twelve_qi_cycle จาก mirror) ผ่าน
+
+## ข้อ 2 — wire output-transfer (Step 6.2) เข้า prose บท education/talent ✅
+- **บท education (`buildEducationReading`):** append block "ระดับและแนวการศึกษาตามเชี่ยงแซดาวถ่ายเทรายหลัก (Step 6.2)" จาก `buildOutputTransferReading` (ยกหลักที่มีดาวถ่ายเทจริงก่อน) → ใช้คอลัมน์ education ของ STAGE_READING_TABLE (ระดับ ตรี/โท/เอก)
+- **บท talent (`buildTalentReading`):** เพิ่มบรรทัด "วาทศิลป์/การสื่อสาร" จากคอลัมน์ speech ของหลักที่ดาวถ่ายเทปรากฏ
+- เทสต์ใหม่ใน `tests/topic-knowledge.test.ts` (education Step 6.2 + talent วาทศิลป์) ผ่าน
+- **หมายเหตุ SFT:** `speech`/`education` เป็น TOPIC_PATH topic อยู่แล้ว ไหลผ่าน `buildTopicHumanReading`; ตัว `export-sft-dataset.ts` เป็น dimension-based (จาก `annotationData` ใน DB) ไม่ใช่ topic-based — การ wire เข้า dimension annotation เป็นงานใหญ่แยก (ยังไม่ทำ)
+
+## เทสต์ (รอบ 2)
+- full suite: **508 passed / 15 failed** — 15 ทั้งหมด pre-existing (external corpus ENOENT: canonical/compile/hybrid-retrieval*/hybrid-sinsae + home-page SSR + source-integration บท3 wealth ที่ fail อยู่เดิม) ยืนยันด้วย git stash · **0 regression ใหม่ · +3 เทสต์ผ่าน**
+
+---
 # 🆕 สรุปงาน session 2026-06-07 — Step 6.2 ถ่ายเท + บท "การพูด" + Step 8 strength audit + ความหมาย 12 เชี่ยงแซ
 
 ผู้ใช้ป้อนสเปกทีละชุด (ถ่ายเทธาตุ / กำลังดิถี / 12 เชี่ยงแซ) → audit เทียบโค้ดจริงแล้ว implement เฉพาะส่วนที่ขาด

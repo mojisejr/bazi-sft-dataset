@@ -1,4 +1,5 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 import { getHybridDictionarySpec } from "@/lib/bazi/dictionaries";
@@ -154,8 +155,32 @@ export function resolveAllDistilledRoot(repoRoot = process.cwd()) {
   return path.resolve(repoRoot, "../..", ...ALL_DISTILLED_SEGMENTS);
 }
 
+// repo-local mirror สำหรับ source ที่แตกจาก docx ใน repo (เช่น 12 เชี่ยงแซ)
+// ใช้เมื่อ external distilled corpus ไม่อยู่บนเครื่องนี้ → hybrid-retrieval ยังทำงานได้
+const DISTILLED_MIRROR_SEGMENTS = ["knownlage", "distilled"] as const;
+
+export function resolveDistilledMirrorFile(relativePath: string, repoRoot = process.cwd()) {
+  return path.join(repoRoot, ...DISTILLED_MIRROR_SEGMENTS, relativePath);
+}
+
 export function resolveAllDistilledFile(relativePath: string, repoRoot = process.cwd()) {
-  return path.join(resolveAllDistilledRoot(repoRoot), relativePath);
+  const externalPath = path.join(resolveAllDistilledRoot(repoRoot), relativePath);
+  if (existsSync(externalPath)) {
+    return externalPath;
+  }
+  // fallback: ใช้ md ที่แตกไว้ใน repo ถ้า external corpus ไม่มีไฟล์นี้
+  const mirrorPath = resolveDistilledMirrorFile(relativePath, repoRoot);
+  if (existsSync(mirrorPath)) {
+    return mirrorPath;
+  }
+  // final fallback: repo-local mirror ที่ process.cwd() — มิเรอร์เดินทางมากับโค้ด
+  // ไม่ผูกกับ repoRoot ที่ผู้เรียกส่งเข้ามา (เช่นเทสต์ที่ส่ง repoRoot ปลอมชี้ external corpus ที่หาย)
+  const cwdMirrorPath = resolveDistilledMirrorFile(relativePath, process.cwd());
+  if (cwdMirrorPath !== mirrorPath && existsSync(cwdMirrorPath)) {
+    return cwdMirrorPath;
+  }
+  // คงพฤติกรรมเดิม: คืน external path เพื่อให้ error message ชี้ corpus ต้นทาง
+  return externalPath;
 }
 
 async function retrieveDictionaryEvidencePacket(

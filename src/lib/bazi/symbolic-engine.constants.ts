@@ -304,12 +304,16 @@ export const HARM_PAIRS = new Set([
   "酉|戌",
 ]);
 
+// 六破: ครบ 6 คู่ ตาม docs/Mootech AI/ตารางชงเฮ้งไห่ผั่ว.docx (ตาราง破 มี 申|巳).
+// หมายเหตุ: 巳|申 เป็น 六合 ด้วย (อยู่ใน SIX_COMBINATION_PAIRS) — โครงสร้าง engine เก็บทั้ง合และ破
+// แยกกัน (resolveBranchInteractionEffects) จึงรายงานได้ทั้งคู่ตามจริง.
 export const DESTRUCTION_PAIRS = new Set([
   "子|酉",
   "卯|午",
   "辰|丑",
   "未|戌",
   "寅|亥",
+  "巳|申",
 ]);
 
 export const STEM_BRANCH_DESTRUCTION_PAIRS = new Set([

@@ -1,6 +1,12 @@
+import { existsSync } from "node:fs";
+
 import { describe, expect, test } from "vitest";
 
 import { buildCanonicalKnowledgeDataset } from "@/lib/bazi/canonical-knowledge";
+import { resolveDistilledCorpusRoot } from "../scripts/compile-knowledge";
+
+// corpus ต้นทาง (../../.tmp/p-pol/Mootech AI/all_distilled) ไม่ ship มากับ repo → skip เมื่อไม่มี
+const corpusMissing = !existsSync(resolveDistilledCorpusRoot());
 
 let cachedDataset: ReturnType<typeof buildCanonicalKnowledgeDataset> | null = null;
 
@@ -10,7 +16,7 @@ function getDataset() {
   return cachedDataset;
 }
 
-describe("buildCanonicalKnowledgeDataset", () => {
+describe.skipIf(corpusMissing)("buildCanonicalKnowledgeDataset", () => {
   test("extracts canonical records from the current Mootech corpus", () => {
     const dataset = getDataset();
 

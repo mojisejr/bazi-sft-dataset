@@ -63,7 +63,8 @@ describe("source integration — ซินแซ corrections from ai gen M.docx"
   test("บท3 โชคลาภ: อ่านดาวลาภหลายตำแหน่งตาม 12 เชี่ยงแซ", async () => {
     const { raw, result } = await readM();
     const wealth = buildTopicHumanReading(result, "wealth_and_investment", raw)!;
-    expect(wealth).toContain("โชคลาภปรากฏหลายทาง");
+    // อ่านดาวลาภหลายตำแหน่ง: header "ที่ทรัพย์ปรากฏในดวง ... อ่านความหมายแต่ละตำแหน่ง"
+    expect(wealth).toContain("อ่านความหมายแต่ละตำแหน่ง");
     // อ่าน 2 เซียงแซต่อตำแหน่ง: ตัวแรก (เทียบดิถี ~80%) + ตัวขยาย self-seat (~20%)
     // ราศีบน 癸 × กิ่งวัน 酉 → แป่ ; ราศีล่าง 亥 × ก้านวัน 己 → ทอ ; self-seat 癸亥 = ตี้อ๋วง
     expect(wealth).toContain("ราศีบน 癸 → แป่");

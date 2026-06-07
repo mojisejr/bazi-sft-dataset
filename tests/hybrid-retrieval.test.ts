@@ -148,4 +148,15 @@ describe("retrieveHybridEvidencePacket", () => {
     expect(packet.evidence).toEqual([]);
     expect(packet.notes.join(" ")).toMatch(/fallback/i);
   });
+
+  test("resolves twelve_qi_cycle evidence from the repo-local distilled mirror (docx→md)", async () => {
+    // external corpus อาจไม่อยู่บนเครื่องนี้ → ต้อง fallback มาที่ knownlage/distilled
+    const packet = await retrieveHybridEvidencePacket("twelve_qi_cycle", SAMPLE_CALCULATED_STATE);
+
+    expect(packet.tier).toBe("TierA");
+    expect(packet.evidence.length).toBeGreaterThanOrEqual(2);
+    expect(packet.evidence.some((entry) => entry.sourcePath.includes("12 เชี่ยงแซ"))).toBe(true);
+    // เนื้อหาจาก md จริงต้องไม่ว่าง
+    expect(packet.evidence.every((entry) => entry.excerpt.length > 0)).toBe(true);
+  });
 });
