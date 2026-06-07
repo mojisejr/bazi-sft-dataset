@@ -430,6 +430,113 @@ describe("selectOpenWebUiTruthPacket", () => {
     }
   });
 
+  test("caller-contract source-boundary matrix keeps Source 2, 5, and 6 in their own lanes after Source 4 wiring", () => {
+    const callerContract = buildBaziCallerContractFromRawInput(
+      buildRawInputFromBirthDate(
+        new Date("1992-08-12T09:15:00+07:00"),
+        "Bangkok",
+        { gender: "female" },
+      ),
+      SAMPLE_BAZI_STATE,
+    );
+    const scenarios = [
+      {
+        label: "wealth accumulation",
+        intentClassification: {
+          intent: "wealth" as const,
+          requiresBaziConsult: true,
+          confidence: 0.95,
+        },
+        currentChatEvidence: {
+          latestUserMessage: "Can I build and keep money well over time?",
+          recentMessages: [],
+        },
+        expectedBucket: "wealth",
+        expectedSelectionMode: "atomic_job",
+        expectedJobId: "wealth.accumulation_capacity",
+        requiredAnchors: ["source4WealthInvestmentInterpretation"],
+        forbiddenAnchors: [
+          "sixtyJiaziCorePersona",
+          "spousePalace",
+          "loveCompatibilityProfile",
+          "careerTenGodHighlights",
+          "source6CareerBusinessInterpretation",
+        ],
+      },
+      {
+        label: "relationship partner profile",
+        intentClassification: {
+          intent: "love" as const,
+          requiresBaziConsult: true,
+          confidence: 0.92,
+        },
+        currentChatEvidence: {
+          latestUserMessage: "What kind of partner fits me best for a serious relationship?",
+          recentMessages: [],
+        },
+        expectedBucket: "relationship",
+        expectedSelectionMode: "atomic_job",
+        expectedJobId: "relationship.partner_profile",
+        requiredAnchors: ["spousePalace", "loveCompatibilityProfile"],
+        forbiddenAnchors: [
+          "sixtyJiaziCorePersona",
+          "financeTenGodHighlights",
+          "source4WealthInvestmentInterpretation",
+          "careerTenGodHighlights",
+          "source6CareerBusinessInterpretation",
+        ],
+      },
+      {
+        label: "career job switch timing",
+        intentClassification: {
+          intent: "career" as const,
+          requiresBaziConsult: true,
+          confidence: 0.94,
+        },
+        currentChatEvidence: {
+          latestUserMessage: "Should I change jobs now or wait for a safer window?",
+          recentMessages: ["I am thinking about resigning and moving teams."],
+        },
+        expectedBucket: "work",
+        expectedSelectionMode: "atomic_job",
+        expectedJobId: "work.job_switch_timing",
+        requiredAnchors: ["source6CareerBusinessInterpretation"],
+        forbiddenAnchors: [
+          "sixtyJiaziCorePersona",
+          "spousePalace",
+          "loveCompatibilityProfile",
+          "financeTenGodHighlights",
+          "source4WealthInvestmentInterpretation",
+        ],
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      const packet = selectOpenWebUiTruthPacket(
+        scenario.intentClassification,
+        callerContract,
+        scenario.currentChatEvidence,
+      );
+
+      expect(packet?.questionContext).toMatchObject({
+        canonicalBucket: scenario.expectedBucket,
+        selectionMode: scenario.expectedSelectionMode,
+        jobId: scenario.expectedJobId,
+        matrixVersion: BAZI_ATOMIC_QUESTION_MATRIX_VERSION,
+      });
+
+      const anchorKeys = packet?.anchors.map((section) => section.key) ?? [];
+
+      scenario.requiredAnchors.forEach((anchorKey) => {
+        expect(anchorKeys, `${scenario.label} should keep ${anchorKey}`).toContain(anchorKey);
+      });
+
+      scenario.forbiddenAnchors.forEach((anchorKey) => {
+        expect(anchorKeys, `${scenario.label} should exclude ${anchorKey}`).not.toContain(anchorKey);
+      });
+    }
+  });
+
   test("returns null when the routed intent does not require Bazi consultation", () => {
     expect(selectOpenWebUiTruthPacket({
       intent: "chit_chat",
@@ -565,6 +672,41 @@ describe("selectOpenWebUiTruthPacket with live engine output (Phase 8.3)", () =>
       "source-3",
       "source-7",
     ]);
+  });
+
+  test("caller-contract input exposes the Source 4 wealth lane while legacy wealth packets stay on non-overlay anchors", async () => {
+    const rawInput = buildRawInputFromBirthDate(
+      LIVE_BIRTH.birthAt,
+      LIVE_BIRTH.location,
+      { gender: LIVE_BIRTH.gender },
+    );
+    const liveState = await calculateLiveState();
+    const callerContract = buildBaziCallerContractFromRawInput(rawInput, liveState);
+
+    const legacyPacket = selectOpenWebUiTruthPacket({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.94,
+    }, liveState);
+    const contractPacket = selectOpenWebUiTruthPacket({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.94,
+    }, callerContract);
+
+    expect(legacyPacket?.anchors.map((section) => section.key)).not.toContain(
+      "source4WealthInvestmentInterpretation",
+    );
+    expect(contractPacket?.anchors.map((section) => section.key)).toContain(
+      "source4WealthInvestmentInterpretation",
+    );
+    expect(contractPacket?.anchors.find(
+      (section) => section.key === "source4WealthInvestmentInterpretation",
+    )?.value).toMatchObject({
+      sourceId: "source-4",
+      routeFrom: "source4-wealth-investment-overlay",
+      status: "ready-for-reading",
+    });
   });
 
   test("live engine output satisfies the canonical CalculatedState schema", async () => {

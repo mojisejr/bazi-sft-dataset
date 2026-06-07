@@ -8,6 +8,8 @@ import {
   type BaziAtomicQuestionJobId,
 } from "@/lib/bazi/atomic-question-matrix";
 import { type BaziCallerContract } from "@/lib/bazi/symbolic-engine.caller-contract";
+import { buildSource4WealthInvestmentInterpretation } from "@/lib/bazi/source4-wealth-investment-interpretation";
+import { buildSource4WealthInvestmentOverlay } from "@/lib/bazi/source4-wealth-investment-overlay";
 import { buildSource6CareerBusinessInterpretation } from "@/lib/bazi/source6-career-business-interpretation";
 import { buildSource6CareerBusinessOverlay } from "@/lib/bazi/source6-career-business-overlay";
 import {
@@ -94,6 +96,7 @@ type BaziDoctrinePacketAnchorKey =
   | "elementAnalysis"
   | "seasonalInteraction"
   | "financeTenGodHighlights"
+  | "source4WealthInvestmentInterpretation"
   | "relationshipTenGodHighlights"
   | "careerTenGodHighlights"
   | "source6CareerBusinessInterpretation"
@@ -156,6 +159,7 @@ const BUCKET_FALLBACK_BUILD_PLANS: Record<
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "financeTenGodHighlights",
+      "source4WealthInvestmentInterpretation",
     ],
     supportKeys: [],
     timingKeys: ALL_TIMING_KEYS,
@@ -323,6 +327,10 @@ function applyEvidenceHint(
 
   if (normalizedHint.includes("financetengodhighlights")) {
     addAnchorKeys(plan, ["financeTenGodHighlights"]);
+  }
+
+  if (normalizedHint.includes("source4wealthinvestmentinterpretation")) {
+    addAnchorKeys(plan, ["source4WealthInvestmentInterpretation"]);
   }
 
   if (normalizedHint.includes("relationshiptengodhighlights")) {
@@ -522,6 +530,17 @@ function buildSource6CareerBusinessInterpretationSection(
     "source6CareerBusinessInterpretation",
     buildSource6CareerBusinessInterpretation(
       buildSource6CareerBusinessOverlay(callerContract),
+    ),
+  );
+}
+
+function buildSource4WealthInvestmentInterpretationSection(
+  callerContract: BaziCallerContract,
+) {
+  return createBaziDoctrinePacketSection(
+    "source4WealthInvestmentInterpretation",
+    buildSource4WealthInvestmentInterpretation(
+      buildSource4WealthInvestmentOverlay(callerContract),
     ),
   );
 }
@@ -907,6 +926,7 @@ function buildDoctrinePacketSectionCatalog(
   payload: CalculatedStateValue,
   options?: {
     callerContract?: BaziCallerContract;
+    includeSource4WealthInvestmentInterpretation?: boolean;
     includeSource6CareerBusinessInterpretation?: boolean;
   },
 ): BaziDoctrinePacketSectionCatalog {
@@ -918,6 +938,15 @@ function buildDoctrinePacketSectionCatalog(
   mergeSectionCatalog(catalog, buildMarkerEvidenceFamilyCatalog(payload));
   mergeSectionCatalog(catalog, buildReadingOrderFamilyCatalog(payload));
   mergeSectionCatalog(catalog, buildTimingFamilyCatalog(payload));
+
+  if (
+    options?.includeSource4WealthInvestmentInterpretation
+    && options.callerContract
+  ) {
+    catalog.anchors.source4WealthInvestmentInterpretation = buildSource4WealthInvestmentInterpretationSection(
+      options.callerContract,
+    );
+  }
 
   if (
     options?.includeSource6CareerBusinessInterpretation
@@ -963,6 +992,9 @@ export function composeBaziDoctrinePacket(
   const plan = resolveDoctrinePacketBuildPlan(input.questionContext);
   const catalog = buildDoctrinePacketSectionCatalog(input.payload, {
     callerContract: input.callerContract,
+    includeSource4WealthInvestmentInterpretation: plan.anchorKeys.includes(
+      "source4WealthInvestmentInterpretation",
+    ),
     includeSource6CareerBusinessInterpretation: plan.anchorKeys.includes(
       "source6CareerBusinessInterpretation",
     ),

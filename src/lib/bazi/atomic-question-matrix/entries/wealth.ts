@@ -20,6 +20,7 @@ export const wealthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "financeTenGodHighlights",
+      "source4WealthInvestmentInterpretation",
     ],
     forbiddenNoise: [
       "exact timing promises",
@@ -51,6 +52,7 @@ export const wealthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "chartIdentity",
       "dayMasterStrengthProfile",
       "financeTenGodHighlights",
+      "source4WealthInvestmentInterpretation",
       "currentDaYun",
       "activeTimingWindow",
       "nextTimingWindows",
@@ -162,6 +164,7 @@ export const wealthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "financeTenGodHighlights",
       "elementAnalysis",
+      "source4WealthInvestmentInterpretation",
       "activeTimingWindow",
       "nextTimingWindows",
       "work anchors only if the investment is operational",
@@ -180,9 +183,9 @@ export const wealthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "nextTimingWindows",
       "work anchors only if the investment is operational",
     ],
-    supportStatus: "partial",
+    supportStatus: "supported",
     supportNotes:
-      "The engine can frame money pressure and timing, but it lacks an investment-specific risk vocabulary.",
+      "Source 4 now provides a deterministic risk boundary, timing window, and investment posture; operational business context still stays downstream of Source 6 when explicitly needed.",
   },
   {
     jobId: "wealth.partner_money_dynamic",

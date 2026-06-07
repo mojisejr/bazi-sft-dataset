@@ -361,7 +361,51 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContext.baziConsult?.truthPacket).toContain('"40-44"');
     expect(executionContext.baziConsult?.truthPacket).toContain('"45-49"');
     expect(executionContext.baziConsult?.truthPacket).not.toContain('"50-54"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"source4WealthInvestmentInterpretation"');
     expect(executionContext.baziMissingFields).toBeUndefined();
+  });
+
+  test("routes wealth accumulation wording into atomic selection mode with Source 4 interpretation facts attached", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: {
+        ...SAMPLE_CHAT_RESULT,
+        latestUserMessage: {
+          role: "user",
+          content: "Can I build and keep money well over time?",
+        },
+        triageMessages: [
+          {
+            role: "assistant",
+            content: "Tell me what part of money you want to understand.",
+          },
+          {
+            role: "user",
+            content: "I want to know whether I can build and keep money well over time.",
+          },
+          {
+            role: "user",
+            content: "Can I build and keep money well over time?",
+          },
+        ],
+      },
+      intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.95 },
+      extraction: {
+        fields: {
+          birthDate: SAMPLE_RAW_INPUT.birthDate,
+          birthTime: SAMPLE_RAW_INPUT.birthTime,
+          gender: SAMPLE_RAW_INPUT.gender,
+          province: SAMPLE_RAW_INPUT.province,
+        },
+        missingFields: [],
+        isComplete: true,
+        rawInput: SAMPLE_RAW_INPUT,
+      },
+      calculatedState: SAMPLE_CALCULATED_STATE,
+    });
+
+    expect(executionContext.baziConsult?.truthPacket).toContain('"selectionMode": "atomic_job"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"jobId": "wealth.accumulation_capacity"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"source4WealthInvestmentInterpretation"');
   });
 
   test("routes career job-switch wording into atomic selection mode without moving resolver logic into the route", () => {
@@ -455,7 +499,10 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContexts[2].baziConsult?.truthPacket).not.toContain('"jobId"');
   });
 
-  test("serializes the shell-agnostic doctrine harness verbatim for the Phase 5A reviewed inventory", () => {
+  test("serializes the shell-agnostic doctrine harness verbatim for the Phase 5A reviewed inventory", async () => {
+    const { buildBaziCallerContractFromRawInput } = await vi.importActual<typeof import("@/features/bazi-math/bazi-engine-adapter")>(
+      "@/features/bazi-math/bazi-engine-adapter",
+    );
     const executionContexts = PHASE_5A_DETERMINISTIC_PROOF_INVENTORY.map((fixture) => ({
       fixture,
       executionContext: buildOpenWebUiExecutionContext({
@@ -481,7 +528,10 @@ describe("buildOpenWebUiExecutionContext", () => {
       }),
       expectedPacket: selectBaziDoctrinePacketForCanonicalQuestion({
         canonicalBucket: fixture.canonicalBucket,
-        payload: SAMPLE_CALCULATED_STATE,
+        callerContract: buildBaziCallerContractFromRawInput(
+          SAMPLE_CHAT_RESULT.baziConsult.rawInput,
+          SAMPLE_CALCULATED_STATE,
+        ),
         currentChatEvidence: fixture.currentChatEvidence,
       }),
     }));
@@ -1465,6 +1515,58 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     expect(truthPacket).toContain('"spousePalace"');
     expect(truthPacket).toContain('"loveCompatibilityProfile"');
     expect(truthPacket).not.toContain('"financeTenGodHighlights"');
+  });
+
+  test.each([
+    {
+      priorIntent: "love",
+      priorReply: "ความรักอ่านจากฐานคู่เดิมค่ะ",
+    },
+    {
+      priorIntent: "career",
+      priorReply: "เรื่องงานยังต้องดูจังหวะก่อนค่ะ",
+    },
+  ])("wealth follow-up after $priorIntent lane reuses cached state but re-scopes to Source 4 only", async ({ priorIntent, priorReply }) => {
+    routeOpenWebUiIntentMock.mockResolvedValue({
+      intent: "wealth",
+      requiresBaziConsult: true,
+      confidence: 0.96,
+    });
+    generateGeminiAssistantReplyMock.mockResolvedValue({
+      model: "gemini-2.5-flash",
+      text: "เรื่องเงินอ่านจาก lane สะสมและจังหวะเสี่ยงค่ะ",
+    });
+
+    const response = await POST(buildJsonRequest({
+      messages: [
+        { role: "user", content: "เกิด 12/08/1992 เวลา 09:15 กรุงเทพ ผู้หญิง" },
+        {
+          role: "assistant",
+          content: `<bazi_logic>{"intent":"${priorIntent}"}</bazi_logic>\n<reply>${priorReply}</reply>`,
+        },
+        { role: "user", content: "Can I build and keep money well over time?" },
+      ],
+      baziConsult: SAMPLE_CHAT_RESULT.baziConsult,
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(extractOpenWebUiBaziContextMock).not.toHaveBeenCalled();
+    expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
+    expect(body).toContain("[DONE]");
+
+    const [chatInput, options] = generateGeminiAssistantReplyMock.mock.calls[0];
+    expect(chatInput.normalizedMessages[1].content).toBe(`<reply>${priorReply}</reply>`);
+
+    const truthPacket = options.executionContext.baziConsult.truthPacket as string;
+    expect(truthPacket).toContain('"canonicalBucket": "wealth"');
+    expect(truthPacket).toContain('"jobId": "wealth.accumulation_capacity"');
+    expect(truthPacket).toContain('"source4WealthInvestmentInterpretation"');
+    expect(truthPacket).not.toContain('"sixtyJiaziCorePersona"');
+    expect(truthPacket).not.toContain('"spousePalace"');
+    expect(truthPacket).not.toContain('"loveCompatibilityProfile"');
+    expect(truthPacket).not.toContain('"careerTenGodHighlights"');
+    expect(truthPacket).not.toContain('"source6CareerBusinessInterpretation"');
   });
 
   test("extractor failure still flushes the SSE stream to [DONE]", async () => {
