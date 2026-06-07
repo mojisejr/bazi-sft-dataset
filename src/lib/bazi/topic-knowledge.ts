@@ -12,10 +12,10 @@ import {
   CHAPTER_INTRO_TH,
   CHAPTER_SUMMARY_TH,
   ELEMENT_DEITY_BENEFIT_TH,
-  ELEMENT_SYMBOL_TH,
   composeParagraphs,
 } from "@/lib/bazi/reading-phrases";
 import {
+  BRANCH_HIDDEN_STEMS,
   BRANCH_TO_ELEMENT,
   CONTROLS,
   ELEMENT_LABELS_TH,
@@ -432,13 +432,14 @@ function parseSource7ColorTable(marker: string): Map<string, string> | null {
 }
 
 /** Source7 §5: เทพประจำราศีบน (10 ราศีบน) และราศีล่าง (12 ราศีล่าง) สำหรับเทพเฉพาะดวง */
-function parseSource7CustomDeities(): { upper: Map<string, string>; lower: Map<string, string> } | null {
+type DeityEntry = { deity: string; degree: string | null };
+function parseSource7CustomDeities(): { upper: Map<string, DeityEntry>; lower: Map<string, DeityEntry> } | null {
   const lines = readExtractedLines("source7-custom.txt");
   if (!lines) {
     return null;
   }
-  const upper = new Map<string, string>();
-  const lower = new Map<string, string>();
+  const upper = new Map<string, DeityEntry>();
+  const lower = new Map<string, DeityEntry>();
   let bucket: "upper" | "lower" | null = null;
   for (const line of lines) {
     if (line.startsWith("# DEITY_UPPER")) {
@@ -452,11 +453,12 @@ function parseSource7CustomDeities(): { upper: Map<string, string>; lower: Map<s
     if (!bucket || line.startsWith("#")) {
       continue;
     }
-    const [key, deity] = line.split("|").map((part) => part.trim());
+    const [key, deity, degreeRaw] = line.split("|").map((part) => part.trim());
     if (!key || !deity) {
       continue;
     }
-    (bucket === "upper" ? upper : lower).set(key, deity);
+    const degree = degreeRaw && degreeRaw !== "-" ? degreeRaw : null;
+    (bucket === "upper" ? upper : lower).set(key, { deity, degree });
   }
   return upper.size > 0 || lower.size > 0 ? { upper, lower } : null;
 }
@@ -1076,10 +1078,32 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     segments.push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) มีกำลังปานกลาง ค่อย ๆ สะสมได้ตามความสม่ำเสมอ`);
   }
 
-  // (2) แหล่งโชคลาภตามตำแหน่งเสา + อ่านแต่ละตำแหน่งตาม 12 เชี่ยงแซ
+  // (1b) แหล่งโชคลาภที่แท้จริง = หลักปี (ลูกค้า/ตลาด/สังคมภายนอกที่นำเงินเข้า) ตามที่ซินแสกำชับ
+  const yearBranchEl = elementLabel(branchElement(calculatedState.fourPillars.year.branch));
+  segments.push(
+    `แหล่งโชคลาภที่แท้จริง (ลูกค้า/ตลาดที่นำเงินเข้าหาดวงนี้) ดูจากหลักปี — กลุ่มลูกค้าหลักตามธาตุเสาปี (ธาตุ${yearBranchEl}): ${YEAR_CUSTOMER_TH[yearBranchEl] ?? "กลุ่มคนรอบตัวและสังคมภายนอก"}`,
+  );
+
+  // (2) ที่ทรัพย์ปรากฏในดวง (ตำแหน่งดาวลาภ) + อ่านแต่ละตำแหน่งตาม 12 เชี่ยงแซ
   if (sources.size > 0) {
-    const header = `โชคลาภปรากฏหลายทาง ที่ ${[...sources].join(" และ ")} — อ่านความหมายแต่ละตำแหน่ง:`;
-    segments.push(positionWealthLines.length > 0 ? `${header}\n${positionWealthLines.join("\n")}` : `โชคลาภปรากฏที่ ${[...sources].join(" และ ")}`);
+    const header = `ที่ทรัพย์ปรากฏในดวง (ดาวลาภ ธาตุ${wealthLabel}) ที่ ${[...sources].join(" และ ")} — อ่านความหมายแต่ละตำแหน่ง:`;
+    segments.push(positionWealthLines.length > 0 ? `${header}\n${positionWealthLines.join("\n")}` : `ดาวลาภปรากฏที่ ${[...sources].join(" และ ")}`);
+  } else {
+    // (2b) ไม่มีธาตุลาภโผล่เป็นตัวหลัก → ดูลาภแฝง: น้ำแฝงในกิ่ง + ไฉ่โข่ว + วัยจร
+    const hiddenWealthPillars = (["year", "month", "day", "hour"] as PillarKey[]).filter((pillar) => {
+      const branch = calculatedState.fourPillars[pillar].branch;
+      const hidden = BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [];
+      return hidden.some((stem) => stemElement(stem) === wealth);
+    });
+    const where = hiddenWealthPillars.map((pillar) => PILLAR_LABEL_TH[pillar]).join(" และ ");
+    segments.push(
+      `ดวงนี้ไม่มีธาตุลาภ (ธาตุ${wealthLabel}) โผล่เป็นตัวหลัก จึงดู “ลาภแฝง” แทน${
+        where ? ` — มีธาตุลาภแฝงอยู่ในกิ่งที่${where} (ราศีแฝง) ลาภจึงมาแบบไม่เปิดเผย ค่อย ๆ สะสม` : ""
+      }`,
+    );
+    segments.push(
+      "*สำคัญ: ดิถีกึ่งแข็งกึ่งอ่อนที่ไม่มีธาตุลาภในดวง ความร่ำรวยจะอยู่ที่ “วัยจร” เป็นหลัก — ช่วงวัยจรที่ดาวลาภเข้ามาดี = รวยขึ้นชัดเจน; ระหว่างที่ยังไม่มีลาภเข้า ถ้าขยันทำงาน (ดาวถ่ายเท) ก็ยังมีกินมีใช้เสมอ มากน้อยขึ้นกับจังหวะวัยจร",
+    );
   }
 
   // (3) ลักษณะลาภผล — ดิถีแข็งคว้าเงินก้อน, ดิถีอ่อนเด่นรายได้สะสมต่อเนื่อง (passive)
@@ -1893,15 +1917,16 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
   if (!section) {
     return null;
   }
-  const useful = resolveUsefulElements(calculatedState);
-  const usefulWithColor = useful.filter((element) => section.has(element));
+  // เสริมดวง = ธาตุปรับดวง (เสริมดิถี+ลาภ เลี่ยงถ่ายเทที่ดูดดิถี) ไม่ใช่ useful-god ที่อาจดึงธาตุถ่ายเท
+  const adjust = resolveAdjustElements(calculatedState).map(elementLabel);
+  const adjustWithColor = adjust.filter((element) => section.has(element));
 
-  const lines = usefulWithColor.map((element) => {
+  const lines = adjustWithColor.map((element) => {
     const [color, gem, amulet] = section.get(element)!;
-    return `ธาตุ${element} (useful god): สีมงคล ${color ?? "-"}; อัญมณี ${gem ?? "-"}; วัตถุมงคล ${amulet ?? "-"}`;
+    return `ธาตุ${element} (เสริมดวง): สีมงคล ${color ?? "-"}; อัญมณี ${gem ?? "-"}; วัตถุมงคล ${amulet ?? "-"}`;
   });
 
-  const usefulColors = usefulWithColor
+  const adjustColors = adjustWithColor
     .map((element) => section.get(element)![0])
     .filter((color): color is string => Boolean(color));
 
@@ -1921,8 +1946,8 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
   const carColor = carTable?.get(`${dayStem}|${hourStem}`);
   if (bagColor) {
     extras.push(`สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต) — เทียบดิถี ${dayStem} กับราศีบนหลักเดือน ${monthStem}: ${bagColor}`);
-  } else if (usefulColors.length > 0) {
-    extras.push(`สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต): เน้นสีธาตุ${usefulWithColor[0]} (${usefulColors[0]})`);
+  } else if (adjustColors.length > 0) {
+    extras.push(`สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต): เน้นสีธาตุ${adjustWithColor[0]} (${adjustColors[0]})`);
   }
   if (carColor) {
     extras.push(`สีรถยนต์ / ของเคลื่อนไหวได้ — เทียบดิถี ${dayStem} กับราศีบนหลักยาม ${hourStem}: ${carColor}`);
@@ -1932,18 +1957,11 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
     const resourceColor = section.get(resourceTh)?.[0];
     if (resourceColor) {
       extras.push(`สีรถยนต์ / ของเคลื่อนไหวได้: เน้นสีธาตุ${resourceTh} (${resourceColor}) ตามธาตุส่งเสริมดวง`);
-    } else if (usefulColors.length > 0) {
-      extras.push(`สีรถยนต์: ${usefulColors.join(" / ")}`);
+    } else if (adjustColors.length > 0) {
+      extras.push(`สีรถยนต์: ${adjustColors.join(" / ")}`);
     }
   }
-  extras.push(`ทิศมงคล: ${usefulWithColor.map((element) => ELEMENT_DIRECTION_TH[element]).join(" และ ")}`);
-
-  const symbols = usefulWithColor
-    .map((element) => ELEMENT_SYMBOL_TH[element])
-    .filter((symbol): symbol is string => Boolean(symbol));
-  if (symbols.length > 0) {
-    extras.push(`สัญลักษณ์มงคล: ${symbols.join(", ")}`);
-  }
+  extras.push(`ทิศมงคล: ${adjustWithColor.map((element) => ELEMENT_DIRECTION_TH[element]).join(" และ ")}`);
 
   return [...lines, avoid, ...extras].filter(Boolean).join("\n\n");
 }
@@ -1960,37 +1978,124 @@ const DEITY_ROLE_BENEFIT_TH: Record<RelationRole, string> = {
   "พิฆาตธาตุ": "หนุนเรื่องอำนาจ ตำแหน่งหน้าที่ และการงาน",
 };
 
-/** Source7 §5: เทพเฉพาะดวง — วน 8 ตัวอักษร (ราศีบน-ล่าง 4 เสา) ที่ขึ้นเชี่ยงแซดี → เทพประจำตัวอักษรนั้น
- *  + ความหมายเพิ่มตามบทบาทธาตุ (ผู้ใหญ่/สุขภาพ/เจรจา-ทำงาน/ลงทุน/โชคลาภ) */
+// ───────── บท 15 สิ่งศักดิ์สิทธิ์เฉพาะดวง (custom) — เกณฑ์แก้ดวงด้วยธาตุปรับดวง × เชี่ยงแซ ─────────
+const STEMS_OF_ELEMENT: Record<SupportedElementValue, readonly string[]> = {
+  wood: ["甲", "乙"], fire: ["丙", "丁"], earth: ["戊", "己"], metal: ["庚", "辛"], water: ["壬", "癸"],
+};
+const BRANCHES_OF_ELEMENT: Record<SupportedElementValue, readonly string[]> = {
+  wood: ["寅", "卯"], fire: ["巳", "午"], earth: ["辰", "戌", "丑", "未"], metal: ["申", "酉"], water: ["子", "亥"],
+};
+// เชี่ยงแซตัวดี (ใช้ได้เสมอ) / ตัวเสีย (ห้ามใช้ ข้ามตำแหน่ง) ตามสเปกเกณฑ์แก้ดวง
+const ADJUST_GOOD_QI = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง"]);
+const ADJUST_FORBIDDEN_QI = new Set(["เจ๊าะ", "ซวย"]);
+// เชี่ยงแซแบบมีเงื่อนไข: ใช้ได้เฉพาะเมื่อตัวอักษรที่เทียบมีบทบาทธาตุที่กำหนด
+const SI_ALLOWED_ROLES = new Set<RelationRole>(["คู่ธาตุ", "ธาตุส่งเสริม"]);
+const MUKYOK_PAE_ALLOWED_ROLES = new Set<RelationRole>(["คู่ธาตุ", "ธาตุส่งเสริม", "ธาตุพิฆาต"]);
+
+// ทิศเสริมดวง (fallback) ตามธาตุที่ต้องการ — ตามสเปก (ไม้/ดิน/ทอง; ดินมี 2 ทิศ)
+const ELEMENT_DIRECTION_TH_FALLBACK: Partial<Record<SupportedElementValue, string>> = {
+  wood: "ทิศตะวันออกเฉียงใต้ (สุ่ง 巽)",
+  earth: "ทิศตะวันตกเฉียงใต้ (คุง 坤) หรือทิศตะวันออกเฉียงเหนือ (กึ่ง 艮)",
+  metal: "ทิศตะวันตกเฉียงเหนือ (เคี้ยง 乾)",
+};
+
+/** ธาตุปรับดวงตามเกณฑ์แก้ดวง (ตามกำลังดิถี) */
+function resolveAdjustElements(calculatedState: CalculatedStateValue): SupportedElementValue[] {
+  const dm = dayMasterElement(calculatedState);
+  const output = GENERATES[dm] as SupportedElementValue; // ถ่ายเท
+  const wealth = CONTROLS[dm] as SupportedElementValue; // โชคลาภ
+  const resource = (Object.keys(GENERATES) as SupportedElementValue[]).find(
+    (e) => GENERATES[e] === dm,
+  ) as SupportedElementValue; // ส่งเสริม
+  const band = resolveStrengthBand(calculatedState);
+  if (band === "very-strong") {
+    return [output];
+  }
+  if (band === "strong" || band === "balanced") {
+    return [output, wealth];
+  }
+  // weak / very-weak → คู่ธาตุ + ส่งเสริม (เสริมดิถี) + ลาภ (ธาตุลาภเป็นคุณเสมอ) เลี่ยงถ่ายเทที่ดูดดิถี
+  return [dm, resource, wealth];
+}
+
+/** ตัวอักษร candidate (ราศีบน/ล่าง ของธาตุปรับดวง) "ใช้ได้" ไหม — เทียบเชี่ยงแซกับดวงทั้ง 8 ตัวรายตำแหน่ง */
+function isAdjustCharUsable(
+  subjectStem: string,
+  calculatedState: CalculatedStateValue,
+): boolean {
+  const dmEl = dayMasterElement(calculatedState);
+  for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
+    const { stem, branch } = calculatedState.fourPillars[pillar];
+    const targets: Array<{ qi: string; role: RelationRole }> = [
+      { qi: resolveDisplayStemPairStage(subjectStem, stem), role: resolveRelationRole(dmEl, stemElement(stem)) },
+      { qi: resolveDisplayTwelveQiStage(subjectStem, branch), role: resolveRelationRole(dmEl, branchElement(branch)) },
+    ];
+    for (const { qi, role } of targets) {
+      if (ADJUST_FORBIDDEN_QI.has(qi)) {
+        continue; // เจ๊าะ/ซวย ข้ามตำแหน่งนี้
+      }
+      if (ADJUST_GOOD_QI.has(qi)) {
+        return true;
+      }
+      if (qi === "ซี่" && SI_ALLOWED_ROLES.has(role)) {
+        return true;
+      }
+      if ((qi === "หมกยก" || qi === "แป่") && MUKYOK_PAE_ALLOWED_ROLES.has(role)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+/** Source7 §5 + เกณฑ์แก้ดวง: เลือก "ธาตุปรับดวง" → ตัวอักษร (ราศีบน/ล่าง) ที่ผ่านเชี่ยงแซ → องค์เทพ+องศา
+ *  ถ้าไม่มีตัวอักษรที่ใช้ได้ → fallback เป็นทิศเสริมดวงตามธาตุที่ต้องการ */
 function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
   const tables = parseSource7CustomDeities();
   if (!tables) {
     return [];
   }
-  const dmStem = calculatedState.dayMaster;
   const dmEl = dayMasterElement(calculatedState);
+  const adjustElements = resolveAdjustElements(calculatedState);
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
-    const { stem, branch } = calculatedState.fourPillars[pillar];
-    // ราศีบน (stem): เชี่ยงแซเทียบดิถี-กับ-ราศีบน
-    const stemQi = resolveDisplayStemPairStage(dmStem, stem);
-    const stemDeity = tables.upper.get(stem);
-    if (stemDeity && GOOD_QI_ENHANCE.has(stemQi) && !seen.has(stemDeity)) {
-      seen.add(stemDeity);
-      const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, stemElement(stem))];
-      out.push(`ราศีบน${PILLAR_LABEL_TH[pillar]} ${stem} (${stemQi}): ${stemDeity} — ${benefit}`);
+
+  for (const element of adjustElements) {
+    const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, element)];
+    const elLabel = elementLabel(element);
+    // ราศีบน (stem) ของธาตุปรับดวง
+    for (const stem of STEMS_OF_ELEMENT[element]) {
+      const entry = tables.upper.get(stem);
+      if (entry && isAdjustCharUsable(stem, calculatedState) && !seen.has(entry.deity)) {
+        seen.add(entry.deity);
+        out.push(
+          `ธาตุ${elLabel} (ราศีบน ${stem}): ${entry.deity}${entry.degree ? ` — องศา ${entry.degree}°` : ""} — ${benefit}`,
+        );
+      }
     }
-    // ราศีล่าง (branch): ใช้ 12 เชี่ยงแซที่ engine คำนวณไว้ของกิ่งเสานั้น
-    const branchQi = pillarBranchQi(calculatedState, pillar)
-      || resolveDisplayTwelveQiStage(dmStem, branch);
-    const branchDeity = tables.lower.get(branch);
-    if (branchDeity && GOOD_QI_ENHANCE.has(branchQi) && !seen.has(branchDeity)) {
-      seen.add(branchDeity);
-      const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, branchElement(branch))];
-      out.push(`ราศีล่าง${PILLAR_LABEL_TH[pillar]} ${branch} (${branchQi}): ${branchDeity} — ${benefit}`);
+    // ราศีล่าง (branch) ของธาตุปรับดวง — ใช้ราศีแฝงพลังแท้ (本气) เป็นตัวคิดเชี่ยงแซ
+    for (const branch of BRANCHES_OF_ELEMENT[element]) {
+      const subjectStem = (BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [])[0] ?? "";
+      const entry = tables.lower.get(branch);
+      if (entry && subjectStem && isAdjustCharUsable(subjectStem, calculatedState) && !seen.has(entry.deity)) {
+        seen.add(entry.deity);
+        out.push(
+          `ธาตุ${elLabel} (ราศีล่าง ${branch}): ${entry.deity}${entry.degree ? ` — องศา ${entry.degree}°` : ""} — ${benefit}`,
+        );
+      }
     }
   }
+
+  // fallback: ไม่มีตัวอักษรเชี่ยงแซดีที่ใช้ได้ → แนะนำทิศเสริมดวงตามธาตุที่ต้องการ
+  if (out.length === 0) {
+    for (const element of adjustElements) {
+      const dir = ELEMENT_DIRECTION_TH_FALLBACK[element];
+      if (dir) {
+        out.push(`ไม่มีตัวอักษรเชี่ยงแซดีที่ใช้เสริมดวงได้ — ให้เสริมธาตุ${elementLabel(element)}ด้วยทิศมงคล: ${dir}`);
+      }
+    }
+  }
+
   return out;
 }
 
@@ -2015,7 +2120,7 @@ function buildDeitiesReading(calculatedState: CalculatedStateValue): string | nu
   const blocks: string[] = [];
   if (custom.length > 0) {
     blocks.push(
-      `เทพคุ้มครองดวงเฉพาะดวง (เลือกจากตัวอักษรในผังที่ขึ้นเชี่ยงแซดี):\n${custom.join("\n")}`,
+      `สิ่งศักดิ์สิทธิ์เฉพาะดวง (เลือกธาตุปรับดวงตามกำลังดิถี แล้วคัดตัวอักษรที่ขึ้นเชี่ยงแซดีเทียบทั้งผัง):\n${custom.join("\n")}`,
     );
   }
   blocks.push(`สิ่งศักดิ์สิทธิ์ตามธาตุที่ดวงต้องการ (useful god):\n${elementLines.join("\n\n")}`);

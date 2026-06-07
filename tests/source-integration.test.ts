@@ -22,13 +22,15 @@ describe("source integration — ซินแซ corrections from ai gen M.docx"
   test("บท15 องค์เทพ: นำด้วยเทพเฉพาะดวง (Source7 §5) จากตัวอักษรที่ขึ้นเชี่ยงแซดี + คงเทพตามธาตุ", async () => {
     const { raw, result } = await readM();
     const deities = buildTopicHumanReading(result, "guardian_deities", raw)!;
-    // custom deity selection — 酉 (เชี่ยงแซ) → พระสังกัจจายน์ ; 亥 (ทอ) → เจ้าแม่กวนอิมองค์นั่งบัว
-    expect(deities).toContain("เทพคุ้มครองดวงเฉพาะดวง");
-    expect(deities).toContain("พระสังกัจจายน์");
-    // ต้องไม่ดึงตัวอักษรที่ขึ้นเชี่ยงแซเสีย (申 = หมกยก ไม่ดี → ไม่เอาเจ้าพ่อเห้งเจีย)
+    // custom deity = เลือกธาตุปรับดวง (己 อ่อน → คู่ธาตุ=ดิน + ส่งเสริม=ไฟ) แล้วคัดตัวอักษรเชี่ยงแซดี
+    expect(deities).toContain("สิ่งศักดิ์สิทธิ์เฉพาะดวง");
+    expect(deities).toContain("พระแม่ธรณี"); // 己 (คู่ธาตุ) ราศีบน
+    expect(deities).toContain("เทพสุริยัน ท้าววิรุฬหก"); // 丙 (ส่งเสริม) ราศีบน + องศา
+    expect(deities).toContain("องศา 165°");
+    // ไม่ดึงธาตุที่ไม่ใช่ธาตุปรับดวง (申/酉 = ทอง → ไม่เอาเจ้าพ่อเห้งเจีย/พระสังกัจจายน์)
     expect(deities).not.toContain("เจ้าพ่อเห้งเจีย");
-    // คงบล็อกตามธาตุ + marker เดิม
-    expect(deities).toContain("สิ่งศักดิ์สิทธิ์");
+    // คงบล็อกตามธาตุ (useful god) ไว้
+    expect(deities).toContain("สิ่งศักดิ์สิทธิ์ตามธาตุที่ดวงต้องการ");
     expect(deities).toContain("เจ้าพ่อพระเพลิง");
   });
 
