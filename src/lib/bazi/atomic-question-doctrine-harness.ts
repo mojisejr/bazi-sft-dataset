@@ -68,5 +68,6 @@ export function selectBaziDoctrinePacketForCanonicalQuestion(
       input.currentChatEvidence,
     ),
     payload: resolveDoctrinePayload(input),
+    callerContract: input.callerContract,
   });
 }

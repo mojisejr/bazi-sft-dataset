@@ -7,6 +7,9 @@ import {
   type BaziAtomicCanonicalBucket,
   type BaziAtomicQuestionJobId,
 } from "@/lib/bazi/atomic-question-matrix";
+import { type BaziCallerContract } from "@/lib/bazi/symbolic-engine.caller-contract";
+import { buildSource6CareerBusinessInterpretation } from "@/lib/bazi/source6-career-business-interpretation";
+import { buildSource6CareerBusinessOverlay } from "@/lib/bazi/source6-career-business-overlay";
 import {
   type AgeSnapshotValue,
   type CalculatedStateValue,
@@ -93,6 +96,7 @@ type BaziDoctrinePacketAnchorKey =
   | "financeTenGodHighlights"
   | "relationshipTenGodHighlights"
   | "careerTenGodHighlights"
+  | "source6CareerBusinessInterpretation"
   | "loveCompatibilityProfile"
   | "workCompatibilityProfile";
 
@@ -169,6 +173,7 @@ const BUCKET_FALLBACK_BUILD_PLANS: Record<
     anchorKeys: [
       "dayMasterStrengthProfile",
       "careerTenGodHighlights",
+      "source6CareerBusinessInterpretation",
       "workCompatibilityProfile",
       "elementAnalysis",
     ],
@@ -222,6 +227,7 @@ type BaziDoctrinePacketTimingWindowValue = {
 export type BaziDoctrinePacketComposerInput = {
   questionContext: BaziDoctrinePacketQuestionContext;
   payload: CalculatedStateValue;
+  callerContract?: BaziCallerContract;
   anchors?: BaziDoctrinePacketSection[];
   support?: BaziDoctrinePacketSection[];
   timing?: BaziDoctrinePacketSection[];
@@ -325,6 +331,10 @@ function applyEvidenceHint(
 
   if (normalizedHint.includes("careertengodhighlights")) {
     addAnchorKeys(plan, ["careerTenGodHighlights"]);
+  }
+
+  if (normalizedHint.includes("source6careerbusinessinterpretation")) {
+    addAnchorKeys(plan, ["source6CareerBusinessInterpretation"]);
   }
 
   if (normalizedHint.includes("lovecompatibilityprofile")) {
@@ -503,6 +513,17 @@ function findCompatibilityProfile(
   domain: "love" | "work",
 ) {
   return payload.compatibilityMatrixProfiles.find((profile) => profile.domain === domain);
+}
+
+function buildSource6CareerBusinessInterpretationSection(
+  callerContract: BaziCallerContract,
+) {
+  return createBaziDoctrinePacketSection(
+    "source6CareerBusinessInterpretation",
+    buildSource6CareerBusinessInterpretation(
+      buildSource6CareerBusinessOverlay(callerContract),
+    ),
+  );
 }
 
 function mergeSectionCatalog(
@@ -884,6 +905,10 @@ function buildTimingFamilyCatalog(
 
 function buildDoctrinePacketSectionCatalog(
   payload: CalculatedStateValue,
+  options?: {
+    callerContract?: BaziCallerContract;
+    includeSource6CareerBusinessInterpretation?: boolean;
+  },
 ): BaziDoctrinePacketSectionCatalog {
   const catalog = createEmptySectionCatalog();
 
@@ -893,6 +918,15 @@ function buildDoctrinePacketSectionCatalog(
   mergeSectionCatalog(catalog, buildMarkerEvidenceFamilyCatalog(payload));
   mergeSectionCatalog(catalog, buildReadingOrderFamilyCatalog(payload));
   mergeSectionCatalog(catalog, buildTimingFamilyCatalog(payload));
+
+  if (
+    options?.includeSource6CareerBusinessInterpretation
+    && options.callerContract
+  ) {
+    catalog.anchors.source6CareerBusinessInterpretation = buildSource6CareerBusinessInterpretationSection(
+      options.callerContract,
+    );
+  }
 
   return catalog;
 }
@@ -927,7 +961,12 @@ export function composeBaziDoctrinePacket(
   input: BaziDoctrinePacketComposerInput,
 ): BaziDoctrinePacket {
   const plan = resolveDoctrinePacketBuildPlan(input.questionContext);
-  const catalog = buildDoctrinePacketSectionCatalog(input.payload);
+  const catalog = buildDoctrinePacketSectionCatalog(input.payload, {
+    callerContract: input.callerContract,
+    includeSource6CareerBusinessInterpretation: plan.anchorKeys.includes(
+      "source6CareerBusinessInterpretation",
+    ),
+  });
   const plannedSections = materializeDoctrinePacketSections(plan, catalog);
 
   return BaziDoctrinePacketSchema.parse({

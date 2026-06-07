@@ -524,7 +524,7 @@ describe("selectOpenWebUiTruthPacket with live engine output (Phase 8.3)", () =>
     expect(liveState.fourPillars.day.branch).toBe("午");
   });
 
-  test("caller-contract input stays packet-equivalent to legacy payload input and exposes overlay hand-off order", async () => {
+  test("caller-contract input exposes the Source 6 career lane and overlay hand-off order", async () => {
     const rawInput = buildRawInputFromBirthDate(
       LIVE_BIRTH.birthAt,
       LIVE_BIRTH.location,
@@ -544,7 +544,19 @@ describe("selectOpenWebUiTruthPacket with live engine output (Phase 8.3)", () =>
       confidence: 0.88,
     }, callerContract);
 
-    expect(contractPacket).toEqual(legacyPacket);
+    expect(legacyPacket?.anchors.map((section) => section.key)).not.toContain(
+      "source6CareerBusinessInterpretation",
+    );
+    expect(contractPacket?.anchors.map((section) => section.key)).toContain(
+      "source6CareerBusinessInterpretation",
+    );
+    expect(contractPacket?.anchors.find(
+      (section) => section.key === "source6CareerBusinessInterpretation",
+    )?.value).toMatchObject({
+      sourceId: "source-6",
+      routeFrom: "source6-career-business-overlay",
+      status: "ready-for-reading",
+    });
     expect(callerContract.overlayReadiness.overlaySequence).toEqual([
       "source-2",
       "source-5",

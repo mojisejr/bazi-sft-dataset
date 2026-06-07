@@ -144,6 +144,7 @@ const STAGE_DEFINITIONS: Array<{
       "anchors.financeTenGodHighlights",
       "anchors.relationshipTenGodHighlights",
       "anchors.careerTenGodHighlights",
+      "anchors.source6CareerBusinessInterpretation",
       "anchors.loveCompatibilityProfile",
       "anchors.workCompatibilityProfile",
     ],

@@ -393,6 +393,7 @@ describe("buildOpenWebUiExecutionContext", () => {
 
     expect(executionContext.baziConsult?.truthPacket).toContain('"selectionMode": "atomic_job"');
     expect(executionContext.baziConsult?.truthPacket).toContain('"jobId": "work.job_switch_timing"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"source6CareerBusinessInterpretation"');
   });
 
   test("keeps mixed career wording on bucket fallback when resolver confidence is ambiguous", () => {
@@ -420,6 +421,7 @@ describe("buildOpenWebUiExecutionContext", () => {
 
     expect(executionContext.baziConsult?.truthPacket).toContain('"selectionMode": "bucket_fallback"');
     expect(executionContext.baziConsult?.truthPacket).not.toContain('"jobId"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"source6CareerBusinessInterpretation"');
   });
 
   test("keeps relationship fixtures consistent through the route execution-context path", () => {
