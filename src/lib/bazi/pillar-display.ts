@@ -63,14 +63,18 @@ export function resolveStemReferenceBranch(targetStem: string) {
   return BRANCH_ORDER.find((branch) => resolveCanonicalTwelveQiStage(targetStem, branch) === "长生") ?? "";
 }
 
-export function resolveDisplayStemPairStage(dayMasterStem: string, targetStem: string) {
+export function resolveCanonicalStemPairStage(dayMasterStem: string, targetStem: string) {
   const referenceBranch = resolveStemReferenceBranch(targetStem);
 
   if (!referenceBranch) {
     return "";
   }
 
-  return resolveDisplayTwelveQiStage(dayMasterStem, referenceBranch);
+  return resolveCanonicalTwelveQiStage(dayMasterStem, referenceBranch);
+}
+
+export function resolveDisplayStemPairStage(dayMasterStem: string, targetStem: string) {
+  return localizeTwelveQiLabel(resolveCanonicalStemPairStage(dayMasterStem, targetStem));
 }
 
 export function formatStagePair(primary?: string, context?: string) {

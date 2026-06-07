@@ -1,6 +1,51 @@
 # แผนงานระบบทำนายดวงจีน (Bazi) + Export DOCX
 
 ---
+# 🆕 สรุปงาน session 2026-06-07 — Step 6.2 ถ่ายเท + บท "การพูด" + Step 8 strength audit + ความหมาย 12 เชี่ยงแซ
+
+ผู้ใช้ป้อนสเปกทีละชุด (ถ่ายเทธาตุ / กำลังดิถี / 12 เชี่ยงแซ) → audit เทียบโค้ดจริงแล้ว implement เฉพาะส่วนที่ขาด
+
+## A) Step 6.2 — ธาตุถ่ายเท (食傷) → เชี่ยงแซ → คำทำนายการเรียน/การพูด
+- **NEW `src/lib/bazi/output-transfer-reading.ts`** — `buildOutputTransferReading(state)`:
+  - ธาตุถ่ายเท = `GENERATES[dayMasterElement]`; ราศีบนตัวแทน = 食神 (ขั้วเดียวกับดิถี)
+  - คำนวณเชี่ยงแซของธาตุถ่ายเทที่ราศีล่างแต่ละหลัก (`resolveCanonicalTwelveQiStage`)
+  - ตาราง `STAGE_READING_TABLE` ครบ 12 เชี่ยงแซ → การเรียน + การพูด (ลอกจากสเปก Step 6.2)
+  - ผูกบริบทหลัก (`PILLAR_CONTEXT_MAP`) + flag `carriesOutputElement`
+- เทสต์ `tests/output-transfer-reading.test.ts` (5) — ยืนยัน 丙午=帝旺(ปริญญาเอก), 丙寅=长生, 丙子=胎
+
+## B) ต่อ Step 6.2 เข้า pipeline หลัก — `day-master-relation-reading-poc.ts`
+- `buildAdvancedSignals` (= Step 6) เพิ่ม `outputTransferSummary` + `outputTransferDetails` ราย 4 หลัก เข้า `summaryLines` → ไหลเข้า `packet.advancedSignals` ที่ทุก consumer ใช้ (topic-reading, route, LLM) อัตโนมัติ
+
+## C) บทใหม่ "การพูด/speech" (บท 16)
+- `topic-path.ts` เพิ่ม topic `speech` (chapter 16, relationKeys `["output"]`, stepNumbers `[6]`)
+- `topic-knowledge.ts` — `buildSpeechReading` (ใช้ `buildOutputTransferReading`, ยกหลักที่มีดาวถ่ายเทจริงก่อน) + wire `buildTopicReadingBody` + `isTopicKnowledgeAvailable` (derive engine → true)
+- `reading-phrases.ts` เพิ่ม intro/summary/aspect ของบท speech
+- route `/api/reading/topic` + `reading-docx.ts` รับอัตโนมัติ (วนจาก TOPIC_PATH)
+- อัปเดตเทสต์: `topic-reading.test.ts` (16→17 topics), `topic-knowledge.test.ts` (coverage 15→16 + เทสต์ speech)
+
+## D) Step 8 กำลังดิถี — audit + แก้โซนเชี่ยงแซแบบ "ประนีประนอม"
+- **audit:** น้ำหนัก 7 ตำแหน่ง / นิยามคู่ธาตุ+ส่งเสริม / band 8.1 / ผั่ว-ชง-เฮ้ง = **ตรงสเปกอยู่แล้ว**
+- **จุดที่ไม่ตรง:** โซนเชี่ยงแซ 8.3/8.4/8.6/8.7 — โค้ดเดิมคิดแต่ราศีล่าง (กิ่ง) ไม่เคยคิดเชี่ยงแซราศีบน (ก้าน)
+- **‼️ ความขัดแย้งที่เจอ:** ทำตามสเปกเป๊ะ (โดยเฉพาะ 8.6 เอาก้านยามเข้าฝั่งเสีย) ทำให้คะแนนลดเป็นระบบจน **ขัดกับ band ที่เอกสาร "your life code" ระบุ** (เกศสรินทร์/กัญญารัตน์/สิริกัญญา + real-case-1993) — พิสูจน์ด้วยการคำนวณมือ
+- **ทางออก (ผู้ใช้เลือก ประนีประนอม):** เพิ่ม `resolveCanonicalStemPairStage` (`pillar-display.ts`) แล้วใส่เฉพาะ **ฝั่งดี** ของราศีบนเดือน (8.3) + ราศีบนปี (8.4) — **ไม่ใส่ penalty ฝั่งเสียจากก้าน (8.6/8.7)** → ผ่าน ground-truth ครบ, 0 regression
+- บันทึก `memory/strength-zone-qi-compromise.md`
+
+## E) ความหมายเต็ม 12 เชี่ยงแซ (十二長生) + ต่อเข้า reading
+- ยืนยัน: วิธีคำนวณ Step 1–6 + รูปแบบซ้อน X.2/X.1 มีครบใน `enrichPillar` (`symbolic-engine.ts`) แล้ว
+- **NEW `TWELVE_QI_MEANINGS_TH`** (`symbolic-engine.constants.ts`) — 12 เชี่ยงแซ × {labelThai, summary, keywords}
+- `topic-reading.ts` — `buildTwelveQiPillarMeaningLines` (ดิถีเทียบราศีล่าง = X.3/เชี่ยงแซ5) แสดงใน prose ของ **บท Calculated Basis** + เทสต์
+
+## F) เทสต์
+- full suite: **505 passed / 15 failed** — 15 ทั้งหมด **pre-existing** (corpus `all_distilled` ENOENT + home-page SSR) ยืนยันด้วย git stash · **0 regression ใหม่จาก session นี้**
+
+## ⏭️ ค้าง/เสนอต่อ (session 2026-06-07)
+- **‼️ Step 8 ข้อ 8.6/8.7 (penalty ก้านฝั่งเสีย) ยังไม่ implement** — ขัดกับ ground-truth "your life code"; ถ้าจะทำต้องได้ labeled dataset กว้างกว่านี้ก่อน เพื่อยืนยันว่ากติกาเอกสารคือ "ไม่มี penalty ก้าน" จริง หรือสเปกใหม่กว่า
+- **Step 6.2 / บท speech ยังไม่ต่อเข้า prose ของ topic อื่นและ SFT export** — ปัจจุบันโผล่ใน advancedSignals (Step 6) + บท speech/Calculated Basis เท่านั้น; ถ้าต้องการให้ output-transfer enrich บท education/talent โดยตรง หรือเข้า dataset SFT ค่อย wire เพิ่ม
+- **ไฟล์ `ระบบ 12 เชี่ยงแซ 十二長生.docx` ยังเป็น binary** — dictionary spec (`twelve-qi-cycle.ts`) อ้าง `.md` ที่ยังไม่ถูกแตก; ถ้าอยากให้ hybrid-retrieval ดึงความหมายจาก corpus ด้วย ต้อง extract docx→md (รอบนี้เก็บเป็น structured data แทน)
+- **tsc error เดิม `operator-strength.ts:166`** (`candidate.minInclusive` unknown) — pre-existing, ไม่เกี่ยวงานนี้; แก้แยกได้ (narrow type ของ band union)
+- **15 fail เดิม** (corpus ENOENT + home-page) ยังไม่แก้
+
+---
 # 🧾 สรุปงาน session นี้ (ยังไม่ commit — review-driven 15 บท + LLM YLC rollout)
 
 ผู้ใช้ review ทีละบทเทียบ engine vs ที่ต้องการ + ฝั่ง LLM เลียนสไตล์ "your life code"

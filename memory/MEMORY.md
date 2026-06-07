@@ -3,3 +3,4 @@
 - [Doc export: engine vs LLM](doc-export-engine-vs-llm.md) — engine ครบ/ถูก, LLM polish ย่อ-ตัด; เลือกราย topic ได้
 - [Doc export table changes](doc-export-table-changes.md) — ลำดับเสา + คอลัมน์ปฏิกิริยาวัยจร
 - [LLM quality plan](llm-quality-plan.md) — ทำให้โหมด LLM ทำนายดี (รอทำหลัง engine บท 1-15 ครบ)
+- [Strength zone-qi compromise](strength-zone-qi-compromise.md) — Step 8 เชี่ยงแซ-zone ขัด ground-truth; ใส่ฝั่งดีก้าน ไม่ใส่ penalty ก้าน

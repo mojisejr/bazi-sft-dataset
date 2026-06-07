@@ -28,6 +28,7 @@ import {
   TRACE_RULE_NAMES,
   TRACE_STEP_KEYS,
 } from "@/lib/bazi/trace-keys";
+import { resolveCanonicalStemPairStage } from "@/lib/bazi/pillar-display";
 
 function getElement(stem: string): SupportedElement {
   const element = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
@@ -148,15 +149,18 @@ function isPoStemBranch(stem: string, branch: string) {
  * โซนเชี่ยงแซ ±0.25 ตามสเปก: ในหนึ่งโซน ถ้ามีตำแหน่งใดเป็น "เชี่ยงแซตัวดี" ให้ +0.25
  * และถ้ามีตำแหน่งใดเป็น "เชี่ยงแซตัวเสีย" ให้ −0.25 (เป็นอิสระต่อกัน → โซนผสมหักลบเป็น 0)
  *   ตัวดี = เชี่ยงแซ/กวงตั่ว/ลิ่มกัว/ตี้อ๋วง/ทอ/เอี้ยง ; ตัวเสีย = หมกยก/ซวย/แป่/ซี่/เจ๊าะ
+ * รับสมาชิกฝั่งดี/เสียแยกกัน เพราะบางโซน (B) สเปกให้สมาชิกฝั่งเสียต่างจากฝั่งดี (8.3 vs 8.6)
  */
-function resolveZoneQiAdjustments(zoneLabel: string, stages: string[]): OperatorContribution[] {
+function resolveZoneQiAdjustments(
+  zoneLabel: string,
+  members: { good: string[]; bad: string[] },
+): OperatorContribution[] {
   const out: OperatorContribution[] = [];
-  const symbol = stages.join(",");
-  if (stages.some((stage) => GOOD_QI_STAGE_LABELS.has(stage))) {
-    out.push({ label: `${zoneLabel}:good`, symbol, weight: 0.25, source: "zone" });
+  if (members.good.some((stage) => GOOD_QI_STAGE_LABELS.has(stage))) {
+    out.push({ label: `${zoneLabel}:good`, symbol: members.good.join(","), weight: 0.25, source: "zone" });
   }
-  if (stages.some((stage) => BAD_QI_STAGE_LABELS.has(stage))) {
-    out.push({ label: `${zoneLabel}:bad`, symbol, weight: -0.25, source: "zone" });
+  if (members.bad.some((stage) => BAD_QI_STAGE_LABELS.has(stage))) {
+    out.push({ label: `${zoneLabel}:bad`, symbol: members.bad.join(","), weight: -0.25, source: "zone" });
   }
   return out;
 }
@@ -296,12 +300,29 @@ function computeStrengthScoreBreakdown(
   // สเปกความแข็งแรงไม่นับโบนัสรากธาตุ (通根) — ใช้เฉพาะคะแนนตำแหน่ง 7 ช่อง + เชี่ยงแซ + ความสัมพันธ์
   const hiddenContributions: OperatorContribution[] = [];
 
-  // โซนเชี่ยงแซ ±0.25 (อิสระต่อโซน): โซนใดมีเชี่ยงแซตัวดี +0.25, มีเชี่ยงแซตัวเสีย −0.25
-  //  โซน A = ราศีล่างหลักวัน + ราศีล่างหลักเดือน ; โซน B = หลักยาม + ราศีบนหลักเดือน ; โซน C = หลักปี
+  // เชี่ยงแซของ "ราศีบน" (ดิถีเทียบก้าน) ของหลักเดือน/ปี — ใช้เฉพาะ "ฝั่งดี" ตามสเปก 8.3/8.4
+  const monthStemStage = resolveCanonicalStemPairStage(dayMasterStem, pillars.month.stem);
+  const yearStemStage = resolveCanonicalStemPairStage(dayMasterStem, pillars.year.stem);
+
+  // โซนเชี่ยงแซ ±0.25 (อิสระต่อโซน) — แนวประนีประนอม:
+  //  เพิ่ม "ฝั่งดี" ของราศีบนเดือน (8.3) และราศีบนปี (8.4) เข้ามาตามสเปก แต่คง "ฝั่งเสีย"
+  //  เป็นแบบเดิม (เฉพาะราศีล่าง) เพื่อไม่ให้เกิด penalty จากก้านที่ทำให้ขัดกับ band ในเอกสารต้นฉบับ
+  //  โซน A (8.2/8.5): ราศีล่างหลักวัน + ราศีล่างหลักเดือน
+  //  โซน B: ดี = ราศีล่างยาม + ราศีล่างเดือน + ราศีบนเดือน(8.3) ; เสีย = ราศีล่างยาม + ราศีล่างเดือน (เดิม)
+  //  โซน C: ดี = ราศีล่างปี + ราศีบนปี(8.4) ; เสีย = ราศีล่างปี (เดิม)
   const qiAdjustments = [
-    ...resolveZoneQiAdjustments("dayMonthBranchZone", [stages.day, stages.month]),
-    ...resolveZoneQiAdjustments("hourMonthStemZone", [stages.hour, stages.month]),
-    ...resolveZoneQiAdjustments("yearZone", [stages.year]),
+    ...resolveZoneQiAdjustments("dayMonthBranchZone", {
+      good: [stages.day, stages.month],
+      bad: [stages.day, stages.month],
+    }),
+    ...resolveZoneQiAdjustments("hourMonthStemZone", {
+      good: [stages.hour, stages.month, monthStemStage],
+      bad: [stages.hour, stages.month],
+    }),
+    ...resolveZoneQiAdjustments("yearZone", {
+      good: [stages.year, yearStemStage],
+      bad: [stages.year],
+    }),
   ];
 
   for (const adjustment of qiAdjustments) {

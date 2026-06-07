@@ -25,7 +25,7 @@ export type TopicDefinition = {
   usefulGodLookup?: "color-direction" | "deity";
 };
 
-/** Calculated Basis (header) + 15 บท ตามโครงสร้าง M.docx */
+/** Calculated Basis (header) + 15 บท ตามโครงสร้างรายงานมาตรฐาน */
 export const TOPIC_PATH: readonly TopicDefinition[] = [
   {
     id: "calculated_basis",
@@ -189,6 +189,16 @@ export const TOPIC_PATH: readonly TopicDefinition[] = [
     stepNumbers: [1],
     evidenceDimension: "actionable_advice",
     usefulGodLookup: "deity",
+  },
+  {
+    id: "speech",
+    chapter: 16,
+    title: "การพูดและการสื่อสาร (ตามธาตุถ่ายเท)",
+    lens: "ดาวถ่ายเท (食傷) + สภาวะ 12 เชี่ยงแซรายหลัก → ลักษณะการพูด/การฟัง",
+    kind: "predict",
+    relationKeys: ["output"],
+    stepNumbers: [6],
+    evidenceDimension: "personality_psychology",
   },
 ];
 

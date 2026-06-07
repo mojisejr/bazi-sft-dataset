@@ -8,6 +8,7 @@ import {
   resolveDisplayTwelveQiStage,
 } from "@/lib/bazi/pillar-display";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
+import { buildOutputTransferReading } from "@/lib/bazi/output-transfer-reading";
 import {
   CHAPTER_INTRO_TH,
   CHAPTER_SUMMARY_TH,
@@ -237,7 +238,7 @@ function resolveUsefulElements(calculatedState: CalculatedStateValue): ThaiEleme
   const weakUseful: SupportedElementValue[] = useOfficerControl ? [resource, output] : [resource, same];
 
   // ดิถีอ่อน/อ่อนมาก ต้องการ 印 (ธาตุส่งเสริม) เป็นหลัก + 比劫 (คู่ธาตุ) เสริม
-  // (ตำรา M.docx: 己 อ่อนแอ → useful god = ไฟ ก่อน แล้วตามด้วยดิน)
+  // (ตำราเคี้ยงคุง: 己 อ่อนแอ → useful god = ไฟ ก่อน แล้วตามด้วยดิน)
   // ดิถีแข็ง: ระบายพลังด้วยถ่ายเท (食傷) + ลาภ (财) — 食傷生财 ทั้งคู่เป็นคุณ
   // (ตำรา: ดิถีไฟแข็งหน้าร้อน → useful god = ดิน(ถ่ายเท) + ทอง(ลาภ))
   // balanced (กึ่งแข็งกึ่งอ่อน): ใช้ตรรกะควบ 2 ฐาน (ดิถี + หลักเดือน) ตามที่ซินแซกำชับ
@@ -287,7 +288,7 @@ function resolveExcessElements(calculatedState: CalculatedStateValue): ThaiEleme
   return [...labels];
 }
 
-// อาการเมื่อ "ธาตุล้นเกิน" (อิงตำรา M.docx บท 13: น้ำเยอะ→อ้วน/บวม + หลักปฏิกิริยา 5 ธาตุ-อวัยวะ)
+// อาการเมื่อ "ธาตุล้นเกิน" (อิงตำราเคี้ยงคุง: น้ำเยอะ→อ้วน/บวม + หลักปฏิกิริยา 5 ธาตุ-อวัยวะ)
 const EXCESS_HEALTH_TH: Record<ThaiElement, string> = {
   "น้ำ": "อ้วนง่าย บวมน้ำ ระบบขับถ่าย/ไตและกระเพาะปัสสาวะทำงานหนัก",
   "ไฟ": "ร้อนใน อักเสบง่าย นอนไม่หลับ ใจสั่น ความดันแกว่ง",
@@ -1419,7 +1420,8 @@ function buildDaYunCharacterBreakdown(calculatedState: CalculatedStateValue): st
 }
 
 function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | null {
-  // เจาะลึกช่วงปัจจุบัน + ราว 20 ปีข้างหน้า (4 ช่วง 5 ปี) — ใช้ deepNote จากตารางวัยจรที่คิดครบ 3 มิติแล้ว
+  // เจาะลึกตั้งแต่ช่วงปัจจุบัน + ราว 30 ปีข้างหน้า (6 ช่วง 5 ปี) จบที่ปีปัจจุบัน — ตามคำกำชับซินแซ
+  //   ไม่ทายยาวทั้งชีวิต: คนควรกลับมาดูดวงใหม่เมื่อพ้น 30 ปีนี้
   const rows = buildRelationshipLinesMapping(calculatedState);
   if (rows.length === 0) {
     return null;
@@ -1429,10 +1431,10 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
   if (startIndex < 0) {
     startIndex = 0;
   }
-  const window = rows.slice(startIndex, startIndex + 4);
+  const window = rows.slice(startIndex, startIndex + 6);
 
   const lead = current
-    ? `วิเคราะห์จังหวะชีวิตเจาะลึกตั้งแต่ช่วงปัจจุบัน (อายุ ${current.ageRange}) ต่อเนื่องไปอีกราว 20 ปีข้างหน้า โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี`
+    ? `วิเคราะห์จังหวะชีวิตเจาะลึกตั้งแต่ช่วงปัจจุบัน (อายุ ${current.ageRange}) ต่อเนื่องไปอีกราว 30 ปีข้างหน้า (6 วัยจร) โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี`
     : "วิเคราะห์จังหวะชีวิตตามวัยจรช่วงละ 5 ปี โดยดูบทบาทธาตุควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี";
 
   const lines = window.map((row) => {
@@ -1459,7 +1461,7 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
   return [lead, ...lines, liuNianLine].filter(Boolean).join("\n\n");
 }
 
-// ───────── Rev6: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดวัยจร (Relationship Lines Mapping, อ้างอิง M.docx บทเสริม) ─────────
+// ───────── Rev6: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดวัยจร (Relationship Lines Mapping, อ้างอิงตำราเคี้ยงคุง) ─────────
 
 export type RelationshipLineRow = {
   ageRange: string;
@@ -1479,7 +1481,7 @@ const RELATION_ROLE_SHORT: Record<RelationRole, string> = {
 };
 
 // ───────── คำอธิบายดี-ร้ายเชิงลึก = บทบาทธาตุ × คุณภาพ 12 เชี่ยงแซ × ดิถีแข็ง-อ่อน ─────────
-// อ้างตำรา M.docx บทเสริม: "คิดดิถีแข็งอ่อน ควบคู่ปฏิกิริยา (12 เชี่ยงแซ) เสมอ"
+// อ้างตำราเคี้ยงคุง: "คิดดิถีแข็งอ่อน ควบคู่ปฏิกิริยา (12 เชี่ยงแซ) เสมอ"
 
 /** สิ่งที่ "เข้ามา" ตามบทบาทธาตุของวัยจร (วัยทำงาน) */
 const ROLE_INFLOW_TH: Record<RelationRole, string> = {
@@ -1490,7 +1492,7 @@ const ROLE_INFLOW_TH: Record<RelationRole, string> = {
   "พิฆาตธาตุ": "ภาระ หน้าที่ อำนาจ และแรงกดดัน (ธาตุอำนาจ)",
 };
 
-// วัยเรียน (ไม่เกิน 20 ปี): การงาน/ถ่ายเท = "การเรียน", โชคลาภ = "เรื่องผลการเรียน" (อ้างตำรา M.docx)
+// วัยเรียน (ไม่เกิน 20 ปี): การงาน/ถ่ายเท = "การเรียน", โชคลาภ = "เรื่องผลการเรียน" (อ้างตำราเคี้ยงคุง)
 const SCHOOL_AGE_MAX = 20;
 const ROLE_INFLOW_SCHOOL_TH: Record<RelationRole, string> = {
   "คู่ธาตุ": "เพื่อนและกลุ่มเรียน (คู่ธาตุ)",
@@ -1502,12 +1504,14 @@ const ROLE_INFLOW_SCHOOL_TH: Record<RelationRole, string> = {
 
 type QiTier = "rising" | "transitional" | "falling";
 
-// 12 เชี่ยงแซ ตาม "นิยามเชี่ยงแซ" ตำราเคี้ยงคุง (บรรทัด 2012-2027)
-//  ตัวดี (พลังขึ้น): เชี่ยงแซ กวงตั่ว ลิ่มกัว ตี้อ๋วง
-//  ตัวเสีย (พลังลง): หมกยก ซวย แป่ ซี่ เจ๊าะ
-//  ตัวกลาง (ผันผวน/เปลี่ยนผ่าน): ทอ เอี๊ยง หมอ
+// 12 เชี่ยงแซ — น้ำหนัก 3 ระดับ ตามที่ซินแซกำชับ:
+//  ตัวดี (~80-90% บวก): เชี่ยงแซ กวงตั่ว ลิ่มกัว ตี้อ๋วง
+//  ตัวกลาง 50/50 (ทายทั้งบวก-ลบ): หมกยก แป่ + ทอ เอี๊ยง หมอ (ผันผวน/เปลี่ยนผ่าน)
+//  ตัวเสีย (~80% ลบ): ซวย ซี่ เจ๊าะ — โดย "เจ๊าะ/ซวย" น่ากลัวสุด (โรคเรื้อรัง/เสียหนัก = ดอกจัน 3 ดอก)
 const RISING_QI = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง"]);
-const FALLING_QI = new Set(["หมกยก", "ซวย", "แป่", "ซี่", "เจ๊าะ"]);
+const FALLING_QI = new Set(["ซวย", "ซี่", "เจ๊าะ"]);
+// เซ็งแซเสียขั้นรุนแรง — ทำเครื่องหมายดอกจันเตือนเป็นพิเศษ (โรคเรื้อรัง/ความเสียหายยืดเยื้อ)
+const SEVERE_QI = new Set(["เจ๊าะ", "ซวย"]);
 
 function classifyQiTier(qi: string): QiTier {
   if (RISING_QI.has(qi)) {
@@ -1516,7 +1520,12 @@ function classifyQiTier(qi: string): QiTier {
   if (FALLING_QI.has(qi)) {
     return "falling";
   }
-  return "transitional"; // ทอ, เอี๊ยง, หมอ
+  return "transitional"; // หมกยก, แป่ (50/50), ทอ, เอี๊ยง, หมอ
+}
+
+/** เครื่องหมายเตือนระดับความรุนแรงของเซ็งแซ (ดอกจัน 3 ดอก = เจ๊าะ/ซวย) */
+function qiSeverityMark(qi: string): string {
+  return SEVERE_QI.has(qi) ? " ***" : "";
 }
 
 const QI_MANIFEST_TH: Record<QiTier, string> = {
@@ -1570,7 +1579,11 @@ function buildLuckPhaseVerdict(
   const tier = classifyQiTier(qi);
   const manifest = QI_MANIFEST_TH[tier];
   const verdict = VERDICT_MATRIX[resolveRoleEffect(band, role)][tier];
-  return `${inflow} เข้ามาในสภาวะ${manifest} (${qi || "—"}) — ${verdict}`;
+  // เจ๊าะ/ซวย = เซ็งแซเสียขั้นรุนแรง → เตือนเรื่องโรคเรื้อรัง/ความเสียหายยืดเยื้อเป็นพิเศษ
+  const severe = SEVERE_QI.has(qi)
+    ? ` ${qiSeverityMark(qi).trim()} ระวังเป็นพิเศษ: ${qi}เป็นเซ็งแซเสียขั้นรุนแรง ปัญหามักเรื้อรัง/ยืดเยื้อและแก้ยาก`
+    : "";
+  return `${inflow} เข้ามาในสภาวะ${manifest} (${qi || "—"}) — ${verdict}${severe}`;
 }
 
 /** ข้อมูลโครงสร้างของแต่ละเฟสวัยจร (5 ปี) — ใช้ร่วมกันทั้งตารางวัยจร/บท12/ช่วงคู่/ช่วงหุ้นส่วน */
@@ -1681,7 +1694,16 @@ type TimingOptions = {
   minAge?: number;
   /** ถ้อยคำสำหรับวัยเรียน (< 20 ปี) — ใช้ตีความเป็นเรื่องการเรียน/สอบแทน */
   youth?: TimingLabels;
+  /** ถ้อยคำสำหรับวัยผู้ใหญ่ตอนปลาย (>= elderMinAge) — เช่น เรื่องคู่ ไม่ทายคนใหม่ */
+  elder?: TimingLabels;
+  /** เกณฑ์อายุที่เริ่มใช้ elder labels (default ELDER_AGE_MIN=55; งาน/หุ้นส่วนใช้ RETIREMENT_AGE=60) */
+  elderMinAge?: number;
 };
+
+// วัยผู้ใหญ่ตอนปลาย: เลย 55 ปีไม่ทาย "มีคนใหม่" แต่ทาย "ดูแลคู่เดิม/ประคองกัน" (ตามคำกำชับซินแซ)
+const ELDER_AGE_MIN = 55;
+// วัยเกษียณ: เลย 60 ปีตัดเรื่องการงาน/ลงทุน เน้นสุขภาพ
+const RETIREMENT_AGE = 60;
 
 function formatTimingLine(
   phase: DaYunPhaseInfo,
@@ -1689,7 +1711,12 @@ function formatTimingLine(
   opts: TimingOptions,
 ): string {
   const useYouth = opts.youth && phase.startAge < SCHOOL_AGE_MAX;
-  const text = useYouth ? opts.youth![phase.tier] : labels[phase.tier];
+  const useElder = opts.elder && phase.startAge >= (opts.elderMinAge ?? ELDER_AGE_MIN);
+  const text = useElder
+    ? opts.elder![phase.tier]
+    : useYouth
+      ? opts.youth![phase.tier]
+      : labels[phase.tier];
   return `อายุ ${phase.ageRange} (${phase.symbol} → ${phase.qi || "—"}): ${text}`;
 }
 
@@ -1832,7 +1859,7 @@ function buildLoveReading(
   const band = resolveStrengthBand(calculatedState);
   const base = map.get(`${gender}|${band}`);
 
-  // ชั้นวิเคราะห์ดาวคู่ครอง (M.docx บท 7): ดิถีแข็ง-อ่อน × กำลังดาวคู่ครอง × จานคู่ (ราศีล่างหลักวัน)
+  // ชั้นวิเคราะห์ดาวคู่ครอง (ตำราเคี้ยงคุง บทความรัก): ดิถีแข็ง-อ่อน × กำลังดาวคู่ครอง × จานคู่ (ราศีล่างหลักวัน)
   const dm = dayMasterElement(calculatedState);
   // ชาย: คู่ครอง = ดาวลาภ (ธาตุที่ดิถีพิฆาต); หญิง: คู่ครอง = ดาวอำนาจ (ธาตุที่พิฆาตดิถี)
   const spouse = (gender === "male"
@@ -1897,10 +1924,16 @@ function buildLoveReading(
         transitional: "วัยเรียนมีความรู้สึกดี ๆ เข้ามาแต่ยังไม่จริงจัง เป็นรักในวัยเรียน",
         falling: "วัยเรียนอาจมีรักที่สะดุดหรือผิดหวังเล็ก ๆ เป็นบทเรียนความรักช่วงเรียน",
       },
+      // วัยผู้ใหญ่ตอนปลาย (>= 55): ไม่ทาย "มีคนใหม่" — ตีเป็นการดูแลประคองคู่เดิม
+      elder: {
+        rising: "ช่วงนี้คู่ครอง/คนใกล้ชิดดูแลประคับประคองกันได้ดี ต่างฝ่ายต่างเกื้อกูลกัน",
+        transitional: "ความสัมพันธ์กับคู่เดิมเรียบ ๆ ควรหมั่นดูแลใส่ใจกันให้สม่ำเสมอ",
+        falling: "ระวังเรื่องคู่/คนใกล้ชิดสะดุด ควรประคองความสัมพันธ์เดิมและดูแลสุขภาพกันและกัน",
+      },
     },
   );
   const timingBlock = spouseTiming.length > 0
-    ? `ช่วงอายุที่เด่นเรื่องคู่/ความรัก (ดาวคู่ครองธาตุ${spouseLabel} เข้าวัยจร — ก่อน 20 ปีตีเป็นรักในวัยเรียน):\n${spouseTiming.join("\n")}`
+    ? `ช่วงอายุที่เด่นเรื่องคู่/ความรัก (ดาวคู่ครองธาตุ${spouseLabel} เข้าวัยจร — ก่อน 20 ปีตีเป็นรักในวัยเรียน, เลย ${ELDER_AGE_MIN} ปีตีเป็นการดูแลประคองคู่เดิม):\n${spouseTiming.join("\n")}`
     : "";
 
   const spouseRelationBlock = buildSpouseRelationNotes(calculatedState);
@@ -2011,11 +2044,13 @@ function resolveAdjustElements(calculatedState: CalculatedStateValue): Supported
   if (band === "very-strong") {
     return [output];
   }
-  if (band === "strong" || band === "balanced") {
+  if (band === "strong") {
     return [output, wealth];
   }
-  // weak / very-weak → คู่ธาตุ + ส่งเสริม (เสริมดิถี) + ลาภ (ธาตุลาภเป็นคุณเสมอ) เลี่ยงถ่ายเทที่ดูดดิถี
-  return [dm, resource, wealth];
+  // balanced (กึ่งแข็งกึ่งอ่อน) → เอนไปทางเสริม: ส่งเสริม (印 ทำให้ดิถีแข็ง = หลัก) + คู่ธาตุ + ลาภ
+  //   ตัด "ถ่ายเท (output)" ออก เพราะดูดดิถีให้อ่อนลง — คนกึ่งแข็งกึ่งอ่อนพออ่อนเมื่อทำงานหนัก
+  // weak / very-weak → ใช้ตรรกะเดียวกัน (ส่งเสริมนำ + คู่ธาตุ + ลาภ)
+  return [resource, dm, wealth];
 }
 
 /** ตัวอักษร candidate (ราศีบน/ล่าง ของธาตุปรับดวง) "ใช้ได้" ไหม — เทียบเชี่ยงแซกับดวงทั้ง 8 ตัวรายตำแหน่ง */
@@ -2223,6 +2258,14 @@ function buildPartnershipReading(calculatedState: CalculatedStateValue): string 
     rising: "ช่วงเด่นเรื่องหุ้นส่วน/ร่วมงาน มีโอกาสได้พันธมิตรดีและเงินก้อนจากการร่วมมือ",
     transitional: "มีคนเข้ามาร่วมงานแต่ยังไม่นิ่ง ควรตกลงบทบาทให้ชัด",
     falling: "ระวังเรื่องหุ้นส่วน อาจมีความขัดแย้งหรือถูกทิ้งภาระ",
+  }, {
+    elderMinAge: RETIREMENT_AGE,
+    // เลยวัยเกษียณ (>= 60): ตัดการรุกเรื่องหุ้นส่วน/ลงทุนใหม่ เน้นสุขภาพและรักษาฐานเดิม
+    elder: {
+      rising: "วัยเกษียณ ไม่จำเป็นต้องรุกหาหุ้นส่วน/ลงทุนใหม่ ให้เน้นสุขภาพและส่งต่อกิจการที่มีอยู่",
+      transitional: "วัยเกษียณ หากจะร่วมงานให้เป็นที่ปรึกษามากกว่าลงเงิน เน้นดูแลสุขภาพเป็นหลัก",
+      falling: "วัยเกษียณ ควรเลี่ยงการร่วมทุนใหม่ เน้นรักษาสุขภาพและความมั่นคงที่มีอยู่",
+    },
   });
   const timingBlock = partnerTiming.length > 0
     ? `ช่วงอายุที่เด่นเรื่องหุ้นส่วน/ผู้ร่วมงาน (คู่ธาตุเข้าวัยจร):\n${partnerTiming.join("\n")}`
@@ -2543,11 +2586,11 @@ function buildSubordinateReading(calculatedState: CalculatedStateValue): string 
 
 /** คณะ/สาขา/คอสตามธาตุ (สรุปจาก "อาชีพของธาตุต่างเทียบการเรียนคณะ สาขา คอสเรียน") — แนะนำสายเรียนจริง */
 const FACULTY_BY_ELEMENT_TH: Record<ThaiElement, string> = {
-  "ดิน": "วิศวกรรมโยธา/สำรวจ, สถาปัตยกรรม/ภูมิสถาปัตย์, ธุรกิจอสังหาริมทรัพย์, วัสดุศาสตร์/ธรณีวิทยา/วิศวกรรมเหมืองแร่-เซรามิก, สัตวแพทย์/สัตวศาสตร์-ปฐพีวิทยา-เกษตร, ทันตแพทย์/ออร์โธปิดิกส์ (ฟัน-กระดูก-ผิวหนัง); ปวช.ช่างก่อสร้าง-โยธา; คอสอสังหาฯ/ประเมินราคา/เครื่องหนัง",
-  "ทอง": "วิศวกรรมโลหการ/เครื่องกล/ยานยนต์/อุตสาหการ/ไฟฟ้า-อิเล็กทรอนิกส์, วิทยาการคอมพิวเตอร์, อัญมณีวิทยา/ออกแบบเครื่องประดับ, นิติศาสตร์-รัฐศาสตร์, รร.นายร้อย/นายเรือ/ตำรวจ, การเงิน; ปวช.ช่างยนต์-กลโรงงาน-เชื่อมโลหะ; คอส CNC/ซ่อมอิเล็กทรอนิกส์",
-  "น้ำ": "พาณิชยศาสตร์-บัญชี/บริหารธุรกิจ/เศรษฐศาสตร์, โลจิสติกส์-ซัพพลายเชน, การท่องเที่ยว-โรงแรม, นิเทศศาสตร์(การตลาด/ออนไลน์), วิทยาศาสตร์ทางทะเล/ประมง; สายค้าขาย-บริการ-ขนส่ง-ลูกค้าออนไลน์",
-  "ไม้": "ครุศาสตร์/ศึกษาศาสตร์(พัฒนาหลักสูตร/สื่อ), อักษรศาสตร์-ศิลปศาสตร์-มนุษยศาสตร์(ภาษา/นักเขียน/นักแปล), นิเทศ-วารสารศาสตร์(การพิมพ์), เกษตร-วนศาสตร์, แพทย์แผนไทย/เภสัช(สมุนไพร), สังคมสงเคราะห์ศาสตร์, ออกแบบ/สถาปัตย์งานไม้",
-  "ไฟ": "แพทย์/พยาบาล/เภสัชศาสตร์, วิทยาศาสตร์เครื่องสำอาง, ทัศนมาตรศาสตร์(สายตา/แว่น), ครุศาสตร์(ครู/ติวเตอร์/นักวิชาการ), นิเทศ-ศิลปกรรม(สื่อ/ภาพ/ดีไซน์), วิศวกรรมไฟฟ้า/พลังงาน, โหราศาสตร์-ที่ปรึกษา-นักวางกลยุทธ์",
+  "ดิน": "วิศวกรรมโยธา/สำรวจ, ภูมิสถาปัตย์(จัดสรรที่ดิน), ธุรกิจอสังหาริมทรัพย์, วัสดุศาสตร์/ธรณีวิทยา/วิศวกรรมเซรามิก, สัตวแพทย์/สัตวศาสตร์-ปฐพีวิทยา-เกษตร, ทันตแพทย์/ออร์โธปิดิกส์ (ฟัน-กระดูก-ผิวหนัง); ปวช.ช่างก่อสร้าง-โยธา; คอสอสังหาฯ/ประเมินราคา/เครื่องหนัง",
+  "ทอง": "วิศวกรรมโลหการ/เครื่องกล/ยานยนต์/อุตสาหการ/ไฟฟ้า-อิเล็กทรอนิกส์/เหมืองแร่, วิทยาการคอมพิวเตอร์, อัญมณีวิทยา/ออกแบบเครื่องประดับ, นิติศาสตร์-รัฐศาสตร์, รร.นายร้อย/นายเรือ/ตำรวจ; ปวช.ช่างยนต์-กลโรงงาน-เชื่อมโลหะ; คอส CNC/ซ่อมอิเล็กทรอนิกส์/ตัดขนสัตว์(กรรไกร-ของมีคม)",
+  "น้ำ": "พาณิชยศาสตร์-บัญชี/บริหารธุรกิจ/เศรษฐศาสตร์ (การเงิน-การบัญชี), โลจิสติกส์-ซัพพลายเชน, การท่องเที่ยว-โรงแรม, วิทยาศาสตร์ทางทะเล/ประมง; สายค้าขาย-บริการ-ขนส่ง-นายหน้า/affiliate-ลูกค้าออนไลน์-อาบน้ำ/สปาสัตว์เลี้ยง",
+  "ไม้": "ครุศาสตร์/ศึกษาศาสตร์(พัฒนาหลักสูตร/สื่อ), อักษรศาสตร์-ศิลปศาสตร์-มนุษยศาสตร์(ภาษา/นักเขียน/นักแปล), นิเทศ-วารสารศาสตร์(การพิมพ์), เกษตร-วนศาสตร์, แพทย์แผนไทย/เภสัช(สมุนไพร), สังคมสงเคราะห์ศาสตร์, ออกแบบ/สถาปัตย์งานไม้, วิศวกรรมปิโตรเลียม(เชื้อเพลิงชีวมวล)",
+  "ไฟ": "แพทย์/พยาบาล/เภสัชศาสตร์, วิทยาศาสตร์เครื่องสำอาง, ทัศนมาตรศาสตร์(สายตา/แว่น), ครุศาสตร์(ครู/ติวเตอร์/นักวิชาการ), นิเทศ-ศิลปกรรม(สื่อ/ภาพ/ดีไซน์), สถาปัตยกรรม(งานออกแบบอาคาร), วิศวกรรมไฟฟ้า/พลังงาน/ปิโตรเลียม(เชื้อเพลิง-ความร้อน), โหราศาสตร์-ที่ปรึกษา-นักวางกลยุทธ์-นักการตลาด; คอส Content Creator/Storytelling, Social Media Marketing",
 };
 
 /** บท 11 การเรียน = ดาวถ่ายเท (output) อ่านตาม 12 เซียงแซ (ดี=เรียนได้ใช้) + แนะนำคณะ/วิชาตามธาตุ useful */
@@ -2591,6 +2634,28 @@ function buildEducationReading(calculatedState: CalculatedStateValue): string | 
       segments.push(`• สายธาตุ${el} — ${FACULTY_BY_ELEMENT_TH[el]}`);
     }
   }
+
+  return segments.join("\n\n");
+}
+
+/** บท 16 การพูด = ดาวถ่ายเท (output/食傷) ตกเชี่ยงแซรายหลัก → ลักษณะการพูด/การฟัง (Step 6.2) */
+function buildSpeechReading(calculatedState: CalculatedStateValue): string | null {
+  const transfer = buildOutputTransferReading(calculatedState);
+
+  const segments: string[] = [
+    `การพูดและการสื่อสารอ่านจาก "ดาวถ่ายเท" (ธาตุ${transfer.outputElementLabelThai}) ` +
+      `ว่าตกสภาวะ 12 เชี่ยงแซตัวใดในแต่ละหลัก เชี่ยงแซดีจะสื่อสารได้น่าเชื่อถือ ส่วนเชี่ยงแซเสียมักพูดพลาดหรือสื่อสารติดขัด`,
+  ];
+
+  // จุดที่ดาวถ่ายเทปรากฏจริงในดวง = ลักษณะการพูดที่เด่นชัดที่สุด ยกขึ้นก่อน
+  const carrying = transfer.pillars.filter((pillar) => pillar.carriesOutputElement);
+  const ordered = carrying.length > 0 ? carrying : transfer.pillars;
+
+  const lines = ordered.map(
+    (pillar) =>
+      `${pillar.context} (ดาวถ่ายเทตกเชี่ยงแซ ${pillar.stageThai}) = ${pillar.speech}`,
+  );
+  segments.push(lines.join("\n"));
 
   return segments.join("\n\n");
 }
@@ -2738,6 +2803,8 @@ function buildTopicReadingBody(
       return buildDeitiesReading(calculatedState);
     case "career_potential":
       return buildCareerReading(calculatedState);
+    case "speech":
+      return buildSpeechReading(calculatedState);
     case "turning_points":
       return buildLuckCycleReading(calculatedState);
     case "love_partner":
@@ -2792,11 +2859,11 @@ const KNOWLEDGE_TOPIC_LABEL: Record<string, string> = {
   turning_points: "ตำราการทายวัยจร",
   love_partner: "ตำราความรักและความสัมพันธ์",
   partnership: "ตำราการงานและธุรกิจ",
-  benefactor: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (อ้างอิง M.docx)",
-  family: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (อ้างอิง M.docx)",
-  friends_foes: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (อ้างอิง M.docx)",
-  subordinates: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (อ้างอิง M.docx)",
-  education: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (อ้างอิง M.docx)",
+  benefactor: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (ตำราโหราศาสตร์เคี้ยงคุง)",
+  family: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (ตำราโหราศาสตร์เคี้ยงคุง)",
+  friends_foes: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (ตำราโหราศาสตร์เคี้ยงคุง)",
+  subordinates: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (ตำราโหราศาสตร์เคี้ยงคุง)",
+  education: "หลักปฏิกิริยาธาตุ + ตำแหน่งเสา (ตำราโหราศาสตร์เคี้ยงคุง)",
 };
 
 /** ชื่อตำรา/แหล่งอ้างอิงอ่านง่ายของหัวข้อ (ไว้แสดง "อ้างอิง: ...") */
@@ -2830,6 +2897,7 @@ function isTopicKnowledgeAvailable(topicId: string): boolean {
     case "friends_foes":
     case "subordinates":
     case "education":
+    case "speech":
       return true; // derive จากกฎ engine เสมอ
     default:
       return false;

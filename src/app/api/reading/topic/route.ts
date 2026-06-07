@@ -97,7 +97,7 @@ export async function POST(req: Request) {
   const reading = buildTopicEngineReading(calculatedState, topicId, packet);
   const humanKnowledge = buildTopicHumanReading(calculatedState, topicId, rawInput);
   const sourceLabel = getTopicKnowledgeSourceLabel(topicId);
-  // ตาราง Relationship Lines เฉพาะบทวัยจร (อ้างอิง M.docx บทเสริม)
+  // ตาราง Relationship Lines เฉพาะบทวัยจร (อ้างอิงตำราเคี้ยงคุง)
   const relationshipLines =
     topicId === "turning_points" ? buildRelationshipLinesMapping(calculatedState) : undefined;
 

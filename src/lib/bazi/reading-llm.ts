@@ -234,6 +234,7 @@ function buildSystemInstruction(prompt: ReadingTopicPrompt, topicId: string): st
     "- ต้องคงข้อมูลทุกชิ้นจาก excerpt ให้ครบ: ทุกธาตุ ทุกเซียงแซ ทุกรายการในลิสต์ (อาชีพ/คณะ/สี/เทพ) ทุกช่วงอายุและตัวเลข ต้องปรากฏในคำตอบครบและตรงเป๊ะ ห้ามตัดทิ้งแม้แต่รายการเดียว",
     "- ห้ามเติมลักษณะนิสัย/จุดอ่อน/อาชีพ/ธาตุที่ไม่ปรากฏใน excerpt/signal โดยเฉพาะนิสัยเชิงลบ (โกรธง่าย ดื้อรั้น ฯลฯ) และห้ามจัดสิ่งใดผิดธาตุไปจากที่ระบุ",
     "- ห้ามตั้งฉายา/archetype/สมญานาม (เช่น \"นักกำจัดปัญหา\", \"THE TERMINATOR\") ให้บรรยายพรสวรรค์/บุคลิกตามเนื้อหาตรง ๆ",
+    "- ห้ามเอ่ยถึงดวงดาว/แนวคิดที่ไม่ปรากฏใน excerpt โดยเด็ดขาด โดยเฉพาะ \"ดาวดอกท้อ/ท้อฮวย\" และคำว่า \"เสน่ห์/มหาเสน่ห์\" (ถ้า excerpt ไม่ได้ระบุ ห้ามใส่ — ความน่าดึงดูดของเจ้าชะตามาจากดาวถ่ายเท/ความน่าเชื่อถือ ไม่ใช่เสน่ห์ดอกท้อ)",
     "- ห้ามเอ่ยถึงแหล่งที่มาของข้อมูลหรือชื่อไฟล์/เอกสารใด ๆ เขียนเป็นคำทำนายตรง ๆ",
     "",
     "ตอบเป็นข้อความร้อยแก้ว + bullet เฉพาะเนื้อหาหัวข้อนี้ ไม่ต้องใส่หัวข้อบท ไม่ต้องมี JSON",
@@ -257,6 +258,24 @@ function buildUserPrompt(input: ReadingTopicLlmInput, prompt: ReadingTopicPrompt
 
 /** โทเคน "ข้อเท็จจริง" ที่ LLM ต้องคงไว้ = ธาตุ 5 ชนิด (ไม่นับชื่อเซียงแซ เพราะ prompt สั่งให้แปลเป็นภาษาคน) */
 const CRITICAL_ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"] as const;
+
+/** คำที่ LLM ชอบ "หลอน" ดึงมาจากความรู้นอก engine — ห้ามปรากฏถ้าไม่มีใน excerpt
+ *  (ซินแซ flag: ดาวดอกท้อ/ท้อฮวย พี่พลไม่มี, "เสน่ห์" จริง ๆ คือถ่ายเทหลิมกัว=น่าเชื่อถือ ไม่ใช่เสน่ห์) */
+const FORBIDDEN_INVENTED_TERMS = [
+  "ดอกท้อ",
+  "ท้อฮวย",
+  "เสน่ห์",
+  "มหาเสน่ห์",
+] as const;
+
+/** คืนคำต้องห้ามที่ LLM "เพิ่มขึ้นเอง" (อยู่ในผล LLM แต่ไม่มีใน engine excerpt) */
+export function forbiddenInventions(engineText: string, llmText: string): string[] {
+  const engineNorm = normalizeForFaithful(engineText);
+  const llmNorm = normalizeForFaithful(llmText);
+  return FORBIDDEN_INVENTED_TERMS.filter(
+    (term) => llmNorm.includes(term) && !engineNorm.includes(term),
+  );
+}
 
 /** normalize ก่อนเทียบ: ตัดช่องว่าง */
 function normalizeForFaithful(text: string): string {
@@ -322,7 +341,7 @@ export async function generateReadingTopicLlm(
     const strictNote =
       attempt === 0
         ? ""
-        : "\n\nสำคัญ: คำตอบก่อนหน้าตัดข้อมูลบางส่วนทิ้ง — รอบนี้ต้องคงทุกธาตุ ทุกเซียงแซ ทุกรายการในลิสต์ ทุกช่วงอายุจาก excerpt ให้ครบทุกตัว ห้ามตัด";
+        : "\n\nสำคัญ: คำตอบก่อนหน้าตัดข้อมูลบางส่วนทิ้งหรือเพิ่มข้อมูลนอก excerpt (เช่น ดาวดอกท้อ/เสน่ห์) — รอบนี้ต้องคงทุกธาตุ ทุกเซียงแซ ทุกรายการในลิสต์ ทุกช่วงอายุจาก excerpt ให้ครบทุกตัว ห้ามตัด และห้ามเพิ่มดวงดาว/แนวคิดที่ไม่มีใน excerpt";
     const response = await generateContent({
       model,
       contents: userPrompt + strictNote,
@@ -333,12 +352,14 @@ export async function generateReadingTopicLlm(
       throw new Error("LLM คืนค่าว่างสำหรับการเรียบเรียงคำทำนาย");
     }
     lastText = text;
-    if (!engineText || verifyReadingFaithful(engineText, text)) {
+    // ผ่านเมื่อ: คงข้อเท็จจริงครบ + ไม่เพิ่มคำต้องห้ามที่ไม่มีใน excerpt (ดอกท้อ/เสน่ห์)
+    const invented = engineText ? forbiddenInventions(engineText, text) : [];
+    if ((!engineText || verifyReadingFaithful(engineText, text)) && invented.length === 0) {
       return { text, model };
     }
   }
 
-  // ยังคงข้อเท็จจริงไม่ครบหลัง retry → ถอยมาใช้ผล engine (การันตีไม่แย่กว่า engine)
+  // ยังไม่ผ่านหลัง retry (ตัดข้อมูล หรือหลอนเพิ่มคำนอก excerpt) → ถอยมาใช้ผล engine (การันตีไม่แย่กว่า engine)
   return { text: engineText || lastText, model: `${model} (fallback-engine)` };
 }
 
@@ -368,7 +389,7 @@ function buildRelationshipLinesSystemInstruction(): string {
     "- รักษาสาระเดิมของแต่ละแถวไว้ครบ ห้ามสลับช่วงอายุ ห้ามแต่งเหตุการณ์/ตัวเลข/ธาตุที่ไม่มีในข้อมูลเดิม",
     "- ถ้าข้อความเดิมมีป้าย [เฝ้าระวัง] หรือ [ยุคทอง] ต้องคงป้ายนั้นไว้เหมือนเดิมเป๊ะ",
     "- โทน/คำลงท้ายเป็นกลาง ไม่ลงท้ายว่า \"ครับ\"/\"ค่ะ\"",
-    "- ห้ามเอ่ยถึงแหล่งที่มาของข้อมูลหรือชื่อไฟล์/เอกสารใด ๆ (เช่น M.docx)",
+    "- ห้ามเอ่ยถึงแหล่งที่มาของข้อมูลหรือชื่อไฟล์/เอกสารใด ๆ เขียนเป็นคำทำนายตรง ๆ",
     "- แต่ละช่องกระชับ 1-2 ประโยค",
     "",
     "รูปแบบคำตอบ: ตอบเป็น JSON array ของสตริงเท่านั้น (ไม่มีคำอธิบายอื่น ไม่มี code fence) โดยมีจำนวนสมาชิกเท่ากับจำนวนแถวที่ให้มา เรียงตามลำดับเดิม แต่ละสมาชิกคือข้อความ \"คำอธิบายดี-ร้ายเชิงลึก\" ที่แต่งใหม่ของแถวนั้น",

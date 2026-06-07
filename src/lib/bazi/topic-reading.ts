@@ -10,6 +10,8 @@ import {
 } from "@/lib/bazi/topic-path";
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
 import { resolveDaYunReaction } from "@/lib/bazi/topic-knowledge";
+import { resolveCanonicalTwelveQiStage } from "@/lib/bazi/pillar-display";
+import { TWELVE_QI_MEANINGS_TH } from "@/lib/bazi/symbolic-engine.constants";
 
 export {
   TOPIC_PATH,
@@ -29,13 +31,13 @@ export type {
  * ({@link CalculatedStateValue}) + relation packet ที่ deterministic เท่านั้น
  * ห้ามมี fact ใหม่จาก AI. โหมด LLM ใช้ข้อมูลชุดเดียวกันเป็น brief.
  *
- * โครงสร้างผลลัพธ์ต่อหัวข้อ = 3 บล็อกตามตัวอย่าง M.docx + 1.docx:
+ * โครงสร้างผลลัพธ์ต่อหัวข้อ = 3 บล็อก (ตามรูปแบบรายงานมาตรฐาน):
  *  - A `table`  : ตารางความสัมพันธ์ 4 คอลัมน์ (อักษรจีนต้นทาง | ทิศทาง | ผลลัพธ์ | ช่วงเวลาจร)
  *  - B `method` : วิธีการอ่าน/หลักการ (จาก stepInsight ของ relation packet)
  *  - C `prose`  : ร้อยแก้วบรรยาย (จาก narrative ที่ engine ผลิตไว้แล้วใน calculatedState)
  */
 
-/** แถวของตารางความสัมพันธ์แบบ M.docx (4 คอลัมน์) */
+/** แถวของตารางความสัมพันธ์ (4 คอลัมน์) */
 export type TopicRelationRow = {
   sourceSymbol: string;
   pointsTo: string;
@@ -61,7 +63,7 @@ export type DaYunRow = {
   symbol: string;
   /** ราศีบน (ก้าน) หรือ ราศีล่าง (กิ่ง) */
   source: string;
-  /** ปฏิกิริยา (บทบาทธาตุของช่วงนี้เทียบดิถี) — แสดงก่อนสภาวะตามวิธีอ่าน M.docx */
+  /** ปฏิกิริยา (บทบาทธาตุของช่วงนี้เทียบดิถี) — แสดงก่อนสภาวะตามวิธีอ่านตำราเคี้ยงคุง */
   reaction: string;
   /** สภาวะ 12 เชี่ยงแซของช่วงนี้ */
   stage: string;
@@ -134,7 +136,7 @@ export function normalizedDaYunAgeRange(pillarIndex: number, half: "stem" | "bra
 }
 
 /**
- * แตกวัยจรเป็นช่วง 5 ปี ตามวิธีอ่าน M.docx: เสาวัยจร 10 ปี แบ่งเป็น
+ * แตกวัยจรเป็นช่วง 5 ปี ตามวิธีอ่านตำราเคี้ยงคุง: เสาวัยจร 10 ปี แบ่งเป็น
  * ครึ่งก้าน (5 ปีแรก) + ครึ่งกิ่ง (5 ปีหลัง). ใช้ upperPhase/lowerPhase
  * ที่ engine ผลิตไว้แล้ว; ถ้าไม่มี phase → fallback เป็นแถวเดียวต่อเสา.
  * อายุถูก normalize ให้เริ่ม 5-9 ตามดัชนีลำดับเสา.
@@ -239,11 +241,46 @@ const ELEMENT_TOPIC_IDS = new Set([
  * เพื่อไม่ให้เหลือแค่การแปลศัพท์: ดึง semantic meaning ของ relation, ประโยค
  * อธิบายจาก evidenceLines, narrative ของกำลังดิถี/persona/ฤดูกาล และ context note.
  */
+const PILLAR_LABEL_TH_BASIS: Record<string, string> = {
+  year: "หลักปี",
+  month: "หลักเดือน",
+  day: "หลักวัน (ดิถี)",
+  hour: "หลักยาม",
+};
+
+/**
+ * บรรทัดความหมาย 12 เชี่ยงแซรายหลัก — ใช้ "ดิถี เทียบ ราศีล่าง" (X.3 / เชี่ยงแซ5)
+ * เป็นเชี่ยงแซหลักของแต่ละหลัก แล้วผูกกับความหมายเต็มจาก TWELVE_QI_MEANINGS_TH
+ */
+function buildTwelveQiPillarMeaningLines(calculatedState: CalculatedStateValue): string[] {
+  return (["year", "month", "day", "hour"] as const)
+    .map((key) => {
+      const branch = calculatedState.fourPillars[key].branch;
+      const stage = resolveCanonicalTwelveQiStage(calculatedState.dayMaster, branch);
+      const meaning = TWELVE_QI_MEANINGS_TH[stage];
+      if (!meaning) {
+        return null;
+      }
+      return `${PILLAR_LABEL_TH_BASIS[key]} (ราศีล่าง ${branch} = ${meaning.labelThai}): ${meaning.summary}`;
+    })
+    .filter((line): line is string => line !== null);
+}
+
 function buildEngineProse(
   topic: TopicDefinition,
   calculatedState: CalculatedStateValue,
   packet: RelationReadingPacket,
 ): string[] {
+  // Calculated Basis: นำเสนอความหมาย 12 เชี่ยงแซรายหลัก (ดิถีเทียบราศีล่าง) เป็นแกนของบทโครงสร้าง
+  if (topic.id === "calculated_basis") {
+    const basisProse: string[] = [];
+    pushUnique(basisProse, packet.chartAnchor.balanceNarrativeThai);
+    for (const line of buildTwelveQiPillarMeaningLines(calculatedState)) {
+      pushUnique(basisProse, line);
+    }
+    return basisProse.slice(0, 5);
+  }
+
   const prose: string[] = [];
 
   // 1) แกนตัวตน + กำลังดิถี (ดิถีเป็นแกนทำนายหลัก) — ใส่ในบทต้น ๆ และบทที่อิงกำลังดิถี

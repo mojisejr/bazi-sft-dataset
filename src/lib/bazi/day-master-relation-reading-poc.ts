@@ -23,6 +23,7 @@ import {
   VERTICAL_CONTEXT_MAP,
 } from "@/lib/bazi/symbolic-engine.constants";
 import { renderContextRuleNoteThai } from "@/lib/bazi/context-dictionary";
+import { buildOutputTransferReading } from "@/lib/bazi/output-transfer-reading";
 import { YANG_STEMS } from "@/lib/bazi/pillar-display";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
@@ -920,6 +921,9 @@ type Step6AdvancedVector = {
   seasonalDetail: string;
   interactionDetail: string;
   readingOrderDetail: string;
+  /** Step 6.2 — ธาตุถ่ายเทตกเชี่ยงแซราย "หลัก": คำทำนายการเรียน/การพูด */
+  outputTransferSummary: string;
+  outputTransferDetails: Array<{ pillarKey: PillarKey; detail: string }>;
 };
 
 function buildStep5ContextMapping(
@@ -1226,6 +1230,18 @@ function buildAdvancedSignals(
     ? `ลำดับอ่านจากฐานชาร์ตคือ ${calculatedState.baseChartReading.readingOrderSteps.slice(0, 3).join(" -> ")}`
     : "ฐานชาร์ตยังไม่มี reading order เสริมเพิ่มเติม";
 
+  // Step 6.2 — ธาตุถ่ายเท (食傷) ตกเชี่ยงแซราย "หลัก" → คำทำนายการเรียน/การพูด
+  const outputTransfer = buildOutputTransferReading(calculatedState);
+  const outputTransferDetails = outputTransfer.pillars.map((pillar) => ({
+    pillarKey: pillar.pillarKey,
+    detail: `${PILLAR_LABELS[pillar.pillarKey]} ${pillar.sentence}`,
+  }));
+  const outputTransferSummary =
+    `ธาตุถ่ายเทคือ${outputTransfer.outputElementLabelThai} (${outputTransfer.outputStem}) ` +
+    `ตกเชี่ยงแซ: ${outputTransfer.pillars
+      .map((pillar) => `${PILLAR_LABELS[pillar.pillarKey]}=${pillar.stageThai}`)
+      .join(", ")}`;
+
   return {
     summaryLines: [
       shenShaDetail,
@@ -1235,6 +1251,8 @@ function buildAdvancedSignals(
       seasonalDetail,
       interactionDetail,
       readingOrderDetail,
+      outputTransferSummary,
+      ...outputTransferDetails.map((entry) => entry.detail),
     ],
     shenShaDetail,
     hiddenStemDetails,
@@ -1243,6 +1261,8 @@ function buildAdvancedSignals(
     seasonalDetail,
     interactionDetail,
     readingOrderDetail,
+    outputTransferSummary,
+    outputTransferDetails,
   };
 }
 

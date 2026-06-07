@@ -129,17 +129,21 @@ function chapterParagraphs(
   calculatedState: CalculatedStateValue,
   rawInput: RawInputValue,
   overrides?: ReadingOverrides,
+  topicIds?: string[],
 ): Paragraph[] {
   const out: Paragraph[] = [];
-  for (const topic of TOPIC_PATH.filter((t) => t.kind === "predict")) {
+  const wanted = topicIds ? new Set(topicIds) : null;
+  for (const topic of TOPIC_PATH.filter((t) => t.kind === "predict" && (!wanted || wanted.has(t.id)))) {
+    const override = overrides?.[topic.id]?.trim();
+    // ไอคอน 🤖 = ส่วนที่ AI (LLM) แต่งสำนวนทับโครง engine; ไม่มีไอคอน = ข้อความจาก engine ตรง ๆ
+    const aiMark = override ? " 🤖" : "";
     out.push(
       new Paragraph({
         heading: HeadingLevel.HEADING_2,
         spacing: { before: 240, after: 120 },
-        children: [new TextRun({ text: `บทที่ ${topic.chapter}: ${topic.title}`, bold: true, size: 28, font: FONT })],
+        children: [new TextRun({ text: `บทที่ ${topic.chapter}: ${topic.title}${aiMark}`, bold: true, size: 28, font: FONT })],
       }),
     );
-    const override = overrides?.[topic.id]?.trim();
     const reading = override || buildTopicHumanReading(calculatedState, topic.id, rawInput);
     if (reading) {
       for (const para of reading.split("\n\n")) {
@@ -201,6 +205,13 @@ function tableOfContentsPage(): (Paragraph | TableOfContents)[] {
     new TableOfContents("สารบัญ", {
       hyperlink: true,
       headingStyleRange: "1-2",
+    }),
+    new Paragraph({
+      spacing: { before: 240, after: 0 },
+      children: [new TextRun({
+        text: "หมายเหตุ: บทที่มีสัญลักษณ์ 🤖 คือส่วนที่ AI เรียบเรียงสำนวนทับโครงคำนวณของระบบ (engine) — บทที่ไม่มีสัญลักษณ์คือข้อความจากระบบโดยตรง",
+        italics: true, size: 22, color: "666666", font: FONT,
+      })],
     }),
     new Paragraph({ children: [new PageBreak()] }),
   ];
@@ -291,4 +302,71 @@ export async function buildReadingDocxBuffer(
   options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
 ): Promise<Buffer> {
   return Packer.toBuffer(buildReadingDocument(rawInput, calculatedState, options));
+}
+
+/** เอกสารบทเดียว (per-topic) — สำหรับให้ซินแซเปิดใน Google Doc แล้ว redline ทีละบท
+ *  ใส่ปก + แผ่นดวงย่อ + บทนั้นบทเดียว (บทวัยจรพ่วงตารางวัยจรให้ด้วย) */
+export function buildTopicDocument(
+  topicId: string,
+  rawInput: RawInputValue,
+  calculatedState: CalculatedStateValue,
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
+): Document {
+  const topic = TOPIC_PATH.find((t) => t.id === topicId && t.kind === "predict");
+  if (!topic) {
+    throw new Error(`ไม่พบหัวข้อ (predict) สำหรับ topicId: ${topicId}`);
+  }
+  const dm = calculatedState.dayMaster;
+  const strength = calculatedState.dayMasterStrengthProfile?.displayLabel ?? "";
+  const isLuck = topicId === "turning_points";
+
+  return new Document({
+    features: { updateFields: true },
+    styles: { default: { document: { run: { font: FONT, size: 24 } } } },
+    sections: [
+      {
+        footers: {
+          default: new Footer({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.CENTER,
+                children: [
+                  new TextRun({ text: "หน้า ", size: 18, color: "888888", font: FONT }),
+                  new TextRun({ children: [PageNumber.CURRENT], size: 18, color: "888888", font: FONT }),
+                ],
+              }),
+            ],
+          }),
+        },
+        children: [
+          ...coverPage(rawInput),
+          textParagraph(`ดิถีประจำตัว: ${dm}${strength ? ` (${strength})` : ""}`, { bold: true }),
+          pillarTable(calculatedState),
+          new Paragraph({ children: [new PageBreak()] }),
+          ...chapterParagraphs(calculatedState, rawInput, options.readings, [topicId]),
+          ...(isLuck
+            ? [
+                new Paragraph({
+                  heading: HeadingLevel.HEADING_2,
+                  pageBreakBefore: true,
+                  spacing: { before: 240, after: 120 },
+                  children: [new TextRun({ text: "ตารางวิเคราะห์วัยจร (ช่วงละ 5 ปี)", bold: true, size: 28, font: FONT })],
+                }),
+                relationshipTable(calculatedState, options.relationshipLines),
+              ]
+            : []),
+        ],
+      },
+    ],
+  });
+}
+
+/** per-topic .docx เป็น Buffer */
+export async function buildTopicDocxBuffer(
+  topicId: string,
+  rawInput: RawInputValue,
+  calculatedState: CalculatedStateValue,
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
+): Promise<Buffer> {
+  return Packer.toBuffer(buildTopicDocument(topicId, rawInput, calculatedState, options));
 }

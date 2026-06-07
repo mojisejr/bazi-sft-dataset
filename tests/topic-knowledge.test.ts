@@ -102,7 +102,8 @@ describe("topic-knowledge (knownlage human reading)", () => {
 
   test("Rev6: sourceLabel อ้างอิงตำรา", () => {
     expect(getTopicKnowledgeSourceLabel("chart_foundation")).toContain("ตำรา");
-    expect(getTopicKnowledgeSourceLabel("benefactor")).toContain("M.docx");
+    // ยกเลิกอ้าง M.docx ในการทำนาย → อ้างอิงตำราโหราศาสตร์เคี้ยงคุงแทน
+    expect(getTopicKnowledgeSourceLabel("benefactor")).toContain("เคี้ยงคุง");
   });
 
   test("Rev6: Relationship Lines Mapping ครอบทุกเฟสวัยจร 5 ปี", () => {
@@ -115,9 +116,16 @@ describe("topic-knowledge (knownlage human reading)", () => {
     expect(rows[0]?.deepNote.length).toBeGreaterThan(0);
   });
 
-  test("coverage: ทุกหัวข้อ predict มีองค์ความรู้แล้ว (15 บท)", () => {
+  test("speech: คืนคำอ่านการพูดที่อิงดาวถ่ายเท (Step 6.2)", () => {
+    const reading = buildTopicHumanReading(SAMPLE_STATE, "speech");
+    expect(reading).not.toBeNull();
+    expect(reading).toContain("ดาวถ่ายเท");
+    expect(reading).toContain("เชี่ยงแซ");
+  });
+
+  test("coverage: ทุกหัวข้อ predict มีองค์ความรู้แล้ว (16 บท)", () => {
     const coverage = getTopicKnowledgeCoverage();
-    expect(coverage.length).toBe(15);
+    expect(coverage.length).toBe(16);
     expect(coverage.every((entry) => entry.hasKnowledge)).toBe(true);
     // ไม่รวม calculated_basis (kind basis)
     expect(coverage.some((entry) => entry.topicId === "calculated_basis")).toBe(false);

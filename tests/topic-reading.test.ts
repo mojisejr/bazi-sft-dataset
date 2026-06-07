@@ -79,12 +79,23 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
 });
 
 describe("topic-reading path", () => {
-  test("TOPIC_PATH = Calculated Basis + 15 บท ที่ chapter ไม่ซ้ำ", () => {
-    expect(TOPIC_PATH).toHaveLength(16);
+  test("TOPIC_PATH = Calculated Basis + 16 บท ที่ chapter ไม่ซ้ำ", () => {
+    expect(TOPIC_PATH).toHaveLength(17);
     expect(TOPIC_PATH[0]?.kind).toBe("basis");
     const chapters = TOPIC_PATH.map((topic) => topic.chapter);
-    expect(chapters).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-    expect(new Set(TOPIC_PATH.map((topic) => topic.id)).size).toBe(16);
+    expect(chapters).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+    expect(new Set(TOPIC_PATH.map((topic) => topic.id)).size).toBe(17);
+  });
+
+  test("Calculated Basis: prose แสดงความหมาย 12 เชี่ยงแซรายหลัก (ดิถีเทียบราศีล่าง)", () => {
+    const reading = buildTopicEngineReading(SAMPLE_CALCULATED_STATE, "calculated_basis");
+    const prose = reading.prose.join("\n");
+    // ดิถี 己: ราศีล่างปี 酉 = เชี่ยงแซ, ราศีล่างเดือน 亥 = ทอ, ราศีล่างยาม 申 = หมกยก
+    expect(prose).toContain("หลักปี (ราศีล่าง 酉 = เชี่ยงแซ)");
+    expect(prose).toContain("หลักเดือน (ราศีล่าง 亥 = ทอ)");
+    expect(prose).toContain("หลักยาม (ราศีล่าง 申 = หมกยก)");
+    // มีเนื้อความหมายเต็ม ไม่ใช่แค่ชื่อ
+    expect(prose).toContain("ก่อกำเนิด");
   });
 
   test("getTopicDefinition โยน error เมื่อ id ไม่รู้จัก", () => {
