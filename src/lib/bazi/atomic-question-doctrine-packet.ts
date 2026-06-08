@@ -8,6 +8,8 @@ import {
   type BaziAtomicQuestionJobId,
 } from "@/lib/bazi/atomic-question-matrix";
 import { type BaziCallerContract } from "@/lib/bazi/symbolic-engine.caller-contract";
+import { buildSource3HealthInterpretation } from "@/lib/bazi/source3-health-interpretation";
+import { buildSource3HealthOverlay } from "@/lib/bazi/source3-health-overlay";
 import { buildSource4WealthInvestmentInterpretation } from "@/lib/bazi/source4-wealth-investment-interpretation";
 import { buildSource4WealthInvestmentOverlay } from "@/lib/bazi/source4-wealth-investment-overlay";
 import { buildSource6CareerBusinessInterpretation } from "@/lib/bazi/source6-career-business-interpretation";
@@ -96,6 +98,7 @@ type BaziDoctrinePacketAnchorKey =
   | "elementAnalysis"
   | "seasonalInteraction"
   | "financeTenGodHighlights"
+  | "source3HealthInterpretation"
   | "source4WealthInvestmentInterpretation"
   | "relationshipTenGodHighlights"
   | "careerTenGodHighlights"
@@ -333,6 +336,10 @@ function applyEvidenceHint(
     addAnchorKeys(plan, ["source4WealthInvestmentInterpretation"]);
   }
 
+  if (normalizedHint.includes("source3healthinterpretation")) {
+    addAnchorKeys(plan, ["source3HealthInterpretation"]);
+  }
+
   if (normalizedHint.includes("relationshiptengodhighlights")) {
     addAnchorKeys(plan, ["relationshipTenGodHighlights"]);
   }
@@ -541,6 +548,17 @@ function buildSource4WealthInvestmentInterpretationSection(
     "source4WealthInvestmentInterpretation",
     buildSource4WealthInvestmentInterpretation(
       buildSource4WealthInvestmentOverlay(callerContract),
+    ),
+  );
+}
+
+function buildSource3HealthInterpretationSection(
+  callerContract: BaziCallerContract,
+) {
+  return createBaziDoctrinePacketSection(
+    "source3HealthInterpretation",
+    buildSource3HealthInterpretation(
+      buildSource3HealthOverlay(callerContract),
     ),
   );
 }
@@ -926,6 +944,7 @@ function buildDoctrinePacketSectionCatalog(
   payload: CalculatedStateValue,
   options?: {
     callerContract?: BaziCallerContract;
+    includeSource3HealthInterpretation?: boolean;
     includeSource4WealthInvestmentInterpretation?: boolean;
     includeSource6CareerBusinessInterpretation?: boolean;
   },
@@ -938,6 +957,15 @@ function buildDoctrinePacketSectionCatalog(
   mergeSectionCatalog(catalog, buildMarkerEvidenceFamilyCatalog(payload));
   mergeSectionCatalog(catalog, buildReadingOrderFamilyCatalog(payload));
   mergeSectionCatalog(catalog, buildTimingFamilyCatalog(payload));
+
+  if (
+    options?.includeSource3HealthInterpretation
+    && options.callerContract
+  ) {
+    catalog.anchors.source3HealthInterpretation = buildSource3HealthInterpretationSection(
+      options.callerContract,
+    );
+  }
 
   if (
     options?.includeSource4WealthInvestmentInterpretation
@@ -992,6 +1020,9 @@ export function composeBaziDoctrinePacket(
   const plan = resolveDoctrinePacketBuildPlan(input.questionContext);
   const catalog = buildDoctrinePacketSectionCatalog(input.payload, {
     callerContract: input.callerContract,
+    includeSource3HealthInterpretation: plan.anchorKeys.includes(
+      "source3HealthInterpretation",
+    ),
     includeSource4WealthInvestmentInterpretation: plan.anchorKeys.includes(
       "source4WealthInvestmentInterpretation",
     ),

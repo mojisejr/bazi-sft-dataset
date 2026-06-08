@@ -145,6 +145,7 @@ export const HEALTH_CONSTITUTION_BASELINE_FIXTURE = {
     "dayMasterStrengthProfile",
     "elementAnalysis",
     "seasonalInteraction",
+    "source3HealthInterpretation",
   ] as const,
   forbiddenEvidenceFamilies: [
     "diagnosis",
@@ -171,6 +172,7 @@ export const HEALTH_RECOVERY_CAUTION_FIXTURE = {
     "dayMasterStrengthProfile",
     "elementAnalysis",
     "seasonalInteraction",
+    "source3HealthInterpretation",
     "activeTimingWindow",
   ] as const,
   forbiddenEvidenceFamilies: [
@@ -179,7 +181,38 @@ export const HEALTH_RECOVERY_CAUTION_FIXTURE = {
   ] as const,
 };
 
-export const HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE = {
+export const HEALTH_TIMING_SENSITIVE_WEAKNESS_FIXTURE = {
+  canonicalBucket: "health" as const,
+  intentClassification: {
+    intent: "health" as const,
+    requiresBaziConsult: true,
+    confidence: 0.9,
+  },
+  currentChatEvidence: {
+    latestUserMessage: "When is my body weakness or caution period more activated?",
+    recentMessages: [],
+  },
+  expectedSelectionMode: "atomic_job" as const,
+  expectedJobId: "health.timing_sensitive_weakness" as const,
+  expectedFallbackReason: undefined,
+  requiredEvidenceFamilies: [
+    "chartIdentity",
+    "dayMasterStrengthProfile",
+    "elementAnalysis",
+    "seasonalInteraction",
+    "source3HealthInterpretation",
+    "currentDaYun",
+    "activeTimingWindow",
+    "nextTimingWindows",
+    "liuNian",
+  ] as const,
+  forbiddenEvidenceFamilies: [
+    "diagnosis",
+    "treatment instructions",
+  ] as const,
+};
+
+export const HEALTH_BUCKET_SAFE_GENERAL_FIXTURE = {
   canonicalBucket: "health" as const,
   intentClassification: {
     intent: "health" as const,
@@ -187,7 +220,7 @@ export const HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE = {
     confidence: 0.87,
   },
   currentChatEvidence: {
-    latestUserMessage: "When is my body weakness or caution period more activated?",
+    latestUserMessage: "Can you give me an overall health reading from this chart?",
     recentMessages: [],
   },
   expectedSelectionMode: "bucket_fallback" as const,
@@ -198,6 +231,7 @@ export const HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE = {
   ] as const,
   forbiddenEvidenceFamilies: [
     "health.constitution_baseline",
+    "health.timing_sensitive_weakness",
     "health.recovery_caution",
   ] as const,
 };
@@ -207,6 +241,7 @@ export const PHASE_5A_DETERMINISTIC_PROOF_INVENTORY = [
   WEALTH_TIMING_WINDOW_FIXTURE,
   WEALTH_BUCKET_SAFE_INCOME_SOURCE_FIXTURE,
   HEALTH_CONSTITUTION_BASELINE_FIXTURE,
+  HEALTH_TIMING_SENSITIVE_WEAKNESS_FIXTURE,
   HEALTH_RECOVERY_CAUTION_FIXTURE,
-  HEALTH_BUCKET_SAFE_TIMING_SENSITIVE_FIXTURE,
+  HEALTH_BUCKET_SAFE_GENERAL_FIXTURE,
 ] as const;

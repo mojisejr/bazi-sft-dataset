@@ -430,7 +430,7 @@ describe("selectOpenWebUiTruthPacket", () => {
     }
   });
 
-  test("caller-contract source-boundary matrix keeps Source 2, 5, and 6 in their own lanes after Source 4 wiring", () => {
+  test("caller-contract source-boundary matrix keeps Source 2, 4, 5, and 6 in their own lanes after Source 3 health wiring", () => {
     const callerContract = buildBaziCallerContractFromRawInput(
       buildRawInputFromBirthDate(
         new Date("1992-08-12T09:15:00+07:00"),
@@ -440,6 +440,36 @@ describe("selectOpenWebUiTruthPacket", () => {
       SAMPLE_BAZI_STATE,
     );
     const scenarios = [
+      {
+        label: "foundation base-chart persona",
+        intentClassification: {
+          intent: "general_reading" as const,
+          requiresBaziConsult: true,
+          confidence: 0.94,
+        },
+        currentChatEvidence: {
+          latestUserMessage: "Who am I at the base-chart level?",
+          recentMessages: ["I want my core personality first."],
+        },
+        expectedBucket: "foundation",
+        expectedSelectionMode: "atomic_job",
+        expectedJobId: "foundation.base_chart_persona",
+        requiredAnchors: [
+          "dayMasterStrengthProfile",
+          "sixtyJiaziCorePersona",
+          "elementAnalysis",
+          "seasonalInteraction",
+        ],
+        forbiddenAnchors: [
+          "spousePalace",
+          "financeTenGodHighlights",
+          "loveCompatibilityProfile",
+          "careerTenGodHighlights",
+          "source3HealthInterpretation",
+          "source4WealthInvestmentInterpretation",
+          "source6CareerBusinessInterpretation",
+        ],
+      },
       {
         label: "wealth accumulation",
         intentClassification: {
@@ -460,6 +490,7 @@ describe("selectOpenWebUiTruthPacket", () => {
           "spousePalace",
           "loveCompatibilityProfile",
           "careerTenGodHighlights",
+          "source3HealthInterpretation",
           "source6CareerBusinessInterpretation",
         ],
       },
@@ -481,6 +512,7 @@ describe("selectOpenWebUiTruthPacket", () => {
         forbiddenAnchors: [
           "sixtyJiaziCorePersona",
           "financeTenGodHighlights",
+          "source3HealthInterpretation",
           "source4WealthInvestmentInterpretation",
           "careerTenGodHighlights",
           "source6CareerBusinessInterpretation",
@@ -506,7 +538,32 @@ describe("selectOpenWebUiTruthPacket", () => {
           "spousePalace",
           "loveCompatibilityProfile",
           "financeTenGodHighlights",
+          "source3HealthInterpretation",
           "source4WealthInvestmentInterpretation",
+        ],
+      },
+      {
+        label: "health timing-sensitive weakness",
+        intentClassification: {
+          intent: "health" as const,
+          requiresBaziConsult: true,
+          confidence: 0.93,
+        },
+        currentChatEvidence: {
+          latestUserMessage: "When is my body weakness or caution period more activated?",
+          recentMessages: [],
+        },
+        expectedBucket: "health",
+        expectedSelectionMode: "atomic_job",
+        expectedJobId: "health.timing_sensitive_weakness",
+        requiredAnchors: ["source3HealthInterpretation"],
+        forbiddenAnchors: [
+          "sixtyJiaziCorePersona",
+          "spousePalace",
+          "loveCompatibilityProfile",
+          "financeTenGodHighlights",
+          "source4WealthInvestmentInterpretation",
+          "source6CareerBusinessInterpretation",
         ],
       },
     ] as const;

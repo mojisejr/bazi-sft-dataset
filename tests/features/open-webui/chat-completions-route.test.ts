@@ -408,6 +408,49 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContext.baziConsult?.truthPacket).toContain('"source4WealthInvestmentInterpretation"');
   });
 
+  test("routes health timing wording into atomic selection mode with Source 3 interpretation facts attached", () => {
+    const executionContext = buildOpenWebUiExecutionContext({
+      result: {
+        ...SAMPLE_CHAT_RESULT,
+        latestUserMessage: {
+          role: "user",
+          content: "When is my body weakness or caution period more activated?",
+        },
+        triageMessages: [
+          {
+            role: "assistant",
+            content: "Do you want baseline health or timing-sensitive caution?",
+          },
+          {
+            role: "user",
+            content: "I want to know when my body weakness is more activated.",
+          },
+          {
+            role: "user",
+            content: "When is my body weakness or caution period more activated?",
+          },
+        ],
+      },
+      intentClassification: { intent: "health", requiresBaziConsult: true, confidence: 0.93 },
+      extraction: {
+        fields: {
+          birthDate: SAMPLE_RAW_INPUT.birthDate,
+          birthTime: SAMPLE_RAW_INPUT.birthTime,
+          gender: SAMPLE_RAW_INPUT.gender,
+          province: SAMPLE_RAW_INPUT.province,
+        },
+        missingFields: [],
+        isComplete: true,
+        rawInput: SAMPLE_RAW_INPUT,
+      },
+      calculatedState: SAMPLE_CALCULATED_STATE,
+    });
+
+    expect(executionContext.baziConsult?.truthPacket).toContain('"selectionMode": "atomic_job"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"jobId": "health.timing_sensitive_weakness"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"source3HealthInterpretation"');
+  });
+
   test("routes career job-switch wording into atomic selection mode without moving resolver logic into the route", () => {
     const executionContext = buildOpenWebUiExecutionContext({
       result: {
@@ -871,6 +914,83 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
 
     expect(promptPayload.userPrompt).toContain("Primary requested domain: health. Stay inside this domain unless the user explicitly asks to compare another domain");
     expect(promptPayload.userPrompt).toContain("Health response contract: answer directly with practical cautions and self-care guidance when the Truth Packet supports it; do not diagnose disease, do not claim certainty, and do not refuse only because the topic is health.");
+  });
+
+  test("non-health runtime paths keep Source 3 health caution out while preserving their own lane evidence", async () => {
+    const scenarios = [
+      {
+        label: "foundation persona",
+        intent: "general_reading" as const,
+        userMessage: "พื้นดวงนิสัยหลักของฉันเป็นแบบไหน",
+        expectedPrimaryDomain: null,
+        requiredTruthPacketKeys: ["sixtyJiaziCorePersona"],
+      },
+      {
+        label: "wealth lane",
+        intent: "wealth" as const,
+        userMessage: "Can I build and keep money well over time?",
+        expectedPrimaryDomain: "wealth",
+        requiredTruthPacketKeys: ["source4WealthInvestmentInterpretation"],
+      },
+      {
+        label: "relationship lane",
+        intent: "love" as const,
+        userMessage: "What kind of partner fits me best for a serious relationship?",
+        expectedPrimaryDomain: "love",
+        requiredTruthPacketKeys: ["spousePalace", "loveCompatibilityProfile"],
+      },
+      {
+        label: "career lane",
+        intent: "career" as const,
+        userMessage: "Should I change jobs now or wait for a safer window?",
+        expectedPrimaryDomain: "career",
+        requiredTruthPacketKeys: ["source6CareerBusinessInterpretation"],
+      },
+    ] as const;
+
+    for (const scenario of scenarios) {
+      routeOpenWebUiIntentMock.mockResolvedValue({
+        intent: scenario.intent,
+        requiresBaziConsult: true,
+        confidence: 0.95,
+      });
+      extractOpenWebUiBaziContextMock.mockResolvedValue({
+        fields: { ...SAMPLE_RAW_INPUT },
+        missingFields: [],
+        isComplete: true,
+        rawInput: SAMPLE_RAW_INPUT,
+      });
+      calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+      generateGeminiAssistantReplyMock.mockResolvedValue({
+        model: "gemini-2.5-flash",
+        text: `${scenario.label} ok`,
+      });
+
+      const response = await POST(buildJsonRequest({
+        messages: [{ role: "user", content: scenario.userMessage }],
+      }));
+
+      await consumeStream(response);
+
+      const promptPayload = await buildPromptPayloadFromGeminiRouteCall(
+        generateGeminiAssistantReplyMock.mock.calls.length - 1,
+      );
+
+      if (scenario.expectedPrimaryDomain) {
+        expect(promptPayload.userPrompt).toContain(
+          `Primary requested domain: ${scenario.expectedPrimaryDomain}. Stay inside this domain unless the user explicitly asks to compare another domain`,
+        );
+      } else {
+        expect(promptPayload.userPrompt).not.toContain("Primary requested domain:");
+      }
+
+      expect(promptPayload.userPrompt).not.toContain("Health response contract:");
+      expect(promptPayload.userPrompt).not.toContain('"source3HealthInterpretation"');
+
+      scenario.requiredTruthPacketKeys.forEach((key) => {
+        expect(promptPayload.userPrompt, `${scenario.label} should keep ${key}`).toContain(`"${key}"`);
+      });
+    }
   });
 
   test("persisted profile fields merge before calculation and persist the merged result", async () => {

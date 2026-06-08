@@ -21,6 +21,7 @@ export const healthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "seasonalInteraction",
+      "source3HealthInterpretation",
     ],
     forbiddenNoise: [
       "diagnosis",
@@ -32,6 +33,7 @@ export const healthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "seasonalInteraction",
+      "source3HealthInterpretation",
     ],
     supportStatus: "supported",
   },
@@ -54,6 +56,7 @@ export const healthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "seasonalInteraction",
+      "source3HealthInterpretation",
       "currentDaYun",
       "activeTimingWindow",
       "nextTimingWindows",
@@ -69,14 +72,15 @@ export const healthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "seasonalInteraction",
+      "source3HealthInterpretation",
       "currentDaYun",
       "activeTimingWindow",
       "nextTimingWindows",
       "liuNian",
     ],
-    supportStatus: "partial",
+    supportStatus: "supported",
     supportNotes:
-      "The engine exposes health baseline plus generic timing, but it does not yet have a dedicated health-temporal overlay.",
+      "Source 3 now provides a deterministic timing-sensitivity lane so health caution windows can stay evidence-backed without diagnosis drift.",
   },
   {
     jobId: "health.recovery_caution",
@@ -97,6 +101,7 @@ export const healthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "seasonalInteraction",
+      "source3HealthInterpretation",
       "timing sections when the plan is near-term",
     ],
     forbiddenNoise: [
@@ -109,10 +114,11 @@ export const healthAtomicQuestionEntries = defineAtomicQuestionEntries([
       "dayMasterStrengthProfile",
       "elementAnalysis",
       "seasonalInteraction",
+      "source3HealthInterpretation",
       "activeTimingWindow if the user asks now or soon",
     ],
-    supportStatus: "partial",
+    supportStatus: "supported",
     supportNotes:
-      "Current truth can support caution framing, but not medical-outcome certainty.",
+      "Source 3 now provides deterministic caution framing and timing sensitivity, while keeping recovery answers bounded away from diagnosis or treatment claims.",
   },
 ] as const);

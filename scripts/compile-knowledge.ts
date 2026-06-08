@@ -263,8 +263,14 @@ export function writeCompiledKnowledgeArtifact(repoRoot = process.cwd()) {
   if (existsSync(outputPath)) {
     const previousRaw = readFileSync(outputPath, "utf8");
     const previousArtifact = CompiledKnowledgeArtifactSchema.parse(JSON.parse(previousRaw));
-    const { generatedAt: _previousGeneratedAt, ...previousComparable } = previousArtifact;
-    const { generatedAt: _nextGeneratedAt, ...nextComparable } = artifact;
+    const previousComparable = {
+      ...previousArtifact,
+      generatedAt: undefined,
+    };
+    const nextComparable = {
+      ...artifact,
+      generatedAt: undefined,
+    };
 
     if (JSON.stringify(previousComparable) === JSON.stringify(nextComparable)) {
       artifact.generatedAt = previousArtifact.generatedAt;

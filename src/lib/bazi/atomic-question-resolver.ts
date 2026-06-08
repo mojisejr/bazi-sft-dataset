@@ -16,6 +16,7 @@ export const BAZI_ATOMIC_QUESTION_RESOLVER_FIRST_WAVE_JOB_IDS = [
   "relationship.partner_profile",
   "relationship.timing_window",
   "health.constitution_baseline",
+  "health.timing_sensitive_weakness",
   "health.recovery_caution",
 ] as const satisfies readonly BaziAtomicQuestionJobId[];
 
@@ -105,6 +106,7 @@ const FIRST_WAVE_JOB_IDS_BY_BUCKET: Record<
   ],
   health: [
     "health.constitution_baseline",
+    "health.timing_sensitive_weakness",
     "health.recovery_caution",
   ],
   study: [],
@@ -300,6 +302,35 @@ const RESOLVER_RULES_BY_BUCKET: Partial<Record<BaziAtomicCanonicalBucket, readon
         "ธาตุอ่อน",
       ]],
       supportSignals: ["body", "health", "balance", "ร่างกาย", "สุขภาพ"],
+    },
+    {
+      jobId: "health.timing_sensitive_weakness",
+      requiredSignalGroups: [
+        [
+          "body weakness",
+          "caution period",
+          "more activated",
+          "health timing",
+          "weakness activation",
+          "สุขภาพช่วงไหน",
+          "ช่วงสุขภาพ",
+          "ช่วงที่ต้องระวัง",
+          "จุดอ่อนของร่างกายช่วงไหน",
+          "ระวังสุขภาพตอนไหน",
+          "period more activated",
+        ],
+        COMMON_TIMING_SIGNALS,
+      ],
+      supportSignals: [
+        "health",
+        "body",
+        "weakness",
+        "caution",
+        "activated",
+        "สุขภาพ",
+        "ร่างกาย",
+        "จุดอ่อน",
+      ],
     },
     {
       jobId: "health.recovery_caution",

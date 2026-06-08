@@ -7,8 +7,10 @@ import {
 } from "@/lib/bazi/atomic-question-resolver";
 
 import {
+  HEALTH_BUCKET_SAFE_GENERAL_FIXTURE,
   HEALTH_CONSTITUTION_BASELINE_FIXTURE,
   HEALTH_RECOVERY_CAUTION_FIXTURE,
+  HEALTH_TIMING_SENSITIVE_WEAKNESS_FIXTURE,
   PHASE_5A_DETERMINISTIC_PROOF_INVENTORY,
   RELATIONSHIP_AMBIGUOUS_FALLBACK_FIXTURE,
   RELATIONSHIP_PARTNER_PROFILE_FIXTURE,
@@ -29,6 +31,7 @@ describe("resolveBaziAtomicQuestion", () => {
       "relationship.partner_profile",
       "relationship.timing_window",
       "health.constitution_baseline",
+      "health.timing_sensitive_weakness",
       "health.recovery_caution",
     ]);
   });
@@ -59,6 +62,21 @@ describe("resolveBaziAtomicQuestion", () => {
     });
     expect(careerFit).not.toMatchObject({
       jobId: "work.job_switch_timing",
+    });
+  });
+
+  test("keeps foundation base-chart persona in its own lane even when the prompt excludes health advice", () => {
+    const result = resolveBaziAtomicQuestion({
+      canonicalBucket: "foundation",
+      currentChatEvidence: {
+        latestUserMessage: "Who am I at the base-chart level, not a health reading?",
+      },
+    });
+
+    expect(result).toMatchObject({
+      selectionMode: "atomic_job",
+      canonicalBucket: "foundation",
+      jobId: "foundation.base_chart_persona",
     });
   });
 
@@ -167,10 +185,14 @@ describe("resolveBaziAtomicQuestion", () => {
     });
   });
 
-  test("keeps health baseline and recovery caution as distinct resolver outcomes", () => {
+  test("keeps health baseline, timing-sensitive weakness, and recovery caution as distinct resolver outcomes", () => {
     const constitutionBaseline = resolveBaziAtomicQuestion({
       canonicalBucket: HEALTH_CONSTITUTION_BASELINE_FIXTURE.canonicalBucket,
       currentChatEvidence: HEALTH_CONSTITUTION_BASELINE_FIXTURE.currentChatEvidence,
+    });
+    const timingSensitiveWeakness = resolveBaziAtomicQuestion({
+      canonicalBucket: HEALTH_TIMING_SENSITIVE_WEAKNESS_FIXTURE.canonicalBucket,
+      currentChatEvidence: HEALTH_TIMING_SENSITIVE_WEAKNESS_FIXTURE.currentChatEvidence,
     });
     const recoveryCaution = resolveBaziAtomicQuestion({
       canonicalBucket: HEALTH_RECOVERY_CAUTION_FIXTURE.canonicalBucket,
@@ -182,13 +204,34 @@ describe("resolveBaziAtomicQuestion", () => {
       canonicalBucket: "health",
       jobId: "health.constitution_baseline",
     });
+    expect(timingSensitiveWeakness).toMatchObject({
+      selectionMode: "atomic_job",
+      canonicalBucket: "health",
+      jobId: "health.timing_sensitive_weakness",
+    });
     expect(recoveryCaution).toMatchObject({
       selectionMode: "atomic_job",
       canonicalBucket: "health",
       jobId: "health.recovery_caution",
     });
     expect(constitutionBaseline).not.toMatchObject({
+      jobId: "health.timing_sensitive_weakness",
+    });
+    expect(timingSensitiveWeakness).not.toMatchObject({
       jobId: "health.recovery_caution",
+    });
+  });
+
+  test("keeps a broad health ask on bucket fallback instead of pretending it is a reviewed Source 3 job", () => {
+    const result = resolveBaziAtomicQuestion({
+      canonicalBucket: HEALTH_BUCKET_SAFE_GENERAL_FIXTURE.canonicalBucket,
+      currentChatEvidence: HEALTH_BUCKET_SAFE_GENERAL_FIXTURE.currentChatEvidence,
+    });
+
+    expect(result).toMatchObject({
+      selectionMode: "bucket_fallback",
+      canonicalBucket: "health",
+      fallbackReason: "insufficient_signal",
     });
   });
 
