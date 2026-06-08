@@ -16,10 +16,21 @@ const DEFAULT_OPENCODE_MODEL = "claude-sonnet-4-5";
 /** base URL ของ OpenCode Zen — override ได้ด้วย env OPENCODE_BASE_URL */
 const OPENCODE_BASE_URL = process.env.OPENCODE_BASE_URL?.trim() || "https://opencode.ai/zen/v1";
 
-/** ค่ายผู้ให้บริการ LLM ที่รองรับสำหรับเรียบเรียงคำทำนาย */
-export type ReadingLlmProvider = "gemini" | "opencode";
+/** โมเดล default ของ Anthropic — Sonnet 4.6 (รับ temperature ได้, สมดุล) override ผ่าน input.model */
+const DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-4-6";
+/** base URL ของ Anthropic — ใช้ ANTHROPIC_PROXY_URL ก่อน (สำหรับ local proxy; เลี่ยงชนกับ OS env
+ *  ANTHROPIC_BASE_URL ที่บางเครื่องตั้ง = https://api.anthropic.com แล้ว shadow .env), แล้วค่อย ANTHROPIC_BASE_URL */
+const ANTHROPIC_BASE_URL =
+  process.env.ANTHROPIC_PROXY_URL?.trim() ||
+  process.env.ANTHROPIC_BASE_URL?.trim() ||
+  "https://api.anthropic.com";
+const ANTHROPIC_VERSION = "2023-06-01";
+const ANTHROPIC_MAX_TOKENS = 8192;
 
-type ReadingTopicPrompt = {
+/** ค่ายผู้ให้บริการ LLM ที่รองรับสำหรับเรียบเรียงคำทำนาย */
+export type ReadingLlmProvider = "gemini" | "opencode" | "anthropic";
+
+export type ReadingTopicPrompt = {
   /** ชื่อบทที่ใช้เปิด */
   heading: string;
   /** น้ำเสียง/มุมมองเฉพาะบท */
@@ -143,6 +154,16 @@ export const READING_TOPIC_PROMPTS: Record<string, ReadingTopicPrompt> = {
   },
 };
 
+/**
+ * โปรไฟล์ prompt ที่สลับได้ (สำหรับ A/B tuning) — baseline = ของเดิม
+ * แต่ละโปรไฟล์กำหนดวิธีประกอบ system/user prompt เอง โดยใช้ ReadingTopicPrompt ราย topic เดิม
+ */
+export type ReadingPromptProfile = {
+  id: string;
+  buildSystemInstruction: (prompt: ReadingTopicPrompt, topicId: string) => string;
+  buildUserPrompt: (input: ReadingTopicLlmInput, prompt: ReadingTopicPrompt) => string;
+};
+
 export type ReadingTopicLlmInput = {
   topicId: string;
   rawInput: RawInputValue;
@@ -157,6 +178,8 @@ export type ReadingTopicLlmInput = {
   model?: string;
   /** ค่ายผู้ให้บริการ LLM (default gemini) */
   provider?: ReadingLlmProvider;
+  /** โปรไฟล์ prompt (default BASELINE_PROFILE) — ใช้ A/B ขัดเกลา prompt */
+  profile?: ReadingPromptProfile;
 };
 
 type GenerateRequest = {
@@ -203,6 +226,75 @@ async function generateViaOpenCode(
   return { text: data.choices?.[0]?.message?.content ?? null };
 }
 
+/** เรียก Anthropic Messages API (/v1/messages) แล้ว map กลับเป็น { text }
+ *  - system → top-level `system`; user → messages[]; อ่านผลจาก content[].text (รวม block ชนิด text)
+ *  - รองรับ ANTHROPIC_BASE_URL สำหรับ proxy/Claude ใน local
+ *  - เลี่ยงส่ง temperature ให้ Opus 4.7/4.8 (โมเดลกลุ่มนี้ตัด sampling params → 400) */
+async function generateViaAnthropic(
+  request: GenerateRequest,
+  apiKey: string | undefined,
+  fetchImpl: typeof fetch = fetch,
+): Promise<{ text?: string | null }> {
+  if (!apiKey) {
+    throw new Error("Anthropic ต้องมี API key");
+  }
+  const rejectsTemperature = /claude-opus-4-(?:7|8)/.test(request.model);
+  const response = await fetchImpl(`${ANTHROPIC_BASE_URL}/v1/messages`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": ANTHROPIC_VERSION,
+    },
+    body: JSON.stringify({
+      model: request.model,
+      max_tokens: ANTHROPIC_MAX_TOKENS,
+      system: request.config.systemInstruction,
+      messages: [{ role: "user", content: request.contents }],
+      ...(rejectsTemperature ? {} : { temperature: request.config.temperature }),
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Anthropic ตอบกลับผิดพลาด (${response.status}) ${detail}`.trim());
+  }
+
+  const data = (await response.json()) as {
+    content?: Array<{ type?: string; text?: string | null }>;
+  };
+  const text = (data.content ?? [])
+    .filter((block) => block.type === "text")
+    .map((block) => block.text ?? "")
+    .join("");
+  return { text: text || null };
+}
+
+/** เลือกโมเดล default ตาม provider (ถ้าไม่ override ด้วย input.model) */
+function resolveLlmModel(provider: ReadingLlmProvider, model?: string): string {
+  if (model?.trim()) {
+    return model.trim();
+  }
+  if (provider === "opencode") {
+    return DEFAULT_OPENCODE_MODEL;
+  }
+  if (provider === "anthropic") {
+    return DEFAULT_ANTHROPIC_MODEL;
+  }
+  return DEFAULT_MODEL;
+}
+
+/** เลือกตัว generate ตาม provider (gemini SDK / opencode / anthropic raw HTTP) */
+function resolveLlmGenerator(provider: ReadingLlmProvider, apiKey: string | undefined): GeminiGenerate {
+  if (provider === "opencode") {
+    return (request) => generateViaOpenCode(request, apiKey);
+  }
+  if (provider === "anthropic") {
+    return (request) => generateViaAnthropic(request, apiKey);
+  }
+  return (request) => new GoogleGenAI({ apiKey }).models.generateContent(request);
+}
+
 /** บทแรก (พื้นฐานดวง) เท่านั้นที่เปิดด้วยภาพเปรียบธรรมชาติของดิถีได้ บทอื่นห้ามเปิดซ้ำ */
 const IMAGERY_TOPIC_ID = "chart_foundation";
 
@@ -226,6 +318,7 @@ function buildSystemInstruction(prompt: ReadingTopicPrompt, topicId: string): st
       ? ["- บทบุคลิก: เรียงจุดแข็ง/นิสัยเชิงบวกก่อนเสมอ แล้วค่อยปิดด้วยหัวข้อ \"⚠️ สิ่งที่ควรระวัง\" สั้น ๆ ท้ายสุด ห้ามนำด้วยนิสัยเชิงลบ"]
       : []),
     "- ไม่สาดศัพท์เทคนิคดิบ (เช่น 食傷, ดาวถ่ายเท) ถ้าจำเป็นต้องเอ่ยให้แปลเป็นภาษาคนทั่วไปสั้น ๆ",
+    "- ยกเว้น: อักษรจีนก้าน/กิ่ง (เช่น 癸, 巳, 酉), ชื่อสภาวะเซียงแซ และคำว่า \"ยาม\" ที่ปรากฏใน excerpt ต้องคงไว้ \"ตรงตัวเป๊ะ\" ห้ามแปลงเป็นนักษัตรไทย (เช่น 酉→ระกา) ห้ามเปลี่ยน \"ยาม\"→\"เวลา\" และห้ามตัดทิ้ง",
     "- คำลงท้ายเป็นกลาง ไม่ลงท้ายว่า \"ครับ\"/\"ค่ะ\" ไม่ผูกน้ำเสียงกับเพศ",
     "- น้ำเสียงตรงกับกำลังดิถีตามข้อมูล (ดิถีอ่อนอย่าเขียนให้ดูแข็งกร้าว ดิถีแข็งอย่าเขียนให้ดูเปราะบาง)",
     "",
@@ -256,6 +349,13 @@ function buildUserPrompt(input: ReadingTopicLlmInput, prompt: ReadingTopicPrompt
   ].join("\n");
 }
 
+/** โปรไฟล์ prompt เริ่มต้น (พฤติกรรม production เดิม) — ใช้เมื่อ input.profile ไม่ระบุ */
+export const BASELINE_PROFILE: ReadingPromptProfile = {
+  id: "baseline",
+  buildSystemInstruction,
+  buildUserPrompt,
+};
+
 /** โทเคน "ข้อเท็จจริง" ที่ LLM ต้องคงไว้ = ธาตุ 5 ชนิด (ไม่นับชื่อเซียงแซ เพราะ prompt สั่งให้แปลเป็นภาษาคน) */
 const CRITICAL_ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"] as const;
 
@@ -282,8 +382,10 @@ function normalizeForFaithful(text: string): string {
   return text.replace(/\s+/g, "");
 }
 
-/** ดึงโทเคนข้อเท็จจริงจาก engine text: ธาตุ (5 ชนิด), ช่วงอายุ (เช่น 40-44), ป้าย [ยุคทอง]/[เฝ้าระวัง]
- *  — ไม่นับชื่อเซียงแซ (ทอ/ลิ่มกัว/แป่...) เพราะ prompt สั่งให้แปลศัพท์เทคนิคเป็นภาษาคน gate จึงไม่ควรบังคับคงคำดิบ */
+/** ดึงโทเคนข้อเท็จจริงจาก engine text ที่ LLM ต้องคงไว้:
+ *  ธาตุ (5 ชนิด), ช่วงอายุ (เช่น 40-44), ป้าย [ยุคทอง]/[เฝ้าระวัง],
+ *  อักษรจีนก้าน/กิ่ง (天干地支 เช่น 癸 巳 — เป็น marker เฉพาะ ห้าม LLM แปลงเป็นนักษัตรไทย/ตัด),
+ *  และคำว่า "ยาม" (ซินแสกำชับให้คงคำเดิม ห้ามเปลี่ยนเป็น "เวลา") */
 function criticalTokens(text: string): string[] {
   const norm = normalizeForFaithful(text);
   const found = new Set<string>();
@@ -297,6 +399,22 @@ function criticalTokens(text: string): string[] {
     if (text.includes(tag)) found.add(tag);
   }
   return [...found];
+}
+
+/** marker ที่ต้องคงไว้ "เป๊ะทุกตัว" (strict, ไม่ใช้ threshold) — คืนรายการที่หายไปจากผล LLM:
+ *  - อักษรจีนก้าน/กิ่ง (เช่น 癸 巳) — ห้ามแปลงเป็นนักษัตรไทย (เช่น 酉→ระกา) หรือตัดทิ้ง
+ *  - คำว่า "ยาม" — ซินแสกำชับห้ามเปลี่ยนเป็น "เวลา"
+ *  ถ้าคืนค่าไม่ว่าง = LLM ทำ marker หาย → ไม่ผ่าน (retry/fallback engine) */
+export function droppedCriticalMarkers(engineText: string, llmText: string): string[] {
+  const llmNorm = normalizeForFaithful(llmText);
+  const required = new Set<string>();
+  for (const m of engineText.matchAll(/[一-鿿豈-﫿]/g)) {
+    required.add(m[0]);
+  }
+  if (engineText.includes("ยาม")) {
+    required.add("ยาม");
+  }
+  return [...required].filter((marker) => !llmNorm.includes(marker));
 }
 
 /** LLM คงโทเคนสำคัญจาก engine ไว้ครบพอหรือไม่ (>= threshold) — กันการตัด/เปลี่ยนข้อเท็จจริง
@@ -322,17 +440,13 @@ export async function generateReadingTopicLlm(
   }
 
   const provider: ReadingLlmProvider = input.provider ?? "gemini";
-  const model =
-    input.model?.trim() || (provider === "opencode" ? DEFAULT_OPENCODE_MODEL : DEFAULT_MODEL);
-
+  const model = resolveLlmModel(provider, input.model);
   const generateContent: GeminiGenerate =
-    deps.generateContent
-    ?? (provider === "opencode"
-      ? (request) => generateViaOpenCode(request, input.apiKey)
-      : (request) => new GoogleGenAI({ apiKey: input.apiKey }).models.generateContent(request));
+    deps.generateContent ?? resolveLlmGenerator(provider, input.apiKey);
 
-  const systemInstruction = buildSystemInstruction(prompt, input.topicId);
-  const userPrompt = buildUserPrompt(input, prompt);
+  const profile = input.profile ?? BASELINE_PROFILE;
+  const systemInstruction = profile.buildSystemInstruction(prompt, input.topicId);
+  const userPrompt = profile.buildUserPrompt(input, prompt);
   const engineText = input.humanKnowledge?.trim() ?? "";
 
   // พยายามสูงสุด 2 ครั้ง: ถ้ารอบแรกตัด/เปลี่ยนข้อเท็จจริง ย้ำกฎแล้วลองใหม่
@@ -352,9 +466,15 @@ export async function generateReadingTopicLlm(
       throw new Error("LLM คืนค่าว่างสำหรับการเรียบเรียงคำทำนาย");
     }
     lastText = text;
-    // ผ่านเมื่อ: คงข้อเท็จจริงครบ + ไม่เพิ่มคำต้องห้ามที่ไม่มีใน excerpt (ดอกท้อ/เสน่ห์)
+    // ผ่านเมื่อ: คงข้อเท็จจริงครบ (threshold) + ไม่เพิ่มคำต้องห้าม (ดอกท้อ/เสน่ห์)
+    //   + ไม่ทำ marker เด็ดขาดหาย (อักษรจีนก้าน/กิ่ง, "ยาม") — strict ทุกตัว
     const invented = engineText ? forbiddenInventions(engineText, text) : [];
-    if ((!engineText || verifyReadingFaithful(engineText, text)) && invented.length === 0) {
+    const dropped = engineText ? droppedCriticalMarkers(engineText, text) : [];
+    if (
+      (!engineText || verifyReadingFaithful(engineText, text)) &&
+      invented.length === 0 &&
+      dropped.length === 0
+    ) {
       return { text, model };
     }
   }
@@ -445,14 +565,9 @@ export async function polishRelationshipLinesLlm(
   }
 
   const provider: ReadingLlmProvider = input.provider ?? "gemini";
-  const model =
-    input.model?.trim() || (provider === "opencode" ? DEFAULT_OPENCODE_MODEL : DEFAULT_MODEL);
-
+  const model = resolveLlmModel(provider, input.model);
   const generateContent: GeminiGenerate =
-    deps.generateContent
-    ?? (provider === "opencode"
-      ? (request) => generateViaOpenCode(request, input.apiKey)
-      : (request) => new GoogleGenAI({ apiKey: input.apiKey }).models.generateContent(request));
+    deps.generateContent ?? resolveLlmGenerator(provider, input.apiKey);
 
   const response = await generateContent({
     model,

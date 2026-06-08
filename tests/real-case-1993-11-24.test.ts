@@ -36,9 +36,11 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     expect(result.fourPillars.hour).toMatchObject({ stem: "壬", branch: "申" });
     expect(result.dayMaster).toBe("己");
     expect(result.strengthScore).toBe(0.25);
+    // R5.2b re-baseline: score 0.25 → band "ดวงอ่อน" (weak) ไม่ใช่ very-weak
+    //   (very-weak เพดานลด 2 → -2; structural reading ของ M.docx ก็ว่า "ดวงอ่อน")
     expect(result.dayMasterStrengthProfile).toMatchObject({
       strengthState: "อ่อนแอ",
-      displayLabel: "ดิถีอ่อนเกินไป",
+      displayLabel: "ดิถีอ่อน",
     });
   });
 
@@ -128,7 +130,7 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     // 65-69 (丙 ส่งเสริม → ซี่): ตำรา = มีของดีแต่ส่งให้ดิถีไม่ไหว → เตือนเช่นกัน
     expect(byAge("65-69 ปี").deepNote).toContain("[เฝ้าระวัง]");
     // 50-54 (午 ส่งเสริม → ลิ่มกัว): ตำรา = ยุคทอง → ต้องเป็นบวก ไม่ใช่คำเตือน
-    expect(byAge("50-54 ปี").deepNote).toContain("สนับสนุนเต็มที่");
+    expect(byAge("50-54 ปี").deepNote).toContain("[ยุคทอง]");
     expect(byAge("50-54 ปี").deepNote).not.toContain("[เฝ้าระวัง]");
   });
 
@@ -142,7 +144,7 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     expect(wealth).toContain("โฟกัส");
   });
 
-  // ดิถี 己 อ่อนเกินไป (very-weak) → useful god = ไฟ (ส่งเสริม) ก่อน แล้วดิน (คู่ธาตุ)
+  // ดิถี 己 ดวงอ่อน (weak) → useful god = ไฟ (ส่งเสริม) ก่อน แล้วดิน (คู่ธาตุ)
   // ตำรา M.docx บท 11/14/15 ระบุไฟเป็นหลัก ห้ามตัดไฟทิ้งเหลือแต่ดิน
   test("knownlage useful-god readings lead with ธาตุไฟ then ดิน (M.docx)", async () => {
     const repository = createTestKnowledgeRepository();

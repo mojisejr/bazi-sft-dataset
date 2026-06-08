@@ -23,6 +23,7 @@ import {
   buildDaYunTableRows,
   buildRelationshipLinesMapping,
   buildTopicHumanReading,
+  buildTopicConsumerReading,
   type RelationshipLineRow,
 } from "@/lib/bazi/topic-knowledge";
 
@@ -125,11 +126,15 @@ function relationshipTable(
 /** คำอ่านที่ generate ไว้แล้ว (เช่นฉบับ LLM polish) ราย topicId — ใช้แทนผล engine ถ้ามี */
 export type ReadingOverrides = Record<string, string | null | undefined>;
 
+/** ฉบับ render ของบทคำทำนาย: technical (เทคนิคครบ) หรือ consumer (ร้อยแก้วผู้บริโภค) */
+export type ReadingVariant = "technical" | "consumer";
+
 function chapterParagraphs(
   calculatedState: CalculatedStateValue,
   rawInput: RawInputValue,
   overrides?: ReadingOverrides,
   topicIds?: string[],
+  variant: ReadingVariant = "technical",
 ): Paragraph[] {
   const out: Paragraph[] = [];
   const wanted = topicIds ? new Set(topicIds) : null;
@@ -144,7 +149,11 @@ function chapterParagraphs(
         children: [new TextRun({ text: `บทที่ ${topic.chapter}: ${topic.title}${aiMark}`, bold: true, size: 28, font: FONT })],
       }),
     );
-    const reading = override || buildTopicHumanReading(calculatedState, topic.id, rawInput);
+    const baseReading =
+      variant === "consumer"
+        ? buildTopicConsumerReading(calculatedState, topic.id, rawInput)
+        : buildTopicHumanReading(calculatedState, topic.id, rawInput);
+    const reading = override || baseReading;
     if (reading) {
       for (const para of reading.split("\n\n")) {
         out.push(textParagraph(para));
@@ -220,7 +229,7 @@ function tableOfContentsPage(): (Paragraph | TableOfContents)[] {
 export function buildReadingDocument(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[]; variant?: ReadingVariant } = {},
 ): Document {
   const dm = calculatedState.dayMaster;
   const strength = calculatedState.dayMasterStrengthProfile?.displayLabel ?? "";
@@ -273,7 +282,7 @@ export function buildReadingDocument(
             spacing: { before: 360, after: 120 },
             children: [new TextRun({ text: "คู่มือชีวิต 15 มิติ", bold: true, size: 32, font: FONT })],
           }),
-          ...chapterParagraphs(calculatedState, rawInput, options.readings),
+          ...chapterParagraphs(calculatedState, rawInput, options.readings, undefined, options.variant),
           // ── บทเสริม: ตารางวัยจร ──
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
@@ -299,7 +308,7 @@ export function buildReadingDocument(
 export async function buildReadingDocxBuffer(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[]; variant?: ReadingVariant } = {},
 ): Promise<Buffer> {
   return Packer.toBuffer(buildReadingDocument(rawInput, calculatedState, options));
 }
@@ -310,7 +319,7 @@ export function buildTopicDocument(
   topicId: string,
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[]; variant?: ReadingVariant } = {},
 ): Document {
   const topic = TOPIC_PATH.find((t) => t.id === topicId && t.kind === "predict");
   if (!topic) {
@@ -343,7 +352,7 @@ export function buildTopicDocument(
           textParagraph(`ดิถีประจำตัว: ${dm}${strength ? ` (${strength})` : ""}`, { bold: true }),
           pillarTable(calculatedState),
           new Paragraph({ children: [new PageBreak()] }),
-          ...chapterParagraphs(calculatedState, rawInput, options.readings, [topicId]),
+          ...chapterParagraphs(calculatedState, rawInput, options.readings, [topicId], options.variant),
           ...(isLuck
             ? [
                 new Paragraph({
@@ -366,7 +375,7 @@ export async function buildTopicDocxBuffer(
   topicId: string,
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
-  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[] } = {},
+  options: { readings?: ReadingOverrides; relationshipLines?: RelationshipLineRow[]; variant?: ReadingVariant } = {},
 ): Promise<Buffer> {
   return Packer.toBuffer(buildTopicDocument(topicId, rawInput, calculatedState, options));
 }

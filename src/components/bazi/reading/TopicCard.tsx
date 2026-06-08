@@ -22,6 +22,8 @@ export type TopicReadingResult = {
   reading: TopicEngineReading;
   /** ผลการทำนายภาษามนุษย์ (engine = จาก knownlage, llm = ขัดเกลา) — null ถ้ายังไม่มีองค์ความรู้ */
   humanReading?: string | null;
+  /** ข้อความตำรา (knownlage) ตรง ๆ ก่อนเรียบเรียง — ใช้ในส่วน "คำอ่าน" */
+  knownlageExcerpt?: string[] | null;
   /** ชื่อตำรา/แหล่งอ้างอิง */
   sourceLabel?: string | null;
   /** ตารางเส้นขีดความสัมพันธ์หมวดวัยจร (เฉพาะ turning_points) */
@@ -179,9 +181,16 @@ export function TopicCard({
           <section className="topic-card__block">
             <h4>
               คำอ่าน
-              <span className="topic-card__source">จาก engine truth</span>
+              <span className="topic-card__source">
+                {result.knownlageExcerpt && result.knownlageExcerpt.length > 0
+                  ? "จากตำรา (knownlage)"
+                  : "จาก engine truth"}
+              </span>
             </h4>
-            {result.reading.prose.map((paragraph, index) => (
+            {(result.knownlageExcerpt && result.knownlageExcerpt.length > 0
+              ? result.knownlageExcerpt
+              : result.reading.prose
+            ).map((paragraph, index) => (
               <p key={index}>{paragraph}</p>
             ))}
           </section>

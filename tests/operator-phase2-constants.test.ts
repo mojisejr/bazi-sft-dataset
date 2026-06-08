@@ -43,9 +43,14 @@ describe("Phase 2 operator constants", () => {
   });
 
   test("classifies the five operator strength bands without reusing the old hidden-stem model", () => {
-    expect(classifyOperatorStrengthScore(1.99)).toMatchObject({
+    // R5.2b: very-weak เพดานลด 2 → -2 (engine กดกำลังแรงเกิน; ซินแสว่าดวง score แถว 0-2 = "ดวงอ่อน")
+    expect(classifyOperatorStrengthScore(-2.5)).toMatchObject({
       id: "very-weak",
       label: "อ่อนเกินไป",
+    });
+    expect(classifyOperatorStrengthScore(1.99)).toMatchObject({
+      id: "weak",
+      label: "ดวงอ่อน",
     });
     expect(classifyOperatorStrengthScore(2.25)).toMatchObject({
       id: "weak",

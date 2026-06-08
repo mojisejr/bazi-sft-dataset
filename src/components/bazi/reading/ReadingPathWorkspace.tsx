@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState, type ChangeEvent, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 
 import { BirthForm } from "@/components/bazi/BirthForm";
 import { ActionButton } from "@/components/bazi/primitives/Action";
@@ -61,6 +61,21 @@ const ENGINE_ONLY_TOPIC_IDS = new Set<string>([
   "guardian_deities", // บท 15 องค์เทพ/เสริมดวง
 ]);
 
+// คงข้อมูลวัน-เวลา-เพศ ไว้เมื่อ refresh (ไม่ต้องกรอกใหม่) — เก็บใน localStorage
+const FORM_STORAGE_KEY = "bazi-reading-form-v1";
+
+function loadStoredFormState(): FormState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(FORM_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<FormState>;
+    return { ...createDefaultFormState(), ...parsed };
+  } catch {
+    return null;
+  }
+}
+
 const RESET_ACTION_COPY = {
   label: "ผูกดวงใหม่",
   detail: "ล้างข้อมูลเกิดและคำอ่านทุกหัวข้อ เพื่อเริ่มเคสใหม่",
@@ -69,6 +84,8 @@ const RESET_ACTION_COPY = {
 
 export function ReadingPathWorkspace() {
   const [formState, setFormState] = useState<FormState>(createDefaultFormState);
+  // hydrate วัน-เวลา-เพศ จาก localStorage ครั้งเดียวตอน mount (กัน SSR mismatch) แล้ว save อัตโนมัติเมื่อแก้
+  const formHydratedRef = useRef(false);
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
   const [calcError, setCalcError] = useState<string | null>(null);
   const [rawInput, setRawInput] = useState<RawInputValue | null>(null);
@@ -81,6 +98,27 @@ export function ReadingPathWorkspace() {
   // ควบคุม "รวมทุกบท"
   const [allMode, setAllMode] = useState<TopicReadingMode>("engine");
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+
+  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount
+  useEffect(() => {
+    const stored = loadStoredFormState();
+    if (stored) {
+      setFormState(stored);
+    }
+    formHydratedRef.current = true;
+  }, []);
+
+  // บันทึกค่าฟอร์มทุกครั้งที่แก้ (หลัง hydrate แล้วเท่านั้น กันเขียนทับด้วยค่าว่าง)
+  useEffect(() => {
+    if (!formHydratedRef.current || typeof window === "undefined") {
+      return;
+    }
+    try {
+      window.localStorage.setItem(FORM_STORAGE_KEY, JSON.stringify(formState));
+    } catch {
+      /* localStorage เต็ม/ปิดอยู่ — ข้ามได้ */
+    }
+  }, [formState]);
 
   const predictTopic = useCallback(
     async (
@@ -155,21 +193,34 @@ export function ReadingPathWorkspace() {
     setBatchProgress(null);
   }
 
-  async function handlePredictAll() {
+  async function handlePredictAll(
+    modeOverride: TopicReadingMode = allMode,
+    providerOverride: ReadingLlmProvider = provider,
+  ) {
     if (!rawInput || !calculatedState || batchProgress) {
       return;
     }
-    if (allMode === "llm" && apiKey.trim().length === 0) {
+    // Local Claude (anthropic) ผ่าน local proxy ไม่ต้องมี API key จริง → ใช้ placeholder "local"
+    const localClaude = providerOverride === "anthropic";
+    if (modeOverride === "llm" && !localClaude && apiKey.trim().length === 0) {
       return;
     }
-    const key = allMode === "llm" ? apiKey.trim() : null;
+    const key =
+      modeOverride === "llm" ? (localClaude ? apiKey.trim() || "local" : apiKey.trim()) : null;
     setBatchProgress({ done: 0, total: PREDICT_TOPICS.length });
     for (let index = 0; index < PREDICT_TOPICS.length; index += 1) {
       // ยิงทีละบทตามลำดับ เพื่อคุม cost (โดยเฉพาะโหมด llm) และโชว์ progress
-      await predictTopic(PREDICT_TOPICS[index].id, allMode, key, provider, rawInput, calculatedState);
+      await predictTopic(PREDICT_TOPICS[index].id, modeOverride, key, providerOverride, rawInput, calculatedState);
       setBatchProgress({ done: index + 1, total: PREDICT_TOPICS.length });
     }
     setBatchProgress(null);
+  }
+
+  // ปุ่มลัด: gen ทุกบทด้วย Local Claude (Anthropic) — ตั้ง provider+mode แล้วยิงทันทีด้วย override
+  function handleGenerateLocalClaude() {
+    setProvider("anthropic");
+    setAllMode("llm");
+    void handlePredictAll("llm", "anthropic");
   }
 
   function handleFieldChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -230,6 +281,13 @@ export function ReadingPathWorkspace() {
 
   function handleReset() {
     setFormState(createDefaultFormState());
+    if (typeof window !== "undefined") {
+      try {
+        window.localStorage.removeItem(FORM_STORAGE_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
     setSubmissionState("idle");
     setCalcError(null);
     setRawInput(null);
@@ -277,6 +335,9 @@ export function ReadingPathWorkspace() {
   }
 
   const isReady = Boolean(calculatedState && rawInput);
+  // Local Claude (anthropic) ไม่ต้องกรอก key จริง → ใช้ "local" แทน เพื่อให้ปุ่ม/รายบททำงานได้
+  const localClaudeMode = provider === "anthropic";
+  const effectiveApiKey = localClaudeMode ? apiKey.trim() || "local" : apiKey;
   // ตารางบทเสริมมาจากผลบท turning_points ที่ auto-run แล้ว (ไม่ต้อง fetch แยกอีก)
   const relationshipLines = topicStates["turning_points"]?.result?.relationshipLines ?? null;
   // จำนวนบทที่มีคำอ่านพร้อมแล้ว (ใช้คุมปุ่ม preview + แสดงความคืบหน้า)
@@ -320,12 +381,19 @@ export function ReadingPathWorkspace() {
             >
               <option value="gemini">Gemini (Google)</option>
               <option value="opencode">OpenCode Zen</option>
+              <option value="anthropic">Local Claude (Anthropic)</option>
             </select>
           </label>
           <label className="field field--compact reading-path__apikey">
             <span>
-              {provider === "opencode" ? "OpenCode Zen" : "Gemini"} API key
-              {" "}(ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก)
+              {provider === "opencode"
+                ? "OpenCode Zen"
+                : provider === "anthropic"
+                  ? "Anthropic / Local Claude"
+                  : "Gemini"}{" "}
+              API key
+              {" "}(ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก
+              {provider === "anthropic" ? "; Local Claude ผ่าน proxy — เว้นว่างได้" : ""})
             </span>
             <input
               type="password"
@@ -357,12 +425,22 @@ export function ReadingPathWorkspace() {
             <ActionButton
               tone="primary"
               type="button"
-              disabled={Boolean(batchProgress) || (allMode === "llm" && apiKey.trim().length === 0)}
+              disabled={Boolean(batchProgress) || (allMode === "llm" && !localClaudeMode && apiKey.trim().length === 0)}
               onClick={() => void handlePredictAll()}
             >
               {batchProgress
                 ? `กำลังทำนาย ${batchProgress.done}/${batchProgress.total}...`
                 : `ทำนายรวมทุกบท (${PREDICT_TOPICS.length} บท)`}
+            </ActionButton>
+            <ActionButton
+              tone="primary"
+              type="button"
+              disabled={Boolean(batchProgress)}
+              onClick={() => handleGenerateLocalClaude()}
+            >
+              {batchProgress
+                ? `Local Claude ${batchProgress.done}/${batchProgress.total}...`
+                : `🤖 Gen ด้วย Local Claude`}
             </ActionButton>
             <ActionButton
               tone="secondary"
@@ -467,7 +545,7 @@ export function ReadingPathWorkspace() {
                 status={entry.status}
                 result={entry.result}
                 errorMessage={entry.error}
-                apiKey={apiKey}
+                apiKey={effectiveApiKey}
                 onPredict={handlePredict}
               />
             );

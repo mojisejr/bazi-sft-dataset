@@ -311,3 +311,114 @@
 .reading-foundation__dayun-heading {
   margin-top: var(--space-2, 0.5rem);
 }
+
+/* ============================================================
+   #4 Minimal refresh — สไตล์ขาวสะอาด โปร่ง อ่านง่าย (scoped .reading-path เท่านั้น)
+   ทับธีม ivory เฉพาะหน้า /reading โดยไม่กระทบหน้าอื่น
+   ============================================================ */
+.reading-path {
+  --rp-bg: #ffffff;
+  --rp-bg-muted: #f8fafc;
+  --rp-line: rgba(15, 23, 42, 0.08);
+  --rp-line-strong: rgba(15, 23, 42, 0.14);
+  --rp-text: #0f172a;
+  --rp-text-muted: #64748b;
+  --rp-accent: #2563eb;
+  --rp-accent-soft: rgba(37, 99, 235, 0.08);
+  --rp-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 12px 32px -18px rgba(15, 23, 42, 0.22);
+  gap: 1.75rem;
+  color: var(--rp-text);
+}
+
+/* การ์ดหลักทุกใบ: ขาว ขอบเส้นบาง มุมโค้งใหญ่ เงานุ่ม เว้นช่องโปร่ง */
+.reading-path .surface,
+.reading-path__intro,
+.reading-path__batch,
+.reading-path__appendix,
+.reading-path .topic-card,
+.reading-path .case-rail {
+  background: var(--rp-bg);
+  border: 1px solid var(--rp-line);
+  border-radius: 18px;
+  box-shadow: var(--rp-shadow);
+  padding: 1.75rem;
+}
+
+/* ตัวอักษรอ่านสบาย: บรรทัดโปร่ง ความกว้างอ่านพอดี */
+.reading-path .topic-card__block p,
+.reading-path .topic-card__human {
+  line-height: 1.85;
+  color: var(--rp-text);
+}
+.reading-path .topic-card__human {
+  border-left: 3px solid var(--rp-accent);
+  background: var(--rp-accent-soft);
+  border-radius: 0 12px 12px 0;
+  padding: 0.75rem 1rem;
+}
+.reading-path h2,
+.reading-path h3 {
+  letter-spacing: -0.01em;
+}
+.reading-path .section-note,
+.reading-path .field-hint,
+.reading-path .topic-card__source {
+  color: var(--rp-text-muted);
+}
+
+/* แถบเลือก LLM: จัดกลุ่มเป็นบล็อกชัด พื้นจางคั่น */
+.reading-path__batch {
+  background: var(--rp-bg-muted);
+}
+.reading-path__provider select,
+.reading-path__apikey input,
+.reading-path .field select,
+.reading-path .field input {
+  border: 1px solid var(--rp-line-strong);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  font: inherit;
+  color: var(--rp-text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.reading-path .field select:focus,
+.reading-path .field input:focus,
+.reading-path__provider select:focus,
+.reading-path__apikey input:focus {
+  outline: none;
+  border-color: var(--rp-accent);
+  box-shadow: 0 0 0 3px var(--rp-accent-soft);
+}
+
+/* mode pills + ปุ่ม: โค้งมน สะอาด มีสถานะชัด */
+.reading-path .topic-card__mode {
+  background: #eef2f7;
+  border-radius: 999px;
+  padding: 0.25rem;
+}
+.reading-path .mode-pill {
+  color: var(--rp-text-muted);
+  font-weight: 500;
+}
+.reading-path .mode-pill--active {
+  background: #fff;
+  color: var(--rp-text);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+.reading-path .reading-path__batch-controls {
+  gap: 0.6rem 0.75rem;
+  align-items: center;
+}
+
+/* การ์ดหัวข้อ: เว้นวรรคโปร่งขึ้น เส้นคั่นบาง */
+.reading-path .topic-card {
+  gap: 1.15rem;
+}
+.reading-path .topic-table th,
+.reading-path .topic-table td {
+  border-color: var(--rp-line);
+}
+.reading-path .topic-table th {
+  background: var(--rp-bg-muted);
+}

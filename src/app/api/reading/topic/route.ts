@@ -18,9 +18,12 @@ import {
 import {
   buildRelationshipLinesMapping,
   buildTopicHumanReading,
+  buildTopicConsumerReading,
+  getTopicKnownlageExcerpt,
   getTopicKnowledgeSourceLabel,
 } from "@/lib/bazi/topic-knowledge";
 import { generateReadingTopicLlm, polishRelationshipLinesLlm } from "@/lib/bazi/reading-llm";
+import { GPTCASE_TUNED_PROFILE } from "@/lib/bazi/reading-prompt-profiles";
 
 export const runtime = "nodejs";
 
@@ -38,12 +41,12 @@ const TOPIC_IDS = TOPIC_PATH.map((topic) => topic.id) as [string, ...string[]];
 const ReadingTopicRequestSchema = z
   .object({
     topicId: z.enum(TOPIC_IDS),
-    mode: z.enum(["engine", "llm"]).default("engine"),
+    mode: z.enum(["engine", "consumer", "llm"]).default("engine"),
     rawInput: RawInputSchema.optional(),
     calculatedState: CalculatedStateSchema.optional(),
     apiKey: z.string().trim().min(1).optional(),
     model: z.string().trim().min(1).optional(),
-    provider: z.enum(["gemini", "opencode"]).default("gemini"),
+    provider: z.enum(["gemini", "opencode", "anthropic"]).default("gemini"),
   })
   .refine((value) => value.rawInput || value.calculatedState, {
     message: "ต้องส่ง rawInput หรือ calculatedState อย่างน้อยหนึ่งอย่าง",
@@ -101,28 +104,41 @@ export async function POST(req: Request) {
   const relationshipLines =
     topicId === "turning_points" ? buildRelationshipLinesMapping(calculatedState) : undefined;
 
-  if (mode === "engine") {
+  if (mode === "engine" || mode === "consumer") {
+    // consumer = ร้อยแก้วผู้บริโภค (ถอด scaffolding เทคนิคออก) · engine = เทคนิคครบ
+    const humanReading =
+      mode === "consumer"
+        ? buildTopicConsumerReading(calculatedState, topicId, rawInput)
+        : humanKnowledge;
+    // ข้อความ "ตำรา (knownlage) ตรง ๆ" สำหรับส่วนคำอ่าน
+    const knownlageExcerpt = getTopicKnownlageExcerpt(calculatedState, topicId, rawInput);
     return Response.json({
-      source: "engine",
+      source: mode,
       reading,
-      humanReading: humanKnowledge,
+      humanReading,
+      knownlageExcerpt,
       sourceLabel,
       ...(relationshipLines ? { relationshipLines } : {}),
     });
   }
 
-  // mode === "llm" — เรียบเรียงสไตล์ 1.docx ด้วย prompt ต่อหัวข้อ (ground จาก excerpt + engine signal)
+  // mode === "llm" — เรียบเรียงสไตล์ gptCase ด้วย Gemini
+  // ผล A/B (docs/gemini-prompt-tuning-2026-06-08.md): profile "gptcase-tuned" + ground "consumer"
+  // ให้ผลใกล้ gptCase output สุด → ใช้ consumer reading เป็น ground และ profile ที่ปรับโทน
   try {
+    const llmGround =
+      buildTopicConsumerReading(calculatedState, topicId, rawInput) ?? humanKnowledge;
     const llm = await generateReadingTopicLlm({
       topicId,
       rawInput: rawInput!,
       calculatedState,
-      humanKnowledge,
+      humanKnowledge: llmGround,
       sourceLabel,
       engineSignals: engineSignalsFor(reading),
       apiKey,
       model,
       provider,
+      profile: provider === "gemini" ? GPTCASE_TUNED_PROFILE : undefined,
     });
 
     // บทเสริม (วัยจร) ท้ายบท 15: ให้ LLM แต่งคำช่อง "คำอธิบายดี-ร้ายเชิงลึก" ด้วย
@@ -148,6 +164,7 @@ export async function POST(req: Request) {
       model: llm.model,
       reading, // คำอ่าน/ตาราง engine คงเดิม
       humanReading: llm.text, // ผลการทำนาย = ฉบับ LLM เรียบเรียงสไตล์ 1.docx
+      knownlageExcerpt: getTopicKnownlageExcerpt(calculatedState, topicId, rawInput),
       sourceLabel,
       ...(polishedLines ? { relationshipLines: polishedLines } : {}),
     });

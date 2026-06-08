@@ -140,6 +140,72 @@ export const ELEMENT_DEITY_BENEFIT_TH: Record<string, string> = {
 };
 
 /**
+ * ประโยคปิดบทเชิงเปรียบเทียบ ผูกกับ "ธาตุดิถี" (closing simile) สไตล์ your life code / gptCase
+ * ปิดบทด้วยภาพเปรียบของธาตุดิถี + emoji ให้โทนชวนอ่าน — เป็นภาพเปรียบ ไม่ใช่ข้อเท็จจริงโหราศาสตร์ใหม่
+ * ธาตุละหลายแบบเพื่อให้หมุนเวียนตามบท (กันซ้ำซาก) เลือกแบบ deterministic ด้วย hash ของ topicId
+ */
+// สำนวน ไม้/ทอง/น้ำ ปรับให้ตรงกับ output จริงใน example/gptCase (ธาตุที่มีเคสจริง)
+// ส่วน ดิน/ไฟ ยังไม่มีเคสในชุดตัวอย่าง จึงใช้ภาพเปรียบประจำธาตุตามตำรา (โทนเดียวกับ STEM_NATURE_TH)
+export const ELEMENT_CLOSING_SIMILE_TH: Record<string, string[]> = {
+  "ไม้": [
+    "เปรียบเสมือนต้นไม้ใหญ่ที่ได้รับน้ำและแสงแดดอย่างเหมาะสม จนเติบโตเป็นร่มเงาแห่งความมั่นคงและความสำเร็จอย่างยั่งยืน 🌳✨",
+    "ดั่งต้นไม้ใหญ่ที่หยั่งรากลึก ยิ่งเวลาผ่านไปยิ่งแผ่กิ่งก้านสง่างามและให้ร่มเงาแก่ผู้คน 🌲💚",
+    "ราวกับหน่ออ่อนที่ดูเปราะบาง แต่มีพลังชีวิตพอจะชอนไชผ่านดินแข็งขึ้นสู่แสงตะวัน 🌱☀️",
+  ],
+  "ไฟ": [
+    "เปรียบดั่งเปลวไฟที่ค่อย ๆ ก่อตัว เมื่อได้เชื้อที่เหมาะสมก็ลุกโชนให้ความอบอุ่นและความสว่างแก่รอบข้าง 🔥✨",
+    "ราวกับแสงเทียนในยามค่ำ ที่แม้ดูริบหรี่แต่ส่องนำทางให้ผู้คนก้าวเดินต่อได้ 🕯️🌟",
+    "เหมือนดวงตะวันยามรุ่งอรุณ ยิ่งทอแสงยิ่งปลุกทุกสิ่งให้ตื่นขึ้นมามีชีวิตชีวา 🌅❤️",
+  ],
+  "ดิน": [
+    "เปรียบดั่งผืนแผ่นดินที่หนักแน่นมั่นคง รองรับและหล่อเลี้ยงทุกสิ่งให้เติบโตได้อย่างยั่งยืน 🏔️✨",
+    "ราวกับภูเขาที่ตั้งตระหง่านไม่หวั่นไหวต่อลมฝน ยิ่งกาลเวลาผ่านไปยิ่งเป็นที่พึ่งพิงของผู้คน ⛰️💛",
+    "เหมือนไร่นาที่อุดมสมบูรณ์ เมื่อหมั่นบ่มเพาะอย่างอดทน ย่อมผลิดอกออกผลให้เก็บเกี่ยวในเวลาอันควร 🌾🤎",
+  ],
+  "ทอง": [
+    "เปรียบเสมือนทองที่ผ่านการหลอมและตีอย่างหนัก จนกลายเป็นของล้ำค่าที่เปล่งประกายอย่างสง่างาม 💎🌟",
+    "ดั่งโลหะที่ยิ่งเจียระไนยิ่งคมกล้าและทรงคุณค่า ความเด็ดขาดและมีวินัยคือพลังของคุณ ⚔️✨",
+    "เหมือนระฆังทองที่เมื่อถูกตีย่อมส่งเสียงกังวานไปไกล ความหนักแน่นและถูกต้องจะพาคุณไปไกล 🔔🤍",
+  ],
+  "น้ำ": [
+    "ราวกับละอองฝนที่ดูอ่อนโยน แต่มีพลังพอจะทำให้ผืนดินทั้งผืนกลับมามีชีวิตอีกครั้ง 🌧️✨",
+    "เหมือนน้ำซึมบ่อทราย ที่ค่อย ๆ สะสมทีละน้อยอย่างเงียบงัน จนกลายเป็นความมั่งคั่งที่ยั่งยืน 💧💙",
+    "ดั่งสายน้ำที่อ่อนโยนแต่ไหลไปได้ไกล ค่อย ๆ ซึมลึกและเข้าถึงทุกสิ่งได้อย่างเงียบ ๆ 🌊✨",
+  ],
+};
+
+/**
+ * ภาพเปรียบปิดบทเฉพาะ "หัวข้อ" (override ภาพธาตุ) — ดึงจาก output จริงที่ผูกภาพกับแก่นบท
+ * (ครอบครัว = บ้าน/ท่าเรือ, หุ้นส่วน = แม่น้ำสองสายรวมกัน) ใช้ได้กับทุกธาตุดิถี
+ */
+export const TOPIC_CLOSING_SIMILE_TH: Record<string, string> = {
+  family:
+    "เปรียบเสมือนบ้านที่เป็นท่าเรือสงบ ให้เรือชีวิตของคุณกลับมาจอดพักได้ทุกครั้งที่คลื่นลมแรง 🏡✨",
+  partnership:
+    "หุ้นส่วนที่ดีเปรียบเสมือนแม่น้ำสองสายที่ไหลมารวมกัน กระแสยิ่งแรงและพาคุณไปได้ไกลกว่าการไหลเพียงลำพัง 🌊🤝",
+};
+
+/**
+ * เลือกประโยคปิดเชิงเปรียบแบบ deterministic
+ * - ถ้าหัวข้อมีภาพเฉพาะ (เช่น ครอบครัว/หุ้นส่วน) ใช้ภาพหัวข้อนั้น
+ * - ไม่งั้นหมุนภาพประจำธาตุดิถีตาม hash ของ topicId (กันซ้ำซากแต่ผลคงที่)
+ */
+export function buildElementClosingSimile(
+  dayElementTh: string,
+  topicId: string,
+): string | null {
+  const topicSimile = TOPIC_CLOSING_SIMILE_TH[topicId];
+  if (topicSimile) return topicSimile;
+  const similes = ELEMENT_CLOSING_SIMILE_TH[dayElementTh];
+  if (!similes || similes.length === 0) return null;
+  let hash = 0;
+  for (let i = 0; i < topicId.length; i += 1) {
+    hash = (hash + topicId.charCodeAt(i)) % similes.length;
+  }
+  return similes[hash];
+}
+
+/**
  * คำเชื่อมร้อยแก้วหมุนเวียน (deterministic) — เติมหน้าย่อหน้า "ร้อยแก้ว/Label เดี่ยว"
  * เพื่อให้เนื้อหาลื่นไหลแบบเอกสารต้นฉบับ (1.docx) โดยไม่เพิ่มข้อเท็จจริงใหม่
  * ตัวแรกเป็นค่าว่างเพื่อเว้นจังหวะ ไม่ให้ทุกย่อหน้ามีคำเชื่อมจนรก
@@ -167,6 +233,9 @@ const EXISTING_CONNECTOR_PREFIXES = [
   "ดังนั้น",
   "เนื่องจาก",
   "อีกด้านหนึ่ง",
+  "สิ่งที่ควรระวัง",
+  "นิสัยเด่น",
+  "นิสัยที่ควรพัฒนา",
 ];
 
 /**
@@ -200,6 +269,130 @@ export function weaveNarrative(paragraphs: string[]): string[] {
     connectorIndex += 1;
     return connector ? `${connector}${paragraph.trim()}` : paragraph;
   });
+}
+
+/** แยกรายการ comma-dump แบบรู้วงเล็บ (ไม่ตัดในวงเล็บ เช่น "ก่อสร้าง (อิฐ/หิน, ปูน)") */
+function splitTopLevelItems(value: string): string[] {
+  const items: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const ch of value) {
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    if (ch === "," && depth === 0) {
+      if (current.trim()) items.push(current.trim());
+      current = "";
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) items.push(current.trim());
+  return items;
+}
+
+// เฉพาะลิสต์อาชีพที่ยัง dump ด้วยจุลภาคยาว — แตกเป็นบุลเลตเพื่ออ่านลื่นแบบ YLC
+// (คง label + marker เช่น "อาชีพธาตุไฟ (useful god)" และลำดับ item เป๊ะ ไม่เพิ่ม/ตัดเนื้อหา)
+const BULLETIZE_LABEL_RE = /^((?:อาชีพธาตุ|อาชีพที่ควรเลี่ยง|อีกสายที่ไม่ค่อยเหมาะ)[^:\n]*): (.+)$/;
+
+function bulletizeListParagraph(paragraph: string): string {
+  const text = paragraph.trim();
+  if (text.includes("\n")) return paragraph; // มีบรรทัดแล้ว/บุลเลตแล้ว — คงเดิม
+  const match = text.match(BULLETIZE_LABEL_RE);
+  if (!match) return paragraph;
+  const items = splitTopLevelItems(match[2]);
+  if (items.length < 3) return paragraph; // ลิสต์สั้น ไม่ต้องแตก
+  return `${match[1]}:\n${items.map((item) => `• ${item}`).join("\n")}`;
+}
+
+/** แตก comma-dump ลิสต์อาชีพในแต่ละย่อหน้าเป็นบุลเลต (deterministic, คงทุก item/marker/ลำดับ) */
+export function bulletizeCommaLists(paragraphs: string[]): string[] {
+  return paragraphs.map(bulletizeListParagraph);
+}
+
+/**
+ * ───────── Consumer render: ถอด scaffolding เทคนิคเป็นร้อยแก้วผู้บริโภคแบบ gptCase ─────────
+ * แปลงสตริง technical (จาก buildTopicHumanReading) → ฉบับอ่านง่ายสำหรับลูกค้า แบบ deterministic/idempotent
+ * - คง identity ("ธาตุน้ำหยิน (癸水)"), simile ปิดบท, หัวข้อ, เนื้อความ
+ * - ตัด qi%, รหัส hanzi→qi, ผั่ว/ชง, Step 6.2, useful god, parenthetical วิธีอ่าน
+ * ทำงานเฉพาะ render ฝั่ง consumer — ไม่แตะ technical ที่ test ผูกไว้
+ */
+
+// โทเค็นที่บ่งว่า "วงเล็บนี้คือ scaffolding เทคนิค" → ลบทั้งวงเล็บ (ส่วน identity ไม่มีโทเค็นเหล่านี้ จึงถูกเก็บไว้)
+const TECH_PAREN_TOKEN_RE =
+  /[%→]|~\d|Step|useful god|self-seat|自坐|天干合|六合|破|冲|食傷|印|เชี่ยงแซ|เซียงแซ|ราศีบน|ราศีล่าง|ตัวแรก|ตัวขยาย|พิฆาต|ดาวถ่ายเท|ดาวส่งเสริม/;
+
+/** ลบวงเล็บ (...) ที่เนื้อในเข้าข่าย scaffolding เทคนิค — วนซ้ำจนนิ่งเพื่อรองรับวงเล็บซ้อน */
+function stripTechnicalParens(line: string): string {
+  let prev: string;
+  let cur = line;
+  do {
+    prev = cur;
+    // จับวงเล็บชั้นในสุดก่อน (ไม่มีวงเล็บซ้อนข้างใน) แล้ววนใหม่จนชั้นนอกถูกพิจารณา
+    cur = cur.replace(/\s*\(([^()]*)\)/g, (whole, inner: string) =>
+      TECH_PAREN_TOKEN_RE.test(inner) ? "" : whole,
+    );
+  } while (cur !== prev);
+  return cur;
+}
+
+/** ลบวงเล็บกำพร้า (เปิด/ปิดไม่ครบคู่ที่เหลือหลัง strip) */
+function dropUnbalancedParens(s: string): string {
+  let open = 0;
+  let res = "";
+  for (const ch of s) {
+    if (ch === "(") {
+      open += 1;
+      res += ch;
+    } else if (ch === ")") {
+      if (open > 0) {
+        open -= 1;
+        res += ch;
+      } // ) กำพร้า → ทิ้ง
+    } else {
+      res += ch;
+    }
+  }
+  return res;
+}
+
+/** เก็บกวาดเศษหลังลบ: ช่องว่างซ้อน, " :", " ,", " /", วงเล็บค้าง, บุลเลตเปล่า */
+function tidyConsumerLine(line: string): string {
+  const cleaned = dropUnbalancedParens(line)
+    .replace(/\(\s*\)/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([:,/])/g, "$1")
+    .replace(/[ \t]+$/g, "");
+  // บุลเลต/ป้ายที่เหลือแต่หัว ไม่มีเนื้อ → ทิ้งทั้งบรรทัด
+  return /^\s*[•\-]\s*$/.test(cleaned) ? "" : cleaned;
+}
+
+/** แปลง 1 บรรทัดของ technical → consumer */
+function humanizeConsumerLine(line: string): string {
+  let out = line;
+  // (A) บุลเลตดาวลาภแบบ code-dump: "• <code> → <qi> (~80%) … / <label>: <meaning>" → เก็บเฉพาะ meaning
+  if (/^\s*•/.test(out) && out.includes("→") && out.includes(" / ")) {
+    const meaning = out.split(" / ").pop() ?? "";
+    out = `• ${meaning.replace(/^[^:]*:\s*/, "").trim()}`;
+  }
+  // (B) prefix วิธีอ่านสี: "… — เทียบดิถี X กับราศีบนหลัก… :" → คงป้ายซ้าย + เนื้อหาขวา
+  out = out.replace(/\s*—\s*เทียบดิถี[^:：]*[:：]/g, ":");
+  // (C) ลบวงเล็บ scaffolding
+  out = stripTechnicalParens(out);
+  // (D) ลบรหัส "<hanzi> → <token>" ที่หลุดนอกวงเล็บ (เช่น "ราศีล่าง 巳 → ทอ")
+  out = out.replace(/\s*[一-鿿]\s*→\s*[^\s,，/)]+/g, "");
+  // (E) ลูกศร "maps-to" ที่เหลือ (Thai → Thai เช่น "= ดาวส่งเสริม → ปู่ย่า") → em dash อ่านลื่น
+  out = out.replace(/\s*→\s*/g, " — ");
+  return tidyConsumerLine(out);
+}
+
+/** ถอด scaffolding เทคนิคจากคำทำนายทั้งบท → ฉบับผู้บริโภค (deterministic, idempotent) */
+export function humanizeConsumerProse(text: string): string {
+  const lines = text.split("\n").map(humanizeConsumerLine);
+  return lines
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n") // ยุบบรรทัดว่างซ้อน
+    .replace(/[ \t]+\n/g, "\n")
+    .trim();
 }
 
 /** รวมย่อหน้า (ตัดค่าว่าง) ด้วยบรรทัดว่างคั่น */

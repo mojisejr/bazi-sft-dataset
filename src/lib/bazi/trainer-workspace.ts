@@ -195,7 +195,8 @@ export function createDefaultFormState(): FormState {
     birthHour: "",
     birthMinute: "",
     gender: "female",
-    province: "",
+    // จังหวัดไม่มีผลต่อการผูกดวง (timezone ตรึง Asia/Bangkok) — ตั้ง default ไว้เฉย ๆ เพื่อให้ payload valid
+    province: "กรุงเทพมหานคร",
   };
 }
 
@@ -387,7 +388,7 @@ export function buildPayload(formState: FormState): RawInputValue {
     birthDate: buildBirthDateValue(formState),
     birthTime: buildBirthTimeValue(formState.birthHour, formState.birthMinute),
     gender: formState.gender,
-    province: formState.province,
+    province: formState.province?.trim() || "กรุงเทพมหานคร",
     calendarSystem: "solar",
     timezone: "Asia/Bangkok",
   };

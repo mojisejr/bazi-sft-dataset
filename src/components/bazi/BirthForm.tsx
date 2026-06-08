@@ -9,7 +9,6 @@ import {
   BIRTH_MINUTE_OPTIONS,
   BUDDHIST_ERA_YEAR_OPTIONS,
   formatThaiBirthMoment,
-  THAI_PROVINCE_OPTIONS,
   THAI_MONTH_OPTIONS,
   getBirthDayOptions,
   workflowSteps,
@@ -77,10 +76,6 @@ export function BirthForm({
           <div className="case-rail__row">
             <dt>เพศ</dt>
             <dd>{getGenderCopy(submittedInput?.gender)}</dd>
-          </div>
-          <div className="case-rail__row">
-            <dt>จังหวัด</dt>
-            <dd>{submittedInput?.province ?? "รอข้อมูล"}</dd>
           </div>
         </dl>
 
@@ -175,7 +170,7 @@ export function BirthForm({
           </div>
 
           <div className="field-grid">
-            <label className="field">
+            <div className="field">
               <span>เวลาเกิด</span>
               <div className="field-grid">
                 <label className="field field--compact">
@@ -213,7 +208,7 @@ export function BirthForm({
                 </label>
               </div>
               <p className="field-hint">ใช้เวลาแบบ 24 ชั่วโมง เช่น 14:05</p>
-            </label>
+            </div>
 
             <label className="field">
               <span>เพศ</span>
@@ -224,27 +219,6 @@ export function BirthForm({
               </select>
             </label>
           </div>
-
-          <label className="field">
-            <span>จังหวัดเกิด</span>
-            <input
-              name="province"
-              type="text"
-              list="thai-province-options"
-              placeholder="พิมพ์ชื่อจังหวัด เช่น กรุงเทพมหานคร"
-              value={formState.province}
-              onChange={onFieldChange}
-              required
-            />
-            <datalist id="thai-province-options">
-              {THAI_PROVINCE_OPTIONS.map((province) => (
-                <option key={province} value={province} />
-              ))}
-            </datalist>
-            <p className="field-hint">
-              รองรับจังหวัดในประเทศไทยก่อน พิมพ์ไม่กี่ตัวแล้วเลือกจากรายการได้ทันที
-            </p>
-          </label>
         </fieldset>
 
         <div className="form-actions">

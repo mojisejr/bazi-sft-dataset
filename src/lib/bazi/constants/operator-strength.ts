@@ -4,19 +4,23 @@ import type { SupportedElement } from "@/lib/bazi/symbolic-engine.types";
 
 // เกณฑ์ band ต่อเนื่องไม่มีช่องว่าง (รองรับคะแนนเศษจากโบนัสราก 通根/得地 + ฤดู 得令)
 // ขอบล่างใช้ minExclusive = ขอบบนชั้นก่อนหน้า → คะแนนใด ๆ จัด band ได้เสมอ ไม่ตกช่องว่าง
+// R5.2b (2026-06-08): ลดเพดาน very-weak 2 → -2 เพราะ engine "กดกำลังแรงเกิน 1 ขั้น"
+//   ซินแสยืนยัน 1988 (score -1.25) + ภวรัญชน์ (0.25) = "ดวงอ่อน" (weak) ไม่ใช่ very-weak
+//   ground truth แทบไม่เคยเป็น very-weak → สงวน very-weak ไว้เฉพาะดวงถูกถ่ายเท/พิฆาตรุนแรง (≤ -2)
+//   ดู docs/r5-strength-useful-divergence-2026-06-08.md + memory strength-1988-divergence
 export const OPERATOR_STRENGTH_CLASS_BANDS = [
   {
     id: "very-weak",
     label: "อ่อนเกินไป",
     displayLabel: "ดิถีอ่อนเกินไป",
     minExclusive: Number.NEGATIVE_INFINITY,
-    maxInclusive: 2,
+    maxInclusive: -2,
   },
   {
     id: "weak",
     label: "ดวงอ่อน",
     displayLabel: "ดิถีอ่อน",
-    minExclusive: 2,
+    minExclusive: -2,
     maxInclusive: 3.75,
   },
   {

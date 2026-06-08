@@ -123,6 +123,16 @@ const RelationSummarySchema = z.object({
   carrierSummaryThai: z.string().trim().min(1),
   strongestCarrierThai: z.string().trim().min(1),
   targetCount: z.number().int().nonnegative(),
+  // รายตัวอักษรที่พบรายเสา (สำหรับแตกตารางความสัมพันธ์เป็นรายเสา ไม่รวบเป็น "เด่นสุด+นับจุด")
+  carriers: z
+    .array(
+      z.object({
+        positionThai: z.string().trim().min(1), // เช่น "เดือนบน", "วันล่าง"
+        symbol: z.string().trim().min(1),
+        elementLabelThai: z.string().trim().min(1),
+      }),
+    )
+    .default([]),
 });
 
 const EightSlotRowSchema = z.object({
@@ -1150,6 +1160,11 @@ function buildRelationSummary(allTargets: RelationTarget[], dayMasterElement: Su
       carrierSummaryThai: summarizeCarriers(relationTargets),
       strongestCarrierThai: strongestCarrier ? `${strongestCarrier.pillarLabelThai} ${strongestCarrier.symbol}` : "ไม่พบ",
       targetCount: relationTargets.length,
+      carriers: relationTargets.map((target) => ({
+        positionThai: target.pillarLabelThai,
+        symbol: target.symbol,
+        elementLabelThai: target.elementLabelThai,
+      })),
     };
   });
 }

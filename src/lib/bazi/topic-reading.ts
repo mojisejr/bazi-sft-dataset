@@ -186,22 +186,22 @@ function buildRelationRows(
 ): TopicRelationRow[] {
   const dayMasterSymbol = packet.chartAnchor.dayMasterStem;
 
-  return topic.relationKeys
-    .map((relationKey) => {
-      const summary = packet.relationSummary.find((entry) => entry.relationKey === relationKey);
-
-      if (!summary || summary.targetCount === 0) {
-        return null;
-      }
-
-      return {
-        sourceSymbol: `${dayMasterSymbol} (ดิถี)`,
-        pointsTo: emptyToDash(summary.strongestCarrierThai),
-        relationResult: `${summary.relationLabelThai} — ${summary.semanticMeaningThai} (ธาตุ${summary.targetElementLabelThai}, พบ ${summary.targetCount} จุด)`,
-        timing: "ตลอดชีวิต",
-      } satisfies TopicRelationRow;
-    })
-    .filter((row): row is TopicRelationRow => row !== null);
+  // แตกเป็น "รายเสา" — 1 แถวต่อ 1 ตัวอักษรที่พบ (ไม่รวบเป็น "เด่นสุด + นับจุด")
+  return topic.relationKeys.flatMap((relationKey) => {
+    const summary = packet.relationSummary.find((entry) => entry.relationKey === relationKey);
+    if (!summary || summary.carriers.length === 0) {
+      return [];
+    }
+    return summary.carriers.map(
+      (carrier) =>
+        ({
+          sourceSymbol: `${dayMasterSymbol} (ดิถี)`,
+          pointsTo: `${carrier.positionThai} ${carrier.symbol}`,
+          relationResult: `${summary.relationLabelThai} — ${summary.semanticMeaningThai} (ธาตุ${carrier.elementLabelThai})`,
+          timing: "ตลอดชีวิต",
+        }) satisfies TopicRelationRow,
+    );
+  });
 }
 
 function buildMethodLines(
@@ -210,12 +210,28 @@ function buildMethodLines(
 ): string[] {
   const lines = [`หลักการอ่าน: ${topic.lens}`];
 
+  // ขั้นตอนการอ่านของหัวข้อนี้ — ลงรายละเอียด: โฟกัสของขั้น + หลักฐานจริงที่ตรวจพบ
   for (const stepNumber of topic.stepNumbers) {
     const step = packet.stepInsights.find((entry) => entry.stepNumber === stepNumber);
-
-    if (step) {
-      lines.push(`ขั้นที่ ${step.stepNumber} (${step.titleThai}): ${step.auditFocusThai}`);
+    if (!step) {
+      continue;
     }
+    lines.push(`ขั้นที่ ${step.stepNumber} (${step.titleThai}): ${step.auditFocusThai}`);
+    // หลักฐานจริงรายขั้น (จาก audit ของดวงนี้) เป็นบรรทัดย่อย
+    for (const evidence of step.evidenceLines.slice(0, 3)) {
+      lines.push(`  • ${evidence}`);
+    }
+  }
+
+  // วิธีอ่านเฉพาะหัวข้อนี้ตามชนิดความสัมพันธ์ (ดูธาตุไหน หมายความว่าอะไร)
+  for (const relationKey of topic.relationKeys) {
+    const summary = packet.relationSummary.find((entry) => entry.relationKey === relationKey);
+    if (!summary || summary.targetCount === 0) {
+      continue;
+    }
+    lines.push(
+      `อ่าน “${summary.relationLabelThai}”: ดูธาตุ${summary.targetElementLabelThai} — ${summary.semanticMeaningThai}`,
+    );
   }
 
   return lines;
