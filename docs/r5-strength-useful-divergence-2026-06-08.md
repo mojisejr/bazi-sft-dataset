@@ -80,5 +80,21 @@ useful-god ต่างซินแส **4/8 ดวง** และ **3 ใน 4 
 - root: logic เลือกองค์หลักในบทเทพใช้ธาตุดิถี (ที่ขึ้นเชี่ยงแซดี) ไม่ใช่ useful god — ดวงอ่อนควรชี้เทพ "ธาตุเสริมตัว" เป็นหลัก
 - เป็นงานแยก (มี golden test เทพผูก ต้อง validate) — เสนอ R5.2c: ให้ "องค์หลัก" บทเทพอิง `resolveUsefulElements` (ตัวแรก) สำหรับดวง weak/very-weak
 
+## ✅ เฟส 2 รอบเสริม 2 (2026-06-08 ต่อเนื่อง)
+
+### R5.2c+ — เทพ "องค์เดียว" เจาะจง ✅
+[topic-knowledge.ts](../src/lib/bazi/topic-knowledge.ts): เปลี่ยน `isAdjustCharUsable` (boolean) → `scoreAdjustChar` (น้ำหนักเชี่ยงแซ: 帝旺=6, 临官/长生=5, 冠带=4, 养/胎/墓=2, เงื่อนไข ซี่/หมกยก/แป่=1) แล้ว rank candidate ในธาตุเดียวกันใน `buildCustomDeities` (สูง→ต่ำ, เสมอ=คงลำดับตำรา stable)
+- ผล: ดวง M (己) องค์หลัก = **ธาตุไฟ (ราศีบน 丁): เทพเจ้าเตาไฟ** (丁 ขึ้น 长生/เชี่ยงแซ ที่ 酉 สองตำแหน่ง) นำหน้าเทพสุริยัน (丙 ไม่มีเชี่ยงแซดี) — ตรงซินแส "เฉพาะเทพเจ้าเตาไฟ"
+- lock: `real-case-1993-11-24` (เตาไฟ before สุริยัน + ข้อความองค์หลักเป๊ะ)
+
+### R5.2b — band ฝั่ง strong: กฎ 得令 เฉพาะจุด ✅
+[topic-knowledge.ts](../src/lib/bazi/topic-knowledge.ts): `isSeasonalCommand` (ธาตุดิถี = ธาตุกิ่งเดือน = 月令旺) + `resolveStrengthBand` ยก **balanced→strong เฉพาะดวงถูกฤดู** ชดเชย 得令(+2) ที่ตัดจากสูตร (strength-scoring-spec ห้ามเติมกลับทั้งระบบ)
+- **ไม่แตะ `strengthScore`/`classifyOperatorStrengthScore`** → golden ทั้งหมด + displayLabel ราย score ไม่เปลี่ยน · ไม่ดัน global threshold (กัน overfit ดวงที่ไม่ 得令)
+- ผล diagnostic 14 ดวง: **band ต่าง 0** (DNA3 丙 summer 4.5 → strong, useful [ดิน,ทอง] ตรงซินแส) · useful ขาด **1/13** (เหลือ ภวรัญชน์ ขาด 财-ไฟ นอกขอบ) · 调候 gap 0 · เกศสรินทร์ (ไม่ถูกฤดู) ยัง balanced
+- lock: `real-case-dna-4-charts` (case3 → strong, case2 ไม่ถูกฤดู → weak)
+
+### R5.2C — dynamic band ข้ามวัยจร: เลื่อน (ตามมติเจ้าของ)
+`buildLuckPhaseVerdict` ยังใช้ band natal คงที่ · dynamic ต้องมี ground truth trajectory ที่ยังไม่มี → ทำไปเสี่ยง invent claim
+
 ## หมายเหตุ (เฟส 1)
 - diagnostic เพิ่ม export wrapper (`getEngineUsefulElements`/`getEngineStrengthBand`) — รันซ้ำได้ผลเท่าเดิม: `npx tsx scripts/r5-strength-diagnostic.ts`

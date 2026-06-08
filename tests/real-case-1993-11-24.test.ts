@@ -159,6 +159,10 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     const deities = buildTopicHumanReading(result, "guardian_deities", RawInputSchema.parse(BIRTH_INPUT));
     expect(deities).toContain("ธาตุไฟ");
     expect(deities).toContain("เจ้าพ่อพระเพลิง");
+    // R5.2c+: องค์หลัก "เจาะจง" = เทพเจ้าเตาไฟ (丁 ขึ้น 长生 ที่ 酉 — ตรงซินแสที่ระบุ "เทพเจ้าเตาไฟ")
+    //   ต้องนำหน้าเทพสุริยัน (丙 ไม่มีเชี่ยงแซดีในผังนี้)
+    expect(deities).toContain("องค์หลักที่ควรบูชาเป็นหลัก (เลือกองค์เดียว): ธาตุไฟ (ราศีบน 丁): เทพจันทรา เทพเจ้าเตาไฟ");
+    expect(deities!.indexOf("เทพเจ้าเตาไฟ")).toBeLessThan(deities!.indexOf("เทพสุริยัน"));
 
     const education = buildTopicHumanReading(result, "education", RawInputSchema.parse(BIRTH_INPUT));
     expect(education).toContain("ไฟ");

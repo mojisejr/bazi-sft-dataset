@@ -183,9 +183,23 @@ function dayMasterElement(calculatedState: CalculatedStateValue): SupportedEleme
   return (STEM_TO_ELEMENT[calculatedState.dayMaster as keyof typeof STEM_TO_ELEMENT] ?? "wood") as SupportedElementValue;
 }
 
+/** 得令 — ดิถี "ถูกฤดู": ธาตุดิถีตรงกับธาตุที่ครองเดือน (月令旺, เช่น 丙 ไฟ เกิดเดือน 午/巳)
+ *  ดวงถูกฤดูย่อมแกร่งกว่าคะแนนดิบ เพราะสเปกคะแนน (strength-scoring-spec) ตัด 得令(+2) ออกเพื่อกันเฟ้อทั้งระบบ */
+function isSeasonalCommand(calculatedState: CalculatedStateValue): boolean {
+  return branchElement(calculatedState.fourPillars.month.branch) === dayMasterElement(calculatedState);
+}
+
 function resolveStrengthBand(calculatedState: CalculatedStateValue): StrengthBand {
   try {
-    return classifyOperatorStrengthScore(calculatedState.strengthScore).id as StrengthBand;
+    const band = classifyOperatorStrengthScore(calculatedState.strengthScore).id as StrengthBand;
+    // R5.2b (กฎ 得令 เฉพาะจุด): ดวง "สมดุล" ที่ถูกฤดู (月令旺) → ยก reading-band เป็น "แข็ง"
+    //   ชดเชย 得令(+2) ที่ตัดจากสูตรคะแนน เฉพาะแดน balanced (ดวง weak ที่ถูกฤดูยังคง weak) —
+    //   แก้ที่ band ของการอ่านเท่านั้น ไม่แตะ strengthScore/score-classifier (คง golden + ไม่ดัน global threshold)
+    //   ผล: DNA3 (丙 summer 4.5) = strong → useful god ตามมา [output=ดิน, wealth=ทอง] ตรงซินแส
+    if (band === "balanced" && isSeasonalCommand(calculatedState)) {
+      return "strong";
+    }
+    return band;
   } catch {
     return "balanced";
   }
@@ -2398,12 +2412,26 @@ function resolveDeityAdjustElements(calculatedState: CalculatedStateValue): Supp
   return [resource, dm]; // weak / very-weak: ส่งเสริม + คู่ธาตุ (ไม่รวมลาภ ตามสเปก)
 }
 
-/** ตัวอักษร candidate (ราศีบน/ล่าง ของธาตุปรับดวง) "ใช้ได้" ไหม — เทียบเชี่ยงแซกับดวงทั้ง 8 ตัวรายตำแหน่ง */
-function isAdjustCharUsable(
+// R5.2c+: น้ำหนักเชี่ยงแซ "ดี" สำหรับ rank องค์เทพในธาตุเดียวกัน (เลือกองค์เดียวเจาะจง)
+//   ยิ่งตัวอักษรขึ้นเชี่ยงแซแกร่งกับดวง → ยิ่งควรเป็น "องค์หลัก" (ตี้อ๋วง/ลิ่มกัว/เชี่ยงแซ = สูงสุด)
+const ADJUST_QI_WEIGHT: Record<string, number> = {
+  "ตี้อ๋วง": 6, // 帝旺
+  "ลิ่มกัว": 5, // 临官
+  "เชี่ยงแซ": 5, // 长生
+  "กวงตั่ว": 4, // 冠带
+  "เอี้ยง": 2, // 养
+  "ทอ": 2, // 胎
+  "หมอ": 2, // 墓
+};
+
+/** ตัวอักษร candidate (ราศีบน/ล่าง ของธาตุปรับดวง) ขึ้นเชี่ยงแซดีแค่ไหน — รวมน้ำหนักเทียบดวงทั้ง 8 ตัวรายตำแหน่ง
+ *  คะแนน 0 = ใช้ไม่ได้ (เดิม isAdjustCharUsable คืน false) · คะแนนสูง = องค์หลักที่เจาะจงกว่า */
+function scoreAdjustChar(
   subjectStem: string,
   calculatedState: CalculatedStateValue,
-): boolean {
+): number {
   const dmEl = dayMasterElement(calculatedState);
+  let score = 0;
   for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
     const { stem, branch } = calculatedState.fourPillars[pillar];
     const targets: Array<{ qi: string; role: RelationRole }> = [
@@ -2415,17 +2443,27 @@ function isAdjustCharUsable(
         continue; // เจ๊าะ/ซวย ข้ามตำแหน่งนี้
       }
       if (ADJUST_GOOD_QI.has(qi)) {
-        return true;
+        score += ADJUST_QI_WEIGHT[qi] ?? 1;
+        continue;
       }
       if (qi === "ซี่" && SI_ALLOWED_ROLES.has(role)) {
-        return true;
+        score += 1;
+        continue;
       }
       if ((qi === "หมกยก" || qi === "แป่") && MUKYOK_PAE_ALLOWED_ROLES.has(role)) {
-        return true;
+        score += 1;
       }
     }
   }
-  return false;
+  return score;
+}
+
+/** ตัวอักษร candidate "ใช้ได้" ไหม — คงพฤติกรรมเดิม (คะแนน > 0) */
+function isAdjustCharUsable(
+  subjectStem: string,
+  calculatedState: CalculatedStateValue,
+): boolean {
+  return scoreAdjustChar(subjectStem, calculatedState) > 0;
 }
 
 /** Source7 §5 + เกณฑ์แก้ดวง: เลือก "ธาตุปรับดวง" → ตัวอักษร (ราศีบน/ล่าง) ที่ผ่านเชี่ยงแซ → องค์เทพ+องศา
@@ -2443,25 +2481,49 @@ function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
   for (const element of adjustElements) {
     const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, element)];
     const elLabel = elementLabel(element);
+    // R5.2c+: รวม candidate ราศีบน+ล่าง ของธาตุนี้ แล้ว rank ด้วยคะแนนเชี่ยงแซ → "องค์เดียวเจาะจง"
+    //   (เช่น ดวง M: 丁 ขึ้น 长生 ที่ 酉 คะแนนสูงกว่า 丙 ที่ไม่มีเชี่ยงแซดี → เทพเตาไฟนำเทพสุริยัน ตรงซินแส)
+    const candidates: Array<{ line: string; deity: string; score: number; order: number }> = [];
+    let order = 0;
     // ราศีบน (stem) ของธาตุปรับดวง
     for (const stem of STEMS_OF_ELEMENT[element]) {
       const entry = tables.upper.get(stem);
-      if (entry && isAdjustCharUsable(stem, calculatedState) && !seen.has(entry.deity)) {
-        seen.add(entry.deity);
-        out.push(
-          `ธาตุ${elLabel} (ราศีบน ${stem}): ${entry.deity}${entry.degree ? ` — องศา ${entry.degree}°` : ""} — ${benefit}`,
-        );
+      if (!entry) {
+        continue;
+      }
+      const score = scoreAdjustChar(stem, calculatedState);
+      if (score > 0) {
+        candidates.push({
+          line: `ธาตุ${elLabel} (ราศีบน ${stem}): ${entry.deity}${entry.degree ? ` — องศา ${entry.degree}°` : ""} — ${benefit}`,
+          deity: entry.deity,
+          score,
+          order: order++,
+        });
       }
     }
     // ราศีล่าง (branch) ของธาตุปรับดวง — ใช้ราศีแฝงพลังแท้ (本气) เป็นตัวคิดเชี่ยงแซ
     for (const branch of BRANCHES_OF_ELEMENT[element]) {
       const subjectStem = (BRANCH_HIDDEN_STEMS[branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [])[0] ?? "";
       const entry = tables.lower.get(branch);
-      if (entry && subjectStem && isAdjustCharUsable(subjectStem, calculatedState) && !seen.has(entry.deity)) {
-        seen.add(entry.deity);
-        out.push(
-          `ธาตุ${elLabel} (ราศีล่าง ${branch}): ${entry.deity}${entry.degree ? ` — องศา ${entry.degree}°` : ""} — ${benefit}`,
-        );
+      if (!entry || !subjectStem) {
+        continue;
+      }
+      const score = scoreAdjustChar(subjectStem, calculatedState);
+      if (score > 0) {
+        candidates.push({
+          line: `ธาตุ${elLabel} (ราศีล่าง ${branch}): ${entry.deity}${entry.degree ? ` — องศา ${entry.degree}°` : ""} — ${benefit}`,
+          deity: entry.deity,
+          score,
+          order: order++,
+        });
+      }
+    }
+    // rank: คะแนนเชี่ยงแซมากก่อน, เสมอ → คงลำดับตำราเดิม (stable) เพื่อ deterministic
+    candidates.sort((a, b) => (b.score - a.score) || (a.order - b.order));
+    for (const candidate of candidates) {
+      if (!seen.has(candidate.deity)) {
+        seen.add(candidate.deity);
+        out.push(candidate.line);
       }
     }
   }

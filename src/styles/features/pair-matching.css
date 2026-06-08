@@ -1,0 +1,533 @@
+/* Pair-matching page (เปรียบเทียบดวง 2 คน · คู่สมพงษ์) */
+
+.pair-shell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5, 1.5rem);
+}
+
+.pair-forms {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4, 1rem);
+}
+
+@media (max-width: 720px) {
+  .pair-forms {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pair-person {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+}
+
+.pair-person__title {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.pair-actions {
+  display: flex;
+  gap: var(--space-3, 0.75rem);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.pair-result {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.pair-domain-toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  border: 1px solid var(--border-subtle, #d9d2c4);
+  border-radius: 999px;
+  padding: 0.2rem;
+  width: fit-content;
+}
+
+.pair-domain-toggle button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.4rem 1.1rem;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-domain-toggle button[data-active="true"] {
+  background: var(--accent, #b8744f);
+  color: #fff;
+}
+
+.pair-score-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+  flex-wrap: wrap;
+}
+
+.pair-score-card__grade {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.pair-score-card__pct {
+  font-size: 1.1rem;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-score-card__emoji {
+  font-size: 1.3rem;
+  letter-spacing: 2px;
+}
+
+.pair-score-card__sising {
+  margin-left: auto;
+  text-align: right;
+}
+
+.pair-score-card__sising-name {
+  font-weight: 700;
+}
+
+.pair-rating-text {
+  line-height: 1.7;
+}
+
+.pair-direction-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3, 0.75rem);
+}
+
+@media (max-width: 720px) {
+  .pair-direction-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pair-direction {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: var(--space-3, 0.75rem);
+  border: 1px solid var(--border-subtle, #e2dccd);
+  border-radius: 0.6rem;
+}
+
+.pair-direction__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.pair-direction__label {
+  font-weight: 700;
+}
+
+.pair-direction__grade {
+  font-weight: 800;
+  font-size: 1.15rem;
+}
+
+.pair-direction__note {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-elem {
+  display: grid;
+  gap: 0.4rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: 0.6rem;
+  background: var(--surface-sunken, #f3eee3);
+}
+
+.pair-popup-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pair-components {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  color: var(--text-muted, #6b6253);
+  font-size: 0.9rem;
+}
+
+/* Per-person baseline cards */
+.pair-person-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3, 0.75rem);
+}
+
+@media (max-width: 720px) {
+  .pair-person-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pair-person-card {
+  border: 1px solid var(--border-subtle, #e2dccd);
+  border-radius: 0.6rem;
+  padding: var(--space-3, 0.75rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pair-person-card__head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pair-person-card__who {
+  font-weight: 700;
+}
+
+.pair-person-card__pillar {
+  font-size: 0.9rem;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-nisai-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  line-height: 1.6;
+}
+
+/* Verdict banner */
+.pair-verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4, 1rem);
+  padding: var(--space-4, 1rem);
+  border-radius: 0.7rem;
+  background: var(--surface-sunken, #f3eee3);
+}
+
+.pair-verdict__grade {
+  font-size: 2.8rem;
+  font-weight: 800;
+  line-height: 1;
+  min-width: 2.6rem;
+  text-align: center;
+}
+
+.pair-verdict__label {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.pair-verdict__pct {
+  font-size: 0.9rem;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-direction__meta {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-direction__emoji {
+  letter-spacing: 1px;
+}
+
+.pair-sising-feature {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: var(--space-3, 0.75rem);
+  border-radius: 0.6rem;
+  border: 1px solid var(--accent, #b8744f);
+  background: var(--surface-sunken, #f6efe1);
+}
+
+.pair-sising-feature__title {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.pair-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Modal */
+.pair-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(20, 16, 10, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 50;
+}
+
+.pair-modal {
+  background: var(--surface, #fbf7ee);
+  border-radius: 0.9rem;
+  max-width: 880px;
+  width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: var(--space-5, 1.5rem);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 1rem);
+}
+
+.pair-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.pair-modal__close {
+  border: 0;
+  background: transparent;
+  font-size: 1.4rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.pair-sising-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.pair-sising-card {
+  border: 1px solid var(--border-subtle, #e2dccd);
+  border-radius: 0.6rem;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pair-sising-card[data-active="true"] {
+  border-color: var(--accent, #b8744f);
+  background: var(--surface-sunken, #f6efe1);
+}
+
+.pair-sising-card__name {
+  font-weight: 700;
+}
+
+.pair-sising-card__score {
+  font-size: 0.85rem;
+  color: var(--text-muted, #6b6253);
+}
+
+.pair-charts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4, 1rem);
+}
+
+.pair-role {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px dashed var(--border-subtle, #e2dccd);
+}
+
+.pair-role__perspective {
+  font-weight: 600;
+}
+
+.pair-error {
+  color: var(--danger, #b3402f);
+}
+
+/* ── Print / PDF report (hidden on screen) ── */
+.pair-print-report {
+  display: none;
+}
+
+@media print {
+  /* show only the report */
+  main.page-shell > :not(.pair-shell) {
+    display: none !important;
+  }
+  .pair-shell > :not(.pair-print-report) {
+    display: none !important;
+  }
+  .pair-print-report {
+    display: block !important;
+    color: #1f1a17;
+    font-size: 11.5pt;
+    line-height: 1.65;
+  }
+  @page {
+    margin: 18mm 16mm;
+  }
+  body {
+    background: #ffffff !important;
+  }
+}
+
+.pair-print__header {
+  text-align: center;
+  border-bottom: 2px solid #b8744f;
+  padding-bottom: 10px;
+  margin-bottom: 16px;
+}
+
+.pair-print__header h1 {
+  font-size: 18pt;
+  margin: 0 0 4px;
+}
+
+.pair-print__date {
+  font-size: 10pt;
+  color: #6b6253;
+}
+
+.pair-print__people {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.pair-print__person {
+  border: 1px solid #d9d2c4;
+  border-radius: 6px;
+  padding: 10px 12px;
+  break-inside: avoid;
+}
+
+.pair-print__person h3 {
+  margin: 0 0 6px;
+  font-size: 12pt;
+}
+
+.pair-print__person ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.pair-print__domain {
+  margin-bottom: 18px;
+  break-inside: avoid;
+}
+
+.pair-print__domain-title {
+  font-size: 14pt;
+  border-left: 4px solid #b8744f;
+  padding-left: 8px;
+  margin: 0 0 8px;
+}
+
+.pair-print__verdict {
+  font-size: 12.5pt;
+  margin: 0 0 8px;
+}
+
+.pair-print__dirs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pair-print__dir {
+  border: 1px solid #e2dccd;
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.pair-print__dir-head {
+  margin: 0 0 4px;
+}
+
+.pair-print__elem,
+.pair-print__sising,
+.pair-print__roles {
+  margin-top: 8px;
+}
+
+.pair-print__sising {
+  background: #f6efe1;
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.pair-print__birth {
+  font-size: 10pt;
+  color: #6b6253;
+  margin: 0 0 6px;
+}
+
+.pair-print__chart {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5pt;
+}
+
+.pair-print__chart th,
+.pair-print__chart td {
+  border: 1px solid #d9d2c4;
+  padding: 5px 8px;
+  text-align: left;
+}
+
+.pair-print__chart th {
+  background: #f3eee3;
+  font-weight: 700;
+}
+
+.pair-print__chart-pos {
+  white-space: nowrap;
+  color: #6b6253;
+}
+
+.pair-print__chart tr[data-row="current"] td {
+  background: #f6efe1;
+}
+
+.pair-print__glyph {
+  font-size: 12pt;
+  font-weight: 700;
+}
+
+.pair-print__sub {
+  font-size: 9pt;
+  color: #6b6253;
+}
+
+.pair-print__footer {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 1px solid #d9d2c4;
+  font-size: 9.5pt;
+  color: #6b6253;
+  text-align: center;
+}

@@ -429,6 +429,39 @@ export function verifyReadingFaithful(engineText: string, llmText: string, thres
   return kept.length / need.length >= threshold;
 }
 
+/**
+ * เรียบเรียงร้อยแก้วทั่วไปจาก engine-truth ที่ส่งมา (ใช้กับหน้าเปรียบเทียบดวงคู่).
+ * ground ด้วยข้อความ engine-truth — ห้ามแต่งข้อมูลนอกเหนือจากที่ให้มา. reuse provider
+ * plumbing เดียวกับ generateReadingTopicLlm.
+ */
+export async function generateProseLlm(
+  input: {
+    systemInstruction: string;
+    userPrompt: string;
+    apiKey?: string;
+    model?: string;
+    provider?: ReadingLlmProvider;
+    temperature?: number;
+  },
+  deps: { generateContent?: GeminiGenerate } = {},
+): Promise<{ text: string; model: string }> {
+  const provider: ReadingLlmProvider = input.provider ?? "gemini";
+  const model = resolveLlmModel(provider, input.model);
+  const generateContent: GeminiGenerate =
+    deps.generateContent ?? resolveLlmGenerator(provider, input.apiKey);
+
+  const response = await generateContent({
+    model,
+    contents: input.userPrompt,
+    config: { systemInstruction: input.systemInstruction, temperature: input.temperature ?? 0.5 },
+  });
+  const text = response.text?.trim();
+  if (!text) {
+    throw new Error("LLM คืนค่าว่างสำหรับการเรียบเรียงคำทำนาย");
+  }
+  return { text, model };
+}
+
 /** สร้างคำอ่านสไตล์ Your Life Code ของหัวข้อเดียว + ด่านตรวจความซื่อสัตย์ (retry → fallback engine) */
 export async function generateReadingTopicLlm(
   input: ReadingTopicLlmInput,

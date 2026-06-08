@@ -230,6 +230,9 @@ export function BaziTrainerWorkspace({
         <ActionLink href="/reading" tone="primary" className="reading-cta__action">
           ไปหน้าคำทำนาย 15 บท →
         </ActionLink>
+        <ActionLink href="/pair-matching" tone="secondary" className="reading-cta__action">
+          เปรียบเทียบดวง 2 คน (คู่สมพงษ์) →
+        </ActionLink>
       </section>
 
       <section className="workspace-switch-shell">

@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { RawInputSchema } from "@/lib/bazi/schema-types";
 import { calculateBaziChart } from "@/lib/bazi/symbolic-engine";
-import { buildTopicHumanReading } from "@/lib/bazi/topic-knowledge";
+import { buildTopicHumanReading, getEngineStrengthBand } from "@/lib/bazi/topic-knowledge";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
 
@@ -82,6 +82,24 @@ describe("DNA ดวงจีน 4 charts — day master matches the complete re
     for (const element of c.want) {
       expect(career).toContain(`อาชีพธาตุ${element}`);
     }
+  });
+
+  // R5.2b (กฎ 得令 เฉพาะจุด): case3 (丙 เกิดเดือน 午 ไฟ = ถูกฤดู/月令旺) score 4.5 แดน balanced
+  //   → reading-band ต้องยกเป็น "strong" ตรงซินแส ("丙 แข็ง") · ดวงไม่ถูกฤดู (case2 己 ใบไม้ผลิ) ต้องไม่ถูกยก
+  test("得令: 丙 summer (case3) ยก reading-band เป็น strong; ดวงไม่ถูกฤดูไม่กระทบ", async () => {
+    const repository = createTestKnowledgeRepository();
+    const case3 = await calculateBaziChart(
+      RawInputSchema.parse({ birthDate: "1949-06-25", birthTime: "12:00", gender: "female", province: "Bangkok", calendarSystem: "solar", timezone: "Asia/Bangkok" }),
+      repository,
+    );
+    expect(case3.strengthScore).toBe(4.5); // คะแนนดิบไม่เปลี่ยน (ไม่แตะ score-classifier)
+    expect(getEngineStrengthBand(case3)).toBe("strong");
+
+    const case2 = await calculateBaziChart(
+      RawInputSchema.parse({ birthDate: "1981-03-12", birthTime: "05:59", gender: "male", province: "Bangkok", calendarSystem: "solar", timezone: "Asia/Bangkok" }),
+      repository,
+    );
+    expect(getEngineStrengthBand(case2)).toBe("weak");
   });
 
   // P2: บทพื้นฐานชะตาต้องเปิดด้วย imagery ดิถี×ฤดู ตรงสำนวนเอกสาร

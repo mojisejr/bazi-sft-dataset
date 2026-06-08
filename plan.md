@@ -1,71 +1,70 @@
-# แผนงาน: คำทำนาย BaZi — engine deterministic + LLM ขัดเกลา + ตรงซินแส
+# แผนงาน: หน้าเปรียบเทียบดวง 2 คน (คู่สมพงษ์ การงาน + ความรัก)
 
-> อัปเดต 2026-06-08 (รอบใหญ่) — สรุปสถานะปัจจุบันหลังทำ consumer render, Gemini A/B tuning, R5 (调候+band+เทพ), ปรับการแสดงผลหน้าอ่าน
-> ประวัติเก่าดูได้จาก git log / memory/ · เอกสารวิเคราะห์อยู่ใน docs/*-2026-06-08.md
+> อัปเดตล่าสุด 2026-06-08 — ฟีเจอร์ใหม่ "เปรียบเทียบดวง 2 คน" แยกหน้าจากของเดิม (`/reading`)
+> ประวัติงานก่อนหน้า (engine deterministic, consumer render, Gemini A/B, R5) ดูได้จาก git log / memory/
 
 ## เป้าหมาย
-ให้ engine แต่งคำทำนายเอง deterministic (ครบ 16 บท) ลื่นสไตล์ your life code / gptCase **คงข้อเท็จจริง/marker** ที่ test ผูก และ **ไม่เพิ่ม claim โหราศาสตร์ใหม่** · LLM (Gemini) เป็น layer ขัดเกลาให้ใกล้ gptCase · ทิศทางความถูกต้อง = **ตรงซินแส**
+หน้าใหม่ `/pair-matching` กรอกวันเกิด **2 คน** แล้วจับคู่ดวงแบบ **แม่นตามตำรา (สเปรดชีต)**
+ทั้ง **การงาน + ความรัก** พร้อมคำทำนายพื้นฐาน, ปุ่ม popup, เรียบเรียงด้วย LLM และ **export PDF**
 
-สถานะ test: **532 passed / 7 skipped / 0 fail** · deterministic 100%
-
----
-
-## ✅ เสร็จแล้ว (session 2026-06-08)
-
-### A. Narrative engine (เดิม) — ลื่นสไตล์ YLC ครบ 16 บท
-`reading-phrases.ts`, `topic-knowledge.ts`: weaveNarrative + chapter opening/headline + closing simile (`ELEMENT_CLOSING_SIMILE_TH`/`TOPIC_CLOSING_SIMILE_TH`) + หัวข้อ temper + bulletize · ดู [[gptcase-style-enhancements]]
-
-### B. Consumer render (ถอด scaffolding) — `humanizeConsumerProse`
-ถอด qi%, รหัส hanzi→qi, ผั่ว/ชง, Step 6.2 ออกเป็นร้อยแก้วผู้บริโภค · `buildTopicConsumerReading` · เปิดผ่าน API `mode="consumer"` + docx `variant`
-
-### C. Gemini prompt A/B tuning — [docs/gemini-prompt-tuning-2026-06-08.md]
-- prompt profile สลับได้ (`reading-prompt-profiles.ts`: baseline / **gptcase-tuned** (ใช้จริง))
-- scoring (embedding cosine + LLM-judge) + A/B harness (`scripts/ab-prompt-tester.ts`)
-- ผู้ชนะ = **gptcase-tuned + consumer ground** → ตั้ง default ของ Gemini path ใน route.ts
-- หลังแก้ engine (R5) A/B subset ขยับ 77.4 → **81.0** (corpus เต็ม 8 เคส = 76.7)
-
-### D. R5 — strength/useful-god ตรงซินแส — [docs/r5-strength-useful-divergence-2026-06-08.md]
-- **diagnostic** (`scripts/r5-strength-diagnostic.ts` + `scripts/lib/sinsae-ground-truth.ts`, 14 ดวง)
-- **2a 调候 layer** (`applyTiaohou`): ร้อน→เติมน้ำ / หนาว→เติมไฟ (มี officer-guard กันเติม 官杀)
-- **2b band calibration**: เพดาน very-weak 2 → −2 (1988/ภวรัญชน์/1993 = weak) — ซินแสยืนยันวาจา M(1993)="ดินอ่อน"
-- **2c เทพองค์หลัก** อิง useful god (ดวงอ่อน → เทพธาตุเสริมตัว ไม่ใช่ธาตุดิถี)
-- ผล: band match 10/10, useful match 12/13 (เหลือ ภวรัญชน์ ขาด 财-ไฟ) · ดู [[strength-1988-divergence]]
-
-### E. ปรับการแสดงผลหน้าอ่าน (TopicCard)
-- ตารางความสัมพันธ์ → **แตกรายเสาจริง** (เพิ่ม `carriers` ใน relationSummary)
-- วิธีการอ่าน → ละเอียดรายหัวข้อ (auditFocus + evidenceLines + per-relation)
-- คำอ่าน → **ข้อความ knownlage ตรง ๆ** (`getTopicKnownlageExcerpt`)
-- deepNote วัยจร (A) ไม่พูดซ้ำสภาวะ qi (B) verdict เจาะจงราย role (`ROLE_OUTCOME`/`VERDICT_FRAME`) — รายช่วงในตัวเอง ไม่ข้ามปี
+ฐานความรู้: `knownlage/ปฏิกิริยาธาตุ/` 3 ไฟล์ Excel
+- `12 สี่ซิ้ง.xlsx` — 12 ดาวสี่ซิ้ง + คะแนน + ความหมาย 6 ด้าน
+- `คู่สมพงษ์(การงาน).xlsx` / `คู่สมพงษ์(ความรัก).xlsx` — เมทริกซ์ 60 ชีต (หลักวันเรา × หลักวันคู่)
 
 ---
 
-## กฎเหล็กที่ยึด
-- เพิ่มแค่ **คำเชื่อม/เรียบเรียง/แปลง fact ที่ engine มี** — ห้ามเพิ่ม claim/ตัวเลขลอย
-- คง substring marker ที่ test ผูก (`ดิถี X`, `ราศีล่างวัน X`, `อาชีพธาตุX`, qi labels, `[เฝ้าระวัง]`/`[ยุคทอง]`, อายุ)
-- deterministic 100% · LLM ground จาก engine เท่านั้น ห้าม invent (faithfulness guard)
-- ทิศทางความถูกต้อง = ตรงซินแส (มี ground truth labeled chart เป็นหลักฐาน)
+## ✅ เสร็จแล้ว
+
+### 1. Distill Excel → JSON (`scripts/distill-pair-knowledge.py`)
+สกัด 3 ไฟล์เป็น JSON ใน `src/lib/bazi/data/pair/`:
+- `pair-matrix.json` — **3,600 คู่/โดเมน** (60×60) key `"<ก้านราศีเรา>|<ก้านราศีคู่>"` → percent (เฉลี่ย 3 องค์ประกอบ), components, points, สี่ซิ้ง
+- `rating-scale.json` — เกรด 13 ขั้น (A+…F) + เรตติ้ง 10 ระดับ (emoji + คำบรรยาย) ต่อโดเมน
+- `sising.json` — 12 สี่ซิ้ง (ชื่อ/คะแนน/6 ด้าน/สรุป)
+- `reference.json` — นิสัยหลักวัน (ก้าน/ราศี/เชี่ยงแซ), บทบาท เจ้านาย/ลูกน้อง/หุ้นส่วน, 12 เชี่ยงแซความรัก, คู่บุญคู่กรรม
+- normalize codepoint (U+F971→辰) + แก้ typo ต้นฉบับ
+
+### 2. Engine (`src/lib/bazi/pair-matching.ts` + `pair-types.ts`)
+- `computePairMatch` — จับคู่แม่นตามชีต → percent/เกรด/องค์ประกอบ/สี่ซิ้ง/คำเรตติ้ง
+- `computePairMatchPair` — **2 ทิศทาง (เรา↔คู่) + คะแนนรวมเฉลี่ย** (แก้ปัญหากรอก 1-2 vs 2-1 ได้ผลต่าง — เป็น directional ตามตำรา)
+- `buildElementInteractionAB` — ปฏิกิริยาธาตุ 5 ประการ A↔B (reuse `GENERATES`/`CONTROLS`)
+- `buildNisai` — นิสัยหลักวัน 3 บรรทัด (ก้าน/ราศี/เชี่ยงแซ ผ่าน `resolveDisplayTwelveQiStage`)
+- `buildWorkRoleReadings` / `buildLoveRoleReadings` — บทบาทตามหลักวัน×ราศีคู่
+
+### 3. API
+- `POST /api/bazi/pair` — คำนวณ 2 ดวง (`calculateBaziStateFromRawInput`) + เปรียบเทียบ 2 โดเมน
+- `POST /api/bazi/pair/rephrase` — เรียบเรียง engine-truth ด้วย LLM (reuse `generateProseLlm` ใน `reading-llm.ts`)
+
+### 4. หน้าเว็บ (`/pair-matching`)
+- `page.tsx` (Clerk guard) + `PairMatchingWorkspace.tsx` + `PairDetailModal.tsx` + `PairPrintReport.tsx`
+- กรอก 2 คน (reuse option/`buildPayload` จาก trainer-workspace), toggle งาน/รัก
+- แสดง: คำทำนายพื้นฐานรายคน, แบนเนอร์เกรด+คำตัดสิน, 2 ทิศทาง, ปฏิกิริยาธาตุ, สี่ซิ้งประจำคู่ (คำอธิบายเต็ม + 3 ด้านตรงโดเมน), บทบาท
+- popup: ผังธาตุ 2 คน, 12 สี่ซิ้งทั้งหมด
+- ปุ่มเรียบเรียงด้วย LLM (Gemini/Local Claude/OpenCode)
+- ลิงก์เข้าหน้าใหม่จากหน้าแรก (`BaziTrainerWorkspace.tsx`)
+
+### 5. Export PDF (print-to-PDF ผ่านเบราว์เซอร์)
+ปุ่ม "บันทึกเป็น PDF / พิมพ์" → `PairPrintReport` (ซ่อนบนจอ แสดงเฉพาะตอนพิมพ์) รวมในไฟล์เดียว:
+- หัวรายงาน + วันที่จัดทำ
+- การ์ด 2 คน: หลักวัน + **วันเวลาเกิด** + นิสัย
+- **ตารางพื้นดวงเทียบกัน**: 4 เสา + ลัคนา + **ปีปัจจุบันเท่านั้น** (ไม่เอาวัยจรทุกปี)
+- ความรัก + การงาน (เต็ม)
+- print CSS: `@page` margin, `break-inside: avoid`, ซ่อน chrome ทั้งหมดตอนพิมพ์
+
+### 6. เทสต์
+`tests/pair-matching.test.ts` — 10 เคส (ความแม่นตามชีต, directional, คะแนนรวม order-independent, ปฏิกิริยาธาตุ) ผ่านทั้งหมด
 
 ---
 
-## ▶ BACKLOG (เรียงตามคุ้ม)
+## ไฟล์หลัก
+- `scripts/distill-pair-knowledge.py`, `src/lib/bazi/data/pair/*.json`
+- `src/lib/bazi/pair-matching.ts`, `pair-types.ts`
+- `src/app/api/bazi/pair/route.ts`, `src/app/api/bazi/pair/rephrase/route.ts`
+- `src/app/pair-matching/page.tsx`
+- `src/components/bazi/pair/{PairMatchingWorkspace,PairDetailModal,PairPrintReport,pair-presentation}.{tsx,ts}`
+- `src/styles/features/pair-matching.css`
+- `tests/pair-matching.test.ts`
 
-### R5.2c+ — เทพ "องค์เดียว" เจาะจง (ทางเลือก)
-ซินแส M บอก "เฉพาะเทพเตาไฟ" — ตอนนี้ engine นำด้วย "ธาตุไฟ" ถูกแล้ว แต่ตัวแรกเป็นเทพสุริยัน ไม่ใช่เตาไฟ · ถ้าจะเป๊ะต้อง rank เทพในธาตุเดียวกัน (ละเอียด)
-
-### R5.2b/C — band + dynamic strength (รอข้อมูล)
-- band ฝั่ง strong: DNA3 (丙 summer) engine=balanced แต่ซินแส=strong → ต้องการ labeled chart เพิ่ม (เป้า 15-20) ก่อนขยับ threshold ฝั่งสูง
-- deepNote **dynamic band ข้ามวัยจร** (C) — ปรับ support/drain ตามกำลังสะสม ไม่ใช่ natal คงที่ (งานใหญ่ ต้องมี ground truth)
-
-### R6 — 流年 รายปี
-gptCase มีคำเตือนปีปฏิทิน (เช่น "ปี 2569") ที่ engine ยังไม่ผูก liunian เข้าบทวัยจร — เป็น fact ต้องต่อ liunian ไม่ใช่แต่งคำ
-
-### R2 — 60-กะจื่อ ขาดเนื้อราศีล่าง 辰 (5 combos)
-`knownlage/ลักษณะนิสัย60แบบ_*.txt` — ขอเนื้อจากซินแสแล้วเติม (มี fallback ระดับก้านคุมอยู่)
-
----
-
-## Verification
-- `npx vitest run` — ต้องคง **532 passed / 7 skipped / 0 fail**
-- `npx tsx scripts/r5-strength-diagnostic.ts` → out/r5/divergence.md (band/useful/调候)
-- `npx tsx scripts/ab-prompt-tester.ts --variants gptcase-tuned --ground consumer ...` (ต้องมี GEMINI_API_KEY)
-- เช็ค deterministic: รันซ้ำ output เท่าเดิม
+## หมายเหตุ / ค้างไว้
+- คะแนน directional ตามตำรา (เรา↔คู่ ต่างกันได้) — หน้าเว็บโชว์ทั้ง 2 ทิศ + คะแนนรวมเฉลี่ย
+- 12 สี่ซิ้งรายคน: ยังใช้สี่ซิ้งจากการจับคู่ + ตาราง 12 ดาวอ้างอิง (กฎ map รายบุคคลในตำรายังไม่ชัดพอ encode)
+- คู่บุญคู่กรรม (ตามปีเกิด) เก็บเป็น raw ใน reference.json — ยังไม่ได้แสดงผล
