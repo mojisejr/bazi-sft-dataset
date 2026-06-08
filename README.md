@@ -1,74 +1,141 @@
-# Bazi AI Annotation & Inference System
+# ระบบทำนายดวงจีน (Bazi) + ชุดข้อมูล SFT
 
-A Neuro-Symbolic Web Application designed for deep Bazi data annotation and supervised fine-tuning dataset collection.
+> เว็บแอปสำหรับ **ทำนายดวงจีนปาจื่อ (八字 / Bazi)** ด้วย **เครื่องมือเชิงสัญลักษณ์ (deterministic engine)** ที่แต่งคำทำนายเองครบ 16 บท
+> พร้อมเครื่องมือ **annotate ข้อมูล** และ **export ชุดข้อมูล SFT** สำหรับเทรนโมเดล รวมถึง **export รายงาน .docx**
 
-## Phase Status
+ชื่อแพ็กเกจ: `bazi-sft-dataset`
 
-- Phase 0: Git isolation and operator provisioning complete.
-- Phase 0.5: App scaffold, Drizzle wiring, and Vitest hard-gate foundation complete.
-- Phase 1: `bazi_dataset_records` schema is live in Drizzle and Neon.
-- Phase 1.5: Canonical knowledge normalization landed for the current Mootech corpus, including FAQ taxonomy, interaction tables, day-master profiles, 60 Jiazi narratives, and domain matrices.
-- Phase 1.5 blocker: the raw 100-year solar-term source is still missing from the current corpus, so `bazi_time_solar_terms` exists in schema but remains unseeded.
+---
 
-## Stack
+## ภาพรวม (โปรเจกต์นี้คืออะไร)
 
-- Next.js 16 with App Router and TypeScript
-- Neon PostgreSQL via `@neondatabase/serverless`
-- Drizzle ORM + Drizzle Kit
-- Vitest for deterministic tests
-- Zod for environment validation
+ผู้ใช้กรอก **วัน–เวลา–สถานที่เกิด** → ระบบ
+1. คำนวณ **ผังดวง (สี่เสา / 四柱)** + กำลังดิถี (แข็ง–อ่อน) + 12 เชี่ยงแซ + วัยจร ด้วย engine เชิงสัญลักษณ์
+2. **แต่งคำทำนายเป็นร้อยแก้วลื่น ๆ ครบ 16 บท** แบบ deterministic (ไม่พึ่ง LLM ภายนอก) โดยเลียนสำนวนเอกสารต้นฉบับ "your life code"
+3. **export เป็นไฟล์ .docx** ที่มีหน้าปก สารบัญ ตารางดวง และคำทำนายครบทุกบท
 
-## UI Layer Ownership
+จุดเด่นคือ **"แต่งคำเองจากข้อเท็จจริงของ engine เท่านั้น"** — ไม่ดึงศาสตร์อื่นมาปน ไม่แต่งเกิน ทำให้คำทำนายคงความถูกต้องและทำซ้ำได้ผลเดิมเป๊ะ (deterministic 100%)
 
-Bazi now acts as the Oracle UI exemplar for a four-layer frontend architecture:
+นอกจากนี้ยังเป็น **เครื่องมือสร้าง dataset** สำหรับ supervised fine-tuning (SFT): มีระบบ annotate, จัดคิว generate, และ export เป็นชุดข้อมูล
 
-1. `src/styles/tokens/reference.css`
-	Raw visual values and brand-adjacent reference tokens.
-2. `src/styles/tokens/system.css`
-	Semantic UI roles such as surfaces, lines, and state colors.
-3. `src/styles/foundation.css` + `src/styles/primitives.css` + `src/components/bazi/primitives/`
-	Foundation owns app-wide base rules. Primitives own reusable UI structure and interaction grammar.
-4. Feature components under `src/components/bazi/`
-	Compose the token and primitive layers into Bazi-specific screens and workflows.
+---
 
-`src/styles/bazi-spillover.css` remains a temporary migration inventory for selectors that are still feature-local or not yet reusable enough to promote into primitives.
+## แนวคิดหลัก (Neuro-Symbolic)
 
-See `docs/oracle-ui-exemplar.md` for the full layer map, ownership rules, and migration guidance.
+ระบบยึด **องค์ความรู้โหราศาสตร์เป็น "กฎ + ข้อมูลที่มีโครงสร้าง"** ไม่ใช่ free-text:
 
-## Quick Start
+- **ดิถีแข็ง–อ่อน → useful god**: ดิถีอ่อนต้องการ 印 (ส่งเสริม) + 比 (คู่ธาตุ); ดิถีแข็งต้องการ 食傷 (ถ่ายเท) / 财 (ลาภ)
+- **12 เชี่ยงแซ 3 ระดับ**: รุ่งเรือง (长生/冠带/临官/帝旺) / ผันผวน (沐浴/胎/养) / ถดถอย (衰/病/死/墓/绝)
+- **ตำแหน่งเสา**: ปี = สังคม/บรรพบุรุษ · เดือน = การงาน/พ่อแม่ · วัน = ตัวเอง/คู่ครอง · ยาม = บริวาร/บั้นปลาย
+- **คู่ครอง**: ดวงชาย = 财 (ดาวลาภ) · ดวงหญิง = 官杀 (ดาวอำนาจ)
+- **สุขภาพ**: ธาตุอ่อน = อวัยวะนั้นป่วย · ธาตุล้นเกิน = กดทับร่างกาย
+- **imagery 调候**: 10 ดิถี × 4 ฤดู → ภาพธรรมชาติ (เช่น 壬 = ทะเลกว้าง, 甲 = ต้นไม้ใหญ่)
 
-1. Copy `.env.example` to `.env.local` and place the active Neon connection string in `DATABASE_URL`.
-2. Install dependencies with `npm install`.
-3. Start the app with `npm run dev`.
-4. Run the default hard gate with `npm run gate:default`.
+ทุกบทประกอบจากกฎเหล่านี้ + คลังถ้อยคำ (`reading-phrases.ts`) แล้วร้อยเป็นร้อยแก้ว
 
-## Testing Gates
+---
 
-- Default developer gate: `npm run gate:default`
-- Heavy verification lane: run `npm run gate:default` first, then `npm run gate:heavy-lane` when work touches corpus/build-wide truth
-- Feature-local fast slice: add `npx vitest run <affected test file>` on top of the default gate when the changed surface has a nearby focused test
-- Current lane matrix and the temporary known-red suites live in `docs/testing-gates.md`
+## คำทำนาย 16 บท
 
-## Database Scripts
+1 พื้นฐานดวงชะตา · 2 อาชีพ/ธุรกิจ · 3 โชคลาภ · 4 ผู้อุปถัมภ์ · 5 พรสวรรค์ · 6 ครอบครัว · 7 ความรัก/คู่ครอง · 8 เพื่อน/ศัตรู · 9 หุ้นส่วน · 10 ลูกน้องบริวาร · 11 การเรียน · 12 ช่วงวัย (วัยจร) · 13 สุขภาพ · 14 สี/ทิศมงคล · 15 องค์เทพ · 16 การพูด/การสื่อสาร
 
-- `npm run db:generate`
-- `npm run db:migrate`
-- `npm run db:push`
-- `npm run db:studio`
-- `npm run db:seed:canonical:dry`
-- `npm run db:seed:canonical`
+**โครงแต่ละบท:**
+```
+intro (คอนเซ็ปต์ทั่วไป)  →  พาดหัวเจาะดวง + ภาพดิถี/กำลัง  →  เนื้อหา engine (ร้อยด้วยคำเชื่อม)  →  สรุป/คำแนะนำ
+```
 
-The current Drizzle schema defines the Phase 1 `bazi_dataset_records` table plus the Phase 1.5 canonical knowledge tables used to store the online single source for the distilled Mootech corpus.
+รายละเอียดงาน narrative composer + ข้อเสนอต่อ ดูที่ [`plan.md`](plan.md)
 
-## Frontend Change Guide
+---
 
-- Add or rename a raw visual constant -> `src/styles/tokens/reference.css`
-- Change a semantic surface/state role -> `src/styles/tokens/system.css`
-- Change app-wide body/shell defaults -> `src/styles/foundation.css`
-- Create or improve a reusable panel/button/badge/heading/form recipe -> `src/styles/primitives.css` and `src/components/bazi/primitives/`
-- Change one Bazi feature surface only -> the relevant component under `src/components/bazi/`
-- If a selector is still one-off and not yet worth promotion -> keep it in `src/styles/bazi-spillover.css`, but treat that as temporary
+## Tech Stack
 
-## Owner
+- **Next.js 16** (App Router) + **TypeScript**
+- **Neon PostgreSQL** ผ่าน `@neondatabase/serverless` + **Drizzle ORM**
+- **Vitest** (เทสต์ deterministic)
+- **Zod** (validate env/schema)
+- `lunar-javascript` (ปฏิทินจีน/สุริยคติ) · `docx` (export Word) · `@google/genai` (LLM เสริม) · `@line/bot-sdk` (LINE bot) · `@clerk/nextjs` (auth)
 
-Generated via Oracle HQ
+---
+
+## โครงสร้างโฟลเดอร์
+
+| โฟลเดอร์ | หน้าที่ |
+|---|---|
+| `src/lib/bazi/` | หัวใจระบบ — engine คำนวณดวง + ตัวแต่งคำทำนาย |
+| `src/components/bazi/` | UI (annotate, อ่านดวง, workspace) |
+| `src/app/` | หน้าเว็บ + API routes (Next.js) |
+| `knownlage/` | องค์ความรู้โหราศาสตร์ที่ extract แล้ว (.txt) — ตำราต้นทาง |
+| `example/` | เอกสารอ้างอิงสำนวน (`your life code_*.docx`, `1.docx`) |
+| `scripts/` | สคริปต์ build knowledge / export / dataset / db |
+| `tests/` | เทสต์ (รวม golden / real-case 6 ดวงอ้างอิง) |
+| `docs/`, `drizzle/`, `memory/` | เอกสาร / migration / บันทึกความรู้ |
+
+**ไฟล์สำคัญใน `src/lib/bazi/`:**
+- `symbolic-engine.*` — คำนวณผังดวง สี่เสา กำลังดิถี วัยจร 12 เชี่ยงแซ
+- `topic-knowledge.ts` — ตัวแต่งคำทำนาย 16 บท (`buildTopicHumanReading`)
+- `reading-phrases.ts` — คลังถ้อยคำ + ตัวร้อยร้อยแก้ว (`weaveNarrative`, headlines, connectors)
+- `reading-docx.ts` — สร้างไฟล์ .docx
+
+---
+
+## เริ่มต้นใช้งาน
+
+```bash
+# 1) ติดตั้ง dependencies
+npm install
+
+# 2) ตั้งค่า env — คัดลอก .env.example แล้วใส่ DATABASE_URL (Neon)
+cp .env.example .env.local
+
+# 3) รันเว็บ
+npm run dev
+
+# 4) ตรวจ gate หลักก่อน commit
+npm run gate:default
+```
+
+**export รายงาน .docx (CLI):**
+```bash
+npm run export:docx -- 1988-06-08 12:08 female "Bangkok" out/report.docx
+```
+
+---
+
+## เทสต์
+
+```bash
+npm run test            # รันทั้งหมด (vitest)
+npm run gate:default    # build + lint + เทสต์ runtime-critical (ใช้ก่อน commit)
+npm run gate:heavy-lane # เทสต์หนัก (แตะ corpus/build) — รันต่อจาก gate:default
+```
+
+- งานคำทำนายต้องคง **516 passed / 7 skipped / 0 fail** และ **deterministic** (รันซ้ำได้ผลเดิม)
+- มีเทสต์ real-case 6 ดวงอ้างอิง (your life code) กัน overfit
+- รายละเอียด lane matrix: `docs/testing-gates.md`
+
+> วิธี preview คำทำนายเร็ว ๆ: เขียน temp test ใน `tests/` เรียก `buildTopicHumanReading(state, topicId, raw)` แล้ว `writeFileSync` (path alias `@/` resolve เฉพาะตอนรันผ่าน vitest)
+
+---
+
+## สคริปต์ฐานข้อมูล / ชุดข้อมูล (ย่อ)
+
+```bash
+npm run db:migrate            # apply migration (Drizzle)
+npm run db:studio            # เปิด Drizzle Studio
+npm run db:seed:canonical    # seed องค์ความรู้ canonical
+npm run db:audit:strength    # ตรวจ coverage โปรไฟล์กำลังดิถี
+
+npm run dataset:export:sft   # export ชุดข้อมูล SFT
+```
+
+ดูสคริปต์ทั้งหมดได้ใน `package.json` (กลุ่ม `db:*` และ `dataset:*`)
+
+---
+
+## หลักการพัฒนา (กฎเหล็ก)
+
+1. **แต่งคำจาก fact ของ engine เท่านั้น** — ห้ามเพิ่มข้อมูลโหราศาสตร์/ตัวเลขลอย
+2. **คง marker ที่เทสต์ผูกไว้** — เพิ่มร้อยแก้ว "รอบ ๆ" ไม่ลบ/ไม่แปลงค่า
+3. **deterministic 100%** — ไม่มีสุ่ม คำเชื่อมหมุนตาม index
+4. **ไม่ overfit ดวงเดียว** — ยึดหลักทั่วไป ยืนยันด้วย 6 ดวงอ้างอิง

@@ -96,6 +96,29 @@ export const CHAPTER_ASPECT_TH: Record<string, string> = {
   speech: "การพูดและการสื่อสาร",
 };
 
+/**
+ * หัวบท "เจาะดวง" สไตล์ your life code (ดึงสำนวนจาก example/your life code_*.docx ทั้ง 6 ไฟล์)
+ * ใช้เปิดบทต่อจาก intro คอนเซ็ปต์ ให้โทนชวนอ่านแบบเอกสารต้นฉบับ — เป็นพาดหัว ไม่ใช่ข้อเท็จจริงใหม่
+ */
+export const CHAPTER_HEADLINE_TH: Record<string, string> = {
+  chart_foundation: "พื้นฐานดวงชะตาที่ถูกกำหนด",
+  career_potential: "อาชีพ / ธุรกิจ ที่ควรทำ และไม่ควรทำ",
+  wealth_and_investment: "โชคลาภที่ถูกทาง โอกาสรวยอยู่แค่เอื้อม",
+  benefactor: "ผู้อุปถัมภ์ที่พร้อมช่วยเหลือคือใครกันนะ",
+  talent: "พรสวรรค์ที่คุณค้นหามาตลอดทั้งชีวิต",
+  family: "ครอบครัวอันเป็นพื้นฐานสำคัญสำหรับชีวิต",
+  love_partner: "ความรัก / คู่ครองที่เหมาะสม ใครคือตัวจริง และการครองชีวิตคู่อย่างมีความสุข",
+  friends_foes: "เพื่อนแท้ ศัตรู คือใคร และควรทำอย่างไร",
+  partnership: "หุ้นส่วนควรมีหรือไม่ / ควรทำคนเดียวดีกว่า",
+  subordinates: "ลูกน้องบริวารที่ดีย่อมทำให้ธุรกิจรุ่งเรือง",
+  education: "การเรียนที่ตรงสายจะช่วยให้เราร่ำรวยขึ้น",
+  turning_points: "ช่วงอายุที่ดี และช่วงอายุที่ควรระมัดระวัง",
+  health: "การดูแลสุขภาพ เพื่อเตรียมความพร้อม",
+  colors_directions: "สี และทิศมงคล ทั้งสีกระเป๋า รถ และของมงคล",
+  guardian_deities: "องค์เทพที่คุ้มครองดวง ช่วยหนุนให้สำเร็จ",
+  speech: "วาจาคือพลัง คำพูดที่สร้างโอกาสให้ชีวิต",
+};
+
 /** กลยุทธ์ชีวิตตามกำลังดิถี (ใช้นำย่อหน้าปิด) */
 export const BAND_LIFE_TH: Record<string, string> = {
   "very-weak":
@@ -115,6 +138,69 @@ export const ELEMENT_DEITY_BENEFIT_TH: Record<string, string> = {
   "ทอง": "เสริมความเด็ดขาด ระเบียบวินัย การเงิน และการตัดสินใจ",
   "น้ำ": "เสริมสติปัญญา ไหวพริบ การหมุนเวียนเงิน และโอกาสใหม่ ๆ",
 };
+
+/**
+ * คำเชื่อมร้อยแก้วหมุนเวียน (deterministic) — เติมหน้าย่อหน้า "ร้อยแก้ว/Label เดี่ยว"
+ * เพื่อให้เนื้อหาลื่นไหลแบบเอกสารต้นฉบับ (1.docx) โดยไม่เพิ่มข้อเท็จจริงใหม่
+ * ตัวแรกเป็นค่าว่างเพื่อเว้นจังหวะ ไม่ให้ทุกย่อหน้ามีคำเชื่อมจนรก
+ */
+export const NARRATIVE_CONNECTORS: string[] = [
+  "",
+  "นอกจากนี้ ",
+  "อีกทั้ง ",
+  "ขณะเดียวกัน ",
+  "ในอีกด้านหนึ่ง ",
+  "ยิ่งไปกว่านั้น ",
+  "อีกประการหนึ่ง ",
+  "ทั้งนี้ ",
+  "ในแง่นี้ ",
+];
+
+/** วลีที่บ่งว่าย่อหน้าเป็นคำเชื่อมอยู่แล้ว (เลี่ยงเติมซ้อน) */
+const EXISTING_CONNECTOR_PREFIXES = [
+  ...NARRATIVE_CONNECTORS.filter(Boolean),
+  "โดยรวม",
+  "สรุป",
+  "แนวทาง",
+  "ความสัมพันธ์",
+  "อย่างไรก็ตาม",
+  "ดังนั้น",
+  "เนื่องจาก",
+  "อีกด้านหนึ่ง",
+];
+
+/**
+ * ย่อหน้านี้ควรเติมคำเชื่อมนำหรือไม่
+ * - ร้อยแก้ว/Label เดี่ยว → เติม
+ * - บล็อกลิสต์ที่มี "หัวบรรทัดนำ" (เช่น "หัวข้อ:\n•…") → เติมคำเชื่อมที่หัวบรรทัด ให้ร้อยเข้ากับเนื้อความ
+ * - ย่อหน้าที่ขึ้นต้นด้วยบุลเลตล้วน หรือขึ้นต้นด้วยคำเชื่อม/หัวข้อพิเศษอยู่แล้ว → ข้าม (กันซ้อน/กันอ่านแปลก)
+ */
+function isWeavableParagraph(paragraph: string): boolean {
+  const text = paragraph.trim();
+  if (!text) return false;
+  // ขึ้นต้นด้วยบุลเลตทันที (ไม่มีหัวบรรทัดนำ) → คงรูปเดิม
+  if (text.startsWith("•")) return false;
+  // เลี่ยงเติมคำเชื่อมซ้อนถ้าย่อหน้าขึ้นต้นด้วยคำเชื่อม/หัวข้อพิเศษอยู่แล้ว
+  return !EXISTING_CONNECTOR_PREFIXES.some((prefix) => text.startsWith(prefix));
+}
+
+/**
+ * เรียบเรียงย่อหน้า body ให้ลื่นขึ้นด้วยคำเชื่อมหมุนเวียน (deterministic 100%)
+ * - คงย่อหน้าแรกไว้เป็นประโยคนำ
+ * - เติมคำเชื่อมเฉพาะย่อหน้าร้อยแก้ว/Label เดี่ยว ตามลำดับการนับ (stable)
+ * - ไม่แตะบล็อกลิสต์/บุลเลต และไม่ลบ/แปลงข้อเท็จจริงใด ๆ (เพิ่มแค่คำเชื่อมนำหน้า)
+ */
+export function weaveNarrative(paragraphs: string[]): string[] {
+  let connectorIndex = 0;
+  return paragraphs.map((paragraph, index) => {
+    if (index === 0 || !isWeavableParagraph(paragraph)) {
+      return paragraph;
+    }
+    const connector = NARRATIVE_CONNECTORS[connectorIndex % NARRATIVE_CONNECTORS.length];
+    connectorIndex += 1;
+    return connector ? `${connector}${paragraph.trim()}` : paragraph;
+  });
+}
 
 /** รวมย่อหน้า (ตัดค่าว่าง) ด้วยบรรทัดว่างคั่น */
 export function composeParagraphs(parts: Array<string | null | undefined>): string {

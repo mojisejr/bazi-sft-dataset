@@ -138,15 +138,34 @@ def extract_career_relations():
         "partner": "คำทำนายหุ้นส่วนเพื่อนร่วมงาน",
         "boss": "คำทำนายตัวเรา>เจ้านาย",
     }
-    for relation, sheet in sheets.items():
-        if sheet not in wb.sheetnames:
-            continue
-        ws = wb[sheet]
+    def emit_qi_table(workbook, sheet, relation):
+        """หา qi + คำทำนายแบบ dynamic (คอลัมน์ของแต่ละ sheet ไม่ตรงกัน บางอันมี leading empty col)."""
+        if sheet not in workbook.sheetnames:
+            return
+        ws = workbook[sheet]
         for row in ws.iter_rows(min_row=1, max_row=20, values_only=True):
-            qi = norm(row[2]).strip() if len(row) > 2 and row[2] is not None else ""
-            verdict = norm(row[4]).strip() if len(row) > 4 and row[4] is not None else ""
-            if qi in twelve_qi and verdict and not re.match(r"^\d", verdict):
-                out.append(f"[{relation}] {qi} | {verdict}")
+            vals = [norm(c).strip() for c in row if c is not None and norm(c).strip()]
+            qi = next((v for v in vals if v in twelve_qi), "")
+            if not qi:
+                continue
+            cands = [
+                v for v in vals
+                if v != qi and len(v) > 10
+                and not re.match(r"^[\d.]+$", v)
+                and not re.match(r"^A\d+$", v)
+                and not v.startswith("UPDATE")
+            ]
+            if cands:
+                out.append(f"[{relation}] {qi} | {max(cands, key=len)}")
+
+    for relation, sheet in sheets.items():
+        emit_qi_table(wb, sheet, relation)
+
+    # คู่รัก: คู่สมพงษ์(ความรัก).xlsx sheet "12เชี่ยงแซความรัก" → คำทำนายคู่รักตาม 12 เชี่ยงแซ (บท7)
+    love_path = _find_docs("คู่สมพงษ์(ความรัก).xlsx")
+    if love_path:
+        love_wb = openpyxl.load_workbook(love_path, read_only=True, data_only=True)
+        emit_qi_table(love_wb, "12เชี่ยงแซความรัก", "lover")
     return out
 
 
