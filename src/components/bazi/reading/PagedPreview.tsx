@@ -67,9 +67,14 @@ function loadPaged(): Promise<PagedGlobal> {
 export function PagedPreview({ children }: { children: ReactNode }) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLDivElement>(null);
+  const ranRef = useRef(false);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
 
+  // รัน paged.js "ครั้งเดียวต่อการ mount" — กัน re-run ตอน parent re-render (children เปลี่ยน reference
+  // ทุก render) ซึ่งทำให้ paged.js เริ่มใหม่ทับ DOM เดิมที่ยังจัดหน้าไม่เสร็จ → null nextSibling/getAttribute
   useEffect(() => {
+    if (ranRef.current) return;
+    ranRef.current = true;
     let cancelled = false;
     (async () => {
       try {
@@ -89,7 +94,7 @@ export function PagedPreview({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [children]);
+  }, []);
 
   return (
     <>

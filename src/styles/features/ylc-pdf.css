@@ -288,6 +288,7 @@
 /* ── ผังดวงกำกับลูกศรของบท (compact strip) ───────────────────────────── */
 .ylc-cstrip {
   margin: 0 0 7mm;
+  break-inside: avoid;
 }
 .ylc-cstrip__grid {
   position: relative;

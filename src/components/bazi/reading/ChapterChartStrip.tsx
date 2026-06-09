@@ -104,11 +104,12 @@ export function buildChapterAnnotation(
 }
 
 /** แถบผังดวงย่อพร้อมวงแหวนสี + ลูกศร SVG ชี้ก้าน/กิ่งที่บทนั้นอ้าง */
-export function ChapterChartStrip({ annotation }: { annotation: ChapterAnnotation }) {
+export function ChapterChartStrip({ annotation, uid = "" }: { annotation: ChapterAnnotation; uid?: string }) {
   const { cols, highlights, arrows, caption } = annotation;
   const colCount = cols.length;
   const centerX = (i: number) => ((i + 0.5) / colCount) * 100;
   const dayX = centerX(2);
+  const markerId = (to: number) => `ylc-arw-${uid}-${to}`;
 
   return (
     <figure className="ylc-cstrip">
@@ -116,8 +117,8 @@ export function ChapterChartStrip({ annotation }: { annotation: ChapterAnnotatio
         {arrows.length > 0 ? (
           <svg className="ylc-cstrip__arrows" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
             <defs>
-              {arrows.map((a, i) => (
-                <marker key={i} id={`ylc-arw-${a.to}`} markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
+              {arrows.map((a) => (
+                <marker key={a.to} id={markerId(a.to)} markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
                   <path d="M0,0 L6,3 L0,6 Z" fill={a.color} />
                 </marker>
               ))}
@@ -132,7 +133,7 @@ export function ChapterChartStrip({ annotation }: { annotation: ChapterAnnotatio
                   fill="none"
                   stroke={a.color}
                   strokeWidth="1.4"
-                  markerEnd={`url(#ylc-arw-${a.to})`}
+                  markerEnd={`url(#${markerId(a.to)})`}
                   vectorEffect="non-scaling-stroke"
                 />
               );

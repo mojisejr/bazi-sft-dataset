@@ -361,7 +361,7 @@ export function ReadingPrintDocument({
         const annotation = ch.id ? buildChapterAnnotation(calculatedState, ch.id) : null;
         return (
           <ContentSheet key={ch.chapter} identity={identity} title={`${ch.chapter}. ${ch.title}`}>
-            {annotation ? <ChapterChartStrip annotation={annotation} /> : null}
+            {annotation ? <ChapterChartStrip annotation={annotation} uid={ch.id ?? String(ch.chapter)} /> : null}
             <div className="ylc-prose">
               {ch.text ? renderMarkdown(cleanText(ch.text)) : <p className="ylc-empty">(ยังไม่ได้ทำนายบทนี้)</p>}
             </div>
