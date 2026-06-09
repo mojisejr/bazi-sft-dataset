@@ -159,10 +159,13 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     const deities = buildTopicHumanReading(result, "guardian_deities", RawInputSchema.parse(BIRTH_INPUT));
     expect(deities).toContain("ธาตุไฟ");
     expect(deities).toContain("เจ้าพ่อพระเพลิง");
-    // R5.2c+: องค์หลัก "เจาะจง" = เทพเจ้าเตาไฟ (丁 ขึ้น 长生 ที่ 酉 — ตรงซินแสที่ระบุ "เทพเจ้าเตาไฟ")
-    //   ต้องนำหน้าเทพสุริยัน (丙 ไม่มีเชี่ยงแซดีในผังนี้)
-    expect(deities).toContain("องค์หลักที่ควรบูชาเป็นหลัก (เลือกองค์เดียว): ธาตุไฟ (ราศีบน 丁): เทพจันทรา เทพเจ้าเตาไฟ");
-    expect(deities!.indexOf("เทพเจ้าเตาไฟ")).toBeLessThan(deities!.indexOf("เทพสุริยัน"));
+    // R5.2c+ / คำกำชับซินแซ: เทียบเชี่ยงแซทั้งผัง แล้วเหลือ "ดีที่สุด 2 องค์" — 1 หลัก + 1 รอง
+    //   องค์หลัก "เจาะจง" = เทพเจ้าเตาไฟ (丁 ขึ้น 长生 ที่ 酉 — ตรงซินแสที่ระบุ "เทพเจ้าเตาไฟ")
+    expect(deities).toContain("องค์หลักที่ควรบูชา (ดีที่สุดจากการเทียบเชี่ยงแซทั้งผัง): ธาตุไฟ (ราศีบน 丁): เทพจันทรา เทพเจ้าเตาไฟ");
+    expect(deities).toContain("องค์รอง (บูชาประกอบได้):");
+    // เหลือแค่ 2 องค์ (1 หลัก + 1 รอง) — ไม่ไล่ทั้ง 8 ตัว: เทพสุริยัน (丙 ไม่มีเชี่ยงแซดี) ต้องถูกตัด
+    expect(deities).not.toContain("เทพสุริยัน");
+    expect(deities).not.toContain("องค์เสริม (บูชาประกอบได้)");
 
     const education = buildTopicHumanReading(result, "education", RawInputSchema.parse(BIRTH_INPUT));
     expect(education).toContain("ไฟ");

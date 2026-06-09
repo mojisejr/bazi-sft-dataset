@@ -53,7 +53,7 @@ describe("Real-world case: 16 Sep 1986, 14:23, female (gptCase ประภา�
 
     // องค์เทพ: องค์หลักนำด้วยธาตุไฟ (財) — สาย leverage
     const deities = buildTopicHumanReading(result, "guardian_deities", raw)!;
-    expect(deities).toContain("องค์หลักที่ควรบูชาเป็นหลัก");
+    expect(deities).toContain("องค์หลักที่ควรบูชา");
   });
 
   test("deterministic: identical output on repeated calls", async () => {
