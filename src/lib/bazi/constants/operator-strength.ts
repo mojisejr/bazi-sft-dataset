@@ -2,6 +2,28 @@ import { z } from "zod";
 
 import type { SupportedElement } from "@/lib/bazi/symbolic-engine.types";
 
+type OperatorStrengthClassBand =
+  | {
+      id: string;
+      label: string;
+      displayLabel: string;
+      minInclusive: number;
+      maxInclusive: number;
+    }
+  | {
+      id: string;
+      label: string;
+      displayLabel: string;
+      minExclusive: number;
+      maxInclusive: number;
+    };
+
+function hasMinInclusive(
+  candidate: OperatorStrengthClassBand,
+): candidate is Extract<OperatorStrengthClassBand, { minInclusive: number }> {
+  return Object.prototype.hasOwnProperty.call(candidate, "minInclusive");
+}
+
 // เกณฑ์ band ต่อเนื่องไม่มีช่องว่าง (รองรับคะแนนเศษจากโบนัสราก 通根/得地 + ฤดู 得令)
 // ขอบล่างใช้ minExclusive = ขอบบนชั้นก่อนหน้า → คะแนนใด ๆ จัด band ได้เสมอ ไม่ตกช่องว่าง
 // R5.2b (2026-06-08): ลดเพดาน very-weak 2 → -2 เพราะ engine "กดกำลังแรงเกิน 1 ขั้น"
@@ -44,7 +66,7 @@ export const OPERATOR_STRENGTH_CLASS_BANDS = [
     minExclusive: 6.75,
     maxInclusive: Number.POSITIVE_INFINITY,
   },
-] as const;
+] as const satisfies readonly OperatorStrengthClassBand[];
 
 export const OperatorStrengthClassSchema = z.enum([
   "อ่อนเกินไป",
@@ -166,7 +188,7 @@ export const OPERATOR_PO_STEM_BRANCH: Record<string, readonly string[]> = {
 
 export function classifyOperatorStrengthScore(score: number) {
   const band = OPERATOR_STRENGTH_CLASS_BANDS.find((candidate) => {
-    const lowerPass = "minInclusive" in candidate
+    const lowerPass = hasMinInclusive(candidate)
       ? score >= candidate.minInclusive
       : score > candidate.minExclusive;
     const upperPass = score <= candidate.maxInclusive;
