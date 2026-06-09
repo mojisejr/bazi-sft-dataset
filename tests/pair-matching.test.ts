@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   buildElementInteractionAB,
   buildPairComparison,
+  buildWorkComparison,
   computePairMatch,
   computePairMatchPair,
   relationOf,
@@ -91,5 +92,36 @@ describe("full comparison", () => {
     expect(r.match.love.overallPercent).not.toBeNull();
     expect(r.personA.nisai.length).toBeGreaterThan(0);
     expect(r.sisingReference.length).toBe(12);
+  });
+});
+
+describe("work multi-candidate comparison (เรา vs ผู้ร่วมงาน)", () => {
+  const self = { stem: "甲", branch: "子" };
+
+  test("rankScore uses forward (เรา→เขา) and ranks best→worst", () => {
+    // 甲子→乙丑 = 70 (forward); 甲子→甲寅 = 46.67
+    const r = buildWorkComparison(self, [
+      { stem: "甲", branch: "寅" }, // index 0 — lower
+      { stem: "乙", branch: "丑" }, // index 1 — higher
+    ]);
+    expect(r.candidates[0].rankScore).toBe(46.67);
+    expect(r.candidates[1].rankScore).toBe(70);
+    // ranking puts the higher-forward candidate first
+    expect(r.ranking).toEqual([1, 0]);
+    expect(r.candidates.length).toBe(2);
+  });
+
+  test("candidates keep input order; ranking is a separate index list", () => {
+    const r = buildWorkComparison(self, [
+      { stem: "乙", branch: "丑" },
+      { stem: "甲", branch: "寅" },
+      { stem: "甲", branch: "子" },
+    ]);
+    expect(r.candidates.map((c) => c.index)).toEqual([0, 1, 2]);
+    expect(r.ranking.length).toBe(3);
+    expect(r.self.nisai.length).toBeGreaterThan(0);
+    // each candidate carries work match + element interaction + roles
+    expect(r.candidates[0].match.forward.domain).toBe("work");
+    expect(r.candidates[0].elementInteraction.summaryTh).toBeTruthy();
   });
 });

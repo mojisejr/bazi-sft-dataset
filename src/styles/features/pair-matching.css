@@ -531,3 +531,120 @@
   color: #6b6253;
   text-align: center;
 }
+
+/* ── หน้าเปรียบเทียบการงาน (เรา vs ผู้ร่วมงาน หลายคน) ── */
+
+.pair-forms--candidates {
+  grid-template-columns: 1fr;
+  gap: var(--space-4, 1rem);
+}
+
+.pair-candidate-input {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  border: 1px solid var(--border-subtle, #d9d2c4);
+  border-radius: 12px;
+  padding: var(--space-4, 1rem);
+}
+
+.pair-person__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pair-person__remove {
+  border: 1px solid var(--border-subtle, #d9d2c4);
+  background: transparent;
+  border-radius: 8px;
+  padding: 0.25rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #9a2f2f;
+}
+
+.pair-person__remove:hover {
+  background: #f7e9e9;
+}
+
+.pair-ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pair-ranking__item {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr auto auto auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--border-subtle, #d9d2c4);
+  border-radius: 10px;
+}
+
+.pair-ranking__item[data-best="true"] {
+  border-color: #d9a441;
+  background: #fdf6e6;
+}
+
+.pair-ranking__pos {
+  font-weight: 700;
+  text-align: center;
+}
+
+.pair-ranking__name {
+  font-weight: 600;
+}
+
+.pair-ranking__pillar {
+  color: #6b6253;
+  font-size: 0.9rem;
+}
+
+.pair-ranking__score {
+  font-weight: 700;
+}
+
+.pair-ranking__grade {
+  font-weight: 600;
+  color: #8a6d1f;
+}
+
+.pair-candidate-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3, 0.75rem);
+  border: 1px solid var(--border-subtle, #d9d2c4);
+  border-radius: 12px;
+  padding: var(--space-4, 1rem);
+}
+
+.pair-candidate-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-subtle, #ece6d8);
+  padding-bottom: 0.5rem;
+}
+
+.pair-candidate-card__rank {
+  font-weight: 700;
+  color: #8a6d1f;
+}
+
+.pair-candidate-card__name {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.pair-candidate-card__pillar {
+  color: #6b6253;
+  font-size: 0.9rem;
+}

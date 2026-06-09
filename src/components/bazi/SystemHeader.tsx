@@ -1,7 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
-
 import { StatusChip } from "@/components/bazi/primitives/StatusChip";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import type { StatusCopy } from "@/lib/bazi/trainer-workspace";
@@ -23,22 +21,6 @@ export function SystemHeader({ statusCopy }: SystemHeaderProps) {
       </div>
 
       <div className="header-sidebar">
-        <div className="operator-panel" aria-label="operator session controls">
-          <div className="operator-copy">
-            <p className="section-kicker">สิทธิ์เข้าถึงระบบ</p>
-            <p className="operator-note">
-              บัญชีนี้ยืนยันตัวตนผ่าน Google SSO แล้ว เปิดเมนูเพื่อดูโปรไฟล์ จัดการบัญชี
-              และออกจากระบบของ workspace นี้ได้อย่างปลอดภัย
-            </p>
-          </div>
-
-          <div className="operator-actions">
-            <div className="user-button-shell">
-              <UserButton />
-            </div>
-          </div>
-        </div>
-
         <div className="status-stack">
           <StatusChip tone={statusCopy.tone}>{statusCopy.label}</StatusChip>
           <p className="status-detail">{statusCopy.detail}</p>

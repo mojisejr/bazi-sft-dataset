@@ -237,6 +237,39 @@ export const WEN_CHANG_BRANCH_BY_DAY_STEM = {
   癸: "卯",
 } as const;
 
+/** 天德 (เทียนเต๊ก) — เทพคุณธรรมฟ้า: ดูจากราศีล่างหลักเดือน → เป้าหมาย (เป็นก้านหรือกิ่งก็ได้) */
+export const TIAN_DE_TARGET_BY_MONTH_BRANCH = {
+  寅: "丁",
+  卯: "申",
+  辰: "壬",
+  巳: "辛",
+  午: "亥",
+  未: "甲",
+  申: "癸",
+  酉: "寅",
+  戌: "丙",
+  亥: "乙",
+  子: "巳",
+  丑: "庚",
+} as const;
+
+/** 月德 (ง้วยเต๊ก) — เทพคุณธรรมเดือน: ดูจากกลุ่มไตรภาคีของราศีล่างหลักเดือน → ก้านฟ้าเป้าหมาย */
+export const YUE_DE_STEM_BY_MONTH_BRANCH = {
+  寅: "丙", 午: "丙", 戌: "丙",
+  申: "壬", 子: "壬", 辰: "壬",
+  亥: "甲", 卯: "甲", 未: "甲",
+  巳: "庚", 酉: "庚", 丑: "庚",
+} as const;
+
+/** ราศีล่างคลัง (墓库) ของแต่ละธาตุ — ใช้หา "ไฉ่โข่ว" (คลังทรัพย์ = คลังของธาตุโชคลาภ) */
+export const TOMB_BRANCH_BY_ELEMENT = {
+  wood: "未",
+  fire: "戌",
+  metal: "丑",
+  water: "辰",
+  earth: "戌",
+} as const;
+
 export function normalizeBranchPairKey(left: string, right: string): string {
   const leftIndex = BRANCH_ORDER.indexOf(left as (typeof BRANCH_ORDER)[number]);
   const rightIndex = BRANCH_ORDER.indexOf(right as (typeof BRANCH_ORDER)[number]);
@@ -615,18 +648,19 @@ export const TWELVE_QI_ADVERB_MAP: Record<string, { thai: string; meaning: strin
 
 export const ROLE_SUBTYPE_LABELS_TH: Record<string, { direct: string; indirect: string }> = {
   same: { direct: "คู่ (ผู้สนับสนุน)", indirect: "เปรียว (คู่แข่ง)" },
-  resource: { direct: "เสริมตรง (แบบตรง)", indirect: "เสริมเฉียว (แบบเบี่ยง)" },
+  resource: { direct: "ส่งเสริมตรง (แบบตรง)", indirect: "ส่งเสริมเฉียว (แบบเบี่ยง)" },
   output: { direct: "ถ่ายเทตรง (สร้าง)", indirect: "ถ่ายเทเฉียว (แบก)" },
-  power: { direct: "อำนาจตรง (แบบมีระเบียบ)", indirect: "อำนาจเฉียว (แบบกดดัน)" },
+  power: { direct: "ภาระหน้าที่ตรง (แบบมีระเบียบ)", indirect: "ภาระหน้าที่เฉียว (แบบกดดัน)" },
   wealth: { direct: "ลาภตรง (แบบตรง)", indirect: "ลาภเปีย (แบบเบี่ยง)" },
 };
 
+// ความหมายของแต่ละบทบาทธาตุ (ขยายตามที่ซินแสกำชับ) — power = "ภาระหน้าที่", resource = "ส่งเสริม"
 export const RELATION_SEMANTIC_MEANING_TH: Record<string, string> = {
-  same: "เครือข่าย/ผู้สนับสนุน",
-  resource: "ความรู้/อุปถัมภ์",
-  output: "แสดงออก/ผลงาน",
-  power: "อำนาจ/ระเบียบ",
-  wealth: "โชคลาภ/รายได้",
+  same: "พี่น้อง/เพื่อนฝูง/คู่ค้า/คู่แข่ง",
+  resource: "องค์ความรู้/ผู้หลักผู้ใหญ่/ครูบาอาจารย์/แม่/ผู้สนับสนุน",
+  output: "คิด/พูด/ฟัง/เรียน/ทำงาน/เดินทาง/ลงทุน/จับจ่าย/บริวาร/ลูก(เพศหญิง)",
+  power: "ภาระ/หน้าที่/ตำแหน่ง/หนี้สิน/รายจ่าย/คู่ครอง(เพศหญิง)/ลูก(เพศชาย)/คุณธรรม",
+  wealth: "ทรัพย์/รายได้/ผลลัพธ์/สินค้า/พ่อ/คู่ครอง(เพศชาย)",
 };
 
 export const CONFLICT_RESOLUTION_LABELS_TH: Record<string, string> = {
@@ -643,5 +677,13 @@ export const SHEN_SHA_COPY = {
   wenChang: {
     starName: "บุ่งเชียง/วิชาการ (文昌)",
     meaning: "ดาววิชาการ การคิดเชิงระบบ การเขียน การเรียนรู้ และงานที่ต้องใช้ปัญญาหรือชื่อเสียงทางความรู้",
+  },
+  tianDe: {
+    starName: "เทียนเต๊ก (天德)",
+    meaning: "ดาวคุณธรรมฟ้า ช่วยผ่อนหนักเป็นเบา มีสิ่งศักดิ์สิทธิ์/ผู้ใหญ่คุ้มครอง แคล้วคลาดจากเคราะห์",
+  },
+  yueDe: {
+    starName: "ง้วยเต๊ก (月德)",
+    meaning: "ดาวคุณธรรมเดือน เสริมเมตตาบารมี มีคนเอ็นดูช่วยเหลือ ลดทอนเรื่องร้ายให้บรรเทา",
   },
 } as const;

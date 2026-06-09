@@ -1,6 +1,3 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-
 import { PendingDraftQueue } from "@/components/bazi/PendingDraftQueue";
 import { SystemHeader } from "@/components/bazi/SystemHeader";
 import { listDraftDatasetRecords } from "@/lib/bazi/dataset-records";
@@ -28,12 +25,6 @@ function createPendingReturnPath(campaignLabel?: string) {
 }
 
 export default async function PendingPage({ searchParams }: PendingPageProps) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const campaignLabel = resolvedSearchParams?.campaign?.trim() || undefined;
   const records = await listDraftDatasetRecords({ campaignLabel });

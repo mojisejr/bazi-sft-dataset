@@ -17,6 +17,7 @@ import {
   ROLE_SUBTYPE_LABELS_TH,
   RELATION_SEMANTIC_MEANING_TH,
   STEM_TO_ELEMENT,
+  TOMB_BRANCH_BY_ELEMENT,
   TWELVE_QI_ADVERB_MAP,
   TWELVE_QI_CONTEXT_MAP,
   TWELVE_QI_LABELS_TH,
@@ -49,7 +50,7 @@ const ENGLISH_SCENE_KEY_PATTERN = /[A-Za-z_]/;
 
 const PILLAR_SEQUENCE = ["year", "month", "day", "hour"] as const;
 const RELATION_SEQUENCE = ["same", "resource", "output", "power", "wealth"] as const;
-const READING_STEP_ORDER = [1, 2, 3, 4, 5, 6] as const;
+const READING_STEP_ORDER = [1, 2, 3, 4, 5, 6, 7] as const;
 
 const PILLAR_LABELS = {
   year: "ปี",
@@ -109,6 +110,7 @@ const ReadingStepKeySchema = z.enum([
   "balance-core",
   "day-pillar-identity",
   "standard-energies",
+  "output-transfer",
   "result-wealth",
   "context-mapping",
   "advanced-signals",
@@ -156,7 +158,7 @@ const AuditEvidenceSchema = z.object({
 });
 
 const StepInsightSchema = z.object({
-  stepNumber: z.number().int().min(1).max(6),
+  stepNumber: z.number().int().min(1).max(7),
   stepKey: ReadingStepKeySchema,
   titleThai: z.string().trim().min(1),
   summaryThai: z.string().trim().min(1),
@@ -181,13 +183,13 @@ export const RelationReadingPacketSchema = z.object({
   }),
   eightSlots: z.array(EightSlotRowSchema).length(8),
   relationSummary: z.array(RelationSummarySchema).length(5),
-  stepInsights: z.array(StepInsightSchema).length(6),
+  stepInsights: z.array(StepInsightSchema).length(7),
   evidenceCatalog: z.array(AuditEvidenceSchema).min(6),
   advancedSignals: z.array(z.string().trim().min(1)).min(1),
 });
 
 const BriefStepSchema = z.object({
-  stepNumber: z.number().int().min(1).max(6),
+  stepNumber: z.number().int().min(1).max(7),
   titleThai: z.string().trim().min(1),
   briefThai: z.string().trim().min(1),
   evidenceRefs: z.array(z.string().trim().min(1)).min(1),
@@ -204,11 +206,11 @@ export const DayMasterRelationBriefSchema = z.object({
     dayMasterStrengthScore: z.number().finite(),
     dayBranchLabelThai: z.string().trim().min(1),
   }),
-  steps: z.array(BriefStepSchema).length(6),
+  steps: z.array(BriefStepSchema).length(7),
 });
 
 const StepReadingSchema = z.object({
-  step_number: z.number().int().min(1).max(6),
+  step_number: z.number().int().min(1).max(7),
   heading_thai: z.string().trim().min(1),
   teacher_reading: z.string().trim().min(1),
   life_meaning: z.string().trim().min(1),
@@ -218,7 +220,7 @@ const StepReadingSchema = z.object({
 
 export const RelationReadingResponseSchema = z.object({
   openingSummary: z.string().trim().min(1),
-  step_readings: z.array(StepReadingSchema).length(6),
+  step_readings: z.array(StepReadingSchema).length(7),
   closing_reading: z.string().trim().min(1),
 }).superRefine((response, context) => {
   const fields = [
@@ -934,6 +936,8 @@ type Step6AdvancedVector = {
   /** Step 6.2 — ธาตุถ่ายเทตกเชี่ยงแซราย "หลัก": คำทำนายการเรียน/การพูด */
   outputTransferSummary: string;
   outputTransferDetails: Array<{ pillarKey: PillarKey; detail: string }>;
+  /** ผั่วไฉ่โข่ว / กึ่งผั่วไฉ่โข่ว — สถานะคลังทรัพย์ (墓库 ของธาตุโชคลาภ) ถูกชง/ผั่ว */
+  caiKuDetail: string;
 };
 
 function buildStep5ContextMapping(
@@ -1245,6 +1249,9 @@ function buildAdvancedSignals(
     ? `ลำดับอ่านจากฐานชาร์ตคือ ${calculatedState.baseChartReading.readingOrderSteps.slice(0, 3).join(" -> ")}`
     : "ฐานชาร์ตยังไม่มี reading order เสริมเพิ่มเติม";
 
+  // ผั่วไฉ่โข่ว / กึ่งผั่วไฉ่โข่ว — คลังทรัพย์ (墓库 ของธาตุโชคลาภ) ถูกชง (เต็ม) หรือผั่ว/ไห่ (กึ่ง)
+  const caiKuDetail = buildCaiKuDetail(calculatedState);
+
   // Step 6.2 — ธาตุถ่ายเท (食傷) ตกเชี่ยงแซราย "หลัก" → คำทำนายการเรียน/การพูด
   const outputTransfer = buildOutputTransferReading(calculatedState);
   const outputTransferDetails = outputTransfer.pillars.map((pillar) => ({
@@ -1258,6 +1265,8 @@ function buildAdvancedSignals(
       .join(", ")}`;
 
   return {
+    // หมายเหตุ: outputTransfer ถูกย้ายไปเป็นแกนของขั้นที่ 4 "การอ่านตัวถ่ายเท" แล้ว
+    // จึงไม่รวมใน summaryLines ของขั้น 7 (กันซ้ำ) — แต่ยังคง field ไว้ให้ขั้น 4 หยิบใช้
     summaryLines: [
       shenShaDetail,
       ...hiddenStemDetails.map((entry) => entry.detail),
@@ -1266,8 +1275,7 @@ function buildAdvancedSignals(
       seasonalDetail,
       interactionDetail,
       readingOrderDetail,
-      outputTransferSummary,
-      ...outputTransferDetails.map((entry) => entry.detail),
+      caiKuDetail,
     ],
     shenShaDetail,
     hiddenStemDetails,
@@ -1278,7 +1286,128 @@ function buildAdvancedSignals(
     readingOrderDetail,
     outputTransferSummary,
     outputTransferDetails,
+    caiKuDetail,
   };
+}
+
+/**
+ * ผั่วไฉ่โข่ว (破财库) / กึ่งผั่วไฉ่โข่ว — ดูราศีล่างคลัง (墓库) ของ "ธาตุโชคลาภ" (ธาตุที่ดิถีพิฆาต)
+ * ถ้าปรากฏในผังแล้วถูก "ชง (冲)" = ผั่วไฉ่โข่วเต็ม (คลังแตก เงินรั่ว/ก้อนใหญ่ออก), ถ้าถูก "ผั่ว (破)/ไห่ (害)"
+ * = กึ่งผั่วไฉ่โข่ว (คลังสั่นคลอน). อิง interaction relations ที่มี label พาดพิงราศีล่างคลัง
+ */
+function buildCaiKuDetail(calculatedState: CalculatedStateValue): string {
+  const dayMasterElement = getStemElement(calculatedState.dayMaster);
+  const wealthElement = CONTROLS[dayMasterElement as keyof typeof CONTROLS] as SupportedElementValue;
+  const tombBranch = TOMB_BRANCH_BY_ELEMENT[wealthElement as keyof typeof TOMB_BRANCH_BY_ELEMENT];
+  if (!tombBranch) {
+    return "ไม่มีคลังทรัพย์ (ไฉ่โข่ว) ที่ต้องเฝ้าระวังในดวงนี้";
+  }
+
+  const hasTomb = (["year", "month", "day", "hour"] as const).some(
+    (key) => calculatedState.fourPillars[key].branch === tombBranch,
+  );
+  if (!hasTomb) {
+    return `คลังทรัพย์ของธาตุ${getElementLabelThai(wealthElement)} (ราศีล่าง ${tombBranch}) ยังไม่ปรากฏในผัง จึงไม่มีผั่วไฉ่โข่ว`;
+  }
+
+  const relations = calculatedState.interactionState?.relations ?? [];
+  const touchesTomb = (familyMatcher: (familyKey: string) => boolean) =>
+    relations.some((r) => familyMatcher(r.familyKey) && r.label.includes(tombBranch));
+
+  const clashed = touchesTomb((f) => f.includes("clash"));
+  const brokenOrHarm = touchesTomb((f) => f.includes("destruction") || f.includes("harm"));
+
+  if (clashed) {
+    return `ผั่วไฉ่โข่ว (破财库): คลังทรัพย์ธาตุ${getElementLabelThai(wealthElement)} (ราศีล่าง ${tombBranch}) ถูกชง คลังแตก ระวังเงินก้อนรั่วไหล/รายจ่ายใหญ่`;
+  }
+  if (brokenOrHarm) {
+    return `กึ่งผั่วไฉ่โข่ว: คลังทรัพย์ธาตุ${getElementLabelThai(wealthElement)} (ราศีล่าง ${tombBranch}) ถูกผั่ว/ไห่ คลังสั่นคลอน ควรบริหารเงินสำรองให้รัดกุม`;
+  }
+  return `คลังทรัพย์ธาตุ${getElementLabelThai(wealthElement)} (ราศีล่าง ${tombBranch}) ปรากฏและยังปิดสนิทดี เก็บทรัพย์อยู่`;
+}
+
+/** กลุ่มภาคีที่อาจ "แปรธาตุ" ได้ (ใช้ตรวจถ่ายเทแฝงระดับ 2: combination → ธาตุถ่ายเท) */
+const STEP_4_COMBINATION_FAMILIES = STEP_3_ATTRACTION_FAMILIES;
+
+/**
+ * ขั้นที่ 4 "การอ่านตัวถ่ายเท" — ไล่ธาตุถ่ายเทของดิถีตามลำดับความสำคัญ 4 ระดับ (ตามที่ซินแสกำชับ):
+ *  1) ถ่ายเทธาตุแท้ — ราศีบน (ฟ้ากำหนด) / ราศีล่าง (ฝึกฝนพัฒนาตน) — แสดงออกชัดสุด
+ *  2) ถ่ายเทแฝงจากกลุ่มภาคี — combination ที่แปรได้ธาตุถ่ายเท (อ่านเมื่อระดับ 1 ไม่มี)
+ *  3) ลีลา 12 เชี่ยงแซของธาตุถ่ายเทรายหลัก
+ *  4) ถ่ายเทราศีแฝง — จิตใต้สำนึก/สัญชาตญาณ; ที่หลักยาม = จิตใจภายในไม่แสดงออก
+ */
+function buildStep4OutputTransferEvidence(
+  evidenceCatalog: AuditEvidence[],
+  actionVector: Step3ActionVector,
+  advancedSignals: Step6AdvancedVector,
+  relationTargets: RelationTarget[],
+  interactionState: CalculatedStateValue["interactionState"],
+): string[] {
+  const ids: string[] = [];
+  const outputLabel = actionVector.actionElementLabelThai;
+
+  // ระดับ 1 — ถ่ายเทธาตุแท้ (ราศีบน=ฟ้ากำหนด, ราศีล่าง=ฝึกฝนพัฒนาตน)
+  const stemCarriers = actionVector.visibleActionCarriers.filter((c) => c.layer === "stem");
+  const branchCarriers = actionVector.visibleActionCarriers.filter((c) => c.layer === "branch");
+  const level1Parts: string[] = [];
+  if (stemCarriers.length > 0) {
+    level1Parts.push(`ราศีบน (ฟ้ากำหนด): ${stemCarriers.map((c) => `${c.pillarLabelThai} ${c.symbol}`).join(", ")}`);
+  }
+  if (branchCarriers.length > 0) {
+    level1Parts.push(`ราศีล่าง (ฝึกฝนพัฒนาตน): ${branchCarriers.map((c) => `${c.pillarLabelThai} ${c.symbol}`).join(", ")}`);
+  }
+  ids.push(addEvidence(
+    evidenceCatalog,
+    "S4-output-real",
+    "ระดับ 1 ถ่ายเทธาตุแท้ (แสดงออกชัดสุด)",
+    level1Parts.length > 0
+      ? `ธาตุถ่ายเท${outputLabel}ปรากฏแท้ที่ ${level1Parts.join(" | ")}`
+      : `ไม่มีธาตุถ่ายเท${outputLabel}แท้บนราศีบน/ล่าง ให้ไล่ดูระดับถัดไป`,
+    "Step 4",
+  ));
+
+  // ระดับ 2 — ถ่ายเทแฝงจากกลุ่มภาคี (แปรได้ธาตุถ่ายเท)
+  const combos = (interactionState?.relations ?? []).filter(
+    (r) => r.transformElement === actionVector.actionElement && STEP_4_COMBINATION_FAMILIES.has(r.familyKey),
+  );
+  ids.push(addEvidence(
+    evidenceCatalog,
+    "S4-output-combination",
+    "ระดับ 2 ถ่ายเทแฝงจากกลุ่มภาคี",
+    combos.length > 0
+      ? `กลุ่มภาคีแปรเป็นธาตุถ่ายเท: ${combos.map((r) => `${MODIFIER_FAMILY_LABEL_THAI[r.familyKey] ?? r.familyKey} ${r.label}`).join(" | ")}`
+      : `ไม่มีการแปรธาตุจากกลุ่มภาคีเป็นธาตุถ่ายเท${outputLabel}`,
+    "Step 4",
+  ));
+
+  // ระดับ 3 — ลีลา 12 เชี่ยงแซของธาตุถ่ายเทรายหลัก
+  ids.push(addEvidence(
+    evidenceCatalog,
+    "S4-output-twelve-qi",
+    "ระดับ 3 ลีลา 12 เชี่ยงแซของธาตุถ่ายเท",
+    advancedSignals.outputTransferSummary,
+    "Step 4",
+  ));
+
+  // ระดับ 4 — ถ่ายเทราศีแฝง (จิตใต้สำนึก/สัญชาตญาณ); หลักยาม = จิตใจภายใน
+  const hiddenOutput = relationTargets.filter((t) => t.relationKey === "output" && t.layer === "hidden");
+  const hourOutput = relationTargets.filter((t) => t.relationKey === "output" && t.pillarKey === "hour");
+  const level4Notes: string[] = [];
+  if (hiddenOutput.length > 0) {
+    level4Notes.push(`ราศีแฝง: ${hiddenOutput.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")} = ทำโดยสัญชาตญาณ จิตใต้สำนึก ไม่รู้ตัว`);
+  }
+  if (hourOutput.length > 0) {
+    level4Notes.push("ถ่ายเทที่หลักยาม = ความคิด/จิตใจภายใน ไม่แสดงออกให้คนภายนอกรับรู้");
+  }
+  ids.push(addEvidence(
+    evidenceCatalog,
+    "S4-output-hidden",
+    "ระดับ 4 ถ่ายเทราศีแฝง (จิตใต้สำนึก)",
+    level4Notes.length > 0 ? level4Notes.join(" | ") : "ไม่มีธาตุถ่ายเทแฝงเพิ่มเติมในราศีแฝง",
+    "Step 4",
+  ));
+
+  return ids;
 }
 
 function buildStepInsights(options: {
@@ -1449,14 +1578,14 @@ function buildStepInsights(options: {
     addEvidence(
       evidenceCatalog,
       "S3-resource-element",
-      "ธาตุเสริม (ผู้สนับสนุนและความรู้)",
+      "ธาตุส่งเสริม (ผู้สนับสนุนและความรู้)",
       `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ได้รับการสนับสนุนจากธาตุ${resourceVector.resourceElementLabelThai}`,
       "Step 3",
     ),
     addEvidence(
       evidenceCatalog,
       "S3-visible-resource-carriers",
-      "จุดที่มองเห็นธาตุเสริม",
+      "จุดที่มองเห็นธาตุส่งเสริม",
       resourceVector.visibleResourceCarriers.length > 0
         ? resourceVector.visibleResourceCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
         : "ไม่พบธาตุเสริมบนชั้นมองเห็น",
@@ -1465,14 +1594,14 @@ function buildStepInsights(options: {
     addEvidence(
       evidenceCatalog,
       "S3-power-element",
-      "ธาตุอำนาจ (ผู้มีอำนาจและกฎระเบียบ)",
+      "ภาระหน้าที่ (หน้าที่และกฎระเบียบ)",
       `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} ถูกควบคุมโดยธาตุ${powerVector.powerElementLabelThai}`,
       "Step 3",
     ),
     addEvidence(
       evidenceCatalog,
       "S3-visible-power-carriers",
-      "จุดที่มองเห็นธาตุอำนาจ",
+      "จุดที่มองเห็นภาระหน้าที่",
       powerVector.visiblePowerCarriers.length > 0
         ? powerVector.visiblePowerCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol}`).join(", ")
         : "ไม่พบธาตุอำนาจบนชั้นมองเห็น",
@@ -1482,7 +1611,7 @@ function buildStepInsights(options: {
       ? [addEvidence(
           evidenceCatalog,
           "S3-disturbance-modifiers",
-          "แรงรบกวน (ชง เฮ้ง ไห่ ผว กุ้ยนั้ง)",
+          "แรงรบกวน (ชง เฮ้ง จื่อเฮ้ง ซำเฮ้ง ไห่ ผั่ว)",
           actionVector.disturbanceModifiers.map((m) => `${m.categoryThai}: ${m.label}${m.resolutionStatus ? ` [${m.resolutionStatus}]` : ""}`).join(" | "),
           "Step 3",
         )]
@@ -1491,7 +1620,7 @@ function buildStepInsights(options: {
       ? [addEvidence(
           evidenceCatalog,
           "S3-attraction-modifiers",
-          "แรงดึงดูด (ฮะ ภาคี ที่ไม่แปลงธาตุ)",
+          "แรงดึงดูด (ฮะ ภาคี ครึ่งภาคี ไตรภาคี ไตรทิศ ที่ไม่แปลงธาตุ)",
           actionVector.attractionModifiers.map((m) => `${m.categoryThai}: ${m.label}`).join(" | "),
           "Step 3",
         )]
@@ -1518,7 +1647,7 @@ function buildStepInsights(options: {
       ? [addEvidence(
           evidenceCatalog,
           "S3-resource-subtypes",
-          "ประเภทธาตุเสริม (ตรง/เฉียว)",
+          "ประเภทธาตุส่งเสริม (ตรง/เฉียว)",
           resourceVector.subtypeBadges.map((b) => `${b.carrierLabel}: ${b.subtypeLabel}`).join(" | "),
           "Step 3",
         )]
@@ -1527,12 +1656,20 @@ function buildStepInsights(options: {
       ? [addEvidence(
           evidenceCatalog,
           "S3-power-subtypes",
-          "ประเภทธาตุอำนาจ (ตรง/เฉียว)",
+          "ประเภทภาระหน้าที่ (ตรง/เฉียว)",
           powerVector.subtypeBadges.map((b) => `${b.carrierLabel}: ${b.subtypeLabel}`).join(" | "),
           "Step 3",
         )]
       : [],
   ];
+
+  const step4OutputEvidenceIds = buildStep4OutputTransferEvidence(
+    evidenceCatalog,
+    actionVector,
+    advancedSignals,
+    relationTargets,
+    calculatedState.interactionState,
+  );
 
   const step4EvidenceIds = [
     addEvidence(
@@ -1540,7 +1677,7 @@ function buildStepInsights(options: {
       "S4-wealth-element",
       "ธาตุโชคลาภ (สิ่งที่ดิถีพิฆาต)",
       `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} พิฆาตธาตุ${wealthVector.wealthElementLabelThai} จึงใช้ธาตุ${wealthVector.wealthElementLabelThai}เป็นแกนอ่านโชคลาภ`,
-      "Step 4",
+      "Step 5",
     ),
     addEvidence(
       evidenceCatalog,
@@ -1549,7 +1686,7 @@ function buildStepInsights(options: {
       wealthVector.visibleWealthCarriers.length > 0
         ? wealthVector.visibleWealthCarriers.map((t) => `${t.pillarLabelThai} ${t.symbol} (${t.elementLabelThai})`).join(", ")
         : "ไม่พบธาตุโชคลาภบนชั้นมองเห็น ต้องรอรอบเวลาจร",
-      "Step 4",
+      "Step 5",
     ),
     addEvidence(
       evidenceCatalog,
@@ -1558,21 +1695,21 @@ function buildStepInsights(options: {
       wealthVector.strongestVisibleWealthCarrier
         ? `${wealthVector.strongestVisibleWealthCarrier.pillarLabelThai} ${wealthVector.strongestVisibleWealthCarrier.symbol} (${wealthVector.strongestVisibleWealthCarrier.elementLabelThai})`
         : "ไม่มีจุดมองเห็น",
-      "Step 4",
+      "Step 5",
     ),
     addEvidence(
       evidenceCatalog,
       "S4-hidden-deferred",
       "ธาตุโชคลาภที่เก็บไว้อ่านขั้นสูง",
       `ซ่อน ${wealthVector.hiddenWealthCarrierCount} จุด: ${wealthVector.hiddenWealthCarrierSummary}`,
-      "Step 4",
+      "Step 5",
     ),
     addEvidence(
       evidenceCatalog,
       "S4-capacity",
       `ศักยภาพคว้าโชค: ${wealthVector.capacity.label}`,
       `${wealthVector.capacity.metaphor} (สามารถคว้า: ${wealthVector.capacity.canGrab ? "ได้" : "ไม่ได้"})`,
-      "Step 4",
+      "Step 5",
     ),
     ...wealthVector.pianCaiBadges.some((b) => b.isPianCai)
       ? [addEvidence(
@@ -1580,7 +1717,7 @@ function buildStepInsights(options: {
           "S4-pian-cai",
           "ลาภเปีย (ธาตุโชคลาภที่ต่างขั้วกับดิถี)",
           wealthVector.pianCaiBadges.filter((b) => b.isPianCai).map((b) => b.carrierLabel).join(", "),
-          "Step 4",
+          "Step 5",
         )]
       : [],
     ...wealthVector.muYuBadges.length > 0
@@ -1589,7 +1726,7 @@ function buildStepInsights(options: {
           "S4-mu-yu",
           "ลาภหมกยก (ธาตุโชคลาภอยู่ช่วงหมกยก)",
           wealthVector.muYuBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel}`).join(" | "),
-          "Step 4",
+          "Step 5",
         )]
       : [],
     ...wealthVector.twelveQiBadges.length > 0
@@ -1598,7 +1735,7 @@ function buildStepInsights(options: {
           "S4-twelve-qi-badges",
           "12 เซงแซ (ลีลาโชคลาภ)",
           wealthVector.twelveQiBadges.map((b) => `${b.carrierLabel}: ${b.stageLabel}`).join(" | "),
-          "Step 4",
+          "Step 5",
         )]
       : [],
   ];
@@ -1617,7 +1754,7 @@ function buildStepInsights(options: {
           .filter((p) => p.carriers.length > 0)
           .map((p) => `เสา${p.pillarLabelThai}: ${p.carriers.map((c) => c.contextLine).join(" | ")}`)
           .join("\n"),
-        "Step 5",
+        "Step 6",
       ),
     );
 
@@ -1629,7 +1766,7 @@ function buildStepInsights(options: {
         contextMapping.carrierContexts
           .map((c) => `${c.carrierKey} → ${c.verticalContext.natureLabel}: ${c.verticalContext.meaningThai}`)
           .join("\n"),
-        "Step 5",
+        "Step 6",
       ),
     );
   }
@@ -1642,7 +1779,7 @@ function buildStepInsights(options: {
         "S5-twelve-qi-modifier",
         "12 เซงแซ ต่อบริบท",
         carriersWithQi.map((c) => `${c.carrierKey}: ${c.twelveQiContext}`).join(" | "),
-        "Step 5",
+        "Step 6",
       ),
     );
   }
@@ -1655,7 +1792,7 @@ function buildStepInsights(options: {
         "S5-interaction-modifier",
         "ปฏิกิริยาต่อบริบท",
         carriersWithInteraction.map((c) => `${c.carrierKey}: ${c.interactionContexts.join("; ")}`).join(" | "),
-        "Step 5",
+        "Step 6",
       ),
     );
   }
@@ -1666,7 +1803,7 @@ function buildStepInsights(options: {
       `S5-context-${index + 1}`,
       `บริบท${PILLAR_LABELS[PILLAR_SEQUENCE[index]]}`,
       line,
-      "Step 5",
+      "Step 6",
     )),
   );
 
@@ -1676,49 +1813,56 @@ function buildStepInsights(options: {
       "S6-shen-sha",
       "ดาวพิเศษที่ทำงานในดวง",
       advancedSignals.shenShaDetail,
-      "Step 6",
+      "Step 7",
     ),
     ...advancedSignals.hiddenStemDetails.map((entry) => addEvidence(
       evidenceCatalog,
       `S6-hidden-stems-${entry.pillarKey}`,
       `ราศีแฝงของเสา${PILLAR_LABELS[entry.pillarKey]}`,
       entry.detail,
-      "Step 6",
+      "Step 7",
     )),
     addEvidence(
       evidenceCatalog,
       "S6-hidden-wealth",
       "คลังทรัพย์แฝง",
       advancedSignals.hiddenWealthDetail,
-      "Step 6",
+      "Step 7",
     ),
     addEvidence(
       evidenceCatalog,
       "S6-hidden-power",
       "คลังอำนาจแฝง",
       advancedSignals.hiddenPowerDetail,
-      "Step 6",
+      "Step 7",
     ),
     addEvidence(
       evidenceCatalog,
       "S6-seasonal",
       "สัญญาณฤดูกาล",
       advancedSignals.seasonalDetail,
-      "Step 6",
+      "Step 7",
     ),
     addEvidence(
       evidenceCatalog,
       "S6-interactions",
       "ปฏิกิริยาที่ต้องยกปลาย",
       advancedSignals.interactionDetail,
-      "Step 6",
+      "Step 7",
     ),
     addEvidence(
       evidenceCatalog,
       "S6-reading-order",
       "ลำดับอ่านจากฐานชาร์ต",
       advancedSignals.readingOrderDetail,
-      "Step 6",
+      "Step 7",
+    ),
+    addEvidence(
+      evidenceCatalog,
+      "S6-cai-ku",
+      "คลังทรัพย์ (ผั่วไฉ่โข่ว/กึ่งผั่วไฉ่โข่ว)",
+      advancedSignals.caiKuDetail,
+      "Step 7",
     ),
   ];
 
@@ -1744,7 +1888,7 @@ function buildStepInsights(options: {
     {
       stepNumber: 3,
       stepKey: "standard-energies",
-      titleThai: "พลังมาตรฐาน: ธาตุถ่ายเท + อีก 4 บทบาท (เสริม คู่ อำนาจ โชคลาภ)",
+      titleThai: "พลังมาตรฐาน: 5 บทบาทธาตุ (คู่ธาตุ ถ่ายเท โชคลาภ ภาระหน้าที่ ส่งเสริม)",
       summaryThai: [
         `ดิถีธาตุ${getElementLabelThai(dayMasterElement)} มี 5 บทบาท: `,
         actionVector.actionCarrierCount > 0
@@ -1754,11 +1898,11 @@ function buildStepInsights(options: {
           ? `; คู่ธาตุ${companionVector.companionElementLabelThai} ${companionVector.companionCarrierCount} จุด`
           : `; ไม่มีคู่ธาตุมองเห็น`,
         resourceVector.resourceCarrierCount > 0
-          ? `; เสริมจากธาตุ${resourceVector.resourceElementLabelThai} ${resourceVector.resourceCarrierCount} จุด`
-          : `; ไม่มีธาตุเสริมมองเห็น`,
+          ? `; ส่งเสริมจากธาตุ${resourceVector.resourceElementLabelThai} ${resourceVector.resourceCarrierCount} จุด`
+          : `; ไม่มีธาตุส่งเสริมมองเห็น`,
         powerVector.powerCarrierCount > 0
-          ? `; ถูกกดจากธาตุ${powerVector.powerElementLabelThai} ${powerVector.powerCarrierCount} จุด`
-          : `; ไม่มีธาตุอำนาจมองเห็น`,
+          ? `; ภาระหน้าที่จากธาตุ${powerVector.powerElementLabelThai} ${powerVector.powerCarrierCount} จุด`
+          : `; ไม่มีภาระหน้าที่มองเห็น`,
         actionVector.disturbanceModifiers.length > 0
           ? `; ติด${actionVector.disturbanceModifiers.map((m) => m.categoryThai).join(" ")}`
           : "",
@@ -1775,18 +1919,27 @@ function buildStepInsights(options: {
           ? `; ซ่อนคู่ ${companionVector.hiddenCompanionCarrierCount} จุด`
           : "",
         resourceVector.hiddenResourceCarrierCount > 0
-          ? `; ซ่อนเสริม ${resourceVector.hiddenResourceCarrierCount} จุด`
+          ? `; ซ่อนส่งเสริม ${resourceVector.hiddenResourceCarrierCount} จุด`
           : "",
         powerVector.hiddenPowerCarrierCount > 0
-          ? `; ซ่อนอำนาจ ${powerVector.hiddenPowerCarrierCount} จุด`
+          ? `; ซ่อนภาระหน้าที่ ${powerVector.hiddenPowerCarrierCount} จุด`
           : "",
       ].join(""),
-      auditFocusThai: "ดู 5 บทบาทธาตุทั้งหมด: ถ่ายเท (output), คู่ธาตุ (same), เสริม (resource), อำนาจ (power), โชคลาภ (wealth) — ว่ามีจุดมองเห็นกี่จุด จุดไหนแรงสุด มีแรงรบกวนอะไร (ชง เฮ้ง ไห่ ผว) มีแรงดึงดูดอะไร (ฮะ ภาคี) 12 เซงแซเป็นอย่างไร และฮะแก้ชงหรือไม่ ส่วนที่ซ่อนเก็บไว้อ่านขั้นสูง",
+      auditFocusThai: "ดู 5 บทบาทธาตุทั้งหมด เรียงลำดับ คู่ธาตุ (same) / ถ่ายเท (output) / โชคลาภ (wealth) / ภาระหน้าที่ (power) / ส่งเสริม (resource) — ว่ามีจุดมองเห็นกี่จุด จุดไหนแรงสุด มีแรงรบกวนอะไร (ชง เฮ้ง จื่อเฮ้ง ซำเฮ้ง ไห่ ผั่ว) มีแรงดึงดูดอะไร (ฮะ ภาคี ครึ่งภาคี ไตรภาคี ไตรทิศ) 12 เชี่ยงแซเป็นอย่างไร และฮะแก้ชงหรือไม่ ส่วนที่ซ่อนเก็บไว้อ่านขั้นสูง",
       evidenceIds: step3EvidenceIds,
       evidenceLines: step3EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
     {
       stepNumber: 4,
+      stepKey: "output-transfer",
+      titleThai: "การอ่านตัวถ่ายเท",
+      summaryThai: `อ่านธาตุถ่ายเท${actionVector.actionElementLabelThai}ตามลำดับ 4 ระดับ: (1) ธาตุแท้ราศีบน/ล่าง ${actionVector.actionCarrierCount > 0 ? `มองเห็น ${actionVector.actionCarrierCount} จุด` : "ไม่มีจุดมองเห็น ไล่ดูระดับถัดไป"} → (2) แฝงจากกลุ่มภาคี → (3) ลีลา 12 เชี่ยงแซ → (4) ราศีแฝง (จิตใต้สำนึก) ${actionVector.hiddenActionCarrierCount > 0 ? `ซ่อน ${actionVector.hiddenActionCarrierCount} จุด` : ""}`.trim(),
+      auditFocusThai: "ไล่ธาตุถ่ายเทตามลำดับ: ระดับ 1 ธาตุแท้ (ราศีบน=ฟ้ากำหนด / ราศีล่าง=ฝึกฝนพัฒนาตน, แสดงออกชัดสุด) ถ้าไม่มีจึงดู ระดับ 2 แฝงจากกลุ่มภาคีที่แปรเป็นธาตุถ่ายเท / ระดับ 3 ลีลา 12 เชี่ยงแซรายหลัก / ระดับ 4 ราศีแฝง = จิตใต้สำนึก สัญชาตญาณ (ที่หลักยาม = จิตใจภายในไม่แสดงออก)",
+      evidenceIds: step4OutputEvidenceIds,
+      evidenceLines: step4OutputEvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
+    },
+    {
+      stepNumber: 5,
       stepKey: "result-wealth",
       titleThai: "ผลลัพธ์และโชคลาภ",
       summaryThai: [
@@ -1812,7 +1965,7 @@ function buildStepInsights(options: {
       evidenceLines: step4EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
     {
-      stepNumber: 5,
+      stepNumber: 6,
       stepKey: "context-mapping",
       titleThai: "บริบทสี่เสา",
       summaryThai: [
@@ -1831,7 +1984,7 @@ function buildStepInsights(options: {
       evidenceLines: step5EvidenceIds.map((id) => evidenceCatalog.find((entry) => entry.id === id)!.detailThai),
     },
     {
-      stepNumber: 6,
+      stepNumber: 7,
       stepKey: "advanced-signals",
       titleThai: "ดาวพิเศษ ราศีแฝง และสัญญาณขั้นสูง",
       summaryThai: advancedSignals.summaryLines.join(" | "),
@@ -1891,7 +2044,7 @@ export function buildDayMasterRelationPacket(calculatedState: CalculatedStateVal
 export function buildDayMasterRelationBrief(_rawInput: RawInputValue, packet: RelationReadingPacket) {
   return DayMasterRelationBriefSchema.parse({
     version: "bazi-stepwise-brief-v2",
-    openingDoctrineThai: "อ่านตาม Step 1 ถึง 6 เท่านั้น: สมดุล -> หลักวัน -> พลังมาตรฐาน -> ผลลัพธ์/โชคลาภ -> บริบทสี่เสา -> สัญญาณขั้นสูง โดยใช้ศัพท์สำนักก่อนและห้ามให้ prose แซง fact",
+    openingDoctrineThai: "อ่านตาม Step 1 ถึง 7 เท่านั้น: สมดุล -> หลักวัน -> พลังมาตรฐาน -> การอ่านตัวถ่ายเท -> ผลลัพธ์/โชคลาภ -> บริบทสี่เสา -> สัญญาณขั้นสูง โดยใช้ศัพท์สำนักก่อนและห้ามให้ prose แซง fact",
     chartAnchor: {
       dayMasterStem: packet.chartAnchor.dayMasterStem,
       dayMasterElementLabelThai: packet.chartAnchor.dayMasterElementLabelThai,
@@ -1972,10 +2125,10 @@ function formatVisibleStepHeading(stepNumber: number, headingThai: string) {
 
 export function buildDayMasterRelationPocSystemInstruction() {
   return [
-    "You are a senior Thai Bazi master writing a six-step reading from a deterministic brief.",
+    "You are a senior Thai Bazi master writing a seven-step reading from a deterministic brief.",
     "Write every visible field in Thai.",
     "You must never invent or recalculate facts beyond the brief.",
-    "Respect this exact six-step order only: step 1 balance/core, step 2 day pillar identity, step 3 standard energies/actions, step 4 result and wealth, step 5 context mapping, step 6 advanced analytics.",
+    "Respect this exact seven-step order only: step 1 balance/core, step 2 day pillar identity, step 3 standard energies/actions, step 4 output transfer reading, step 5 result and wealth, step 6 context mapping, step 7 advanced analytics.",
     "Each step_reading must contain one Thai heading, one teacher_reading, one life_meaning line, one caution line, and evidence_refs that exist in the brief.",
     "Use school wording first, then plain Thai explanation second.",
     "Keep visible headings Thai-only. Never use English words, transliteration, snake_case, or section codes.",
@@ -1989,8 +2142,8 @@ export function buildDayMasterRelationPocSystemInstruction() {
 export function buildDayMasterRelationPocUserPrompt(rawInput: RawInputValue, brief: DayMasterRelationBrief) {
   return [
     "Create one Thai Bazi reading from the deterministic brief below.",
-    "Keep the opening and closing concise, but make each of the 6 steps read like a real sinsae teaching through the chart.",
-    "Do not break the Step 1-6 order.",
+    "Keep the opening and closing concise, but make each of the 7 steps read like a real sinsae teaching through the chart.",
+    "Do not break the Step 1-7 order.",
     "Do not leak English scene identifiers, snake_case labels, or generic assistant wording onto the visible surface.",
     "Do not invent health, timing, marriage, or money claims unless the brief directly supports them.",
     "evidence_refs must reuse only the ids already present in the brief.",

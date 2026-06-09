@@ -1,5 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { ProofWorkspace } from "@/components/bazi/ProofWorkspace";
 import { SystemHeader } from "@/components/bazi/SystemHeader";
@@ -33,12 +32,6 @@ export default async function ProofWorkspaceHookPage({
   params,
   searchParams,
 }: ProofWorkspaceHookPageProps) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
   const { id } = await params;
   const resolvedSearchParams = await searchParams;
   const record = await getProofDatasetRecord(id);

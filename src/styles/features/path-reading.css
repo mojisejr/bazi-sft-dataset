@@ -169,6 +169,52 @@
   color: var(--text-muted, inherit);
 }
 
+/* บล็อกย่อ/ขยายได้ (ตารางความสัมพันธ์, วิธีการอ่าน, คำอ่าน) */
+.topic-card__collapsible {
+  border: 1px solid var(--line-soft, rgba(120, 120, 140, 0.28));
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.topic-card__collapse-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-inset, rgba(120, 120, 140, 0.08));
+  border: none;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: inherit;
+}
+
+.topic-card__collapse-toggle:hover {
+  background: var(--surface-inset, rgba(120, 120, 140, 0.16));
+}
+
+.topic-card__collapse-caret {
+  flex: 0 0 auto;
+  font-size: 0.8rem;
+  color: var(--text-muted, inherit);
+}
+
+.topic-card__collapse-title {
+  flex: 1 1 auto;
+}
+
+.topic-card__collapse-body {
+  padding: 0.75rem;
+}
+
+.topic-card__collapse-body > .topic-table:only-child,
+.topic-card__collapse-body > ul:only-child,
+.topic-card__collapse-body > p:last-child {
+  margin-bottom: 0;
+}
+
 .topic-card__human {
   border-left: 3px solid var(--state-ready, #50aa78);
   padding-left: 0.9rem;
@@ -254,6 +300,177 @@
 
 .topic-card__human p {
   line-height: 1.8;
+}
+
+/* ช่องแก้ไขโดยซินแส (ใต้ผลการทำนาย) */
+.topic-card__sinsae {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--rp-border, rgba(0, 0, 0, 0.12));
+}
+
+.topic-card__sinsae-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.topic-card__sinsae-toggle {
+  border: 1px solid var(--rp-accent, #50aa78);
+  background: transparent;
+  color: var(--rp-accent, #50aa78);
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.topic-card__sinsae-toggle:hover {
+  background: var(--rp-accent-soft, rgba(80, 170, 120, 0.12));
+}
+
+.topic-card__sinsae-link {
+  border: none;
+  background: none;
+  color: var(--rp-text-muted, var(--text-muted, inherit));
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.topic-card__sinsae-link--danger {
+  color: var(--state-error, #c0392b);
+}
+
+.topic-card__sinsae-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted, inherit);
+  font-style: italic;
+}
+
+.topic-card__sinsae-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.topic-card__sinsae-label {
+  font-size: 0.82rem;
+  color: var(--text-muted, inherit);
+}
+
+.topic-card__sinsae-textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  line-height: 1.7;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--rp-border, rgba(0, 0, 0, 0.18));
+  border-radius: 10px;
+  background: var(--rp-bg, #fff);
+  color: inherit;
+}
+
+.topic-card__system-version {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: var(--rp-bg-muted, rgba(0, 0, 0, 0.04));
+}
+
+.topic-card__system-version-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted, inherit);
+}
+
+/* ตัวสร้างกฎแทนคำ (ในกล่องซินแส) */
+.sinsae-rule {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px dotted var(--rp-border, rgba(0, 0, 0, 0.12));
+}
+
+.sinsae-rule__title {
+  margin: 0 0 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.sinsae-rule__hint {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: var(--text-muted, inherit);
+}
+
+.sinsae-rule__suggestion,
+.sinsae-rule__manual {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.5rem;
+  margin-bottom: 0.45rem;
+}
+
+.sinsae-rule__suggestion input,
+.sinsae-rule__field input,
+.sinsae-rule__field select {
+  font: inherit;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--rp-border, rgba(0, 0, 0, 0.18));
+  border-radius: 8px;
+  background: var(--rp-bg, #fff);
+  color: inherit;
+}
+
+.sinsae-rule__suggestion input {
+  flex: 1 1 12rem;
+  min-width: 8rem;
+}
+
+.sinsae-rule__arrow {
+  color: var(--text-muted, inherit);
+}
+
+.sinsae-rule__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--text-muted, inherit);
+}
+
+.sinsae-rule__field input {
+  min-width: 11rem;
+}
+
+.sinsae-rule__field--scope select {
+  min-width: 7rem;
+}
+
+/* แผงตารางคำแก้ */
+.reading-path__rules-toggle {
+  border: none;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  padding: 0;
+}
+
+.reading-path__rules-body {
+  margin-top: 0.7rem;
+}
+
+.reading-path__rules-table td {
+  vertical-align: top;
 }
 
 .topic-card__audit {

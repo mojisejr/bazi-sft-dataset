@@ -91,7 +91,7 @@ describe("symbolic-engine fact shell", () => {
       expect.objectContaining({ dependency: "punishment_matrix", resolved: true, summary: "寅巳申 (detected/tertiary), 巳申亥 (detected/tertiary)" }),
       expect.objectContaining({ dependency: "twelve_qi_profile", resolved: true, summary: "yearBranch: หมกยก, monthBranch: หมกยก, dayBranch: ตี้อ๋วง, hourBranch: กวงตั่ว, mingGongBranch: ซี่, currentDaYunBranch: ตี้อ๋วง, currentLiuNianBranch: ลิ่มกัว" }),
       expect.objectContaining({ dependency: "dayun_cycles", resolved: true, summary: "4-13:丁未, 14-23:丙午, 24-33:乙巳(current), 34-43:甲辰, 44-53:癸卯, 54-63:壬寅, 64-73:辛丑, 74-83:庚子, 84-93:己亥" }),
-      expect.objectContaining({ dependency: "health_signals", resolved: true, summary: "shen sha ขุนนาง/อุปถัมภ์ (天乙贵人), ขุนนาง/อุปถัมภ์ (天乙贵人)" }),
+      expect.objectContaining({ dependency: "health_signals", resolved: true, summary: "shen sha ขุนนาง/อุปถัมภ์ (天乙贵人), ขุนนาง/อุปถัมภ์ (天乙贵人), ง้วยเต๊ก (月德), ง้วยเต๊ก (月德)" }),
     ]);
   });
 

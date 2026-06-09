@@ -144,3 +144,29 @@ export type PairComparisonResult = {
   /** Full 12-สี่ซิ้ง reference knowledge for the popup. */
   sisingReference: SisingStar[];
 };
+
+// --- Work multi-candidate comparison (เรา vs หุ้นส่วน/ลูกน้อง สูงสุด 3 คน) ----
+
+/** One candidate compared against "เรา" for the work domain. */
+export type WorkCandidate = {
+  /** ลำดับการกรอก (0-based). */
+  index: number;
+  profile: PersonProfile;
+  /** การงาน: forward (เรา→เขา) / reverse (เขา→เรา) / เฉลี่ย. */
+  match: PairMatchPair;
+  /** ปฏิกิริยาธาตุ เรา ↔ ผู้สมัคร. */
+  elementInteraction: ElementInteractionAB;
+  /** บทบาทด้านการงาน (เจ้านาย/ลูกน้อง/หุ้นส่วน). */
+  roles: RoleReading[];
+  /** คะแนนใช้จัดอันดับ = forward (เรา→เขา); null ถ้าหาคู่ไม่เจอ. */
+  rankScore: number | null;
+};
+
+export type WorkComparisonResult = {
+  self: PersonProfile;
+  /** ผู้สมัครตามลำดับการกรอก. */
+  candidates: WorkCandidate[];
+  /** index ของผู้สมัครเรียงดีสุด→น้อยสุดตาม rankScore. */
+  ranking: number[];
+  sisingReference: SisingStar[];
+};

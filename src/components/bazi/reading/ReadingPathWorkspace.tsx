@@ -11,8 +11,19 @@ import {
   type TopicReadingMode,
   type TopicReadingResult,
 } from "@/components/bazi/reading/TopicCard";
+import type { AddRuleInput } from "@/components/bazi/reading/SinsaeRuleBuilder";
+import type { SubstitutionRule } from "@/lib/bazi/substitution-rules";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
+import {
+  chartSignatureOf,
+  clearCorrection,
+  loadCorrections,
+  readingFingerprint,
+  resolveCorrection,
+  saveCorrection,
+  type SinsaeCorrection,
+} from "@/lib/bazi/sinsae-corrections";
 import {
   applyFormFieldChange,
   buildPayload,
@@ -98,6 +109,31 @@ export function ReadingPathWorkspace() {
   // ควบคุม "รวมทุกบท"
   const [allMode, setAllMode] = useState<TopicReadingMode>("engine");
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
+  // คลังคำแก้ของซินแส (localStorage) — โหลดครั้งเดียวตอน mount แล้วซิงค์กลับเมื่อแก้
+  const [corrections, setCorrections] = useState<ReturnType<typeof loadCorrections>>({});
+
+  useEffect(() => {
+    setCorrections(loadCorrections());
+  }, []);
+
+  // ตารางคำแก้ (กฎแทนคำ) จาก server — โหลดครั้งเดียวตอน mount
+  const [rules, setRules] = useState<SubstitutionRule[]>([]);
+  const [showRules, setShowRules] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/reading/rules")
+      .then((res) => res.json())
+      .then((body: { rules?: SubstitutionRule[] }) => {
+        if (active && Array.isArray(body.rules)) setRules(body.rules);
+      })
+      .catch(() => {
+        /* เปิดหน้าได้แม้โหลดกฎไม่สำเร็จ */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount
   useEffect(() => {
@@ -128,6 +164,7 @@ export function ReadingPathWorkspace() {
       provider: ReadingLlmProvider,
       input: RawInputValue,
       state: CalculatedStateValue,
+      masterExamples?: string[],
     ) => {
       setTopicStates((current) => ({
         ...current,
@@ -145,6 +182,9 @@ export function ReadingPathWorkspace() {
             calculatedState: state,
             provider,
             ...(apiKey ? { apiKey } : {}),
+            ...(mode === "llm" && masterExamples && masterExamples.length > 0
+              ? { masterExamples }
+              : {}),
           }),
         });
 
@@ -175,9 +215,67 @@ export function ReadingPathWorkspace() {
       if (!rawInput || !calculatedState) {
         return;
       }
-      void predictTopic(topicId, mode, apiKey, provider, rawInput, calculatedState);
+      // โหมด LLM: ดึงคำที่ซินแสเคยแก้ (ดวงนี้ + ดวงอื่นที่ผลคล้ายกัน) มาเป็นตัวอย่างให้ LLM
+      let masterExamples: string[] | undefined;
+      const reading = topicStates[topicId]?.result?.reading;
+      if (mode === "llm" && reading) {
+        const match = resolveCorrection(
+          corrections,
+          topicId,
+          reading,
+          chartSignatureOf(rawInput),
+        );
+        const examples = [
+          ...(match.exact ? [match.exact.corrected] : []),
+          ...match.similar.map((item) => item.corrected),
+        ].slice(0, 3);
+        if (examples.length > 0) {
+          masterExamples = examples;
+        }
+      }
+      void predictTopic(topicId, mode, apiKey, provider, rawInput, calculatedState, masterExamples);
     },
-    [rawInput, calculatedState, predictTopic, provider],
+    [rawInput, calculatedState, predictTopic, provider, corrections, topicStates],
+  );
+
+  const handleSaveCorrection = useCallback(
+    (topicId: string, text: string) => {
+      if (!rawInput) return;
+      const result = topicStates[topicId]?.result;
+      if (!result?.reading) return;
+      const entry: SinsaeCorrection = {
+        topicId,
+        fingerprint: readingFingerprint(result.reading),
+        chartSignature: chartSignatureOf(rawInput),
+        original: result.humanReading ?? "",
+        corrected: text,
+        editedAt: new Date().toISOString(),
+      };
+      setCorrections((current) => saveCorrection(current, entry));
+    },
+    [rawInput, topicStates],
+  );
+
+  const handleClearCorrection = useCallback(
+    (topicId: string) => {
+      if (!rawInput) return;
+      setCorrections((current) =>
+        clearCorrection(current, topicId, chartSignatureOf(rawInput)),
+      );
+    },
+    [rawInput],
+  );
+
+  // คำแก้ของซินแสที่เกี่ยวข้องกับดวงปัจจุบันต่อบท (exact = override, similar = ป้อน LLM)
+  const correctionFor = useCallback(
+    (topicId: string) => {
+      const reading = topicStates[topicId]?.result?.reading;
+      if (!rawInput || !reading) {
+        return { exact: null as SinsaeCorrection | null, similar: [] as SinsaeCorrection[] };
+      }
+      return resolveCorrection(corrections, topicId, reading, chartSignatureOf(rawInput));
+    },
+    [topicStates, corrections, rawInput],
   );
 
   const PREDICT_TOPICS = TOPIC_PATH.filter((topic) => topic.kind === "predict");
@@ -223,6 +321,42 @@ export function ReadingPathWorkspace() {
     void handlePredictAll("llm", "anthropic");
   }
 
+  // เพิ่มกฎแทนคำ → server เขียนไฟล์ + อัปเดต state แล้ว re-run engine ให้ผลบนจอสะท้อนกฎใหม่
+  async function handleAddRule(input: AddRuleInput) {
+    try {
+      const response = await fetch("/api/reading/rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...input, source: { kind: "manual" } }),
+      });
+      const body = (await response.json()) as { rules?: SubstitutionRule[]; error?: { message: string } };
+      if (!response.ok || !body.rules) {
+        throw new Error(body.error?.message ?? "เพิ่มกฎไม่สำเร็จ");
+      }
+      setRules(body.rules);
+      if (rawInput && calculatedState && !batchProgress) {
+        void runAllEngine(rawInput, calculatedState);
+      }
+    } catch {
+      /* เงียบ — ผู้ใช้กดใหม่ได้ */
+    }
+  }
+
+  async function handleDeleteRule(id: string) {
+    try {
+      const response = await fetch(`/api/reading/rules?id=${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const body = (await response.json()) as { rules?: SubstitutionRule[] };
+      setRules(body.rules ?? []);
+      if (rawInput && calculatedState && !batchProgress) {
+        void runAllEngine(rawInput, calculatedState);
+      }
+    } catch {
+      /* เงียบ */
+    }
+  }
+
   function handleFieldChange(event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = event.target;
     setFormState((current) => applyFormFieldChange(current, name, value));
@@ -241,13 +375,16 @@ export function ReadingPathWorkspace() {
     setExporting(variant);
     try {
       const readings: Record<string, string> = {};
-      if (variant === "llm") {
-        for (const [topicId, entry] of Object.entries(topicStates)) {
-          const text = entry.result?.humanReading;
-          // เอาเฉพาะบทที่ผู้ใช้สั่งทำนายด้วย LLM เอง ที่เหลือปล่อยให้ engine render
-          if (text && entry.result?.source === "llm") {
-            readings[topicId] = text;
-          }
+      for (const topic of PREDICT_TOPICS) {
+        const result = topicStates[topic.id]?.result;
+        if (!result) continue;
+        // ซินแส override: ถ้ามีคำแก้ของดวงนี้ ใส่เสมอ (ทั้งฉบับ engine และ llm)
+        const sinsae = correctionFor(topic.id).exact;
+        if (sinsae) {
+          readings[topic.id] = sinsae.corrected;
+        } else if (variant === "llm" && result.humanReading && result.source === "llm") {
+          // ที่เหลือ: ฉบับ llm ใส่เฉพาะบทที่ผู้ใช้สั่งทำนายด้วย LLM เอง — engine ปล่อยให้ render เอง
+          readings[topic.id] = result.humanReading;
         }
       }
       // ตารางบทเสริม (วัยจร): ฉบับ LLM ใช้ที่ generate แล้ว (รวม LLM แต่งคำ ถ้ามี); ฉบับ engine ปล่อยให้ engine คำนวณเอง
@@ -494,6 +631,59 @@ export function ReadingPathWorkspace() {
         </section>
       )}
 
+      {isReady && (
+        <section className="surface reading-path__rules" aria-label="ตารางคำแก้">
+          <button
+            type="button"
+            className="reading-path__rules-toggle"
+            aria-expanded={showRules}
+            onClick={() => setShowRules((value) => !value)}
+          >
+            <span aria-hidden="true">{showRules ? "▾" : "▸"}</span>
+            📋 ตารางคำแก้ (กฎแทนคำ) · {rules.length} กฎ
+          </button>
+          {showRules && (
+            <div className="reading-path__rules-body">
+              {rules.length === 0 ? (
+                <p className="section-note">
+                  ยังไม่มีกฎ — แก้คำทำนายบทใดบทหนึ่งแล้วกด “บันทึกเป็นกฎ” หรือกรอกมือในกล่องของบทนั้น
+                  คำที่ตั้งไว้จะถูกแทนให้ทุกดวงที่ทายได้วลีเดียวกัน
+                </p>
+              ) : (
+                <table className="topic-table reading-path__rules-table">
+                  <thead>
+                    <tr>
+                      <th>ใช้กับ</th>
+                      <th>คำเดิม</th>
+                      <th>แก้เป็น</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rules.map((rule) => (
+                      <tr key={rule.id}>
+                        <td>{rule.scope === "global" ? "ทุกบท" : rule.topicId}</td>
+                        <td>{rule.match}</td>
+                        <td>{rule.replacement.length === 0 ? "(ลบทิ้ง)" : rule.replacement}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="topic-card__sinsae-link topic-card__sinsae-link--danger"
+                            onClick={() => void handleDeleteRule(rule.id)}
+                          >
+                            ลบ
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </section>
+      )}
+
       {isReady && showPreview && (
         <section className="surface reading-path__preview" aria-label="ตัวอย่างรายงาน">
           <SectionHeading
@@ -503,7 +693,8 @@ export function ReadingPathWorkspace() {
             note="ตรวจเนื้อหาทั้ง 15 บท (ฉบับบนจอ รวม LLM polish ถ้ามี) ตามลำดับที่จะออกในไฟล์ Word"
           />
           {PREDICT_TOPICS.map((topic) => {
-            const text = topicStates[topic.id]?.result?.humanReading;
+            const sinsae = correctionFor(topic.id).exact;
+            const text = sinsae ? sinsae.corrected : topicStates[topic.id]?.result?.humanReading;
             return (
               <article key={topic.id} className="reading-path__preview-chapter">
                 <h3>บทที่ {topic.chapter}: {topic.title}</h3>
@@ -537,6 +728,7 @@ export function ReadingPathWorkspace() {
         <section className="reading-path__topics" aria-label="หัวข้อการอ่าน">
           {PREDICT_TOPICS.map((topic) => {
             const entry = topicStates[topic.id] ?? EMPTY_TOPIC_STATE;
+            const match = correctionFor(topic.id);
             return (
               <TopicCard
                 key={topic.id}
@@ -547,6 +739,11 @@ export function ReadingPathWorkspace() {
                 errorMessage={entry.error}
                 apiKey={effectiveApiKey}
                 onPredict={handlePredict}
+                savedCorrection={match.exact}
+                similarCount={match.similar.length}
+                onSaveCorrection={handleSaveCorrection}
+                onClearCorrection={handleClearCorrection}
+                onAddRule={handleAddRule}
               />
             );
           })}

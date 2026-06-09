@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -317,6 +318,111 @@ export const baziChatHistories = pgTable("bazi_chat_histories", {
     .notNull()
     .$onUpdate(() => new Date()),
 });
+
+/**
+ * Override ของ "วิธีการอ่านรายบท" ที่ซินแสปรับออนไลน์ (ทับค่า default ใน topic-path.ts)
+ * เก็บเฉพาะฟิลด์เชิงข้อความ/ลำดับ (lens/title/stepNumbers/relationKeys) — ไม่แตะ logic/algorithm
+ * 1 แถวต่อ 1 topicId; engine จะ merge ทับค่า default แล้ว fallback เป็น default เมื่อไม่มี/ผิดรูป
+ */
+export type ReadingDoctrineOverridePayload = {
+  lens?: string;
+  title?: string;
+  stepNumbers?: number[];
+  relationKeys?: string[];
+};
+
+export const baziReadingDoctrineOverrides = pgTable("bazi_reading_doctrine_overrides", {
+  topicId: text("topic_id").primaryKey(),
+  override: jsonb("override")
+    .$type<ReadingDoctrineOverridePayload>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InsertBaziReadingDoctrineOverride = typeof baziReadingDoctrineOverrides.$inferInsert;
+export type SelectBaziReadingDoctrineOverride = typeof baziReadingDoctrineOverrides.$inferSelect;
+
+/**
+ * Doctrine config v2 — override ข้อความของ "นิยาม 7 ขั้น / ป้าย-ความหมาย role / ดาวพิเศษ"
+ * keyed (scope, config_key): scope ∈ step|role|star ; value = jsonb payload เฉพาะ scope
+ */
+export type DoctrineConfigValue = Record<string, unknown>;
+
+export const baziDoctrineConfig = pgTable(
+  "bazi_doctrine_config",
+  {
+    scope: text("scope").notNull(),
+    configKey: text("config_key").notNull(),
+    value: jsonb("value").$type<DoctrineConfigValue>().notNull().default(sql`'{}'::jsonb`),
+    updatedBy: text("updated_by"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.scope, table.configKey] }),
+  }),
+);
+
+export type InsertBaziDoctrineConfig = typeof baziDoctrineConfig.$inferInsert;
+export type SelectBaziDoctrineConfig = typeof baziDoctrineConfig.$inferSelect;
+
+/**
+ * Audit log (append-only) ของการแก้ doctrine ออนไลน์ — ใช้ดูประวัติ + rollback
+ * surface: "topic" (TOPIC_PATH override) | "config" (นิยามขั้น/role/star)
+ * entityKey: topicId  หรือ  "scope:key" (เช่น "step:balance-core")
+ * action: "upsert" | "delete" ; value = ค่าที่ apply (null เมื่อ delete)
+ */
+export type DoctrineAuditValue = Record<string, unknown> | null;
+
+export const baziDoctrineAudit = pgTable("bazi_doctrine_audit", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  surface: text("surface").notNull(),
+  entityKey: text("entity_key").notNull(),
+  action: text("action").notNull(),
+  value: jsonb("value").$type<DoctrineAuditValue>(),
+  actor: text("actor"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InsertBaziDoctrineAudit = typeof baziDoctrineAudit.$inferInsert;
+export type SelectBaziDoctrineAudit = typeof baziDoctrineAudit.$inferSelect;
+
+/**
+ * Draft overlay — ฉบับร่างที่ซินแสแก้ค้างไว้ (ยังไม่เผยแพร่)
+ * engine live จะไม่อ่านตารางนี้; เห็นเฉพาะ preview จนกว่าจะ "เผยแพร่" (publish) ไปยังตาราง live
+ * surface: "topic" | "config" ; entityKey: topicId หรือ "scope:key"
+ */
+export type DoctrineDraftValue = Record<string, unknown>;
+
+export const baziDoctrineDraft = pgTable(
+  "bazi_doctrine_draft",
+  {
+    surface: text("surface").notNull(),
+    entityKey: text("entity_key").notNull(),
+    value: jsonb("value").$type<DoctrineDraftValue>().notNull().default(sql`'{}'::jsonb`),
+    actor: text("actor"),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.surface, table.entityKey] }),
+  }),
+);
+
+export type InsertBaziDoctrineDraft = typeof baziDoctrineDraft.$inferInsert;
+export type SelectBaziDoctrineDraft = typeof baziDoctrineDraft.$inferSelect;
 
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;

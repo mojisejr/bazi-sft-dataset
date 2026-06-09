@@ -1,16 +1,7 @@
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
-
 import { ReadingPathWorkspace } from "@/components/bazi/reading/ReadingPathWorkspace";
 import { SystemHeader } from "@/components/bazi/SystemHeader";
 
-export default async function ReadingPage() {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
+export default function ReadingPage() {
   return (
     <main className="page-shell">
       <SystemHeader

@@ -1,5 +1,10 @@
 /** Shared presentation helpers for the pair-matching UI + print report. */
-import type { PairComparisonResult, PairDomain, PairMatchPair } from "@/lib/bazi/pair-types";
+import type {
+  PairComparisonResult,
+  PairDomain,
+  PairMatchPair,
+  WorkCandidate,
+} from "@/lib/bazi/pair-types";
 
 export const DOMAIN_LABEL: Record<PairDomain, string> = { work: "การงาน", love: "ความรัก" };
 
@@ -41,6 +46,28 @@ export function buildEngineText(
     `• คนที่ 2 (${r.ourPillar}) มองคนที่ 1 (${r.partnerPillar}): ${r.percent ?? "-"}% เกรด ${r.grade} — ${r.ratingText}`,
     r.sising ? `  สี่ซิ้ง: ${r.sising.nameTh} (${r.sising.nameCn})` : "",
     `ปฏิกิริยาธาตุ: ${comparison.elementInteraction.summaryTh}`,
+  ];
+  return lines.filter(Boolean).join("\n");
+}
+
+/** engine-truth ของผู้สมัครงานหนึ่งคน (เทียบกับ "เรา") สำหรับส่งเข้า LLM. */
+export function buildWorkEngineText(
+  selfLabel: string,
+  candidateLabel: string,
+  candidate: WorkCandidate,
+): string {
+  const m = candidate.match;
+  const f = m.forward;
+  const r = m.reverse;
+  const lines = [
+    `โดเมน: การงาน — เปรียบเทียบ "${selfLabel}" กับ "${candidateLabel}"`,
+    `คะแนนจัดอันดับ (${selfLabel}→${candidateLabel}): ${f.percent ?? "-"}% เกรด ${f.grade}`,
+    `คะแนนรวมสองทิศ: ${m.overallPercent ?? "-"}% (เกรด ${m.overallGrade})`,
+    `• ${selfLabel} มอง ${candidateLabel} (${f.ourPillar}×${f.partnerPillar}): ${f.percent ?? "-"}% — ${f.ratingText}`,
+    f.sising ? `  สี่ซิ้ง: ${f.sising.nameTh} (${f.sising.nameCn})` : "",
+    `• ${candidateLabel} มอง ${selfLabel} (${r.ourPillar}×${r.partnerPillar}): ${r.percent ?? "-"}% — ${r.ratingText}`,
+    `ปฏิกิริยาธาตุ: ${candidate.elementInteraction.summaryTh}`,
+    ...candidate.roles.map((role) => `บทบาท ${role.perspective} · ${role.stageName}: ${role.narrative}`),
   ];
   return lines.filter(Boolean).join("\n");
 }

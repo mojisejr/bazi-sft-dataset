@@ -8,6 +8,7 @@ import { Surface } from "@/components/bazi/primitives/Surface";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { PairDetailModal } from "@/components/bazi/pair/PairDetailModal";
 import { PairPrintReport } from "@/components/bazi/pair/PairPrintReport";
+import { PersonInputs } from "@/components/bazi/pair/PersonInputs";
 import {
   buildEngineText,
   DOMAIN_LABEL,
@@ -16,18 +17,15 @@ import {
 } from "@/components/bazi/pair/pair-presentation";
 import {
   applyFormFieldChange,
-  BIRTH_HOUR_OPTIONS,
-  BIRTH_MINUTE_OPTIONS,
-  BUDDHIST_ERA_YEAR_OPTIONS,
   buildPayload,
   createDefaultFormState,
-  getBirthDayOptions,
-  THAI_MONTH_OPTIONS,
   type FormState,
 } from "@/lib/bazi/trainer-workspace";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
-import type { PairComparisonResult, PairDomain } from "@/lib/bazi/pair-types";
+import type { PairComparisonResult } from "@/lib/bazi/pair-types";
 import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
+
+const DOMAIN = "love" as const;
 
 type PairResponse = {
   personA: CalculatedStateValue;
@@ -36,88 +34,6 @@ type PairResponse = {
 };
 
 type ModalKind = "chart" | "sising" | null;
-
-function PersonInputs({
-  label,
-  form,
-  onChange,
-}: {
-  label: string;
-  form: FormState;
-  onChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
-}) {
-  const dayOptions = getBirthDayOptions(form.birthMonth, form.birthYearBe);
-  return (
-    <div className="pair-person">
-      <p className="pair-person__title">{label}</p>
-      <div className="field">
-        <span>วันเกิด</span>
-        <div className="field-grid field-grid--triple">
-          <label className="field field--compact">
-            <span>วัน</span>
-            <select name="birthDay" value={form.birthDay} onChange={onChange} required>
-              <option value="">วัน</option>
-              {dayOptions.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field field--compact">
-            <span>เดือน</span>
-            <select name="birthMonth" value={form.birthMonth} onChange={onChange} required>
-              <option value="">เดือน</option>
-              {THAI_MONTH_OPTIONS.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </label>
-          <label className="field field--compact">
-            <span>ปี พ.ศ.</span>
-            <select name="birthYearBe" value={form.birthYearBe} onChange={onChange} required>
-              <option value="">ปี</option>
-              {BUDDHIST_ERA_YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-      <div className="field-grid">
-        <div className="field">
-          <span>เวลาเกิด</span>
-          <div className="field-grid">
-            <label className="field field--compact">
-              <span>ชั่วโมง</span>
-              <select name="birthHour" value={form.birthHour} onChange={onChange} required>
-                <option value="">00-23</option>
-                {BIRTH_HOUR_OPTIONS.map((h) => (
-                  <option key={h} value={h}>{h}</option>
-                ))}
-              </select>
-            </label>
-            <label className="field field--compact">
-              <span>นาที</span>
-              <select name="birthMinute" value={form.birthMinute} onChange={onChange} required>
-                <option value="">00-59</option>
-                {BIRTH_MINUTE_OPTIONS.map((mn) => (
-                  <option key={mn} value={mn}>{mn}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-        </div>
-        <label className="field">
-          <span>เพศ</span>
-          <select name="gender" value={form.gender} onChange={onChange}>
-            <option value="female">หญิง</option>
-            <option value="male">ชาย</option>
-            <option value="other">อื่นๆ</option>
-          </select>
-        </label>
-      </div>
-    </div>
-  );
-}
 
 export function PairMatchingWorkspace() {
   const [formA, setFormA] = useState<FormState>(createDefaultFormState);
@@ -129,7 +45,6 @@ export function PairMatchingWorkspace() {
   const [currentYear, setCurrentYear] = useState(0);
   const [submittedA, setSubmittedA] = useState<RawInputValue | null>(null);
   const [submittedB, setSubmittedB] = useState<RawInputValue | null>(null);
-  const [domain, setDomain] = useState<PairDomain>("love");
   const [modal, setModal] = useState<ModalKind>(null);
 
   const [apiKey, setApiKey] = useState("");
@@ -173,7 +88,7 @@ export function PairMatchingWorkspace() {
     }
   }, [formA, formB]);
 
-  const pair = result ? result.comparison.match[domain] : null;
+  const pair = result ? result.comparison.match[DOMAIN] : null;
 
   const onRephrase = useCallback(async () => {
     if (!result || !pair) return;
@@ -188,8 +103,8 @@ export function PairMatchingWorkspace() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          engineText: buildEngineText(pair, domain, result.comparison),
-          domainLabel: `ความเข้ากันด้าน${DOMAIN_LABEL[domain]}`,
+          engineText: buildEngineText(pair, DOMAIN, result.comparison),
+          domainLabel: `ความเข้ากันด้าน${DOMAIN_LABEL[DOMAIN]}`,
           provider,
           ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         }),
@@ -204,7 +119,7 @@ export function PairMatchingWorkspace() {
     } finally {
       setLlmLoading(false);
     }
-  }, [result, pair, domain, provider, apiKey]);
+  }, [result, pair, provider, apiKey]);
 
   const sisingActiveCode = pair?.forward.sising?.code ?? null;
   const sisingRef = result?.comparison.sisingReference ?? [];
@@ -217,9 +132,7 @@ export function PairMatchingWorkspace() {
     }
   }, [modal]);
 
-  const roles = result
-    ? (domain === "work" ? result.comparison.workRoles : result.comparison.loveRoles)
-    : [];
+  const roles = result ? result.comparison.loveRoles : [];
 
   return (
     <div className="pair-shell">
@@ -267,14 +180,7 @@ export function PairMatchingWorkspace() {
           </div>
 
           {/* ── ความเข้ากัน ── */}
-          <SectionHeading kicker="ความเข้ากัน" title={`ดวงสมพงษ์ด้าน${DOMAIN_LABEL[domain]}`} compact />
-          <div className="pair-domain-toggle">
-            {(["love", "work"] as PairDomain[]).map((d) => (
-              <button key={d} type="button" data-active={domain === d} onClick={() => { setDomain(d); setLlmText(null); }}>
-                {DOMAIN_LABEL[d]}
-              </button>
-            ))}
-          </div>
+          <SectionHeading kicker="ความเข้ากัน" title={`ดวงสมพงษ์ด้าน${DOMAIN_LABEL[DOMAIN]}`} compact />
 
           {pair.forward.found || pair.reverse.found ? (
             <>
@@ -319,7 +225,7 @@ export function PairMatchingWorkspace() {
                     <span className="pair-sising-card__score"> ({pair.forward.sising.nameCn} · พลัง {pair.forward.sising.score})</span>
                   </div>
                   <p className="pair-rating-text">{pair.forward.sising.long || pair.forward.sising.short}</p>
-                  {sisingDomainAspects(pair.forward.sising, domain).map((a) => (
+                  {sisingDomainAspects(pair.forward.sising, DOMAIN).map((a) => (
                     <p key={a.label} className="pair-rating-text"><strong>{a.label}:</strong> {a.text}</p>
                   ))}
                 </div>
@@ -328,7 +234,7 @@ export function PairMatchingWorkspace() {
               {/* บทบาทตามด้าน (inline) */}
               {roles.length ? (
                 <div className="pair-roles">
-                  <strong>บทบาทด้าน{DOMAIN_LABEL[domain]}</strong>
+                  <strong>บทบาทด้าน{DOMAIN_LABEL[DOMAIN]}</strong>
                   {roles.map((r, i) => (
                     <div key={i} className="pair-role">
                       <span className="pair-role__perspective">{r.perspective} · {r.stageName}</span>
@@ -377,7 +283,7 @@ export function PairMatchingWorkspace() {
 
           {llmText ? (
             <Surface as="div" inset>
-              <SectionHeading kicker="ฉบับเรียบเรียง" title={`คำทำนายด้าน${DOMAIN_LABEL[domain]}`} compact />
+              <SectionHeading kicker="ฉบับเรียบเรียง" title={`คำทำนายด้าน${DOMAIN_LABEL[DOMAIN]}`} compact />
               <p className="pair-rating-text" style={{ whiteSpace: "pre-wrap" }}>{llmText}</p>
             </Surface>
           ) : null}

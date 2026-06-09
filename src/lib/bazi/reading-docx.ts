@@ -26,6 +26,8 @@ import {
   buildTopicConsumerReading,
   type RelationshipLineRow,
 } from "@/lib/bazi/topic-knowledge";
+import { applySubstitutionRules } from "@/lib/bazi/substitution-rules";
+import { readRules } from "@/lib/bazi/substitution-rules-store";
 
 /**
  * สร้างรายงานทำนายดวงจีนเป็นไฟล์ Word (.docx) จากผล engine แบบ deterministic
@@ -138,6 +140,8 @@ function chapterParagraphs(
 ): Paragraph[] {
   const out: Paragraph[] = [];
   const wanted = topicIds ? new Set(topicIds) : null;
+  // กฎแทนคำของซินแส — ใช้กับข้อความที่ regenerate เองเท่านั้น (override จาก client ผ่านกฎมาแล้ว)
+  const substitutionRules = readRules().rules;
   for (const topic of TOPIC_PATH.filter((t) => t.kind === "predict" && (!wanted || wanted.has(t.id)))) {
     const override = overrides?.[topic.id]?.trim();
     // ไอคอน 🤖 = ส่วนที่ AI (LLM) แต่งสำนวนทับโครง engine; ไม่มีไอคอน = ข้อความจาก engine ตรง ๆ
@@ -149,10 +153,13 @@ function chapterParagraphs(
         children: [new TextRun({ text: `บทที่ ${topic.chapter}: ${topic.title}${aiMark}`, bold: true, size: 28, font: FONT })],
       }),
     );
-    const baseReading =
+    const baseReading = applySubstitutionRules(
+      topic.id,
       variant === "consumer"
         ? buildTopicConsumerReading(calculatedState, topic.id, rawInput)
-        : buildTopicHumanReading(calculatedState, topic.id, rawInput);
+        : buildTopicHumanReading(calculatedState, topic.id, rawInput),
+      substitutionRules,
+    );
     const reading = override || baseReading;
     if (reading) {
       for (const para of reading.split("\n\n")) {

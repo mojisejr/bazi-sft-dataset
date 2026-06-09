@@ -145,6 +145,10 @@ export type SaveDatasetAuth = {
 
 export type SaveDatasetAuthenticate = () => Promise<SaveDatasetAuth>;
 
+/** Default identity when no authenticate function is supplied (login removed). */
+const LOCAL_USER_ID = "local";
+const localAuth: SaveDatasetAuthenticate = async () => ({ userId: LOCAL_USER_ID, isAuthenticated: true });
+
 export type DatasetRecordRepository = {
   saveRecord: (
     input: SaveDatasetRequest,
@@ -654,28 +658,29 @@ export async function listDatasetRecordsForRegeneration(
 
 type SaveDatasetHandlerOptions = {
   repository?: DatasetRecordRepository;
-  authenticate: SaveDatasetAuthenticate;
+  /** Optional. When omitted, requests are treated as the local user (no login). */
+  authenticate?: SaveDatasetAuthenticate;
 };
 
 type PurgeDatasetDraftsHandlerOptions = {
   repository?: DatasetDraftPurgeRepository;
-  authenticate: SaveDatasetAuthenticate;
+  authenticate?: SaveDatasetAuthenticate;
 };
 
 type ListDraftDatasetRecordsHandlerOptions = {
   repository?: DatasetDraftListRepository;
-  authenticate: SaveDatasetAuthenticate;
+  authenticate?: SaveDatasetAuthenticate;
 };
 
 type SaveProofDatasetHandlerOptions = {
   repository?: DatasetRecordRepository & DatasetProofLookupRepository;
-  authenticate: SaveDatasetAuthenticate;
+  authenticate?: SaveDatasetAuthenticate;
 };
 
 export function createSaveDatasetHandler(options: SaveDatasetHandlerOptions) {
   return async function POST(request: Request) {
     try {
-      const authResult = await options.authenticate();
+      const authResult = await (options.authenticate ?? localAuth)();
       const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
 
       if (!isAuthenticated || !authResult.userId) {
@@ -729,7 +734,7 @@ export function createPurgeDatasetDraftsHandler(
 ) {
   return async function POST() {
     try {
-      const authResult = await options.authenticate();
+      const authResult = await (options.authenticate ?? localAuth)();
       const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
 
       if (!isAuthenticated || !authResult.userId) {
@@ -764,7 +769,7 @@ export function createListDraftDatasetRecordsHandler(
 ) {
   return async function GET(request: Request) {
     try {
-      const authResult = await options.authenticate();
+      const authResult = await (options.authenticate ?? localAuth)();
       const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
 
       if (!isAuthenticated || !authResult.userId) {
@@ -801,7 +806,7 @@ export function createSaveProofDatasetHandler(
 ) {
   return async function POST(request: Request) {
     try {
-      const authResult = await options.authenticate();
+      const authResult = await (options.authenticate ?? localAuth)();
       const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
 
       if (!isAuthenticated || !authResult.userId) {

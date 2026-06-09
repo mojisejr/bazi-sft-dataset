@@ -24,8 +24,28 @@ import {
 } from "@/lib/bazi/topic-knowledge";
 import { generateReadingTopicLlm, polishRelationshipLinesLlm } from "@/lib/bazi/reading-llm";
 import { GPTCASE_TUNED_PROFILE } from "@/lib/bazi/reading-prompt-profiles";
+import { getMergedTopicDefinition } from "@/lib/bazi/reading-doctrine.server";
+import { mergeTopicDefinition } from "@/lib/bazi/reading-doctrine-override";
+import { applyRoleConfig, applyStarConfig, applyStepConfig } from "@/lib/bazi/doctrine-config";
+import { getDoctrineConfigV2 } from "@/lib/bazi/doctrine-config.server";
+import { mergeConfigV2 } from "@/lib/bazi/doctrine-overlay";
+import {
+  createDbDoctrineDraftRepository,
+  type ParsedDrafts,
+} from "@/lib/bazi/doctrine-draft-repository";
+import { applySubstitutionRules } from "@/lib/bazi/substitution-rules";
+import { readRules } from "@/lib/bazi/substitution-rules-store";
 
 export const runtime = "nodejs";
+
+/** โหลดฉบับร่างสำหรับ preview แบบ best-effort — คืน null ถ้า DB/ตารางมีปัญหา (preview ก็จะเท่ากับ published) */
+async function loadDraftsSafe(): Promise<ParsedDrafts | null> {
+  try {
+    return await createDbDoctrineDraftRepository().loadParsed();
+  } catch {
+    return null;
+  }
+}
 
 /** signal กระชับจาก engine reading สำหรับ ground LLM */
 function engineSignalsFor(reading: TopicEngineReading): string[] {
@@ -47,6 +67,8 @@ const ReadingTopicRequestSchema = z
     apiKey: z.string().trim().min(1).optional(),
     model: z.string().trim().min(1).optional(),
     provider: z.enum(["gemini", "opencode", "anthropic"]).default("gemini"),
+    /** คำที่ซินแสเคยแก้ให้ดวงที่ได้ผลคล้ายกัน (โหมด llm) — ใช้เป็นตัวอย่างสำนวนให้ LLM */
+    masterExamples: z.array(z.string().trim().min(1)).max(3).optional(),
   })
   .refine((value) => value.rawInput || value.calculatedState, {
     message: "ต้องส่ง rawInput หรือ calculatedState อย่างน้อยหนึ่งอย่าง",
@@ -71,7 +93,7 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid request.", "invalid_payload");
   }
 
-  const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model, provider } =
+  const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model, provider, masterExamples } =
     parsed.data;
 
   if (mode === "llm" && !apiKey) {
@@ -96,8 +118,40 @@ export async function POST(req: Request) {
     );
   }
 
-  const packet = buildDayMasterRelationPacket(calculatedState);
-  const reading = buildTopicEngineReading(calculatedState, topicId, packet);
+  // ตารางคำแก้ของซินแส (กฎแทนคำ) — ใช้แทนวลีในผลทายทุกโหมดให้เหมือนกันข้ามดวง
+  const substitutionRules = readRules().rules;
+
+  // preview=1 (เฉพาะผู้มีสิทธิ์): วาง "ฉบับร่าง" ทับ published เพื่อดูตัวอย่างก่อนเผยแพร่
+  const previewRequested = new URL(req.url).searchParams.get("preview") === "1";
+  const expectedToken = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
+  const previewAuthorized =
+    !expectedToken || req.headers.get("x-admin-token")?.trim() === expectedToken;
+  const usePreview = previewRequested && previewAuthorized;
+  const drafts = usePreview ? await loadDraftsSafe() : null;
+
+  // Doctrine config v2 (ซินแสปรับออนไลน์): นิยาม 7 ขั้น / ป้าย-ความหมาย role / ดาวพิเศษ — fallback เป็น default
+  let doctrineConfig = await getDoctrineConfigV2();
+  if (drafts) {
+    doctrineConfig = mergeConfigV2(doctrineConfig, drafts.config);
+  }
+  // override "ความหมายดาว" ก่อน build packet (เพราะ step 7 อ่าน shenSha จาก state)
+  const stateForReading = {
+    ...calculatedState,
+    shenSha: applyStarConfig(calculatedState.shenSha, doctrineConfig.stars),
+  };
+  const packetRaw = buildDayMasterRelationPacket(stateForReading);
+  // override "นิยามขั้น" + "ป้าย/ความหมาย role" บน packet
+  const packet = {
+    ...packetRaw,
+    stepInsights: applyStepConfig(packetRaw.stepInsights, doctrineConfig.steps),
+    relationSummary: applyRoleConfig(packetRaw.relationSummary, doctrineConfig.roles),
+  };
+  // นิยามบท merged (default ในโค้ด + override ออนไลน์ที่ซินแสปรับ) — fallback เป็น default เมื่อ DB มีปัญหา
+  let topicDefinition = await getMergedTopicDefinition(topicId);
+  if (drafts?.topicOverrides[topicId]) {
+    topicDefinition = mergeTopicDefinition(topicDefinition, drafts.topicOverrides[topicId]);
+  }
+  const reading = buildTopicEngineReading(stateForReading, topicId, packet, topicDefinition);
   const humanKnowledge = buildTopicHumanReading(calculatedState, topicId, rawInput);
   const sourceLabel = getTopicKnowledgeSourceLabel(topicId);
   // ตาราง Relationship Lines เฉพาะบทวัยจร (อ้างอิงตำราเคี้ยงคุง)
@@ -115,7 +169,7 @@ export async function POST(req: Request) {
     return Response.json({
       source: mode,
       reading,
-      humanReading,
+      humanReading: applySubstitutionRules(topicId, humanReading, substitutionRules),
       knownlageExcerpt,
       sourceLabel,
       ...(relationshipLines ? { relationshipLines } : {}),
@@ -139,6 +193,9 @@ export async function POST(req: Request) {
       model,
       provider,
       profile: provider === "gemini" ? GPTCASE_TUNED_PROFILE : undefined,
+      ...(masterExamples && masterExamples.length > 0
+        ? { masterCorrections: masterExamples }
+        : {}),
     });
 
     // บทเสริม (วัยจร) ท้ายบท 15: ให้ LLM แต่งคำช่อง "คำอธิบายดี-ร้ายเชิงลึก" ด้วย
@@ -163,7 +220,8 @@ export async function POST(req: Request) {
       source: "llm",
       model: llm.model,
       reading, // คำอ่าน/ตาราง engine คงเดิม
-      humanReading: llm.text, // ผลการทำนาย = ฉบับ LLM เรียบเรียงสไตล์ 1.docx
+      // ผลการทำนาย = ฉบับ LLM เรียบเรียง แล้วผ่านกฎแทนคำของซินแส
+      humanReading: applySubstitutionRules(topicId, llm.text, substitutionRules),
       knownlageExcerpt: getTopicKnownlageExcerpt(calculatedState, topicId, rawInput),
       sourceLabel,
       ...(polishedLines ? { relationshipLines: polishedLines } : {}),

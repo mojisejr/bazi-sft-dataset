@@ -4,11 +4,17 @@ import type {
 } from "@/lib/bazi/schema-types";
 
 import {
+  BRANCH_ORDER,
   NOBLEMAN_BRANCHES_BY_DAY_STEM,
   SHEN_SHA_COPY,
+  TIAN_DE_TARGET_BY_MONTH_BRANCH,
   WEN_CHANG_BRANCH_BY_DAY_STEM,
+  YUE_DE_STEM_BY_MONTH_BRANCH,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type { ReferencePillar } from "@/lib/bazi/symbolic-engine.types";
+
+/** เป้าหมาย 天德 อาจเป็นก้าน (stem) หรือกิ่ง (branch) — ใช้ตรวจว่าเป็นกิ่งหรือไม่ */
+const BRANCH_SET = new Set<string>(BRANCH_ORDER as readonly string[]);
 
 function pushShenSha(
   collection: CalculatedStateValue["shenSha"],
@@ -33,6 +39,14 @@ function pushShenSha(
 
 function findReferenceMatches(referencePillars: ReferencePillar[], targetBranch: string) {
   return referencePillars.filter((entry) => entry.pillar.branch === targetBranch);
+}
+
+/** จับคู่เป้าหมายที่อาจเป็นก้าน (เทียบ stem) หรือกิ่ง (เทียบ branch) */
+function findReferenceMatchesByStemOrBranch(referencePillars: ReferencePillar[], target: string) {
+  const matchByBranch = BRANCH_SET.has(target);
+  return referencePillars.filter((entry) =>
+    matchByBranch ? entry.pillar.branch === target : entry.pillar.stem === target,
+  );
 }
 
 export function buildShenShaState(args: {
@@ -84,6 +98,27 @@ export function buildShenShaState(args: {
         match.label,
         SHEN_SHA_COPY.wenChang.meaning,
       );
+    }
+  }
+
+  // 天德 (เทียนเต๊ก) + 月德 (ง้วยเต๊ก) — อิงราศีล่างหลักเดือน แล้วหาเป้าหมายในสี่เสา/อ้างอิง
+  const monthBranch = pillars.month.branch;
+
+  const tianDeTarget = TIAN_DE_TARGET_BY_MONTH_BRANCH[
+    monthBranch as keyof typeof TIAN_DE_TARGET_BY_MONTH_BRANCH
+  ];
+  if (tianDeTarget) {
+    for (const match of findReferenceMatchesByStemOrBranch(referencePillars, tianDeTarget)) {
+      pushShenSha(shenSha, seen, SHEN_SHA_COPY.tianDe.starName, match.label, SHEN_SHA_COPY.tianDe.meaning);
+    }
+  }
+
+  const yueDeStem = YUE_DE_STEM_BY_MONTH_BRANCH[
+    monthBranch as keyof typeof YUE_DE_STEM_BY_MONTH_BRANCH
+  ];
+  if (yueDeStem) {
+    for (const entry of referencePillars.filter((p) => p.pillar.stem === yueDeStem)) {
+      pushShenSha(shenSha, seen, SHEN_SHA_COPY.yueDe.starName, entry.label, SHEN_SHA_COPY.yueDe.meaning);
     }
   }
 

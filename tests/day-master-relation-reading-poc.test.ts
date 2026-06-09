@@ -120,20 +120,36 @@ const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
 });
 
 describe("day master relation reading poc", () => {
-  test("builds a stepwise packet with six ordered steps", () => {
+  test("builds a stepwise packet with seven ordered steps", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
 
     expect(packet.version).toBe("bazi-stepwise-cli-v2");
     expect(packet.mode).toBe("stepwise-school-reading");
     expect(packet.eightSlots).toHaveLength(8);
     expect(packet.relationSummary).toHaveLength(5);
-    expect(packet.stepInsights).toHaveLength(6);
-    expect(packet.stepInsights.map((step) => step.stepNumber)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(packet.stepInsights).toHaveLength(7);
+    expect(packet.stepInsights.map((step) => step.stepNumber)).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(packet.chartAnchor.dayBranchLabelThai).toBe("กุน");
     expect(packet.stepInsights[0]?.titleThai).toContain("สมดุล");
-    expect(packet.stepInsights[3]?.titleThai).toContain("ผลลัพธ์");
-    expect(packet.stepInsights[5]?.titleThai).toContain("ดาวพิเศษ");
+    expect(packet.stepInsights[3]?.titleThai).toContain("ถ่ายเท");
+    expect(packet.stepInsights[4]?.titleThai).toContain("ผลลัพธ์");
+    expect(packet.stepInsights[6]?.titleThai).toContain("ดาวพิเศษ");
     expect(packet.evidenceCatalog.length).toBeGreaterThanOrEqual(6);
+  });
+
+  test("step 4 output-transfer reads transmission across 4 priority levels", () => {
+    const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
+    const step4 = packet.stepInsights[3]!;
+
+    expect(step4.stepNumber).toBe(4);
+    expect(step4.stepKey).toBe("output-transfer");
+    expect(step4.titleThai).toContain("ถ่ายเท");
+    expect(step4.evidenceIds).toContain("S4-output-real");
+    expect(step4.evidenceIds).toContain("S4-output-combination");
+    expect(step4.evidenceIds).toContain("S4-output-twelve-qi");
+    expect(step4.evidenceIds).toContain("S4-output-hidden");
+    // ทุก evidence line ต้องไม่ว่าง (กัน schema .min(1) ล้ม)
+    expect(step4.evidenceLines.every((line) => line.trim().length > 0)).toBe(true);
   });
 
   test("step 2 precedence evidence localizes thai wording from precedence signals", () => {
@@ -145,24 +161,24 @@ describe("day master relation reading poc", () => {
     expect(precedenceLine).not.toContain("Active combination");
   });
 
-  test("builds a brief and prompt that lock the six-step order", () => {
+  test("builds a brief and prompt that lock the seven-step order", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
     const brief = buildDayMasterRelationBrief(SAMPLE_RAW_INPUT, packet);
     const instruction = buildDayMasterRelationPocSystemInstruction();
     const prompt = buildDayMasterRelationPocUserPrompt(SAMPLE_RAW_INPUT, brief);
 
-    expect(brief.steps).toHaveLength(6);
-    expect(brief.openingDoctrineThai).toContain("Step 1 ถึง 6");
-    expect(instruction).toContain("Respect this exact six-step order only");
+    expect(brief.steps).toHaveLength(7);
+    expect(brief.openingDoctrineThai).toContain("Step 1 ถึง 7");
+    expect(instruction).toContain("Respect this exact seven-step order only");
     expect(instruction).toContain("evidence_refs");
-    expect(prompt).toContain("Do not break the Step 1-6 order.");
+    expect(prompt).toContain("Do not break the Step 1-7 order.");
     expect(prompt).toContain("Stepwise reading brief:");
   });
 
   test("rejects reading output that leaks forbidden dev wording", () => {
     expect(() => RelationReadingResponseSchema.parse({
       openingSummary: "ภาพรวมยังปกติ",
-      step_readings: [1, 2, 3, 4, 5, 6].map((stepNumber) => ({
+      step_readings: [1, 2, 3, 4, 5, 6, 7].map((stepNumber) => ({
         step_number: stepNumber,
         heading_thai: `ขั้นที่ ${stepNumber}`,
         teacher_reading: stepNumber === 2 ? "จุดนี้ยังพา reasoning ไปตาม schema เดิม" : "ภาพรวมยังคงอยู่ในทางของดวง",
@@ -186,7 +202,7 @@ describe("day master relation reading poc", () => {
           caution: "อย่าปล่อยแรงเกินตัว",
           evidence_refs: ["S1-core-balance"],
         },
-        ...[2, 3, 4, 5, 6].map((stepNumber) => ({
+        ...[2, 3, 4, 5, 6, 7].map((stepNumber) => ({
           step_number: stepNumber,
           heading_thai: `ขั้นที่ ${stepNumber}`,
           teacher_reading: "ยังมีจังหวะเดินต่อได้",
@@ -271,7 +287,7 @@ describe("day master relation reading poc", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
     const step3 = packet.stepInsights[2]!;
 
-    expect(step3.titleThai).toContain("ธาตุถ่ายเท");
+    expect(step3.titleThai).toContain("ถ่ายเท");
     expect(step3.summaryThai).toContain("ถ่ายเทไปธาตุไม้");
     expect(step3.summaryThai).toContain("มองเห็น");
     expect(step3.summaryThai).not.toContain("วันล่างแฝง 甲");
@@ -335,7 +351,7 @@ describe("day master relation reading poc", () => {
     expect(step3.evidenceLines.some((line) => line.includes("เฮ้ง") && line.includes("子卯"))).toBe(true);
   });
 
-  test("preflight report respects maxVisibleStep to hide steps 4-6", () => {
+  test("preflight report respects maxVisibleStep to hide steps 4-7", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
 
     const full = formatDayMasterRelationPocPreflightReport({
@@ -344,7 +360,7 @@ describe("day master relation reading poc", () => {
     });
     expect(full).toContain("Step 3:");
     expect(full).toContain("Step 4:");
-    expect(full).toContain("Step 6:");
+    expect(full).toContain("Step 7:");
 
     const focused = formatDayMasterRelationPocPreflightReport({
       rawInput: SAMPLE_RAW_INPUT,
@@ -355,9 +371,10 @@ describe("day master relation reading poc", () => {
     expect(focused).not.toContain("Step 4:");
     expect(focused).not.toContain("Step 5:");
     expect(focused).not.toContain("Step 6:");
+    expect(focused).not.toContain("Step 7:");
   });
 
-  test("brief preview respects maxVisibleStep to hide steps 4-6", () => {
+  test("brief preview respects maxVisibleStep to hide steps 4-7", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
     const brief = buildDayMasterRelationBrief(SAMPLE_RAW_INPUT, packet);
 
@@ -371,11 +388,12 @@ describe("day master relation reading poc", () => {
     expect(focused).not.toContain("Step 4:");
     expect(focused).not.toContain("Step 5:");
     expect(focused).not.toContain("Step 6:");
+    expect(focused).not.toContain("Step 7:");
   });
 
   test("step 4 wealth vector identifies fire as wealth for water day master", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step4 = packet.stepInsights[3]!;
+    const step4 = packet.stepInsights[4]!;
 
     expect(step4.titleThai).toContain("โชคลาภ");
     expect(step4.summaryThai).toContain("พิฆาตธาตุไฟ");
@@ -389,7 +407,7 @@ describe("day master relation reading poc", () => {
 
   test("step 4 wealth vector shows capacity from strength score", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step4 = packet.stepInsights[3]!;
+    const step4 = packet.stepInsights[4]!;
 
     // strengthScore 3.25 maps to "weak" band → capacity label "คว้ายาก"
     expect(step4.summaryThai).toContain("คว้ายาก");
@@ -400,7 +418,7 @@ describe("day master relation reading poc", () => {
 
   test("step 4 detects pian cai polarity for all visible wealth carriers", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step4 = packet.stepInsights[3]!;
+    const step4 = packet.stepInsights[4]!;
 
     expect(step4.evidenceIds).toContain("S4-visible-wealth-carriers");
 
@@ -430,7 +448,7 @@ describe("day master relation reading poc", () => {
     };
     const parsedState = CalculatedStateSchema.parse(noWealthState);
     const packet = buildDayMasterRelationPacket(parsedState);
-    const step4 = packet.stepInsights[3]!;
+    const step4 = packet.stepInsights[4]!;
 
     expect(step4.summaryThai).toContain("ไม่มีจุดมองเห็น");
     expect(step4.summaryThai).toContain("รอรอบเวลาจร");
@@ -438,7 +456,7 @@ describe("day master relation reading poc", () => {
 
   test("step 4 includes twelve qi badges for branch wealth carriers", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step4 = packet.stepInsights[3]!;
+    const step4 = packet.stepInsights[4]!;
 
     if (step4.evidenceIds.includes("S4-twelve-qi-badges")) {
       const twelveQiEvidence = step4.evidenceLines.find((line) => line.includes("เซงแซ"));
@@ -448,7 +466,7 @@ describe("day master relation reading poc", () => {
 
   test("step 5 context mapping provides horizontal pillar context for action and wealth carriers", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step5 = packet.stepInsights[4]!;
+    const step5 = packet.stepInsights[5]!;
 
     expect(step5.titleThai).toContain("บริบทสี่เสา");
     expect(step5.evidenceIds).toContain("S5-horizontal-pillar-context");
@@ -463,7 +481,7 @@ describe("day master relation reading poc", () => {
 
   test("step 5 maps month stem to business person context and stem vertical nature", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step5 = packet.stepInsights[4]!;
+    const step5 = packet.stepInsights[5]!;
 
     const horizontalEvidence = step5.evidenceLines.find((line) => line.includes("เสาเดือน") && line.includes("เจ้านาย"));
     expect(horizontalEvidence).toBeDefined();
@@ -492,7 +510,7 @@ describe("day master relation reading poc", () => {
     };
     const parsedState = CalculatedStateSchema.parse(branchWealthState);
     const packet = buildDayMasterRelationPacket(parsedState);
-    const step5 = packet.stepInsights[4]!;
+    const step5 = packet.stepInsights[5]!;
 
     const verticalEvidence = step5.evidenceLines.find((line) => line.includes("แสวงหาเอง"));
     expect(verticalEvidence).toBeDefined();
@@ -518,7 +536,7 @@ describe("day master relation reading poc", () => {
     };
     const parsedState = CalculatedStateSchema.parse(noWealthState);
     const packet = buildDayMasterRelationPacket(parsedState);
-    const step5 = packet.stepInsights[4]!;
+    const step5 = packet.stepInsights[5]!;
 
     expect(step5.evidenceIds.length).toBeGreaterThanOrEqual(4);
     expect(step5.summaryThai).toContain("สี่เสาแยกหน้าที่");
@@ -526,7 +544,7 @@ describe("day master relation reading poc", () => {
 
   test("step 6 integrates shen sha and hidden stems from engine truth", () => {
     const packet = buildDayMasterRelationPacket(SAMPLE_CALCULATED_STATE);
-    const step6 = packet.stepInsights[5]!;
+    const step6 = packet.stepInsights[6]!;
 
     expect(step6.titleThai).toContain("ดาวพิเศษ");
     expect(step6.evidenceIds).toContain("S6-shen-sha");

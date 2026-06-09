@@ -136,9 +136,9 @@ describe("topic-knowledge (knownlage human reading)", () => {
     expect(reading).toContain("วาทศิลป์/การสื่อสาร");
   });
 
-  test("coverage: ทุกหัวข้อ predict มีองค์ความรู้แล้ว (16 บท)", () => {
+  test("coverage: ทุกหัวข้อ predict มีองค์ความรู้แล้ว (15 บท)", () => {
     const coverage = getTopicKnowledgeCoverage();
-    expect(coverage.length).toBe(16);
+    expect(coverage.length).toBe(15);
     expect(coverage.every((entry) => entry.hasKnowledge)).toBe(true);
     // ไม่รวม calculated_basis (kind basis)
     expect(coverage.some((entry) => entry.topicId === "calculated_basis")).toBe(false);

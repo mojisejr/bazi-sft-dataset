@@ -358,8 +358,10 @@ export function buildTopicEngineReading(
   calculatedState: CalculatedStateValue,
   topicId: string,
   packet: RelationReadingPacket = buildDayMasterRelationPacket(calculatedState),
+  /** นิยามบท merged (default + override ออนไลน์) — ถ้าไม่ส่งจะใช้ default จาก topic-path */
+  topicDefinition?: TopicDefinition,
 ): TopicEngineReading {
-  const topic = getTopicDefinition(topicId);
+  const topic = topicDefinition ?? getTopicDefinition(topicId);
 
   const reading: TopicEngineReading = {
     topicId: topic.id,

@@ -35,6 +35,7 @@ import type {
   RoleReading,
   ShengxiaStage,
   SisingStar,
+  WorkComparisonResult,
 } from "@/lib/bazi/pair-types";
 
 const MATRIX = matrixJson as Record<PairDomain, Record<string, PairMatrixCell>>;
@@ -226,10 +227,14 @@ export function computePairMatchPair(
   return { forward, reverse, overallPercent, overallGrade: gradeForPercent(overallPercent) };
 }
 
+function normPillar(p: DayPillar): DayPillar {
+  return { stem: nfkc(p.stem), branch: nfkc(p.branch) };
+}
+
 /** Full comparison for both domains given two day pillars. */
 export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonResult {
-  const aPillar: DayPillar = { stem: nfkc(a.stem), branch: nfkc(a.branch) };
-  const bPillar: DayPillar = { stem: nfkc(b.stem), branch: nfkc(b.branch) };
+  const aPillar = normPillar(a);
+  const bPillar = normPillar(b);
 
   return {
     personA: buildPersonProfile(aPillar),
@@ -241,6 +246,35 @@ export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonR
     elementInteraction: buildElementInteractionAB(aPillar.stem, bPillar.stem),
     workRoles: buildWorkRoleReadings(aPillar, bPillar),
     loveRoles: buildLoveRoleReadings(aPillar, bPillar),
+    sisingReference: SISING,
+  };
+}
+
+/**
+ * Work-domain comparison of "เรา" against up to several candidates
+ * (หุ้นส่วน/ลูกน้อง). Ranked best→worst by the forward score (เรา→เขา).
+ */
+export function buildWorkComparison(self: DayPillar, others: DayPillar[]): WorkComparisonResult {
+  const selfPillar = normPillar(self);
+  const candidates = others.map((o, index) => {
+    const p = normPillar(o);
+    const match = computePairMatchPair(selfPillar, p, "work");
+    return {
+      index,
+      profile: buildPersonProfile(p),
+      match,
+      elementInteraction: buildElementInteractionAB(selfPillar.stem, p.stem),
+      roles: buildWorkRoleReadings(selfPillar, p),
+      rankScore: match.forward.percent,
+    };
+  });
+  const ranking = [...candidates]
+    .sort((a, b) => (b.rankScore ?? -1) - (a.rankScore ?? -1))
+    .map((c) => c.index);
+  return {
+    self: buildPersonProfile(selfPillar),
+    candidates,
+    ranking,
     sisingReference: SISING,
   };
 }
