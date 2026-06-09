@@ -40,3 +40,7 @@ yarn-error.log*
 /ψ
 ../ψ/
 *.log
+
+# bulky reference materials (YLC sample PDFs / templates) — not tracked
+/templat/
+/example/

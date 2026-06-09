@@ -1,11 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import { createPortal } from "react-dom";
 
 import { BirthForm } from "@/components/bazi/BirthForm";
 import { ActionButton } from "@/components/bazi/primitives/Action";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
+import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
+import {
+  ReadingPrintDocument,
+  type PrintChapter,
+} from "@/components/bazi/reading/ReadingPrintDocument";
 import {
   TopicCard,
   type TopicReadingMode,
@@ -482,6 +488,30 @@ export function ReadingPathWorkspace() {
     (topic) => Boolean(topicStates[topic.id]?.result?.humanReading),
   ).length;
 
+  // เนื้อหา 15 บทสำหรับเอกสาร PDF — ใช้ค่าที่แสดงบนจอ (ซินแสแก้ ?? engine humanReading)
+  const printChapters: PrintChapter[] = PREDICT_TOPICS.map((topic) => {
+    const sinsae = correctionFor(topic.id).exact;
+    const result = topicStates[topic.id]?.result;
+    return {
+      chapter: topic.chapter,
+      title: topic.title,
+      id: topic.id,
+      text: sinsae ? sinsae.corrected : (result?.humanReading ?? null),
+    };
+  });
+
+  // พิมพ์เอกสาร YLC → Save as PDF (ติด class ชั่วคราวให้ @media print ซ่อนทุกอย่างยกเว้นเอกสาร)
+  function handlePrintYlc() {
+    if (typeof window === "undefined") return;
+    document.body.classList.add("ylc-printing");
+    const cleanup = () => {
+      document.body.classList.remove("ylc-printing");
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    window.print();
+  }
+
   return (
     <div className="reading-path">
       <section className="reading-path__intro surface">
@@ -580,15 +610,12 @@ export function ReadingPathWorkspace() {
                 : `🤖 Gen ด้วย Local Claude`}
             </ActionButton>
             <ActionButton
-              tone="secondary"
+              tone="primary"
               type="button"
               disabled={doneCount === 0}
-              onClick={() => setShowPreview((value) => !value)}
+              onClick={() => setShowPreview(true)}
             >
-              {showPreview ? "ซ่อนตัวอย่าง" : `ดูตัวอย่างรายงาน (${doneCount}/${PREDICT_TOPICS.length})`}
-            </ActionButton>
-            <ActionButton tone="secondary" type="button" onClick={() => window.print()}>
-              พิมพ์รายงาน
+              {`ดูตัวอย่าง & บันทึก PDF (${doneCount}/${PREDICT_TOPICS.length})`}
             </ActionButton>
             <ActionButton
               tone="secondary"
@@ -684,45 +711,46 @@ export function ReadingPathWorkspace() {
         </section>
       )}
 
-      {isReady && showPreview && (
-        <section className="surface reading-path__preview" aria-label="ตัวอย่างรายงาน">
-          <SectionHeading
-            kicker="ตัวอย่างรายงาน (เรียงตามไฟล์ .docx)"
-            title="พรีวิวก่อนดาวน์โหลด"
-            titleLevel="h2"
-            note="ตรวจเนื้อหาทั้ง 15 บท (ฉบับบนจอ รวม LLM polish ถ้ามี) ตามลำดับที่จะออกในไฟล์ Word"
-          />
-          {PREDICT_TOPICS.map((topic) => {
-            const sinsae = correctionFor(topic.id).exact;
-            const text = sinsae ? sinsae.corrected : topicStates[topic.id]?.result?.humanReading;
-            return (
-              <article key={topic.id} className="reading-path__preview-chapter">
-                <h3>บทที่ {topic.chapter}: {topic.title}</h3>
-                {text
-                  ? text.split("\n\n").map((para, index) => <p key={index}>{para}</p>)
-                  : <p className="section-note">(ยังไม่ได้ทำนายบทนี้)</p>}
-              </article>
-            );
-          })}
-          {relationshipLines && relationshipLines.length > 0 && (
-            <article className="reading-path__preview-chapter">
-              <h3>บทเสริม: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ (วัยจรช่วงละ 5 ปี)</h3>
-              <table className="topic-table">
-                <thead>
-                  <tr><th>ช่วงอายุ</th><th>เสาวัยจร</th><th>เส้นขีด</th><th>คำอธิบาย</th></tr>
-                </thead>
-                <tbody>
-                  {relationshipLines.map((row, index) => (
-                    <tr key={`${row.ageRange}-${index}`}>
-                      <td>{row.ageRange}</td><td>{row.symbol}</td><td>{row.relationLine}</td><td>{row.deepNote}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </article>
-          )}
-        </section>
-      )}
+      {isReady && showPreview && rawInput && calculatedState && typeof document !== "undefined"
+        ? createPortal(
+            <div className="ylc-print-portal">
+              <div className="ylc-preview" role="dialog" aria-label="ตัวอย่างรายงาน YLC">
+                <div className="ylc-preview__toolbar">
+                  <span className="ylc-preview__toolbar-title">
+                    ตัวอย่างรายงาน YLC · เกิด {rawInput.birthDate} {rawInput.birthTime} น.
+                  </span>
+                  <div className="ylc-preview__toolbar-actions">
+                    <button
+                      type="button"
+                      className="ylc-preview__btn ylc-preview__btn--primary"
+                      onClick={handlePrintYlc}
+                    >
+                      บันทึกเป็น PDF / พิมพ์
+                    </button>
+                    <button
+                      type="button"
+                      className="ylc-preview__btn ylc-preview__btn--ghost"
+                      onClick={() => setShowPreview(false)}
+                    >
+                      ปิด
+                    </button>
+                  </div>
+                </div>
+                <div className="ylc-preview__stage">
+                  <PagedPreview>
+                    <ReadingPrintDocument
+                      rawInput={rawInput}
+                      calculatedState={calculatedState}
+                      chapters={printChapters}
+                      relationshipLines={relationshipLines}
+                    />
+                  </PagedPreview>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {isReady && (
         <section className="reading-path__topics" aria-label="หัวข้อการอ่าน">

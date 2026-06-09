@@ -1337,6 +1337,12 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     segments.push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) มีกำลังปานกลาง ค่อย ๆ สะสมได้ตามความสม่ำเสมอ`);
   }
 
+  // (1a) จังหวะการเงิน ณ ปัจจุบัน (YLC style) — ผูกอายุจริง + ปี/เดือนชง
+  const wealthTiming = buildCurrentTimingLines(calculatedState);
+  if (wealthTiming.length > 0) {
+    segments.push(`จังหวะการเงินตามวัย (ดูช่วงที่กำลังเดินและจังหวะที่ต้องระวัง):\n${wealthTiming.join("\n")}`);
+  }
+
   // (1b) Market Target ตามที่ซินแซกำชับ = ผสมธาตุ "ราศีบนปี + ราศีล่างปี" เป็นกลุ่มลูกค้า
   //   ถ้าเซี่ยงแซเสาปี "ดี" → ทายกลุ่มลูกค้านั้นตรง ๆ; ถ้า "เสีย" → พลิกหาด้านดีของกลุ่มนั้นมาทาย
   const yearStemEl = elementLabel(stemElement(calculatedState.fourPillars.year.stem));
@@ -1711,6 +1717,57 @@ function luckGradeToStars(verdict: string): string {
   return `◇ ${verdict}`;
 }
 
+// ราศีล่าง → ชื่อเดือนนักษัตร + เดือนสากลโดยประมาณ (ใช้เตือน "เดือนชง" ประจำปี)
+const BRANCH_MONTH_TH: Record<string, string> = {
+  寅: "ขาล (ราวกุมภาพันธ์)", 卯: "เถาะ (ราวมีนาคม)", 辰: "มะโรง (ราวเมษายน)",
+  巳: "มะเส็ง (ราวพฤษภาคม)", 午: "มะเมีย (ราวมิถุนายน)", 未: "มะแม (ราวกรกฎาคม)",
+  申: "วอก (ราวสิงหาคม)", 酉: "ระกา (ราวกันยายน)", 戌: "จอ (ราวตุลาคม)",
+  亥: "กุน (ราวพฤศจิกายน)", 子: "ชวด (ราวธันวาคม)", 丑: "ฉลู (ราวมกราคม)",
+};
+
+/**
+ * จังหวะเวลาผูกกับ "ปัจจุบัน" (YLC style) — อายุจริง + ปีชง + เดือนชง
+ * deterministic: อายุ/ปีจรมาจาก calculatedState (ageSnapshot.referenceDate + liuNianSeries)
+ * ไม่พึ่งวัน-เวลาเครื่อง → รันซ้ำได้ผลเดิม
+ */
+function buildCurrentTimingLines(calculatedState: CalculatedStateValue): string[] {
+  const out: string[] = [];
+  const age = calculatedState.ageSnapshot?.chineseAge;
+  const current = findCurrentDaYunPhase(calculatedState);
+  // (a) อายุปัจจุบัน + วัยจรที่กำลังเดิน
+  if (age && current) {
+    const dm = dayMasterElement(calculatedState);
+    const band = resolveStrengthBand(calculatedState);
+    const role = resolveRelationRole(dm, current.element);
+    const startAge = Number.parseInt(current.ageRange, 10);
+    const verdict = buildLuckPhaseVerdict(band, role, current.qi, Number.isNaN(startAge) ? undefined : startAge);
+    out.push(
+      `ปัจจุบันคุณอายุ ${age} ปี (นับแบบจีน) กำลังเดินวัยจร ${current.symbol} (ธาตุ${elementLabel(current.element)} เป็น${RELATION_ROLE_SHORT[role]}${current.qi ? ` → ${current.qi}` : ""}): ${luckGradeToStars(verdict)}`,
+    );
+  }
+  // (b) ปีชง/ฮะ — สแกนปีจร 20 ปีข้างหน้า เทียบกิ่งหลักวัน (จำกัด 3 ปีใกล้สุด)
+  const dayBranch = calculatedState.fourPillars.day.branch;
+  const clashBranch = BRANCH_OPPOSITE[dayBranch];
+  const harmPair = HAI_PAIRS.find(([a, b]) => a === dayBranch || b === dayBranch);
+  const harmBranch = harmPair ? (harmPair[0] === dayBranch ? harmPair[1] : harmPair[0]) : undefined;
+  const clashYears = (calculatedState.liuNianSeries ?? [])
+    .filter((y) => y.branch === clashBranch || y.branch === harmBranch)
+    .slice(0, 3);
+  for (const y of clashYears) {
+    const kind = y.branch === clashBranch ? "ชง (冲)" : "ฮะ/ให้ร้าย (害)";
+    out.push(
+      `ปี พ.ศ. ${y.year + 543} (อายุ ${y.age} ปี) เป็นจังหวะ ${kind} กับหลักวัน (${y.branch}-${dayBranch}) — ควรระวังการเงิน การตัดสินใจเสี่ยง และความขัดแย้งเป็นพิเศษ`,
+    );
+  }
+  // (c) เดือนชงประจำปี (เกิดซ้ำทุกปี)
+  if (clashBranch && BRANCH_MONTH_TH[clashBranch]) {
+    out.push(
+      `เดือนนักษัตร${BRANCH_MONTH_TH[clashBranch]} ของทุกปี เป็นจังหวะปะทะ (ชง) กับหลักวัน ควรระมัดระวังการเงินและการตัดสินใจในช่วงนี้`,
+    );
+  }
+  return out;
+}
+
 function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | null {
   // ทายตั้งแต่ "วัยจรแรก" จนถึงบั้นปลาย — ตามคำกำชับซินแซ (เดิมเริ่มที่ช่วงปัจจุบัน)
   const rows = buildRelationshipLinesMapping(calculatedState);
@@ -1741,7 +1798,12 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
     liuNianLine = `ปีจรปัจจุบัน (${liuNian.stem}${liuNian.branch} ธาตุ${elementLabel(lnElement)} เป็น${lnRole}${lnQi ? ` → ${lnQi}` : ""}): ${luckGradeToStars(lnVerdict)}`;
   }
 
-  return [lead, ...lines, liuNianLine].filter(Boolean).join("\n\n");
+  // จังหวะปัจจุบัน (อายุจริง + ปี/เดือนชง) + พยากรณ์ปีจรรายปี 20 ปีข้างหน้า (YLC style)
+  const timing = buildCurrentTimingLines(calculatedState);
+  const timingBlock = timing.length > 0 ? `จังหวะ ณ ปัจจุบัน:\n${timing.join("\n")}` : "";
+  const yearly = buildLiuNianYearlyForecast(calculatedState);
+
+  return [lead, timingBlock, ...lines, liuNianLine, yearly].filter(Boolean).join("\n\n");
 }
 
 // ───────── Rev6: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดวัยจร (Relationship Lines Mapping, อ้างอิงตำราเคี้ยงคุง) ─────────
@@ -2619,7 +2681,9 @@ function buildCareerReading(calculatedState: CalculatedStateValue): string | nul
     .filter((segment): segment is string => Boolean(segment));
   // lead-clause นำกลุ่มลิสต์อาชีพ (YLC style) — เกริ่นจาก fact เดิม (useful god) ไม่เจาะจงชื่อธาตุเพื่อไม่ชนลำดับ test
   const careerLead = lists.length > 0
-    ? "สายอาชีพที่เป็นคุณกับดวงนี้คือสายงานที่เป็นธาตุส่งเสริมดิถี (useful god) ซึ่งจะดึงศักยภาพออกมาเป็นรายได้ได้เต็มที่ ดังนี้:"
+    ? (lists.length > 1
+        ? "สายอาชีพที่เป็นคุณกับดวงนี้คือสายงานที่เป็นธาตุส่งเสริมดิถี (useful god) ซึ่งจะดึงศักยภาพออกมาเป็นรายได้ได้เต็มที่ — แนะนำให้ทุ่มน้ำหนักราว 70% ไปที่กลุ่มอาชีพหลัก (อันดับ 1) และอีกราว 30% ที่กลุ่มเสริม (อันดับ 2) ดังนี้:"
+        : "สายอาชีพที่เป็นคุณกับดวงนี้คือสายงานที่เป็นธาตุส่งเสริมดิถี (useful god) ซึ่งจะดึงศักยภาพออกมาเป็นรายได้ได้เต็มที่ ดังนี้:")
     : null;
 
   // อาชีพที่ควรเลี่ยง = ธาตุพิฆาตดิถี (officer) ซึ่งกดดัน/บั่นทอนกำลังดวง

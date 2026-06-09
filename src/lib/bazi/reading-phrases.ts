@@ -382,6 +382,8 @@ function humanizeConsumerLine(line: string): string {
   out = out.replace(/\s*[一-鿿]\s*→\s*[^\s,，/)]+/g, "");
   // (E) ลูกศร "maps-to" ที่เหลือ (Thai → Thai เช่น "= ดาวส่งเสริม → ปู่ย่า") → em dash อ่านลื่น
   out = out.replace(/\s*→\s*/g, " — ");
+  // (F) ปิด marker เตือน "*** ระวังเป็นพิเศษ: …" ให้ครบคู่ (***…***) เพื่อให้ PDF เรนเดอร์เป็น "ระวังเป็นพิเศษ" สีแดง (ไม่โชว์ ***)
+  out = out.replace(/\*\*\*\s*(ระวังเป็นพิเศษ.+?)\s*$/u, "***$1***");
   return tidyConsumerLine(out);
 }
 

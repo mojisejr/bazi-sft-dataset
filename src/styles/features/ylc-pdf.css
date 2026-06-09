@@ -1,0 +1,713 @@
+/* ──────────────────────────────────────────────────────────────────────────
+ * YLC PDF — เอกสารคำทำนาย 15 บท สไตล์ "YOUR LIFE CODE" (Mumate)
+ * โทนเขียวมรกต/ฟ้าน้ำทะเล + ตัวอักษรเทาเข้ม บนพื้นขาว (อิง templat/template ver1)
+ * แบ่งหน้า A4 จริงด้วย paged.js (preview + print ตรงกัน) — เกินหน้า → ขึ้นหน้าใหม่
+ * ────────────────────────────────────────────────────────────────────────── */
+
+@font-face {
+  font-family: "YLC Sarabun";
+  src: url("/ylc/fonts/Sarabun-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YLC Sarabun";
+  src: url("/ylc/fonts/Sarabun-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "YLC Display";
+  src: url("/ylc/fonts/IBMPlexSansThai-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ylc-teal: #2f9fb3;
+  --ylc-teal-deep: #1f8497;
+  --ylc-teal-soft: #8ecdd8;
+  --ylc-rule: #bfe2e8;
+  --ylc-ink: #3d4548;
+  --ylc-body: #34393c;
+  --ylc-muted: #6b7478;
+  --ylc-warn: #c0392b;
+}
+
+/* ฐานตัวอักษร — ใช้ทั้งตอน render ตรง (.ylc-doc) และตอน paged.js แบ่งหน้า (.pagedjs_page) */
+.ylc-doc,
+.pagedjs_page {
+  font-family: "YLC Sarabun", "Sarabun", "Tahoma", sans-serif;
+  color: var(--ylc-body);
+  font-size: 14.5pt; /* Sarabun ~14.5pt — อ่านสบายตามตัวอย่างคุณชัยธรณ์ */
+  line-height: 1.8;
+}
+
+/* ── โครง @page (paged.js) ─────────────────────────────────────────────── */
+@page {
+  size: A4;
+  margin: 0;
+}
+/* หน้าเนื้อหา: เว้นขอบให้ข้อความ + ลายน้ำสุริยะ + โลโก้ท้ายหน้า (ทุกหน้า) */
+@page ylc-text {
+  margin: 24mm 18mm 20mm;
+  background-image: url("/ylc/watermark.png");
+  background-repeat: no-repeat;
+  background-position: center 52%;
+  background-size: 150mm;
+  @bottom-center {
+    content: element(ylcFooter);
+  }
+}
+/* หน้าเต็ม: ปก / คำนำ / สารบัญ / แผ่นดวง / ปกหลัง */
+@page ylc-full {
+  margin: 0;
+}
+
+/* ── แผ่น (sheet) ──────────────────────────────────────────────────────── */
+.ylc-sheet {
+  position: relative;
+  background: #ffffff;
+}
+.ylc-sheet + .ylc-sheet {
+  break-before: page;
+}
+
+/* หน้ารูปเต็มหน้า */
+.ylc-sheet--image {
+  page: ylc-full;
+  overflow: hidden;
+}
+.ylc-sheet--image img {
+  display: block;
+  width: 100%;
+  height: 297mm;
+  object-fit: cover;
+}
+
+/* หน้าบท: บล็อกเนื้อหาที่ไหลข้ามหน้า A4 ได้ (paged.js แบ่งให้) */
+.ylc-sheet--content {
+  page: ylc-text;
+  background: transparent;
+}
+
+/* ── หัวเรื่องบท: พู่จีน + kicker + ชื่อ/วันเกิด + เส้นคั่น + "N. ชื่อบท" ── */
+.ylc-head {
+  position: relative;
+  text-align: center;
+  margin: 0 0 8mm;
+  padding-top: 6mm;
+}
+.ylc-head::before,
+.ylc-head::after {
+  content: "";
+  position: absolute;
+  top: -2mm;
+  width: 20mm;
+  height: 24mm;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: top center;
+}
+.ylc-head::before {
+  left: -4mm;
+  background-image: url("/ylc/tassel-left.png");
+}
+.ylc-head::after {
+  right: -4mm;
+  background-image: url("/ylc/tassel-right.png");
+}
+.ylc-head__kicker {
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-ink);
+  font-size: 30pt;
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+.ylc-head__name {
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  font-size: 18pt;
+  line-height: 1.2;
+  margin: 4px 0 0;
+}
+.ylc-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 10px auto 0;
+  width: 56%;
+  color: var(--ylc-teal);
+}
+.ylc-divider::before,
+.ylc-divider::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: linear-gradient(to var(--_dir, right), transparent, var(--ylc-rule) 40%, var(--ylc-teal));
+}
+.ylc-divider::before {
+  --_dir: left;
+}
+.ylc-divider__gem {
+  font-size: 12px;
+  line-height: 1;
+  color: var(--ylc-teal);
+}
+.ylc-head__title {
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-ink);
+  font-size: 18pt;
+  line-height: 1.3;
+  margin: 8mm 0 0;
+  text-align: left;
+}
+
+/* ── เนื้อความ (Sarabun ~14.5pt) ──────────────────────────────────────── */
+.ylc-prose {
+  text-align: left;
+}
+.ylc-prose p {
+  margin: 0 0 14px;
+  text-indent: 2em;
+}
+.ylc-prose p:last-child {
+  margin-bottom: 0;
+}
+.ylc-prose strong {
+  font-weight: 700;
+  color: var(--ylc-ink);
+}
+/* เน้นเตือนสีแดง: ***...*** หรือบรรทัดขึ้นต้น *** */
+.ylc-prose .ylc-warn {
+  color: var(--ylc-warn);
+  font-weight: 700;
+}
+.ylc-prose .ylc-warn-line {
+  color: var(--ylc-warn);
+  font-weight: 700;
+  text-indent: 0;
+  margin: 10px 0;
+}
+.ylc-prose .ylc-sub {
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  font-size: 14pt;
+  line-height: 1.35;
+  margin: 14px 0 6px;
+  text-indent: 0;
+}
+.ylc-prose ul {
+  margin: 4px 0 12px;
+  padding-left: 1.6em;
+  list-style: none;
+}
+.ylc-prose li {
+  position: relative;
+  margin: 0 0 6px;
+  padding-left: 0.2em;
+}
+.ylc-prose li::before {
+  content: "•";
+  position: absolute;
+  left: -1em;
+  color: var(--ylc-teal);
+  font-weight: 700;
+}
+.ylc-empty {
+  color: var(--ylc-muted);
+  font-style: italic;
+}
+
+/* ── ตารางภาคผนวก (วัยจรเชิงลึก) ──────────────────────────────────────── */
+.ylc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6mm 0 0;
+  font-size: 11.5pt;
+  line-height: 1.55;
+  table-layout: fixed;
+}
+.ylc-table th,
+.ylc-table td {
+  border: 1px solid var(--ylc-rule);
+  padding: 9px 11px;
+  text-align: center;
+  vertical-align: top;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.ylc-table thead th {
+  background: #eef8fa;
+  color: var(--ylc-teal-deep);
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+}
+/* หัวตารางซ้ำทุกหน้าเมื่อตารางยาวข้ามหน้า (paged.js + print) — คอลัมน์จึงตรงกันทุกหน้า */
+.ylc-table thead {
+  display: table-header-group;
+}
+/* ความกว้างคงที่ (mm) ไม่อิงความกว้าง container ที่ paged.js คำนวณใหม่ต่อหน้า
+   → คอลัมน์เท่ากันทุกหน้า. 174mm = A4 210 − ขอบซ้าย/ขวา 18mm */
+.ylc-table--appendix {
+  width: 174mm;
+  max-width: 100%;
+}
+.ylc-table--appendix col.ylc-col-age { width: 26mm; }
+.ylc-table--appendix col.ylc-col-pillar { width: 24mm; }
+.ylc-table--appendix col.ylc-col-desc { width: 124mm; }
+/* กำหนดซ้ำที่ระดับเซลล์ด้วย เผื่อ paged.js ตัด <colgroup> ออกตอนต่อหน้า */
+.ylc-table--appendix th:nth-child(1),
+.ylc-table--appendix td:nth-child(1) { width: 26mm; }
+.ylc-table--appendix th:nth-child(2),
+.ylc-table--appendix td:nth-child(2) { width: 24mm; }
+.ylc-table--appendix th:nth-child(3),
+.ylc-table--appendix td:nth-child(3) { width: 124mm; }
+.ylc-table--appendix td.ylc-cell-desc {
+  text-align: left;
+}
+.ylc-table--appendix .ylc-cell-desc strong {
+  display: block;
+  color: var(--ylc-teal-deep);
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+.ylc-table--appendix tr {
+  break-inside: avoid;
+}
+
+/* ── ผังดวงกำกับลูกศรของบท (compact strip) ───────────────────────────── */
+.ylc-cstrip {
+  margin: 0 0 7mm;
+}
+.ylc-cstrip__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border: 1px solid var(--ylc-rule);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fbfdfe;
+}
+.ylc-cstrip__arrows {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+.ylc-cstrip__col {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 5px 2px 9px;
+  border-left: 1px solid var(--ylc-rule);
+}
+.ylc-cstrip__col:first-child {
+  border-left: none;
+}
+.ylc-cstrip__col--day {
+  background: rgba(47, 159, 179, 0.08);
+}
+.ylc-cstrip__col--hl {
+  box-shadow: inset 0 0 0 2px var(--hl);
+  border-radius: 6px;
+}
+.ylc-cstrip__label {
+  font-size: 9.5px;
+  color: var(--ylc-muted);
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+}
+.ylc-cstrip__stem {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.ylc-cstrip__branch {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.ylc-cstrip__role {
+  font-size: 9px;
+  font-weight: 700;
+}
+.ylc-cstrip__caption {
+  margin: 4px 2px 0;
+  font-size: 10.5px;
+  color: var(--ylc-muted);
+  line-height: 1.4;
+}
+
+/* ── หน้า 4: แผ่นดวงชะตา (วันเวลาเกิด) ────────────────────────────────── */
+.ylc-sheet--chart {
+  page: ylc-full;
+  padding: 24mm 18mm 18mm;
+  text-align: center;
+}
+.ylc-birthbox {
+  position: relative;
+  display: inline-block;
+  margin: 0 auto;
+  padding: 12px 34px;
+  color: var(--ylc-teal-deep);
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-size: 18px;
+  line-height: 1.3;
+  border: 2px solid var(--ylc-teal-soft);
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 4px #ffffff, inset 0 0 0 5px var(--ylc-rule);
+}
+.ylc-birthbox b {
+  color: var(--ylc-teal-deep);
+  font-weight: 700;
+}
+.ylc-birthbox::before,
+.ylc-birthbox::after {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--ylc-teal);
+}
+.ylc-birthbox::before {
+  top: -4px;
+  left: -4px;
+  border-right: none;
+  border-bottom: none;
+}
+.ylc-birthbox::after {
+  bottom: -4px;
+  right: -4px;
+  border-left: none;
+  border-top: none;
+}
+.ylc-gender {
+  margin: 10px 0 18px;
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--ylc-ink);
+}
+.ylc-gender__sym {
+  color: var(--ylc-teal);
+  font-size: 1.1em;
+}
+.ylc-chart-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border: 1px solid var(--ylc-rule);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0 0 8mm;
+}
+.ylc-chart-col {
+  border-left: 1px solid var(--ylc-rule);
+  display: flex;
+  flex-direction: column;
+}
+.ylc-chart-col:first-child {
+  border-left: none;
+}
+.ylc-chart-col__head {
+  background: #f1f5f6;
+  color: var(--ylc-ink);
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--ylc-rule);
+}
+.ylc-chart-col__body {
+  padding: 18px 4px;
+  color: var(--ylc-muted);
+}
+.ylc-chart-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 4px;
+}
+.ylc-chart-cell--stem {
+  border-bottom: 1px solid #eef2f3;
+}
+.ylc-chart-glyph {
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.ylc-chart-en {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--ylc-muted);
+  font-weight: 600;
+}
+.ylc-chart-hidden {
+  display: flex;
+  gap: 3px;
+  font-size: 14px;
+  font-weight: 700;
+}
+.ylc-elem {
+  margin: 0 0 9mm;
+}
+.ylc-elembar {
+  display: flex;
+  height: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #eef2f3;
+}
+.ylc-elembar > span {
+  display: block;
+  height: 100%;
+}
+.ylc-elem-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ylc-body);
+}
+.ylc-elem-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ylc-elem-legend__item i {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.ylc-luck {
+  text-align: left;
+  margin-top: 4mm;
+}
+.ylc-luck__title {
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-ink);
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+.ylc-luck__age {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ylc-body);
+}
+.ylc-luck__note {
+  margin: 2px 0 12px;
+  font-size: 12px;
+  color: var(--ylc-muted);
+}
+.ylc-luck-cards {
+  display: flex;
+  gap: 14px;
+}
+.ylc-luck-card {
+  width: 96px;
+  border: 1px solid var(--ylc-rule);
+  border-radius: 8px;
+  overflow: hidden;
+  text-align: center;
+}
+.ylc-luck-card__label {
+  display: block;
+  background: #f1f5f6;
+  color: var(--ylc-ink);
+  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 6px 4px;
+  border-bottom: 1px solid var(--ylc-rule);
+}
+.ylc-luck-card__glyphs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 4px;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.05;
+}
+.ylc-sheet__footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12mm;
+  display: flex;
+  justify-content: center;
+}
+.ylc-sheet__footer img {
+  height: 9mm;
+  width: auto;
+  opacity: 0.9;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * PREVIEW OVERLAY (บนจอ) — โชว์ตัวอย่างเป็นหน้า A4 จริง (paged.js)
+ * ────────────────────────────────────────────────────────────────────────── */
+.ylc-preview {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: #5a6466;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ylc-preview__toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  background: rgba(20, 28, 30, 0.92);
+  color: #eaf6f8;
+  backdrop-filter: blur(8px);
+}
+.ylc-preview__toolbar-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+.ylc-preview__toolbar-actions {
+  display: flex;
+  gap: 10px;
+}
+.ylc-preview__btn {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.ylc-preview__btn--primary {
+  background: #2f9fb3;
+  color: #fff;
+}
+.ylc-preview__btn--primary:hover {
+  background: #1f8497;
+}
+.ylc-preview__btn--ghost {
+  background: transparent;
+  border-color: rgba(234, 246, 248, 0.4);
+  color: #eaf6f8;
+}
+.ylc-preview__btn--ghost:hover {
+  background: rgba(234, 246, 248, 0.12);
+}
+.ylc-preview__stage {
+  padding: 24px 16px 60px;
+  width: 100%;
+}
+.ylc-preview__loading {
+  color: #eaf6f8;
+  padding: 40px;
+  font-size: 0.95rem;
+}
+
+/* แผ่น A4 ที่ paged.js สร้าง */
+.ylc-preview .pagedjs_pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+}
+.ylc-preview .pagedjs_page {
+  background: #ffffff;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+/* จอแคบ: ย่อหน้ากระดาษให้พอดี */
+@media (max-width: 900px) {
+  .ylc-preview__stage {
+    zoom: 0.62;
+  }
+}
+@media (max-width: 620px) {
+  .ylc-preview__stage {
+    zoom: 0.44;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * PRINT — พิมพ์หน้า A4 ที่ paged.js แบ่งไว้แล้ว
+ * ────────────────────────────────────────────────────────────────────────── */
+@media print {
+  /* บังคับขอบหน้า 0 (ทับ @page margin:14mm จาก print-compat.css) — paged.js คุมขอบเองแล้ว */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  .ylc-doc,
+  .ylc-doc *,
+  .pagedjs_page,
+  .pagedjs_page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  body.ylc-printing > *:not(.ylc-print-portal) {
+    display: none !important;
+  }
+  body.ylc-printing {
+    background: #ffffff !important;
+  }
+  .ylc-print-portal,
+  .ylc-preview,
+  .ylc-preview__stage {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    display: block !important;
+    padding: 0 !important;
+    zoom: 1 !important;
+  }
+  .ylc-preview__toolbar,
+  .ylc-preview__loading {
+    display: none !important;
+  }
+  .ylc-preview .pagedjs_pages {
+    display: block;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .ylc-preview .pagedjs_page {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+  /* กัน margin/ช่องว่างท้ายเอกสารไม่ให้เกิดหน้าเปล่าตอนพิมพ์ */
+  .ylc-paged-out,
+  .ylc-paged-out > * {
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .ylc-paged-out::after {
+    content: none !important;
+  }
+}
