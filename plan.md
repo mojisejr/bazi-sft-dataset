@@ -109,3 +109,35 @@
 ## ค้างไว้ / ทำต่อได้
 - ตาราง appendix (บทเสริม) ยังใช้ป้าย [ยุคทอง]/[เฝ้าระวัง] — ถ้าต้องการให้ใช้ดาวด้วยค่อยปรับ
 - "หมายเหตุ ขาดก้านธาตุไฟ" ที่ตัดจากบท2 ยังไม่ได้ไปโผล่ในบทแก้ดวง (14/15) อย่างชัดเจน
+
+---
+
+# บทเสริม (ต่อจากบทที่ 15): ตารางเส้นขีดความสัมพันธ์ หมวดช่วงอายุ/วัยจร — แก้ไขได้ + gen LLM + บันทึก DB
+
+> อัปเดต 2026-06-10 — เดิมตารางบทเสริมใน `/reading` เป็น **read-only** ทำให้แก้ไขถ้อยคำเองได้, gen ช่อง "คำอธิบายดี-ร้ายเชิงลึก" ด้วย LLM แยกเดี่ยว ๆ และบันทึกฉบับที่แก้ลงฐานข้อมูล (ประวัติการดูดวง)
+
+## ✅ เสร็จแล้ว
+
+### 1. แก้ไขได้ (editable table)
+- คอมโพเนนต์ใหม่ `src/components/bazi/reading/RelationshipLinesEditor.tsx` — ทุกช่อง (ช่วงอายุ/เสาวัยจร/เส้นขีด = input, คำอธิบายดี-ร้ายเชิงลึก = textarea)
+- ใน `ReadingPathWorkspace.tsx` เปลี่ยน `relationshipLines` จาก derived ของบท `turning_points` เป็น **editable state ตัวเดียว** (source of truth สำหรับโชว์/พิมพ์/บันทึก)
+- sync จากผลบท `turning_points` ผ่าน `lastTurningResultRef` (เทียบ reference: รันบทใหม่เท่านั้นที่ทับ — การแก้มือ/ค่าที่ restore จาก DB ไม่ถูกล้าง); เคลียร์ตอน reset/submit เคสใหม่
+
+### 2. gen "คำอธิบายดี-ร้ายเชิงลึก" ด้วย LLM (เดี่ยว ๆ)
+- route ใหม่ `POST /api/reading/relationship-lines` → `polishRelationshipLinesLlm` แต่งเฉพาะ `deepNote` (คง ช่วงอายุ/เสา/เส้นขีด + ป้าย [เฝ้าระวัง]/[ยุคทอง] เดิม; LLM ล้มเหลว = คืนแถวเดิม)
+- ปุ่ม "✨ Gen คำอธิบายดี-ร้ายเชิงลึก (LLM)" บนหัวตาราง — แยกจากการรันบท 12 เต็มบท; ใช้ค่าย LLM/API key ส่วนกลาง (รองรับ Local Claude key="local")
+
+### 3. บันทึกลง DB (ไม่ต้อง migration)
+- `session_data` (JSONB) มีฟิลด์ `relationshipLines` (nullable) ใน `SessionDataSchema` อยู่แล้ว → save เขียน state **ฉบับที่แก้/gen แล้ว**, resume คืนจาก `sessionData.relationshipLines`
+- export-docx (ฉบับ LLM) + PagedPreview (PDF) ใช้ state เดียวกัน → ที่แก้/gen ขึ้นในเอกสารด้วย
+
+### 4. เทสต์
+- `tests/reading-relationship-lines-route.test.ts` — 3 เคส (ไม่มี apiKey→400, rows ว่าง→400, mock LLM: คงคอลัมน์อื่นทับเฉพาะ deepNote) ผ่านทั้งหมด
+- typecheck สะอาดในไฟล์ที่แก้, ESLint 0 errors, หน้า `/reading` เสิร์ฟ HTTP 200
+
+## ไฟล์หลัก
+- `src/app/api/reading/relationship-lines/route.ts` (ใหม่)
+- `src/components/bazi/reading/RelationshipLinesEditor.tsx` (ใหม่)
+- `src/components/bazi/reading/ReadingPathWorkspace.tsx` (state + handler + save/export/resume)
+- `src/styles/features/path-reading.css` (สไตล์ช่องแก้ไข)
+- `tests/reading-relationship-lines-route.test.ts` (ใหม่)

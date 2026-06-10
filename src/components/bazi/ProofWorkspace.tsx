@@ -223,7 +223,7 @@ function extractAiStrengthClaim(annotationData: StoredAnnotationDataValue | null
   )) ?? null;
 }
 
-export function ProofWorkspace({ record, returnToPath = "/?workspace=queue" }: ProofWorkspaceProps) {
+export function ProofWorkspace({ record, returnToPath = "/pending" }: ProofWorkspaceProps) {
   const router = useRouter();
   const initialExpandedDimension = PROOF_WORKSPACE_DIMENSION_ORDER[0];
   const [isCaseContextOpen, setIsCaseContextOpen] = useState(false);

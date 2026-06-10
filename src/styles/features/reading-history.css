@@ -1,0 +1,148 @@
+.reading-history__hero {
+  gap: 10px;
+}
+
+.reading-history__hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.reading-history__new {
+  margin-left: auto;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.reading-history {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+}
+
+.reading-history__list {
+  display: grid;
+  gap: 10px;
+}
+
+.reading-history__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-line-softer);
+}
+
+.reading-history__main {
+  display: grid;
+  gap: 10px;
+  flex: 1 1 320px;
+  min-width: min(100%, 320px);
+}
+
+.reading-history__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.reading-history__identity {
+  display: grid;
+  gap: 4px;
+}
+
+.reading-history__identity strong {
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.reading-history__identity span {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.reading-history__meta {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.reading-history__updated {
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.reading-history__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.reading-history__action {
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.reading-history__delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid rgba(173, 54, 45, 0.28);
+  color: #ad362d;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.reading-history__delete:hover:not(:disabled) {
+  background: rgba(173, 54, 45, 0.08);
+}
+
+.reading-history__delete:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+/* status badge tints — layered on top of .pending-badge (this file imported last) */
+.reading-history__status--done {
+  background: rgba(38, 122, 79, 0.14);
+  border-color: rgba(38, 122, 79, 0.28);
+  color: #1f7a4d;
+}
+
+.reading-history__status--progress {
+  background: var(--surface-accent-soft-strong);
+  border-color: var(--surface-accent-line-strong);
+  color: var(--accent);
+}
+
+.reading-history__empty {
+  min-height: 220px;
+  align-content: center;
+  justify-items: start;
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .reading-history__meta {
+    justify-items: start;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .reading-history__actions {
+    justify-content: flex-start;
+  }
+}

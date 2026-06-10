@@ -394,6 +394,31 @@ export function buildPayload(formState: FormState): RawInputValue {
   };
 }
 
+/**
+ * อินเวิร์สของ buildPayload — แปลง rawInput (ที่บันทึก/โหลดจาก DB) กลับเป็น FormState
+ * เพื่อเติม BirthForm ตอนเปิดเซสชันเดิมมาแก้ต่อ (resume) ให้แสดงค่าวัน-เวลา-เพศเดิมครบ
+ * (birthDate "YYYY-MM-DD" → วัน/เดือน/ปี พ.ศ.; birthTime "HH:MM" → ชั่วโมง/นาที 2 หลัก)
+ */
+export function formStateFromRawInput(rawInput: RawInputValue): FormState {
+  const base = createDefaultFormState();
+  const [yearText = "", monthText = "", dayText = ""] = rawInput.birthDate.split("-");
+  const [hourText = "", minuteText = ""] = rawInput.birthTime.split(":");
+
+  const gregorianYear = parseNumericFormValue(yearText);
+  const month = parseNumericFormValue(monthText);
+  const day = parseNumericFormValue(dayText);
+
+  return {
+    birthDay: day !== null ? String(day) : base.birthDay,
+    birthMonth: month !== null ? String(month) : base.birthMonth,
+    birthYearBe: gregorianYear !== null ? String(gregorianYear + 543) : base.birthYearBe,
+    birthHour: hourText ? hourText.padStart(2, "0") : base.birthHour,
+    birthMinute: minuteText ? minuteText.padStart(2, "0") : base.birthMinute,
+    gender: rawInput.gender || base.gender,
+    province: rawInput.province?.trim() || base.province,
+  };
+}
+
 export function getProgressTone(progress: AnnotationProgressState) {
   if (progress === "complete") {
     return "complete";

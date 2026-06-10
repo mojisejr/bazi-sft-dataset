@@ -15,7 +15,7 @@ type ProofWorkspaceHookPageProps = {
 
 function resolveReturnToPath(candidate?: string) {
   if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) {
-    return "/?workspace=queue";
+    return "/pending";
   }
 
   return candidate;

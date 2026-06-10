@@ -7,32 +7,6 @@
   gap: var(--space-6, 1.5rem);
 }
 
-/* CTA จากหน้า main ไปหน้าคำทำนาย 15 บท */
-.reading-cta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4, 1rem);
-  flex-wrap: wrap;
-  margin: 0 auto var(--space-4, 1rem);
-  padding: var(--space-4, 1rem) var(--space-5, 1.25rem);
-  width: 100%;
-  max-width: 64rem;
-  border: 1px solid var(--line-soft, rgba(120, 120, 140, 0.28));
-  border-radius: var(--radius-lg, 14px);
-  background: var(--surface-inset, rgba(120, 120, 140, 0.08));
-}
-
-.reading-cta__title {
-  margin: 0.1rem 0 0;
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.reading-cta__action {
-  white-space: nowrap;
-}
-
 .reading-path__intro {
   padding: var(--space-6, 1.5rem);
   display: flex;
@@ -236,6 +210,41 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4, 1rem);
+}
+
+/* ตารางบทเสริม (วัยจร) แบบแก้ไขได้ — ช่อง input/textarea กลืนไปกับเซลล์ตาราง */
+.reading-path__appendix-table td {
+  vertical-align: top;
+  padding: var(--space-2, 0.5rem);
+}
+
+.reading-path__cell-input,
+.reading-path__cell-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  color: inherit;
+  background: var(--surface-input, #fff);
+  border: 1px solid var(--border-subtle, #d8d8d8);
+  border-radius: var(--radius-sm, 0.375rem);
+  padding: 0.35rem 0.5rem;
+}
+
+.reading-path__cell-input--narrow {
+  min-width: 5rem;
+}
+
+.reading-path__cell-textarea {
+  resize: vertical;
+  min-height: 3rem;
+  line-height: 1.5;
+}
+
+.reading-path__cell-input:focus,
+.reading-path__cell-textarea:focus {
+  outline: 2px solid var(--accent, #b8860b);
+  outline-offset: 1px;
+  border-color: transparent;
 }
 
 .reading-path__apikey {

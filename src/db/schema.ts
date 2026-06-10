@@ -17,6 +17,10 @@ import {
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import { type DatasetRecordMetadataValue } from "@/lib/bazi/dataset-metadata";
+import {
+  type ReadingSessionDataValue,
+  type ReadingSessionMetadataValue,
+} from "@/lib/bazi/reading-session-types";
 
 export type CanonicalMetadataValue = Record<string, unknown>;
 
@@ -68,6 +72,11 @@ export const sourceRootEnum = pgEnum("bazi_source_root", [
 ]);
 
 export const matrixDomainEnum = pgEnum("bazi_matrix_domain", ["love", "work"]);
+
+export const readingSessionStatusEnum = pgEnum("reading_session_status", [
+  "in_progress",
+  "done",
+]);
 
 export const reviewedDatasetContentCheckName =
   "bazi_dataset_records_reviewed_content_check";
@@ -423,6 +432,43 @@ export const baziDoctrineDraft = pgTable(
 
 export type InsertBaziDoctrineDraft = typeof baziDoctrineDraft.$inferInsert;
 export type SelectBaziDoctrineDraft = typeof baziDoctrineDraft.$inferSelect;
+
+/**
+ * ประวัติการดูดวง (reading session) — เก็บงานของหน้า /reading ลงฐานข้อมูล
+ * (แยกต่างหากจาก bazi_dataset_records ของ SFT) เพื่อให้กลับมาแก้ต่อ / ปริ้นซ้ำ / ฝากคนอื่นแก้
+ * คอลัมน์ระดับบนสุดดึงมาจาก rawInput/calculatedState/sessionData เพื่อ list/sort ได้โดยไม่ parse blob
+ * `session_data` = blob คืนสภาพ workspace เต็ม (topicStates/corrections/readings/relationshipLines/provider)
+ * `calculated_state` = snapshot ดวง (ปริ้นซ้ำให้คงที่ + restore ทันที ไม่ต้องคำนวณใหม่)
+ */
+export const baziReadingSessions = pgTable("bazi_reading_sessions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  label: text("label"),
+  birthDate: text("birth_date").notNull(),
+  birthTime: text("birth_time").notNull(),
+  gender: text("gender").notNull(),
+  dayMaster: text("day_master"),
+  provider: text("provider").notNull().default("gemini"),
+  status: readingSessionStatusEnum("status").notNull().default("in_progress"),
+  rawInput: jsonb("raw_input").$type<RawInputValue>().notNull(),
+  calculatedState: jsonb("calculated_state").$type<CalculatedStateValue>(),
+  sessionData: jsonb("session_data")
+    .$type<ReadingSessionDataValue>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  metadata: jsonb("metadata")
+    .$type<ReadingSessionMetadataValue>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  ownerId: text("owner_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertBaziReadingSession = typeof baziReadingSessions.$inferInsert;
+export type SelectBaziReadingSession = typeof baziReadingSessions.$inferSelect;
 
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;

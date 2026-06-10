@@ -638,6 +638,11 @@
   padding: 40px;
   font-size: 0.95rem;
 }
+.ylc-preview__loading-sub {
+  margin-top: 10px;
+  color: #b9c9cc;
+  font-size: 0.82rem;
+}
 
 /* แผ่น A4 ที่ paged.js สร้าง */
 .ylc-preview .pagedjs_pages {

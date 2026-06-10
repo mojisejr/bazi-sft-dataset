@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEv
 import { createPortal } from "react-dom";
 
 import { BirthForm } from "@/components/bazi/BirthForm";
-import { ActionButton } from "@/components/bazi/primitives/Action";
+import { ActionButton, ActionLink } from "@/components/bazi/primitives/Action";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
@@ -12,8 +12,10 @@ import {
   ReadingPrintDocument,
   type PrintChapter,
 } from "@/components/bazi/reading/ReadingPrintDocument";
+import { RelationshipLinesEditor } from "@/components/bazi/reading/RelationshipLinesEditor";
 import {
   TopicCard,
+  type RelationshipLineRow,
   type TopicReadingMode,
   type TopicReadingResult,
 } from "@/components/bazi/reading/TopicCard";
@@ -34,8 +36,11 @@ import {
   applyFormFieldChange,
   buildPayload,
   createDefaultFormState,
+  formStateFromRawInput,
+  formatSaveTimestamp,
   normalizeErrorMessage,
   type FormState,
+  type SaveState,
   type SubmissionState,
 } from "@/lib/bazi/trainer-workspace";
 import {
@@ -43,6 +48,7 @@ import {
   type CalculatedStateValue,
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
+import type { ReadingSessionDetail } from "@/lib/bazi/reading-sessions";
 
 type TopicCardStatus = "idle" | "loading" | "done" | "error";
 
@@ -99,7 +105,17 @@ const RESET_ACTION_COPY = {
   tone: "secondary" as const,
 };
 
-export function ReadingPathWorkspace() {
+type ReadingPathWorkspaceProps = {
+  /** เปิดเซสชันเดิมจากประวัติมาแก้ต่อ (จาก ?session=<id>) */
+  resumeSessionId?: string;
+  /** เปิด preview/print อัตโนมัติหลังโหลดเซสชัน (จาก ?print=1) */
+  autoPrint?: boolean;
+};
+
+export function ReadingPathWorkspace({
+  resumeSessionId,
+  autoPrint = false,
+}: ReadingPathWorkspaceProps = {}) {
   const [formState, setFormState] = useState<FormState>(createDefaultFormState);
   // hydrate วัน-เวลา-เพศ จาก localStorage ครั้งเดียวตอน mount (กัน SSR mismatch) แล้ว save อัตโนมัติเมื่อแก้
   const formHydratedRef = useRef(false);
@@ -118,9 +134,95 @@ export function ReadingPathWorkspace() {
   // คลังคำแก้ของซินแส (localStorage) — โหลดครั้งเดียวตอน mount แล้วซิงค์กลับเมื่อแก้
   const [corrections, setCorrections] = useState<ReturnType<typeof loadCorrections>>({});
 
+  // ตารางบทเสริม (วัยจร) แบบแก้ไขได้ — source of truth เดียวสำหรับโชว์/พิมพ์/บันทึก
+  // sync จากผลบท turning_points เมื่อรันใหม่ (ref กันการ sync ทับค่าที่แก้/restore จาก DB)
+  const [relationshipLines, setRelationshipLines] = useState<RelationshipLineRow[] | null>(null);
+  const [generatingLines, setGeneratingLines] = useState(false);
+  const lastTurningResultRef = useRef<TopicReadingResult | null>(null);
+
+  // เมื่อบท turning_points รัน (engine auto-run หรือ LLM) ได้ผลใหม่ → เติมตารางจากผลนั้น
+  // เทียบ reference: รันใหม่เท่านั้นที่ sync ทับ ส่วนการแก้มือ/restore จาก DB ไม่ถูกล้าง
   useEffect(() => {
+    const result = topicStates["turning_points"]?.result ?? null;
+    if (result && result !== lastTurningResultRef.current) {
+      lastTurningResultRef.current = result;
+      if (result.relationshipLines) {
+        setRelationshipLines(result.relationshipLines);
+      }
+    }
+  }, [topicStates]);
+
+  useEffect(() => {
+    // เปิดเซสชันเดิม (resume) จะโหลดคลังคำแก้จาก DB เอง — ไม่ทับด้วย localStorage
+    if (resumeSessionId) return;
     setCorrections(loadCorrections());
-  }, []);
+  }, [resumeSessionId]);
+
+  // ประวัติการดูดวง (บันทึกลง DB) — เก็บ sessionId ไว้เพื่อให้บันทึกครั้งถัดไปเป็นการ "อัปเดต" ไม่ใช่สร้างใหม่
+  const [label, setLabel] = useState("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // เปิดเซสชันเดิมจากประวัติมาแก้ต่อ — ดึงจาก DB แล้วคืนสภาพ workspace ทั้งหน้า (ไม่ต้องคำนวณใหม่)
+  useEffect(() => {
+    if (!resumeSessionId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/reading/sessions/${resumeSessionId}`);
+        if (!response.ok) return;
+        const detail = (await response.json()) as ReadingSessionDetail;
+        if (!active) return;
+        setRawInput(detail.rawInput);
+        setFormState(formStateFromRawInput(detail.rawInput));
+        const restoredTopicStates = (detail.sessionData?.topicStates ?? {}) as Record<
+          string,
+          TopicEntryState
+        >;
+        setTopicStates(restoredTopicStates);
+        // คืนตารางบทเสริม "ฉบับที่บันทึกไว้" (รวมที่ซินแสแก้/gen แล้ว) — กัน sync effect ทับด้วยการ mark ref
+        const restoredTurning = restoredTopicStates["turning_points"]?.result ?? null;
+        lastTurningResultRef.current = restoredTurning;
+        setRelationshipLines(
+          detail.sessionData?.relationshipLines ?? restoredTurning?.relationshipLines ?? null,
+        );
+        setProvider(detail.sessionData?.provider ?? "gemini");
+        setCorrections(detail.sessionData?.corrections ?? {});
+        setLabel(detail.label ?? "");
+        setSessionId(detail.id);
+        setSavedAt(detail.updatedAt);
+        setSaveState("saved");
+        if (detail.calculatedState) {
+          setCalculatedState(detail.calculatedState);
+          setSubmissionState("ready");
+        }
+        // กัน effect persit ฟอร์มทับ localStorage ของเคสสด (persist ถูกปิดเมื่อมี sessionId อยู่แล้ว)
+        formHydratedRef.current = true;
+        // เปิด preview อัตโนมัติเฉพาะเมื่อมีคำอ่านจริงอย่างน้อย 1 บท — ไม่เปิดเอกสารเปล่า
+        // (เซสชัน "ยังแก้ไม่ครบ" เปิดมาเพื่อแก้ต่อ ไม่ใช่ปริ้น) กัน paged.js จัดหน้าเอกสารว่างช้า/ค้าง
+        const restoredDone = Object.values(detail.sessionData?.topicStates ?? {}).filter(
+          (entry) => Boolean((entry as TopicEntryState | undefined)?.result?.humanReading),
+        ).length;
+        if (autoPrint && restoredDone > 0 && typeof requestAnimationFrame !== "undefined") {
+          // รอให้ workspace (การ์ด 15 บท) เรนเดอร์/วาดเสร็จก่อน ค่อยเปิด preview แล้วจัดหน้า PDF
+          // กัน cold-start ที่ paged.js แย่งงานเรนเดอร์จนช้า/ค้าง
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (active) setShowPreview(true);
+            });
+          });
+        } else if (autoPrint && restoredDone > 0) {
+          setShowPreview(true);
+        }
+      } catch {
+        /* เปิดเซสชันไม่สำเร็จ — ผู้ใช้เริ่มเคสใหม่ได้ */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [resumeSessionId, autoPrint]);
 
   // ตารางคำแก้ (กฎแทนคำ) จาก server — โหลดครั้งเดียวตอน mount
   const [rules, setRules] = useState<SubstitutionRule[]>([]);
@@ -141,18 +243,20 @@ export function ReadingPathWorkspace() {
     };
   }, []);
 
-  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount
+  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount (ข้ามเมื่อเปิดเซสชันเดิม — resume เติมฟอร์มจาก rawInput เอง)
   useEffect(() => {
+    if (resumeSessionId) return;
     const stored = loadStoredFormState();
     if (stored) {
       setFormState(stored);
     }
     formHydratedRef.current = true;
-  }, []);
+  }, [resumeSessionId]);
 
   // บันทึกค่าฟอร์มทุกครั้งที่แก้ (หลัง hydrate แล้วเท่านั้น กันเขียนทับด้วยค่าว่าง)
+  // ขณะเปิดเซสชันจาก DB (มี sessionId) ไม่ sync ลง localStorage — กันทับ cache ของเคสสดที่กรอกค้างไว้
   useEffect(() => {
-    if (!formHydratedRef.current || typeof window === "undefined") {
+    if (!formHydratedRef.current || typeof window === "undefined" || sessionId) {
       return;
     }
     try {
@@ -160,7 +264,7 @@ export function ReadingPathWorkspace() {
     } catch {
       /* localStorage เต็ม/ปิดอยู่ — ข้ามได้ */
     }
-  }, [formState]);
+  }, [formState, sessionId]);
 
   const predictTopic = useCallback(
     async (
@@ -393,15 +497,18 @@ export function ReadingPathWorkspace() {
           readings[topic.id] = result.humanReading;
         }
       }
-      // ตารางบทเสริม (วัยจร): ฉบับ LLM ใช้ที่ generate แล้ว (รวม LLM แต่งคำ ถ้ามี); ฉบับ engine ปล่อยให้ engine คำนวณเอง
-      const relationshipLines =
-        variant === "llm"
-          ? (topicStates["turning_points"]?.result?.relationshipLines ?? undefined)
-          : undefined;
+      // ตารางบทเสริม (วัยจร): ฉบับ LLM ใช้ตารางที่แก้/gen แล้ว (state เดียวกับที่โชว์/บันทึก); ฉบับ engine ปล่อยให้ engine คำนวณเอง
+      const linesOverride =
+        variant === "llm" ? (relationshipLines ?? undefined) : undefined;
       const response = await fetch("/api/reading/export-docx", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ rawInput, calculatedState, readings, relationshipLines }),
+        body: JSON.stringify({
+          rawInput,
+          calculatedState,
+          readings,
+          relationshipLines: linesOverride,
+        }),
       });
       if (!response.ok) {
         throw new Error("สร้างไฟล์ .docx ไม่สำเร็จ");
@@ -422,8 +529,99 @@ export function ReadingPathWorkspace() {
     }
   }
 
+  // บันทึกการดูดวงลงประวัติ (DB) — มี sessionId = อัปเดตเซสชันเดิม, ไม่มี = สร้างใหม่แล้วจำ id ไว้อัปเดตครั้งถัดไป
+  async function handleSaveSession() {
+    if (!rawInput || !calculatedState || saveState === "saving") {
+      return;
+    }
+    setSaveState("saving");
+    // map คำอ่านสำหรับ export-docx — ตรรกะเดียวกับ handleExportDocx (ซินแสแก้ ?? humanReading ของ llm)
+    const readings: Record<string, string> = {};
+    for (const topic of PREDICT_TOPICS) {
+      const result = topicStates[topic.id]?.result;
+      if (!result) continue;
+      const sinsae = correctionFor(topic.id).exact;
+      if (sinsae) {
+        readings[topic.id] = sinsae.corrected;
+      } else if (result.humanReading && result.source === "llm") {
+        readings[topic.id] = result.humanReading;
+      }
+    }
+    const body = {
+      ...(sessionId ? { sessionId } : {}),
+      label: label.trim() || null,
+      status: "in_progress" as const,
+      rawInput,
+      calculatedState,
+      sessionData: {
+        version: 1,
+        provider,
+        topicStates,
+        corrections,
+        readings,
+        // ตารางบทเสริม "ฉบับที่แก้/gen แล้ว" (state เดียวกับที่โชว์/พิมพ์) → เก็บลง DB
+        relationshipLines: relationshipLines ?? null,
+      },
+    };
+    try {
+      const response = await fetch("/api/reading/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error("บันทึกไม่สำเร็จ");
+      }
+      const saved = (await response.json()) as { sessionId: string; updatedAt: string };
+      setSessionId(saved.sessionId);
+      setSavedAt(saved.updatedAt);
+      setSaveState("saved");
+    } catch {
+      setSaveState("error");
+    }
+  }
+
+  // gen ช่อง "คำอธิบายดี-ร้ายเชิงลึก" ของตารางบทเสริมด้วย LLM (แยกจากการรันบท turning_points เต็มบท)
+  // คง ageRange/symbol/relationLine เดิม เปลี่ยนเฉพาะ deepNote — ผลลัพธ์ทับ state แล้วบันทึก/พิมพ์ตามนั้น
+  async function handleGenerateRelationshipNotes() {
+    if (!rawInput || !calculatedState || generatingLines) return;
+    if (!relationshipLines || relationshipLines.length === 0) return;
+    // Local Claude (anthropic) ผ่าน proxy ไม่ต้องมี key จริง → ใช้ "local"
+    const localClaude = provider === "anthropic";
+    if (!localClaude && apiKey.trim().length === 0) return;
+    const key = localClaude ? apiKey.trim() || "local" : apiKey.trim();
+    setGeneratingLines(true);
+    try {
+      const response = await fetch("/api/reading/relationship-lines", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          rawInput,
+          calculatedState,
+          rows: relationshipLines,
+          provider,
+          apiKey: key,
+        }),
+      });
+      const body = (await response.json()) as {
+        relationshipLines?: RelationshipLineRow[];
+        error?: { message: string };
+      };
+      if (response.ok && Array.isArray(body.relationshipLines)) {
+        setRelationshipLines(body.relationshipLines);
+      }
+    } catch {
+      /* เงียบ — ปุ่มกดซ้ำได้ */
+    } finally {
+      setGeneratingLines(false);
+    }
+  }
+
   function handleReset() {
     setFormState(createDefaultFormState());
+    setRelationshipLines(null);
+    lastTurningResultRef.current = null;
+    setGeneratingLines(false);
     if (typeof window !== "undefined") {
       try {
         window.localStorage.removeItem(FORM_STORAGE_KEY);
@@ -438,6 +636,11 @@ export function ReadingPathWorkspace() {
     setTopicStates({});
     setApiKey("");
     setProvider("gemini");
+    // ล้างสถานะประวัติ — กันบันทึกทับเซสชันเดิมเมื่อเริ่มเคสใหม่
+    setSessionId(null);
+    setLabel("");
+    setSavedAt(null);
+    setSaveState("idle");
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -469,6 +672,9 @@ export function ReadingPathWorkspace() {
       setCalculatedState(parsedState);
       setSubmissionState("ready");
       setTopicStates({});
+      // เริ่มเคสใหม่: ล้างตารางบทเสริมเดิม + ref ให้ sync effect เติมจากผล turning_points รอบใหม่
+      setRelationshipLines(null);
+      lastTurningResultRef.current = null;
       // auto-run engine ทุกบททันที → คำทำนาย knownlage + ตารางบทเสริมขึ้นเองแต่แรก
       void runAllEngine(payload, parsedState);
     } catch (error) {
@@ -481,8 +687,8 @@ export function ReadingPathWorkspace() {
   // Local Claude (anthropic) ไม่ต้องกรอก key จริง → ใช้ "local" แทน เพื่อให้ปุ่ม/รายบททำงานได้
   const localClaudeMode = provider === "anthropic";
   const effectiveApiKey = localClaudeMode ? apiKey.trim() || "local" : apiKey;
-  // ตารางบทเสริมมาจากผลบท turning_points ที่ auto-run แล้ว (ไม่ต้อง fetch แยกอีก)
-  const relationshipLines = topicStates["turning_points"]?.result?.relationshipLines ?? null;
+  // ตารางบทเสริม (relationshipLines) เป็น editable state — sync จากบท turning_points / แก้มือ / gen LLM
+  const canGenerateLines = localClaudeMode || apiKey.trim().length > 0;
   // จำนวนบทที่มีคำอ่านพร้อมแล้ว (ใช้คุมปุ่ม preview + แสดงความคืบหน้า)
   const doneCount = PREDICT_TOPICS.filter(
     (topic) => Boolean(topicStates[topic.id]?.result?.humanReading),
@@ -520,6 +726,11 @@ export function ReadingPathWorkspace() {
           title="Stepwise Path Reading"
           titleLevel="h2"
           note="กรอกข้อมูลเกิด คำนวณดวง แล้วกดทำนายทีละหัวข้อจนครบทั้ง path — ทุกคำอ่าน ground จาก engine truth ไม่ได้มาจากการแต่งของ AI"
+          actions={
+            <ActionLink href="/reading/history" tone="secondary">
+              ดูประวัติการดูดวง
+            </ActionLink>
+          }
         />
         <BirthForm
           formState={formState}
@@ -633,6 +844,40 @@ export function ReadingPathWorkspace() {
             >
               {exporting === "llm" ? "กำลังสร้าง .docx..." : "ดาวน์โหลด .docx (LLM)"}
             </ActionButton>
+          </div>
+          <div className="reading-path__save reading-path__batch-controls">
+            <label className="field field--compact">
+              <span>ชื่อเคส / ชื่อเจ้าของดวง (ไม่บังคับ)</span>
+              <input
+                type="text"
+                autoComplete="off"
+                placeholder="เช่น คุณสมชาย — เว้นว่างได้"
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+              />
+            </label>
+            <ActionButton
+              tone="primary"
+              type="button"
+              disabled={saveState === "saving"}
+              onClick={() => void handleSaveSession()}
+            >
+              {saveState === "saving"
+                ? "กำลังบันทึก..."
+                : sessionId
+                  ? "อัปเดตการดูดวง"
+                  : "บันทึกการดูดวง"}
+            </ActionButton>
+            <ActionLink href="/reading/history" tone="secondary">
+              ดูประวัติทั้งหมด
+            </ActionLink>
+            <span className="section-note reading-path__save-hint">
+              {saveState === "error"
+                ? "บันทึกไม่สำเร็จ — ต้องเชื่อมฐานข้อมูล (DATABASE_URL) แล้วลองใหม่"
+                : saveState === "saved" || savedAt
+                  ? `บันทึกเข้าประวัติแล้ว · ${formatSaveTimestamp(savedAt)}`
+                  : "บันทึกเข้าประวัติเพื่อกลับมาแก้ต่อ ปริ้นซ้ำ หรือฝากคนอื่นแก้"}
+            </span>
           </div>
           {batchProgress && (
             <div
@@ -779,34 +1024,13 @@ export function ReadingPathWorkspace() {
       )}
 
       {isReady && relationshipLines && relationshipLines.length > 0 && (
-        <section className="surface reading-path__appendix" aria-label="บทเสริม">
-          <SectionHeading
-            kicker="บทเสริม (ต่อจากบทที่ 15)"
-            title="ตารางวิเคราะห์เส้นขีดความสัมพันธ์ — หมวดช่วงอายุและวัยจร"
-            titleLevel="h2"
-            note="ประเมินตามดิถีและสภาวะวัยจรแต่ละช่วง 5 ปี (บทบาทธาตุ × 12 เชี่ยงแซ × กำลังดิถี)"
-          />
-          <table className="topic-table">
-            <thead>
-              <tr>
-                <th>ช่วงอายุ</th>
-                <th>เสาวัยจร</th>
-                <th>เส้นขีดที่ทำงาน</th>
-                <th>คำอธิบายดี-ร้ายเชิงลึก</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relationshipLines.map((row, index) => (
-                <tr key={`${row.ageRange}-${index}`}>
-                  <td>{row.ageRange}</td>
-                  <td>{row.symbol}</td>
-                  <td>{row.relationLine}</td>
-                  <td>{row.deepNote}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
+        <RelationshipLinesEditor
+          rows={relationshipLines}
+          onChange={setRelationshipLines}
+          onGenerateDeepNotes={() => void handleGenerateRelationshipNotes()}
+          generating={generatingLines}
+          canGenerate={canGenerateLines}
+        />
       )}
     </div>
   );
