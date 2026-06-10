@@ -35,6 +35,9 @@ type ReadingPrintDocumentProps = {
 
 const KICKER = "ถอดรหัสดวงชะตา";
 
+/** marker บรรทัดเดี่ยวสั่งขึ้นหน้าใหม่ (ซินแสแทรกในข้อความ) — ต้องตรงกับ reading-docx.ts */
+const PAGEBREAK_MARKER = "[[pagebreak]]";
+
 const TH_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
@@ -356,17 +359,29 @@ export function ReadingPrintDocument({
       {/* 4 ── แผ่นดวงชะตา (วันเวลาเกิด) ── */}
       <ChartSheet rawInput={rawInput} calculatedState={calculatedState} />
 
-      {/* 5.. ── 15 บท (พร้อมผังดวงกำกับลูกศรของบท ถ้ามี relationKeys) ── */}
-      {chapters.map((ch) => {
+      {/* 5.. ── 15 บท (พร้อมผังดวงกำกับลูกศรของบท ถ้ามี relationKeys) ──
+          ตัวแบ่งหน้า manual ([[pagebreak]]) ที่ซินแสแทรก = ตัดบทเป็นหลายแผ่น (sheet) ต่อเนื่อง
+          ใช้กลไก .ylc-sheet + .ylc-sheet { break-before: page } ที่เสถียร (ไม่ใช้ break-before
+          บน element เปล่าใน prose เพราะ paged.js build นี้จะวนค้าง) */}
+      {chapters.flatMap((ch) => {
         const annotation = ch.id ? buildChapterAnnotation(calculatedState, ch.id) : null;
-        return (
-          <ContentSheet key={ch.chapter} identity={identity} title={`${ch.chapter}. ${ch.title}`}>
-            {annotation ? <ChapterChartStrip annotation={annotation} uid={ch.id ?? String(ch.chapter)} /> : null}
+        const raw = ch.text ?? "";
+        const parts = raw.includes(PAGEBREAK_MARKER)
+          ? raw.split(PAGEBREAK_MARKER).map((s) => s.trim()).filter((s) => s.length > 0)
+          : [raw];
+        const segments = parts.length > 0 ? parts : [raw];
+        return segments.map((segText, si) => (
+          <ContentSheet
+            key={`${ch.chapter}-${si}`}
+            identity={identity}
+            title={si === 0 ? `${ch.chapter}. ${ch.title}` : `${ch.chapter}. ${ch.title} (ต่อ)`}
+          >
+            {si === 0 && annotation ? <ChapterChartStrip annotation={annotation} uid={ch.id ?? String(ch.chapter)} /> : null}
             <div className="ylc-prose">
-              {ch.text ? renderMarkdown(cleanText(ch.text)) : <p className="ylc-empty">(ยังไม่ได้ทำนายบทนี้)</p>}
+              {segText ? renderMarkdown(cleanText(segText)) : <p className="ylc-empty">(ยังไม่ได้ทำนายบทนี้)</p>}
             </div>
           </ContentSheet>
-        );
+        ));
       })}
 
       {/* ── ภาคผนวก: ตารางวัยจรเชิงลึก ── */}

@@ -40,7 +40,7 @@
 /* ฐานตัวอักษร — ใช้ทั้งตอน render ตรง (.ylc-doc) และตอน paged.js แบ่งหน้า (.pagedjs_page) */
 .ylc-doc,
 .pagedjs_page {
-  font-family: "YLC Sarabun", "Sarabun", "Tahoma", sans-serif;
+  font-family: "YLC Sarabun", "Sarabun", "Tahoma", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   color: var(--ylc-body);
   font-size: 14.5pt; /* Sarabun ~14.5pt — อ่านสบายตามตัวอย่างคุณชัยธรณ์ */
   line-height: 1.8;
@@ -100,6 +100,8 @@
   text-align: center;
   margin: 0 0 8mm;
   padding-top: 6mm;
+  /* หัวบทอยู่ต้นแผ่นบทเสมอ (.ylc-sheet + .ylc-sheet ตัดหน้าให้แล้ว) จึงไม่ต้องใช้ break-* avoid
+     ซึ่ง paged.js build นี้ทำให้ layout วนค้าง */
 }
 .ylc-head::before,
 .ylc-head::after {
@@ -121,7 +123,7 @@
   background-image: url("/ylc/tassel-right.png");
 }
 .ylc-head__kicker {
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-ink);
   font-size: 30pt;
@@ -130,7 +132,7 @@
   letter-spacing: 0.01em;
 }
 .ylc-head__name {
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-teal-deep);
   font-size: 18pt;
@@ -162,7 +164,7 @@
   color: var(--ylc-teal);
 }
 .ylc-head__title {
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-ink);
   font-size: 18pt;
@@ -178,6 +180,8 @@
 .ylc-prose p {
   margin: 0 0 14px;
   text-indent: 2em;
+  orphans: 2;
+  widows: 2;
 }
 .ylc-prose p:last-child {
   margin-bottom: 0;
@@ -198,13 +202,17 @@
   margin: 10px 0;
 }
 .ylc-prose .ylc-sub {
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-teal-deep);
   font-size: 14pt;
   line-height: 1.35;
   margin: 14px 0 6px;
   text-indent: 0;
+  /* หัวข้อย่อยไม่หลุดท้ายหน้าโดยเนื้อหาไปอยู่หน้าถัดไป (break-after/inside: avoid ใช้ได้กับ paged.js
+     build นี้ — ผ่านการ render จริงแล้ว; ห้ามใช้ break-before บน element เปล่าซึ่งทำให้ layout วนค้าง) */
+  break-after: avoid;
+  break-inside: avoid;
 }
 .ylc-prose ul {
   margin: 4px 0 12px;
@@ -249,7 +257,7 @@
 .ylc-table thead th {
   background: #eef8fa;
   color: var(--ylc-teal-deep);
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
 }
 /* หัวตารางซ้ำทุกหน้าเมื่อตารางยาวข้ามหน้า (paged.js + print) — คอลัมน์จึงตรงกันทุกหน้า */
@@ -330,7 +338,7 @@
 .ylc-cstrip__label {
   font-size: 9.5px;
   color: var(--ylc-muted);
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
 }
 .ylc-cstrip__stem {
   font-size: 20px;
@@ -365,7 +373,7 @@
   margin: 0 auto;
   padding: 12px 34px;
   color: var(--ylc-teal-deep);
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-size: 18px;
   line-height: 1.3;
   border: 2px solid var(--ylc-teal-soft);
@@ -398,7 +406,7 @@
 }
 .ylc-gender {
   margin: 10px 0 18px;
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   font-size: 17px;
   color: var(--ylc-ink);
@@ -426,7 +434,7 @@
 .ylc-chart-col__head {
   background: #f1f5f6;
   color: var(--ylc-ink);
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   font-size: 14px;
   padding: 8px 4px;
@@ -502,7 +510,7 @@
   margin-top: 4mm;
 }
 .ylc-luck__title {
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-ink);
   font-size: 18px;
@@ -533,7 +541,7 @@
   display: block;
   background: #f1f5f6;
   color: var(--ylc-ink);
-  font-family: "YLC Display", "YLC Sarabun", sans-serif;
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   font-size: 13px;
   padding: 6px 4px;

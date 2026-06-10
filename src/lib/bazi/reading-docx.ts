@@ -37,11 +37,101 @@ import { readRules } from "@/lib/bazi/substitution-rules-store";
 
 const FONT = "Tahoma"; // รองรับภาษาไทย
 
+/** marker บรรทัดเดี่ยวสั่งขึ้นหน้าใหม่ (ซินแสแทรกเองในข้อความ) — ต้องตรงกับ ReadingPrintDocument */
+const PAGEBREAK_MARKER = "[[pagebreak]]";
+
 function textParagraph(text: string, opts: { bold?: boolean; size?: number; spacingAfter?: number } = {}): Paragraph {
   return new Paragraph({
     spacing: { after: opts.spacingAfter ?? 120 },
     children: [new TextRun({ text, bold: opts.bold, size: opts.size ?? 24, font: FONT })],
   });
+}
+
+/**
+ * แปลง inline markdown (***เน้นแดง*** / **ตัวหนา**) เป็น TextRun[] — mirror renderInline() ของ PDF
+ * base = สไตล์พื้นของบรรทัด (เช่น หัวข้อย่อย/เตือนแดง ก็ bold+สีไว้แล้ว) แล้วซ้อนเน้นจาก ** ทับ
+ */
+function markdownRuns(text: string, base: { size?: number; bold?: boolean; color?: string } = {}): TextRun[] {
+  const size = base.size ?? 24;
+  const run = (t: string, extra: { bold?: boolean; color?: string } = {}) =>
+    new TextRun({ text: t, size, font: FONT, bold: extra.bold ?? base.bold, color: extra.color ?? base.color });
+  const runs: TextRun[] = [];
+  // ***เน้นแดง*** มาก่อน **ตัวหนา** (regex เดียวกับ PDF)
+  const re = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) runs.push(run(text.slice(last, m.index)));
+    if (m[1] !== undefined) {
+      runs.push(run(m[1], { bold: true, color: ACCENT }));
+    } else {
+      runs.push(run(m[2], { bold: true }));
+    }
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) runs.push(run(text.slice(last)));
+  if (runs.length === 0) runs.push(run(""));
+  return runs;
+}
+
+/**
+ * แปลง markdown ย่อ (หัวข้อย่อย / bullet / เน้นแดง / ย่อหน้า / ตัวแบ่งหน้า) เป็น Paragraph[]
+ * mirror renderMarkdown() ของ PDF — บรรทัดติดกันรวมเป็นย่อหน้าเดียว (join " "), บรรทัดว่าง = ตัดย่อหน้า
+ */
+function markdownParagraphs(text: string): Paragraph[] {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const out: Paragraph[] = [];
+  let para: string[] = [];
+  const flushPara = () => {
+    if (para.length) {
+      out.push(new Paragraph({ spacing: { after: 120 }, children: markdownRuns(para.join(" ")) }));
+      para = [];
+    }
+  };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      flushPara();
+      continue;
+    }
+    if (line === PAGEBREAK_MARKER) {
+      flushPara();
+      out.push(new Paragraph({ children: [new PageBreak()] }));
+      continue;
+    }
+    // บรรทัดขึ้นต้น *** = เน้นเตือนสีแดง (เช่น "*** ระวังเป็นพิเศษ")
+    const warnLine = line.match(/^\*\*\*\s*(.+?)\s*\**$/);
+    if (warnLine && !line.startsWith("****")) {
+      flushPara();
+      out.push(
+        new Paragraph({
+          spacing: { before: 80, after: 120 },
+          children: markdownRuns(warnLine[1], { size: 24, bold: true, color: ACCENT }),
+        }),
+      );
+      continue;
+    }
+    const heading = line.match(/^#{1,4}\s+(.*)$/);
+    const bullet = line.match(/^[-*•]\s+(.*)$/);
+    if (heading) {
+      flushPara();
+      out.push(
+        new Paragraph({
+          spacing: { before: 160, after: 60 },
+          children: markdownRuns(heading[1], { size: 26, bold: true, color: ACCENT }),
+        }),
+      );
+      continue;
+    }
+    if (bullet) {
+      flushPara();
+      out.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 60 }, children: markdownRuns(bullet[1]) }));
+      continue;
+    }
+    para.push(line);
+  }
+  flushPara();
+  return out;
 }
 
 function cell(text: string, opts: { bold?: boolean; width?: number } = {}): TableCell {
@@ -162,9 +252,7 @@ function chapterParagraphs(
     );
     const reading = override || baseReading;
     if (reading) {
-      for (const para of reading.split("\n\n")) {
-        out.push(textParagraph(para));
-      }
+      out.push(...markdownParagraphs(reading));
     } else {
       out.push(textParagraph("(ยังไม่มีองค์ความรู้สำหรับหัวข้อนี้)"));
     }

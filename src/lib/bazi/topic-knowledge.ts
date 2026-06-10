@@ -1653,10 +1653,12 @@ function buildLiuNianYearlyForecast(calculatedState: CalculatedStateValue): stri
           : ""
         : ` → ${QI_TIER_LABEL_TH[first.tier]}`;
     const verdict = buildLuckPhaseVerdict(band, first.role, first.qi, first.age);
-    return `อายุ ${ageRange} ปี (พ.ศ. ${beRange} / ค.ศ. ${yearRange}, ${RELATION_ROLE_SHORT[first.role]}${qiText}): ${verdict}`;
+    // ขึ้นต้น "- " เพื่อให้ renderMarkdown (PDF) และ markdownParagraphs (docx) จัดเป็น bullet ทีละช่วงอายุ
+    return `- อายุ ${ageRange} ปี (พ.ศ. ${beRange} / ค.ศ. ${yearRange}, ${RELATION_ROLE_SHORT[first.role]}${qiText}): ${verdict}`;
   });
 
-  return [lead, ...lines].join("\n");
+  // ย่อหน้านำ + บรรทัดว่าง แล้วตามด้วยลิสต์ (แต่ละ bullet คั่นด้วย \n เดี่ยว — อยู่ในบล็อกลิสต์เดียวกัน)
+  return `${lead}\n\n${lines.join("\n")}`;
 }
 
 // ความหมายของเสาในตารางเส้นขีดวัยจร (8 ตัว) — วัยจรเทียบทีละตัวตามความหมายของเสา

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
 import { StatusChip } from "@/components/bazi/primitives/StatusChip";
@@ -160,6 +160,26 @@ export function TopicCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [showSystem, setShowSystem] = useState(false);
+  const sinsaeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // แทรกตัวแบ่งหน้า ([[pagebreak]]) ที่ตำแหน่ง cursor ของ textarea — ดูผลใน preview ก่อนทำ PDF
+  const insertPageBreak = () => {
+    const el = sinsaeTextareaRef.current;
+    const marker = "\n\n[[pagebreak]]\n\n";
+    if (!el) {
+      setDraft((cur) => `${cur}${marker}`);
+      return;
+    }
+    const start = el.selectionStart ?? draft.length;
+    const end = el.selectionEnd ?? draft.length;
+    const next = `${draft.slice(0, start)}${marker}${draft.slice(end)}`;
+    setDraft(next);
+    requestAnimationFrame(() => {
+      const pos = start + marker.length;
+      el.focus();
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   const statusTone = status === "loading" ? "busy" : status === "done" ? "ready" : status === "error" ? "error" : "idle";
   const statusLabel = status === "loading" ? "กำลังทำนาย" : status === "done" ? "ทำนายแล้ว" : status === "error" ? "ผิดพลาด" : "ยังไม่ทำนาย";
@@ -263,9 +283,13 @@ export function TopicCard({
                   </span>
                 </h4>
                 {displayText
-                  ? displayText.split("\n\n").map((paragraph, index) => (
-                      <p key={index}>{paragraph}</p>
-                    ))
+                  ? displayText.split("\n\n").map((paragraph, index) =>
+                      paragraph.trim() === "[[pagebreak]]" ? (
+                        <p key={index} className="topic-card__pagebreak">— ขึ้นหน้าใหม่ใน PDF —</p>
+                      ) : (
+                        <p key={index}>{paragraph}</p>
+                      ),
+                    )
                   : (
                     <p className="topic-card__empty">
                       ยังไม่มีองค์ความรู้ภาษามนุษย์สำหรับหัวข้อนี้ (รอ ingest จาก docx ใน knownlage)
@@ -334,6 +358,7 @@ export function TopicCard({
                         </label>
                         <textarea
                           id={`sinsae-${topic.id}`}
+                          ref={sinsaeTextareaRef}
                           className="topic-card__sinsae-textarea"
                           value={draft}
                           rows={Math.min(20, Math.max(6, draft.split("\n").length + 1))}
@@ -351,6 +376,14 @@ export function TopicCard({
                           >
                             บันทึกการแก้ไข
                           </ActionButton>
+                          <button
+                            type="button"
+                            className="topic-card__sinsae-link"
+                            onClick={insertPageBreak}
+                            title="แทรกจุดขึ้นหน้าใหม่ตรงตำแหน่งเคอร์เซอร์ — ดูผลใน 'ดูตัวอย่าง & บันทึก PDF'"
+                          >
+                            ⤓ แทรกตัวแบ่งหน้า
+                          </button>
                           <button
                             type="button"
                             className="topic-card__sinsae-link"
