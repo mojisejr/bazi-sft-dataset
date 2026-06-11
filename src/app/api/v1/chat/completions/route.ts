@@ -17,6 +17,8 @@ import {
   routeOpenWebUiIntent,
 } from "@/features/open-webui/intent-router";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
+import { fetchGroundedReading, resolveTopicId } from "@/features/open-webui/reading-bridge";
+import { type RawInputValue } from "@/lib/bazi/schema-types";
 import {
   createGuardedOpenAiSseStream,
 } from "@/features/open-webui/sse-streamer";
@@ -40,16 +42,18 @@ function getForwardedUserId(req: Request) {
 }
 
 export type BuildOpenWebUiExecutionContextInput = {
-  result: Pick<ChatRunnerSuccess, "baziConsult">;
+  result: Pick<ChatRunnerSuccess, "baziConsult"> & { baziTopicHint?: string | null };
   intentClassification: OpenWebUiIntentClassification;
   extraction?: OpenWebUiBaziExtraction | null;
   calculatedState?: BaziStatePayload | null;
+  /** same-server origin used to call the reading engine internally (Path A grounding) */
+  origin?: string | null;
 };
 
-export function buildOpenWebUiExecutionContext(
+export async function buildOpenWebUiExecutionContext(
   input: BuildOpenWebUiExecutionContextInput,
-): OpenWebUiGeminiExecutionContext {
-  const { result, intentClassification, extraction, calculatedState } = input;
+): Promise<OpenWebUiGeminiExecutionContext> {
+  const { result, intentClassification, extraction, calculatedState, origin } = input;
 
   if (!intentClassification.requiresBaziConsult) {
     return {
@@ -64,11 +68,18 @@ export function buildOpenWebUiExecutionContext(
   }
 
   if (extraction && extraction.isComplete && extraction.rawInput && calculatedState) {
+    const truthPacket = await groundOrFallback({
+      origin,
+      intentClassification,
+      topicHint: result.baziTopicHint,
+      rawInput: extraction.rawInput,
+      calculatedState,
+    });
     return {
       intentClassification,
       baziConsult: {
         rawInput: extraction.rawInput,
-        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, calculatedState),
+        truthPacket,
       },
     };
   }
@@ -87,11 +98,18 @@ export function buildOpenWebUiExecutionContext(
   // Fallback: requiresBaziConsult but no extraction was performed —
   // honor any pre-attached consult payload from the chat runner.
   if (result.baziConsult) {
+    const truthPacket = await groundOrFallback({
+      origin,
+      intentClassification,
+      topicHint: result.baziTopicHint,
+      rawInput: result.baziConsult.rawInput,
+      calculatedState: result.baziConsult.calculatedState,
+    });
     return {
       intentClassification,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
-        truthPacket: stringifyOpenWebUiTruthPacket(intentClassification, result.baziConsult.calculatedState),
+        truthPacket,
       },
     };
   }
@@ -100,6 +118,27 @@ export function buildOpenWebUiExecutionContext(
     intentClassification,
     baziConsult: null,
   };
+}
+
+// Ground the chat answer on the real reading engine (mode llm -> consumer). If the engine
+// is unreachable or returns nothing, fall back to the legacy truth packet so chat never breaks.
+async function groundOrFallback(args: {
+  origin?: string | null;
+  intentClassification: OpenWebUiIntentClassification;
+  topicHint?: string | null;
+  rawInput: RawInputValue;
+  calculatedState: BaziStatePayload;
+}): Promise<string | null> {
+  const { origin, intentClassification, topicHint, rawInput, calculatedState } = args;
+  const topicId = resolveTopicId(intentClassification.intent, topicHint);
+  const fallback = stringifyOpenWebUiTruthPacket(intentClassification, calculatedState);
+
+  if (!origin || !topicId) {
+    return fallback;
+  }
+
+  const grounded = await fetchGroundedReading(origin, { topicId, rawInput, calculatedState });
+  return grounded ?? fallback;
 }
 
 export async function POST(req: Request) {
@@ -127,6 +166,14 @@ export async function POST(req: Request) {
 
   console.log("[open-webui] chat completions userId", effectiveUserId);
 
+  const origin = (() => {
+    try {
+      return new URL(req.url).origin;
+    } catch {
+      return null;
+    }
+  })();
+
   const assistantReply = (async () => {
     const intentClassification = await routeOpenWebUiIntent(result);
 
@@ -150,11 +197,12 @@ export async function POST(req: Request) {
       }
     }
 
-    const executionContext = buildOpenWebUiExecutionContext({
+    const executionContext = await buildOpenWebUiExecutionContext({
       result,
       intentClassification,
       extraction,
       calculatedState,
+      origin,
     });
 
     return generateGeminiAssistantReply(result, { executionContext });

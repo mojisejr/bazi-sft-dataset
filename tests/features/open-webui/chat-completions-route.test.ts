@@ -183,8 +183,8 @@ async function consumeStream(response: Response) {
 }
 
 describe("buildOpenWebUiExecutionContext", () => {
-  test("attaches a narrowed truth packet when extraction completes", () => {
-    const executionContext = buildOpenWebUiExecutionContext({
+  test("attaches a narrowed truth packet when extraction completes", async () => {
+    const executionContext = await buildOpenWebUiExecutionContext({
       result: SAMPLE_CHAT_RESULT,
       intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.94 },
       extraction: {
@@ -207,8 +207,8 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContext.baziMissingFields).toBeUndefined();
   });
 
-  test("keeps non-Bazi traffic stateless by bypassing truth-packet attachment", () => {
-    const executionContext = buildOpenWebUiExecutionContext({
+  test("keeps non-Bazi traffic stateless by bypassing truth-packet attachment", async () => {
+    const executionContext = await buildOpenWebUiExecutionContext({
       result: SAMPLE_CHAT_RESULT,
       intentClassification: { intent: "chit_chat", requiresBaziConsult: false, confidence: 0.2 },
     });
@@ -218,8 +218,8 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContext.baziConsult?.truthPacket).toBeNull();
   });
 
-  test("emits missingFields and null truth packet when extraction is incomplete", () => {
-    const executionContext = buildOpenWebUiExecutionContext({
+  test("emits missingFields and null truth packet when extraction is incomplete", async () => {
+    const executionContext = await buildOpenWebUiExecutionContext({
       result: { baziConsult: null },
       intentClassification: { intent: "love", requiresBaziConsult: true, confidence: 0.88 },
       extraction: {
