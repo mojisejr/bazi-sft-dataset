@@ -194,7 +194,9 @@
 }
 .ylc-prose strong {
   font-weight: 700;
-  color: var(--ylc-ink);
+  /* inherit แทน fix สี: ตัวหนาที่ไม่ระบุสีจะได้ ink จาก body อยู่แล้ว แต่ถ้าครอบด้วย
+     mark สี (span[style=color]) จะได้สีนั้นด้วย — ไม่งั้น ใส่ตัวหนาแล้วเปลี่ยนสีไม่ได้ */
+  color: inherit;
 }
 /* เน้นเตือนสีแดง: ***...*** หรือบรรทัดขึ้นต้น *** */
 .ylc-prose .ylc-warn {
@@ -1037,6 +1039,9 @@
   position: sticky;
   top: 8px;
   align-self: flex-start;
+  /* sticky สร้าง stacking context ของตัวเอง → ต้องยก z-index ทั้งแถบให้อยู่เหนือ
+     .ylc-editor__surface (sibling ที่วาดทีหลัง) ไม่งั้นเมนูสีจะถูกข้อความเอกสารทับ */
+  z-index: 5;
 }
 .ylc-editor__toolbar button {
   font-size: 0.82rem;
