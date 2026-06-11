@@ -100,8 +100,9 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
 
     expect(payload.userPrompt).toContain("Intent routing: intent=career; requiresBaziConsult=true; confidence=0.91.");
     expect(payload.userPrompt).toContain("Consult mode: bazi_consult.");
-    expect(payload.userPrompt).toContain("Verified Bazi consult context:");
-    expect(payload.userPrompt).toContain("Truth packet:");
+    expect(payload.userPrompt).toContain("ข้อมูลวันเกิดที่ยืนยันแล้ว:");
+    expect(payload.userPrompt).toContain("ผลอ่านจากซินแส");
+    expect(payload.userPrompt).toContain("กฎเหล็กในการตอบ");
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
   });
 
