@@ -8,6 +8,7 @@ import { ActionButton, ActionLink } from "@/components/bazi/primitives/Action";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
+import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
   ReadingPrintDocument,
   type PrintChapter,
@@ -424,13 +425,6 @@ export function ReadingPathWorkspace({
     setBatchProgress(null);
   }
 
-  // ปุ่มลัด: gen ทุกบทด้วย Local Claude (Anthropic) — ตั้ง provider+mode แล้วยิงทันทีด้วย override
-  function handleGenerateLocalClaude() {
-    setProvider("anthropic");
-    setAllMode("llm");
-    void handlePredictAll("llm", "anthropic");
-  }
-
   // เพิ่มกฎแทนคำ → server เขียนไฟล์ + อัปเดต state แล้ว re-run engine ให้ผลบนจอสะท้อนกฎใหม่
   async function handleAddRule(input: AddRuleInput) {
     try {
@@ -474,6 +468,8 @@ export function ReadingPathWorkspace({
 
   const [exporting, setExporting] = useState<"engine" | "llm" | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  // โหมดแก้ข้อความใน preview (WYSIWYG TipTap) ↔ ดูหน้าจริง (paged.js)
+  const [editMode, setEditMode] = useState(false);
 
   // ดาวน์โหลดรายงาน .docx — แยก 2 ฉบับ:
   //   "engine" = ผล engine ล้วนทุกบท (ครบ-ไม่ตัด ตามคำกำชับซินแซ)
@@ -608,7 +604,11 @@ export function ReadingPathWorkspace({
         error?: { message: string };
       };
       if (response.ok && Array.isArray(body.relationshipLines)) {
-        setRelationshipLines(body.relationshipLines);
+        // merge by-index: เปลี่ยนเฉพาะ deepNote คงฟิลด์ฝั่ง client ไว้ (เช่น pageBreakBefore)
+        const next = body.relationshipLines;
+        setRelationshipLines((prev) =>
+          (prev ?? []).map((r, i) => ({ ...r, deepNote: next[i]?.deepNote ?? r.deepNote })),
+        );
       }
     } catch {
       /* เงียบ — ปุ่มกดซ้ำได้ */
@@ -751,28 +751,8 @@ export function ReadingPathWorkspace({
 
       {isReady && (
         <section className="reading-path__batch surface">
-          <label className="field field--compact reading-path__provider">
-            <span>ค่าย LLM (เลือกครั้งเดียว ใช้ร่วมทุกบท)</span>
-            <select
-              value={provider}
-              onChange={(event) => setProvider(event.target.value as ReadingLlmProvider)}
-            >
-              <option value="gemini">Gemini (Google)</option>
-              <option value="opencode">OpenCode Zen</option>
-              <option value="anthropic">Local Claude (Anthropic)</option>
-            </select>
-          </label>
           <label className="field field--compact reading-path__apikey">
-            <span>
-              {provider === "opencode"
-                ? "OpenCode Zen"
-                : provider === "anthropic"
-                  ? "Anthropic / Local Claude"
-                  : "Gemini"}{" "}
-              API key
-              {" "}(ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก
-              {provider === "anthropic" ? "; Local Claude ผ่าน proxy — เว้นว่างได้" : ""})
-            </span>
+            <span>Gemini API key (ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก)</span>
             <input
               type="password"
               autoComplete="off"
@@ -809,16 +789,6 @@ export function ReadingPathWorkspace({
               {batchProgress
                 ? `กำลังทำนาย ${batchProgress.done}/${batchProgress.total}...`
                 : `ทำนายรวมทุกบท (${PREDICT_TOPICS.length} บท)`}
-            </ActionButton>
-            <ActionButton
-              tone="primary"
-              type="button"
-              disabled={Boolean(batchProgress)}
-              onClick={() => handleGenerateLocalClaude()}
-            >
-              {batchProgress
-                ? `Local Claude ${batchProgress.done}/${batchProgress.total}...`
-                : `🤖 Gen ด้วย Local Claude`}
             </ActionButton>
             <ActionButton
               tone="primary"
@@ -967,8 +937,17 @@ export function ReadingPathWorkspace({
                   <div className="ylc-preview__toolbar-actions">
                     <button
                       type="button"
+                      className={`ylc-preview__btn ${editMode ? "ylc-preview__btn--primary" : "ylc-preview__btn--ghost"}`}
+                      onClick={() => setEditMode((v) => !v)}
+                    >
+                      {editMode ? "ดูหน้าจริง (A4)" : "แก้ข้อความ"}
+                    </button>
+                    <button
+                      type="button"
                       className="ylc-preview__btn ylc-preview__btn--primary"
                       onClick={handlePrintYlc}
+                      disabled={editMode}
+                      title={editMode ? "สลับไป “ดูหน้าจริง (A4)” ก่อนพิมพ์" : undefined}
                     >
                       บันทึกเป็น PDF / พิมพ์
                     </button>
@@ -982,14 +961,28 @@ export function ReadingPathWorkspace({
                   </div>
                 </div>
                 <div className="ylc-preview__stage">
-                  <PagedPreview>
-                    <ReadingPrintDocument
+                  {editMode ? (
+                    <ReadingEditPanel
                       rawInput={rawInput}
                       calculatedState={calculatedState}
                       chapters={printChapters}
                       relationshipLines={relationshipLines}
+                      onSaveChapter={handleSaveCorrection}
+                      onChangeLines={setRelationshipLines}
+                      onGenerateLines={() => void handleGenerateRelationshipNotes()}
+                      generatingLines={generatingLines}
+                      canGenerateLines={canGenerateLines}
                     />
-                  </PagedPreview>
+                  ) : (
+                    <PagedPreview>
+                      <ReadingPrintDocument
+                        rawInput={rawInput}
+                        calculatedState={calculatedState}
+                        chapters={printChapters}
+                        relationshipLines={relationshipLines}
+                      />
+                    </PagedPreview>
+                  )}
                 </div>
               </div>
             </div>,

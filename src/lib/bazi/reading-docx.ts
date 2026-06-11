@@ -28,6 +28,8 @@ import {
 } from "@/lib/bazi/topic-knowledge";
 import { applySubstitutionRules } from "@/lib/bazi/substitution-rules";
 import { readRules } from "@/lib/bazi/substitution-rules-store";
+import { tokenizeInline } from "@/lib/bazi/reading-inline";
+import { hexForDocx } from "@/lib/bazi/reading-colors";
 
 /**
  * สร้างรายงานทำนายดวงจีนเป็นไฟล์ Word (.docx) จากผล engine แบบ deterministic
@@ -39,6 +41,8 @@ const FONT = "Tahoma"; // รองรับภาษาไทย
 
 /** marker บรรทัดเดี่ยวสั่งขึ้นหน้าใหม่ (ซินแสแทรกเองในข้อความ) — ต้องตรงกับ ReadingPrintDocument */
 const PAGEBREAK_MARKER = "[[pagebreak]]";
+/** marker นำหน้าบรรทัดแรกของย่อหน้าที่เยื้องบรรทัดแรก — ต้องตรงกับ ReadingPrintDocument / reading-markdown */
+const INDENT_MARKER = "[[indent]]";
 
 function textParagraph(text: string, opts: { bold?: boolean; size?: number; spacingAfter?: number } = {}): Paragraph {
   return new Paragraph({
@@ -48,29 +52,26 @@ function textParagraph(text: string, opts: { bold?: boolean; size?: number; spac
 }
 
 /**
- * แปลง inline markdown (***เน้นแดง*** / **ตัวหนา**) เป็น TextRun[] — mirror renderInline() ของ PDF
- * base = สไตล์พื้นของบรรทัด (เช่น หัวข้อย่อย/เตือนแดง ก็ bold+สีไว้แล้ว) แล้วซ้อนเน้นจาก ** ทับ
+ * แปลง inline markdown (***เน้นแดง*** / **ตัวหนา** / [[c=สี]]) เป็น TextRun[]
+ * ใช้ tokenizer กลาง (reading-inline) ตัวเดียวกับ PDF/converter — กันตีความไม่ตรง
+ * base = สไตล์พื้นของบรรทัด (หัวข้อย่อย/เตือนแดง ก็ bold+สีไว้แล้ว) แล้วซ้อนเน้น/สีจาก token ทับ
  */
 function markdownRuns(text: string, base: { size?: number; bold?: boolean; color?: string } = {}): TextRun[] {
   const size = base.size ?? 24;
-  const run = (t: string, extra: { bold?: boolean; color?: string } = {}) =>
-    new TextRun({ text: t, size, font: FONT, bold: extra.bold ?? base.bold, color: extra.color ?? base.color });
-  const runs: TextRun[] = [];
-  // ***เน้นแดง*** มาก่อน **ตัวหนา** (regex เดียวกับ PDF)
-  const re = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*/g;
-  let last = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) runs.push(run(text.slice(last, m.index)));
-    if (m[1] !== undefined) {
-      runs.push(run(m[1], { bold: true, color: ACCENT }));
-    } else {
-      runs.push(run(m[2], { bold: true }));
-    }
-    last = m.index + m[0].length;
+  const runs = tokenizeInline(text).map(
+    (r) =>
+      new TextRun({
+        text: r.text,
+        // ขนาดต่อข้อความ ([[s=PT]]) → half-points (PT × 2) ทับ base; ไม่มี = ใช้ base
+        size: r.fontSize ? Math.round(parseFloat(r.fontSize) * 2) : size,
+        font: FONT,
+        bold: r.bold || base.bold,
+        color: r.color ? hexForDocx(r.color) : r.red ? ACCENT : base.color,
+      }),
+  );
+  if (runs.length === 0) {
+    runs.push(new TextRun({ text: "", size, font: FONT, bold: base.bold, color: base.color }));
   }
-  if (last < text.length) runs.push(run(text.slice(last)));
-  if (runs.length === 0) runs.push(run(""));
   return runs;
 }
 
@@ -82,10 +83,19 @@ function markdownParagraphs(text: string): Paragraph[] {
   const lines = text.replace(/\r/g, "").split("\n");
   const out: Paragraph[] = [];
   let para: string[] = [];
+  let paraIndent = false;
   const flushPara = () => {
     if (para.length) {
-      out.push(new Paragraph({ spacing: { after: 120 }, children: markdownRuns(para.join(" ")) }));
+      out.push(
+        new Paragraph({
+          spacing: { after: 120 },
+          // เยื้องบรรทัดแรก ~2em (480 twips ที่ฟอนต์ 12pt) ให้ตรงกับ .ylc-indent ใน PDF
+          ...(paraIndent ? { indent: { firstLine: 480 } } : {}),
+          children: markdownRuns(para.join(" ")),
+        }),
+      );
       para = [];
+      paraIndent = false;
     }
   };
   for (const raw of lines) {
@@ -128,7 +138,17 @@ function markdownParagraphs(text: string): Paragraph[] {
       out.push(new Paragraph({ bullet: { level: 0 }, spacing: { after: 60 }, children: markdownRuns(bullet[1]) }));
       continue;
     }
-    para.push(line);
+    if (!para.length) {
+      // บรรทัดแรกของย่อหน้า: [[indent]] = เยื้อง 2em มิฉะนั้นคงช่องว่างนำหน้าที่พิมพ์เอง (trimEnd อย่างเดียว)
+      if (line.startsWith(INDENT_MARKER)) {
+        paraIndent = true;
+        para.push(line.slice(INDENT_MARKER.length).replace(/^\s+/, ""));
+      } else {
+        para.push(raw.replace(/\s+$/, ""));
+      }
+    } else {
+      para.push(line);
+    }
   }
   flushPara();
   return out;
@@ -194,25 +214,35 @@ function daYunTable(calculatedState: CalculatedStateValue): Table | null {
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
 }
 
-function relationshipTable(
+/** ตารางบทเสริม — แตกเป็นหลาย Table ตาม pageBreakBefore คั่นด้วย PageBreak (ขึ้นหน้าใหม่ใน Word) */
+function relationshipTables(
   calculatedState: CalculatedStateValue,
   override?: RelationshipLineRow[],
-): Table {
+): (Table | Paragraph)[] {
   const rows = override && override.length > 0 ? override : buildRelationshipLinesMapping(calculatedState);
-  const header = new TableRow({
-    children: [
-      cell("ช่วงอายุ", { bold: true, width: 16 }),
-      cell("เสาวัยจร", { bold: true, width: 14 }),
-      cell("คำอธิบายดี-ร้ายเชิงลึก", { bold: true, width: 70 }),
-    ],
+  const header = () =>
+    new TableRow({
+      children: [
+        cell("ช่วงอายุ", { bold: true, width: 16 }),
+        cell("เสาวัยจร", { bold: true, width: 14 }),
+        cell("คำอธิบายดี-ร้ายเชิงลึก", { bold: true, width: 70 }),
+      ],
+    });
+  // แตกแถวเป็นกลุ่มตาม pageBreakBefore
+  const groups: RelationshipLineRow[][] = [];
+  for (const row of rows) {
+    if (groups.length === 0 || row.pageBreakBefore) groups.push([row]);
+    else groups[groups.length - 1].push(row);
+  }
+  const out: (Table | Paragraph)[] = [];
+  groups.forEach((group, gi) => {
+    if (gi > 0) out.push(new Paragraph({ children: [new PageBreak()] }));
+    const body = group.map(
+      (row) => new TableRow({ children: [cell(row.ageRange), cell(row.symbol), cell(row.deepNote)] }),
+    );
+    out.push(new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header(), ...body] }));
   });
-  const body = rows.map(
-    (row) =>
-      new TableRow({
-        children: [cell(row.ageRange), cell(row.symbol), cell(row.deepNote)],
-      }),
-  );
-  return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [header, ...body] });
+  return out;
 }
 
 /** คำอ่านที่ generate ไว้แล้ว (เช่นฉบับ LLM polish) ราย topicId — ใช้แทนผล engine ถ้ามี */
@@ -378,7 +408,7 @@ export function buildReadingDocument(
             children: [new TextRun({ text: "คู่มือชีวิต 15 มิติ", bold: true, size: 32, font: FONT })],
           }),
           ...chapterParagraphs(calculatedState, rawInput, options.readings, undefined, options.variant),
-          // ── บทเสริม: ตารางวัยจร ──
+          // ── บทเสริม: ตารางวัยจร (แตกหน้าตาม pageBreakBefore) ──
           new Paragraph({
             heading: HeadingLevel.HEADING_1,
             pageBreakBefore: true,
@@ -392,7 +422,7 @@ export function buildReadingDocument(
               }),
             ],
           }),
-          relationshipTable(calculatedState, options.relationshipLines),
+          ...relationshipTables(calculatedState, options.relationshipLines),
         ],
       },
     ],
@@ -456,7 +486,7 @@ export function buildTopicDocument(
                   spacing: { before: 240, after: 120 },
                   children: [new TextRun({ text: "ตารางวิเคราะห์วัยจร (ช่วงละ 5 ปี)", bold: true, size: 28, font: FONT })],
                 }),
-                relationshipTable(calculatedState, options.relationshipLines),
+                ...relationshipTables(calculatedState, options.relationshipLines),
               ]
             : []),
         ],

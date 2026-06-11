@@ -2,66 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-/**
- * กฎ @page (paged.js) — แบ่งเอกสารเป็นหน้า A4 จริง เกินหน้าก็ขึ้นหน้าใหม่
- * ส่งเป็น stylesheet ตรง ๆ ให้ paged.js (รูปแบบ { href: cssText }) เพื่อไม่ให้มันไปดึง/ลบ
- * stylesheet ของแอป. สไตล์ภาพอื่น ๆ มาจาก ylc-pdf.css ที่ cascade ปกติ
- */
-const PAGED_CSS = `
-@page { size: A4; margin: 0; }
-@page ylc-text {
-  margin: 24mm 18mm 22mm;
-  background-image: url("/ylc/watermark.png");
-  background-repeat: no-repeat;
-  background-position: center 52%;
-  background-size: 150mm;
-  @bottom-center {
-    content: "";
-    background-image: url("/ylc/logo-footer.png");
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: 38mm auto;
-  }
-}
-@page ylc-full { margin: 0; }
-.ylc-sheet--content { page: ylc-text; }
-.ylc-sheet--image, .ylc-sheet--chart { page: ylc-full; }
-.ylc-sheet + .ylc-sheet { break-before: page; }
-`;
-
-type PagedGlobal = {
-  Previewer: new () => {
-    preview: (
-      content: Node | string,
-      stylesheets: Array<string | Record<string, string>>,
-      renderTo: Element,
-    ) => Promise<unknown>;
-  };
-};
-
-/**
- * โหลด paged.js (UMD prebuilt) ผ่าน <script> แทนการ bundle — เพราะ source ของ paged.js
- * เข้ากันไม่ได้กับ Turbopack/webpack (error "contains.call is not a function")
- */
-function loadPaged(): Promise<PagedGlobal> {
-  const w = window as unknown as { Paged?: PagedGlobal };
-  if (w.Paged) return Promise.resolve(w.Paged);
-  return new Promise((resolve, reject) => {
-    const id = "ylc-pagedjs-script";
-    const existing = document.getElementById(id) as HTMLScriptElement | null;
-    if (existing) {
-      existing.addEventListener("load", () => (w.Paged ? resolve(w.Paged) : reject(new Error("paged.js missing"))));
-      existing.addEventListener("error", () => reject(new Error("load paged.js failed")));
-      return;
-    }
-    const s = document.createElement("script");
-    s.id = id;
-    s.src = "/ylc/paged.js";
-    s.onload = () => (w.Paged ? resolve(w.Paged) : reject(new Error("paged.js missing")));
-    s.onerror = () => reject(new Error("load paged.js failed"));
-    document.head.appendChild(s);
-  });
-}
+import { ensureYlcFontsLoaded, loadPaged, PAGED_CSS } from "@/components/bazi/reading/paged-runtime";
 
 /**
  * รอ "ฟอนต์ + รูปในเอกสาร" ให้พร้อมก่อนปล่อยให้ paged.js วัด/จัดหน้า
@@ -69,6 +10,8 @@ function loadPaged(): Promise<PagedGlobal> {
  * paged.js อาจวัดความสูงเพี้ยนแล้วจัดหน้านานผิดปกติ/ค้าง. มี timeout กันรอ asset ที่ไม่มีจริง
  */
 async function waitForAssets(root: HTMLElement, timeoutMs = 6000): Promise<void> {
+  // โหลดฟอนต์ YLC ให้จริงก่อน (fonts.ready อย่างเดียวไม่พอ — paged.js วัดเพี้ยนถ้ายัง fallback)
+  await ensureYlcFontsLoaded();
   const tasks: Promise<unknown>[] = [];
 
   const fonts = (document as unknown as { fonts?: { ready?: Promise<unknown> } }).fonts;

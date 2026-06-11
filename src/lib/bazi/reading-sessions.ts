@@ -30,6 +30,8 @@ const RelationshipLineSchema = z.object({
   symbol: z.string(),
   relationLine: z.string(),
   deepNote: z.string(),
+  // ขึ้นหน้าใหม่ก่อนแถวนี้ (บทเสริม) — ต้องประกาศไว้ ไม่งั้น zod ตัดทิ้งตอนบันทึก
+  pageBreakBefore: z.boolean().optional(),
 });
 
 // result เก็บแบบ permissive (z.any) เพื่อให้รูป engine reading วิวัฒน์ได้โดยไม่ทำให้โหลดเซสชันเดิมพัง

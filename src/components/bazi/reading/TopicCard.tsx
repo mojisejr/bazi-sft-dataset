@@ -16,6 +16,8 @@ export type RelationshipLineRow = {
   symbol: string;
   relationLine: string;
   deepNote: string;
+  /** true = ขึ้นหน้าใหม่ก่อนแถวนี้ในตารางบทเสริม (PDF/Word/พรีวิว) */
+  pageBreakBefore?: boolean;
 };
 
 export type TopicReadingResult = {

@@ -636,6 +636,8 @@
 	}
 
 	function findElement(node, doc, forceQuery) {
+		/* PATCH(ylc): node อาจเป็น null/ไม่มี getAttribute (DOM ถูกรื้อกลางคัน) → คืน null แทน throw */
+		if (!node || typeof node.getAttribute !== "function") return null;
 		const ref = node.getAttribute("data-ref");
 		return findRef(ref, doc, forceQuery);
 	}
@@ -837,6 +839,8 @@
 	 *  2) null if no such node exists.
 	 */
 	function nextSignificantNode(sib) {
+		/* PATCH(ylc): sib อาจเป็น null (เรียกหลัง DOM ถูกรื้อ) → คืน null แทน throw */
+		if (!sib) return null;
 		while ((sib = sib.nextSibling)) {
 			if (!isIgnorable(sib)) return sib;
 		}
@@ -1404,7 +1408,11 @@
 			this.element = element;
 
 			this.bounds = this.element.getBoundingClientRect();
-			this.parentBounds = this.element.offsetParent.getBoundingClientRect();
+			/* PATCH(ylc): offsetParent อาจเป็น null (DOM ถูกรื้อ/ซ่อนระหว่าง resize/StrictMode/headless)
+			   → ใช้ bounds เป็น fallback แทน throw */
+			this.parentBounds = this.element.offsetParent
+				? this.element.offsetParent.getBoundingClientRect()
+				: this.bounds;
 			let gap = parseFloat(window.getComputedStyle(this.element).columnGap);
 		
 			if (gap) {
@@ -2074,21 +2082,40 @@
 
 			if (isText(lastChild)) {
 
-				if (lastChild.parentNode.dataset.ref) {
+				/* PATCH(ylc): parentNode อาจเป็น null (text node ถูกถอดออกจาก DOM) → bail แทน throw */
+				if (lastChild.parentNode && lastChild.parentNode.dataset.ref) {
 					lastNodeIndex = indexOf$2(lastChild);
 					lastChild = lastChild.parentNode;
-				} else {
+				} else if (lastChild.parentNode) {
 					lastChild = lastChild.previousSibling;
+				} else {
+					return;
 				}
 			}
 
+			if (!lastChild || lastChild.nodeType !== 1) {
+				return;
+			}
+
 			let original = findElement(lastChild, source);
+
+			if (!original) {
+				return;
+			}
 
 			if (lastNodeIndex) {
 				original = original.childNodes[lastNodeIndex];
 			}
 
+			if (!original) {
+				return;
+			}
+
 			let after = nodeAfter(original);
+
+			if (!after) {
+				return;
+			}
 
 			return this.breakAt(after);
 		}
