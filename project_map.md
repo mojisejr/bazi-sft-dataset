@@ -1,4 +1,4 @@
-# Bazi SFT Dataset Collector - Project Map
+# Bazi SFT Dataset Collector - Project Mapping
 
 ## 1. 🧠 Philosophy (The Vibe)
 **Deterministic Bazi Platform for Reading, Proof, Matching, and Conversation**
