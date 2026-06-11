@@ -289,7 +289,7 @@
 - `/api/v1/chat/completions` รับ payload แบบ OpenAI/Open WebUI, validate token, normalize messages, route intent, extract Bazi consult context, สร้าง truth packet, และ stream คำตอบผ่าน SSE
 - `/api/v1/models` เปิด surface model discovery สำหรับ Open WebUI compatibility
 - `/api/webhooks/line` รับ inbound LINE events, validate signature, enforce auth guard, และใช้ `line-chat` services จัดการ short-term memory / reply
-- chat lane เหล่านี้ต้องพึ่ง same truth packet doctrine: ถ้าต้องอ่านดวง ต้อง derive จาก raw input + calculated state ไม่ใช่ narrative ลอย
+- chat lane เหล่านี้ **share engine เฉพาะชั้นคำนวณ** (`calculateBaziStateFromRawInput`) แต่ **ไม่ได้ใช้ reading pipeline ตัวเดียวกับ PDF**: ปัจจุบัน chat สร้าง `truth-packet.ts` (lossy projection ~12 field, filter ราย intent) แล้วให้ Gemini เรียบเรียง narrative เอง โดย **ไม่ผ่าน** `topic-reading` / `topic-knowledge` / `reading-llm` / substitution rules / doctrine → ดู Dragon "Chat Interpretation Divergence"
 
 ### H. Dataset Production Pipeline
 - operator หรือ script สร้าง pending queue ผ่าน `scripts/generate-random-bazi.ts`
@@ -297,6 +297,16 @@
 - `scripts/import-agent-drafts.ts` validate draft แล้ว import เป็น `draft` ลง DB
 - มนุษย์ proof ต่อใน UI จนได้ `reviewed`
 - `scripts/export-sft-dataset.ts` export เฉพาะ record ที่ผ่าน review แล้วออกนอกระบบเป็น training artifact
+
+### I. Canonical Reading API Seam (Engine ↔ Consumer contract)
+จุดที่ทุก surface ที่ต้อง "อ่านดวง" (PDF, chat, future LINE) **ต้องบริโภคร่วมกัน** เพื่อไม่ให้ narrative drift:
+- **Layer 1 — คำนวณ**: `calculateBaziStateFromRawInput(rawInput)` [`src/features/bazi-math/bazi-engine-adapter.ts:100`] → `CalculatedStateValue` (pure, ไม่มี React/HTTP dep)
+- **Layer 2 — engine reading (deterministic)**: `buildDayMasterRelationPacket(state)` [`day-master-relation-reading-poc.ts`] (คำนวณครั้งเดียว reuse ได้) → `buildTopicEngineReading(state, topicId, packet, def)` [`topic-reading.ts:357`] → `TopicEngineReading`
+- **Layer 3 — humanize**: `buildTopicConsumerReading(state, topicId, rawInput)` [`topic-knowledge.ts`] → ร้อยแก้วผู้บริโภค (= เนื้อหาที่ PDF ใช้)
+- **Layer 4 — LLM polish (มี validation gate)**: `generateReadingTopicLlm(...)` [`reading-llm.ts:477`] (forbiddenInventions / droppedCriticalMarkers / verifyReadingFaithful, fallback เป็น engine)
+- **หัวข้อ**: `TOPIC_PATH` / `getTopicDefinition(topicId)` [`topic-path.ts`] = 15 บท canonical (client-safe)
+- **กฎ seam**: consumer (chat) **ต้องเรียก Layer 1–4 เท่านั้น** ห้าม re-implement interpretation; ถ้า chat ต้องการ parity เต็มกับ PDF (doctrine + substitution) ให้เรียกผ่าน reading service ที่ extract จาก `/api/reading/topic/route.ts` (ปัจจุบัน logic นี้ผูกอยู่ใน HTTP route — extract เป็น service function คือ coordination point เดียวระหว่าง engine-owner ↔ chat-owner)
+- **map intent → topicId**: chat ควร map intent (wealth/love/career/health/general) ไปยัง topicId ใน `TOPIC_PATH` แล้วดึงเฉพาะบทที่เกี่ยว แทนการอ่านครบ 15 บททุก turn
 
 ## 4. 🗄️ Database Schema
 
@@ -497,6 +507,7 @@ erDiagram
 2. chat runner normalize messages + intent router ตัดสินว่าต้อง consult Bazi truth หรือไม่
 3. ถ้าต้อง consult, extractor ดึง birth context แล้ว engine คำนวณ state ก่อนสร้าง truth packet
 4. Gemini adapter สร้างคำตอบและ stream กลับผ่าน SSE
+   - ⚠️ **ความจริงปัจจุบัน**: step 3 สร้าง `truth packet` (`src/features/open-webui/truth-packet.ts`) เป็น JSON ย่อ ไม่ใช่ผลอ่านจาก reading engine; Gemini แต่งคำตอบเองจาก JSON นี้ → narrative ไม่ตรงกับ PDF (ดู Dragon ใหม่)
 5. LINE webhook รับ event, ตรวจ signature/auth, ใช้ `bazi_chat_histories` เป็น short-term memory และตอบกลับผ่าน LINE client
 
 ### Flow 8: Export / Regeneration
@@ -516,6 +527,7 @@ erDiagram
 - **Runtime Session Dependency**: reaction chamber และบาง reading flows พึ่ง client session/local state ถ้าหลุด refresh จะไม่มี context -> *Solution*: redirect หรือ rehydrate อย่าง explicit แทนการเดาข้อมูล
 - **Graph Density & Visual Truth**: chamber graph อาจผ่าน test แต่ยัง fail ทางสายตาเมื่อ marker/edge หนาแน่น -> *Solution*: แยก browser truth เป็น gate เพิ่มจาก hard gate ปกติ และเตรียม lane-aware layout หาก density โตขึ้น
 - **Multi-Surface Consistency**: manual UI, reading, pair/work, chat lane, และ export ต้องไม่ drift ออกจาก truth packet เดียวกัน -> *Solution*: บังคับผ่าน adapter/schema เดียวก่อนเข้าสู่ narrative/render layers
+- 🔴 **Chat Interpretation Divergence (ACTIVE)**: chat lane (`/api/v1/chat/completions` + `src/features/open-webui/`) reuse engine แค่ชั้นคำนวณ `calculateBaziStateFromRawInput` แต่ **ประกอบคำทำนายเองผ่าน `truth-packet.ts` + Gemini free-compose** ไม่ผ่าน reading pipeline ที่ refactor เสร็จแล้ว (`buildTopicEngineReading` → `buildTopicConsumerReading` → `generateReadingTopicLlm` → substitution rules → doctrine) -> ผล: คำตอบ chat **ไม่ตรง** PDF/DOCX ที่เป็น truth -> *Solution*: chat ต้องบริโภค **reading engine API ชุดเดียวกับ PDF** ผ่าน seam ที่นิยามไว้ (ดู "Canonical Reading API Seam") ห้าม chat ประกอบ interpretation เอง
 - **Channel Memory Boundaries**: LINE/Open WebUI memory ต้องสั้นพอและ privacy-safe -> *Solution*: ใช้ short-term memory tables + prune/expiry rules ไม่ใช้เป็น long-term reasoning source
 - **Style Ownership Drift**: ถ้า selector ใหม่ถูกทิ้งลง global/spillover โดยไม่ classify ก่อน สถาปัตยกรรม UI จะย้อนเป็นกองเดียว -> *Solution*: ยึด layer map ใน `docs/oracle-ui-exemplar.md` และลง selector ตาม ownership จริง
 - **Privacy Boundary**: export training data และ admin doctrine tools ไม่ควรหลุดเป็น surface สาธารณะ -> *Solution*: แยก auth/token guards และ keep exporter/admin tooling เป็น controlled lanes
@@ -558,3 +570,5 @@ erDiagram
 - เพิ่ม Open WebUI-compatible SSE chat lane และ LINE webhook lane เป็น integration surfaces ที่ต้องใช้ truth packet ชุดเดียวกับ engine
 - อัปเดต database map ให้สะท้อน doctrine tables, line identity/chat memory tables, และ pair matrix usage
 - อัปเดต testing doctrine ให้เห็น focused signals ของ reading/doctrine/pair/work/integration lanes ชัดขึ้น
+- **(2026-06-11)** บันทึก engine refactor ที่เสร็จสมบูรณ์: reading pipeline 15 บท โมเดล 7 ขั้น, prompt + validation gate, doctrine/config/substitution, PDF/DOCX export (commits `fb37d6c`, `a159b09`, `0a3eaf5`, `9167235` บน `pdf-dev-chat`)
+- **(2026-06-11)** เพิ่ม Dragon "Chat Interpretation Divergence" + section "Canonical Reading API Seam": ยืนยันจากการ trace ว่า chat lane reuse engine แค่ชั้นคำนวณ ไม่ผ่าน reading pipeline → narrative ไม่ตรง PDF; นิยาม seam ที่ chat ต้องบริโภคเพื่อ parity
