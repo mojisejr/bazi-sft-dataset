@@ -1817,6 +1817,8 @@ export type RelationshipLineRow = {
   relationLine: string;
   /** คำอธิบายดี-ร้ายเชิงลึก (บทบาทธาตุ × 12 เชี่ยงแซ × ดิถีแข็ง-อ่อน × วัย) */
   deepNote: string;
+  /** true = ขึ้นหน้าใหม่ก่อนแถวนี้ในตารางบทเสริม (PDF/Word/พรีวิว) — ต้องตรงกับ TopicCard.RelationshipLineRow */
+  pageBreakBefore?: boolean;
 };
 
 const RELATION_ROLE_SHORT: Record<RelationRole, string> = {
