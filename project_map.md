@@ -115,7 +115,13 @@
 - `src/lib/bazi/reading-llm.ts`
   - LLM polishing layer สำหรับ topic reading และ pair/work rephrase
 - `src/lib/bazi/reading-docx.ts`
-  - owner หลักของ Word export pipeline
+  - owner หลักของ Word export pipeline; ตอนนี้ใช้ `reading-inline` tokenizer ชุดเดียวกับ PDF/editor
+- `src/lib/bazi/reading-inline.ts`
+  - tokenizer ของ inline markdown subset (`**bold**`, `***red***`, `[[c=color]]`, `[[s=pt]]`) → `InlineRun[]`; แชร์ระหว่าง editor / PDF / docx
+- `src/lib/bazi/reading-markdown.ts`
+  - bidirectional converter markdown ↔ ProseMirror JSON (roundtrip-idempotent) สำหรับ WYSIWYG chapter editor
+- `src/lib/bazi/reading-colors.ts`
+  - palette กลาง (ไฟ/ไม้/ดิน/ทอง/น้ำ/teal/warn/gray/ink) + token↔hex; ใช้ร่วม editor dropdown, tokenizer, PDF, docx
 - `src/lib/bazi/reading-doctrine.server.ts`
   - โหลด merged doctrine ที่ publish แล้วสำหรับ reading runtime
 - `src/lib/bazi/reading-doctrine-override.ts`
@@ -159,13 +165,21 @@
 - `src/components/bazi/ProofWorkspace.tsx`
   - หน้าทำ proof/approve/reject พร้อมแก้ reasoning และ prediction
 - `src/components/bazi/reading/ReadingPathWorkspace.tsx`
-  - orchestrator ของหน้าอ่านรายบท, batch reading, local correction memory, และ print preview
+  - orchestrator ของหน้าอ่านรายบท, batch reading, local correction memory, print preview, และ **edit-mode toggle** + save-edited-PDF flow
 - `src/components/bazi/reading/TopicCard.tsx`
   - card รายบทที่รองรับ engine / consumer / llm modes และ sinsae correction tools
 - `src/components/bazi/reading/ReadingPrintDocument.tsx`, `PagedPreview.tsx`
-  - print/PDF preview surface สำหรับรายงานอ่านดวง
+  - print/PDF preview surface สำหรับรายงานอ่านดวง; `PagedPreview` เพิ่ม `onReady` callback (trigger auto-print) + export `SingleChapter/SingleAppendixDocument`
 - `src/components/bazi/reading/SinsaeRuleBuilder.tsx`
   - builder สำหรับเสนอ substitution rules จากคำแก้ของซินแส
+- `src/components/bazi/reading/ReadingEditPanel.tsx`
+  - **WYSIWYG edit shell**: ซ้าย = chapter list + page count, กลาง = ChapterEditor/RelationshipLinesEditor, ขวา = ChapterPagePreview
+- `src/components/bazi/reading/ChapterEditor.tsx`
+  - TipTap WYSIWYG editor รายบท (bold/red/color/font-size/page-break/indent/bullet/h2); sync markdown ↔ ProseMirror ผ่าน `reading-markdown`
+- `src/components/bazi/reading/ChapterPagePreview.tsx`
+  - mini A4 preview ของบทที่เลือก + zoom controls (ครอบ `PagedPreview`)
+- `src/components/bazi/reading/paged-runtime.ts`, `reading-page-count.ts`
+  - shared paged.js runtime (โหลด UMD + YLC fonts + `@page` A4) และ on-demand นับจำนวนหน้า A4 จริงต่อบท (`.pagedjs_page` + `data-ch-start`)
 - `src/components/bazi/pair/PairMatchingWorkspace.tsx`
   - UI เปรียบเทียบคู่รัก 2 คน
 - `src/components/bazi/pair/WorkMatchingWorkspace.tsx`
@@ -263,6 +277,14 @@
 - สำหรับไฟล์ Word ใช้ `POST /api/reading/export-docx`
 - route นี้รับ raw input, calculated state, และ optional per-topic polished readings ก่อนส่งให้ `buildReadingDocxBuffer`
 - CLI `scripts/export-reading-docx.ts` เป็น headless lane สำหรับ export นอก UI
+
+### C2. WYSIWYG Reading Edit Panel (pdf-dev)
+- `ReadingPathWorkspace` มี **edit-mode toggle** เปิด `ReadingEditPanel` ให้ซินแสแก้บทแบบเห็นผลจริง
+- `ChapterEditor` (TipTap) แก้บทเป็น rich text → serialize เป็น **markdown subset** ผ่าน `reading-markdown`; เก็บเป็น **sinsae correction** ใน localStorage (ทับผลอ่าน engine ตอน render)
+- inline format (`**bold**`/`***red***`/`[[c=color]]`/`[[s=pt]]`/`[[indent]]`/`[[pagebreak]]`) ถอดด้วย `reading-inline` **ชุดเดียวกันทั้ง editor / PDF / docx** → ไม่ drift
+- live preview + นับหน้า A4 จริงผ่าน paged.js (`PagedPreview` + `reading-page-count` + `paged-runtime`), auto หลัง idle
+- **save edited PDF คลิกเดียว**: ออกจาก edit-mode → `PagedPreview.onReady` ยิงหลัง paged.js เสร็จ → `window.print()` ได้ PDF "ฉบับที่แก้" (รวม correction + manual page break + appendix rows)
+- deps ใหม่: `@tiptap/{react,starter-kit,pm,extension-color,extension-text-style}`, `jsdom` (test)
 
 ### D. Pair Matching + Work Matching
 - หน้า `/pair-matching` รับข้อมูล 2 คน แล้วส่งไป `POST /api/bazi/pair`
@@ -472,6 +494,13 @@ erDiagram
 3. ถ้าต้องการไฟล์ Word, UI หรือ CLI ส่ง payload ไป `POST /api/reading/export-docx`
 4. `buildReadingDocxBuffer` สร้าง `.docx` จาก state + optional polished readings + relationship lines
 
+### Flow 3b: WYSIWYG Edit → Save Edited PDF
+1. operator กด edit-mode ใน `ReadingPathWorkspace` → `ReadingEditPanel` เปิดบทใน `ChapterEditor`
+2. แก้ rich text → debounce → `reading-markdown` serialize เป็น markdown → `handleSaveCorrection(topicId, markdown)` เก็บลง localStorage corrections
+3. หลัง idle ระบบ bump preview + `reading-page-count` รัน paged.js นับหน้า A4 จริงต่อบท (sidebar อัปเดต)
+4. กด "บันทึกเป็น PDF (ฉบับที่แก้)" → ออก edit-mode → `PagedPreview.onReady` ยิงหลัง paged.js เสร็จ → `window.print()`
+5. PDF ผลลัพธ์ใช้ correction ทับผลอ่าน engine + manual page break + appendix rows; docx export ใช้ inline tokenizer ชุดเดียวกัน → ตรงกัน
+
 ### Flow 4: Pair / Work Matching
 1. หน้า `/pair-matching` หรือ `/work-matching` รับ raw input ของแต่ละคน
 2. API คำนวณ state ของทุกคนผ่าน adapter เดียวกับ manual flow
@@ -519,6 +548,9 @@ erDiagram
 - **Channel Memory Boundaries**: LINE/Open WebUI memory ต้องสั้นพอและ privacy-safe -> *Solution*: ใช้ short-term memory tables + prune/expiry rules ไม่ใช้เป็น long-term reasoning source
 - **Style Ownership Drift**: ถ้า selector ใหม่ถูกทิ้งลง global/spillover โดยไม่ classify ก่อน สถาปัตยกรรม UI จะย้อนเป็นกองเดียว -> *Solution*: ยึด layer map ใน `docs/oracle-ui-exemplar.md` และลง selector ตาม ownership จริง
 - **Privacy Boundary**: export training data และ admin doctrine tools ไม่ควรหลุดเป็น surface สาธารณะ -> *Solution*: แยก auth/token guards และ keep exporter/admin tooling เป็น controlled lanes
+- **paged.js Page-Count Brittleness** (WYSIWYG edit): นับหน้า A4 วัดจาก DOM ที่ scale 1:1 + ขึ้นกับ font/asset โหลดเสร็จ; ถ้า font/รูปโหลดช้าหรือวัดตอน scale → จำนวนหน้าเพี้ยน, มี timeout กัน hang แต่ fail เงียบ -> *Solution*: รัน on-demand เท่านั้น, `ensureYlcFontsLoaded` ก่อนวัด, ใช้ `data-ch-start` มาร์กบทให้ตรง, cache-bust paged.js
+- **Markdown Round-Trip Lossy**: converter markdown↔ProseMirror รวมบรรทัดติดกันเป็นย่อหน้าเดียว, blank line เป็น delimiter ไม่ใช่เนื้อหา, font-size ต้อง 6–72 ไม่งั้น drop เงียบ -> *Solution*: test idempotent (`reading-markdown.test.ts`, `reading-inline.test.ts`) ล็อก roundtrip
+- **TipTap Schema Strict**: custom node (pageBreak/red/warn/indent) ต้องตรงกันทั้ง editor + converter + schema test ไม่งั้น TipTap drop เนื้อหาตอน edit→save→reload เงียบ -> *Solution*: `chapter-editor-schema.test.ts` กัน node หาย
 
 ## 7. 🛡️ Testing & Hard Gate Doctrine
 
@@ -558,3 +590,5 @@ erDiagram
 - เพิ่ม Open WebUI-compatible SSE chat lane และ LINE webhook lane เป็น integration surfaces ที่ต้องใช้ truth packet ชุดเดียวกับ engine
 - อัปเดต database map ให้สะท้อน doctrine tables, line identity/chat memory tables, และ pair matrix usage
 - อัปเดต testing doctrine ให้เห็น focused signals ของ reading/doctrine/pair/work/integration lanes ชัดขึ้น
+- **(2026-06-11, branch `pdf-dev`)** เพิ่ม **WYSIWYG Reading Edit Panel**: `ReadingEditPanel` + `ChapterEditor` (TipTap) + live A4 preview/page-count (paged.js) + save edited PDF คลิกเดียว; แชร์ inline/markdown/color tokenizer (`reading-inline`/`reading-markdown`/`reading-colors`) ระหว่าง editor / PDF / docx; บันทึกเป็น sinsae correction ใน localStorage (commits `6465056`, `8818dae`)
+- **(หมายเหตุ branch)** งาน chat grounding (ground chat บน reading engine) อยู่บน branch `chat/bazi-connect` แยกต่างหาก — **ยังไม่ได้ merge เข้า `pdf-dev`**; map นี้สะท้อนเฉพาะ `pdf-dev`
