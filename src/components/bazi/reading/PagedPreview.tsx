@@ -39,11 +39,15 @@ async function waitForAssets(root: HTMLElement, timeoutMs = 6000): Promise<void>
   ]);
 }
 
-/** เรนเดอร์ลูก (เอกสาร YLC) เป็นหน้า A4 จริงด้วย paged.js — ใช้ทั้งบนจอ (preview) และตอนพิมพ์ */
-export function PagedPreview({ children }: { children: ReactNode }) {
+/** เรนเดอร์ลูก (เอกสาร YLC) เป็นหน้า A4 จริงด้วย paged.js — ใช้ทั้งบนจอ (preview) และตอนพิมพ์
+ *  onReady: เรียกเมื่อ paged.js จัดหน้าเสร็จ (ใช้สั่งพิมพ์อัตโนมัติหลังสลับมาหน้า A4) */
+export function PagedPreview({ children, onReady }: { children: ReactNode; onReady?: () => void }) {
   const sourceRef = useRef<HTMLDivElement>(null);
   const targetRef = useRef<HTMLDivElement>(null);
   const ranRef = useRef(false);
+  // onReady ผ่าน ref กัน stale closure (effect รันรอบเดียว แต่ callback อาจเปลี่ยนตาม render)
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   // โชว์คำแนะนำเพิ่มเมื่อจัดหน้านานผิดปกติ (ไม่ล้มงาน — ปล่อยให้ paged.js ทำต่อ)
   const [slow, setSlow] = useState(false);
@@ -71,6 +75,7 @@ export function PagedPreview({ children }: { children: ReactNode }) {
         const previewer = new Paged.Previewer();
         await previewer.preview(content, [{ "/ylc/paged.css": PAGED_CSS }], targetRef.current);
         setStatus("ready");
+        onReadyRef.current?.();
       } catch (err) {
         console.error("paged.js preview failed", err);
         setStatus("error");

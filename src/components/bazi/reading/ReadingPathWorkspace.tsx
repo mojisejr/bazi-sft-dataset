@@ -718,6 +718,18 @@ export function ReadingPathWorkspace({
     window.print();
   }
 
+  // บันทึก PDF "ฉบับที่แก้แล้ว" จากโหมดแก้ได้เลย: สลับไปหน้าจริง A4 → paged.js จัดหน้าเสร็จ (onReady) → สั่งพิมพ์
+  // ถ้าอยู่หน้าจริงอยู่แล้ว พิมพ์ทันที
+  const pendingPrintRef = useRef(false);
+  function handleSaveEditedPdf() {
+    if (editMode) {
+      pendingPrintRef.current = true;
+      setEditMode(false); // PagedPreview onReady ด้านล่างจะสั่งพิมพ์ให้เมื่อจัดหน้าเสร็จ
+    } else {
+      handlePrintYlc();
+    }
+  }
+
   return (
     <div className="reading-path">
       <section className="reading-path__intro surface">
@@ -945,11 +957,10 @@ export function ReadingPathWorkspace({
                     <button
                       type="button"
                       className="ylc-preview__btn ylc-preview__btn--primary"
-                      onClick={handlePrintYlc}
-                      disabled={editMode}
-                      title={editMode ? "สลับไป “ดูหน้าจริง (A4)” ก่อนพิมพ์" : undefined}
+                      onClick={handleSaveEditedPdf}
+                      title={editMode ? "สลับไปหน้าจริง A4 แล้วเปิดหน้าต่างบันทึก PDF ให้อัตโนมัติ" : undefined}
                     >
-                      บันทึกเป็น PDF / พิมพ์
+                      {editMode ? "บันทึกเป็น PDF (ฉบับที่แก้)" : "บันทึกเป็น PDF / พิมพ์"}
                     </button>
                     <button
                       type="button"
@@ -974,7 +985,15 @@ export function ReadingPathWorkspace({
                       canGenerateLines={canGenerateLines}
                     />
                   ) : (
-                    <PagedPreview>
+                    <PagedPreview
+                      onReady={() => {
+                        // ถ้าผู้ใช้กด "บันทึก PDF (ฉบับที่แก้)" จากโหมดแก้ → จัดหน้าเสร็จแล้วสั่งพิมพ์ให้เลย
+                        if (pendingPrintRef.current) {
+                          pendingPrintRef.current = false;
+                          window.setTimeout(() => handlePrintYlc(), 200);
+                        }
+                      }}
+                    >
                       <ReadingPrintDocument
                         rawInput={rawInput}
                         calculatedState={calculatedState}
