@@ -44,3 +44,10 @@ yarn-error.log*
 # bulky reference materials (YLC sample PDFs / templates) — not tracked
 /templat/
 /example/
+
+# editor/runtime junk
+# Word temp lock files (~$Document.docx)
+~$*
+# backup files
+*.bak
+.claude/scheduled_tasks.lock
