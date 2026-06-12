@@ -131,6 +131,21 @@ function formatPrecedenceNoteSignals(calculatedState: CalculatedStateValue) {
     .join(" | ");
 }
 
+function formatDomainPower(calculatedState: CalculatedStateValue) {
+  const power = calculatedState.domainPower;
+  if (!power) {
+    return "none";
+  }
+  const part = (label: string, score: { score: number; band: string; approximate?: boolean }) =>
+    `${label}=${score.score}% (${score.band}${score.approximate ? ", approx" : ""})`;
+  return [
+    part("career", power.career),
+    part("learning", power.learning),
+    part("friends", power.friends),
+    part("wealth", power.wealth),
+  ].join(" | ");
+}
+
 function formatCalculatedState(calculatedState: CalculatedStateValue) {
   const tenGods = Object.entries(calculatedState.tenGods)
     .map(([key, value]) => `${key}=${value}`)
@@ -182,6 +197,7 @@ function formatCalculatedState(calculatedState: CalculatedStateValue) {
     formatPillar("Hour Pillar", calculatedState.fourPillars.hour),
     `- Day Master: ${calculatedState.dayMaster}`,
     `- Strength Score: ${calculatedState.strengthScore}`,
+    `- Domain Power (0-100%): ${formatDomainPower(calculatedState)}`,
     `- Age Snapshot: ${ageSnapshot}`,
     `- Ten Gods: ${tenGods}`,
     `- Twelve Qi: ${twelveQi}`,

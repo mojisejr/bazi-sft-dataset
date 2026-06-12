@@ -41,6 +41,7 @@ import {
 } from "@/lib/bazi/symbolic-engine.persona";
 import { buildBaseChartReading } from "@/lib/bazi/symbolic-engine.base-chart";
 import { renderContextRuleNoteEnglish } from "@/lib/bazi/symbolic-engine.context-notes";
+import { computeDomainPower } from "@/lib/bazi/symbolic-engine.domain-power";
 import {
   buildElementMetaphors,
   buildStrengthScoreExplainable,
@@ -429,6 +430,12 @@ export async function calculateBaziChart(
     baseChartReading,
     compatibilityMatrixProfiles,
     isForwardDirection: forwardDirection,
+    domainPower: computeDomainPower({
+      year: { stem: pillars.year.stem, branch: pillars.year.branch },
+      month: { stem: pillars.month.stem, branch: pillars.month.branch },
+      day: { stem: pillars.day.stem, branch: pillars.day.branch },
+      hour: { stem: pillars.hour.stem, branch: pillars.hour.branch },
+    }),
   });
 
   return calculatedState;

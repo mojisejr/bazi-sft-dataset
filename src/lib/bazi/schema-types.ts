@@ -470,6 +470,47 @@ export const CalculatedStateExplainableSchema = z.object({
   strengthScore: ExplainableNumberSchema.optional(),
 });
 
+/**
+ * ค่าพลังรายด้าน (domain power) — คะแนน 0–100% ต่อสกิลชีวิต คำนวณจากเมทริกซ์
+ * สัมประสิทธิ์คู่ก้าน-กิ่ง 60×60 ในไฟล์ knownlage/การหาค่าพลัง/. ดู
+ * src/lib/bazi/symbolic-engine.domain-power.ts
+ */
+export const DomainPowerBandSchema = z.enum([
+  "very-weak",
+  "weak",
+  "balanced",
+  "strong",
+  "very-strong",
+]);
+
+export const DomainPowerScoreSchema = z.object({
+  /** คะแนน 0–100 (= สัมประสิทธิ์เฉลี่ย × 100) */
+  score: z.number().min(0).max(100),
+  /** สัมประสิทธิ์เฉลี่ยดิบ 0–1 ก่อนแปลงเป็น % */
+  coefficient: z.number().min(0).max(1),
+  band: DomainPowerBandSchema,
+  /** คู่ pillar ที่นำมาเฉลี่ย (audit trail), เช่น "甲午|己巳" */
+  basis: z.array(z.string().trim().min(1)).default([]),
+  /** ข้อความตีความสำเร็จรูป (มีเฉพาะด้านเพื่อน) */
+  interpretation: z.string().trim().min(1).optional(),
+  /**
+   * true เมื่อการเลือกตำแหน่งมี judgment ของซินแส (เช่น ด้านการเงินที่มีลาภ
+   * หลายตำแหน่ง/ลาภแฝง) — ค่าจึงเป็นการประมาณ ไม่ใช่พอร์ตเป๊ะ
+   */
+  approximate: z.boolean().optional(),
+});
+
+export const DomainPowerSchema = z.object({
+  /** การงาน/การเรียน = หลักวัน Vs หลักเดือน */
+  career: DomainPowerScoreSchema,
+  /** ความเข้าใจ/บริวาร = หลักวัน Vs หลักยาม */
+  learning: DomainPowerScoreSchema,
+  /** เพื่อน/比劫 = ตารางต่อหลักวัน (มีข้อความตีความ) */
+  friends: DomainPowerScoreSchema,
+  /** การเงิน/财 = หลักวัน+หลักเดือน Vs ตำแหน่งลาภ แล้วเฉลี่ย */
+  wealth: DomainPowerScoreSchema,
+});
+
 export const CalculatedStateSchema = z.object({
   fourPillars: z.object({
     year: PillarValueSchema,
@@ -503,6 +544,7 @@ export const CalculatedStateSchema = z.object({
   baseChartReading: BaseChartReadingSchema.optional(),
   compatibilityMatrixProfiles: z.array(CompatibilityMatrixProfileSchema).default([]),
   isForwardDirection: z.boolean().optional(),
+  domainPower: DomainPowerSchema.optional(),
   explainable: CalculatedStateExplainableSchema.default({}),
 });
 
@@ -598,6 +640,9 @@ export type AnnotationDimensionName = z.infer<typeof AnnotationDimensionNameSche
 export type RawInputValue = z.infer<typeof RawInputSchema>;
 export type AgeSnapshotValue = z.infer<typeof AgeSnapshotSchema>;
 export type CalculatedStateValue = z.infer<typeof CalculatedStateSchema>;
+export type DomainPowerValue = z.infer<typeof DomainPowerSchema>;
+export type DomainPowerScoreValue = z.infer<typeof DomainPowerScoreSchema>;
+export type DomainPowerBandValue = z.infer<typeof DomainPowerBandSchema>;
 export type SupportedElementValue = z.infer<typeof SupportedElementSchema>;
 export type DayMasterStrengthProfileValue = z.infer<typeof DayMasterStrengthProfileSchema>;
 export type LiuNianYearValue = z.infer<typeof LiuNianYearSchema>;

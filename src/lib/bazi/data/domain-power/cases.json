@@ -1,0 +1,242 @@
+{
+  "careerLearningPairs": [
+    {
+      "day": "甲子",
+      "other": "甲子",
+      "coefficient": 0.6
+    },
+    {
+      "day": "乙卯",
+      "other": "辛丑",
+      "coefficient": 0.15
+    },
+    {
+      "day": "丙戌",
+      "other": "戊申",
+      "coefficient": 0.4333
+    },
+    {
+      "day": "丁酉",
+      "other": "己巳",
+      "coefficient": 0.7167
+    },
+    {
+      "day": "甲子",
+      "other": "甲子",
+      "coefficient": 0.6
+    },
+    {
+      "day": "乙卯",
+      "other": "辛丑",
+      "coefficient": 0.15
+    },
+    {
+      "day": "丙戌",
+      "other": "戊申",
+      "coefficient": 0.4333
+    },
+    {
+      "day": "丁酉",
+      "other": "己巳",
+      "coefficient": 0.7167
+    },
+    {
+      "day": "戊子",
+      "other": "辛亥",
+      "coefficient": 0.35
+    }
+  ],
+  "wealth": [
+    {
+      "label": "17 มีค 2524 เวลา 10:22 เพศชาย",
+      "pillars": {
+        "hour": "己巳",
+        "day": "甲午",
+        "month": "辛卯",
+        "year": "辛酉"
+      },
+      "dayMaster": "甲",
+      "expectedAvg": 0.341667,
+      "expectedScore": 34.17,
+      "rowCount": 2.0,
+      "pairs": [
+        {
+          "base": "甲午",
+          "laph": "己巳",
+          "coefficient": 0.516667
+        },
+        {
+          "base": "辛卯",
+          "laph": "己巳",
+          "coefficient": 0.166667
+        }
+      ],
+      "selfRows": []
+    },
+    {
+      "label": "27 พฤศจิกายน 2520 เวลา 0:30 เพศหญิง",
+      "pillars": {
+        "hour": "壬子",
+        "day": "戊子",
+        "month": "辛亥",
+        "year": "丁巳"
+      },
+      "dayMaster": "戊",
+      "expectedAvg": 0.66875,
+      "expectedScore": 66.88,
+      "rowCount": 4.0,
+      "pairs": [
+        {
+          "base": "戊子",
+          "laph": "壬子",
+          "coefficient": 0.916667
+        },
+        {
+          "base": "戊子",
+          "laph": "辛亥",
+          "coefficient": 0.35
+        },
+        {
+          "base": "辛亥",
+          "laph": "壬子",
+          "coefficient": 0.583333
+        }
+      ],
+      "selfRows": [
+        {
+          "pillar": "戊子",
+          "coefficient": 0.825
+        }
+      ]
+    },
+    {
+      "label": "5 เมษายน 2523 เวลา 7:30 เพศชาย",
+      "pillars": {
+        "hour": "丙辰",
+        "day": "戊申",
+        "month": "庚辰",
+        "year": "庚申"
+      },
+      "dayMaster": "戊",
+      "expectedAvg": 0.613889,
+      "expectedScore": 61.39,
+      "rowCount": 3.0,
+      "pairs": [
+        {
+          "base": "戊申",
+          "laph": "庚申",
+          "coefficient": 0.55
+        },
+        {
+          "base": "戊申",
+          "laph": "庚辰",
+          "coefficient": 0.966667
+        }
+      ],
+      "selfRows": [
+        {
+          "pillar": "戊申",
+          "coefficient": 0.325
+        }
+      ]
+    },
+    {
+      "label": "12 มีนาคม 2524 เวลา 5:30 เพศชาย",
+      "pillars": {
+        "hour": "丁卯",
+        "day": "己丑",
+        "month": "辛卯",
+        "year": "辛酉"
+      },
+      "dayMaster": "己",
+      "expectedAvg": 0.577778,
+      "expectedScore": 57.78,
+      "rowCount": 3.0,
+      "pairs": [
+        {
+          "base": "己丑",
+          "laph": "辛酉",
+          "coefficient": 0.516667
+        },
+        {
+          "base": "己丑",
+          "laph": "辛卯",
+          "coefficient": 0.583333
+        },
+        {
+          "base": "辛卯",
+          "laph": "辛酉",
+          "coefficient": 0.633333
+        }
+      ],
+      "selfRows": []
+    },
+    {
+      "label": "17 มกราคม 2524 เวลา 23:45 เพศชาย",
+      "pillars": {
+        "hour": "丙子",
+        "day": "乙未",
+        "month": "己丑",
+        "year": "庚申"
+      },
+      "dayMaster": "乙",
+      "expectedAvg": 0.508333,
+      "expectedScore": 50.83,
+      "rowCount": 3.0,
+      "pairs": [
+        {
+          "base": "乙未",
+          "laph": "己丑",
+          "coefficient": 0.516667
+        },
+        {
+          "base": "己丑",
+          "laph": "己丑",
+          "coefficient": 0.433333
+        }
+      ],
+      "selfRows": [
+        {
+          "pillar": "乙未",
+          "coefficient": 0.575
+        }
+      ]
+    },
+    {
+      "label": "18 ตุลาคม 2525 เวลา 15:30 เพศหฯิง",
+      "pillars": {
+        "hour": "壬申",
+        "day": "甲戌",
+        "month": "庚戌",
+        "year": "壬戌"
+      },
+      "dayMaster": "甲",
+      "expectedAvg": 0.4125,
+      "expectedScore": 41.25,
+      "rowCount": 4.0,
+      "pairs": [
+        {
+          "base": "甲戌",
+          "laph": "壬戌",
+          "coefficient": 0.716667
+        },
+        {
+          "base": "甲戌",
+          "laph": "庚戌",
+          "coefficient": 0.35
+        },
+        {
+          "base": "庚戌",
+          "laph": "壬戌",
+          "coefficient": 0.383333
+        },
+        {
+          "base": "庚戌",
+          "laph": "庚戌",
+          "coefficient": 0.2
+        }
+      ],
+      "selfRows": []
+    }
+  ]
+}
