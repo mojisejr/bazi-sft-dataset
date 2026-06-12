@@ -11,11 +11,11 @@ export type ReadingColor = { key: string; label: string; hex: string };
 /** จานสี (key เป็น latin คงที่ใช้ใน token, label ไทยโชว์บน UI, hex มี `#`) */
 export const READING_COLORS: ReadingColor[] = [
   { key: "warn", label: "แดงเตือน", hex: "#c0392b" },
-  { key: "fire", label: "ไฟ (ส้มแดง)", hex: "#c45a3c" },
-  { key: "wood", label: "ไม้ (เขียว)", hex: "#4a7c59" },
-  { key: "earth", label: "ดิน (น้ำตาล)", hex: "#b8a070" },
-  { key: "metal", label: "ทอง", hex: "#a89050" },
-  { key: "water", label: "น้ำ (ฟ้า)", hex: "#5a8fa8" },
+  { key: "fire", label: "ไฟ (แดง)", hex: "#CB2C2A" },
+  { key: "wood", label: "ไม้ (เขียว)", hex: "#388659" },
+  { key: "earth", label: "ดิน (ส้ม)", hex: "#F19953" },
+  { key: "metal", label: "ทอง (เทา)", hex: "#5A5A5A" },
+  { key: "water", label: "น้ำ (น้ำเงิน)", hex: "#1455A4" },
   { key: "teal", label: "เทอร์คอยซ์", hex: "#1f8497" },
   { key: "ink", label: "หมึก (เทาเข้ม)", hex: "#3d4548" },
   { key: "gray", label: "เทา", hex: "#6b7478" },

@@ -301,89 +301,56 @@
   break-inside: avoid;
 }
 
-/* ── ผังดวงกำกับลูกศรของบท (compact strip) ───────────────────────────── */
+/* ── ผังดวงกำกับของบท (ตารางเสาเต็ม + วงสีเน้น) ───────────────────────── */
 .ylc-cstrip {
   margin: 0 0 7mm;
   break-inside: avoid;
 }
-.ylc-cstrip__grid {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  border: 1px solid var(--ylc-rule);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #fbfdfe;
-}
-.ylc-cstrip__arrows {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
-.ylc-cstrip__col {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 5px 2px 9px;
-  border-left: 1px solid var(--ylc-rule);
-}
-.ylc-cstrip__col:first-child {
-  border-left: none;
-}
-.ylc-cstrip__col--day {
-  background: rgba(47, 159, 179, 0.08);
-}
-.ylc-cstrip__col--hl {
-  box-shadow: inset 0 0 0 2px var(--hl);
-  border-radius: 6px;
-}
-.ylc-cstrip__label {
-  font-size: 9.5px;
-  color: var(--ylc-muted);
-  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
-}
-.ylc-cstrip__stem {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.ylc-cstrip__branch {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.ylc-cstrip__role {
-  font-size: 9px;
-  font-weight: 700;
-}
 .ylc-cstrip__caption {
-  margin: 4px 2px 0;
+  margin: 5px 2px 0;
   font-size: 10.5px;
   color: var(--ylc-muted);
   line-height: 1.4;
 }
 
-/* ── หน้า 4: แผ่นดวงชะตา (วันเวลาเกิด) ────────────────────────────────── */
+/* ── หน้า 4: แผ่นดวงชะตา (วันเวลาเกิด) — เต็มหน้า A4 + กรอบเส้นคู่รอบหน้า ── */
 .ylc-sheet--chart {
   page: ylc-full;
-  padding: 24mm 18mm 18mm;
+  position: relative;
+  box-sizing: border-box;
+  min-height: 297mm;
+  padding: 22mm 20mm 20mm;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 }
+.ylc-sheet--chart > * {
+  position: relative;
+  z-index: 1;
+}
+/* กรอบเส้นคู่รอบหน้า (เว้นขอบกระดาษ ไม่ให้เนื้อหาตกขอบ) */
+.ylc-sheet--chart::before {
+  content: "";
+  position: absolute;
+  inset: 8mm;
+  border: 2px solid var(--ylc-teal-soft);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 3px #ffffff, inset 0 0 0 4px var(--ylc-rule);
+  pointer-events: none;
+  z-index: 0;
+}
+/* หัวข้อวันเดือนปี-เวลาเกิด: ตัวใหญ่ เกือบเต็มกว้าง + มุมประดับ 4 มุม */
 .ylc-birthbox {
   position: relative;
-  display: inline-block;
-  margin: 0 auto;
-  padding: 12px 34px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 2mm 0 0;
+  padding: 13px 30px;
   color: var(--ylc-teal-deep);
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
-  font-size: 18px;
-  line-height: 1.3;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.35;
   border: 2px solid var(--ylc-teal-soft);
   border-radius: 6px;
   box-shadow: inset 0 0 0 4px #ffffff, inset 0 0 0 5px var(--ylc-rule);
@@ -392,46 +359,52 @@
   color: var(--ylc-teal-deep);
   font-weight: 700;
 }
-.ylc-birthbox::before,
-.ylc-birthbox::after {
+/* มุมประดับ L-bracket ครบ 4 มุม รอบกล่อง */
+.ylc-birthbox::before {
   content: "";
   position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--ylc-teal);
-}
-.ylc-birthbox::before {
-  top: -4px;
-  left: -4px;
-  border-right: none;
-  border-bottom: none;
-}
-.ylc-birthbox::after {
-  bottom: -4px;
-  right: -4px;
-  border-left: none;
-  border-top: none;
+  inset: -6px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top left / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top left / 2px 18px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top right / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top right / 2px 18px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom left / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom left / 2px 18px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom right / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom right / 2px 18px no-repeat;
 }
 .ylc-gender {
-  margin: 10px 0 18px;
+  margin: 8px 0 12px;
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 23px;
   color: var(--ylc-ink);
 }
 .ylc-gender__sym {
   color: var(--ylc-teal);
   font-size: 1.1em;
 }
+/* ── ตารางเสาใช้ร่วม (.ylc-chart-grid) — variant --full (หน้าแผ่นดวง) / --chapter (กำกับบท) ── */
 .ylc-chart-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   border: 1px solid var(--ylc-rule);
   border-radius: 8px;
   overflow: hidden;
-  margin: 0 0 8mm;
+}
+.ylc-chart-grid--full {
+  width: 100%;
+  min-height: 64mm;
+  margin: 4mm 0 6mm;
+}
+.ylc-chart-grid--chapter {
+  margin: 0;
+  break-inside: avoid;
 }
 .ylc-chart-col {
+  position: relative;
   border-left: 1px solid var(--ylc-rule);
   display: flex;
   flex-direction: column;
@@ -447,10 +420,17 @@
   font-size: 14px;
   padding: 8px 4px;
   border-bottom: 1px solid var(--ylc-rule);
+  text-align: center;
 }
 .ylc-chart-col__body {
   padding: 18px 4px;
   color: var(--ylc-muted);
+}
+.ylc-chart-col__glyphs {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 .ylc-chart-cell {
   display: flex;
@@ -458,6 +438,8 @@
   align-items: center;
   gap: 4px;
   padding: 12px 4px;
+  flex: 1;
+  justify-content: center;
 }
 .ylc-chart-cell--stem {
   border-bottom: 1px solid #eef2f3;
@@ -479,13 +461,79 @@
   font-size: 14px;
   font-weight: 700;
 }
+/* จุดเน้นของบท: กรอบสี่เหลี่ยมล้อมรอบก้าน+กิ่งของเสาที่เกี่ยวข้อง */
+.ylc-chart-col--hl .ylc-chart-col__glyphs::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  right: 3px;
+  border: 2px solid var(--hl);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+}
+.ylc-chart-col__role {
+  padding: 3px 2px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+/* variant --full: ขยายให้เต็มหน้า A4 */
+.ylc-chart-grid--full .ylc-chart-col__head {
+  font-size: 18px;
+  padding: 12px 4px;
+}
+.ylc-chart-grid--full .ylc-chart-cell {
+  padding: 13px 4px;
+}
+.ylc-chart-grid--full .ylc-chart-glyph {
+  font-size: 46px;
+}
+.ylc-chart-grid--full .ylc-chart-en {
+  font-size: 12px;
+}
+.ylc-chart-grid--full .ylc-chart-hidden {
+  font-size: 18px;
+}
+/* variant --chapter: กระชับสำหรับแถบกำกับบท */
+.ylc-chart-grid--chapter .ylc-chart-col__head {
+  font-size: 11px;
+  padding: 5px 3px;
+}
+.ylc-chart-grid--chapter .ylc-chart-cell {
+  padding: 7px 3px;
+  gap: 2px;
+}
+.ylc-chart-grid--chapter .ylc-chart-glyph {
+  font-size: 23px;
+}
+.ylc-chart-grid--chapter .ylc-chart-en {
+  font-size: 8px;
+}
+.ylc-chart-grid--chapter .ylc-chart-hidden {
+  font-size: 11px;
+}
+.ylc-chart-grid--chapter .ylc-chart-col__role {
+  font-size: 9px;
+  padding: 2px 2px 4px;
+}
+.ylc-chart-grid--chapter .ylc-chart-col--hl .ylc-chart-col__glyphs::after {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  border-radius: 5px;
+}
 .ylc-elem {
-  margin: 0 0 9mm;
+  margin: 0 0 7mm;
 }
 .ylc-elembar {
   display: flex;
-  height: 16px;
-  border-radius: 8px;
+  height: 22px;
+  border-radius: 11px;
   overflow: hidden;
   background: #eef2f3;
 }
@@ -497,49 +545,50 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 14px;
-  margin-top: 8px;
-  font-size: 12px;
+  gap: 18px;
+  margin-top: 11px;
+  font-size: 13.5px;
   color: var(--ylc-body);
 }
 .ylc-elem-legend__item {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 .ylc-elem-legend__item i {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
   border-radius: 3px;
   display: inline-block;
 }
 .ylc-luck {
   text-align: left;
   margin-top: 4mm;
+  break-inside: avoid;
 }
 .ylc-luck__title {
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-ink);
-  font-size: 18px;
-  margin: 0 0 4px;
+  font-size: 25px;
+  margin: 0 0 6px;
 }
 .ylc-luck__age {
   margin: 0;
-  font-size: 15px;
+  font-size: 19px;
   color: var(--ylc-body);
 }
 .ylc-luck__note {
-  margin: 2px 0 12px;
-  font-size: 12px;
+  margin: 3px 0 16px;
+  font-size: 15px;
   color: var(--ylc-muted);
 }
 .ylc-luck-cards {
   display: flex;
-  gap: 14px;
+  gap: 18px;
 }
 .ylc-luck-card {
-  width: 96px;
+  width: 120px;
   border: 1px solid var(--ylc-rule);
   border-radius: 8px;
   overflow: hidden;
@@ -551,16 +600,16 @@
   color: var(--ylc-ink);
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
-  font-size: 13px;
-  padding: 6px 4px;
+  font-size: 15px;
+  padding: 8px 4px;
   border-bottom: 1px solid var(--ylc-rule);
 }
 .ylc-luck-card__glyphs {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 10px 4px;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.05;
 }

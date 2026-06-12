@@ -88,11 +88,11 @@ export const TWELVE_QI_LABELS_TH = {
 } as const;
 
 export const ELEMENT_COLORS_TH: Record<string, string> = {
-  "ไม้": "#4a7c59",
-  "ไฟ": "#c45a3c",
-  "ดิน": "#b8a070",
-  "ทอง": "#a89050",
-  "น้ำ": "#5a8fa8",
+  "ไม้": "#388659",
+  "ไฟ": "#CB2C2A",
+  "ดิน": "#F19953",
+  "ทอง": "#5A5A5A",
+  "น้ำ": "#1455A4",
 };
 
 export const ELEMENT_TH_TO_EN: Record<string, string> = {

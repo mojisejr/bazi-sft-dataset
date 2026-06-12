@@ -1,13 +1,16 @@
 import type { ReactNode } from "react";
 
 import { buildChapterAnnotation, ChapterChartStrip } from "@/components/bazi/reading/ChapterChartStrip";
+import {
+  ChartPillarTable,
+  colorOf,
+  elementOfBranch,
+  elementOfStem,
+} from "@/components/bazi/reading/ChartPillarTable";
 import type { RelationshipLineRow } from "@/components/bazi/reading/TopicCard";
 import { tokenizeInline } from "@/lib/bazi/reading-inline";
 import {
-  BRANCH_TO_ELEMENT,
-  ELEMENT_COLORS_TH,
   ELEMENT_LABELS_TH,
-  STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type {
   CalculatedStateValue,
@@ -15,6 +18,7 @@ import type {
   RawInputValue,
 } from "@/lib/bazi/schema-types";
 
+/* ตารางเสาใช้ร่วม (หน้าแผ่นดวง + กำกับบท) ย้ายไป ChartPillarTable.tsx */
 /** หนึ่งบทในเอกสาร PDF (ข้อความ resolve แล้วฝั่ง client: ซินแสแก้ ?? engine humanReading) */
 export type PrintChapter = {
   chapter: number;
@@ -73,12 +77,6 @@ const TH_MONTHS = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-const YANG_STEMS = new Set(["甲", "丙", "戊", "庚", "壬"]);
-const YANG_BRANCHES = new Set(["子", "寅", "辰", "午", "申", "戌"]);
-const BRANCH_ZODIAC_EN: Record<string, string> = {
-  子: "RAT", 丑: "OX", 寅: "TIGER", 卯: "RABBIT", 辰: "DRAGON", 巳: "SNAKE",
-  午: "HORSE", 未: "GOAT", 申: "MONKEY", 酉: "ROOSTER", 戌: "DOG", 亥: "PIG",
-};
 const ELEMENT_ORDER: Array<keyof typeof ELEMENT_LABELS_TH> = ["wood", "fire", "earth", "metal", "water"];
 
 function genderTh(gender: string): string {
@@ -101,17 +99,6 @@ function cleanText(text: string | null | undefined): string {
   // ตัด emoji ออก แต่ "คงช่องว่าง" ที่ผู้ใช้พิมพ์ (เดิมยุบ [ \t]{2,}→" " ทำให้กด space หลายตัวเหลือ 1)
   // การโชว์ช่องว่างจริงอาศัย white-space: pre-wrap ที่ .ylc-prose
   return text.replace(EMOJI_RE, "");
-}
-
-function elementOfStem(stem: string): keyof typeof ELEMENT_LABELS_TH | undefined {
-  return STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
-}
-function elementOfBranch(branch: string): keyof typeof ELEMENT_LABELS_TH | undefined {
-  return BRANCH_TO_ELEMENT[branch as keyof typeof BRANCH_TO_ELEMENT];
-}
-function colorOf(element: keyof typeof ELEMENT_LABELS_TH | undefined): string {
-  if (!element) return "#3d4548";
-  return ELEMENT_COLORS_TH[ELEMENT_LABELS_TH[element]] ?? "#3d4548";
 }
 
 /* ── เรนเดอร์ markdown ย่อ (ตัวหนา / เน้นแดง / สี / หัวข้อย่อย / bullet / ย่อหน้า) ─
@@ -312,48 +299,25 @@ function ContentSheet({
 }
 
 /* ── หน้า 4: แผ่นดวงชะตา (ตามรูปสเปก) ───────────────────────────────────── */
-function PillarColumn({ label, pillar }: { label: string; pillar: PillarValue | undefined }) {
-  if (!pillar) {
-    return (
-      <div className="ylc-chart-col">
-        <div className="ylc-chart-col__head">{label}</div>
-        <div className="ylc-chart-col__body">—</div>
-      </div>
-    );
-  }
-  const stemEl = elementOfStem(pillar.stem);
-  const branchEl = elementOfBranch(pillar.branch);
-  const yyStem = YANG_STEMS.has(pillar.stem) ? "YANG" : "YIN";
-  const yyBranch = YANG_BRANCHES.has(pillar.branch) ? "YANG" : "YIN";
-  const hidden = pillar.hiddenStems ?? [];
-  return (
-    <div className="ylc-chart-col">
-      <div className="ylc-chart-col__head">{label}</div>
-      <div className="ylc-chart-cell ylc-chart-cell--stem">
-        <span className="ylc-chart-glyph" style={{ color: colorOf(stemEl) }}>{pillar.stem}</span>
-        <span className="ylc-chart-en">{yyStem} {stemEl ? stemEl.toUpperCase() : ""}</span>
-      </div>
-      <div className="ylc-chart-cell ylc-chart-cell--branch">
-        <span className="ylc-chart-glyph" style={{ color: colorOf(branchEl) }}>{pillar.branch}</span>
-        {hidden.length > 0 ? (
-          <span className="ylc-chart-hidden">
-            {hidden.map((h, i) => (
-              <span key={i} style={{ color: colorOf(elementOfStem(h)) }}>{h}</span>
-            ))}
-          </span>
-        ) : null}
-        <span className="ylc-chart-en">{yyBranch} {BRANCH_ZODIAC_EN[pillar.branch] ?? ""}</span>
-      </div>
-    </div>
-  );
-}
+type LuckGlyph = { symbol: string; color: string };
 
-function MiniPillar({ label, pillar }: { label: string; pillar: PillarValue | undefined }) {
+function MiniPillar({
+  label,
+  pillar,
+  single,
+}: {
+  label: string;
+  pillar?: PillarValue;
+  /** โชว์ glyph เดียว (วัยจร: ครึ่ง 5 ปีที่ตรงอายุปัจจุบัน) แทนก้าน+กิ่ง */
+  single?: LuckGlyph;
+}) {
   return (
     <div className="ylc-luck-card">
       <span className="ylc-luck-card__label">{label}</span>
       <div className="ylc-luck-card__glyphs">
-        {pillar ? (
+        {single ? (
+          <span style={{ color: single.color }}>{single.symbol}</span>
+        ) : pillar ? (
           <>
             <span style={{ color: colorOf(elementOfStem(pillar.stem)) }}>{pillar.stem}</span>
             <span style={{ color: colorOf(elementOfBranch(pillar.branch)) }}>{pillar.branch}</span>
@@ -364,6 +328,28 @@ function MiniPillar({ label, pillar }: { label: string; pillar: PillarValue | un
       </div>
     </div>
   );
+}
+
+/** วัยจรปัจจุบันโชว์ตัวเดียว: ครึ่งก้าน (5 ปีแรก) หรือครึ่งกิ่ง (5 ปีหลัง) ตามอายุจริง */
+function currentLuckGlyph(daYun: CalculatedStateValue["daYun"]): LuckGlyph | undefined {
+  const cur = daYun?.find((d) => d.isCurrent);
+  if (!cur) return undefined;
+  const phase =
+    cur.currentPhase === "lower"
+      ? cur.lowerPhase
+      : cur.currentPhase === "upper"
+        ? cur.upperPhase
+        : cur.upperPhase?.isCurrent
+          ? cur.upperPhase
+          : cur.lowerPhase?.isCurrent
+            ? cur.lowerPhase
+            : cur.upperPhase ?? cur.lowerPhase;
+  if (phase) {
+    const el = phase.source === "stem" ? elementOfStem(phase.symbol) : elementOfBranch(phase.symbol);
+    return { symbol: phase.symbol, color: colorOf(el) };
+  }
+  // เอกสารเก่าไม่มีข้อมูล phase → fallback เป็นครึ่งก้าน
+  return { symbol: cur.stem, color: colorOf(elementOfStem(cur.stem)) };
 }
 
 function ChartSheet({
@@ -384,7 +370,7 @@ function ChartSheet({
   const counts = calculatedState.elementAnalysis?.totalCounts;
   const total = counts ? ELEMENT_ORDER.reduce((s, el) => s + (counts[el] ?? 0), 0) : 0;
   const chineseAge = calculatedState.ageSnapshot?.chineseAge;
-  const currentDaYun = calculatedState.daYun?.find((d) => d.isCurrent);
+  const luckGlyph = currentLuckGlyph(calculatedState.daYun);
 
   return (
     <section className="ylc-sheet ylc-sheet--chart">
@@ -395,11 +381,7 @@ function ChartSheet({
         <span className="ylc-gender__sym">{genderSymbol(rawInput.gender)}</span> {genderTh(rawInput.gender)}
       </p>
 
-      <div className="ylc-chart-grid">
-        {cols.map((c) => (
-          <PillarColumn key={c.label} label={c.label} pillar={c.pillar} />
-        ))}
-      </div>
+      <ChartPillarTable cols={cols} variant="full" />
 
       {total > 0 && counts ? (
         <div className="ylc-elem">
@@ -436,10 +418,7 @@ function ChartSheet({
         ) : null}
         <div className="ylc-luck-cards">
           <MiniPillar label="ปีจร" pillar={calculatedState.liuNian} />
-          <MiniPillar
-            label="วัยจร"
-            pillar={currentDaYun ? { stem: currentDaYun.stem, branch: currentDaYun.branch } : undefined}
-          />
+          <MiniPillar label="วัยจร" single={luckGlyph} />
         </div>
       </div>
 
