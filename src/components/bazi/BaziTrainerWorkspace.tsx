@@ -63,6 +63,14 @@ const HUB_CARDS: HubCard[] = [
     description: "เปิดดวงที่บันทึกไว้ กลับมาแก้ต่อ ปริ้นซ้ำ หรือฝากให้คนอื่นช่วยดูต่อได้",
     cta: "ดูประวัติดวง",
   },
+  {
+    href: "/reading/knowledge",
+    icon: "📚",
+    kicker: "องค์ความรู้ + คำแก้",
+    title: "องค์ความรู้รายบท",
+    description: "ดูหลักการ/แหล่งอ้างอิงที่ engine ใช้แต่ละบท และจัดการกฎแทนคำ (เปลี่ยนคำเดิม → คำใหม่)",
+    cta: "ดูองค์ความรู้",
+  },
 ];
 
 export function BaziTrainerWorkspace() {
