@@ -16,7 +16,7 @@ import path from "node:path";
 import { readFileSync, writeFileSync, copyFileSync, existsSync } from "node:fs";
 
 import { config as loadEnv } from "dotenv";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type SafetySetting } from "@google/genai";
 
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quiet: true });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
@@ -83,7 +83,7 @@ async function cleanOne(ai: GoogleGenAI, meaning: PairMeaning): Promise<PairMean
             "HARM_CATEGORY_SEXUALLY_EXPLICIT",
             "HARM_CATEGORY_DANGEROUS_CONTENT",
             "HARM_CATEGORY_CIVIC_INTEGRITY",
-          ].map((category) => ({ category, threshold: "BLOCK_NONE" })),
+          ].map((category) => ({ category, threshold: "BLOCK_NONE" })) as unknown as SafetySetting[],
         },
       });
       const text = response.text?.trim();

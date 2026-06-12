@@ -10,7 +10,7 @@ import path from "node:path";
 import { readFileSync, writeFileSync } from "node:fs";
 
 import { config as loadEnv } from "dotenv";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type SafetySetting } from "@google/genai";
 
 loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quiet: true });
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
@@ -32,7 +32,7 @@ const safetySettings = [
   "HARM_CATEGORY_SEXUALLY_EXPLICIT",
   "HARM_CATEGORY_DANGEROUS_CONTENT",
   "HARM_CATEGORY_CIVIC_INTEGRITY",
-].map((category) => ({ category, threshold: "BLOCK_NONE" }));
+].map((category) => ({ category, threshold: "BLOCK_NONE" })) as unknown as SafetySetting[];
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
