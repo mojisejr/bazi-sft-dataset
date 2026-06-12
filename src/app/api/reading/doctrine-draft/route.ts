@@ -15,6 +15,7 @@ import {
 } from "@/lib/bazi/doctrine-draft-repository";
 import { publishAllDrafts, publishDraft } from "@/lib/bazi/doctrine-publish.service";
 import { getCatalogEntry } from "@/lib/bazi/knowledge/knowledge-catalog";
+import { BAZI_TOPIC_REGISTRY_BY_ID } from "@/lib/bazi/knowledge/topic-registry";
 
 export const runtime = "nodejs";
 
@@ -60,6 +61,18 @@ function validateDraftValue(surface: string, entityKey: string, value: unknown):
     }
     if (decoded.kind === "append") {
       if (!TOPIC_IDS.includes(decoded.group) || !/^\d+$/.test(decoded.item)) return null;
+      return { text };
+    }
+    if (decoded.kind === "logic" || decoded.kind === "sourcefocus") {
+      // group = registry topicId (BAZI_TOPIC_IDS); item = ordinal 1..(จำนวน default + 1)
+      const def = BAZI_TOPIC_REGISTRY_BY_ID[decoded.group as keyof typeof BAZI_TOPIC_REGISTRY_BY_ID];
+      if (!def || !/^\d+$/.test(decoded.item)) return null;
+      const ordinal = Number(decoded.item);
+      const max =
+        (decoded.kind === "logic"
+          ? def.sinsaeLogicRules.length
+          : def.sourceRefs.length) + 1;
+      if (ordinal < 1 || ordinal > max) return null;
       return { text };
     }
     return null;

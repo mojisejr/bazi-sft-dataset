@@ -33,6 +33,8 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
   const [scope, setScope] = useState<SubstitutionRuleScope>("topic");
   const [editMode, setEditMode] = useState(false);
   const [adminToken, setAdminToken] = useState("");
+  // 2 โหมด: รายบท (chapter) vs ตารางตามดวง (condition) — แยกกันชัด หาง่าย
+  const [mode, setMode] = useState<"chapter" | "condition">("chapter");
 
   useEffect(() => {
     let active = true;
@@ -119,8 +121,53 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
     );
   }
 
+  const tabBar = (
+    <div className="knowledge__tabs surface" role="tablist">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "chapter"}
+        className={`knowledge__tab${mode === "chapter" ? " knowledge__tab--active" : ""}`}
+        onClick={() => setMode("chapter")}
+      >
+        📖 แก้คำทีละบท
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={mode === "condition"}
+        className={`knowledge__tab${mode === "condition" ? " knowledge__tab--active" : ""}`}
+        onClick={() => setMode("condition")}
+      >
+        🎴 ตารางคำทำนายตามดวง
+      </button>
+      <label className="knowledge__tab-token">
+        <input
+          type="password"
+          placeholder="admin token (ถ้าตั้งไว้)"
+          value={adminToken}
+          onChange={(event) => setAdminToken(event.target.value)}
+          aria-label="admin token"
+        />
+      </label>
+    </div>
+  );
+
+  // โหมด "ตารางคำทำนายตามดวง" — ไม่ผูกกับบท เปิดตัวแก้ section=condition ตรง ๆ
+  if (mode === "condition") {
+    return (
+      <div className="knowledge knowledge--single">
+        {tabBar}
+        <section className="surface knowledge__panel">
+          <KnowledgeEditor topicId="" adminToken={adminToken} section="condition" />
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="knowledge">
+      {tabBar}
       <aside className="knowledge__list surface">
         <input
           className="knowledge__search"
@@ -264,21 +311,16 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
                 onClick={() => setEditMode((value) => !value)}
                 aria-expanded={editMode}
               >
-                {editMode ? "▾" : "▸"} ✍️ แก้องค์ความรู้ออนไลน์ (เฟส 2 — draft → พรีวิว → เผยแพร่)
+                {editMode ? "▾" : "▸"} ✍️ แก้คำของบทนี้ (intro/สรุป/หลักการซินแส/ย่อหน้าเพิ่ม — draft → พรีวิว → เผยแพร่)
               </button>
-              {editMode && (
-                <input
-                  className="knowledge__token"
-                  type="password"
-                  placeholder="admin token (ถ้าตั้งไว้)"
-                  value={adminToken}
-                  onChange={(event) => setAdminToken(event.target.value)}
-                  aria-label="admin token"
-                />
-              )}
             </div>
             {editMode && selected && (
-              <KnowledgeEditor topicId={selected.definition.id} adminToken={adminToken} />
+              <KnowledgeEditor
+                topicId={selected.definition.id}
+                adminToken={adminToken}
+                registryTopicIds={selected.knowledge.map((bundle) => bundle.id)}
+                section="chapter"
+              />
             )}
           </section>
         </div>

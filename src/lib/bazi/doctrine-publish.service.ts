@@ -96,7 +96,12 @@ async function publishRow(row: DoctrineDraftRow, actor: string, deps: PublishDep
     if (!decoded) {
       return { ok: false, message: `entityKey ของ knowledge ไม่ถูกต้อง: ${row.entityKey}` };
     }
-    if (decoded.kind !== "table" && decoded.kind !== "append") {
+    if (
+      decoded.kind !== "table" &&
+      decoded.kind !== "append" &&
+      decoded.kind !== "logic" &&
+      decoded.kind !== "sourcefocus"
+    ) {
       return { ok: false, message: `kind ของ knowledge ไม่รองรับ: ${decoded.kind}` };
     }
     const text = (row.value as { text?: string })?.text;

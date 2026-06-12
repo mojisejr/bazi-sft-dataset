@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
-import { K, currentAppends } from "@/lib/bazi/knowledge/knowledge-overlay-context";
+import { K, KC, currentAppends } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 import {
   resolveDisplayStemPairStage,
   resolveDisplayTwelveQiStage,
@@ -390,7 +390,7 @@ function resolveExcessElements(calculatedState: CalculatedStateValue): ThaiEleme
 }
 
 // อาการเมื่อ "ธาตุล้นเกิน" (อิงตำราเคี้ยงคุง: น้ำเยอะ→อ้วน/บวม + หลักปฏิกิริยา 5 ธาตุ-อวัยวะ)
-const EXCESS_HEALTH_TH: Record<ThaiElement, string> = {
+export const EXCESS_HEALTH_TH: Record<ThaiElement, string> = {
   "น้ำ": "อ้วนง่าย บวมน้ำ ระบบขับถ่าย/ไตและกระเพาะปัสสาวะทำงานหนัก",
   "ไฟ": "ร้อนใน อักเสบง่าย นอนไม่หลับ ใจสั่น ความดันแกว่ง",
   "ไม้": "ตับ-ถุงน้ำดีตึงเครียด ปวดหัว ระบบประสาทและอารมณ์ตึง",
@@ -748,7 +748,7 @@ const YANG_STEM_SET = new Set(["甲", "丙", "戊", "庚", "壬"]);
 const YANG_BRANCH_SET = new Set(["子", "寅", "辰", "午", "申", "戌"]);
 
 // ภาพธรรมชาติของ 10 ดิถี (ตามตำราดวงจีน)
-const STEM_NATURE_TH: Record<string, string> = {
+export const STEM_NATURE_TH: Record<string, string> = {
   "甲": "ต้นไม้ใหญ่ที่หยัดยืนทอดกิ่งก้านสู่ฟ้า",
   "乙": "ไม้ดอกไม้เลื้อยที่อ่อนช้อยแต่เหนียวแน่น",
   "丙": "ดวงอาทิตย์ที่ส่องสว่างแผ่ความอบอุ่น",
@@ -762,7 +762,7 @@ const STEM_NATURE_TH: Record<string, string> = {
 };
 
 // ภาพของธาตุที่ "ล้อมรอบ" ในดวง
-const ELEMENT_IMAGERY_TH: Record<ThaiElement, string> = {
+export const ELEMENT_IMAGERY_TH: Record<ThaiElement, string> = {
   "ไม้": "ป่าไม้ที่เติบโตหนาแน่น",
   "ไฟ": "เปลวไฟและความร้อนที่แผดเผา",
   "ดิน": "ภูผาและผืนดินที่หนาแน่น",
@@ -790,7 +790,7 @@ function buildDayMasterImagery(calculatedState: CalculatedStateValue): string {
   const element = dayMasterElement(calculatedState);
   const elementTh = elementLabel(element);
   const polarity = YANG_STEM_SET.has(stem) ? "หยาง" : "หยิน";
-  const nature = STEM_NATURE_TH[stem] ?? `ธาตุ${elementTh}`;
+  const nature = K("STEM_NATURE_TH", STEM_NATURE_TH)[stem] ?? `ธาตุ${elementTh}`;
   const season = SEASON_BY_BRANCH[calculatedState.fourPillars.month.branch];
   const band = resolveStrengthBand(calculatedState);
   const useful = resolveUsefulElements(calculatedState);
@@ -805,7 +805,7 @@ function buildDayMasterImagery(calculatedState: CalculatedStateValue): string {
     .map((value) => elementLabel(value))
     .find((label) => label !== elementTh);
   if (surrounding) {
-    text += ` ท่ามกลาง${ELEMENT_IMAGERY_TH[surrounding]}ที่โดดเด่นอยู่รายรอบ`;
+    text += ` ท่ามกลาง${K("ELEMENT_IMAGERY_TH", ELEMENT_IMAGERY_TH)[surrounding]}ที่โดดเด่นอยู่รายรอบ`;
   }
 
   // สมดุลตามกำลังดิถี — ยึด band รวม (ให้สอดคล้องกับย่อหน้าคำแนะนำและคำว่าดิถีแข็ง/อ่อน)
@@ -826,7 +826,7 @@ function buildDayMasterImagery(calculatedState: CalculatedStateValue): string {
 }
 
 // วลีบอกกำลังดิถี โทน your life code (ใช้ในประโยคเปิดเจาะดวงของแต่ละบท)
-const BAND_OPENING_TH: Record<string, string> = {
+export const BAND_OPENING_TH: Record<string, string> = {
   "very-weak": "พื้นดวงจัดเป็น “ดิถีอ่อน” พลังของดิถียังส่งมาไม่ถึงตัวเต็มที่ จึงต้องอาศัยแรงหนุนจากคนรอบข้างและการโฟกัสสิ่งที่ถนัดเพียงทางเดียวให้ลึก",
   weak: "พื้นดวงค่อนไปทาง “ดิถีอ่อน” แม้มีต้นทุนอยู่บ้างแต่ยังต้องการผู้สนับสนุน จึงควรเลือกทำสิ่งที่ถนัดให้ชัดเจน อย่ากระจายแรงหลายทางพร้อมกัน",
   balanced: "พื้นดวงอยู่ในสภาวะค่อนข้างสมดุล ปรับตัวได้หลากหลายและเดินหน้าตามแผนได้อย่างมั่นคง",
@@ -853,8 +853,8 @@ function buildChapterOpening(
   const stem = calculatedState.dayMaster;
   const elementTh = elementLabel(dayMasterElement(calculatedState));
   const polarity = YANG_STEM_SET.has(stem) ? "หยาง" : "หยิน";
-  const nature = STEM_NATURE_TH[stem] ?? `ธาตุ${elementTh}`;
-  const bandClause = BAND_OPENING_TH[resolveStrengthBand(calculatedState)];
+  const nature = K("STEM_NATURE_TH", STEM_NATURE_TH)[stem] ?? `ธาตุ${elementTh}`;
+  const bandClause = K("BAND_OPENING_TH", BAND_OPENING_TH)[resolveStrengthBand(calculatedState)];
   const aspect = K("CHAPTER_ASPECT_TH", CHAPTER_ASPECT_TH)[topicId];
   if (!bandClause || !aspect) {
     return headline;
@@ -867,7 +867,7 @@ function buildChapterOpening(
 // อ้างอิง knownlage/extracted/kheangkhung-reference.txt
 //  - การผั่ว (破) = คู่ "ราศีบน(ก้าน)×ราศีล่าง(กิ่ง)" เฉพาะคู่ ในเสาเดียวกัน (บรรทัด 633-646)
 //    ตีความตาม "หลักที่ผั่วตก": ปี=วงศ์ตระกูล/วัยต้น, เดือน=การงาน/ผู้ใหญ่, วัน=คู่ครอง/ตัวตน, ยาม=บุตร/บั้นปลาย
-const PO_PILLAR_MEANING_TH: Record<string, string> = {
+export const PO_PILLAR_MEANING_TH: Record<string, string> = {
   "甲午": "การลงทุนหรือการเรียน รวมถึงการช่วยเหลือสนับสนุนผู้อื่น มักย้อนกลับมาทำให้ตัวเองเสียหาย ไม่เป็นไปตามที่คาดหวัง",
   "乙巳": "ความลุ่มหลงเที่ยวเตร่หรือการแสดงออกที่มัวเมา หากทุ่มเทมากเกินไปจะนำมาซึ่งความเสียหาย",
   "丙辰": "มักทุ่มเทใช้จ่ายเพื่อตำแหน่ง ศักดิ์ศรี หรือการศึกษามากกว่าปกติ จนเกิดความเสียหายทางการเงิน",
@@ -883,7 +883,7 @@ const PO_PILLAR_MEANING_TH: Record<string, string> = {
 };
 
 // ผลการชง (冲) ของราศีล่างที่อยู่ติดกัน ตามตำแหน่งเสา (บรรทัด 549-552)
-const CHONG_POSITION_TH: Record<"year-month" | "month-day" | "day-hour", string> = {
+export const CHONG_POSITION_TH: Record<"year-month" | "month-day" | "day-hour", string> = {
   "year-month": "ปีชงเดือน: มักต้องย้ายถิ่นฐานหรือแยกจากครอบครัว ไม่ได้ทำงานกับครอบครัว เปลี่ยนงานบ่อย หรือทำงานไกลบ้าน",
   "month-day": "เดือนชงวัน: มักขาดความเชื่อมั่นในตัวเอง มีปัญหาเรื่องคู่ครอง ครอบครัวไม่ค่อยสงบหรือไม่ได้อยู่พร้อมหน้ากัน",
   "day-hour": "วันชงยาม: มักมีความขัดแย้งหรือเข้มงวดกับคู่ครองและบุตร ความสัมพันธ์กับลูกไม่ค่อยราบรื่น",
@@ -920,7 +920,7 @@ const SANHE_GROUPS: ReadonlyArray<{ branches: readonly string[]; element: string
 const SELF_HENG_BRANCHES = new Set(["辰", "午", "酉", "亥"]);
 const SELF_HENG_MEANING_TH =
   "เบียดเบียนตนเอง มักอึดอัดกังวล คิดมาก ไม่ค่อยไว้ใจใคร และบางครั้งกล่าวโทษหรือทำร้ายตัวเอง";
-const HENG_PAIR_MEANING_TH: Record<string, string> = {
+export const HENG_PAIR_MEANING_TH: Record<string, string> = {
   "寅申": "เรื่องการเดินทาง/โยกย้ายมีอุปสรรค เสี่ยงอุบัติเหตุ และมีปากเสียงตัดไมตรีกันแบบไร้เยื่อใย",
   "巳申": "เรื่องการเดินทาง/โยกย้ายมีอุปสรรค เสี่ยงอุบัติเหตุ และมีปากเสียงตัดไมตรีกันแบบไร้เยื่อใย",
   "寅巳": "เรื่องการเดินทาง/โยกย้ายมีอุปสรรค เสี่ยงอุบัติเหตุ และมีปากเสียงตัดไมตรีกันแบบไร้เยื่อใย",
@@ -956,7 +956,7 @@ function buildNatalRelationNotes(calculatedState: CalculatedStateValue): string[
 
   // การผั่ว: ก้าน×กิ่ง ในเสาเดียวกัน ตีความตามหลักที่ตก
   for (const key of ["year", "month", "day", "hour"] as const) {
-    const meaning = PO_PILLAR_MEANING_TH[`${p[key].stem}${p[key].branch}`];
+    const meaning = K("PO_PILLAR_MEANING_TH", PO_PILLAR_MEANING_TH)[`${p[key].stem}${p[key].branch}`];
     if (meaning) {
       notes.push(`การผั่ว (破) ที่${PILLAR_LABEL_TH[key]} ${p[key].stem}${p[key].branch}: ${meaning}`);
     }
@@ -970,7 +970,7 @@ function buildNatalRelationNotes(calculatedState: CalculatedStateValue): string[
   ];
   for (const [label, a, b] of adjacents) {
     if (BRANCH_OPPOSITE[p[a].branch] === p[b].branch) {
-      notes.push(`การชง (冲) ${p[a].branch}-${p[b].branch} — ${CHONG_POSITION_TH[label]}`);
+      notes.push(`การชง (冲) ${p[a].branch}-${p[b].branch} — ${K("CHONG_POSITION_TH", CHONG_POSITION_TH)[label]}`);
     }
   }
 
@@ -1058,12 +1058,12 @@ function buildNatalRelationNotes(calculatedState: CalculatedStateValue): string[
 function buildSpouseRelationNotes(calculatedState: CalculatedStateValue): string[] {
   const p = calculatedState.fourPillars;
   const notes: string[] = [];
-  const poDay = PO_PILLAR_MEANING_TH[`${p.day.stem}${p.day.branch}`];
+  const poDay = K("PO_PILLAR_MEANING_TH", PO_PILLAR_MEANING_TH)[`${p.day.stem}${p.day.branch}`];
   if (poDay) {
     notes.push(`การผั่ว (破) ที่เสาวัน (เรือนคู่ครอง) ${p.day.stem}${p.day.branch}: ${poDay} — สะท้อนปมที่ต้องระวังในชีวิตคู่`);
   }
   if (BRANCH_OPPOSITE[p.day.branch] === p.hour.branch) {
-    notes.push(`การชง (冲) ${p.day.branch}-${p.hour.branch} — ${CHONG_POSITION_TH["day-hour"]}`);
+    notes.push(`การชง (冲) ${p.day.branch}-${p.hour.branch} — ${K("CHONG_POSITION_TH", CHONG_POSITION_TH)["day-hour"]}`);
   }
   return notes;
 }
@@ -1084,7 +1084,7 @@ function buildPartnershipSanheNote(calculatedState: CalculatedStateValue): strin
 function buildFamilyChongNote(calculatedState: CalculatedStateValue): string | null {
   const p = calculatedState.fourPillars;
   if (BRANCH_OPPOSITE[p.year.branch] === p.month.branch) {
-    return `การชง (冲) ${p.year.branch}-${p.month.branch} — ${CHONG_POSITION_TH["year-month"]}`;
+    return `การชง (冲) ${p.year.branch}-${p.month.branch} — ${K("CHONG_POSITION_TH", CHONG_POSITION_TH)["year-month"]}`;
   }
   return null;
 }
@@ -1118,6 +1118,21 @@ const ELEMENT_TEMPER_TH: Record<ThaiElement, Record<ElementTemper, string>> = {
     deficient: "ไฟที่น้อยเกินไป — มักขี้อิจฉา ไม่กล้าเปิดเผย ไร้น้ำใจ ไม่เสมอต้นเสมอปลาย คบเพื่อนยาก",
   },
 };
+
+/**
+ * เวอร์ชัน flatten ของ ELEMENT_TEMPER_TH สำหรับตัวแก้องค์ความรู้ (key = "ธาตุ|temper")
+ * — เป็น default ใน catalog; การอ่านจริงใช้ KC("ELEMENT_TEMPER_TH", fallback, ธาตุ, temper)
+ */
+export const ELEMENT_TEMPER_FLAT_TH: Record<string, string> = Object.fromEntries(
+  Object.entries(ELEMENT_TEMPER_TH).flatMap(([element, byTemper]) =>
+    Object.entries(byTemper).map(([temper, text]) => [`${element}|${temper}`, text]),
+  ),
+);
+
+/** อ่านนิสัยตามธาตุ×temper ผ่าน overlay (แก้ออนไลน์ได้รายช่อง) */
+function temperText(element: ThaiElement, temper: ElementTemper): string {
+  return KC("ELEMENT_TEMPER_TH", ELEMENT_TEMPER_TH[element]?.[temper] ?? "", element, temper);
+}
 
 function resolveElementTemper(band: StrengthBand): ElementTemper {
   if (band === "strong" || band === "very-strong") {
@@ -1160,12 +1175,12 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
   ].filter((segment): segment is string => Boolean(segment));
 
   // อุปนิสัยตามธาตุดิถี × กำลัง (ถูกฤดู/มากเกิน/น้อยเกิน) ตามตำราเคี้ยงคุง
-  const dmTemper = ELEMENT_TEMPER_TH[elementLabel(dayMasterElement(calculatedState))];
-  if (dmTemper) {
+  const dmElement = elementLabel(dayMasterElement(calculatedState));
+  if (ELEMENT_TEMPER_TH[dmElement]) {
     const temper = resolveElementTemper(resolveStrengthBand(calculatedState));
     // หัวข้อย่อยแบบ gptCase: ถูกฤดู = นิสัยเด่น, ล้น/พร่อง = สิ่งที่ควรระวัง
     const temperHead = temper === "balanced" ? "นิสัยเด่นประจำธาตุดิถี" : "สิ่งที่ควรระวัง";
-    segments.push(`${temperHead}:\n${dmTemper[temper]}`);
+    segments.push(`${temperHead}:\n${temperText(dmElement, temper)}`);
   }
 
   // นิสัยที่ควรเสริมเพื่อหนุนดวง = คุณธรรมประจำธาตุที่ดวงต้องการ (useful god) — เลียนโครง your life code
@@ -1271,13 +1286,15 @@ function buildChartFoundationBoxes(calculatedState: CalculatedStateValue): strin
 
   // ── กล่อง 3: นิสัยจากราศีบน + ล่าง (อิม + 12 เชี่ยงแซ) ──
   const temper = resolveElementTemper(band);
-  const dmTemper = ELEMENT_TEMPER_TH[dmElementTh];
+  const hasTemper = Boolean(ELEMENT_TEMPER_TH[dmElementTh]);
   const box3 = readingBox(CHART_FOUNDATION_SUBTOPICS.upperLower, [
     stemText ? `ลักษณะเด่นของคนดิถี ${dayStem} คือ ${stemText}` : null,
     record?.elementText
       ? `ในแง่ของธาตุ ${record.elementLabel} ${record.qiLabel}${qiKeyword ? ` (แก่นเชี่ยงแซ: ${qiKeyword})` : ""} บ่งบอกว่า${record.elementText}`
       : null,
-    temper === "balanced" && dmTemper ? `นิสัยเด่นประจำธาตุดิถี: ${dmTemper.balanced}` : null,
+    temper === "balanced" && hasTemper
+      ? `นิสัยเด่นประจำธาตุดิถี: ${temperText(dmElementTh, "balanced")}`
+      : null,
   ]);
 
   // ── กล่อง 4: ดิถี → การกระทำ(ถ่ายเท) → ผลลัพธ์(โชคลาภ) — อธิบายสายโซ่ + แต่ละหลักเป็นย่อหน้า ──
@@ -1296,7 +1313,9 @@ function buildChartFoundationBoxes(calculatedState: CalculatedStateValue): strin
   // ── กล่อง 5: สิ่งพึงระวัง (temper ล้น/พร่อง + ความสัมพันธ์ผั่ว/ชง แต่ละรายการเป็นย่อหน้า) ──
   const relationNotes = buildNatalRelationNotes(calculatedState);
   const box5 = readingBox(CHART_FOUNDATION_SUBTOPICS.caution, [
-    temper !== "balanced" && dmTemper ? `สิ่งที่ควรระวังตามกำลังธาตุดิถี: ${dmTemper[temper]}` : null,
+    temper !== "balanced" && hasTemper
+      ? `สิ่งที่ควรระวังตามกำลังธาตุดิถี: ${temperText(dmElementTh, temper)}`
+      : null,
     ...relationNotes,
   ]);
 
@@ -1341,7 +1360,7 @@ function buildHealthReading(calculatedState: CalculatedStateValue): string | nul
   const weakSet = new Set(resolveWeakElements(calculatedState));
   for (const element of resolveExcessElements(calculatedState)) {
     if (!weakSet.has(element)) {
-      segments.push(`ธาตุ${element}มากเกินไป: ${EXCESS_HEALTH_TH[element]}`);
+      segments.push(`ธาตุ${element}มากเกินไป: ${K("EXCESS_HEALTH_TH", EXCESS_HEALTH_TH)[element]}`);
     }
   }
 
@@ -1386,7 +1405,7 @@ function buildHealthReading(calculatedState: CalculatedStateValue): string | nul
 }
 
 // ตำแหน่งดาวลาภ (财) บอก "แหล่ง" ของโชคลาภ (อ้างอิง 1.docx บท 3)
-const WEALTH_SOURCE_TH: Record<PillarKey, string> = {
+export const WEALTH_SOURCE_TH: Record<PillarKey, string> = {
   year: "หลักปี (เชื่อมกับสังคม/คนภายนอก และมรดก-รากฐานจากครอบครัว ปู่ย่าตายาย)",
   month: "หลักเดือน (จากหน้าที่การงานและผู้ใหญ่รอบตัว)",
   day: "หลักวัน (จากตัวเองและคู่ครอง)",
@@ -1449,7 +1468,7 @@ function collectWealthSegments(calculatedState: CalculatedStateValue): WealthSeg
     if (cells.length === 0) {
       continue;
     }
-    sources.add(WEALTH_SOURCE_TH[pillar]);
+    sources.add(K("WEALTH_SOURCE_TH", WEALTH_SOURCE_TH)[pillar]);
     for (const c of cells) {
       const meaning = K("QI_WEALTH_TH", QI_WEALTH_TH)[c.primaryQi];
       if (!meaning) {
@@ -1467,7 +1486,7 @@ function collectWealthSegments(calculatedState: CalculatedStateValue): WealthSeg
           ? " หรือต่อยอดด้วยการลงทุนกองทุนรวม/หุ้นในกลุ่มธาตุลาภ เทคโนโลยี และพลังงาน"
           : "";
       positionWealthLines.push(
-        `• ${WEALTH_SOURCE_TH[pillar]} ${c.place} ${c.symbol} → ${c.primaryQi} (~80%)${amp} / ${WEALTH_VISIBILITY[pillar]}: ${meaning}${comboNote}`,
+        `• ${K("WEALTH_SOURCE_TH", WEALTH_SOURCE_TH)[pillar]} ${c.place} ${c.symbol} → ${c.primaryQi} (~80%)${amp} / ${WEALTH_VISIBILITY[pillar]}: ${meaning}${comboNote}`,
       );
     }
   }
@@ -1869,7 +1888,7 @@ const DAYUN_DIMENSION_TH: Record<PillarKey, string> = {
   hour: "สิ่งที่ทำ/บริวาร/รุ่นน้อง",
 };
 
-const QI_TIER_OUTCOME_TH: Record<QiTier, string> = {
+export const QI_TIER_OUTCOME_TH: Record<QiTier, string> = {
   rising: "ส่งเสริม รุ่งเรืองขึ้น",
   transitional: "ผันผวน ต้องประคอง",
   falling: "อ่อนแรง ถดถอย ระวังสะดุด",
@@ -1895,7 +1914,7 @@ function buildDaYunCharacterBreakdown(calculatedState: CalculatedStateValue): st
       .filter(Boolean)
       .map(classifyQiTier)
       .sort((a, b) => (a === "falling" ? -1 : b === "falling" ? 1 : 0))[0] ?? "transitional";
-    lines.push(`${DAYUN_DIMENSION_TH[pillar]} (${parts.join(", ")}): ${QI_TIER_OUTCOME_TH[worstTier]}`);
+    lines.push(`${DAYUN_DIMENSION_TH[pillar]} (${parts.join(", ")}): ${K("QI_TIER_OUTCOME_TH", QI_TIER_OUTCOME_TH)[worstTier]}`);
   }
   return lines.length > 0
     ? `เจาะวัยจรปัจจุบัน (${daYunStem}${current.branch}) เทียบทีละตัวอักษรในผังตามความหมายของเสา:\n${lines.join("\n")}`
@@ -2082,6 +2101,28 @@ const ROLE_OUTCOME_SCHOOL_TH: Record<RelationRole, RoleOutcome> = {
   },
 };
 
+/** flatten role×{good,bad} → "role|good"/"role|bad" สำหรับ catalog (อ่านจริงผ่าน roleOutcome) */
+function flattenRoleOutcome(table: Record<RelationRole, RoleOutcome>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(table).flatMap(([role, outcome]) => [
+      [`${role}|good`, outcome.good],
+      [`${role}|bad`, outcome.bad],
+    ]),
+  );
+}
+export const ROLE_OUTCOME_FLAT_TH = flattenRoleOutcome(ROLE_OUTCOME_TH);
+export const ROLE_OUTCOME_SCHOOL_FLAT_TH = flattenRoleOutcome(ROLE_OUTCOME_SCHOOL_TH);
+
+/** อ่าน RoleOutcome ผ่าน overlay (แก้ดี/ร้ายได้รายช่อง) — tableId แยกตามวัยเรียน/วัยทำงาน */
+function roleOutcome(isSchool: boolean, role: RelationRole): RoleOutcome {
+  const tableId = isSchool ? "ROLE_OUTCOME_SCHOOL_TH" : "ROLE_OUTCOME_TH";
+  const base = (isSchool ? ROLE_OUTCOME_SCHOOL_TH : ROLE_OUTCOME_TH)[role];
+  return {
+    good: KC(tableId, base?.good ?? "", role, "good"),
+    bad: KC(tableId, base?.bad ?? "", role, "bad"),
+  };
+}
+
 type QiTier = "rising" | "transitional" | "falling";
 
 // 12 เชี่ยงแซ — น้ำหนัก 3 ระดับ ตามที่ซินแซกำชับ:
@@ -2154,7 +2195,7 @@ function buildLuckPhaseVerdict(
   qi: string,
   startAge = Number.POSITIVE_INFINITY,
 ): string {
-  const outcome = (startAge < SCHOOL_AGE_MAX ? ROLE_OUTCOME_SCHOOL_TH : ROLE_OUTCOME_TH)[role];
+  const outcome = roleOutcome(startAge < SCHOOL_AGE_MAX, role);
   const tier = classifyQiTier(qi);
   const verdict = VERDICT_FRAME[resolveRoleEffect(band, role)][tier](outcome);
   // เจ๊าะ/ซวย = เซ็งแซเสียขั้นรุนแรง → เตือนเรื่องโรคเรื้อรัง/ความเสียหายยืดเยื้อเป็นพิเศษ
@@ -2511,7 +2552,7 @@ function buildLoveReading(
 
 /** บท 14 สี/ทิศ = สีตาม useful god + สีที่ควรเลี่ยง (officer) + สีกระเป๋า/รถ + ทิศมงคล */
 /** สรรพคุณของสีตามธาตุ (ใช้ขยายลิสต์สีให้เป็นเหตุผล ไม่ใช่แค่รายชื่อสี) — เลียนโครง your life code */
-const ELEMENT_COLOR_BENEFIT_TH: Record<ThaiElement, string> = {
+export const ELEMENT_COLOR_BENEFIT_TH: Record<ThaiElement, string> = {
   "ไม้": "เสริมการเติบโต การเรียนรู้ การสื่อสาร และความเด็ดขาดในการตัดสินใจ",
   "ไฟ": "ดึงดูดโชคลาภ เสริมชื่อเสียง บารมี และความสำเร็จ",
   "ดิน": "เสริมความมั่นคง หนักแน่นน่าเชื่อถือ และการสะสมทรัพย์",
@@ -2520,7 +2561,7 @@ const ELEMENT_COLOR_BENEFIT_TH: Record<ThaiElement, string> = {
 };
 
 // รูปทรงสัญลักษณ์มงคลตาม 5 ธาตุ (อู่สิง: ไม้=ทรงสูง/แท่ง, ไฟ=สามเหลี่ยม, ดิน=สี่เหลี่ยมจัตุรัส, ทอง=วงกลม/วงรี, น้ำ=ทรงโค้งคลื่น)
-const ELEMENT_SHAPE_TH: Record<ThaiElement, string> = {
+export const ELEMENT_SHAPE_TH: Record<ThaiElement, string> = {
   "ไม้": "ทรงสูงโปร่ง/เสาแท่ง",
   "ไฟ": "สามเหลี่ยม/ทรงแหลม",
   "ดิน": "สี่เหลี่ยมจัตุรัส/ทรงเตี้ยหนา",
@@ -2539,7 +2580,7 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
 
   const lines = adjustWithColor.map((element) => {
     const [color, gem, amulet] = section.get(element)!;
-    const benefit = ELEMENT_COLOR_BENEFIT_TH[element];
+    const benefit = K("ELEMENT_COLOR_BENEFIT_TH", ELEMENT_COLOR_BENEFIT_TH)[element];
     return `ธาตุ${element} (เสริมดวง): สีมงคล ${color ?? "-"}; อัญมณี ${gem ?? "-"}; วัตถุมงคล ${amulet ?? "-"}${benefit ? ` — ช่วย${benefit}` : ""}`;
   });
 
@@ -2578,7 +2619,7 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
       extras.push(`สีรถยนต์: ${adjustColors.join(" / ")}`);
     }
   }
-  extras.push(`ทิศมงคล: ${adjustWithColor.map((element) => ELEMENT_DIRECTION_TH[element]).join(" และ ")}`);
+  extras.push(`ทิศมงคล: ${adjustWithColor.map((element) => K("ELEMENT_DIRECTION_TH", ELEMENT_DIRECTION_TH)[element]).join(" และ ")}`);
 
   // สัตว์มงคล (Source7 §3.1 ตาราง ดิถี×ราศีบนหลักเดือน — คอลัมน์สัตว์มงคล)
   const animalTable = parseSource7AnimalTable("3.1");
@@ -2591,7 +2632,7 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
   const wealthTh = elementLabel(CONTROLS[dayMasterElement(calculatedState)] as SupportedElementValue);
   const resourceShapeTh = elementLabel(inverseGenerate(dayMasterElement(calculatedState)));
   extras.push(
-    `สัญลักษณ์/รูปทรงมงคล: ${ELEMENT_SHAPE_TH[wealthTh]} (ธาตุ${wealthTh} = ดาวลาภ ด้านการเงิน), ${ELEMENT_SHAPE_TH[resourceShapeTh]} (ธาตุ${resourceShapeTh} = ดาวส่งเสริม ด้านคนสนับสนุน)`,
+    `สัญลักษณ์/รูปทรงมงคล: ${K("ELEMENT_SHAPE_TH", ELEMENT_SHAPE_TH)[wealthTh]} (ธาตุ${wealthTh} = ดาวลาภ ด้านการเงิน), ${K("ELEMENT_SHAPE_TH", ELEMENT_SHAPE_TH)[resourceShapeTh]} (ธาตุ${resourceShapeTh} = ดาวส่งเสริม ด้านคนสนับสนุน)`,
   );
 
   // lead-clause นำกลุ่มลิสต์สี (YLC style) — เกริ่นจาก fact เดิม (สมดุลดิถี) ไม่เจาะจงชื่อธาตุเพื่อไม่ชนลำดับ test
@@ -2606,7 +2647,7 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
 const GOOD_QI_ENHANCE = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง"]);
 
 /** สิ่งที่เทพประจำตัวอักษร "หนุน" ตามบทบาทธาตุของตัวอักษรนั้นเทียบดิถี */
-const DEITY_ROLE_BENEFIT_TH: Record<RelationRole, string> = {
+export const DEITY_ROLE_BENEFIT_TH: Record<RelationRole, string> = {
   "คู่ธาตุ": "หนุนเรื่องเพื่อน พี่น้อง หุ้นส่วน และคนรอบตัว",
   "ธาตุส่งเสริม": "หนุนเรื่องผู้ใหญ่อุปถัมภ์ สุขภาพ การเรียนรู้ และแรงสนับสนุน",
   "ธาตุถ่ายเท": "หนุนเรื่องการเจรจา การทำงาน และการแสดงผลงาน",
@@ -2752,7 +2793,7 @@ function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
   const seen = new Set<string>();
 
   for (const element of adjustElements) {
-    const benefit = DEITY_ROLE_BENEFIT_TH[resolveRelationRole(dmEl, element)];
+    const benefit = K("DEITY_ROLE_BENEFIT_TH", DEITY_ROLE_BENEFIT_TH)[resolveRelationRole(dmEl, element)];
     const elLabel = elementLabel(element);
     // R5.2c+: รวม candidate ราศีบน+ล่าง ของธาตุนี้ แล้ว rank ด้วยคะแนนเชี่ยงแซ → "องค์เดียวเจาะจง"
     //   (เช่น ดวง M: 丁 ขึ้น 长生 ที่ 酉 คะแนนสูงกว่า 丙 ที่ไม่มีเชี่ยงแซดี → เทพเตาไฟนำเทพสุริยัน ตรงซินแส)
@@ -2824,7 +2865,7 @@ function buildDeitiesReading(calculatedState: CalculatedStateValue): string | nu
     .filter((element) => section.has(element))
     .map((element) => {
       const [merit, deities] = section.get(element)!;
-      const benefit = ELEMENT_DEITY_BENEFIT_TH[element];
+      const benefit = K("ELEMENT_DEITY_BENEFIT_TH", ELEMENT_DEITY_BENEFIT_TH)[element];
       return `ธาตุ${element} (useful god): สิ่งศักดิ์สิทธิ์ ${deities ?? "-"}${benefit ? ` (ช่วยเรื่อง: ${benefit})` : ""}; การทำบุญ ${merit ?? "-"}`;
     });
   if (elementLines.length === 0) {
@@ -3225,7 +3266,7 @@ export const QI_WEALTH_TH: Record<string, string> = {
 };
 
 /** ทิศมงคลตามธาตุ (useful god → ทิศ) */
-const ELEMENT_DIRECTION_TH: Record<ThaiElement, string> = {
+export const ELEMENT_DIRECTION_TH: Record<ThaiElement, string> = {
   "ไม้": "ทิศตะวันออก",
   "ไฟ": "ทิศใต้",
   "ดิน": "ทิศตะวันตกเฉียงใต้และตะวันออกเฉียงเหนือ",
@@ -3288,7 +3329,7 @@ const BENEFACTOR_SUBTOPICS = {
 } as const;
 
 /** "คือใคร" ของแต่ละบทบาทธาตุในบริบทผู้อุปถัมภ์ (อิงตารางหลักชิง + บริบทคนช่วยเหลือ) */
-const BENEFACTOR_PERSON_TH: Record<"resource" | "companion" | "output" | "wealth", string> = {
+export const BENEFACTOR_PERSON_TH: Record<"resource" | "companion" | "output" | "wealth", string> = {
   resource: "ผู้อุปถัมภ์ ผู้ใหญ่ ครูบาอาจารย์ และเจ้านาย/นายทุนที่เปิดโอกาสและคอยให้ความรู้-แรงหนุน",
   companion: "เพื่อน พี่น้อง และหุ้นส่วนรุ่นเดียวกันที่เคียงข้างคอยช่วยเหลือแบ่งเบา",
   output: "ลูกน้อง บริวาร ลูกศิษย์ และคนรุ่นน้องที่ลงแรงทำงานสร้างผลงานให้",
@@ -3336,7 +3377,7 @@ function buildBenefactorBoxes(calculatedState: CalculatedStateValue): string | n
     return readingBox(BENEFACTOR_SUBTOPICS[key], [
       whereLine,
       ...positions,
-      `คือใคร: ${BENEFACTOR_PERSON_TH[key]}`,
+      `คือใคร: ${K("BENEFACTOR_PERSON_TH", BENEFACTOR_PERSON_TH)[key]}`,
       trait ? `ลักษณะอย่างไร: คนกลุ่มนี้มักมีคุณสมบัติแบบธาตุ${elTh} — ${trait}` : null,
     ]);
   });
@@ -3355,7 +3396,7 @@ export const RESOURCE_VIRTUE_TH: Record<ThaiElement, string> = {
 };
 
 /** ความหมายของครอบครัว/ผู้ใหญ่ในบ้านตาม 12 เซียงแซ (self-seat ของเสา) — มีคำแปล ไม่ใช่แค่ชื่อสภาวะ */
-const QI_FAMILY_TH: Record<string, string> = {
+export const QI_FAMILY_TH: Record<string, string> = {
   "เชี่ยงแซ": "ครอบครัวที่ค่อย ๆ เติบโตและส่งต่อสิ่งดีให้รุ่นต่อไป บรรยากาศหนุนการเรียนรู้และพัฒนา",
   "หมกยก": "ครอบครัวมีรสนิยม รักสวยรักงาม แต่บรรยากาศและอารมณ์ในบ้านแปรปรวนได้ง่าย",
   "กวงตั่ว": "ครอบครัวมีหน้ามีตา ใส่ใจภาพลักษณ์และเกียรติของวงศ์ตระกูล",
@@ -3411,12 +3452,12 @@ function buildFamilyReading(calculatedState: CalculatedStateValue): string | nul
   const segments = [
     `ครอบครัวอ่านจากเสาเดือนเป็นหลัก (พ่อแม่) และเสาปี (ปู่ย่าตายาย/วงศ์ตระกูล)`,
     // ภาพรวมพ่อแม่จาก self-seat เสาเดือน
-    `เสาเดือน ${month.stem}${month.branch} (${monthQi}): ${QI_FAMILY_TH[monthQi] ?? "บรรยากาศพ่อแม่/ครอบครัวตามจังหวะของเสานี้"}`,
+    `เสาเดือน ${month.stem}${month.branch} (${monthQi}): ${K("QI_FAMILY_TH", QI_FAMILY_TH)[monthQi] ?? "บรรยากาศพ่อแม่/ครอบครัวตามจังหวะของเสานี้"}`,
     // พ่อ = ราศีบนหลักเดือน (ก้าน = บทบาทที่แสดงออก/นำ); แม่ = ราศีล่างหลักเดือน (กิ่ง = ฐานหลักภายในบ้าน)
     `พ่อ (ราศีบนหลักเดือน ${month.stem} ธาตุ${elementLabel(stemElement(month.stem))}): เป็นบทบาทที่แสดงออกและขับเคลื่อนบ้าน มักขยันและเป็นผู้นำทิศทางของครอบครัว`,
     `แม่ (ราศีล่างหลักเดือน ${month.branch} ธาตุ${elementLabel(branchElement(month.branch))}): เป็นฐานหลักภายในบ้าน มักมีอำนาจในการดูแลและตัดสินเรื่องในครอบครัว`,
     // ปู่ย่าตายาย/รากเหง้าจาก self-seat เสาปี
-    `เสาปี ${year.stem}${year.branch} (${yearQi}): ${QI_FAMILY_TH[yearQi] ?? "รากเหง้าวงศ์ตระกูลที่ส่งต่อมา"} — สะท้อนพื้นฐานและสิ่งที่บรรพบุรุษส่งต่อให้`,
+    `เสาปี ${year.stem}${year.branch} (${yearQi}): ${K("QI_FAMILY_TH", QI_FAMILY_TH)[yearQi] ?? "รากเหง้าวงศ์ตระกูลที่ส่งต่อมา"} — สะท้อนพื้นฐานและสิ่งที่บรรพบุรุษส่งต่อให้`,
   ];
   // วงศาคณาญาติตามปฏิกิริยาธาตุ (六亲 ตารางหลักชิง) — แม่นกว่าการดูตำแหน่งเสาอย่างเดียว
   segments.push(
@@ -3431,7 +3472,7 @@ function buildFamilyReading(calculatedState: CalculatedStateValue): string | nul
 
 /** บท 8 เพื่อน/ศัตรู = คู่ธาตุ (same) + 12 เชี่ยงแซ ดี→เพื่อน เสีย→ศัตรู */
 // ตำแหน่งเสา → กลุ่มคนที่เกี่ยวข้องในบท "เพื่อน/ศัตรู" (ใช้ตำแหน่งทาย ตามวิธีซินแซ)
-const FRIEND_POSITION_TH: Record<PillarKey, string> = {
+export const FRIEND_POSITION_TH: Record<PillarKey, string> = {
   year: "คนในสังคม/เพื่อนร่วมรุ่น/วงกว้างภายนอก",
   month: "พี่น้อง เพื่อนร่วมงาน และคนแวดล้อมการงาน",
   day: "คู่ครองและคนใกล้ชิดที่สุด",
@@ -3480,7 +3521,7 @@ function buildFriendsReading(calculatedState: CalculatedStateValue): string | nu
     "เพื่อน/ศัตรูดูจาก “ตัวอักษรในผัง” ที่ขึ้น 12 เชี่ยงแซ — ตำแหน่งที่ขึ้นเชี่ยงแซดีคือมิตรแท้/ผู้สนับสนุน ส่วนตำแหน่งที่เชี่ยงแซเสีย (ซวย/ซี่/เจ๊าะ) คือคู่แข่ง/ศัตรู และทายตามความหมายของเสานั้น";
   const scan = scanPositionRelations(calculatedState);
   const lines = scan.map(({ pillar, char, element, qi, kind }) => {
-    const who = FRIEND_POSITION_TH[pillar];
+    const who = K("FRIEND_POSITION_TH", FRIEND_POSITION_TH)[pillar];
     const verdict = kind === "friend"
       ? `มิตรแท้/ผู้สนับสนุน — ${who} (ธาตุ${element}) เข้ามาหนุน`
       : kind === "foe"
@@ -3570,7 +3611,7 @@ function buildSubordinateReading(calculatedState: CalculatedStateValue): string 
 }
 
 /** คณะ/สาขา/คอสตามธาตุ (สรุปจาก "อาชีพของธาตุต่างเทียบการเรียนคณะ สาขา คอสเรียน") — แนะนำสายเรียนจริง */
-const FACULTY_BY_ELEMENT_TH: Record<ThaiElement, string> = {
+export const FACULTY_BY_ELEMENT_TH: Record<ThaiElement, string> = {
   "ดิน": "วิศวกรรมโยธา/สำรวจ, ภูมิสถาปัตย์(จัดสรรที่ดิน), ธุรกิจอสังหาริมทรัพย์, วัสดุศาสตร์/ธรณีวิทยา/วิศวกรรมเซรามิก, สัตวแพทย์/สัตวศาสตร์-ปฐพีวิทยา-เกษตร, ทันตแพทย์/ออร์โธปิดิกส์ (ฟัน-กระดูก-ผิวหนัง); ปวช.ช่างก่อสร้าง-โยธา; คอสอสังหาฯ/ประเมินราคา/เครื่องหนัง",
   "ทอง": "วิศวกรรมโลหการ/เครื่องกล/ยานยนต์/อุตสาหการ/ไฟฟ้า-อิเล็กทรอนิกส์/เหมืองแร่, วิทยาการคอมพิวเตอร์, อัญมณีวิทยา/ออกแบบเครื่องประดับ, นิติศาสตร์-รัฐศาสตร์, รร.นายร้อย/นายเรือ/ตำรวจ; ปวช.ช่างยนต์-กลโรงงาน-เชื่อมโลหะ; คอส CNC/ซ่อมอิเล็กทรอนิกส์/ตัดขนสัตว์(กรรไกร-ของมีคม)",
   "น้ำ": "พาณิชยศาสตร์-บัญชี/บริหารธุรกิจ/เศรษฐศาสตร์ (การเงิน-การบัญชี), โลจิสติกส์-ซัพพลายเชน, การท่องเที่ยว-โรงแรม, วิทยาศาสตร์ทางทะเล/ประมง; สายค้าขาย-บริการ-ขนส่ง-นายหน้า/affiliate-ลูกค้าออนไลน์-อาบน้ำ/สปาสัตว์เลี้ยง",
@@ -3630,8 +3671,8 @@ function buildEducationReading(calculatedState: CalculatedStateValue): string | 
     `ควรเรียนสายที่ตรงกับธาตุที่ดวงต้องการ (useful god: ${useful.join(" / ")}) เพื่อแปลงความรู้เป็นรายได้:`,
   );
   for (const el of useful) {
-    if (FACULTY_BY_ELEMENT_TH[el]) {
-      segments.push(`• สายธาตุ${el} — ${FACULTY_BY_ELEMENT_TH[el]}`);
+    if (K("FACULTY_BY_ELEMENT_TH", FACULTY_BY_ELEMENT_TH)[el]) {
+      segments.push(`• สายธาตุ${el} — ${K("FACULTY_BY_ELEMENT_TH", FACULTY_BY_ELEMENT_TH)[el]}`);
     }
   }
 
@@ -3662,13 +3703,13 @@ function buildSpeechReading(calculatedState: CalculatedStateValue): string | nul
 
 /** บท 5 พรสวรรค์ = ดาวถ่ายเท (output) + สภาวะ 12 เชี่ยงแซ (ทักษะ/วิเคราะห์/สื่อสาร ไม่ใช่บุคลิกทั่วไป) */
 /** ชนิดดาวถ่ายเท: 食神 (พ้องขั้วดิถี = นุ่มนวล/ประณีต) หรือ 傷官 (ต่างขั้ว = เฉียบคม/วาทศิลป์) */
-const OUTPUT_STAR_TALENT_TH = {
+export const OUTPUT_STAR_TALENT_TH = {
   eating: "พรสวรรค์แบบ “ดาวถ่ายเทพ้องขั้ว (食神)” — ถ่ายทอดอย่างนุ่มนวลมีรสนิยม สร้างผลงานประณีตและต่อเนื่อง เด่นงานสอน ดูแล บริการ อาหาร ศิลปะ และการทำให้คนรอบข้างสบายใจ",
   hurting: "พรสวรรค์แบบ “ดาวถ่ายเทต่างขั้ว (傷官)” — เฉียบคมและมีวาทศิลป์ เด่นเรื่องการพูด โน้มน้าว นำเสนอ แสดงออก คิดนอกกรอบและสร้างสรรค์สิ่งใหม่ (ควรระวังความหยิ่งในความสามารถและคำพูดที่ตรงเกินไป)",
 } as const;
 
 /** ความหมายพรสวรรค์ตาม 12 เซียงแซ — อ่านเชิงบวก (ศักยภาพ/ความถนัด) สั้นกระชับ */
-const QI_TALENT_POS_TH: Record<string, string> = {
+export const QI_TALENT_POS_TH: Record<string, string> = {
   "เชี่ยงแซ": "เรียนรู้ไว ต่อยอดทักษะได้เรื่อย ๆ เก่งงานริเริ่มและพัฒนาสิ่งใหม่",
   "หมกยก": "ไวต่อรสนิยมและอารมณ์คน เก่งงานสื่อสาร นำเสนอ ศิลปะ และเสน่ห์การพูด",
   "กวงตั่ว": "ทักษะที่สั่งสมจนมีชื่อเสียง เก่งสร้างภาพลักษณ์และผลงานที่ได้รับการยอมรับ",
@@ -3711,7 +3752,7 @@ function buildTalentReading(calculatedState: CalculatedStateValue): string | nul
       ? pillarBranchQi(calculatedState, pillar)
       : resolveDisplayStemPairStage(calculatedState.dayMaster, value.stem);
     // รูปแบบพลังของความสามารถ (12 เซี่ยงแซ) + ทิศทางที่ควรไปแสดงออก (ธาตุถ่ายเท) — อ่านผสานกันเสมอ
-    const stageTalent = QI_TALENT_POS_TH[qi] ?? "ใช้ทักษะได้ดีตามจังหวะที่เหมาะ";
+    const stageTalent = K("QI_TALENT_POS_TH", QI_TALENT_POS_TH)[qi] ?? "ใช้ทักษะได้ดีตามจังหวะที่เหมาะ";
     const aptitude = resolveTalentAptitude(qi, output);
     const meaning = aptitude ? `${stageTalent} — โดดเด่นด้าน${aptitude}` : stageTalent;
     const cell = onStem && onBranch ? `${value.stem}${value.branch}` : onStem ? value.stem : value.branch;
@@ -3939,7 +3980,7 @@ function buildFriendsFoesBoxes(calculatedState: CalculatedStateValue): string | 
     "เพื่อน/ศัตรูดูจาก “ตัวอักษรในผัง” ที่ขึ้น 12 เชี่ยงแซ — ตำแหน่งที่ขึ้นเชี่ยงแซดีคือมิตรแท้/ผู้สนับสนุน ส่วนตำแหน่งที่เชี่ยงแซเสีย (ซวย/ซี่/เจ๊าะ) คือคู่แข่ง/ศัตรู และทายตามความหมายของเสานั้น";
   const scan = scanPositionRelations(calculatedState);
   const lineOf = ({ pillar, char, element, qi, kind }: ReturnType<typeof scanPositionRelations>[number]) => {
-    const who = FRIEND_POSITION_TH[pillar];
+    const who = K("FRIEND_POSITION_TH", FRIEND_POSITION_TH)[pillar];
     const verdict = kind === "friend"
       ? `มิตรแท้/ผู้สนับสนุน — ${who} (ธาตุ${element}) เข้ามาหนุน`
       : kind === "foe"

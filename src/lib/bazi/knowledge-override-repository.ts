@@ -13,13 +13,13 @@ import {
   type KnowledgeOverlay,
 } from "@/lib/bazi/knowledge/knowledge-overlay";
 
-export type KnowledgeOverrideKind = "table" | "append";
+export type KnowledgeOverrideKind = "table" | "append" | "logic" | "sourcefocus";
 
 export type KnowledgeOverrideRow = SelectBaziKnowledgeOverride;
 
 /** แปลงรายการแถว → KnowledgeOverlay (append เรียงตาม item_key เชิงเลข) */
 export function rowsToOverlay(rows: KnowledgeOverrideRow[]): KnowledgeOverlay {
-  const overlay: KnowledgeOverlay = { tables: {}, appends: {} };
+  const overlay: KnowledgeOverlay = { tables: {}, appends: {}, registry: {} };
   const appendBuckets: Record<string, Array<{ order: number; text: string }>> = {};
 
   for (const row of rows) {
@@ -28,6 +28,13 @@ export function rowsToOverlay(rows: KnowledgeOverrideRow[]): KnowledgeOverlay {
       (overlay.tables[row.groupKey] ??= {})[row.itemKey] = text;
     } else if (row.kind === "append") {
       (appendBuckets[row.groupKey] ??= []).push({ order: Number(row.itemKey) || 0, text });
+    } else if (row.kind === "logic" || row.kind === "sourcefocus") {
+      const ordinal = Number(row.itemKey) || 0;
+      if (ordinal > 0) {
+        const entry = (overlay.registry[row.groupKey] ??= {});
+        const field = row.kind === "logic" ? "logicRules" : "sourceFocus";
+        (entry[field] ??= {})[ordinal] = text;
+      }
     }
   }
 

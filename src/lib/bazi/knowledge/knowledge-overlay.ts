@@ -13,11 +13,25 @@ export type KnowledgeOverlay = {
   tables: Record<string, Record<string, string>>;
   /** topicId → ย่อหน้าความรู้ที่ต่อท้าย (เรียงตามลำดับ) */
   appends: Record<string, string[]>;
+  /**
+   * องค์ความรู้แกนรายบทที่ "แสดงผล/ป้อน prompt" ได้ (ไม่เปลี่ยน logic การคำนวณ engine):
+   *  - logicRules: หลักการของซินแส (แทนทั้งชุดของบทถ้ามี — sparse index ตามลำดับ)
+   *  - sourceFocus: reasoningFocus ของแหล่งอ้างอิง (แทนรายตัวตามลำดับ)
+   * topicId → (ordinal เริ่ม 1 → ข้อความ); ช่องที่ไม่ override = undefined → คงค่า default
+   */
+  registry: Record<
+    string,
+    {
+      logicRules?: Record<number, string>;
+      sourceFocus?: Record<number, string>;
+    }
+  >;
 };
 
 export const EMPTY_OVERLAY: KnowledgeOverlay = Object.freeze({
   tables: {},
   appends: {},
+  registry: {},
 }) as KnowledgeOverlay;
 
 /**
@@ -49,6 +63,43 @@ export function appendsForTopic(overlay: KnowledgeOverlay, topicId: string): str
   return overlay.appends[topicId] ?? [];
 }
 
+/**
+ * ทับชุดข้อความรายบท (logicRules/sourceFocus) ด้วย override แบบ sparse:
+ * คงความยาว/ลำดับเดิมของ defaults — แทนเฉพาะ ordinal ที่มี override (ordinal เริ่ม 1)
+ * ค่าว่าง/ช่องว่างทั้งหมด → ตัดทิ้ง (ให้ลบบรรทัดได้)
+ */
+export function resolveOrdinalList(
+  defaults: readonly string[],
+  overrides: Record<number, string> | undefined,
+): string[] {
+  if (!overrides || Object.keys(overrides).length === 0) return [...defaults];
+  const maxOrdinal = Math.max(defaults.length, ...Object.keys(overrides).map(Number));
+  const result: string[] = [];
+  for (let ordinal = 1; ordinal <= maxOrdinal; ordinal += 1) {
+    const value = overrides[ordinal] ?? defaults[ordinal - 1] ?? "";
+    if (value.trim().length > 0) result.push(value);
+  }
+  return result;
+}
+
+/** หลักการซินแสของบท (override ทับ default) */
+export function resolveLogicRules(
+  overlay: KnowledgeOverlay,
+  topicId: string,
+  defaults: readonly string[],
+): string[] {
+  return resolveOrdinalList(defaults, overlay.registry[topicId]?.logicRules);
+}
+
+/** reasoningFocus ของแหล่งอ้างอิง (override ทับ default) */
+export function resolveSourceFocus(
+  overlay: KnowledgeOverlay,
+  topicId: string,
+  defaults: readonly string[],
+): string[] {
+  return resolveOrdinalList(defaults, overlay.registry[topicId]?.sourceFocus);
+}
+
 /** คีย์ผสมสำหรับตารางซ้อน (เช่น ELEMENT_TEMPER_TH: "wood|excess") — ตัวคั่น | ปลอดภัยกับคีย์ไทย/จีน */
 export function compositeKey(...parts: string[]): string {
   return parts.join("|");
@@ -70,8 +121,28 @@ export function mergeKnowledgeOverlay(
   for (const [tableId, entries] of Object.entries(over.tables)) {
     tables[tableId] = { ...(tables[tableId] ?? {}), ...entries };
   }
+  const registry: KnowledgeOverlay["registry"] = {};
+  for (const [topicId, entry] of Object.entries(base.registry)) {
+    registry[topicId] = {
+      ...(entry.logicRules ? { logicRules: { ...entry.logicRules } } : {}),
+      ...(entry.sourceFocus ? { sourceFocus: { ...entry.sourceFocus } } : {}),
+    };
+  }
+  for (const [topicId, entry] of Object.entries(over.registry)) {
+    const prev = registry[topicId] ?? {};
+    registry[topicId] = {
+      ...(entry.logicRules || prev.logicRules
+        ? { logicRules: { ...prev.logicRules, ...entry.logicRules } }
+        : {}),
+      ...(entry.sourceFocus || prev.sourceFocus
+        ? { sourceFocus: { ...prev.sourceFocus, ...entry.sourceFocus } }
+        : {}),
+    };
+  }
+
   return {
     tables,
     appends: { ...base.appends, ...over.appends },
+    registry,
   };
 }

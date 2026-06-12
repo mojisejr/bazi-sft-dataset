@@ -11,7 +11,9 @@ import { AsyncLocalStorage } from "node:async_hooks";
 
 import {
   appendsForTopic,
+  compositeKey,
   EMPTY_OVERLAY,
+  resolveEntry,
   resolveTable,
   type KnowledgeOverlay,
 } from "@/lib/bazi/knowledge/knowledge-overlay";
@@ -30,6 +32,15 @@ export function currentKnowledgeOverlay(): KnowledgeOverlay {
 /** ตารางถ้อยคำที่ override แล้วตาม overlay ปัจจุบัน — ใช้แทนการอ่าน const ตรง ๆ */
 export function K<T extends Record<string, string>>(tableId: string, defaults: T): T {
   return resolveTable(currentKnowledgeOverlay(), tableId, defaults);
+}
+
+/**
+ * ค่าช่องเดียวจากตาราง nested (key ผสม) — override ทับได้รายช่อง
+ * ใช้กับตารางที่ key เป็น 2 มิติ เช่น ELEMENT_TEMPER_TH[ธาตุ][temper] → KC("ELEMENT_TEMPER_TH", fallback, ธาตุ, temper)
+ * itemKey ใน catalog/overlay = parts join ด้วย "|" (compositeKey)
+ */
+export function KC(tableId: string, fallback: string, ...parts: string[]): string {
+  return resolveEntry(currentKnowledgeOverlay(), tableId, compositeKey(...parts), fallback) ?? fallback;
 }
 
 /** ย่อหน้าความรู้ที่ต่อท้ายบทตาม overlay ปัจจุบัน */

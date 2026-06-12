@@ -11,16 +11,57 @@ type Entry = {
   published: string | null;
   draft: string | null;
 };
+type KeyKind = "topic" | "element" | "qi" | "role" | "stem" | "ganzhi" | "pillar" | "raw";
 type Table = {
   tableId: string;
   label: string;
-  keyKind: "topic" | "element" | "qi" | "role";
+  keyKind: KeyKind;
   entries: Entry[];
 };
-type AppendState = { published: string[]; draft: string[] };
-type OverrideData = { tables: Table[]; appends: Record<string, AppendState> };
 
-type Props = { topicId: string; adminToken: string };
+/** หัวข้อหมวดตามชนิดคีย์ (จัดกลุ่มตารางเงื่อนไขให้หาง่าย) */
+const KEY_KIND_GROUP_TH: Record<KeyKind, string> = {
+  topic: "ตามบท",
+  element: "ตามธาตุ (ไม้/ไฟ/ดิน/ทอง/น้ำ)",
+  qi: "ตาม 12 เชี่ยงแซ",
+  role: "ตามบทบาทธาตุ (คู่/ส่งเสริม/ถ่ายเท/พิฆาต/ลาภ)",
+  stem: "ตามราศีบน (10 ก้าน)",
+  ganzhi: "ตาม 60 กะจื่อ (ก้าน-กิ่ง)",
+  pillar: "ตามตำแหน่งเสา (ปี/เดือน/วัน/ยาม)",
+  raw: "อื่น ๆ / คีย์เฉพาะ",
+};
+const KEY_KIND_ORDER: KeyKind[] = ["element", "qi", "role", "stem", "pillar", "ganzhi", "raw"];
+type AppendState = { published: string[]; draft: string[] };
+type RegistryLine = {
+  kind: "logic" | "sourcefocus";
+  ordinal: number;
+  default: string;
+  published: string | null;
+  draft: string | null;
+};
+type RegistryTopic = {
+  topicId: string;
+  thaiLabel: string;
+  annotationDimension: string;
+  logicRules: RegistryLine[];
+  sourceFocus: RegistryLine[];
+};
+type OverrideData = {
+  tables: Table[];
+  appends: Record<string, AppendState>;
+  registry: RegistryTopic[];
+};
+
+/**
+ * registryTopicIds = registry topic ids ของบท (จาก dimension bridge) ที่จะให้แก้ logic/source
+ * section: "chapter" = แก้คำรายบท (intro/สรุป/logic/append) · "condition" = ตารางตามดวง (ข้ามบท)
+ */
+type Props = {
+  topicId: string;
+  adminToken: string;
+  registryTopicIds?: string[];
+  section?: "chapter" | "condition";
+};
 
 const SAMPLE_RAW_INPUT = {
   birthDate: "1990-01-01",
@@ -37,16 +78,24 @@ function entityKeyTable(tableId: string, key: string) {
 function entityKeyAppend(topicId: string, ordinal: number) {
   return `append|${topicId}|${ordinal}`;
 }
+function entityKeyRegistry(kind: "logic" | "sourcefocus", topicId: string, ordinal: number) {
+  return `${kind}|${topicId}|${ordinal}`;
+}
 
 /**
  * ตัวแก้องค์ความรู้ออนไลน์ (เฟส 2) — แก้ค่าตาราง/กรอบบท + ย่อหน้าเพิ่มเติม
  * draft → preview → publish ผ่าน /api/reading/doctrine-draft (surface="knowledge")
  */
-export function KnowledgeEditor({ topicId, adminToken }: Props) {
+export function KnowledgeEditor({
+  topicId,
+  adminToken,
+  registryTopicIds = [],
+  section = "chapter",
+}: Props) {
   const [data, setData] = useState<OverrideData | null>(null);
   const [status, setStatus] = useState<string>("");
   const [preview, setPreview] = useState<string | null>(null);
-  const [showConditionTables, setShowConditionTables] = useState(false);
+  const [tableSearch, setTableSearch] = useState("");
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "content-type": "application/json" };
@@ -162,6 +211,66 @@ export function KnowledgeEditor({ topicId, adminToken }: Props) {
   const topicTables = data.tables.filter((table) => table.keyKind === "topic");
   const conditionTables = data.tables.filter((table) => table.keyKind !== "topic");
   const appendState = data.appends[topicId] ?? { published: [], draft: [] };
+  const registrySet = new Set(registryTopicIds);
+  const registryTopics = (data.registry ?? []).filter((entry) => registrySet.has(entry.topicId));
+  // ตารางตามดวง: กรองด้วยคำค้น (ชื่อตาราง หรือ ข้อความในช่อง) แล้วจัดกลุ่มตาม keyKind
+  const query = tableSearch.trim().toLowerCase();
+  const filteredConditionTables = query
+    ? conditionTables
+        .map((table) => {
+          if (table.label.toLowerCase().includes(query)) return table;
+          const entries = table.entries.filter(
+            (entry) =>
+              entry.key.toLowerCase().includes(query) ||
+              entry.keyLabel.toLowerCase().includes(query) ||
+              (entry.draft ?? entry.published ?? entry.default).toLowerCase().includes(query),
+          );
+          return entries.length > 0 ? { ...table, entries } : null;
+        })
+        .filter((table): table is Table => table !== null)
+    : conditionTables;
+  const conditionTablesByKind = new Map<KeyKind, Table[]>();
+  for (const table of filteredConditionTables) {
+    const bucket = conditionTablesByKind.get(table.keyKind) ?? [];
+    bucket.push(table);
+    conditionTablesByKind.set(table.keyKind, bucket);
+  }
+
+  // โหมด "ตารางตามดวง" — ไม่ผูกกับบท แสดงทุกตามเงื่อนไข จัดกลุ่ม + ค้นหา
+  if (section === "condition") {
+    return (
+      <div className="knowledge-edit">
+        <div className="knowledge-edit__bar">
+          <input
+            className="knowledge__search"
+            placeholder="ค้นหาตาราง/คำในช่อง…"
+            value={tableSearch}
+            onChange={(event) => setTableSearch(event.target.value)}
+            aria-label="ค้นหาตารางตามดวง"
+          />
+          {status && <span className="knowledge-edit__status">{status}</span>}
+        </div>
+        <p className="section-note">
+          ตารางคำทำนายที่มีผล “ทุกบทที่เข้าเงื่อนไข” (ตามธาตุ/เชี่ยงแซ/บทบาท/ตำแหน่งเสา ฯลฯ) —
+          แก้แล้วเผยแพร่มีผลกับทุกดวงที่ทายได้เงื่อนไขนั้น
+        </p>
+        {KEY_KIND_ORDER.filter((kind) => conditionTablesByKind.has(kind)).map((kind) => (
+          <ConditionGroup
+            key={kind}
+            title={KEY_KIND_GROUP_TH[kind]}
+            tables={conditionTablesByKind.get(kind) ?? []}
+            defaultOpen={query.length > 0}
+            onSave={saveDraft}
+            onPublish={publish}
+            onDiscard={discardDraft}
+          />
+        ))}
+        {conditionTablesByKind.size === 0 && (
+          <p className="section-note">ไม่พบตารางที่ตรงกับ “{tableSearch}”</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="knowledge-edit">
@@ -194,6 +303,54 @@ export function KnowledgeEditor({ topicId, adminToken }: Props) {
         );
       })}
 
+      {/* องค์ความรู้แกน: หลักการซินแส + แหล่งอ้างอิง (ป้อนเข้า prompt ของ engine) */}
+      {registryTopics.length > 0 && (
+        <>
+          <h3 className="knowledge-edit__group">
+            หลักการซินแส + แหล่งอ้างอิง (มีผลกับคำทำนายใหม่ทันทีที่เผยแพร่)
+          </h3>
+          {registryTopics.map((topic) => (
+            <div key={topic.topicId} className="knowledge-edit__table">
+              <h4 className="knowledge-edit__table-title">{topic.thaiLabel}</h4>
+              {topic.logicRules.map((line) => (
+                <FieldRow
+                  key={`logic-${line.ordinal}`}
+                  label={`หลักการซินแส #${line.ordinal}`}
+                  entityKey={entityKeyRegistry("logic", topic.topicId, line.ordinal)}
+                  entry={{
+                    key: String(line.ordinal),
+                    keyLabel: "",
+                    default: line.default,
+                    published: line.published,
+                    draft: line.draft,
+                  }}
+                  onSave={saveDraft}
+                  onPublish={publish}
+                  onDiscard={discardDraft}
+                />
+              ))}
+              {topic.sourceFocus.map((line) => (
+                <FieldRow
+                  key={`focus-${line.ordinal}`}
+                  label={`โฟกัสแหล่งอ้างอิง #${line.ordinal}`}
+                  entityKey={entityKeyRegistry("sourcefocus", topic.topicId, line.ordinal)}
+                  entry={{
+                    key: String(line.ordinal),
+                    keyLabel: "",
+                    default: line.default,
+                    published: line.published,
+                    draft: line.draft,
+                  }}
+                  onSave={saveDraft}
+                  onPublish={publish}
+                  onDiscard={discardDraft}
+                />
+              ))}
+            </div>
+          ))}
+        </>
+      )}
+
       {/* ย่อหน้าความรู้เพิ่มเติม (always-on ต่อบท) */}
       <h3 className="knowledge-edit__group">ย่อหน้าความรู้เพิ่มเติม (ต่อท้ายบทนี้ทุกดวง)</h3>
       <AppendEditor
@@ -203,28 +360,50 @@ export function KnowledgeEditor({ topicId, adminToken }: Props) {
         onPublish={publish}
         onDiscard={discardDraft}
       />
+    </div>
+  );
+}
 
-      {/* ตารางความรู้ตามเงื่อนไขดวง (มีผลทุกบท) */}
+function ConditionGroup({
+  title,
+  tables,
+  defaultOpen = false,
+  onSave,
+  onPublish,
+  onDiscard,
+}: {
+  title: string;
+  tables: Table[];
+  defaultOpen?: boolean;
+  onSave: (entityKey: string, text: string) => void | Promise<void>;
+  onPublish: (entityKey: string) => void | Promise<void>;
+  onDiscard: (entityKey: string) => void | Promise<void>;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const fieldCount = tables.reduce((sum, table) => sum + table.entries.length, 0);
+  return (
+    <div className="knowledge-edit__group-section">
       <button
         type="button"
         className="knowledge-edit__toggle"
-        onClick={() => setShowConditionTables((value) => !value)}
+        onClick={() => setOpen((value) => !value)}
+        aria-expanded={open}
       >
-        {showConditionTables ? "▾" : "▸"} ตารางความรู้ตามเงื่อนไขดวง (แก้แล้วมีผลทุกบทที่เข้าเงื่อนไข)
+        {open ? "▾" : "▸"} {title} · {tables.length} ตาราง ({fieldCount} ช่อง)
       </button>
-      {showConditionTables &&
-        conditionTables.map((table) => (
+      {open &&
+        tables.map((table) => (
           <div key={table.tableId} className="knowledge-edit__table">
             <h4 className="knowledge-edit__table-title">{table.label}</h4>
             {table.entries.map((entry) => (
               <FieldRow
                 key={entry.key}
-                label={entry.keyLabel}
+                label={entry.keyLabel || entry.key}
                 entityKey={entityKeyTable(table.tableId, entry.key)}
                 entry={entry}
-                onSave={saveDraft}
-                onPublish={publish}
-                onDiscard={discardDraft}
+                onSave={onSave}
+                onPublish={onPublish}
+                onDiscard={onDiscard}
               />
             ))}
           </div>

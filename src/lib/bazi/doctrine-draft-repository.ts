@@ -69,7 +69,7 @@ export function createDbDoctrineDraftRepository(db = createDbClient()): Doctrine
       const parsed: ParsedDrafts = {
         topicOverrides: {},
         config: { steps: {}, roles: {}, stars: {} },
-        knowledge: { tables: {}, appends: {} },
+        knowledge: { tables: {}, appends: {}, registry: {} },
       };
       // append draft: เก็บเป็น bucket ก่อน แล้วเรียงตามลำดับ item ตอนจบ
       const appendBuckets: Record<string, Array<{ order: number; text: string }>> = {};
@@ -98,6 +98,13 @@ export function createDbDoctrineDraftRepository(db = createDbClient()): Doctrine
             (parsed.knowledge.tables[decoded.group] ??= {})[decoded.item] = text;
           } else if (decoded.kind === "append") {
             (appendBuckets[decoded.group] ??= []).push({ order: Number(decoded.item) || 0, text });
+          } else if (decoded.kind === "logic" || decoded.kind === "sourcefocus") {
+            const ordinal = Number(decoded.item) || 0;
+            if (ordinal > 0) {
+              const entry = (parsed.knowledge.registry[decoded.group] ??= {});
+              const field = decoded.kind === "logic" ? "logicRules" : "sourceFocus";
+              (entry[field] ??= {})[ordinal] = text;
+            }
           }
         }
       }

@@ -3,6 +3,7 @@
  * ใช้โดยตัวแก้ในหน้า /reading/knowledge. การเขียน/เผยแพร่/ทิ้งร่าง ใช้ /api/reading/doctrine-draft (surface="knowledge")
  */
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import { BAZI_TOPIC_REGISTRY } from "@/lib/bazi/knowledge/topic-registry";
 import { KNOWLEDGE_CATALOG, keyLabel } from "@/lib/bazi/knowledge/knowledge-catalog";
 import { createDbKnowledgeOverrideRepository } from "@/lib/bazi/knowledge-override-repository";
 import { EMPTY_OVERLAY, type KnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
@@ -60,5 +61,36 @@ export async function GET(req: Request) {
     ]),
   );
 
-  return Response.json({ tables, appends });
+  // องค์ความรู้แกนรายบท (registry) — หลักการซินแส + reasoningFocus ของแหล่งอ้างอิง
+  // คาย default + published + draft รายช่อง (ordinal เริ่ม 1) ให้ตัวแก้ทับได้
+  const registry = BAZI_TOPIC_REGISTRY.map((topic) => {
+    const pub = published.registry[topic.id] ?? {};
+    const drf = draft.registry[topic.id] ?? {};
+    const sourceDefaults = topic.sourceRefs.map((ref) => ref.reasoningFocus);
+    const lineEntries = (
+      kind: "logic" | "sourcefocus",
+      defaults: readonly string[],
+      pubMap: Record<number, string> | undefined,
+      drfMap: Record<number, string> | undefined,
+    ) =>
+      defaults.map((def, index) => {
+        const ordinal = index + 1;
+        return {
+          kind,
+          ordinal,
+          default: def,
+          published: pubMap?.[ordinal] ?? null,
+          draft: drfMap?.[ordinal] ?? null,
+        };
+      });
+    return {
+      topicId: topic.id,
+      thaiLabel: topic.thaiLabel,
+      annotationDimension: topic.annotationDimension,
+      logicRules: lineEntries("logic", topic.sinsaeLogicRules, pub.logicRules, drf.logicRules),
+      sourceFocus: lineEntries("sourcefocus", sourceDefaults, pub.sourceFocus, drf.sourceFocus),
+    };
+  });
+
+  return Response.json({ tables, appends, registry });
 }

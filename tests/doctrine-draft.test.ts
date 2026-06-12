@@ -51,7 +51,11 @@ function mocks() {
   const removed: Array<[string, string]> = [];
   const draftRepo: DoctrineDraftRepository = {
     listRaw: vi.fn(async () => [] as DoctrineDraftRow[]),
-    loadParsed: vi.fn(async () => ({ topicOverrides: {}, config: { steps: {}, roles: {}, stars: {} } })),
+    loadParsed: vi.fn(async () => ({
+      topicOverrides: {},
+      config: { steps: {}, roles: {}, stars: {} },
+      knowledge: { tables: {}, appends: {}, registry: {} },
+    })),
     upsert: vi.fn(async () => {}),
     remove: vi.fn(async (s: string, k: string) => void removed.push([s, k])),
     get: vi.fn(async () => null),

@@ -6,6 +6,9 @@ import { buildTopicHumanReading } from "@/lib/bazi/topic-knowledge";
 import {
   EMPTY_OVERLAY,
   mergeKnowledgeOverlay,
+  resolveLogicRules,
+  resolveOrdinalList,
+  resolveSourceFocus,
   resolveTable,
   type KnowledgeOverlay,
 } from "@/lib/bazi/knowledge/knowledge-overlay";
@@ -26,13 +29,13 @@ describe("resolveTable / mergeKnowledgeOverlay", () => {
   });
 
   test("มี override → ทับเฉพาะคีย์ที่ระบุ", () => {
-    const overlay: KnowledgeOverlay = { tables: { T: { a: "X" } }, appends: {} };
+    const overlay: KnowledgeOverlay = { tables: { T: { a: "X" } }, appends: {}, registry: {} };
     expect(resolveTable(overlay, "T", { a: "1", b: "2" })).toEqual({ a: "X", b: "2" });
   });
 
   test("merge: draft ทับ published รายคีย์ + appends ราย topic", () => {
-    const base: KnowledgeOverlay = { tables: { T: { a: "1", b: "2" } }, appends: { x: ["p"] } };
-    const over: KnowledgeOverlay = { tables: { T: { b: "B" } }, appends: { x: ["d"] } };
+    const base: KnowledgeOverlay = { tables: { T: { a: "1", b: "2" } }, appends: { x: ["p"] }, registry: {} };
+    const over: KnowledgeOverlay = { tables: { T: { b: "B" } }, appends: { x: ["d"] }, registry: {} };
     const merged = mergeKnowledgeOverlay(base, over);
     expect(merged.tables.T).toEqual({ a: "1", b: "B" });
     expect(merged.appends.x).toEqual(["d"]);
@@ -48,6 +51,60 @@ describe("rowsToOverlay", () => {
     ] as never);
     expect(overlay.tables.QI_WEALTH_TH["养"]).toBe("ใหม่");
     expect(overlay.appends.health).toEqual(["หนึ่ง", "สอง"]);
+  });
+
+  test("logic + sourcefocus → registry (รายช่อง ordinal)", () => {
+    const overlay = rowsToOverlay([
+      { kind: "logic", groupKey: "personality_baseline", itemKey: "2", value: { text: "กฎใหม่" } },
+      { kind: "sourcefocus", groupKey: "wealth_luck", itemKey: "1", value: { text: "โฟกัสใหม่" } },
+    ] as never);
+    expect(overlay.registry.personality_baseline.logicRules).toEqual({ 2: "กฎใหม่" });
+    expect(overlay.registry.wealth_luck.sourceFocus).toEqual({ 1: "โฟกัสใหม่" });
+  });
+});
+
+describe("resolveOrdinalList / resolveLogicRules / resolveSourceFocus", () => {
+  test("ไม่มี override → คงชุด default เดิม", () => {
+    expect(resolveOrdinalList(["a", "b"], undefined)).toEqual(["a", "b"]);
+  });
+
+  test("override sparse → ทับเฉพาะ ordinal ที่ระบุ (เริ่ม 1)", () => {
+    expect(resolveOrdinalList(["a", "b", "c"], { 2: "B" })).toEqual(["a", "B", "c"]);
+  });
+
+  test("override ค่าว่าง → ลบบรรทัดนั้นทิ้ง", () => {
+    expect(resolveOrdinalList(["a", "b"], { 1: "   " })).toEqual(["b"]);
+  });
+
+  test("override ordinal เกินจำนวน default → ต่อบรรทัดใหม่", () => {
+    expect(resolveOrdinalList(["a"], { 2: "b" })).toEqual(["a", "b"]);
+  });
+
+  test("resolveLogicRules/resolveSourceFocus อ่านจาก registry ของ topic", () => {
+    const overlay: KnowledgeOverlay = {
+      tables: {},
+      appends: {},
+      registry: { t: { logicRules: { 1: "L1" }, sourceFocus: { 1: "F1" } } },
+    };
+    expect(resolveLogicRules(overlay, "t", ["x", "y"])).toEqual(["L1", "y"]);
+    expect(resolveSourceFocus(overlay, "t", ["p"])).toEqual(["F1"]);
+    // topic ที่ไม่มี override → คง default
+    expect(resolveLogicRules(overlay, "other", ["z"])).toEqual(["z"]);
+  });
+
+  test("mergeKnowledgeOverlay: draft ทับ published รายช่องใน registry", () => {
+    const base: KnowledgeOverlay = {
+      tables: {},
+      appends: {},
+      registry: { t: { logicRules: { 1: "P1", 2: "P2" } } },
+    };
+    const over: KnowledgeOverlay = {
+      tables: {},
+      appends: {},
+      registry: { t: { logicRules: { 2: "D2" } } },
+    };
+    const merged = mergeKnowledgeOverlay(base, over);
+    expect(merged.registry.t.logicRules).toEqual({ 1: "P1", 2: "D2" });
   });
 });
 
@@ -87,6 +144,7 @@ describe("buildTopicHumanReading + overlay (request-scoped)", () => {
     const overlay: KnowledgeOverlay = {
       tables: { CHAPTER_INTRO_TH: { talent: "ZZINTRO ทดสอบเกริ่นนำ" } },
       appends: { talent: ["ZZAPPENDED ความรู้ใหม่ที่ซินแสเพิ่ม"] },
+      registry: {},
     };
     const overridden = runWithKnowledgeOverlay(overlay, () =>
       buildTopicHumanReading(state, "talent", raw),
@@ -98,6 +156,36 @@ describe("buildTopicHumanReading + overlay (request-scoped)", () => {
     // นอก scope กลับเป็น default
     expect(currentKnowledgeOverlay()).toBe(EMPTY_OVERLAY);
     expect(buildTopicHumanReading(state, "talent", raw)).toBe(baseline);
+  });
+
+  test("nested table (ELEMENT_TEMPER_TH) override รายช่องด้วย composite key มีผลกับคำทำนาย", async () => {
+    const repo = createTestKnowledgeRepository();
+    const raw = RawInputSchema.parse({
+      birthDate: "1990-01-01",
+      birthTime: "12:00",
+      gender: "male",
+      province: "Bangkok",
+      calendarSystem: "solar",
+      timezone: "Asia/Bangkok",
+    });
+    const state = await calculateBaziChart(raw, repo);
+
+    // override ทุกธาตุ × ทุก temper เพื่อให้ครอบไม่ว่าดวงตัวอย่างจะเป็นธาตุ/ขั้วไหน
+    const temperTable: Record<string, string> = {};
+    for (const el of ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"]) {
+      for (const t of ["balanced", "excess", "deficient"]) {
+        temperTable[`${el}|${t}`] = `ZZTEMPER ${el} ${t}`;
+      }
+    }
+    const overlay: KnowledgeOverlay = {
+      tables: { ELEMENT_TEMPER_TH: temperTable },
+      appends: {},
+      registry: {},
+    };
+    const overridden = runWithKnowledgeOverlay(overlay, () =>
+      buildTopicHumanReading(state, "chart_foundation", raw),
+    );
+    expect(overridden).toContain("ZZTEMPER");
   });
 });
 

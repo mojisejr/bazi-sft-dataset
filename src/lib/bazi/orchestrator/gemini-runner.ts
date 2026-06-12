@@ -14,6 +14,10 @@ import {
   type ChunkPromptBundle,
 } from "@/lib/bazi/orchestrator/prompt-builder";
 import { type CalculatedStateValue, type RawInputValue } from "@/lib/bazi/schema-types";
+import {
+  EMPTY_OVERLAY,
+  type KnowledgeOverlay,
+} from "@/lib/bazi/knowledge/knowledge-overlay";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 const DEFAULT_MAX_ATTEMPTS = 6;
@@ -51,6 +55,8 @@ export type GenerateChunkedTopicDraftOptions = {
     initialDelayMs?: number;
   };
   executeChunk?: (request: ChunkRunnerRequest) => Promise<string>;
+  /** overlay องค์ความรู้ของซินแส (logicRules/sourceFocus) — ทับลง prompt; ไม่ส่ง = ไม่ทับ */
+  knowledgeOverlay?: KnowledgeOverlay;
 };
 
 export type GenerateChunkedTopicDraftResult = {
@@ -237,9 +243,15 @@ export async function generateChunkedTopicDraft(
   const maxAttempts = options.retry?.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
   const initialRetryDelayMs = options.retry?.initialDelayMs ?? DEFAULT_INITIAL_RETRY_DELAY_MS;
   const chunkResults: ChunkExecutionResult[] = [];
+  const knowledgeOverlay = options.knowledgeOverlay ?? EMPTY_OVERLAY;
 
   for (const chunkId of chunkIds) {
-    const promptBundle = buildChunkPromptBundle(options.rawInput, options.calculatedState, chunkId);
+    const promptBundle = buildChunkPromptBundle(
+      options.rawInput,
+      options.calculatedState,
+      chunkId,
+      knowledgeOverlay,
+    );
     const result = await runSingleChunk(
       {
         model,

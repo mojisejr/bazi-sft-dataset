@@ -11,6 +11,13 @@
  */
 import { type TopicDefinition } from "@/lib/bazi/topic-path";
 import { getMergedReadingDoctrine } from "@/lib/bazi/reading-doctrine.server";
+import { getKnowledgeOverlay } from "@/lib/bazi/knowledge-override.server";
+import {
+  EMPTY_OVERLAY,
+  resolveLogicRules,
+  resolveSourceFocus,
+  type KnowledgeOverlay,
+} from "@/lib/bazi/knowledge/knowledge-overlay";
 import { BAZI_TOPIC_REGISTRY } from "@/lib/bazi/knowledge/topic-registry";
 import { getTopicIdsForAnnotationDimension } from "@/lib/bazi/knowledge/topic-dimension-bridge";
 import { type BaziTopicDefinition } from "@/lib/bazi/knowledge/topic-types";
@@ -24,13 +31,38 @@ export type TopicKnowledgeView = {
 
 const REGISTRY_BY_ID = new Map(BAZI_TOPIC_REGISTRY.map((topic) => [topic.id, topic]));
 
+/** ทับ logicRules/sourceFocus ของก้อนความรู้ด้วย overlay (ไม่แตะ field คำนวณ) */
+function applyOverlayToBundle(
+  bundle: BaziTopicDefinition,
+  overlay: KnowledgeOverlay,
+): BaziTopicDefinition {
+  const logic = resolveLogicRules(overlay, bundle.id, bundle.sinsaeLogicRules);
+  const focuses = resolveSourceFocus(
+    overlay,
+    bundle.id,
+    bundle.sourceRefs.map((ref) => ref.reasoningFocus),
+  );
+  return {
+    ...bundle,
+    sinsaeLogicRules: logic.length > 0 ? logic : bundle.sinsaeLogicRules,
+    sourceRefs: bundle.sourceRefs.map((ref, index) => ({
+      ...ref,
+      reasoningFocus: focuses[index] ?? ref.reasoningFocus,
+    })),
+  };
+}
+
 /** ก้อนความรู้ของบทหนึ่ง — หาจาก dimension ของบทนั้น (บทที่ dimension ว่าง/ไม่ map → ว่าง) */
-export function knowledgeForDefinition(definition: TopicDefinition): BaziTopicDefinition[] {
+export function knowledgeForDefinition(
+  definition: TopicDefinition,
+  overlay: KnowledgeOverlay = EMPTY_OVERLAY,
+): BaziTopicDefinition[] {
   if (!definition.evidenceDimension) return [];
   const ids = getTopicIdsForAnnotationDimension(definition.evidenceDimension) ?? [];
   return ids
     .map((id) => REGISTRY_BY_ID.get(id))
-    .filter((entry): entry is BaziTopicDefinition => Boolean(entry));
+    .filter((entry): entry is BaziTopicDefinition => Boolean(entry))
+    .map((entry) => applyOverlayToBundle(entry, overlay));
 }
 
 /** รายการ view รายบท (เฉพาะบททำนาย — บท basis ไม่มีองค์ความรู้ให้แสดง) */
@@ -38,7 +70,12 @@ export async function listTopicKnowledgeViews(
   deps: Parameters<typeof getMergedReadingDoctrine>[0] = {},
 ): Promise<TopicKnowledgeView[]> {
   const merged = await getMergedReadingDoctrine(deps);
+  // overlay = published only (หน้า read-only แสดงค่าที่ "เผยแพร่แล้ว"); best-effort
+  const overlay = await getKnowledgeOverlay().catch(() => EMPTY_OVERLAY);
   return merged
     .filter((definition) => definition.kind === "predict")
-    .map((definition) => ({ definition, knowledge: knowledgeForDefinition(definition) }));
+    .map((definition) => ({
+      definition,
+      knowledge: knowledgeForDefinition(definition, overlay),
+    }));
 }
