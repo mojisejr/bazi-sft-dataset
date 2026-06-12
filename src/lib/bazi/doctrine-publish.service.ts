@@ -16,6 +16,7 @@ import {
 import { invalidateDoctrineConfigCache } from "@/lib/bazi/doctrine-config.server";
 import {
   createDbDoctrineDraftRepository,
+  decodeKnowledgeEntityKey,
   type DoctrineDraftRepository,
   type DoctrineDraftRow,
   type DoctrineDraftSurface,
@@ -24,11 +25,18 @@ import {
   appendDoctrineAuditSafe,
   type DoctrineAuditEntry,
 } from "@/lib/bazi/doctrine-audit-repository";
+import {
+  createDbKnowledgeOverrideRepository,
+  type KnowledgeOverrideKind,
+  type KnowledgeOverrideRepository,
+} from "@/lib/bazi/knowledge-override-repository";
+import { invalidateKnowledgeOverlayCache } from "@/lib/bazi/knowledge-override.server";
 
 export type PublishDeps = {
   draftRepo?: DoctrineDraftRepository;
   topicRepo?: ReadingDoctrineRepository;
   configRepo?: DoctrineConfigRepository;
+  knowledgeRepo?: KnowledgeOverrideRepository;
   appendAudit?: (entry: DoctrineAuditEntry) => Promise<void>;
   onInvalidate?: (surface: DoctrineDraftSurface) => void;
 };
@@ -78,6 +86,32 @@ async function publishRow(row: DoctrineDraftRow, actor: string, deps: PublishDep
       entityKey: row.entityKey,
       action: "upsert",
       value: value as Record<string, unknown>,
+      actor: `${actor} (publish)`,
+    });
+    return { ok: true };
+  }
+
+  if (row.surface === "knowledge") {
+    const decoded = decodeKnowledgeEntityKey(row.entityKey);
+    if (!decoded) {
+      return { ok: false, message: `entityKey ของ knowledge ไม่ถูกต้อง: ${row.entityKey}` };
+    }
+    if (decoded.kind !== "table" && decoded.kind !== "append") {
+      return { ok: false, message: `kind ของ knowledge ไม่รองรับ: ${decoded.kind}` };
+    }
+    const text = (row.value as { text?: string })?.text;
+    if (typeof text !== "string") {
+      return { ok: false, message: `ร่าง knowledge ผิดรูป: ${row.entityKey}` };
+    }
+    const repo = deps.knowledgeRepo ?? createDbKnowledgeOverrideRepository();
+    await repo.upsert(decoded.kind as KnowledgeOverrideKind, decoded.group, decoded.item, text, actor);
+    await (deps.draftRepo ?? createDbDoctrineDraftRepository()).remove("knowledge", row.entityKey);
+    (invalidate ?? (() => invalidateKnowledgeOverlayCache()))("knowledge");
+    await appendAudit({
+      surface: "knowledge",
+      entityKey: row.entityKey,
+      action: "upsert",
+      value: { text },
       actor: `${actor} (publish)`,
     });
     return { ok: true };

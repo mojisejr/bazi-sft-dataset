@@ -18,14 +18,29 @@ import {
   type StepConfig,
   type StepKey,
 } from "@/lib/bazi/doctrine-config";
+import { type KnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
 
-export type DoctrineDraftSurface = "topic" | "config";
+export type DoctrineDraftSurface = "topic" | "config" | "knowledge";
 
 /** ฉบับร่างที่ parse แล้ว แยกตาม surface (พร้อม layer บน published สำหรับ preview) */
 export type ParsedDrafts = {
   topicOverrides: Record<string, ReadingDoctrineOverride>;
   config: DoctrineConfigV2;
+  knowledge: KnowledgeOverlay;
 };
+
+/** entityKey ของ surface "knowledge" = `${kind}|${group}|${item}` (kind=table|append) */
+export function encodeKnowledgeEntityKey(kind: string, group: string, item: string): string {
+  return `${kind}|${group}|${item}`;
+}
+
+export function decodeKnowledgeEntityKey(
+  entityKey: string,
+): { kind: string; group: string; item: string } | null {
+  const [kind, group, ...rest] = entityKey.split("|");
+  if (!kind || !group || rest.length === 0) return null;
+  return { kind, group, item: rest.join("|") };
+}
 
 export type DoctrineDraftRow = SelectBaziDoctrineDraft;
 
@@ -51,7 +66,13 @@ export function createDbDoctrineDraftRepository(db = createDbClient()): Doctrine
 
     async loadParsed() {
       const rows = await db.select().from(baziDoctrineDraft);
-      const parsed: ParsedDrafts = { topicOverrides: {}, config: { steps: {}, roles: {}, stars: {} } };
+      const parsed: ParsedDrafts = {
+        topicOverrides: {},
+        config: { steps: {}, roles: {}, stars: {} },
+        knowledge: { tables: {}, appends: {} },
+      };
+      // append draft: เก็บเป็น bucket ก่อน แล้วเรียงตามลำดับ item ตอนจบ
+      const appendBuckets: Record<string, Array<{ order: number; text: string }>> = {};
 
       for (const row of rows) {
         if (row.surface === "topic") {
@@ -67,7 +88,25 @@ export function createDbDoctrineDraftRepository(db = createDbClient()): Doctrine
           if (scopeRaw === "step") parsed.config.steps[key as StepKey] = value as StepConfig;
           else if (scopeRaw === "role") parsed.config.roles[key as RoleKey] = value as RoleConfig;
           else parsed.config.stars[key as StarKey] = value as StarConfig;
+          continue;
         }
+        if (row.surface === "knowledge") {
+          const decoded = decodeKnowledgeEntityKey(row.entityKey);
+          if (!decoded) continue;
+          const text = (row.value as { text?: string })?.text ?? "";
+          if (decoded.kind === "table") {
+            (parsed.knowledge.tables[decoded.group] ??= {})[decoded.item] = text;
+          } else if (decoded.kind === "append") {
+            (appendBuckets[decoded.group] ??= []).push({ order: Number(decoded.item) || 0, text });
+          }
+        }
+      }
+
+      for (const [topicId, items] of Object.entries(appendBuckets)) {
+        parsed.knowledge.appends[topicId] = items
+          .sort((a, b) => a.order - b.order)
+          .map((item) => item.text)
+          .filter((value) => value.trim().length > 0);
       }
       return parsed;
     },

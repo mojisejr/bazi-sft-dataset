@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { createDbClient } from "@/db/client";
 import { baziDoctrineAudit, type SelectBaziDoctrineAudit } from "@/db/schema";
 
-export type DoctrineAuditSurface = "topic" | "config";
+export type DoctrineAuditSurface = "topic" | "config" | "knowledge";
 export type DoctrineAuditAction = "upsert" | "delete";
 
 export type DoctrineAuditEntry = {

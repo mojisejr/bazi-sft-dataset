@@ -3,6 +3,7 @@ import path from "node:path";
 
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import { K, currentAppends } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 import {
   resolveDisplayStemPairStage,
   resolveDisplayTwelveQiStage,
@@ -841,7 +842,7 @@ function buildChapterOpening(
   calculatedState: CalculatedStateValue,
   topicId: string,
 ): string | null {
-  const headline = CHAPTER_HEADLINE_TH[topicId];
+  const headline = K("CHAPTER_HEADLINE_TH", CHAPTER_HEADLINE_TH)[topicId];
   if (!headline) {
     return null;
   }
@@ -854,7 +855,7 @@ function buildChapterOpening(
   const polarity = YANG_STEM_SET.has(stem) ? "หยาง" : "หยิน";
   const nature = STEM_NATURE_TH[stem] ?? `ธาตุ${elementTh}`;
   const bandClause = BAND_OPENING_TH[resolveStrengthBand(calculatedState)];
-  const aspect = CHAPTER_ASPECT_TH[topicId];
+  const aspect = K("CHAPTER_ASPECT_TH", CHAPTER_ASPECT_TH)[topicId];
   if (!bandClause || !aspect) {
     return headline;
   }
@@ -1169,7 +1170,7 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
 
   // นิสัยที่ควรเสริมเพื่อหนุนดวง = คุณธรรมประจำธาตุที่ดวงต้องการ (useful god) — เลียนโครง your life code
   const usefulVirtues = resolveUsefulElements(calculatedState)
-    .map((element) => (RESOURCE_VIRTUE_TH[element] ? `ธาตุ${element} — ${RESOURCE_VIRTUE_TH[element]}` : null))
+    .map((element) => (K("RESOURCE_VIRTUE_TH", RESOURCE_VIRTUE_TH)[element] ? `ธาตุ${element} — ${K("RESOURCE_VIRTUE_TH", RESOURCE_VIRTUE_TH)[element]}` : null))
     .filter((line): line is string => Boolean(line));
   if (usefulVirtues.length > 0) {
     segments.push(`นิสัยที่ควรพัฒนาเพื่อเสริมดวง (ตามธาตุที่ดวงต้องการ):\n${usefulVirtues.map((line) => `• ${line}`).join("\n")}`);
@@ -1185,7 +1186,7 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
 }
 
 /** มิติพฤติกรรม→อาการ ตามธาตุดิถี (นิสัยที่มักนำไปสู่ปัญหาสุขภาพ) — เลียนโครง your life code */
-const ELEMENT_HEALTH_BEHAVIOR_TH: Record<ThaiElement, string> = {
+export const ELEMENT_HEALTH_BEHAVIOR_TH: Record<ThaiElement, string> = {
   "ไม้": "ในเชิงพฤติกรรม คนดิถีไม้มักคิดมาก แบกความรับผิดชอบ และกดดันตัวเองเรื่องอุดมการณ์ ทำให้เครียดสะสม ตึงคอบ่าไหล่ และกระทบตับกับเส้นเอ็นได้ง่าย ควรหาทางผ่อนคลายและไม่หักโหมเกินไป",
   "ไฟ": "ในเชิงพฤติกรรม คนดิถีไฟมักใจร้อน อารมณ์ขึ้นลงไว และตื่นตัวตลอดเวลา ทำให้นอนไม่พอ ใจสั่น และกระทบหัวใจกับความดันได้ง่าย ควรฝึกสงบใจและพักผ่อนให้เป็นเวลา",
   "ดิน": "ในเชิงพฤติกรรม คนดิถีดินมักครุ่นคิดและเก็บความกังวลไว้ในใจ ชอบแบกเรื่องของคนอื่น ทำให้กระเพาะ ม้าม และระบบย่อยอาหารแปรปรวน ควรรู้จักปล่อยวางและกินอาหารเป็นเวลา",
@@ -1230,7 +1231,9 @@ function buildHealthReading(calculatedState: CalculatedStateValue): string | nul
     return null;
   }
   // (2c) มิติพฤติกรรม→อาการ ตามธาตุดิถี (เลียนโครง your life code: นิสัยนำไปสู่อาการ)
-  const behavior = ELEMENT_HEALTH_BEHAVIOR_TH[elementLabel(dayMasterElement(calculatedState))];
+  const behavior = K("ELEMENT_HEALTH_BEHAVIOR_TH", ELEMENT_HEALTH_BEHAVIOR_TH)[
+    elementLabel(dayMasterElement(calculatedState))
+  ];
   if (behavior) {
     segments.push(behavior);
   }
@@ -1305,7 +1308,7 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     }
     sources.add(WEALTH_SOURCE_TH[pillar]);
     for (const c of cells) {
-      const meaning = QI_WEALTH_TH[c.primaryQi];
+      const meaning = K("QI_WEALTH_TH", QI_WEALTH_TH)[c.primaryQi];
       if (!meaning) {
         continue;
       }
@@ -1353,8 +1356,8 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
   );
   const marketGroups =
     yearStemEl === yearBranchEl
-      ? `กลุ่มธาตุ${yearBranchEl} — ${YEAR_CUSTOMER_TH[yearBranchEl] ?? "กลุ่มคนรอบตัวและสังคมภายนอก"}`
-      : `กลุ่มธาตุ${yearStemEl} (${YEAR_CUSTOMER_TH[yearStemEl] ?? "กลุ่มคนรอบตัว"}) ผสมกับกลุ่มธาตุ${yearBranchEl} (${YEAR_CUSTOMER_TH[yearBranchEl] ?? "กลุ่มสังคมภายนอก"})`;
+      ? `กลุ่มธาตุ${yearBranchEl} — ${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[yearBranchEl] ?? "กลุ่มคนรอบตัวและสังคมภายนอก"}`
+      : `กลุ่มธาตุ${yearStemEl} (${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[yearStemEl] ?? "กลุ่มคนรอบตัว"}) ผสมกับกลุ่มธาตุ${yearBranchEl} (${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[yearBranchEl] ?? "กลุ่มสังคมภายนอก"})`;
   const marketTone = BAD_QI.has(yearMarketQi)
     ? `เสาปีขึ้นเชี่ยงแซ ${yearMarketQi} (สภาวะไม่เด่น) — ให้ดึง “ด้านดี” ของลูกค้ากลุ่มนี้มาทำตลาด`
     : GOOD_QI.has(yearMarketQi)
@@ -2708,22 +2711,22 @@ function buildCareerReading(calculatedState: CalculatedStateValue): string | nul
   // Target/Market — วิธีทายที่ซินแซกำชับ: ดู 12 เชี่ยงแซของเสาปี (ราศีบน-vs-ล่าง)
   const yearPillar = calculatedState.fourPillars.year;
   const yearQi = resolveDisplayTwelveQiStage(yearPillar.stem, yearPillar.branch);
-  const marketLine = QI_MARKET_TH[yearQi]
-    ? `กลุ่มลูกค้า/ตลาดเป้าหมาย (Target/Market — ดูเชี่ยงแซเสาปี ${yearPillar.stem}${yearPillar.branch} → ${yearQi}): ${QI_MARKET_TH[yearQi]}`
+  const marketLine = K("QI_MARKET_TH", QI_MARKET_TH)[yearQi]
+    ? `กลุ่มลูกค้า/ตลาดเป้าหมาย (Target/Market — ดูเชี่ยงแซเสาปี ${yearPillar.stem}${yearPillar.branch} → ${yearQi}): ${K("QI_MARKET_TH", QI_MARKET_TH)[yearQi]}`
     : "";
 
   // กลุ่มลูกค้า/ตลาด จากเสาปี (เสริมตามธาตุ = สังคม/ฐานคนรอบตัว)
   const yearElement = elementLabel(branchElement(calculatedState.fourPillars.year.branch));
-  const customer = `กลุ่มลูกค้าตามธาตุเสาปี (ธาตุ${yearElement}): ${YEAR_CUSTOMER_TH[yearElement]}`;
+  const customer = `กลุ่มลูกค้าตามธาตุเสาปี (ธาตุ${yearElement}): ${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[yearElement]}`;
 
   // กลุ่มที่ "นำเงินเข้า" จากดาวลาภ (财 = ธาตุที่ดิถีพิฆาต) — ตลาดที่ยอมจ่ายให้ดวงนี้จริง
   const wealthLabel = elementLabel(CONTROLS[dm] as SupportedElementValue);
   const wealthCustomer = wealthLabel !== yearElement
-    ? `กลุ่มที่นำเงินเข้าหาดวงนี้ได้ดี (ดูจากดาวลาภ ธาตุ${wealthLabel}): ${YEAR_CUSTOMER_TH[wealthLabel]}`
+    ? `กลุ่มที่นำเงินเข้าหาดวงนี้ได้ดี (ดูจากดาวลาภ ธาตุ${wealthLabel}): ${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[wealthLabel]}`
     : "";
 
   // ช่องทางสื่อสาร/การตลาด จากดาวถ่ายเท (食傷 = วิธีที่ดวงแสดงออก)
-  const outputChannel = `ช่องทางที่ดวงนี้สื่อสารและทำการตลาดได้เป็นธรรมชาติ (ดาวถ่ายเท ธาตุ${elementLabel(output)}): ${OUTPUT_CHANNEL_TH[elementLabel(output)]}`;
+  const outputChannel = `ช่องทางที่ดวงนี้สื่อสารและทำการตลาดได้เป็นธรรมชาติ (ดาวถ่ายเท ธาตุ${elementLabel(output)}): ${K("OUTPUT_CHANNEL_TH", OUTPUT_CHANNEL_TH)[elementLabel(output)]}`;
 
   // พรสวรรค์ → แนวอาชีพ: ดาวถ่ายเทตกเชี่ยงแซตัวใด (12 เซี่ยงแซ × ธาตุถ่ายเท) แล้วชี้สายงานที่ควรไปแสดงออก
   const talentTransfer = buildOutputTransferReading(calculatedState);
@@ -2851,7 +2854,7 @@ function resolveOfficerElement(dm: SupportedElementValue): SupportedElementValue
 }
 
 /** กลุ่มลูกค้า/ตลาด ตามธาตุของเสาปี (เสาปี = Target Market ตามตำรา) */
-const YEAR_CUSTOMER_TH: Record<ThaiElement, string> = {
+export const YEAR_CUSTOMER_TH: Record<ThaiElement, string> = {
   "ไม้": "คนรักการเรียนรู้ สายการศึกษา สื่อ สิ่งพิมพ์ งานสร้างสรรค์ และคนที่ใส่ใจสิ่งแวดล้อม",
   "ไฟ": "คนมีชื่อเสียง สายความงาม บันเทิง การตลาด และกลุ่มที่ตัดสินใจซื้อด้วยอารมณ์",
   "ดิน": "คนมั่นคง สายอสังหาฯ เกษตร ราชการท้องถิ่น และครอบครัวที่เน้นความยั่งยืน",
@@ -2860,7 +2863,7 @@ const YEAR_CUSTOMER_TH: Record<ThaiElement, string> = {
 };
 
 /** ช่องทางสื่อสาร/การตลาดตามธาตุของดาวถ่ายเท (食傷 = วิธีที่ดวงแสดงออก) */
-const OUTPUT_CHANNEL_TH: Record<ThaiElement, string> = {
+export const OUTPUT_CHANNEL_TH: Record<ThaiElement, string> = {
   "ไม้": "งานเขียน คอนเทนต์ความรู้ คอร์ส/สัมมนา และสื่อสิ่งพิมพ์ที่ให้สาระ",
   "ไฟ": "วิดีโอ ไลฟ์ ภาพลักษณ์ การพูดบนเวที และการตลาดที่กระตุ้นอารมณ์/แรงบันดาลใจ",
   "ดิน": "การบอกต่อแบบปากต่อปาก ความน่าเชื่อถือ ของจริงจับต้องได้ และฐานลูกค้าประจำที่ดูแลระยะยาว",
@@ -2870,7 +2873,7 @@ const OUTPUT_CHANNEL_TH: Record<ThaiElement, string> = {
 
 /** Target/Market ตาม 12 เชี่ยงแซของเสาปี (ราศีบน-vs-ล่าง) — ตามวิธีทายที่ซินแซกำชับ
  * เช่น แป่ = ลูกค้าทางไกล/ออนไลน์ + สุขภาพ + ของทันสมัย */
-const QI_MARKET_TH: Record<string, string> = {
+export const QI_MARKET_TH: Record<string, string> = {
   "เชี่ยงแซ": "ลูกค้ากลุ่มใหม่ ตลาดเกิดใหม่ที่ขยายฐานเพิ่มได้เรื่อย ๆ (upscale ได้ต่อเนื่อง)",
   "หมกยก": "ลูกค้าสายไลฟ์สไตล์ ความงาม บริการที่ต้องคอยดูแลปรับจูน กลุ่มที่เปลี่ยนรสนิยมบ่อย",
   "กวงตั่ว": "ลูกค้าที่ซื้อด้วยภาพลักษณ์/แบรนด์/ความน่าเชื่อถือ กลุ่มที่ใส่ใจสถานะ",
@@ -2886,7 +2889,7 @@ const QI_MARKET_TH: Record<string, string> = {
 };
 
 /** ลักษณะลาภผลตาม 12 เชี่ยงแซของตำแหน่งที่ดาวลาภปรากฏ — โชคลาภหลายทาง อ่านตามแต่ละตำแหน่ง */
-const QI_WEALTH_TH: Record<string, string> = {
+export const QI_WEALTH_TH: Record<string, string> = {
   "เชี่ยงแซ": "โชคลาภสายใหม่ที่ค่อย ๆ โตและต่อยอดเพิ่มได้เรื่อย ๆ",
   "หมกยก": "เงินที่มาจากบริการ/เสน่ห์ แต่ไม่นิ่ง ต้องคอยปรับจูนและดูแล",
   "กวงตั่ว": "ลาภจากภาพลักษณ์ ชื่อเสียง และความน่าเชื่อถือที่สั่งสมไว้",
@@ -2941,11 +2944,11 @@ function buildBenefactorReading(calculatedState: CalculatedStateValue): string |
   }
 
   // แนวทางเรียกผู้อุปถัมภ์ = สร้างบารมีด้วย "คุณธรรมประจำธาตุส่งเสริม" (印 = สิ่งที่หล่อเลี้ยงดิถี)
-  const cultivate = `แนวทางสร้างผู้อุปถัมภ์: สั่งสมบารมีด้วยคุณธรรมประจำธาตุส่งเสริม (ธาตุ${elementLabel(resource)}) — ${RESOURCE_VIRTUE_TH[elementLabel(resource)]} ยิ่งบ่มเพาะสิ่งเหล่านี้ ดาวส่งเสริมยิ่งแข็ง ผู้ใหญ่และโอกาสจะเข้ามาเองตามจังหวะ`;
+  const cultivate = `แนวทางสร้างผู้อุปถัมภ์: สั่งสมบารมีด้วยคุณธรรมประจำธาตุส่งเสริม (ธาตุ${elementLabel(resource)}) — ${K("RESOURCE_VIRTUE_TH", RESOURCE_VIRTUE_TH)[elementLabel(resource)]} ยิ่งบ่มเพาะสิ่งเหล่านี้ ดาวส่งเสริมยิ่งแข็ง ผู้ใหญ่และโอกาสจะเข้ามาเองตามจังหวะ`;
 
   const lead = `ผู้อุปถัมภ์ดูจากดาวส่งเสริม (ธาตุ${elementLabel(resource)}) และดาวอำนาจ-ตำแหน่ง (ธาตุ${elementLabel(power)}) โดยเฉพาะที่เสาปี/เดือน ซึ่งแทนผู้ใหญ่และปู่ย่าตระกูล`;
   // "ใครคือผู้อุปถัมภ์" — แปลธาตุส่งเสริม/อำนาจเป็นกลุ่มคน (อ้างตารางหลักชิง + เทียบ your life code)
-  const benefactorTypes = `กลุ่มผู้อุปถัมภ์ที่หนุนดวงนี้: ${FAMILY_KINSHIP_TH["ธาตุส่งเสริม"]} (ผู้ให้กำเนิดและครูบาอาจารย์ที่คอยเกื้อหนุน มักเป็นผู้ใหญ่ใจดีหรือผู้ให้ที่มีความเป็นแม่) รวมถึงผู้ใหญ่ในสายงานหรือเจ้านายที่เปิดโอกาส (ดาวอำนาจ-ตำแหน่ง ธาตุ${elementLabel(power)}) คุณมักได้แรงหนุนผ่านความเมตตาและการชี้แนะ มากกว่าการต้องแก่งแย่งแข่งขันด้วยตนเอง`;
+  const benefactorTypes = `กลุ่มผู้อุปถัมภ์ที่หนุนดวงนี้: ${K("FAMILY_KINSHIP_TH", FAMILY_KINSHIP_TH)["ธาตุส่งเสริม"]} (ผู้ให้กำเนิดและครูบาอาจารย์ที่คอยเกื้อหนุน มักเป็นผู้ใหญ่ใจดีหรือผู้ให้ที่มีความเป็นแม่) รวมถึงผู้ใหญ่ในสายงานหรือเจ้านายที่เปิดโอกาส (ดาวอำนาจ-ตำแหน่ง ธาตุ${elementLabel(power)}) คุณมักได้แรงหนุนผ่านความเมตตาและการชี้แนะ มากกว่าการต้องแก่งแย่งแข่งขันด้วยตนเอง`;
   if (hits.length === 0) {
     return `${lead}\n\n${benefactorTypes}\n\nบนชั้นหลักไม่พบดาวส่งเสริม/อำนาจที่เสาปี-เดือนชัดเจน จึงมักต้องอาศัยความพยายามของตนเองเป็นหลัก ผู้อุปถัมภ์จะมาเป็นจังหวะตามวัยจรที่ธาตุส่งเสริมเข้ามา\n\n${cultivate}`;
   }
@@ -2953,7 +2956,7 @@ function buildBenefactorReading(calculatedState: CalculatedStateValue): string |
 }
 
 /** คุณธรรมประจำธาตุ (五常) ที่ใช้บ่มเพาะดาวส่งเสริม (印) เพื่อเรียกบารมี/ผู้อุปถัมภ์ */
-const RESOURCE_VIRTUE_TH: Record<ThaiElement, string> = {
+export const RESOURCE_VIRTUE_TH: Record<ThaiElement, string> = {
   "ไม้": "เมตตากรุณา (仁) ช่วยเหลือเกื้อกูล ใจกว้าง และใฝ่เรียนรู้พัฒนาตน",
   "ไฟ": "มีมารยาทสัมมาคารวะ (礼) อ่อนน้อมต่อผู้ใหญ่ ให้ความรู้/สั่งสอน ปฏิบัติธรรม และนั่งสมาธิ",
   "ดิน": "ซื่อสัตย์รักษาคำพูด (信) หนักแน่นน่าเชื่อถือ และกตัญญูต่อผู้มีพระคุณ",
@@ -2979,7 +2982,7 @@ const QI_FAMILY_TH: Record<string, string> = {
 
 /** บท 6 ครอบครัว = เสาเดือน (พ่อแม่) + เสาปี (ปู่ย่า) อ่านตาม 12 เซียงแซ พร้อมคำแปล (พ่อ=ราศีบน แม่=ราศีล่าง) */
 /** วงศาคณาญาติจากปฏิกิริยาธาตุ (ตารางหลักชิง 六亲) — เทียบธาตุเทียบดิถี → ญาติที่ธาตุนั้นแทน */
-const FAMILY_KINSHIP_TH: Record<RelationRole, string> = {
+export const FAMILY_KINSHIP_TH: Record<RelationRole, string> = {
   "คู่ธาตุ": "ตัวเรา พี่น้อง (ชาย/หญิง)",
   "ธาตุถ่ายเท": "คุณย่า คุณตา ลูกศิษย์ (+ ลูก ถ้าเป็นดวงหญิง)",
   "ธาตุส่งเสริม": "คุณแม่ คุณปู่ ครู/อาจารย์", // กำเนิดธาตุ (印)
@@ -3005,7 +3008,7 @@ function buildKinshipByElementLines(calculatedState: CalculatedStateValue): stri
     const note = present
       ? "มีในดวง — สายญาตินี้มีบทบาท/ผูกพันชัด"
       : "ไม่ปรากฏในดวง — สายญาตินี้มักห่างเหินหรือมีบทบาทน้อย";
-    return `• ${role} (ธาตุ${elementLabel(element)}) = ${FAMILY_KINSHIP_TH[role]} → ${note}`;
+    return `• ${role} (ธาตุ${elementLabel(element)}) = ${K("FAMILY_KINSHIP_TH", FAMILY_KINSHIP_TH)[role]} → ${note}`;
   });
 }
 
@@ -3401,7 +3404,7 @@ function buildDerivedPersonReading(
 
 /** ย่อหน้าปิดท้าย = บทสรุปเฉพาะของบทนั้น (ไม่ซ้ำกันทุกบท) */
 function buildChapterAdvice(_calculatedState: CalculatedStateValue, topicId: string): string {
-  return CHAPTER_SUMMARY_TH[topicId] ?? "";
+  return K("CHAPTER_SUMMARY_TH", CHAPTER_SUMMARY_TH)[topicId] ?? "";
 }
 
 /**
@@ -3435,13 +3438,15 @@ export function buildTopicHumanReading(
     elementLabel(dayMasterElement(calculatedState)),
     topicId,
   );
-  return composeParagraphs([
-    CHAPTER_INTRO_TH[topicId],
+  const composed = composeParagraphs([
+    K("CHAPTER_INTRO_TH", CHAPTER_INTRO_TH)[topicId],
     opening,
     wovenBody,
     buildChapterAdvice(calculatedState, topicId),
     closing,
   ]);
+  // เฟส 2: ต่อย่อหน้าความรู้ที่ซินแสเพิ่มออนไลน์ (always-on ต่อบท) — ถ้าไม่มี ผลเท่าเดิม
+  return [composed, ...currentAppends(topicId)].filter((part) => part.trim().length > 0).join("\n\n");
 }
 
 /**
