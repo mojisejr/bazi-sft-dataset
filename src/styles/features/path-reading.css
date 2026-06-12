@@ -248,6 +248,27 @@
 .topic-card__box--editing {
   box-shadow: 0 0 0 2px var(--rp-accent, #2563eb) inset;
 }
+/* แถบเครื่องมือจัดรูปแบบในกล่องแก้ (ตัวหนา/เน้นแดง/สี/ขนาด — marker เดียวกับ PDF) */
+.topic-card__box-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+.topic-card__box-tool {
+  font-size: 0.78rem;
+  color: var(--rp-ink, #3d4548);
+  background: var(--rp-surface, #fff);
+  border: 1px solid var(--rp-border, #cbd5e1);
+  border-radius: 0.4rem;
+  padding: 0.2rem 0.55rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.topic-card__box-tool:hover {
+  background: var(--rp-accent-soft, rgba(37, 99, 235, 0.08));
+}
 .topic-card__box--editing .topic-card__sinsae-textarea {
   margin-top: 0.5rem;
   width: 100%;

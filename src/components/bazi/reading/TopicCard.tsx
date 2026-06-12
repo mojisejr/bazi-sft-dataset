@@ -6,6 +6,7 @@ import { ActionButton } from "@/components/bazi/primitives/Action";
 import { StatusChip } from "@/components/bazi/primitives/StatusChip";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import { SinsaeRuleBuilder, type AddRuleInput } from "@/components/bazi/reading/SinsaeRuleBuilder";
+import { READING_COLORS } from "@/lib/bazi/reading-colors";
 import { tokenizeInline } from "@/lib/bazi/reading-inline";
 import type { SinsaeCorrection } from "@/lib/bazi/sinsae-corrections";
 import type { TopicDefinition, TopicEngineReading } from "@/lib/bazi/topic-reading";
@@ -356,6 +357,23 @@ export function TopicCard({
   const [editingBoxIdx, setEditingBoxIdx] = useState<number | null>(null);
   const [boxDraft, setBoxDraft] = useState("");
   const sinsaeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const boxTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // เครื่องมือจัดรูปแบบในกล่องแก้: ครอบข้อความที่เลือกด้วย marker inline (**หนา** / ***แดง*** /
+  // [[c=..]] / [[s=..]]) — ไวยากรณ์เดียวกับ PDF/Word/การ์ด (tokenizer กลาง) จึงเห็นผลตรงกันทุกที่
+  const wrapBoxSelection = (before: string, after: string) => {
+    const el = boxTextareaRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? boxDraft.length;
+    const end = el.selectionEnd ?? boxDraft.length;
+    const selected = boxDraft.slice(start, end) || "ข้อความ";
+    const next = `${boxDraft.slice(0, start)}${before}${selected}${after}${boxDraft.slice(end)}`;
+    setBoxDraft(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + before.length, start + before.length + selected.length);
+    });
+  };
 
   // แทรกตัวแบ่งหน้า ([[pagebreak]]) ที่ตำแหน่ง cursor ของ textarea — ดูผลใน preview ก่อนทำ PDF
   const insertPageBreak = () => {
@@ -507,7 +525,60 @@ export function TopicCard({
                         return (
                           <div key={segIdx} className="ylc-box topic-card__box topic-card__box--editing">
                             <div className="ylc-box__title">{seg.title}</div>
+                            <div className="topic-card__box-toolbar" role="toolbar" aria-label="เครื่องมือจัดรูปแบบ">
+                              <button
+                                type="button"
+                                className="topic-card__box-tool"
+                                title="ตัวหนา (**ข้อความ**)"
+                                onClick={() => wrapBoxSelection("**", "**")}
+                              >
+                                <strong>B</strong> ตัวหนา
+                              </button>
+                              <button
+                                type="button"
+                                className="topic-card__box-tool"
+                                title="เน้นแดง (***ข้อความ***)"
+                                onClick={() => wrapBoxSelection("***", "***")}
+                              >
+                                <strong className="ylc-warn">A</strong> เน้นแดง
+                              </button>
+                              <select
+                                className="topic-card__box-tool"
+                                value=""
+                                title="สีตัวอักษร ([[c=สี]]…[[/c]])"
+                                onChange={(event) => {
+                                  if (event.target.value) {
+                                    wrapBoxSelection(`[[c=${event.target.value}]]`, "[[/c]]");
+                                  }
+                                }}
+                              >
+                                <option value="">สี…</option>
+                                {READING_COLORS.map((color) => (
+                                  <option key={color.key} value={color.key}>
+                                    {color.label}
+                                  </option>
+                                ))}
+                              </select>
+                              <select
+                                className="topic-card__box-tool"
+                                value=""
+                                title="ขนาดตัวอักษร ([[s=พอยต์]]…[[/s]])"
+                                onChange={(event) => {
+                                  if (event.target.value) {
+                                    wrapBoxSelection(`[[s=${event.target.value}]]`, "[[/s]]");
+                                  }
+                                }}
+                              >
+                                <option value="">ขนาด…</option>
+                                {[12, 14, 16, 18, 20, 24].map((pt) => (
+                                  <option key={pt} value={pt}>
+                                    {pt} pt
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
                             <textarea
+                              ref={boxTextareaRef}
                               className="topic-card__sinsae-textarea"
                               value={boxDraft}
                               rows={Math.min(16, Math.max(4, boxDraft.split("\n").length + 1))}

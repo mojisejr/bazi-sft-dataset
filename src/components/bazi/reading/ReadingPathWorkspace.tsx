@@ -13,7 +13,6 @@ import {
   ReadingPrintDocument,
   type PrintChapter,
 } from "@/components/bazi/reading/ReadingPrintDocument";
-import { RelationshipLinesEditor } from "@/components/bazi/reading/RelationshipLinesEditor";
 import {
   TopicCard,
   type RelationshipLineRow,
@@ -974,7 +973,7 @@ export function ReadingPathWorkspace({
                       rawInput={rawInput}
                       calculatedState={calculatedState}
                       chapters={printChapters}
-                      relationshipLines={relationshipLines}
+                      relationshipLines={null}
                       onSaveChapter={handleSaveCorrection}
                       onChangeLines={setRelationshipLines}
                       onGenerateLines={() => void handleGenerateRelationshipNotes()}
@@ -995,7 +994,6 @@ export function ReadingPathWorkspace({
                         rawInput={rawInput}
                         calculatedState={calculatedState}
                         chapters={printChapters}
-                        relationshipLines={relationshipLines}
                       />
                     </PagedPreview>
                   )}
@@ -1033,15 +1031,8 @@ export function ReadingPathWorkspace({
         </section>
       )}
 
-      {isReady && relationshipLines && relationshipLines.length > 0 && (
-        <RelationshipLinesEditor
-          rows={relationshipLines}
-          onChange={setRelationshipLines}
-          onGenerateDeepNotes={() => void handleGenerateRelationshipNotes()}
-          generating={generatingLines}
-          canGenerate={canGenerateLines}
-        />
-      )}
+      {/* ตารางบทเสริมวัยจร (RelationshipLinesEditor) ถูกถอดออก — เนื้อหาเดียวกันอยู่ใน
+          กล่อง "ลิสต์ช่วงอายุ 16 วัยจร" ของบท 12 (แก้ผ่านกล่องในบทแทน) */}
     </div>
   );
 }

@@ -1207,13 +1207,18 @@ const STRENGTH_BAND_LABEL_TH: Record<string, string> = {
   "very-strong": "แข็งไป (แข็งมาก)",
 };
 
-/** ประกอบกล่อง (box) markdown: [[box=หัวข้อย่อย]] + เนื้อใน (คั่นด้วยบรรทัดว่าง) — คืน "" ถ้าไม่มีเนื้อหา */
+/**
+ * ประกอบกล่อง (box) markdown: [[box=หัวข้อย่อย]] + เนื้อใน (คั่นด้วยบรรทัดว่าง) — คืน "" ถ้าไม่มีเนื้อหา
+ * เนื้อในขึ้นต้นด้วย "ชื่อหัวข้อย่อย" เป็นย่อหน้าแรกเสมอ เพื่อให้ซินแสเห็น/แก้หัวข้อได้ตอนแก้กล่อง
+ * และให้หัวข้อติดไปกับข้อความล้วนตอน export PDF/Word (การ์ดยังโชว์หัวสีน้ำเงินจาก [[box=...]] ด้วย)
+ */
 function readingBox(title: string, paragraphs: Array<string | null | undefined>): string {
   const body = paragraphs
     .map((part) => (part ?? "").trim())
     .filter((part) => part.length > 0)
     .join("\n\n");
-  return body ? `[[box=${title}]]\n${body}\n[[/box]]` : "";
+  // ชื่อหัวข้อเป็น **ตัวหนา** — tokenizer กลางตัวเดียวทำให้หนาทั้งการ์ด/กล่องแก้/PDF/Word
+  return body ? `[[box=${title}]]\n**${title}**\n\n${body}\n[[/box]]` : "";
 }
 
 /**
@@ -1397,7 +1402,17 @@ const WEALTH_VAULT_BRANCH_BY_DAY_STEM: Record<string, string> = {
   庚: "未", 辛: "未", 壬: "戌", 癸: "戌",
 };
 
-function buildWealthReading(calculatedState: CalculatedStateValue): string | null {
+/** กลุ่มของย่อหน้าโชคลาภ → ใช้จัดกล่อง (box) บท 3: เนื้อหลัก / สิ่งพึงระวัง / ข้อเสนอแนะ
+ *  timing = จังหวะการเงินตามวัย (อายุ/ปีชง) — คงไว้ใน prose แต่ "ตัดออกจากกล่อง" (ซินแสสั่ง: เรื่องอายุไปบท 12) */
+type WealthSegmentGroup = "main" | "caution" | "advice" | "timing";
+type WealthSegment = { text: string; group: WealthSegmentGroup };
+
+/**
+ * เก็บย่อหน้าคำทำนายโชคลาภพร้อม "tag กลุ่ม" ตามลำดับเดิม — ใช้ร่วมกัน 2 ทาง:
+ *  prose path (buildWealthReading) = ต่อ text ตามลำดับเดิมเป๊ะ (output ไม่เปลี่ยน → test เดิมเขียว)
+ *  box path (buildWealthBoxes) = แยกเข้ากล่องตามหัวข้อย่อย docx (เนื้อหลัก/ระวัง/เสนอแนะ)
+ */
+function collectWealthSegments(calculatedState: CalculatedStateValue): WealthSegment[] {
   const dm = dayMasterElement(calculatedState);
   const wealth = CONTROLS[dm] as SupportedElementValue; // ดาวลาภ = ธาตุที่ดิถีพิฆาต
   const wealthLabel = elementLabel(wealth);
@@ -1457,21 +1472,24 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     }
   }
 
-  const segments: string[] = [];
+  const segments: WealthSegment[] = [];
+  const push = (text: string, group: WealthSegmentGroup = "main") =>
+    segments.push({ text, group });
 
   // (1) กำลังดาวลาภ
   if (wealthStrength === "strong") {
-    segments.push(`ดวงนี้ดาวโชคลาภ (ธาตุ${wealthLabel}) แข็งแรง มีโอกาสและช่องทางการเงินที่ดีอยู่ในดวง`);
+    push(`ดวงนี้ดาวโชคลาภ (ธาตุ${wealthLabel}) แข็งแรง มีโอกาสและช่องทางการเงินที่ดีอยู่ในดวง`);
   } else if (wealthStrength === "weak" || wealthStrength === "missing") {
-    segments.push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) ไม่เด่น โอกาสการเงินมักต้องสร้างขึ้นเองเป็นจังหวะ มากกว่าจะลอยมาเอง`);
+    push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) ไม่เด่น โอกาสการเงินมักต้องสร้างขึ้นเองเป็นจังหวะ มากกว่าจะลอยมาเอง`);
   } else {
-    segments.push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) มีกำลังปานกลาง ค่อย ๆ สะสมได้ตามความสม่ำเสมอ`);
+    push(`ดาวโชคลาภ (ธาตุ${wealthLabel}) มีกำลังปานกลาง ค่อย ๆ สะสมได้ตามความสม่ำเสมอ`);
   }
 
   // (1a) จังหวะการเงิน ณ ปัจจุบัน (YLC style) — ผูกอายุจริง + ปี/เดือนชง
+  // group "timing" → คงใน prose แต่ตัดออกจากกล่อง (ซินแสสั่ง: เรื่องช่วงอายุไปอยู่บท 12)
   const wealthTiming = buildCurrentTimingLines(calculatedState);
   if (wealthTiming.length > 0) {
-    segments.push(`จังหวะการเงินตามวัย (ดูช่วงที่กำลังเดินและจังหวะที่ต้องระวัง):\n${wealthTiming.join("\n")}`);
+    push(`จังหวะการเงินตามวัย (ดูช่วงที่กำลังเดินและจังหวะที่ต้องระวัง):\n${wealthTiming.join("\n")}`, "timing");
   }
 
   // (1b) Market Target ตามที่ซินแซกำชับ = ผสมธาตุ "ราศีบนปี + ราศีล่างปี" เป็นกลุ่มลูกค้า
@@ -1491,14 +1509,14 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     : GOOD_QI.has(yearMarketQi)
       ? `เสาปีขึ้นเชี่ยงแซ ${yearMarketQi} (สภาวะดี) — ทายกลุ่มลูกค้านี้ได้ตรง ๆ เต็มที่`
       : `เสาปีขึ้นเชี่ยงแซ ${yearMarketQi}`;
-  segments.push(
+  push(
     `แหล่งโชคลาภที่แท้จริง / กลุ่มลูกค้าที่นำเงินเข้าหาดวงนี้ (Market Target — ผสมธาตุราศีบนปี ${calculatedState.fourPillars.year.stem} + ราศีล่างปี ${calculatedState.fourPillars.year.branch}): ${marketGroups} — ${marketTone}`,
   );
 
   // (2) ที่ทรัพย์ปรากฏในดวง (ตำแหน่งดาวลาภ) + อ่านแต่ละตำแหน่งตาม 12 เชี่ยงแซ
   if (sources.size > 0) {
     const header = `ที่ทรัพย์ปรากฏในดวง (ดาวลาภ ธาตุ${wealthLabel}) ที่ ${[...sources].join(" และ ")} — อ่านความหมายแต่ละตำแหน่ง:`;
-    segments.push(positionWealthLines.length > 0 ? `${header}\n${positionWealthLines.join("\n")}` : `ดาวลาภปรากฏที่ ${[...sources].join(" และ ")}`);
+    push(positionWealthLines.length > 0 ? `${header}\n${positionWealthLines.join("\n")}` : `ดาวลาภปรากฏที่ ${[...sources].join(" และ ")}`);
   } else {
     // (2b) ไม่มีธาตุลาภโผล่เป็นตัวหลัก → ดูลาภแฝง: น้ำแฝงในกิ่ง + ไฉ่โข่ว + วัยจร
     const hiddenWealthPillars = (["year", "month", "day", "hour"] as PillarKey[]).filter((pillar) => {
@@ -1507,12 +1525,12 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
       return hidden.some((stem) => stemElement(stem) === wealth);
     });
     const where = hiddenWealthPillars.map((pillar) => PILLAR_LABEL_TH[pillar]).join(" และ ");
-    segments.push(
+    push(
       `ดวงนี้ไม่มีธาตุลาภ (ธาตุ${wealthLabel}) โผล่เป็นตัวหลัก จึงดู “ลาภแฝง” แทน${
         where ? ` — มีธาตุลาภแฝงอยู่ในกิ่งที่${where} (ราศีแฝง) ลาภจึงมาแบบไม่เปิดเผย ค่อย ๆ สะสม` : ""
       }`,
     );
-    segments.push(
+    push(
       "*สำคัญ: ดิถีกึ่งแข็งกึ่งอ่อนที่ไม่มีธาตุลาภในดวง ความร่ำรวยจะอยู่ที่ “วัยจร” เป็นหลัก — ช่วงวัยจรที่ดาวลาภเข้ามาดี = รวยขึ้นชัดเจน; ระหว่างที่ยังไม่มีลาภเข้า ถ้าขยันทำงาน (ดาวถ่ายเท) ก็ยังมีกินมีใช้เสมอ มากน้อยขึ้นกับจังหวะวัยจร",
     );
   }
@@ -1520,19 +1538,22 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
   // (3) ลักษณะลาภผล — ดิถีอ่อน=รายได้สะสมต่อเนื่อง (passive); ดิถี"แข็งมาก"(従强 印比ครอบงำ ไม่มีดาวลาภเด่น)
   // ก็เน้น passive เช่นกัน (your life code: สิริกัญญา 壬แข็งมาก → passive income); ดิถีแข็ง/สมดุล=คว้าเงินก้อน
   const passiveIncomeStyle = dmWeak || band === "very-strong";
-  segments.push(
+  push(
     passiveIncomeStyle
       ? "ลักษณะลาภผล: เด่นเรื่องรายได้แบบสะสมต่อเนื่อง (passive income) เช่น ค่าเช่า เงินเดือน ค่าคอมมิชชัน หรือรายได้ประจำหลายทางรวมกัน เริ่มทีละน้อยแล้วทบเป็นก้อนใหญ่ มากกว่าการเสี่ยงเงินก้อนครั้งเดียว"
       : "ลักษณะลาภผล: เหมาะกับการคว้าเงินก้อนจากการลงทุนหรือธุรกิจที่ลงมือทำเอง กล้าตัดสินใจในจังหวะที่มั่นใจ",
   );
 
   // (4) ดิถีอ่อน → ต้องพยายามมากกว่าจะคว้าโอกาสเป็นผล + โฟกัสสิ่งที่ถนัดที่สุด + เหมาะงานนายหน้า/ตัวกลาง
+  // (จัดเป็น "สิ่งพึงระวัง" ในกล่อง box — ความเสี่ยงจมทุน/เป็นหนี้ของดิถีอ่อน)
   if (dmWeak) {
-    segments.push(
+    push(
       "แต่เพราะดิถีอ่อน จึงต้องใช้แรงกาย แรงใจ และความพยายามมากกว่าคนอื่นในการเปลี่ยนโอกาสให้กลายเป็นผลลัพธ์จริง — เงื่อนไขสำคัญคือต้องโฟกัสสิ่งที่ตนถนัดและเชี่ยวชาญที่สุดเพียงทางเดียว ไม่ทำหลายอย่างพร้อมกัน",
+      "caution",
     );
-    segments.push(
+    push(
       "ด้วยดิถีอ่อน เหมาะกับงานนายหน้า ตัวกลาง หรือเชื่อมโยงคนเข้าหากัน ที่ใช้ทุนต่ำมากกว่าการสต๊อกสินค้าก้อนใหญ่ เพราะการลงทุนหนักในสินค้าเสี่ยงจมทุนหรือเป็นหนี้ได้ง่าย",
+      "caution",
     );
   }
 
@@ -1544,7 +1565,7 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     return elems.includes(wealth) || elems.includes(resource);
   });
   if (ancestralWealth) {
-    segments.push(
+    push(
       "มีเกณฑ์ได้รับทรัพย์จากมรดก ทรัพย์สินเก่า หรือสิ่งสะสมที่มูลค่าเพิ่มตามเวลา (เช่น บ้าน ที่ดิน ของเก่า) โดยเฉพาะเมื่อเข้าสู่วัยกลางคน",
     );
   }
@@ -1562,7 +1583,7 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
       const opened = (["year", "month", "day", "hour"] as PillarKey[]).some(
         (pillar) => calculatedState.fourPillars[pillar].branch === opener,
       );
-      segments.push(
+      push(
         `ดวงนี้มี “ไฉ่โข่ว” (财库 คลังทรัพย์ธาตุ${wealthLabel}) ที่${where} — มีดวงเก็บสะสมทรัพย์เป็นกอบเป็นกำ มีคลังเงินไว้ใช้ยามจำเป็น` +
           (opened
             ? ` และคลังนี้ถูกชง (${vaultBranch}-${opener}) = “เปิดคลัง” ทรัพย์ที่สะสมไว้จะได้นำออกมาใช้จริงเป็นช่วง ๆ`
@@ -1585,7 +1606,8 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     }
     const hits = damageList.filter((entry) => chartStems.has(entry.stem));
     for (const hit of hits) {
-      segments.push(`ขุมคลังถูกทำลาย (มีก้าน ${hit.stem} ในผัง): ${hit.effect} — ควรวางระบบเก็บออม/กันรายจ่ายให้รัดกุมเป็นพิเศษ`);
+      // ผั่วไฉ่โข่ว (破财库 คลังทรัพย์ถูกทำลาย) = แก่นของ "สิ่งพึงระวัง" บท 3
+      push(`ขุมคลังถูกทำลาย (มีก้าน ${hit.stem} ในผัง): ${hit.effect} — ควรวางระบบเก็บออม/กันรายจ่ายให้รัดกุมเป็นพิเศษ`, "caution");
     }
   }
 
@@ -1596,7 +1618,7 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
     return stemElement(value.stem) === output || branchElement(value.branch) === output;
   });
   if (hasOutput) {
-    segments.push(
+    push(
       "ช่องทางลาภเด่นแบบ “ดาวถ่ายเทสร้างลาภ” (食傷生财) คือใช้ทักษะ/บริการดึงเงิน กลุ่มลูกค้าที่นำทรัพย์เข้ามามักเป็นคนอายุน้อยกว่า รุ่นน้อง หรือผู้ที่ต้องการการดูแลเอาใจใส่",
     );
   }
@@ -1607,10 +1629,57 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
   // (6) แนบหลักการตามตำรา (wealth.txt) ถ้ามี
   const bookLine = parseWealthByBand()?.get(band);
   if (bookLine) {
-    segments.push(`หลักการตามตำรา: ${bookLine}`);
+    push(`หลักการตามตำรา: ${bookLine}`);
   }
 
-  return segments.length > 0 ? segments.join("\n\n") : null;
+  return segments;
+}
+
+function buildWealthReading(calculatedState: CalculatedStateValue): string | null {
+  const segments = collectWealthSegments(calculatedState);
+  return segments.length > 0 ? segments.map((segment) => segment.text).join("\n\n") : null;
+}
+
+/**
+ * หัวข้อย่อยของบท 3 "โชคลาภที่ถูกทาง" ตาม docs/ทายดวง 15 หัวข้อ.docx
+ * 3 กล่อง: ทายโชคลาภ (ดิถี→ถ่ายเท→โชคลาภ + 12 เชี่ยงแซ) / สิ่งพึงระวัง (ผั่วไฉ่โข่ว) / ข้อเสนอแนะ
+ */
+const WEALTH_SUBTOPICS = {
+  fortune: "ทายโชคลาภ (ดิถี → ธาตุถ่ายเท → ธาตุโชคลาภ)",
+  caution: "สิ่งพึงระวัง (ผั่วไฉ่โข่ว / กึ่งผั่วไฉ่โข่ว)",
+  advice: "ข้อเสนอแนะ (เพิ่มเงินเก็บ ลดรายจ่าย)",
+} as const;
+
+/**
+ * บท 3 (โชคลาภ) ฉบับ "กล่อง" ตาม docs/ทายดวง 15 หัวข้อ.docx — reuse collectWealthSegments เดิม
+ * (ข้อเท็จจริง/ลำดับคงเดิม) จัดเข้า 3 กล่อง: เนื้อหลัก (นำด้วยสายโซ่ธาตุ) / สิ่งพึงระวัง / ข้อเสนอแนะ
+ */
+function buildWealthBoxes(calculatedState: CalculatedStateValue): string | null {
+  const segments = collectWealthSegments(calculatedState);
+  if (segments.length === 0) {
+    return null;
+  }
+  const pick = (group: WealthSegmentGroup) =>
+    segments.filter((segment) => segment.group === group).map((segment) => segment.text);
+
+  const dm = dayMasterElement(calculatedState);
+  const dmElementTh = elementLabel(dm);
+  const outputElTh = elementLabel(GENERATES[dm] as SupportedElementValue);
+  const wealthElTh = elementLabel(CONTROLS[dm] as SupportedElementValue);
+  // ย่อหน้านำกล่องแรก = สายโซ่ธาตุตามชื่อหัวข้อย่อย docx (ดิถี → ถ่ายเท → โชคลาภ)
+  const chainLead = `อ่านโชคลาภเป็นสายโซ่: ดิถี (ธาตุ${dmElementTh}) → การกระทำ/สิ่งที่ลงมือ (ธาตุถ่ายเท ${outputElTh}) → ผลลัพธ์/โชคลาภ (ธาตุ${wealthElTh}) — ดูว่าธาตุโชคลาภปรากฏที่ตำแหน่งใดในผัง แล้วอ่านความหมายตาม 12 เชี่ยงแซของแต่ละตำแหน่ง`;
+
+  // ในกล่อง: ตัดเลข % กำกับ (~80%/~20%) ออกให้อ่านกระชับ (ซินแสสั่ง) — pick("main") ไม่รวม timing แล้ว
+  const stripPercent = (text: string) => text.replace(/\s*\(~\d+%\)/g, "");
+  const fortuneBox = readingBox(WEALTH_SUBTOPICS.fortune, [chainLead, ...pick("main").map(stripPercent)]);
+  const cautionBox = readingBox(WEALTH_SUBTOPICS.caution, pick("caution"));
+  const adviceBox = readingBox(WEALTH_SUBTOPICS.advice, [
+    ...pick("advice"),
+    buildChapterAdvice(calculatedState, "wealth_and_investment"),
+  ]);
+
+  const boxes = [fortuneBox, cautionBox, adviceBox].filter((box) => box.length > 0);
+  return boxes.length > 0 ? boxes.join("\n\n") : null;
 }
 
 // ───────── Batch 2: วัยจร (luck-cycle.txt) คีย์ด้วย strength band × บทบาทธาตุของวัยจร ─────────
@@ -2873,6 +2942,129 @@ function buildCareerReading(calculatedState: CalculatedStateValue): string | nul
     .join("\n\n");
 }
 
+/**
+ * หัวข้อย่อยของบท 2 "อาชีพ / ธุรกิจ ที่ควรทำ และไม่ควรทำ" ตาม docs/ทายดวง 15 หัวข้อ.docx
+ * โครง: กล่องแรกบรรยายภาพรวมดิถี/แนวทางหาเงิน แล้วตามด้วยอาชีพควรทำ (อันดับ 1-3 แล้วแต่ธาตุ)
+ * และไม่ควรทำ (อันดับ 1-2 แล้วแต่ธาตุ) — แต่ละหัวข้อย่อย = หนึ่งกล่องให้ซินแสแก้ง่าย
+ */
+const CAREER_SUBTOPICS = {
+  basis: "ภาพรวมดิถีกับแนวทางการงาน",
+  do1: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 1",
+  do2: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 2",
+  do3: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 3 (บางคนมี)",
+  avoid1: "อาชีพ/ธุรกิจ ที่ไม่ควรทำ อันดับ 1",
+  avoid2: "อาชีพ/ธุรกิจ ที่ไม่ควรทำ อันดับ 2 (บางคนมี)",
+} as const;
+
+/** เหตุผลว่าทำไมอาชีพสายธาตุนี้เป็นคุณกับดวง (อิงบทบาทธาตุเทียบดิถี) */
+function careerElementRole(element: ThaiElement, dm: SupportedElementValue): string {
+  const resourceTh = elementLabel(inverseGenerate(dm));
+  const companionTh = elementLabel(dm);
+  const outputTh = elementLabel(GENERATES[dm] as SupportedElementValue);
+  const wealthTh = elementLabel(CONTROLS[dm] as SupportedElementValue);
+  if (element === resourceTh)
+    return "ธาตุส่งเสริมดิถี (印) หนุนกำลังดวงได้เต็มที่ จึงเป็นสายงานที่ดีที่สุด";
+  if (element === companionTh)
+    return "คู่ธาตุดิถี (比) ช่วยเสริมกำลังดวงโดยตรง เหมาะเป็นสายงานรอง";
+  if (element === outputTh)
+    return "ดาวถ่ายเท (食傷) ได้ใช้ทักษะและความถนัดแปลงเป็นรายได้";
+  if (element === wealthTh)
+    return "ดาวลาภ (财) ที่ดิถีกำกับได้ = ทรัพย์เข้าหาดวงโดยตรง";
+  return "ธาตุที่เป็นคุณกับดวง";
+}
+
+/**
+ * บท 2 (อาชีพ/ธุรกิจ) ฉบับ "กล่อง" ตาม docs/ทายดวง 15 หัวข้อ.docx — reuse ชิ้นส่วนเดียวกับ
+ * buildCareerReading (frame/moneyWay/useful-god/officer/drain) เพื่อคงข้อเท็จจริงเดิม
+ * แต่จัดเป็นกล่องตามหัวข้อย่อย: ภาพรวม → ควรทำ 1-3 → ไม่ควรทำ 1-2 (จำนวนกล่องแล้วแต่ธาตุของดวง)
+ */
+function buildCareerBoxes(calculatedState: CalculatedStateValue): string | null {
+  const careers = parseSource7Careers();
+  if (!careers) {
+    return null;
+  }
+  const dm = dayMasterElement(calculatedState);
+  const output = GENERATES[dm] as SupportedElementValue;
+  const band = resolveStrengthBand(calculatedState);
+  const dmWeak = band === "weak" || band === "very-weak";
+  const dmStrong = band === "strong" || band === "very-strong";
+
+  // ── กล่อง 1: ภาพรวมดิถี + วิธีหาเงิน + พรสวรรค์→งาน + กลุ่มลูกค้า/ช่องทาง (บรรยายดิถี) ──
+  const frame = dmWeak
+    ? "ด้วยกำลังดิถีที่ไม่มากนัก ดวงนี้ไม่เหมาะกับการลุยเดี่ยวแบกทุกอย่างไว้คนเดียว ควรใช้ทักษะและความถนัด (ดาวถ่ายเท) เป็นเครื่องมือหาเงิน และทำงานในระบบที่มีคนช่วยซัพพอร์ต"
+    : dmStrong
+      ? "ด้วยกำลังดิถีที่เข้มแข็ง ดวงนี้ลงมือทำเองได้เต็มที่ ควรเลือกงานที่ได้ระบายพลังออกมาเป็นผลงานและทรัพย์อย่างต่อเนื่อง"
+      : "ด้วยสภาวะดิถีที่กึ่งแข็งกึ่งอ่อน ดวงนี้เลือกอาชีพแบบ “ควบ 2 ฐาน” คือธาตุที่หนุนทั้งกำลังดิถีและหลักเดือนไปพร้อมกัน จะมั่นคงที่สุด";
+  const moneyWay = `วิธีหาเงินที่ถนัดที่สุดคือการใช้ “ดาวถ่ายเท” (ธาตุ${elementLabel(output)}) แปลงความรู้และทักษะให้กลายเป็นรายได้ มากกว่าการลงแรงกายแลกเงิน`;
+
+  const talentTransfer = buildOutputTransferReading(calculatedState);
+  const talentPillar =
+    talentTransfer.pillars.find((pillar) => pillar.carriesOutputElement) ??
+    talentTransfer.pillars.find((pillar) => pillar.pillarKey === "day");
+  const aptitudeBridge = talentPillar
+    ? buildAptitudeCareerBridge(talentPillar.stageChinese, output)
+    : null;
+
+  const yearPillar = calculatedState.fourPillars.year;
+  const yearQi = resolveDisplayTwelveQiStage(yearPillar.stem, yearPillar.branch);
+  const marketLine = K("QI_MARKET_TH", QI_MARKET_TH)[yearQi]
+    ? `กลุ่มลูกค้า/ตลาดเป้าหมาย (Target/Market — ดูเชี่ยงแซเสาปี ${yearPillar.stem}${yearPillar.branch} → ${yearQi}): ${K("QI_MARKET_TH", QI_MARKET_TH)[yearQi]}`
+    : "";
+  const yearElement = elementLabel(branchElement(calculatedState.fourPillars.year.branch));
+  const customer = `กลุ่มลูกค้าตามธาตุเสาปี (ธาตุ${yearElement}): ${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[yearElement]}`;
+  const wealthLabel = elementLabel(CONTROLS[dm] as SupportedElementValue);
+  const wealthCustomer = wealthLabel !== yearElement
+    ? `กลุ่มที่นำเงินเข้าหาดวงนี้ได้ดี (ดูจากดาวลาภ ธาตุ${wealthLabel}): ${K("YEAR_CUSTOMER_TH", YEAR_CUSTOMER_TH)[wealthLabel]}`
+    : "";
+  const outputChannel = `ช่องทางที่ดวงนี้สื่อสารและทำการตลาดได้เป็นธรรมชาติ (ดาวถ่ายเท ธาตุ${elementLabel(output)}): ${K("OUTPUT_CHANNEL_TH", OUTPUT_CHANNEL_TH)[elementLabel(output)]}`;
+
+  const box1 = readingBox(CAREER_SUBTOPICS.basis, [
+    frame,
+    moneyWay,
+    aptitudeBridge,
+    marketLine,
+    customer,
+    wealthCustomer,
+    outputChannel,
+  ]);
+
+  // ── กล่องอาชีพ "ควรทำ" (อันดับ 1-3 ตามจำนวนธาตุที่เป็นคุณกับดวง) ──
+  const doTitles = [CAREER_SUBTOPICS.do1, CAREER_SUBTOPICS.do2, CAREER_SUBTOPICS.do3];
+  const doBoxes = resolveUsefulElements(calculatedState)
+    .slice(0, 3)
+    .map((element, idx) => {
+      const desc = careers.get(element);
+      if (!desc) {
+        return "";
+      }
+      return readingBox(doTitles[idx], [
+        `อาชีพธาตุ${element} (useful god) — ${careerElementRole(element, dm)}`,
+        desc,
+      ]);
+    });
+
+  // ── กล่องอาชีพ "ไม่ควรทำ" อันดับ 1 = ธาตุที่พิฆาตดิถี (官杀) กดดัน/บั่นทอนกำลังดวง ──
+  const avoidTh = elementLabel(resolveOfficerElement(dm));
+  const avoidBox1 = readingBox(CAREER_SUBTOPICS.avoid1, [
+    `สายงานธาตุ${avoidTh} เป็นธาตุที่พิฆาตดิถี กดดันและบั่นทอนกำลังของดวง จึงควรเลี่ยงเป็นอันดับแรก`,
+    careers.get(avoidTh) ?? null,
+  ]);
+
+  // ── กล่องอาชีพ "ไม่ควรทำ" อันดับ 2 (บางคนมี) = ดาวถ่ายเทที่ดูดกำลังดิถีกึ่งแข็งกึ่งอ่อน ──
+  const drainTh = band === "balanced"
+    ? elementLabel(resolveBalancedDualBaseCareer(calculatedState).drain)
+    : null;
+  const avoidBox2 = drainTh && drainTh !== avoidTh
+    ? readingBox(CAREER_SUBTOPICS.avoid2, [
+        `สายงานธาตุ${drainTh} (ดาวถ่ายเท) จะดูดกำลังดิถีที่ก้ำกึ่งอยู่แล้วให้อ่อนลง ทำให้ฐานไม่แน่น`,
+        careers.get(drainTh) ?? null,
+      ])
+    : "";
+
+  const boxes = [box1, ...doBoxes, avoidBox1, avoidBox2].filter((box) => box.length > 0);
+  return boxes.length > 0 ? boxes.join("\n\n") : null;
+}
+
 function buildPartnershipReading(calculatedState: CalculatedStateValue): string | null {
   const map = parseCareerBusinessByBand();
   if (!map) {
@@ -3081,6 +3273,76 @@ function buildBenefactorReading(calculatedState: CalculatedStateValue): string |
     return `${lead}\n\n${benefactorTypes}\n\nบนชั้นหลักไม่พบดาวส่งเสริม/อำนาจที่เสาปี-เดือนชัดเจน จึงมักต้องอาศัยความพยายามของตนเองเป็นหลัก ผู้อุปถัมภ์จะมาเป็นจังหวะตามวัยจรที่ธาตุส่งเสริมเข้ามา\n\n${cultivate}`;
   }
   return `${lead}\n\n${benefactorTypes}\n\n${hits.join("\n")}\n\n${cultivate}`;
+}
+
+/**
+ * หัวข้อย่อยของบท 4 "ผู้อุปถัมภ์ที่พร้อมช่วยเหลือคือใคร" ตาม docs/ทายดวง 15 หัวข้อ.docx
+ * 4 กล่องตามบทบาทธาตุ (印 ส่งเสริม / 比 คู่ธาตุ / 食傷 ถ่ายเท-บริวาร / 财 โชคลาภ-ลูกค้า)
+ * แต่ละกล่อง: เชี่ยงแซดีไหม + อยู่ตรงไหน + คือใคร + ลักษณะอย่างไร
+ */
+const BENEFACTOR_SUBTOPICS = {
+  resource: "ธาตุส่งเสริม (印) — เชี่ยงแซดี อยู่ตรงไหน คือใคร ลักษณะอย่างไร",
+  companion: "คู่ธาตุ (比) — เชี่ยงแซดี อยู่ตรงไหน คือใคร ลักษณะอย่างไร",
+  output: "ธาตุถ่ายเท/บริวาร (食傷) — เชี่ยงแซดี อยู่ตรงไหน คือใคร ลักษณะอย่างไร",
+  wealth: "ธาตุโชคลาภ/ลูกค้า (财) — อยู่ตรงไหน คือใคร ลักษณะอย่างไร",
+} as const;
+
+/** "คือใคร" ของแต่ละบทบาทธาตุในบริบทผู้อุปถัมภ์ (อิงตารางหลักชิง + บริบทคนช่วยเหลือ) */
+const BENEFACTOR_PERSON_TH: Record<"resource" | "companion" | "output" | "wealth", string> = {
+  resource: "ผู้อุปถัมภ์ ผู้ใหญ่ ครูบาอาจารย์ และเจ้านาย/นายทุนที่เปิดโอกาสและคอยให้ความรู้-แรงหนุน",
+  companion: "เพื่อน พี่น้อง และหุ้นส่วนรุ่นเดียวกันที่เคียงข้างคอยช่วยเหลือแบ่งเบา",
+  output: "ลูกน้อง บริวาร ลูกศิษย์ และคนรุ่นน้องที่ลงแรงทำงานสร้างผลงานให้",
+  wealth: "ลูกค้า ผู้จ่ายเงิน และกลุ่มคนที่นำทรัพย์เข้ามาหาดวงนี้",
+};
+
+/**
+ * บท 4 (ผู้อุปถัมภ์) ฉบับ "กล่อง" ตาม docs/ทายดวง 15 หัวข้อ.docx — 4 บทบาทธาตุ
+ * reuse primitive เดิม: ปฏิกิริยา 5 ธาตุ + 12 เชี่ยงแซ (GOOD_QI/BAD_QI) + ELEMENT_TEMPER_TH (ลักษณะคนตามธาตุ)
+ */
+function buildBenefactorBoxes(calculatedState: CalculatedStateValue): string | null {
+  const dm = dayMasterElement(calculatedState);
+  const roles: Array<{
+    key: keyof typeof BENEFACTOR_SUBTOPICS;
+    element: SupportedElementValue;
+  }> = [
+    { key: "resource", element: inverseGenerate(dm) },
+    { key: "companion", element: dm },
+    { key: "output", element: GENERATES[dm] as SupportedElementValue },
+    { key: "wealth", element: CONTROLS[dm] as SupportedElementValue },
+  ];
+
+  const boxes = roles.map(({ key, element }) => {
+    const elTh = elementLabel(element);
+    // อยู่ตรงไหน + เชี่ยงแซ: สแกนทั้ง 4 เสาหาตำแหน่งที่ธาตุนี้ปรากฏ (ราศีบน/ล่าง) แล้วอ่าน 12 เชี่ยงแซ self-seat
+    const positions: string[] = [];
+    for (const pillar of ["year", "month", "day", "hour"] as PillarKey[]) {
+      const value = calculatedState.fourPillars[pillar];
+      const places: string[] = [];
+      if (stemElement(value.stem) === element) places.push(`ราศีบน ${value.stem}`);
+      if (branchElement(value.branch) === element) places.push(`ราศีล่าง ${value.branch}`);
+      if (places.length === 0) continue;
+      const qi = resolveDisplayTwelveQiStage(value.stem, value.branch);
+      const verdict = GOOD_QI.has(qi)
+        ? "เชี่ยงแซดี (มีพลังหนุนเต็มที่ คนกลุ่มนี้ช่วยได้จริง)"
+        : BAD_QI.has(qi)
+          ? "เชี่ยงแซเสีย (อ่อนแรง ต้องประคอง หรือช่วยได้ไม่เต็มที่)"
+          : "เชี่ยงแซระดับกลาง (พอมีบทบาทแต่ไม่เด่น)";
+      positions.push(`${PILLAR_LABEL_TH[pillar]} (${places.join(" + ")}) ตกเชี่ยงแซ ${qi} → ${verdict}`);
+    }
+    const whereLine = positions.length > 0
+      ? `อยู่ตรงไหน (ธาตุ${elTh}):`
+      : `อยู่ตรงไหน: ธาตุ${elTh}ไม่ปรากฏเด่นในผังหลัก — คนกลุ่มนี้มักเข้ามาเป็นจังหวะช่วงวัยจรที่ธาตุ${elTh}เด่นขึ้น`;
+    const trait = ELEMENT_TEMPER_TH[elTh]?.balanced;
+    return readingBox(BENEFACTOR_SUBTOPICS[key], [
+      whereLine,
+      ...positions,
+      `คือใคร: ${BENEFACTOR_PERSON_TH[key]}`,
+      trait ? `ลักษณะอย่างไร: คนกลุ่มนี้มักมีคุณสมบัติแบบธาตุ${elTh} — ${trait}` : null,
+    ]);
+  });
+
+  const filtered = boxes.filter((box) => box.length > 0);
+  return filtered.length > 0 ? filtered.join("\n\n") : null;
 }
 
 /** คุณธรรมประจำธาตุ (五常) ที่ใช้บ่มเพาะดาวส่งเสริม (印) เพื่อเรียกบารมี/ผู้อุปถัมภ์ */
@@ -3530,6 +3792,267 @@ function buildDerivedPersonReading(
   }
 }
 
+// ───────── โครงกล่อง (box) ทุกบท ตาม docs/ทายดวง 15 หัวข้อ.docx ─────────
+// ทุกบทเริ่มด้วย "กล่องเกริ่นนำ" (คอนเซ็ปต์บท + พาดหัวดิถีสไตล์ YLC) แล้วตามด้วยกล่องหัวข้อย่อย
+// บทที่หัวข้อย่อยแม็พจาก prose เดิมได้ → ใช้ spec จัดย่อหน้าเข้ากล่อง (prose path ไม่แตะ)
+
+const INTRO_BOX_TITLE = "เกริ่นนำ";
+
+/** กล่องเกริ่นนำของบท = คอนเซ็ปต์บท (CHAPTER_INTRO_TH) + พาดหัวดิถีสไตล์ YLC (buildChapterOpening) */
+function buildIntroBox(calculatedState: CalculatedStateValue, topicId: string): string {
+  return readingBox(INTRO_BOX_TITLE, [
+    K("CHAPTER_INTRO_TH", CHAPTER_INTRO_TH)[topicId],
+    buildChapterOpening(calculatedState, topicId),
+  ]);
+}
+
+/** spec จัดย่อหน้า prose เข้ากล่องตามหัวข้อย่อย docx — rule แรกที่ match ชนะ, ไม่ match → กล่อง main */
+type TopicBoxSpec = {
+  /** หัวกล่องแรก (รับย่อหน้าที่ไม่เข้า rule ไหน) */
+  main: string;
+  rules: Array<{ title: string; match: RegExp }>;
+  /** ย่อหน้าที่ตัดออกจากกล่อง (คงใน prose) เช่น บล็อกช่วงอายุที่ย้ายไปบท 12 */
+  exclude?: RegExp;
+  /** หัวกล่องข้อเสนอแนะปิดท้าย (default "ข้อเสนอแนะ") */
+  adviceTitle?: string;
+};
+
+/** จัดย่อหน้าของ prose body เข้ากล่องตาม spec + ปิดด้วยกล่องข้อเสนอแนะ (chapter advice) */
+function buildBoxesFromBody(
+  calculatedState: CalculatedStateValue,
+  topicId: string,
+  body: string,
+  spec: TopicBoxSpec,
+): string | null {
+  const paragraphs = body.split("\n\n").map((part) => part.trim()).filter((part) => part.length > 0);
+  if (paragraphs.length === 0) {
+    return null;
+  }
+  const buckets = new Map<string, string[]>();
+  buckets.set(spec.main, []);
+  for (const rule of spec.rules) {
+    if (!buckets.has(rule.title)) {
+      buckets.set(rule.title, []);
+    }
+  }
+  for (const paragraph of paragraphs) {
+    if (spec.exclude?.test(paragraph)) {
+      continue;
+    }
+    const rule = spec.rules.find((entry) => entry.match.test(paragraph));
+    buckets.get(rule ? rule.title : spec.main)!.push(paragraph);
+  }
+  // กล่องข้อเสนอแนะ: ถ้าชื่อชนกับกล่องที่มีอยู่ (เช่นบทสุขภาพ) ให้รวมเข้ากล่องเดิมแทนเปิดกล่องใหม่
+  const adviceTitle = spec.adviceTitle ?? "ข้อเสนอแนะ";
+  const advice = buildChapterAdvice(calculatedState, topicId);
+  const boxes: string[] = [];
+  if (buckets.has(adviceTitle)) {
+    buckets.get(adviceTitle)!.push(advice);
+  }
+  for (const [title, parts] of buckets.entries()) {
+    boxes.push(readingBox(title, parts));
+  }
+  if (!buckets.has(adviceTitle)) {
+    boxes.push(readingBox(adviceTitle, [advice]));
+  }
+  const filtered = boxes.filter((box) => box.length > 0);
+  return filtered.length > 0 ? filtered.join("\n\n") : null;
+}
+
+/** spec รายบท (หัวข้อย่อยตาม docx) สำหรับบทที่จัดกล่องจาก prose เดิม */
+const TOPIC_BOX_SPECS: Record<string, TopicBoxSpec> = {
+  talent: {
+    main: "พรสวรรค์จากดาวถ่ายเท (ดิถี → การกระทำ → ผลลัพธ์)",
+    rules: [{ title: "วาทศิลป์/การสื่อสาร", match: /^วาทศิลป์\/การสื่อสาร/ }],
+    adviceTitle: "ข้อเสนอแนะ (พรสวรรค์นำไปใช้ในอาชีพ/ธุรกิจที่ควรทำ)",
+  },
+  family: {
+    main: "ภาพรวมครอบครัวและวงศาคณาญาติ",
+    rules: [
+      { title: "ลักษณะหลักปี (ปู่ย่าตายาย บรรพบุรุษ)", match: /^เสาปี / },
+      { title: "ลักษณะหลักเดือน (ครอบครัวพ่อแม่ที่ให้กำเนิด)", match: /^เสาเดือน / },
+      { title: "ลักษณะพ่อ (ราศีบนหลักเดือน)", match: /^พ่อ \(/ },
+      { title: "ลักษณะแม่ (ราศีล่างหลักเดือน)", match: /^แม่ \(/ },
+      { title: "สิ่งพึงระวัง", match: /^การชง \(冲\)/ },
+    ],
+    adviceTitle: "ข้อเสนอแนะ (จิตวิทยา พฤติกรรมแก้ไข)",
+  },
+  love_partner: {
+    main: "ลักษณะชีวิตคู่ตามพื้นดวง",
+    rules: [
+      { title: "คู่ครองมีลักษณะอย่างไร", match: /^ลักษณะคู่ครอง \(ตารางหลักวัน|^ลักษณะคู่รักตามตำรา/ },
+      { title: "มีคู่ครองที่เหมาะสมหรือไม่", match: /ปรากฏหลายตำแหน่งในดวง/ },
+      { title: "สิ่งที่ควรระวัง", match: /^การผั่ว \(破\)|^การชง \(冲\)/ },
+    ],
+    adviceTitle: "ข้อเสนอแนะ (จิตวิทยา พฤติกรรมแก้ไข)",
+  },
+  partnership: {
+    main: "ลักษณะหุ้นส่วนตามพื้นดวง",
+    rules: [
+      { title: "ลักษณะมีส่วนในการหา/รักษา/ยักยอก/ทรัพย์", match: /^แนวทางทำธุรกิจ\/หุ้นส่วน:/ },
+      { title: "ควรมี/ไม่มี ถ้ามีแล้วบริหารจัดการอย่างไร", match: /^ราศีล่างหลักวัน|^คำทำนายหุ้นส่วน/ },
+    ],
+    // บล็อกช่วงอายุ (วัยจร) ตัดออกจากกล่อง — เรื่องจังหวะอายุรวมที่บท 12 (คงใน prose เดิม)
+    exclude: /^ช่วงอายุที่/,
+  },
+  subordinates: {
+    main: "ลักษณะบริวารตามพื้นดวง",
+    rules: [
+      { title: "ลักษณะมีส่วนในการหา/รักษา/ยักยอก/ทรัพย์", match: /\(ดาวถ่ายเทธาตุ/ },
+      { title: "ควรมี/ไม่มี ถ้ามีแล้วบริหารจัดการอย่างไร", match: /^คำทำนายบริวารตามตำรา/ },
+    ],
+  },
+  education: {
+    main: "วิธี/ทักษะที่ทำให้โชคลาภเพิ่มพูน หน้าที่การงานก้าวหน้า",
+    rules: [
+      { title: "เรียนวิชาตามอาชีพถูกดวง", match: /^ควรเรียนสายที่ตรงกับธาตุ|^• สายธาตุ/ },
+    ],
+  },
+  health: {
+    main: "โรคจากปฏิกิริยาในพื้นดวง/วัยจร (เจ๊าะ/ผั่ว/ชง และตำแหน่งสภาวะตก)",
+    rules: [
+      { title: "โรคจากธาตุที่น้อยเกินไป/ธาตุที่มากเกินไป", match: /^ธาตุ.+(อ่อนแอ|มากเกินไป):/ },
+      {
+        title: "ข้อเสนอแนะการดูแลและการรักษา",
+        match: /^แนวทางดูแล:|^ในเชิงพฤติกรรม/,
+      },
+    ],
+    adviceTitle: "ข้อเสนอแนะการดูแลและการรักษา",
+  },
+  colors_directions: {
+    main: "เสื้อผ้าเครื่องแต่งกาย / สีมงคลประจำดวง",
+    rules: [
+      { title: "โทรศัพท์ โน้ตบุ๊ก แท็บเล็ต เครื่องมือหาเงิน", match: /^สีกระเป๋าสตางค์/ },
+      { title: "รถยนต์", match: /^สีรถยนต์/ },
+      { title: "ทิศมงคล", match: /^ทิศมงคล:/ },
+    ],
+  },
+  guardian_deities: {
+    main: "องค์เทพคุ้มครองดวงชะตา",
+    rules: [{ title: "ทำบุญเสริมดวง", match: /^สิ่งศักดิ์สิทธิ์ตามธาตุที่ดวงต้องการ/ }],
+  },
+};
+
+/** หัวข้อย่อยบท 8 (เพื่อน/ศัตรู) ตาม docx — จัดกล่องจาก scanPositionRelations ตรง ๆ (มิตร/ศัตรูแยกกล่อง) */
+function buildFriendsFoesBoxes(calculatedState: CalculatedStateValue): string | null {
+  const lead =
+    "เพื่อน/ศัตรูดูจาก “ตัวอักษรในผัง” ที่ขึ้น 12 เชี่ยงแซ — ตำแหน่งที่ขึ้นเชี่ยงแซดีคือมิตรแท้/ผู้สนับสนุน ส่วนตำแหน่งที่เชี่ยงแซเสีย (ซวย/ซี่/เจ๊าะ) คือคู่แข่ง/ศัตรู และทายตามความหมายของเสานั้น";
+  const scan = scanPositionRelations(calculatedState);
+  const lineOf = ({ pillar, char, element, qi, kind }: ReturnType<typeof scanPositionRelations>[number]) => {
+    const who = FRIEND_POSITION_TH[pillar];
+    const verdict = kind === "friend"
+      ? `มิตรแท้/ผู้สนับสนุน — ${who} (ธาตุ${element}) เข้ามาหนุน`
+      : kind === "foe"
+        ? `ระวังเป็นคู่แข่ง/ศัตรู — แรงเสียดทานจาก${who} (ธาตุ${element})`
+        : `${who} (ธาตุ${element}) แบบที่ต้องคอยประคองและเคลียร์ปัญหา (ดี-ร้ายปนกัน)`;
+    return `${PILLAR_LABEL_TH[pillar]} ${char} (${qi}) = ${verdict}`;
+  };
+  const friendLines = scan.filter((entry) => entry.kind === "friend").map(lineOf);
+  const foeLines = scan.filter((entry) => entry.kind !== "friend").map(lineOf);
+
+  const band = resolveStrengthBand(calculatedState);
+  const insight =
+    band === "very-strong" || band === "strong"
+      ? "ข้อสังเกตเรื่องผลประโยชน์: ดิถีแข็งมีพลังพอจะเป็นฝ่ายนำและให้ เมื่อร่วมงานกับเพื่อน คุณมักได้ชื่อเสียง การยอมรับ และภาพลักษณ์ ส่วนเพื่อนมักได้ผลประโยชน์ทางการเงินมากกว่า — ไม่ใช่เสียเปรียบ แต่สะท้อนว่าจุดแข็งของคุณคือบารมีมากกว่าตัวเงินตรง ๆ ควรตกลงเรื่องผลตอบแทนให้ชัดก่อนเริ่มงาน"
+      : band === "very-weak" || band === "weak"
+        ? "ข้อสังเกตเรื่องผลประโยชน์: ดิถีอ่อนได้เพื่อน/พันธมิตรเป็นแรงหนุนสำคัญที่ช่วยแบกภาระและเปิดโอกาส ควรเลือกคบคนที่เติมพลังและจุดที่ดวงขาดจริง ๆ แล้วตอบแทนน้ำใจอย่างสม่ำเสมอ มิตรภาพจะกลายเป็นทุนชีวิตที่ยั่งยืน"
+        : "ข้อสังเกตเรื่องผลประโยชน์: ดิถีสมดุลให้-รับกับเพื่อนได้พอ ๆ กัน ความสัมพันธ์จะยืนยาวเมื่อรักษาสมดุลของผลประโยชน์และน้ำใจให้เท่าเทียม";
+
+  const boxes = [
+    readingBox("มิตรแท้ มีใครบ้าง ลักษณะอย่างไร", [
+      lead,
+      ...(friendLines.length > 0
+        ? friendLines
+        : ["ผังหลักไม่มีตำแหน่งมิตรเด่นชัดเจน เพื่อนผู้สนับสนุนจึงเข้ามาเป็นช่วงตามวัยจร"]),
+    ]),
+    readingBox("สิ่งที่ควรระวัง/ข้อเสนอแนะเกี่ยวกับมิตรแท้", [insight]),
+    readingBox("ศัตรู มีใครบ้าง ลักษณะอย่างไร", [
+      ...(foeLines.length > 0
+        ? foeLines
+        : ["ผังหลักไม่มีตำแหน่งศัตรู/คู่แข่งเด่นชัดเจน แรงเสียดทานมักมาเป็นช่วงตามวัยจร"]),
+    ]),
+    readingBox("สิ่งที่ควรระวัง/ข้อเสนอแนะเกี่ยวกับศัตรู", [
+      buildChapterAdvice(calculatedState, "friends_foes"),
+    ]),
+  ].filter((box) => box.length > 0);
+  return boxes.length > 0 ? boxes.join("\n\n") : null;
+}
+
+/**
+ * บท 12 (วัยจร) ฉบับ "กล่อง" — ลิสต์ช่วงอายุ 16 วัยจร (แทนตารางเสริมท้ายเอกสารที่ถูกถอดออก)
+ * แต่ละช่วง = อายุ/สัญลักษณ์/ปฏิกิริยา → 12 เชี่ยงแซ/คำทำนายเชิงลึก (ข้อมูลเดียวกับตารางเดิม)
+ */
+function buildTurningPointsBoxes(calculatedState: CalculatedStateValue): string | null {
+  const rows = buildRelationshipLinesMapping(calculatedState);
+  if (rows.length === 0) {
+    return null;
+  }
+  const current = findCurrentDaYunPhase(calculatedState);
+  const lead =
+    "วิเคราะห์จังหวะชีวิตตั้งแต่วัยจรแรกจนถึงบั้นปลาย โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี — เกรดแต่ละช่วง: ⭐⭐⭐ ยุคทอง (รุกเต็มที่) · ⭐⭐ โอกาสมาพร้อมภาระ (รุกแต่ต้องหาคนช่วย) · ⭐ เฝ้าระวัง (ตั้งรับ) · ◇ ช่วงทั่วไป";
+  const lines = rows.map((row) => {
+    const tag = current && row.ageRange === current.ageRange ? " ◆ ช่วงปัจจุบัน" : "";
+    return `อายุ ${row.ageRange}${tag} (${row.symbol} — ${row.relationLine}): ${luckGradeToStars(row.deepNote)}`;
+  });
+
+  // ปีจรปัจจุบัน (liu nian) + จังหวะปัจจุบัน + พยากรณ์รายปี — โครงเดียวกับ buildLuckCycleReading
+  const liuNian = calculatedState.liuNian;
+  let liuNianLine = "";
+  if (liuNian) {
+    const band = resolveStrengthBand(calculatedState);
+    const dm = dayMasterElement(calculatedState);
+    const lnElement = stemElement(liuNian.stem);
+    const lnRole = resolveRelationRole(dm, lnElement);
+    const lnQi = ((calculatedState.twelveQi as Record<string, string>).currentLiuNianBranch ?? "").trim();
+    const curAge = current ? Number.parseInt(current.ageRange, 10) : undefined;
+    const lnVerdict = buildLuckPhaseVerdict(band, lnRole, lnQi, Number.isNaN(curAge as number) ? undefined : curAge);
+    liuNianLine = `ปีจรปัจจุบัน (${liuNian.stem}${liuNian.branch} ธาตุ${elementLabel(lnElement)} เป็น${lnRole}${lnQi ? ` → ${lnQi}` : ""}): ${luckGradeToStars(lnVerdict)}`;
+  }
+  const timing = buildCurrentTimingLines(calculatedState);
+  const timingBlock = timing.length > 0 ? `จังหวะ ณ ปัจจุบัน:\n${timing.join("\n")}` : "";
+  const yearly = buildLiuNianYearlyForecast(calculatedState);
+
+  const boxes = [
+    readingBox("ลิสต์ช่วงอายุ 16 วัยจร (ช่วงอายุ/ปฏิกิริยา/12 เชี่ยงแซ/คำทำนาย)", [lead, ...lines]),
+    readingBox("ปีจรปัจจุบันและพยากรณ์รายปี", [liuNianLine, timingBlock, yearly]),
+    readingBox("ข้อเสนอแนะ", [buildChapterAdvice(calculatedState, "turning_points")]),
+  ].filter((box) => box.length > 0);
+  return boxes.length > 0 ? boxes.join("\n\n") : null;
+}
+
+/** dispatcher กล่องทุกบท: บทที่มี builder เฉพาะ → ใช้ตัวนั้น, บทที่เหลือ → จัดกล่องจาก prose ตาม spec */
+function buildTopicBoxes(
+  calculatedState: CalculatedStateValue,
+  topicId: string,
+  rawInput?: RawInputValue,
+): string | null {
+  switch (topicId) {
+    case "chart_foundation":
+      return buildChartFoundationBoxes(calculatedState);
+    case "career_potential":
+      return buildCareerBoxes(calculatedState);
+    case "wealth_and_investment":
+      return buildWealthBoxes(calculatedState);
+    case "benefactor":
+      return buildBenefactorBoxes(calculatedState);
+    case "friends_foes":
+      return buildFriendsFoesBoxes(calculatedState);
+    case "turning_points":
+      return buildTurningPointsBoxes(calculatedState);
+    default: {
+      const spec = TOPIC_BOX_SPECS[topicId];
+      if (!spec) {
+        return null;
+      }
+      const body = buildTopicReadingBody(calculatedState, topicId, rawInput);
+      if (body == null) {
+        return null;
+      }
+      return buildBoxesFromBody(calculatedState, topicId, body, spec);
+    }
+  }
+}
+
 /** ย่อหน้าปิดท้าย = บทสรุปเฉพาะของบทนั้น (ไม่ซ้ำกันทุกบท) */
 function buildChapterAdvice(_calculatedState: CalculatedStateValue, topicId: string): string {
   return K("CHAPTER_SUMMARY_TH", CHAPTER_SUMMARY_TH)[topicId] ?? "";
@@ -3547,12 +4070,13 @@ export function buildTopicHumanReading(
   // technical/export/editor = กล่อง (true); consumer render = ร้อยแก้วล้วน (false, กัน scaffolding "→")
   useBoxFormat = true,
 ): string | null {
-  // บท 1 ฉบับ "กล่อง" ตาม docs/ทายดวง 15 หัวข้อ.docx — แต่ละหัวข้อย่อย = หนึ่งกล่อง (ซินแสแก้ง่าย)
-  // ตัดข้อความหัวเกริ่นนำ (intro/พาดหัว) ทิ้งตามที่ซินแสต้องการ — เริ่มที่กล่องเลย แล้วปิดด้วยภาพเปรียบ
-  if (useBoxFormat && topicId === "chart_foundation") {
-    const boxes = buildChartFoundationBoxes(calculatedState);
+  // ฉบับ "กล่อง" ทุกบท ตาม docs/ทายดวง 15 หัวข้อ.docx — เริ่มด้วยกล่องเกริ่นนำ (คอนเซ็ปต์บท +
+  // พาดหัวดิถี YLC แก้ได้) แล้วตามด้วยกล่องหัวข้อย่อย ปิดท้ายภาพเปรียบนอกกล่อง
+  if (useBoxFormat) {
+    const boxes = buildTopicBoxes(calculatedState, topicId, rawInput);
     if (boxes != null) {
       const composed = composeParagraphs([
+        buildIntroBox(calculatedState, topicId),
         boxes,
         buildElementClosingSimile(elementLabel(dayMasterElement(calculatedState)), topicId),
       ]);

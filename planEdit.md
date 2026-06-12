@@ -1,7 +1,10 @@
 # planEdit.md — คำทำนายแบบ "กล่อง (box)" ตาม `docs/ทายดวง 15 หัวข้อ.docx`
 
-> สถานะ: **บทที่ 1 (chart_foundation) เสร็จครบ loop** (engine → แก้ทีละกล่อง → PDF/Word) · เหลือขยายอีก 14 บท
+> สถานะ: **ครบทั้ง 15 บท predict แล้ว** — ทุกบทเป็นกล่อง: เกริ่นนำ (YLC) + กล่องหัวข้อย่อย docx · ตารางเสริมวัยจรถูกถอด (ย้ายเป็นลิสต์ในบท 12)
 > branch: `pdf-dev`
+>
+> **โครงกล่องปัจจุบัน (ทุกบท):** `[[box=เกริ่นนำ]]` (คอนเซ็ปต์บท CHAPTER_INTRO_TH + พาดหัวดิถี buildChapterOpening — แก้ได้) → กล่องหัวข้อย่อยตาม docx → กล่องข้อเสนอแนะ → ภาพเปรียบปิดท้ายนอกกล่อง
+> **ฟีเจอร์กล่อง:** ทุกกล่องมี "ชื่อหัวข้อย่อย" เป็นย่อหน้าแรกในเนื้อด้วย (helper `readingBox`) — ซินแสเห็น/แก้หัวข้อได้ตอนแก้กล่อง + หัวข้อติดไปกับ PDF/Word
 
 ---
 
@@ -54,9 +57,53 @@ construct ใหม่ `[[box=หัวข้อย่อย]] ...เนื้�
 
 ---
 
-## ⏳ ยังต้องทำ (ทั้งหมด)
+## ✅ บทที่ 2 (career_potential / อาชีพ-ธุรกิจ) — เสร็จแล้ว
+- engine ใหม่ `buildCareerBoxes` + `CAREER_SUBTOPICS` ใน `topic-knowledge.ts` (reuse ชิ้นส่วน `buildCareerReading` เดิม ไม่คิดเลขใหม่)
+- โครงกล่องตามที่ซินแสกำชับ: **กล่องแรก = ภาพรวมดิถี/แนวทางหาเงิน** (frame + ดาวถ่ายเท + พรสวรรค์→งาน + กลุ่มลูกค้า/ช่องทาง) แล้วตามด้วย
+  **ควรทำ อันดับ 1–3** (ตามจำนวน useful element ของดวง) + **ไม่ควรทำ อันดับ 1–2** (officer พิฆาตดิถี + drain ของ balanced "บางคนมี")
+- wiring: `buildTopicHumanReading(useBoxFormat=true)` route → `buildCareerBoxes` (prose path `false` ยังเป็นของเดิม consumer/LLM/docx ไม่กระทบ)
+- คงคำว่า "อาชีพธาตุ (useful god)" ในกล่องควรทำ / ใช้ "สายงานธาตุ" ในกล่องไม่ควรทำ → marker test เดิมผ่าน
+- test: เพิ่ม career_potential เข้า BOX_FORMAT_TOPICS ใน reading-narrative + อัปเดต snapshot 3 ดวง · full suite แดง 7 = pre-existing baseline เป๊ะ (ยืนยันด้วย stash)
 
-### A. ขยายบทที่ 2–15 (งานหลักที่เหลือ)
+---
+
+## ✅ บทที่ 3 (wealth_and_investment / โชคลาภ) — เสร็จแล้ว
+- refactor `buildWealthReading` → `collectWealthSegments` (ติด tag `main`/`caution`/`advice` ตามลำดับเดิม) + wrapper บางคืน prose เดิม
+  **byte-identical** (prose path `useBoxFormat=false` ไม่เปลี่ยน → test/snapshot prose เดิมเขียวหมด)
+- `buildWealthBoxes` + `WEALTH_SUBTOPICS` → 3 กล่องตาม docx:
+  **ทายโชคลาภ** (นำด้วยสายโซ่ ดิถี→ถ่ายเท→โชคลาภ + ตำแหน่งดาวลาภ 12 เชี่ยงแซ + market + ลักษณะลาภ) /
+  **สิ่งพึงระวัง (ผั่วไฉ่โข่ว)** (ขุมคลังถูกทำลาย 破财库 + ความเสี่ยงจมทุน/หนี้ของดิถีอ่อน) /
+  **ข้อเสนอแนะ** (chapter advice เพิ่มเงินเก็บ-ลดรายจ่าย)
+- wiring ใน `buildTopicHumanReading` (useBoxFormat=true) + เพิ่ม wealth_and_investment เข้า BOX_FORMAT_TOPICS (reading-narrative) + อัปเดต snapshot
+- full suite แดง 7 = pre-existing baseline เป๊ะ
+
+---
+
+## ✅ บทที่ 4 (benefactor / ผู้อุปถัมภ์) — เสร็จแล้ว
+- `buildBenefactorBoxes` + `BENEFACTOR_SUBTOPICS` + `BENEFACTOR_PERSON_TH` → 4 กล่องตามบทบาทธาตุที่ docx กำหนด
+  (印 ส่งเสริม / 比 คู่ธาตุ / 食傷 ถ่ายเท-บริวาร / 财 โชคลาภ-ลูกค้า) — **ตาม docx ไม่ใช้ 官杀 เหมือน prose เดิม**
+- แต่ละกล่อง: **อยู่ตรงไหน** (สแกน 4 เสาหาตำแหน่งธาตุ + 12 เชี่ยงแซ self-seat → GOOD_QI/BAD_QI verdict) /
+  **คือใคร** (`BENEFACTOR_PERSON_TH`) / **ลักษณะ** (reuse `ELEMENT_TEMPER_TH[el].balanced`) — ธาตุที่ไม่ปรากฏ = หมายเหตุมาทางวัยจร
+- prose path (`buildBenefactorReading` เดิม 印+官杀) ไม่แตะ → consumer/test เดิมเขียว · full suite แดง 7 = baseline
+
+---
+
+## ✅ รอบใหญ่: กล่องครบ 15 บท + เกริ่นนำ + ถอดตารางเสริม (ตามซินแสสั่ง)
+- **กล่องเกริ่นนำทุกบท**: `buildIntroBox` = CHAPTER_INTRO_TH + buildChapterOpening (พาดหัวดิถี YLC) — รวมบท 1 ที่เคยตัด intro (ซินแสกลับคำ)
+- **dispatcher `buildTopicBoxes`**: บท 1-4, 8, 12 ใช้ builder เฉพาะ · บทที่เหลือ (5,6,7,9,10,11,13,14,15) ใช้ `buildBoxesFromBody` + `TOPIC_BOX_SPECS`
+  (regex จัดย่อหน้า prose เดิมเข้ากล่องตามหัวข้อ docx — ไม่แตะ prose path เลย consumer/test เดิมเขียว)
+- **บท 8 (เพื่อน/ศัตรู)**: bespoke `buildFriendsFoesBoxes` — มิตร/ระวังมิตร/ศัตรู/ระวังศัตรู จาก scanPositionRelations
+- **บท 12 (วัยจร)**: bespoke `buildTurningPointsBoxes` — กล่อง "ลิสต์ช่วงอายุ 16 วัยจร" (เนื้อหาเดียวกับตารางเสริมเดิม) + กล่องปีจร/พยากรณ์รายปี
+- **ตารางเสริมถอดออกทุก surface**: PDF appendix (ไม่ส่ง relationshipLines เข้า ReadingPrintDocument), Word บทเสริม (reading-docx ทั้ง full + per-topic),
+  workspace (RelationshipLinesEditor ลบ + EditPanel ส่ง null) — state/sync ใน workspace คงไว้ (invisible, session schema เดิม)
+- **partnership**: บล็อกช่วงอายุ (วัยจร) ตัดออกจากกล่อง (doctrine เดียวกับบท 3 — เรื่องอายุรวมที่บท 12) แต่คงใน prose
+- test: reading-narrative เช็คทุกบทเริ่ม `[[box=เกริ่นนำ]]` + มี CHAPTER_INTRO_TH · snapshot regen · full suite แดง 7 = pre-existing baseline เป๊ะ
+
+---
+
+## ⏳ ยังต้องทำ
+
+### A. ของเดิมที่ระบุไว้ (อัปเดต)
 infra กล่อง + UX แก้ทีละกล่อง/กฎแทนคำ **ใช้ซ้ำได้ทันที** — งานต่อบท = เพิ่ม engine builder ตามหัวข้อย่อยใน docx:
 - แต่ละบทเพิ่ม `*_SUBTOPICS` (หัวข้อย่อยจาก docx) + `build*Boxes()` แล้ว wire ใน `buildTopicHumanReading`
 - หัวข้อย่อยต่อบท (อ้าง docx): บท2 อาชีพ/ธุรกิจ(ควร/ไม่ควร อันดับ1-3), บท3 โชคลาภ(ผั่วไฉ่โข่ว), บท4 ผู้อุปถัมภ์,

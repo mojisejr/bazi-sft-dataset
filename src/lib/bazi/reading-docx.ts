@@ -434,21 +434,7 @@ export function buildReadingDocument(
             children: [new TextRun({ text: "คู่มือชีวิต 15 มิติ", bold: true, size: 32, font: FONT })],
           }),
           ...chapterParagraphs(calculatedState, rawInput, options.readings, undefined, options.variant, options.substitutionRules),
-          // ── บทเสริม: ตารางวัยจร (แตกหน้าตาม pageBreakBefore) ──
-          new Paragraph({
-            heading: HeadingLevel.HEADING_1,
-            pageBreakBefore: true,
-            spacing: { before: 360, after: 120 },
-            children: [
-              new TextRun({
-                text: "บทเสริม: ตารางวิเคราะห์เส้นขีดความสัมพันธ์ หมวดช่วงอายุและวัยจร",
-                bold: true,
-                size: 30,
-                font: FONT,
-              }),
-            ],
-          }),
-          ...relationshipTables(calculatedState, options.relationshipLines),
+          // บทเสริมตารางวัยจรถูกถอดออก — ลิสต์ช่วงอายุ 16 วัยจรอยู่ในกล่องของบท 12 แทน
         ],
       },
     ],
@@ -504,17 +490,7 @@ export function buildTopicDocument(
           pillarTable(calculatedState),
           new Paragraph({ children: [new PageBreak()] }),
           ...chapterParagraphs(calculatedState, rawInput, options.readings, [topicId], options.variant, options.substitutionRules),
-          ...(isLuck
-            ? [
-                new Paragraph({
-                  heading: HeadingLevel.HEADING_2,
-                  pageBreakBefore: true,
-                  spacing: { before: 240, after: 120 },
-                  children: [new TextRun({ text: "ตารางวิเคราะห์วัยจร (ช่วงละ 5 ปี)", bold: true, size: 28, font: FONT })],
-                }),
-                ...relationshipTables(calculatedState, options.relationshipLines),
-              ]
-            : []),
+          // บทวัยจรไม่พ่วงตารางแล้ว — ลิสต์ช่วงอายุ 16 วัยจรอยู่ในกล่องของบท 12 เอง
         ],
       },
     ],
