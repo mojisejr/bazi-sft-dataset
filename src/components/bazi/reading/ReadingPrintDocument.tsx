@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { ReactNode } from "react";
 
 import { buildChapterAnnotation, ChapterChartStrip } from "@/components/bazi/reading/ChapterChartStrip";
@@ -71,6 +72,9 @@ const KICKER = "ถอดรหัสดวงชะตา";
 const PAGEBREAK_MARKER = "[[pagebreak]]";
 /** marker นำหน้าบรรทัดแรกของย่อหน้าที่เยื้องบรรทัดแรก — ต้องตรงกับ reading-markdown / reading-docx */
 const INDENT_MARKER = "[[indent]]";
+/** กล่อง (box) แยกตามหัวข้อย่อย — ต้องตรงกับ reading-markdown / reading-docx */
+const BOX_OPEN_RE = /^\[\[box=(.*)\]\]$/;
+const BOX_CLOSE_MARKER = "[[/box]]";
 
 const TH_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -152,8 +156,31 @@ function renderMarkdown(text: string): ReactNode[] {
       list = [];
     }
   };
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
+    // กล่อง (box): เป็นเครื่องมือช่วย "ซินแสแก้" เท่านั้น — ใน PDF/เอกสารจริงให้แสดง "ข้อความล้วน"
+    // (ตัดกรอบ + หัวข้อย่อยทิ้ง) โดยแบนเนื้อในเข้าสายบทตรง ๆ. เก็บบรรทัดในจนถึง [[/box]] ที่จับคู่ (รองรับซ้อน)
+    const boxOpen = line.match(BOX_OPEN_RE);
+    if (boxOpen) {
+      flushPara();
+      flushList();
+      const inner: string[] = [];
+      let depth = 1;
+      i++;
+      for (; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (BOX_OPEN_RE.test(t)) {
+          depth++;
+        } else if (t === BOX_CLOSE_MARKER) {
+          depth--;
+          if (depth === 0) break;
+        }
+        inner.push(lines[i]);
+      }
+      blocks.push(<Fragment key={key++}>{renderMarkdown(inner.join("\n"))}</Fragment>);
+      continue;
+    }
     if (!line) {
       flushPara();
       flushList();

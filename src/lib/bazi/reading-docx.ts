@@ -42,6 +42,9 @@ const FONT = "Tahoma"; // รองรับภาษาไทย
 const PAGEBREAK_MARKER = "[[pagebreak]]";
 /** marker นำหน้าบรรทัดแรกของย่อหน้าที่เยื้องบรรทัดแรก — ต้องตรงกับ ReadingPrintDocument / reading-markdown */
 const INDENT_MARKER = "[[indent]]";
+/** กล่อง (box) แยกตามหัวข้อย่อย — ต้องตรงกับ ReadingPrintDocument / reading-markdown */
+const BOX_OPEN_RE = /^\[\[box=(.*)\]\]$/;
+const BOX_CLOSE_MARKER = "[[/box]]";
 
 function textParagraph(text: string, opts: { bold?: boolean; size?: number; spacingAfter?: number } = {}): Paragraph {
   return new Paragraph({
@@ -78,9 +81,9 @@ function markdownRuns(text: string, base: { size?: number; bold?: boolean; color
  * แปลง markdown ย่อ (หัวข้อย่อย / bullet / เน้นแดง / ย่อหน้า / ตัวแบ่งหน้า) เป็น Paragraph[]
  * mirror renderMarkdown() ของ PDF — บรรทัดติดกันรวมเป็นย่อหน้าเดียว (join " "), บรรทัดว่าง = ตัดย่อหน้า
  */
-function markdownParagraphs(text: string): Paragraph[] {
+function markdownParagraphs(text: string): (Paragraph | Table)[] {
   const lines = text.replace(/\r/g, "").split("\n");
-  const out: Paragraph[] = [];
+  const out: (Paragraph | Table)[] = [];
   let para: string[] = [];
   let paraIndent = false;
   const flushPara = () => {
@@ -97,8 +100,31 @@ function markdownParagraphs(text: string): Paragraph[] {
       paraIndent = false;
     }
   };
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
+    // กล่อง (box): เป็นเครื่องมือช่วย "ซินแสแก้" เท่านั้น — ในเอกสาร Word ให้แสดง "ข้อความล้วน"
+    // (ตัดกรอบ + หัวข้อย่อยทิ้ง) โดยแบนเนื้อในเข้าสายบทตรง ๆ. เก็บบรรทัดในจนถึง [[/box]] ที่จับคู่ (รองรับซ้อน)
+    if (BOX_OPEN_RE.test(line)) {
+      flushPara();
+      const inner: string[] = [];
+      let depth = 1;
+      i++;
+      for (; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (BOX_OPEN_RE.test(t)) {
+          depth++;
+        } else if (t === BOX_CLOSE_MARKER) {
+          depth--;
+          if (depth === 0) break;
+        }
+        inner.push(lines[i]);
+      }
+      for (const para of markdownParagraphs(inner.join("\n"))) {
+        out.push(para);
+      }
+      continue;
+    }
     if (!line) {
       flushPara();
       continue;
@@ -259,8 +285,8 @@ function chapterParagraphs(
   // กฎแทนคำของซินแส — ใช้กับข้อความที่ regenerate เองเท่านั้น (override จาก client ผ่านกฎมาแล้ว)
   // ผู้เรียกดึงจาก DB แล้วส่งเข้ามา; default [] เพื่อให้ unit test ไม่ต้องแตะ DB
   substitutionRules: SubstitutionRule[] = [],
-): Paragraph[] {
-  const out: Paragraph[] = [];
+): (Paragraph | Table)[] {
+  const out: (Paragraph | Table)[] = [];
   const wanted = topicIds ? new Set(topicIds) : null;
   for (const topic of TOPIC_PATH.filter((t) => t.kind === "predict" && (!wanted || wanted.has(t.id)))) {
     const override = overrides?.[topic.id]?.trim();

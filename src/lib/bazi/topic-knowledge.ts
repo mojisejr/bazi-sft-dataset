@@ -1185,6 +1185,134 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
   return segments.length > 0 ? segments.join("\n\n") : null;
 }
 
+/**
+ * หัวข้อย่อยของบท 1 "พื้นฐานดวงชะตา" ตาม docs/ทายดวง 15 หัวข้อ.docx (master spec)
+ * ใช้เป็น "หัวกล่อง (box)" — ซินแสแก้เฉพาะเนื้อในแต่ละกล่องได้ง่าย
+ */
+const CHART_FOUNDATION_SUBTOPICS = {
+  basis: "ดิถีอะไร เกิดถูกฤดู นั่งถูกที่ อ่อนมาก/อ่อน/สมดุล/แข็ง/แข็งไป",
+  lowerBranch: "ทายนิสัยจากราศีล่างหลักวัน",
+  upperLower: "ทายนิสัยจากราศีบนหลักวัน/ราศีล่างหลักวัน (ระบบนับอิม + 12 เชี่ยงแซ)",
+  transfer: "ทายนิสัยจาก ดิถี → การกระทำ (ธาตุถ่ายเท) → ผลลัพธ์ (ธาตุโชคลาภ)",
+  caution: "สิ่งพึงระวัง",
+  advice: "ข้อเสนอแนะ (จิตวิทยา พฤติกรรมแก้ไข)",
+} as const;
+
+/** ป้ายกำลังดิถีตามถ้อยคำใน docx (อ่อนมาก/อ่อน/สมดุล/แข็ง/แข็งไป) */
+const STRENGTH_BAND_LABEL_TH: Record<string, string> = {
+  "very-weak": "อ่อนมาก (อ่อนเกินไป)",
+  weak: "อ่อน",
+  balanced: "สมดุล",
+  strong: "แข็ง",
+  "very-strong": "แข็งไป (แข็งมาก)",
+};
+
+/** ประกอบกล่อง (box) markdown: [[box=หัวข้อย่อย]] + เนื้อใน (คั่นด้วยบรรทัดว่าง) — คืน "" ถ้าไม่มีเนื้อหา */
+function readingBox(title: string, paragraphs: Array<string | null | undefined>): string {
+  const body = paragraphs
+    .map((part) => (part ?? "").trim())
+    .filter((part) => part.length > 0)
+    .join("\n\n");
+  return body ? `[[box=${title}]]\n${body}\n[[/box]]` : "";
+}
+
+/**
+ * บท 1 (พื้นฐานดวงชะตา) ฉบับ "กล่อง" ตาม docs/ทายดวง 15 หัวข้อ.docx — engine เติมเนื้อหาแต่ละหัวข้อย่อย
+ * reuse ชิ้นส่วนเดียวกับ buildPersonalityReading/buildSpeechReading เพื่อคง marker/ข้อเท็จจริงเดิม
+ * (เนื้อหาในกล่องเป็น markdown subset เดิม → ซินแสแก้/PDF/Word ใช้ต่อได้)
+ */
+function buildChartFoundationBoxes(calculatedState: CalculatedStateValue): string | null {
+  const dayStem = calculatedState.dayMaster;
+  const dayBranch = calculatedState.fourPillars.day.branch;
+  const monthBranch = calculatedState.fourPillars.month.branch;
+  const dmElement = dayMasterElement(calculatedState);
+  const dmElementTh = elementLabel(dmElement);
+  const band = resolveStrengthBand(calculatedState);
+
+  const index = getPersonalityIndex();
+  const record = index?.byStemBranch.get(`${dayStem}|${dayBranch}`);
+  const normalizeQi = (label: string) => label.replace(/เซี่ยงแซ/g, "เชี่ยงแซ");
+  const qiKeyword = record?.qiLabel
+    ? Object.values(TWELVE_QI_CONTEXT_MAP).find((entry) => entry.labelThai === normalizeQi(record.qiLabel))
+        ?.contextTag
+    : undefined;
+  const stemText = record?.stemText || index?.stemText.get(dayStem) || "";
+
+  // ── กล่อง 1: ดิถี / เกิดถูกฤดู / นั่งถูกที่ / กำลัง (ตอบครบ 4 ส่วนตามหัวข้อ, แต่ละส่วนเป็นย่อหน้า) ──
+  const season = SEASON_BY_BRANCH[monthBranch];
+  const seasonTh = season ? SEASON_LABEL_TH[season] : "";
+  const monthElTh = elementLabel(branchElement(monthBranch));
+  const seasonLine = isSeasonalCommand(calculatedState)
+    ? `เกิดถูกฤดู — ธาตุดิถี (${dmElementTh}) ตรงกับธาตุที่ครองเดือนเกิด (${monthBranch}${seasonTh ? ` ${seasonTh}` : ""}) ดิถีจึงได้กำลังหนุนจากฤดูกาล มีพื้นฐานแข็งแรงกว่าคะแนนดิบ`
+    : `เกิดไม่ถูกฤดู — เดือนเกิด (${monthBranch}${seasonTh ? ` ${seasonTh}` : ""}) เป็นธาตุ${monthElTh} ไม่ใช่ธาตุดิถี (${dmElementTh}) ดิถีจึงไม่ได้แรงหนุนจากฤดู ต้องอาศัยรากฐานและตัวช่วยอื่นมาเสริม`;
+  const selfSeat = resolveDisplayTwelveQiStage(dayStem, dayBranch);
+  const seatVerdict = RISING_QI.has(selfSeat)
+    ? "นั่งถูกที่ (มีรากฐานหนุน ดิถีตั้งมั่น)"
+    : FALLING_QI.has(selfSeat)
+      ? "นั่งผิดที่ (ขาดรากฐาน ดิถีอ่อนแรงลง)"
+      : "นั่งระดับกลาง (รากฐานพอมีแต่ไม่เด่น)";
+  const box1 = readingBox(CHART_FOUNDATION_SUBTOPICS.basis, [
+    // ย่อหน้านำ: ภาพดิถี×ฤดู (imagery) — คงสำนวนเอกสาร (เพชรพลอย/ฤดู/บรรยากาศธาตุรอบตัว)
+    buildDayMasterImagery(calculatedState),
+    seasonLine,
+    `นั่งถูกที่หรือไม่ — ดิถี ${dayStem} นั่งบนราศีล่างวัน ${dayBranch} ตกเชี่ยงแซ ${selfSeat} → ${seatVerdict}`,
+    `กำลังดิถีโดยรวม: ${STRENGTH_BAND_LABEL_TH[band] ?? band}`,
+  ]);
+
+  // ── กล่อง 2: นิสัยจากราศีล่างหลักวัน ──
+  const box2 = readingBox(CHART_FOUNDATION_SUBTOPICS.lowerBranch, [
+    record?.branchText ? `ราศีล่างวัน ${dayBranch} สะท้อนว่าเป็นคนที่${record.branchText}` : null,
+  ]);
+
+  // ── กล่อง 3: นิสัยจากราศีบน + ล่าง (อิม + 12 เชี่ยงแซ) ──
+  const temper = resolveElementTemper(band);
+  const dmTemper = ELEMENT_TEMPER_TH[dmElementTh];
+  const box3 = readingBox(CHART_FOUNDATION_SUBTOPICS.upperLower, [
+    stemText ? `ลักษณะเด่นของคนดิถี ${dayStem} คือ ${stemText}` : null,
+    record?.elementText
+      ? `ในแง่ของธาตุ ${record.elementLabel} ${record.qiLabel}${qiKeyword ? ` (แก่นเชี่ยงแซ: ${qiKeyword})` : ""} บ่งบอกว่า${record.elementText}`
+      : null,
+    temper === "balanced" && dmTemper ? `นิสัยเด่นประจำธาตุดิถี: ${dmTemper.balanced}` : null,
+  ]);
+
+  // ── กล่อง 4: ดิถี → การกระทำ(ถ่ายเท) → ผลลัพธ์(โชคลาภ) — อธิบายสายโซ่ + แต่ละหลักเป็นย่อหน้า ──
+  const transfer = buildOutputTransferReading(calculatedState);
+  const outputElTh = elementLabel(GENERATES[dmElement] as SupportedElementValue);
+  const wealthElTh = elementLabel(CONTROLS[dmElement] as SupportedElementValue);
+  const carrying = transfer.pillars.filter((pillar) => pillar.carriesOutputElement);
+  const transferPillars = (carrying.length > 0 ? carrying : transfer.pillars).map(
+    (pillar) => `${pillar.context} (ธาตุถ่ายเทตกเชี่ยงแซ ${pillar.stageThai}): ${pillar.speech}`,
+  );
+  const box4 = readingBox(CHART_FOUNDATION_SUBTOPICS.transfer, [
+    `อ่านเป็นสายโซ่: ดิถี (ธาตุ${dmElementTh}) → การกระทำ/สิ่งที่ลงมือ (ธาตุถ่ายเท ${outputElTh}) → ผลลัพธ์/โชคลาภ (ธาตุ${wealthElTh}) — ธาตุถ่ายเทคือวิธีที่ดิถีแสดงออกและลงมือ ส่วนธาตุโชคลาภคือผลที่ได้กลับคืนมา`,
+    ...transferPillars,
+  ]);
+
+  // ── กล่อง 5: สิ่งพึงระวัง (temper ล้น/พร่อง + ความสัมพันธ์ผั่ว/ชง แต่ละรายการเป็นย่อหน้า) ──
+  const relationNotes = buildNatalRelationNotes(calculatedState);
+  const box5 = readingBox(CHART_FOUNDATION_SUBTOPICS.caution, [
+    temper !== "balanced" && dmTemper ? `สิ่งที่ควรระวังตามกำลังธาตุดิถี: ${dmTemper[temper]}` : null,
+    ...relationNotes,
+  ]);
+
+  // ── กล่อง 6: ข้อเสนอแนะ (คุณธรรมตามธาตุที่ดวงต้องการ แต่ละธาตุเป็นย่อหน้า + บทสรุป) ──
+  const virtues = resolveUsefulElements(calculatedState)
+    .map((element) =>
+      K("RESOURCE_VIRTUE_TH", RESOURCE_VIRTUE_TH)[element]
+        ? `ธาตุ${element} — ${K("RESOURCE_VIRTUE_TH", RESOURCE_VIRTUE_TH)[element]}`
+        : null,
+    )
+    .filter((line): line is string => Boolean(line));
+  const box6 = readingBox(CHART_FOUNDATION_SUBTOPICS.advice, [
+    virtues.length > 0 ? "นิสัยที่ควรพัฒนาเพื่อเสริมดวง (ตามธาตุที่ดวงต้องการ):" : null,
+    ...virtues,
+    buildChapterAdvice(calculatedState, "chart_foundation"),
+  ]);
+
+  const boxes = [box1, box2, box3, box4, box5, box6].filter((box) => box.length > 0);
+  return boxes.length > 0 ? boxes.join("\n\n") : null;
+}
+
 /** มิติพฤติกรรม→อาการ ตามธาตุดิถี (นิสัยที่มักนำไปสู่ปัญหาสุขภาพ) — เลียนโครง your life code */
 export const ELEMENT_HEALTH_BEHAVIOR_TH: Record<ThaiElement, string> = {
   "ไม้": "ในเชิงพฤติกรรม คนดิถีไม้มักคิดมาก แบกความรับผิดชอบ และกดดันตัวเองเรื่องอุดมการณ์ ทำให้เครียดสะสม ตึงคอบ่าไหล่ และกระทบตับกับเส้นเอ็นได้ง่าย ควรหาทางผ่อนคลายและไม่หักโหมเกินไป",
@@ -3416,7 +3544,22 @@ export function buildTopicHumanReading(
   calculatedState: CalculatedStateValue,
   topicId: string,
   rawInput?: RawInputValue,
+  // technical/export/editor = กล่อง (true); consumer render = ร้อยแก้วล้วน (false, กัน scaffolding "→")
+  useBoxFormat = true,
 ): string | null {
+  // บท 1 ฉบับ "กล่อง" ตาม docs/ทายดวง 15 หัวข้อ.docx — แต่ละหัวข้อย่อย = หนึ่งกล่อง (ซินแสแก้ง่าย)
+  // ตัดข้อความหัวเกริ่นนำ (intro/พาดหัว) ทิ้งตามที่ซินแสต้องการ — เริ่มที่กล่องเลย แล้วปิดด้วยภาพเปรียบ
+  if (useBoxFormat && topicId === "chart_foundation") {
+    const boxes = buildChartFoundationBoxes(calculatedState);
+    if (boxes != null) {
+      const composed = composeParagraphs([
+        boxes,
+        buildElementClosingSimile(elementLabel(dayMasterElement(calculatedState)), topicId),
+      ]);
+      return [composed, ...currentAppends(topicId)].filter((part) => part.trim().length > 0).join("\n\n");
+    }
+  }
+
   let body = buildTopicReadingBody(calculatedState, topicId, rawInput);
   if (body == null) {
     // fallback: ดึงพื้นฐานจากตำราเคี้ยงคุง (ยกเว้นหัวข้อที่ null เพราะขาด input เช่น ความรักต้องมีเพศ)
@@ -3459,7 +3602,9 @@ export function buildTopicConsumerReading(
   topicId: string,
   rawInput?: RawInputValue,
 ): string | null {
-  const technical = buildTopicHumanReading(calculatedState, topicId, rawInput);
+  // consumer render = ร้อยแก้วผู้บริโภคล้วน → ใช้ฉบับ "ไม่กล่อง" (useBoxFormat=false) แล้วถอด scaffolding
+  // (กล่องเป็นของ technical/export/editor; consumer ต้องสะอาดไม่มี "→"/หัวกล่อง)
+  const technical = buildTopicHumanReading(calculatedState, topicId, rawInput, false);
   return technical == null ? null : humanizeConsumerProse(technical);
 }
 

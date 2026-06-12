@@ -194,6 +194,74 @@
   padding-left: 0.9rem;
 }
 
+/* กล่อง (box) ในการ์ดผลทำนาย — หัวข้อย่อย + กรอบ (เครื่องมือช่วยซินแสดู/แก้) */
+.topic-card__box {
+  border: 1px solid var(--rp-accent, #2f9fb3);
+  border-radius: 10px;
+  background: var(--rp-accent-soft, #f6fbfc);
+  padding: 0.7rem 0.9rem 0.45rem;
+  margin: 0.6rem 0;
+}
+.topic-card__box .ylc-box__title {
+  font-weight: 700;
+  color: var(--rp-accent, #1f8497);
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px dashed var(--rp-accent-soft, #8ecdd8);
+}
+.topic-card__box .ylc-box__body > p {
+  margin: 0 0 0.5rem;
+}
+.topic-card__box .ylc-box__body > p:last-child {
+  margin-bottom: 0;
+}
+/* bullet / หัวข้อย่อยในเนื้อกล่อง — ให้ตรงกับที่ซินแสพิมพ์ (ไม่ยุบเป็นแถวเดียว) */
+.topic-card__box-list {
+  margin: 0.3rem 0 0.55rem;
+  padding-left: 1.3rem;
+  list-style: disc;
+}
+.topic-card__box-list li {
+  margin: 0 0 0.28rem;
+  line-height: 1.7;
+}
+.topic-card__box-sub {
+  font-weight: 700;
+  color: var(--rp-accent, #1f8497);
+  margin: 0.55rem 0 0.3rem;
+}
+/* ปุ่มแก้ทีละกล่อง (อยู่มุมล่างของแต่ละกล่อง) */
+.topic-card__box-edit {
+  margin-top: 0.55rem;
+  font-size: 0.8rem;
+  color: var(--rp-accent, #2563eb);
+  background: transparent;
+  border: 1px solid var(--rp-accent, #2563eb);
+  border-radius: 999px;
+  padding: 0.18rem 0.75rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.topic-card__box-edit:hover {
+  background: var(--rp-accent-soft, rgba(37, 99, 235, 0.08));
+}
+.topic-card__box--editing {
+  box-shadow: 0 0 0 2px var(--rp-accent, #2563eb) inset;
+}
+.topic-card__box--editing .topic-card__sinsae-textarea {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+/* บล็อก "กฎแทนคำ" ต่อกล่อง (อยู่ในกล่อง ใต้เนื้อหา) */
+.topic-card__box-rules {
+  margin-top: 0.6rem;
+  border-top: 1px dashed var(--rp-accent, #2563eb);
+  background: transparent;
+}
+.topic-card__box-rules .topic-card__collapse-toggle {
+  font-size: 0.82rem;
+}
+
 .topic-card__citation {
   margin: 0.5rem 0 0;
   font-size: 0.82rem;

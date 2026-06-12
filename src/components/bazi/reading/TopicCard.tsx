@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { Fragment, useRef, useState, type ReactNode } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
 import { StatusChip } from "@/components/bazi/primitives/StatusChip";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import { SinsaeRuleBuilder, type AddRuleInput } from "@/components/bazi/reading/SinsaeRuleBuilder";
+import { tokenizeInline } from "@/lib/bazi/reading-inline";
 import type { SinsaeCorrection } from "@/lib/bazi/sinsae-corrections";
 import type { TopicDefinition, TopicEngineReading } from "@/lib/bazi/topic-reading";
 
@@ -90,6 +91,192 @@ function CollapsibleBlock({
   );
 }
 
+const CARD_BOX_OPEN_RE = /^\[\[box=(.*)\]\]$/;
+const CARD_BOX_CLOSE = "[[/box]]";
+
+/** segment ของผลทำนาย: ข้อความล้วน (text) หรือ กล่องหัวข้อย่อย (box{title, body}) */
+type ReadingSegment =
+  | { kind: "text"; raw: string }
+  | { kind: "box"; title: string; body: string };
+
+/** แยกผลทำนายเป็น segments — กล่อง [[box=หัวข้อ]]..[[/box]] (รองรับซ้อน) คั่นด้วยข้อความล้วน */
+function parseReadingSegments(text: string): ReadingSegment[] {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const segs: ReadingSegment[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    const raw = buf.join("\n").trim();
+    buf = [];
+    if (raw) segs.push({ kind: "text", raw });
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const boxOpen = lines[i].trim().match(CARD_BOX_OPEN_RE);
+    if (boxOpen) {
+      flush();
+      const title = boxOpen[1].trim();
+      const inner: string[] = [];
+      let depth = 1;
+      i++;
+      for (; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (CARD_BOX_OPEN_RE.test(t)) {
+          depth++;
+        } else if (t === CARD_BOX_CLOSE) {
+          depth--;
+          if (depth === 0) break;
+        }
+        inner.push(lines[i]);
+      }
+      segs.push({ kind: "box", title, body: inner.join("\n").trim() });
+      continue;
+    }
+    buf.push(lines[i]);
+  }
+  flush();
+  return segs;
+}
+
+/** ประกอบ segments กลับเป็น markdown (กล่อง = [[box=หัวข้อ]]..[[/box]]) — round-trip กับ parseReadingSegments */
+function serializeReadingSegments(segs: ReadingSegment[]): string {
+  return segs
+    .map((seg) => (seg.kind === "box" ? `[[box=${seg.title}]]\n${seg.body}\n[[/box]]` : seg.raw))
+    .join("\n\n");
+}
+
+/**
+ * normalize เนื้อในกล่องที่ซินแสพิมพ์ — ทุกครั้งที่กด Enter (ขึ้นบรรทัดใหม่) ให้กลายเป็น "ย่อหน้าใหม่"
+ * (markdown เดิม: บรรทัดติดกัน \n เดียวจะถูกยุบรวมเป็นย่อหน้าเดียว → ที่ซินแสพิมพ์แยกบรรทัดเลยหาย)
+ * ยกเว้น bullet ติดกัน (`- `) คงไว้บรรทัดเดียวกัน เพื่อให้เป็นลิสต์เดียว
+ */
+function normalizeBoxBody(text: string): string {
+  const lines = text.replace(/\r/g, "").split("\n").map((line) => line.trim());
+  let result = "";
+  let prevWasBullet = false;
+  let first = true;
+  for (const line of lines) {
+    if (!line) {
+      prevWasBullet = false;
+      continue;
+    }
+    const isBullet = /^[-*•]\s+/.test(line);
+    if (first) {
+      result = line;
+      first = false;
+    } else if (isBullet && prevWasBullet) {
+      result += `\n${line}`;
+    } else {
+      result += `\n\n${line}`;
+    }
+    prevWasBullet = isBullet;
+  }
+  return result;
+}
+
+/** เรนเดอร์ inline (ตัวหนา/เน้นแดง/สี/ขนาด) — ใช้ tokenizer กลางตัวเดียวกับ PDF/docx */
+function renderCardInline(text: string, keyBase: string): ReactNode[] {
+  return tokenizeInline(text).map((run, i) => {
+    const key = `${keyBase}-${i}`;
+    const fontSize = run.fontSize;
+    if (run.color) {
+      return (
+        <span key={key} style={{ color: run.color, fontWeight: run.bold ? 700 : undefined, fontSize }}>
+          {run.text}
+        </span>
+      );
+    }
+    if (run.red) {
+      return <strong key={key} className="ylc-warn" style={fontSize ? { fontSize } : undefined}>{run.text}</strong>;
+    }
+    if (run.bold) {
+      return <strong key={key} style={fontSize ? { fontSize } : undefined}>{run.text}</strong>;
+    }
+    if (fontSize) return <span key={key} style={{ fontSize }}>{run.text}</span>;
+    return <Fragment key={key}>{run.text}</Fragment>;
+  });
+}
+
+/**
+ * เรนเดอร์ "ข้อความ" (text seg หรือ เนื้อในกล่อง) เป็น block — mirror renderMarkdown ของ PDF
+ * รองรับ: ย่อหน้า (บรรทัดว่างคั่น) · bullet `- ` · หัวข้อย่อย `## ` · บรรทัดเตือน `*** ` · `[[pagebreak]]`
+ * → สิ่งที่ซินแสพิมพ์ (บรรทัด/บุลเลต) แสดงตรงตามที่แก้ ไม่ยุบเป็นแถวเดียว
+ */
+function renderTextParas(text: string, keyBase: string): ReactNode[] {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const out: ReactNode[] = [];
+  let para: string[] = [];
+  let list: string[] = [];
+  let k = 0;
+  const flushPara = () => {
+    if (!para.length) return;
+    out.push(<p key={`${keyBase}-p${k++}`}>{renderCardInline(para.join(" "), `${keyBase}-pi${k}`)}</p>);
+    para = [];
+  };
+  const flushList = () => {
+    if (!list.length) return;
+    out.push(
+      <ul key={`${keyBase}-u${k++}`} className="topic-card__box-list">
+        {list.map((item, i) => (
+          <li key={i}>{renderCardInline(item, `${keyBase}-li${k}-${i}`)}</li>
+        ))}
+      </ul>,
+    );
+    list = [];
+  };
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) {
+      flushPara();
+      flushList();
+      continue;
+    }
+    if (line === "[[pagebreak]]") {
+      flushPara();
+      flushList();
+      out.push(<p key={`${keyBase}-pb${k++}`} className="topic-card__pagebreak">— ขึ้นหน้าใหม่ใน PDF —</p>);
+      continue;
+    }
+    const warn = line.match(/^\*\*\*\s*(.+?)\s*\**$/);
+    if (warn && !line.startsWith("****")) {
+      flushPara();
+      flushList();
+      out.push(<p key={`${keyBase}-w${k++}`} className="ylc-warn-line">{renderCardInline(warn[1], `${keyBase}-wi${k}`)}</p>);
+      continue;
+    }
+    const heading = line.match(/^#{1,4}\s+(.*)$/);
+    const bullet = line.match(/^[-*•]\s+(.*)$/);
+    if (heading) {
+      flushPara();
+      flushList();
+      out.push(<p key={`${keyBase}-h${k++}`} className="topic-card__box-sub">{renderCardInline(heading[1], `${keyBase}-hi${k}`)}</p>);
+      continue;
+    }
+    if (bullet) {
+      flushPara();
+      list.push(bullet[1]);
+      continue;
+    }
+    flushList();
+    para.push(line);
+  }
+  flushPara();
+  flushList();
+  return out;
+}
+
+/** เรนเดอร์ผลทำนายแบบอ่านอย่างเดียว (กล่องจริง + ข้อความ) — ใช้กับ "ฉบับระบบ" */
+function renderReadingNodes(text: string): ReactNode[] {
+  return parseReadingSegments(text).map((seg, idx) =>
+    seg.kind === "text" ? (
+      <Fragment key={idx}>{renderTextParas(seg.raw, `t${idx}`)}</Fragment>
+    ) : (
+      <section key={idx} className="ylc-box topic-card__box">
+        {seg.title ? <div className="ylc-box__title">{seg.title}</div> : null}
+        <div className="ylc-box__body">{renderTextParas(seg.body, `b${idx}`)}</div>
+      </section>
+    ),
+  );
+}
+
 function RelationTable({ reading }: { reading: TopicEngineReading }) {
   if (reading.daYunTimeline) {
     return (
@@ -165,6 +352,9 @@ export function TopicCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [showSystem, setShowSystem] = useState(false);
+  // แก้ทีละกล่อง (บทที่เป็นกล่อง): index ของ box seg ที่กำลังแก้ + ร่างเนื้อในกล่องนั้น
+  const [editingBoxIdx, setEditingBoxIdx] = useState<number | null>(null);
+  const [boxDraft, setBoxDraft] = useState("");
   const sinsaeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // แทรกตัวแบ่งหน้า ([[pagebreak]]) ที่ตำแหน่ง cursor ของ textarea — ดูผลใน preview ก่อนทำ PDF
@@ -275,6 +465,26 @@ export function TopicCard({
             const systemText = result.humanReading ?? "";
             const displayText = savedCorrection ? savedCorrection.corrected : systemText;
             const canEdit = Boolean(onSaveCorrection);
+            const segments = parseReadingSegments(displayText);
+            const hasBoxes = segments.some((seg) => seg.kind === "box");
+            const saveBox = (segIdx: number) => {
+              // ทุกบรรทัดที่ซินแสกด Enter = ย่อหน้าใหม่ (กันถูกยุบรวมเป็นแถวเดียวตอนเรนเดอร์ markdown)
+              const normalizedBody = normalizeBoxBody(boxDraft);
+              const rebuilt = serializeReadingSegments(
+                segments.map((seg, i) =>
+                  i === segIdx && seg.kind === "box" ? { ...seg, body: normalizedBody } : seg,
+                ),
+              );
+              onSaveCorrection?.(topic.id, rebuilt);
+              setEditingBoxIdx(null);
+            };
+            // body ฉบับระบบ (ก่อนซินแสแก้) ของแต่ละกล่อง — ใช้ diff กับ body ปัจจุบันเพื่อเสนอกฎแทนคำต่อกล่อง
+            const systemBoxBody = new Map<string, string>();
+            if (hasBoxes) {
+              for (const seg of parseReadingSegments(systemText)) {
+                if (seg.kind === "box") systemBoxBody.set(seg.title, seg.body);
+              }
+            }
             return (
               <section className="topic-card__block topic-card__human">
                 <h4>
@@ -288,13 +498,80 @@ export function TopicCard({
                   </span>
                 </h4>
                 {displayText
-                  ? displayText.split("\n\n").map((paragraph, index) =>
-                      paragraph.trim() === "[[pagebreak]]" ? (
-                        <p key={index} className="topic-card__pagebreak">— ขึ้นหน้าใหม่ใน PDF —</p>
-                      ) : (
-                        <p key={index}>{paragraph}</p>
-                      ),
-                    )
+                  ? segments.map((seg, segIdx) => {
+                      if (seg.kind === "text") {
+                        return <Fragment key={segIdx}>{renderTextParas(seg.raw, `t${segIdx}`)}</Fragment>;
+                      }
+                      // กล่อง: แก้ทีละกล่อง — กดปุ่มที่กล่องนั้นเพื่อแก้เฉพาะเนื้อในกล่องนั้น
+                      if (editingBoxIdx === segIdx) {
+                        return (
+                          <div key={segIdx} className="ylc-box topic-card__box topic-card__box--editing">
+                            <div className="ylc-box__title">{seg.title}</div>
+                            <textarea
+                              className="topic-card__sinsae-textarea"
+                              value={boxDraft}
+                              rows={Math.min(16, Math.max(4, boxDraft.split("\n").length + 1))}
+                              onChange={(event) => setBoxDraft(event.target.value)}
+                            />
+                            <div className="topic-card__sinsae-actions">
+                              <ActionButton
+                                tone="primary"
+                                type="button"
+                                disabled={boxDraft.trim().length === 0}
+                                onClick={() => saveBox(segIdx)}
+                              >
+                                บันทึกกล่องนี้
+                              </ActionButton>
+                              <button
+                                type="button"
+                                className="topic-card__sinsae-link"
+                                onClick={() => setEditingBoxIdx(null)}
+                              >
+                                ยกเลิก
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      {
+                        const sysBody = systemBoxBody.get(seg.title) ?? "";
+                        const boxCorrected = sysBody && seg.body !== sysBody ? seg.body : null;
+                        return (
+                          <section key={segIdx} className="ylc-box topic-card__box">
+                            {seg.title ? <div className="ylc-box__title">{seg.title}</div> : null}
+                            <div className="ylc-box__body">{renderTextParas(seg.body, `b${segIdx}`)}</div>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                className="topic-card__box-edit"
+                                onClick={() => {
+                                  setEditingBoxIdx(segIdx);
+                                  setBoxDraft(seg.body);
+                                }}
+                              >
+                                ✎ แก้กล่องนี้
+                              </button>
+                            )}
+                            {onAddRule && sysBody && (
+                              <CollapsibleBlock
+                                title="🔧 กฎแทนคำ (จากกล่องนี้)"
+                                defaultOpen={Boolean(boxCorrected)}
+                                className="topic-card__box-rules"
+                                source={boxCorrected ? "มีคำที่แก้" : undefined}
+                              >
+                                <SinsaeRuleBuilder
+                                  topicId={topic.id}
+                                  systemText={sysBody}
+                                  correctedText={boxCorrected}
+                                  onAddRule={onAddRule}
+                                  onAddRules={onAddRules}
+                                />
+                              </CollapsibleBlock>
+                            )}
+                          </section>
+                        );
+                      }
+                    })
                   : (
                     <p className="topic-card__empty">
                       ยังไม่มีองค์ความรู้ภาษามนุษย์สำหรับหัวข้อนี้ (รอ ingest จาก docx ใน knownlage)
@@ -307,11 +584,7 @@ export function TopicCard({
                 {savedCorrection && showSystem && (
                   <div className="topic-card__system-version">
                     <p className="topic-card__system-version-label">ฉบับระบบ (ก่อนซินแสแก้)</p>
-                    {systemText
-                      ? systemText.split("\n\n").map((paragraph, index) => (
-                          <p key={index}>{paragraph}</p>
-                        ))
-                      : <p className="topic-card__empty">—</p>}
+                    {systemText ? renderReadingNodes(systemText) : <p className="topic-card__empty">—</p>}
                   </div>
                 )}
 
@@ -319,16 +592,24 @@ export function TopicCard({
                   <div className="topic-card__sinsae">
                     {!editing ? (
                       <div className="topic-card__sinsae-actions">
-                        <button
-                          type="button"
-                          className="topic-card__sinsae-toggle"
-                          onClick={() => {
-                            setDraft(displayText);
-                            setEditing(true);
-                          }}
-                        >
-                          ✎ แก้ไขโดยซินแส
-                        </button>
+                        {/* บทที่เป็นกล่อง = แก้ทีละกล่อง (ปุ่มอยู่ในแต่ละกล่องแล้ว) ไม่ต้องมีปุ่มแก้รวม */}
+                        {!hasBoxes && (
+                          <button
+                            type="button"
+                            className="topic-card__sinsae-toggle"
+                            onClick={() => {
+                              setDraft(displayText);
+                              setEditing(true);
+                            }}
+                          >
+                            ✎ แก้ไขโดยซินแส
+                          </button>
+                        )}
+                        {hasBoxes && (
+                          <span className="topic-card__sinsae-hint">
+                            แก้ได้ทีละกล่อง — กด “✎ แก้กล่องนี้” ที่กล่องที่ต้องการ
+                          </span>
+                        )}
                         {savedCorrection && (
                           <>
                             <button
@@ -399,7 +680,8 @@ export function TopicCard({
                         </div>
                       </div>
                     )}
-                    {!editing && onAddRule && systemText && (
+                    {/* บทที่เป็นกล่อง = กฎแทนคำอยู่ในแต่ละกล่องแล้ว (ไม่ต้องมีตัวรวมทั้งบท) */}
+                    {!hasBoxes && !editing && onAddRule && systemText && (
                       <SinsaeRuleBuilder
                         topicId={topic.id}
                         systemText={systemText}

@@ -80,15 +80,16 @@ describe("buildTopicHumanReading + overlay (request-scoped)", () => {
     });
     const state = await calculateBaziChart(raw, repo);
 
-    const baseline = buildTopicHumanReading(state, "chart_foundation", raw);
+    // ใช้ "talent" (บทร้อยแก้วปกติที่ยังมี intro) — chart_foundation เป็นฉบับ "กล่อง" ที่ตัดหัวเกริ่นนำทิ้งแล้ว
+    const baseline = buildTopicHumanReading(state, "talent", raw);
     expect(baseline).not.toContain("ZZINTRO");
 
     const overlay: KnowledgeOverlay = {
-      tables: { CHAPTER_INTRO_TH: { chart_foundation: "ZZINTRO ทดสอบเกริ่นนำ" } },
-      appends: { chart_foundation: ["ZZAPPENDED ความรู้ใหม่ที่ซินแสเพิ่ม"] },
+      tables: { CHAPTER_INTRO_TH: { talent: "ZZINTRO ทดสอบเกริ่นนำ" } },
+      appends: { talent: ["ZZAPPENDED ความรู้ใหม่ที่ซินแสเพิ่ม"] },
     };
     const overridden = runWithKnowledgeOverlay(overlay, () =>
-      buildTopicHumanReading(state, "chart_foundation", raw),
+      buildTopicHumanReading(state, "talent", raw),
     );
     expect(overridden).toContain("ZZINTRO ทดสอบเกริ่นนำ");
     expect(overridden?.trimEnd().endsWith("ZZAPPENDED ความรู้ใหม่ที่ซินแสเพิ่ม")).toBe(true);
@@ -96,7 +97,7 @@ describe("buildTopicHumanReading + overlay (request-scoped)", () => {
 
     // นอก scope กลับเป็น default
     expect(currentKnowledgeOverlay()).toBe(EMPTY_OVERLAY);
-    expect(buildTopicHumanReading(state, "chart_foundation", raw)).toBe(baseline);
+    expect(buildTopicHumanReading(state, "talent", raw)).toBe(baseline);
   });
 });
 

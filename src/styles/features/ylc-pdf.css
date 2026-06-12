@@ -244,6 +244,36 @@
   font-style: italic;
 }
 
+/* ── กล่อง (box) แยกตามหัวข้อย่อย — ใช้ทั้ง PDF และหน้าแก้ (.ylc-prose เดียวกัน) ──────── */
+.ylc-prose .ylc-box {
+  border: 1px solid var(--ylc-teal);
+  border-radius: 8px;
+  background: #f6fbfc;
+  padding: 6mm 7mm 4mm;
+  margin: 5mm 0;
+  text-indent: 0;
+  /* กล่องยาวให้ paged.js แตกหน้าได้ (ห้าม avoid ทั้งกล่อง — build paged.js นี้เปราะกับเนื้อหายาว) */
+  break-inside: auto;
+}
+.ylc-prose .ylc-box__title {
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  font-size: 13.5pt;
+  line-height: 1.35;
+  margin: 0 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px dashed var(--ylc-teal-soft);
+  text-indent: 0;
+  break-after: avoid;
+}
+.ylc-prose .ylc-box__body > :first-child {
+  margin-top: 0;
+}
+.ylc-prose .ylc-box__body > :last-child {
+  margin-bottom: 0;
+}
+
 /* ── ตารางภาคผนวก (วัยจรเชิงลึก) ──────────────────────────────────────── */
 .ylc-table {
   width: 100%;

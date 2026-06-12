@@ -19,6 +19,9 @@ import { colorToToken } from "@/lib/bazi/reading-colors";
 export const PAGEBREAK_MARKER = "[[pagebreak]]";
 /** marker นำหน้าบรรทัดแรกของย่อหน้าที่เยื้องบรรทัดแรก (ต้องตรงกับ ReadingPrintDocument / reading-docx) */
 export const INDENT_MARKER = "[[indent]]";
+/** กล่อง (box) แยกตามหัวข้อย่อย: บรรทัดเปิด `[[box=หัวข้อ]]` ... บรรทัดปิด `[[/box]]` (block-level, ซ้อนกันได้) */
+export const BOX_OPEN_RE = /^\[\[box=(.*)\]\]$/;
+export const BOX_CLOSE_MARKER = "[[/box]]";
 
 /** mark ของ ProseMirror/TipTap: bold/red ไม่มี attrs; textStyle เก็บสีใน attrs.color */
 export type PMMark =
@@ -93,8 +96,31 @@ export function markdownToDoc(text: string): PMDoc {
     }
   };
 
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
+    // กล่อง (box): เก็บบรรทัดในจนถึง [[/box]] ที่จับคู่ (รองรับกล่องซ้อน) แล้ว parse ภายในซ้ำ
+    const boxOpen = line.match(BOX_OPEN_RE);
+    if (boxOpen) {
+      flushPara();
+      flushList();
+      const title = boxOpen[1].trim();
+      const inner: string[] = [];
+      let depth = 1;
+      i++;
+      for (; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (BOX_OPEN_RE.test(t)) {
+          depth++;
+        } else if (t === BOX_CLOSE_MARKER) {
+          depth--;
+          if (depth === 0) break;
+        }
+        inner.push(lines[i]);
+      }
+      content.push({ type: "box", attrs: { title }, content: markdownToDoc(inner.join("\n")).content });
+      continue;
+    }
     if (!line) {
       flushPara();
       flushList();
@@ -204,6 +230,12 @@ export function docToMarkdown(doc: PMDoc | { content?: PMNode[] }): string {
       case "pageBreak":
         blocks.push(PAGEBREAK_MARKER);
         break;
+      case "box": {
+        const title = typeof node.attrs?.title === "string" ? node.attrs.title : "";
+        const inner = docToMarkdown({ content: node.content ?? [] });
+        blocks.push(`[[box=${title}]]\n${inner}\n${BOX_CLOSE_MARKER}`);
+        break;
+      }
       default:
         break;
     }

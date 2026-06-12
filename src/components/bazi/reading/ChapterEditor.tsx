@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Extension, Mark, Node } from "@tiptap/core";
+import { Extension, Mark, mergeAttributes, Node } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { TextStyle } from "@tiptap/extension-text-style";
@@ -38,6 +38,38 @@ const PageBreakNode = Node.create({
   },
   renderHTML() {
     return ["div", { "data-pagebreak": "true", class: "ylc-edit-pagebreak", contenteditable: "false" }, "— แบ่งหน้า —"];
+  },
+});
+
+/**
+ * กล่อง (box) แยกตามหัวข้อย่อย = [[box=หัวข้อ]]...[[/box]] — render เป็น <section class="ylc-box">
+ * หัวข้อย่อย (title) มาจาก engine เป็น label คงที่ (contenteditable=false) ซินแสแก้เฉพาะ "เนื้อใน" กล่อง
+ */
+const BoxNode = Node.create({
+  name: "box",
+  group: "block",
+  content: "block+",
+  defining: true,
+  addAttributes() {
+    return {
+      title: {
+        default: "",
+        parseHTML: (el) =>
+          el.getAttribute("data-box-title") ?? el.querySelector(".ylc-box__title")?.textContent ?? "",
+        renderHTML: (attrs) => ({ "data-box-title": (attrs.title as string) ?? "" }),
+      },
+    };
+  },
+  parseHTML() {
+    return [{ tag: "section[data-box]" }];
+  },
+  renderHTML({ node, HTMLAttributes }) {
+    return [
+      "section",
+      mergeAttributes(HTMLAttributes, { "data-box": "true", class: "ylc-box" }),
+      ["div", { class: "ylc-box__title", contenteditable: "false" }, (node.attrs.title as string) || ""],
+      ["div", { class: "ylc-box__body" }, 0],
+    ];
   },
 });
 
@@ -138,6 +170,7 @@ export function ChapterEditor({ value, onChange, disabled }: ChapterEditorProps)
       ParagraphWarn,
       ParagraphIndent,
       RedMark,
+      BoxNode,
       PageBreakNode,
       TextStyle,
       Color,

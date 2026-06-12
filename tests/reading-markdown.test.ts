@@ -28,6 +28,11 @@ describe("reading-markdown round-trip", () => {
       "ผสมทุกอย่าง",
       "## การเงิน\n\nรายได้จะ **เพิ่มขึ้น** ในช่วงนี้\n\n- ลงทุนระยะยาว\n- ระวังหนี้สิน\n\n*** อย่าค้ำประกันใคร\n\n[[pagebreak]]\n\nสรุป ***ดวงดี*** มาก",
     ],
+    ["กล่อง (box)", "[[box=หัวข้อย่อย]]\nเนื้อในกล่อง **เน้น** ได้\n[[/box]]"],
+    [
+      "กล่องหลายใบ + เนื้อในหลายบล็อก",
+      "[[box=กล่องแรก]]\nย่อหน้าแรก\n\n- ข้อย่อย\n[[/box]]\n\n[[box=กล่องสอง]]\nเนื้อหา ***เตือน***\n[[/box]]",
+    ],
   ];
 
   it.each(samples)("idempotent: %s", (_label, md) => {
@@ -74,6 +79,21 @@ describe("reading-markdown round-trip", () => {
     const mark = doc.content[0].content?.[0]?.marks?.find((m) => m.type === "textStyle");
     expect(mark && "attrs" in mark ? mark.attrs.fontSize : null).toBe("18pt");
     expect(norm("[[s=18]]ตัวใหญ่[[/s]]")).toBe("[[s=18]]ตัวใหญ่[[/s]]");
+  });
+
+  it("กล่อง (box): [[box=หัวข้อ]] → node box + title + content ภายใน", () => {
+    const doc = markdownToDoc("[[box=สิ่งพึงระวัง]]\nระวัง **สุขภาพ**\n- พักผ่อน\n[[/box]]");
+    expect(doc.content[0].type).toBe("box");
+    expect(doc.content[0].attrs?.title).toBe("สิ่งพึงระวัง");
+    const inner = doc.content[0].content ?? [];
+    expect(inner[0]?.type).toBe("paragraph");
+    expect(inner.some((n) => n.type === "bulletList")).toBe(true);
+  });
+
+  it("กล่อง (box) รอด round-trip เป็น marker เดิม", () => {
+    const md = "[[box=หัวข้อย่อย]]\nเนื้อใน\n[[/box]]";
+    expect(norm(md)).toContain("[[box=หัวข้อย่อย]]");
+    expect(norm(md)).toContain("[[/box]]");
   });
 
   it("doc ว่างได้ paragraph เปล่าอย่างน้อยหนึ่ง", () => {

@@ -28,7 +28,10 @@ describe("reading narrative composer (15 chapters)", () => {
       const reading = buildTopicHumanReading(state, topic.id, raw);
       expect(reading, `${topic.id} ควรมีคำทำนาย`).toBeTruthy();
       // ขึ้นต้นด้วย intro คอนเซ็ปต์ของบทนั้น
-      expect(reading!.startsWith(CHAPTER_INTRO_TH[topic.id])).toBe(true);
+      // ยกเว้น chart_foundation (ฉบับ "กล่อง") ที่ตัดหัวเกริ่นนำทิ้งตามที่ซินแสต้องการ — เริ่มที่กล่องเลย
+      if (topic.id !== "chart_foundation") {
+        expect(reading!.startsWith(CHAPTER_INTRO_TH[topic.id])).toBe(true);
+      }
       // อย่างน้อย 3 ย่อหน้า (intro + เนื้อหา + advice)
       expect(reading!.split("\n\n").length).toBeGreaterThanOrEqual(3);
       // ย่อหน้าปิดต้องเป็น "บทสรุป" เฉพาะของบทนั้น
