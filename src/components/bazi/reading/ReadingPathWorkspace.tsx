@@ -21,6 +21,7 @@ import {
   type TopicReadingResult,
 } from "@/components/bazi/reading/TopicCard";
 import type { AddRuleInput } from "@/components/bazi/reading/SinsaeRuleBuilder";
+import { SubstitutionRulesTable } from "@/components/bazi/reading/SubstitutionRulesTable";
 import type { SubstitutionRule } from "@/lib/bazi/substitution-rules";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
@@ -432,6 +433,30 @@ export function ReadingPathWorkspace({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...input, source: { kind: "manual" } }),
+      });
+      const body = (await response.json()) as { rules?: SubstitutionRule[]; error?: { message: string } };
+      if (!response.ok || !body.rules) {
+        throw new Error(body.error?.message ?? "เพิ่มกฎไม่สำเร็จ");
+      }
+      setRules(body.rules);
+      if (rawInput && calculatedState && !batchProgress) {
+        void runAllEngine(rawInput, calculatedState);
+      }
+    } catch {
+      /* เงียบ — ผู้ใช้กดใหม่ได้ */
+    }
+  }
+
+  // บันทึกหลายกฎพร้อมกัน (ปุ่ม "บันทึกเป็นกฎทั้งหมด") → ยิง POST ชุดเดียว แล้ว re-run engine ครั้งเดียว
+  async function handleAddRules(inputs: AddRuleInput[]) {
+    if (inputs.length === 0) return;
+    try {
+      const response = await fetch("/api/reading/rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          rules: inputs.map((input) => ({ ...input, source: { kind: "manual" } })),
+        }),
       });
       const body = (await response.json()) as { rules?: SubstitutionRule[]; error?: { message: string } };
       if (!response.ok || !body.rules) {
@@ -900,41 +925,11 @@ export function ReadingPathWorkspace({
           </button>
           {showRules && (
             <div className="reading-path__rules-body">
-              {rules.length === 0 ? (
-                <p className="section-note">
-                  ยังไม่มีกฎ — แก้คำทำนายบทใดบทหนึ่งแล้วกด “บันทึกเป็นกฎ” หรือกรอกมือในกล่องของบทนั้น
-                  คำที่ตั้งไว้จะถูกแทนให้ทุกดวงที่ทายได้วลีเดียวกัน
-                </p>
-              ) : (
-                <table className="topic-table reading-path__rules-table">
-                  <thead>
-                    <tr>
-                      <th>ใช้กับ</th>
-                      <th>คำเดิม</th>
-                      <th>แก้เป็น</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((rule) => (
-                      <tr key={rule.id}>
-                        <td>{rule.scope === "global" ? "ทุกบท" : rule.topicId}</td>
-                        <td>{rule.match}</td>
-                        <td>{rule.replacement.length === 0 ? "(ลบทิ้ง)" : rule.replacement}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="topic-card__sinsae-link topic-card__sinsae-link--danger"
-                            onClick={() => void handleDeleteRule(rule.id)}
-                          >
-                            ลบ
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <SubstitutionRulesTable
+                rules={rules}
+                onDelete={handleDeleteRule}
+                emptyNote="ยังไม่มีกฎ — แก้คำทำนายบทใดบทหนึ่งแล้วกด “บันทึกเป็นกฎ” หรือกรอกมือในกล่องของบทนั้น คำที่ตั้งไว้จะถูกแทนให้ทุกดวงที่ทายได้วลีเดียวกัน"
+              />
             </div>
           )}
         </section>
@@ -1031,6 +1026,7 @@ export function ReadingPathWorkspace({
                 onSaveCorrection={handleSaveCorrection}
                 onClearCorrection={handleClearCorrection}
                 onAddRule={handleAddRule}
+                onAddRules={handleAddRules}
               />
             );
           })}

@@ -460,6 +460,30 @@
   color: var(--text-muted, inherit);
 }
 
+.sinsae-rule__suggestions-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.sinsae-rule__suggestions-head .sinsae-rule__hint {
+  margin: 0;
+}
+
+.topic-card__sinsae-link--all {
+  font-weight: 600;
+  text-decoration-thickness: 2px;
+  white-space: nowrap;
+}
+
+.topic-card__sinsae-link--all:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .sinsae-rule__suggestion,
 .sinsae-rule__manual {
   display: flex;

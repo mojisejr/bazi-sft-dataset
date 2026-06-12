@@ -5,8 +5,8 @@
  * ที่ระบบทายได้วลีเดียวกัน ต้องออกเป็น "passive income" เสมอ (deterministic ไม่ใช่ LLM few-shot)
  * replacement = "" หมายถึง "ลบวลีนั้นทิ้ง"
  *
- * โมดูลนี้ "pure" (ไม่มี fs) → import ได้ทั้ง client/server.
- * ส่วน fs (readRules/writeRules) อยู่ใน substitution-rules-store.ts (server only)
+ * โมดูลนี้ "pure" (ไม่มี fs/db) → import ได้ทั้ง client/server.
+ * ส่วนเก็บถาวร (อ่าน/เขียนกฎลง Postgres) อยู่ใน substitution-rules-repository.ts (server only)
  */
 export type SubstitutionRuleScope = "topic" | "global";
 
@@ -93,7 +93,7 @@ export function suggestSubstitutions(
   return pairs;
 }
 
-/** ตาราง markdown สำหรับรีวิว (gen อัตโนมัติทุกครั้งที่ writeRules) */
+/** ตาราง markdown สำหรับรีวิว (ใช้โดยสคริปต์ออกรายงานกฎ ถ้าต้องการ) */
 export function renderRulesMarkdown(set: SubstitutionRuleSet): string {
   const esc = (value: string) => value.replace(/\|/g, "\\|").replace(/\n/g, " ");
   const rows = set.rules.map((rule) => {

@@ -53,6 +53,8 @@ type TopicCardProps = {
   onClearCorrection?: (topicId: string) => void;
   /** เพิ่มกฎแทนคำ (ใช้กับดวงอื่น) */
   onAddRule?: (input: AddRuleInput) => void | Promise<void>;
+  /** เพิ่มกฎแทนคำหลายรายการพร้อมกัน (ปุ่ม "บันทึกเป็นกฎทั้งหมด") */
+  onAddRules?: (inputs: AddRuleInput[]) => void | Promise<void>;
 };
 
 function CollapsibleBlock({
@@ -157,6 +159,7 @@ export function TopicCard({
   onSaveCorrection,
   onClearCorrection,
   onAddRule,
+  onAddRules,
 }: TopicCardProps) {
   const [mode, setMode] = useState<TopicReadingMode>("engine");
   const [editing, setEditing] = useState(false);
@@ -402,6 +405,7 @@ export function TopicCard({
                         systemText={systemText}
                         correctedText={savedCorrection?.corrected ?? null}
                         onAddRule={onAddRule}
+                        onAddRules={onAddRules}
                       />
                     )}
                   </div>
