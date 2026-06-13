@@ -15,6 +15,8 @@ import {
   type SaveDatasetStatus,
 } from "@/lib/bazi/dataset-request";
 import { type GenerateChunkedTopicDraftOptions, generateChunkedTopicDraft } from "@/lib/bazi/orchestrator/gemini-runner";
+import { EMPTY_OVERLAY, type KnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
+import { getKnowledgeOverlay } from "@/lib/bazi/knowledge-override.server";
 import {
   mapTopicDraftToDraftAnnotationData,
   mapTopicDraftWithProvenance,
@@ -163,6 +165,8 @@ export type GenerateAndSaveOrchestratedDraftDependencies = {
   mapTopicDraft?: typeof mapTopicDraftToDraftAnnotationData;
   mapTopicDraftWithProvenance?: typeof mapTopicDraftWithProvenance;
   repository?: DatasetRecordRepository;
+  /** โหลด overlay องค์ความรู้ (ฉีดในเทสได้) — default: getKnowledgeOverlay จาก DB */
+  loadKnowledgeOverlay?: () => Promise<KnowledgeOverlay>;
 };
 
 export type GenerateAndSaveOrchestratedDraftOptions = {
@@ -179,6 +183,8 @@ export type GenerateAndSaveOrchestratedDraftOptions = {
   repository?: DatasetRecordRepository;
   databaseUrl?: string;
   dependencies?: GenerateAndSaveOrchestratedDraftDependencies;
+  /** overlay องค์ความรู้ของซินแส — ถ้าไม่ส่ง โหลดจาก DB (best-effort) ผ่าน dependencies.loadKnowledgeOverlay */
+  knowledgeOverlay?: KnowledgeOverlay;
 };
 
 export type GenerateAndSaveOrchestratedDraftResult = {
@@ -240,6 +246,11 @@ export async function generateAndSaveOrchestratedDraft(
   const repository = options.dependencies?.repository
     ?? options.repository
     ?? createDbDatasetRecordRepository(options.databaseUrl);
+  const knowledgeOverlay =
+    options.knowledgeOverlay ??
+    (await (options.dependencies?.loadKnowledgeOverlay ?? getKnowledgeOverlay)().catch(
+      () => EMPTY_OVERLAY,
+    ));
   const generation = await generateTopicDraft({
     rawInput: options.rawInput,
     calculatedState: options.calculatedState,
@@ -247,6 +258,7 @@ export async function generateAndSaveOrchestratedDraft(
     apiKey: options.apiKey,
     retry: options.retry,
     executeChunk: options.executeChunk,
+    knowledgeOverlay,
   });
   const mapped = options.dependencies?.mapTopicDraft
     ? { annotationData: mapTopicDraft(generation.draftByTopic, { calculatedState: options.calculatedState }) }

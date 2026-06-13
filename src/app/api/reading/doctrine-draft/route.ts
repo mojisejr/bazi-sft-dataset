@@ -9,8 +9,13 @@ import {
   STEP_KEYS,
   parseDoctrineConfigValue,
 } from "@/lib/bazi/doctrine-config";
-import { createDbDoctrineDraftRepository } from "@/lib/bazi/doctrine-draft-repository";
+import {
+  createDbDoctrineDraftRepository,
+  decodeKnowledgeEntityKey,
+} from "@/lib/bazi/doctrine-draft-repository";
 import { publishAllDrafts, publishDraft } from "@/lib/bazi/doctrine-publish.service";
+import { getCatalogEntry } from "@/lib/bazi/knowledge/knowledge-catalog";
+import { BAZI_TOPIC_REGISTRY_BY_ID } from "@/lib/bazi/knowledge/topic-registry";
 
 export const runtime = "nodejs";
 
@@ -44,6 +49,34 @@ function validateDraftValue(surface: string, entityKey: string, value: unknown):
     const parsed = parseDoctrineConfigValue(scope as "step" | "role" | "star", value);
     return parsed ? (parsed as Record<string, unknown>) : null;
   }
+  if (surface === "knowledge") {
+    const decoded = decodeKnowledgeEntityKey(entityKey);
+    if (!decoded) return null;
+    const text = (value as { text?: unknown }).text;
+    if (typeof text !== "string") return null;
+    if (decoded.kind === "table") {
+      const entry = getCatalogEntry(decoded.group);
+      if (!entry || !(decoded.item in entry.defaults)) return null;
+      return { text };
+    }
+    if (decoded.kind === "append") {
+      if (!TOPIC_IDS.includes(decoded.group) || !/^\d+$/.test(decoded.item)) return null;
+      return { text };
+    }
+    if (decoded.kind === "logic" || decoded.kind === "sourcefocus") {
+      // group = registry topicId (BAZI_TOPIC_IDS); item = ordinal 1..(จำนวน default + 1)
+      const def = BAZI_TOPIC_REGISTRY_BY_ID[decoded.group as keyof typeof BAZI_TOPIC_REGISTRY_BY_ID];
+      if (!def || !/^\d+$/.test(decoded.item)) return null;
+      const ordinal = Number(decoded.item);
+      const max =
+        (decoded.kind === "logic"
+          ? def.sinsaeLogicRules.length
+          : def.sourceRefs.length) + 1;
+      if (ordinal < 1 || ordinal > max) return null;
+      return { text };
+    }
+    return null;
+  }
   return null;
 }
 
@@ -59,7 +92,7 @@ export async function GET(req: Request) {
 }
 
 const PutSchema = z.object({
-  surface: z.enum(["topic", "config"]),
+  surface: z.enum(["topic", "config", "knowledge"]),
   entityKey: z.string().trim().min(1),
   value: z.record(z.string(), z.unknown()),
   updatedBy: z.string().trim().min(1).max(120).optional(),
@@ -96,7 +129,7 @@ export async function DELETE(req: Request) {
   const url = new URL(req.url);
   const surface = url.searchParams.get("surface")?.trim();
   const key = url.searchParams.get("key")?.trim();
-  if ((surface !== "topic" && surface !== "config") || !key) {
+  if ((surface !== "topic" && surface !== "config" && surface !== "knowledge") || !key) {
     return badRequest("ต้องระบุ surface + key");
   }
   try {
@@ -109,7 +142,7 @@ export async function DELETE(req: Request) {
 
 const PublishSchema = z.object({
   all: z.boolean().optional(),
-  surface: z.enum(["topic", "config"]).optional(),
+  surface: z.enum(["topic", "config", "knowledge"]).optional(),
   entityKey: z.string().trim().min(1).optional(),
   actor: z.string().trim().min(1).max(120).optional(),
 });

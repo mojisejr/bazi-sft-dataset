@@ -24,15 +24,16 @@ describe("reading narrative composer (15 chapters)", () => {
     });
     const state = await calculateBaziChart(raw, repository);
 
+    // ทุกบทเป็นฉบับ "กล่อง": เริ่มด้วยกล่องเกริ่นนำ (คอนเซ็ปต์บท + พาดหัวดิถี YLC) แล้วตามด้วย
+    // กล่องหัวข้อย่อยตาม docx — โครงร้อยแก้วเดิม (intro/สรุปนอกกล่อง) ตรวจผ่าน consumer path แทน
     for (const topic of TOPIC_PATH.filter((x) => x.kind === "predict")) {
       const reading = buildTopicHumanReading(state, topic.id, raw);
       expect(reading, `${topic.id} ควรมีคำทำนาย`).toBeTruthy();
-      // ขึ้นต้นด้วย intro คอนเซ็ปต์ของบทนั้น
-      expect(reading!.startsWith(CHAPTER_INTRO_TH[topic.id])).toBe(true);
-      // อย่างน้อย 3 ย่อหน้า (intro + เนื้อหา + advice)
+      // อย่างน้อย 3 ย่อหน้า (เกริ่นนำ + เนื้อหา + ปิดท้าย)
       expect(reading!.split("\n\n").length).toBeGreaterThanOrEqual(3);
-      // ย่อหน้าปิดต้องเป็น "บทสรุป" เฉพาะของบทนั้น
-      expect(reading!).toContain("สรุป:");
+      // เริ่มด้วยกล่องเกริ่นนำ และเนื้อในกล่องมีคอนเซ็ปต์บท (CHAPTER_INTRO_TH)
+      expect(reading!.startsWith("[[box=เกริ่นนำ]]"), `${topic.id} ต้องเริ่มด้วยกล่องเกริ่นนำ`).toBe(true);
+      expect(reading!).toContain(CHAPTER_INTRO_TH[topic.id]);
     }
   });
 });

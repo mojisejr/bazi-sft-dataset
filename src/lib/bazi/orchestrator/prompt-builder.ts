@@ -13,6 +13,12 @@ import {
   type OrchestratorChunkId,
 } from "@/lib/bazi/orchestrator/chunk-manager";
 import { getEngineFactsForDependencies } from "@/lib/bazi/symbolic-engine.facts";
+import {
+  EMPTY_OVERLAY,
+  resolveLogicRules,
+  resolveSourceFocus,
+  type KnowledgeOverlay,
+} from "@/lib/bazi/knowledge/knowledge-overlay";
 
 export const ChunkPromptFactSchema = z.object({
   dependency: z.string().trim().min(1),
@@ -54,6 +60,7 @@ function indexFactsByDependency(facts: readonly EngineFactDTO[]) {
 function buildChunkTopicPayloads(
   chunkId: OrchestratorChunkId,
   calculatedState: CalculatedStateValue,
+  overlay: KnowledgeOverlay = EMPTY_OVERLAY,
 ) {
   const chunk = getTopicChunk(chunkId);
   const dependencies = dedupeDependencies(chunk.topics.flatMap((topic) => topic.engineDependencies));
@@ -65,8 +72,12 @@ function buildChunkTopicPayloads(
       topicId: topic.id,
       thaiLabel: topic.thaiLabel,
       annotationDimension: topic.annotationDimension,
-      reasoningFocus: topic.sourceRefs.map((sourceRef) => sourceRef.reasoningFocus),
-      sinsaeLogicRules: topic.sinsaeLogicRules,
+      reasoningFocus: resolveSourceFocus(
+        overlay,
+        topic.id,
+        topic.sourceRefs.map((sourceRef) => sourceRef.reasoningFocus),
+      ),
+      sinsaeLogicRules: resolveLogicRules(overlay, topic.id, topic.sinsaeLogicRules),
       facts: topic.engineDependencies.map((dependency) => {
         const fact = factsByDependency.get(dependency);
 
@@ -128,8 +139,9 @@ export function buildChunkUserPrompt(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
   chunkId: OrchestratorChunkId,
+  overlay: KnowledgeOverlay = EMPTY_OVERLAY,
 ) {
-  const topics = buildChunkTopicPayloads(chunkId, calculatedState);
+  const topics = buildChunkTopicPayloads(chunkId, calculatedState, overlay);
 
   return [
     buildUserPromptHeader(rawInput, chunkId),
@@ -143,9 +155,10 @@ export function buildChunkPromptBundle(
   rawInput: RawInputValue,
   calculatedState: CalculatedStateValue,
   chunkId: OrchestratorChunkId,
+  overlay: KnowledgeOverlay = EMPTY_OVERLAY,
 ) {
   const chunk = getTopicChunk(chunkId);
-  const topics = buildChunkTopicPayloads(chunkId, calculatedState);
+  const topics = buildChunkTopicPayloads(chunkId, calculatedState, overlay);
   const responseSchema = getTopicChunkDraftSchema(chunkId);
   const responseSchemaKeys = Object.keys(responseSchema.shape) as TopicId[];
 
@@ -154,7 +167,7 @@ export function buildChunkPromptBundle(
     chunkThaiLabel: chunk.thaiLabel,
     topicIds: chunk.topicIds,
     systemInstruction: buildChunkSystemInstruction(chunkId),
-    userPrompt: buildChunkUserPrompt(rawInput, calculatedState, chunkId),
+    userPrompt: buildChunkUserPrompt(rawInput, calculatedState, chunkId, overlay),
     responseSchemaKeys,
     topics,
   });

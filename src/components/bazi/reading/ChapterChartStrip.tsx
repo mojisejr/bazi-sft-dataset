@@ -1,5 +1,4 @@
-import type { CSSProperties } from "react";
-
+import { ChartPillarTable, type ColumnHighlight } from "@/components/bazi/reading/ChartPillarTable";
 import {
   BRANCH_TO_ELEMENT,
   CONTROLS,
@@ -51,9 +50,7 @@ type Col = { key: string; label: string; pillar: PillarValue | undefined };
 export type ChapterAnnotation = {
   cols: Col[];
   /** index คอลัมน์ที่ถูกเน้น → {color, roles} */
-  highlights: Map<number, { color: string; roleLabels: string[] }>;
-  /** ลูกศรจากดิถี (index 2) ไปคอลัมน์เป้าหมาย */
-  arrows: { to: number; color: string }[];
+  highlights: Map<number, ColumnHighlight>;
   caption: string;
 };
 
@@ -75,8 +72,7 @@ export function buildChapterAnnotation(
     { key: "year", label: "ปี", pillar: calculatedState.fourPillars.year },
   ];
 
-  const highlights = new Map<number, { color: string; roleLabels: string[] }>();
-  const arrowSet = new Map<number, string>();
+  const highlights = new Map<number, ColumnHighlight>();
   const targets: string[] = [];
 
   for (const role of topic.relationKeys) {
@@ -93,74 +89,22 @@ export function buildChapterAnnotation(
       } else {
         highlights.set(index, { color, roleLabels: [ROLE_LABEL_TH[role]] });
       }
-      if (!arrowSet.has(index)) arrowSet.set(index, color);
     });
   }
 
-  const arrows = [...arrowSet.entries()].map(([to, color]) => ({ to, color }));
-  const caption = `บทนี้อ่านจาก ${targets.join(" · ")} — ลูกศรชี้จากดิถี (${calculatedState.dayMaster}) ไปยังตำแหน่งที่เกี่ยวข้องในผัง`;
+  const caption = `บทนี้อ่านจาก ${targets.join(" · ")} — วงสีล้อมรอบตำแหน่งที่เกี่ยวข้องในผัง (เทียบดิถี ${calculatedState.dayMaster})`;
 
-  return { cols, highlights, arrows, caption };
+  return { cols, highlights, caption };
 }
 
-/** แถบผังดวงย่อพร้อมวงแหวนสี + ลูกศร SVG ชี้ก้าน/กิ่งที่บทนั้นอ้าง */
+/** ตารางผังดวงกำกับบท — ตารางเสาเต็ม + วงสีล้อมรอบเสาที่บทนั้นอ้าง (ไม่มีลูกศร) */
 export function ChapterChartStrip({ annotation, uid = "" }: { annotation: ChapterAnnotation; uid?: string }) {
-  const { cols, highlights, arrows, caption } = annotation;
-  const colCount = cols.length;
-  const centerX = (i: number) => ((i + 0.5) / colCount) * 100;
-  const dayX = centerX(2);
-  const markerId = (to: number) => `ylc-arw-${uid}-${to}`;
+  const { cols, highlights, caption } = annotation;
+  void uid;
 
   return (
     <figure className="ylc-cstrip">
-      <div className="ylc-cstrip__grid">
-        {arrows.length > 0 ? (
-          <svg className="ylc-cstrip__arrows" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-            <defs>
-              {arrows.map((a) => (
-                <marker key={a.to} id={markerId(a.to)} markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto">
-                  <path d="M0,0 L6,3 L0,6 Z" fill={a.color} />
-                </marker>
-              ))}
-            </defs>
-            {arrows.map((a) => {
-              const tx = centerX(a.to);
-              const midX = (dayX + tx) / 2;
-              return (
-                <path
-                  key={a.to}
-                  d={`M ${dayX} 70 Q ${midX} 99 ${tx} 72`}
-                  fill="none"
-                  stroke={a.color}
-                  strokeWidth="1.4"
-                  markerEnd={`url(#${markerId(a.to)})`}
-                  vectorEffect="non-scaling-stroke"
-                />
-              );
-            })}
-          </svg>
-        ) : null}
-        {cols.map((col, index) => {
-          const hl = highlights.get(index);
-          const isDay = index === 2;
-          return (
-            <div
-              key={col.key}
-              className={`ylc-cstrip__col${isDay ? " ylc-cstrip__col--day" : ""}${hl ? " ylc-cstrip__col--hl" : ""}`}
-              style={hl ? ({ "--hl": hl.color } as CSSProperties) : undefined}
-            >
-              <span className="ylc-cstrip__label">{col.label}</span>
-              <span className="ylc-cstrip__stem" style={{ color: colorOf(elementOf(col.pillar?.stem ?? "")) }}>
-                {col.pillar?.stem ?? "—"}
-              </span>
-              <span className="ylc-cstrip__branch" style={{ color: colorOf(elementOf(col.pillar?.branch ?? "")) }}>
-                {col.pillar?.branch ?? "—"}
-              </span>
-              {hl ? <span className="ylc-cstrip__role" style={{ color: hl.color }}>{hl.roleLabels.join("/")}</span> : null}
-            </div>
-          );
-        })}
-      </div>
+      <ChartPillarTable cols={cols} highlights={highlights} variant="chapter" />
       <figcaption className="ylc-cstrip__caption">{caption}</figcaption>
     </figure>
   );

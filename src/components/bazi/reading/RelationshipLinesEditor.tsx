@@ -31,6 +31,18 @@ export function RelationshipLinesEditor({
     onChange(rows.map((row, idx) => (idx === index ? { ...row, [field]: value } : row)));
   }
 
+  function togglePageBreak(index: number) {
+    onChange(rows.map((row, idx) => (idx === index ? { ...row, pageBreakBefore: !row.pageBreakBefore } : row)));
+  }
+
+  function deleteRow(index: number) {
+    onChange(rows.filter((_, idx) => idx !== index));
+  }
+
+  function addRow() {
+    onChange([...rows, { ageRange: "", symbol: "", relationLine: "", deepNote: "" }]);
+  }
+
   return (
     <section className="surface reading-path__appendix" aria-label="บทเสริม">
       <SectionHeading
@@ -45,7 +57,7 @@ export function RelationshipLinesEditor({
             disabled={generating || !canGenerate || rows.length === 0}
             onClick={onGenerateDeepNotes}
           >
-            {generating ? "กำลัง gen คำอธิบาย..." : "✨ Gen คำอธิบายดี-ร้ายเชิงลึก (LLM)"}
+            {generating ? "กำลัง gen คำอธิบาย..." : "Gen คำอธิบายดี-ร้ายเชิงลึก (LLM)"}
           </ActionButton>
         }
       />
@@ -62,11 +74,12 @@ export function RelationshipLinesEditor({
             <th>เสาวัยจร</th>
             <th>เส้นขีดที่ทำงาน</th>
             <th>คำอธิบายดี-ร้ายเชิงลึก</th>
+            <th>จัดการ</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={`${row.ageRange}-${index}`}>
+            <tr key={index} className={row.pageBreakBefore ? "reading-path__row--break" : undefined}>
               <td>
                 <input
                   className="reading-path__cell-input reading-path__cell-input--narrow"
@@ -100,10 +113,32 @@ export function RelationshipLinesEditor({
                   onChange={(event) => updateCell(index, "deepNote", event.target.value)}
                 />
               </td>
+              <td className="reading-path__row-actions">
+                <button
+                  type="button"
+                  className={`reading-path__row-btn ${row.pageBreakBefore ? "is-active" : ""}`}
+                  aria-pressed={Boolean(row.pageBreakBefore)}
+                  title="ขึ้นหน้าใหม่ก่อนแถวนี้ (ในไฟล์ PDF/Word)"
+                  onClick={() => togglePageBreak(index)}
+                >
+                  ขึ้นหน้าใหม่
+                </button>
+                <button
+                  type="button"
+                  className="reading-path__row-btn reading-path__row-btn--del"
+                  title="ลบแถวนี้"
+                  onClick={() => deleteRow(index)}
+                >
+                  ลบ
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <button type="button" className="reading-path__add-row" onClick={addRow}>
+        + เพิ่มแถว
+      </button>
     </section>
   );
 }

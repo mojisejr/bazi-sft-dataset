@@ -179,16 +179,24 @@
 }
 .ylc-prose p {
   margin: 0 0 14px;
-  text-indent: 2em;
+  text-indent: 0;
   orphans: 2;
   widows: 2;
+  /* คงช่องว่างที่ผู้ใช้พิมพ์ (ตรงกับ editor) */
+  white-space: pre-wrap;
 }
 .ylc-prose p:last-child {
   margin-bottom: 0;
 }
+/* ย่อหน้าที่ซินแสกดปุ่ม "ย่อหน้า" — เยื้องบรรทัดแรก (ใช้ร่วม editor/พรีวิว/PDF) */
+.ylc-prose p.ylc-indent {
+  text-indent: 2em;
+}
 .ylc-prose strong {
   font-weight: 700;
-  color: var(--ylc-ink);
+  /* inherit แทน fix สี: ตัวหนาที่ไม่ระบุสีจะได้ ink จาก body อยู่แล้ว แต่ถ้าครอบด้วย
+     mark สี (span[style=color]) จะได้สีนั้นด้วย — ไม่งั้น ใส่ตัวหนาแล้วเปลี่ยนสีไม่ได้ */
+  color: inherit;
 }
 /* เน้นเตือนสีแดง: ***...*** หรือบรรทัดขึ้นต้น *** */
 .ylc-prose .ylc-warn {
@@ -234,6 +242,36 @@
 .ylc-empty {
   color: var(--ylc-muted);
   font-style: italic;
+}
+
+/* ── กล่อง (box) แยกตามหัวข้อย่อย — ใช้ทั้ง PDF และหน้าแก้ (.ylc-prose เดียวกัน) ──────── */
+.ylc-prose .ylc-box {
+  border: 1px solid var(--ylc-teal);
+  border-radius: 8px;
+  background: #f6fbfc;
+  padding: 6mm 7mm 4mm;
+  margin: 5mm 0;
+  text-indent: 0;
+  /* กล่องยาวให้ paged.js แตกหน้าได้ (ห้าม avoid ทั้งกล่อง — build paged.js นี้เปราะกับเนื้อหายาว) */
+  break-inside: auto;
+}
+.ylc-prose .ylc-box__title {
+  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  font-size: 13.5pt;
+  line-height: 1.35;
+  margin: 0 0 3mm;
+  padding-bottom: 2mm;
+  border-bottom: 1px dashed var(--ylc-teal-soft);
+  text-indent: 0;
+  break-after: avoid;
+}
+.ylc-prose .ylc-box__body > :first-child {
+  margin-top: 0;
+}
+.ylc-prose .ylc-box__body > :last-child {
+  margin-bottom: 0;
 }
 
 /* ── ตารางภาคผนวก (วัยจรเชิงลึก) ──────────────────────────────────────── */
@@ -293,89 +331,56 @@
   break-inside: avoid;
 }
 
-/* ── ผังดวงกำกับลูกศรของบท (compact strip) ───────────────────────────── */
+/* ── ผังดวงกำกับของบท (ตารางเสาเต็ม + วงสีเน้น) ───────────────────────── */
 .ylc-cstrip {
   margin: 0 0 7mm;
   break-inside: avoid;
 }
-.ylc-cstrip__grid {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  border: 1px solid var(--ylc-rule);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #fbfdfe;
-}
-.ylc-cstrip__arrows {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 0;
-  pointer-events: none;
-}
-.ylc-cstrip__col {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1px;
-  padding: 5px 2px 9px;
-  border-left: 1px solid var(--ylc-rule);
-}
-.ylc-cstrip__col:first-child {
-  border-left: none;
-}
-.ylc-cstrip__col--day {
-  background: rgba(47, 159, 179, 0.08);
-}
-.ylc-cstrip__col--hl {
-  box-shadow: inset 0 0 0 2px var(--hl);
-  border-radius: 6px;
-}
-.ylc-cstrip__label {
-  font-size: 9.5px;
-  color: var(--ylc-muted);
-  font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
-}
-.ylc-cstrip__stem {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.ylc-cstrip__branch {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.05;
-}
-.ylc-cstrip__role {
-  font-size: 9px;
-  font-weight: 700;
-}
 .ylc-cstrip__caption {
-  margin: 4px 2px 0;
+  margin: 5px 2px 0;
   font-size: 10.5px;
   color: var(--ylc-muted);
   line-height: 1.4;
 }
 
-/* ── หน้า 4: แผ่นดวงชะตา (วันเวลาเกิด) ────────────────────────────────── */
+/* ── หน้า 4: แผ่นดวงชะตา (วันเวลาเกิด) — เต็มหน้า A4 + กรอบเส้นคู่รอบหน้า ── */
 .ylc-sheet--chart {
   page: ylc-full;
-  padding: 24mm 18mm 18mm;
+  position: relative;
+  box-sizing: border-box;
+  min-height: 297mm;
+  padding: 22mm 20mm 20mm;
   text-align: center;
+  display: flex;
+  flex-direction: column;
 }
+.ylc-sheet--chart > * {
+  position: relative;
+  z-index: 1;
+}
+/* กรอบเส้นคู่รอบหน้า (เว้นขอบกระดาษ ไม่ให้เนื้อหาตกขอบ) */
+.ylc-sheet--chart::before {
+  content: "";
+  position: absolute;
+  inset: 8mm;
+  border: 2px solid var(--ylc-teal-soft);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 3px #ffffff, inset 0 0 0 4px var(--ylc-rule);
+  pointer-events: none;
+  z-index: 0;
+}
+/* หัวข้อวันเดือนปี-เวลาเกิด: ตัวใหญ่ เกือบเต็มกว้าง + มุมประดับ 4 มุม */
 .ylc-birthbox {
   position: relative;
-  display: inline-block;
-  margin: 0 auto;
-  padding: 12px 34px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 2mm 0 0;
+  padding: 13px 30px;
   color: var(--ylc-teal-deep);
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
-  font-size: 18px;
-  line-height: 1.3;
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.35;
   border: 2px solid var(--ylc-teal-soft);
   border-radius: 6px;
   box-shadow: inset 0 0 0 4px #ffffff, inset 0 0 0 5px var(--ylc-rule);
@@ -384,46 +389,52 @@
   color: var(--ylc-teal-deep);
   font-weight: 700;
 }
-.ylc-birthbox::before,
-.ylc-birthbox::after {
+/* มุมประดับ L-bracket ครบ 4 มุม รอบกล่อง */
+.ylc-birthbox::before {
   content: "";
   position: absolute;
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--ylc-teal);
-}
-.ylc-birthbox::before {
-  top: -4px;
-  left: -4px;
-  border-right: none;
-  border-bottom: none;
-}
-.ylc-birthbox::after {
-  bottom: -4px;
-  right: -4px;
-  border-left: none;
-  border-top: none;
+  inset: -6px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top left / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top left / 2px 18px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top right / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) top right / 2px 18px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom left / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom left / 2px 18px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom right / 18px 2px no-repeat,
+    linear-gradient(var(--ylc-teal), var(--ylc-teal)) bottom right / 2px 18px no-repeat;
 }
 .ylc-gender {
-  margin: 10px 0 18px;
+  margin: 8px 0 12px;
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
-  font-size: 17px;
+  font-size: 23px;
   color: var(--ylc-ink);
 }
 .ylc-gender__sym {
   color: var(--ylc-teal);
   font-size: 1.1em;
 }
+/* ── ตารางเสาใช้ร่วม (.ylc-chart-grid) — variant --full (หน้าแผ่นดวง) / --chapter (กำกับบท) ── */
 .ylc-chart-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   border: 1px solid var(--ylc-rule);
   border-radius: 8px;
   overflow: hidden;
-  margin: 0 0 8mm;
+}
+.ylc-chart-grid--full {
+  width: 100%;
+  min-height: 64mm;
+  margin: 4mm 0 6mm;
+}
+.ylc-chart-grid--chapter {
+  margin: 0;
+  break-inside: avoid;
 }
 .ylc-chart-col {
+  position: relative;
   border-left: 1px solid var(--ylc-rule);
   display: flex;
   flex-direction: column;
@@ -439,10 +450,17 @@
   font-size: 14px;
   padding: 8px 4px;
   border-bottom: 1px solid var(--ylc-rule);
+  text-align: center;
 }
 .ylc-chart-col__body {
   padding: 18px 4px;
   color: var(--ylc-muted);
+}
+.ylc-chart-col__glyphs {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
 }
 .ylc-chart-cell {
   display: flex;
@@ -450,6 +468,8 @@
   align-items: center;
   gap: 4px;
   padding: 12px 4px;
+  flex: 1;
+  justify-content: center;
 }
 .ylc-chart-cell--stem {
   border-bottom: 1px solid #eef2f3;
@@ -471,13 +491,79 @@
   font-size: 14px;
   font-weight: 700;
 }
+/* จุดเน้นของบท: กรอบสี่เหลี่ยมล้อมรอบก้าน+กิ่งของเสาที่เกี่ยวข้อง */
+.ylc-chart-col--hl .ylc-chart-col__glyphs::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  right: 3px;
+  border: 2px solid var(--hl);
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 2;
+}
+.ylc-chart-col__role {
+  padding: 3px 2px 5px;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+}
+/* variant --full: ขยายให้เต็มหน้า A4 */
+.ylc-chart-grid--full .ylc-chart-col__head {
+  font-size: 18px;
+  padding: 12px 4px;
+}
+.ylc-chart-grid--full .ylc-chart-cell {
+  padding: 13px 4px;
+}
+.ylc-chart-grid--full .ylc-chart-glyph {
+  font-size: 46px;
+}
+.ylc-chart-grid--full .ylc-chart-en {
+  font-size: 12px;
+}
+.ylc-chart-grid--full .ylc-chart-hidden {
+  font-size: 18px;
+}
+/* variant --chapter: กระชับสำหรับแถบกำกับบท */
+.ylc-chart-grid--chapter .ylc-chart-col__head {
+  font-size: 11px;
+  padding: 5px 3px;
+}
+.ylc-chart-grid--chapter .ylc-chart-cell {
+  padding: 7px 3px;
+  gap: 2px;
+}
+.ylc-chart-grid--chapter .ylc-chart-glyph {
+  font-size: 23px;
+}
+.ylc-chart-grid--chapter .ylc-chart-en {
+  font-size: 8px;
+}
+.ylc-chart-grid--chapter .ylc-chart-hidden {
+  font-size: 11px;
+}
+.ylc-chart-grid--chapter .ylc-chart-col__role {
+  font-size: 9px;
+  padding: 2px 2px 4px;
+}
+.ylc-chart-grid--chapter .ylc-chart-col--hl .ylc-chart-col__glyphs::after {
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  border-radius: 5px;
+}
 .ylc-elem {
-  margin: 0 0 9mm;
+  margin: 0 0 7mm;
 }
 .ylc-elembar {
   display: flex;
-  height: 16px;
-  border-radius: 8px;
+  height: 22px;
+  border-radius: 11px;
   overflow: hidden;
   background: #eef2f3;
 }
@@ -489,49 +575,50 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 14px;
-  margin-top: 8px;
-  font-size: 12px;
+  gap: 18px;
+  margin-top: 11px;
+  font-size: 13.5px;
   color: var(--ylc-body);
 }
 .ylc-elem-legend__item {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 .ylc-elem-legend__item i {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
   border-radius: 3px;
   display: inline-block;
 }
 .ylc-luck {
   text-align: left;
   margin-top: 4mm;
+  break-inside: avoid;
 }
 .ylc-luck__title {
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
   color: var(--ylc-ink);
-  font-size: 18px;
-  margin: 0 0 4px;
+  font-size: 25px;
+  margin: 0 0 6px;
 }
 .ylc-luck__age {
   margin: 0;
-  font-size: 15px;
+  font-size: 19px;
   color: var(--ylc-body);
 }
 .ylc-luck__note {
-  margin: 2px 0 12px;
-  font-size: 12px;
+  margin: 3px 0 16px;
+  font-size: 15px;
   color: var(--ylc-muted);
 }
 .ylc-luck-cards {
   display: flex;
-  gap: 14px;
+  gap: 18px;
 }
 .ylc-luck-card {
-  width: 96px;
+  width: 120px;
   border: 1px solid var(--ylc-rule);
   border-radius: 8px;
   overflow: hidden;
@@ -543,16 +630,16 @@
   color: var(--ylc-ink);
   font-family: "YLC Display", "YLC Sarabun", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "SimHei", "Noto Sans SC", sans-serif;
   font-weight: 700;
-  font-size: 13px;
-  padding: 6px 4px;
+  font-size: 15px;
+  padding: 8px 4px;
   border-bottom: 1px solid var(--ylc-rule);
 }
 .ylc-luck-card__glyphs {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   padding: 10px 4px;
-  font-size: 26px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.05;
 }
@@ -724,4 +811,377 @@
   .ylc-paged-out::after {
     content: none !important;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * EDIT MODE — ตัวแก้ WYSIWYG (TipTap) ใน preview ก่อนออก PDF
+ * ใช้ .ylc-prose ร่วมกับ PDF เพื่อให้หน้าตาใกล้เคียงเอกสารจริง
+ * ────────────────────────────────────────────────────────────────────────── */
+/* โหมดแก้แบบ tab ซ้าย: รายชื่อบท · แก้ทีละบท · มินิพรีวิวหน้าจริง */
+.ylc-edit-layout {
+  display: grid;
+  /* คอลัมน์ตัวแก้ (auto) พองพอให้ surface ได้ 174mm + แถบเครื่องมือ; พรีวิวกินที่เหลือ (หดได้ถึง 0) */
+  grid-template-columns: 200px auto minmax(0, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+  align-items: start;
+}
+/* จอแคบ: ยุบมินิพรีวิวลงล่าง */
+@media (max-width: 1100px) {
+  .ylc-edit-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .ylc-edit-preview {
+    grid-column: 1 / -1;
+  }
+}
+/* source ซ่อนสำหรับนับจำนวนหน้า (paged.js) */
+.ylc-edit-source {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.ylc-edit-nav {
+  position: sticky;
+  top: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px;
+}
+.ylc-pagecount-box {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.ylc-pagecount-box__num {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+}
+.ylc-pagecount-box__btn {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  padding: 5px 12px;
+  border: 1px solid var(--ylc-teal);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--ylc-teal-deep);
+  cursor: pointer;
+}
+.ylc-pagecount-box__btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ylc-pagecount-box__stale {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: #c98a3c;
+}
+.ylc-pagecount-box__err {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.72rem;
+  color: var(--ylc-warn);
+}
+.ylc-edit-nav__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 62vh;
+  overflow: auto;
+}
+.ylc-edit-nav__item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #e8f2f4;
+  font-size: 0.86rem;
+}
+.ylc-edit-nav__item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.ylc-edit-nav__item.is-active {
+  background: var(--ylc-teal);
+  color: #ffffff;
+}
+.ylc-edit-nav__title {
+  line-height: 1.3;
+}
+.ylc-edit-nav__pages {
+  font-size: 0.7rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+.ylc-edit-main {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 22px 18px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  min-height: 62vh;
+}
+.ylc-edit-main__title {
+  margin: 0 0 14px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+}
+.ylc-edit-main .reading-path__appendix {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  margin: 0;
+}
+/* ── ขวาสุด: มินิพรีวิวหน้าจริงของบท ── */
+.ylc-edit-preview {
+  position: sticky;
+  top: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 88vh;
+  overflow: auto;
+}
+.ylc-edit-preview__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #d7e7ea;
+  margin-bottom: 8px;
+}
+.ylc-edit-preview__btn {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border: 1px solid var(--ylc-teal);
+  border-radius: 6px;
+  background: transparent;
+  color: #d7e7ea;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ylc-edit-preview__btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+/* ย่อหน้า A4 จริงของ paged.js ให้พอดีคอลัมน์ — pages อยู่ใต้ .ylc-paged-out (ไม่มี .ylc-preview ครอบ
+   จึงต้อง re-style .pagedjs_page เองที่นี่) */
+/* width:100% = ไม่ขยายตามหน้า A4 1:1 (794px) → clientWidth = ความกว้างคอลัมน์จริง (ใช้คำนวณ fit) */
+.ylc-mini-preview {
+  width: 100%;
+  overflow: hidden;
+}
+/* zoom ใส่ผ่าน inline style (state) หลัง paged.js เสร็จ — render 1:1 ก่อนเพื่อไม่ให้วัดเพี้ยน */
+.ylc-mini-preview__zoom {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+.ylc-mini-preview__zoom button {
+  font-size: 0.74rem;
+  padding: 2px 9px;
+  border: 1px solid #cfd8da;
+  border-radius: 5px;
+  background: #f6f8f9;
+  color: #2a3438;
+  cursor: pointer;
+}
+.ylc-mini-preview__zoom button:hover {
+  background: #eef2f3;
+}
+.ylc-mini-preview .pagedjs_pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.ylc-mini-preview .pagedjs_page {
+  background: #ffffff;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.4);
+}
+.ylc-mini-preview .ylc-preview__loading {
+  color: #cfe0e3;
+  font-size: 1.6rem;
+  padding: 20px;
+}
+/* ป้ายสถานะบันทึก (ChapterEditor) */
+.ylc-editor__status {
+  align-self: center;
+  font-size: 0.74rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.ylc-editor__status--editing {
+  color: var(--ylc-muted);
+}
+.ylc-editor__status--saved {
+  color: #1f7a3d;
+  background: #e7f5ec;
+}
+/* dropdown สี */
+.ylc-editor__colorwrap {
+  position: relative;
+  display: block;
+}
+.ylc-editor__colormenu {
+  position: absolute;
+  z-index: 10;
+  top: 0;
+  left: 100%;
+  margin-left: 6px;
+  background: #ffffff;
+  border: 1px solid #d6dee0;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 170px;
+}
+.ylc-editor__swatch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: left;
+}
+.ylc-editor__swatch:hover {
+  background: #eef2f3;
+}
+.ylc-editor__swatch span {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  display: inline-block;
+}
+.ylc-editor__swatch--clear {
+  color: var(--ylc-muted);
+}
+/* รูปเต็มหน้า → แถบ placeholder (เผื่อใช้ editLayout) */
+.ylc-sheet--imgph {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 22px;
+  background: #ffffff;
+  border: 1px dashed var(--ylc-rule);
+}
+.ylc-imgph__tag {
+  font-size: 0.7rem;
+  background: var(--ylc-teal-soft);
+  color: #0d4651;
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+.ylc-imgph__label {
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+}
+.ylc-editor {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.ylc-editor__toolbar {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  gap: 6px;
+  flex: 0 0 124px;
+  position: sticky;
+  top: 8px;
+  align-self: flex-start;
+  /* sticky สร้าง stacking context ของตัวเอง → ต้องยก z-index ทั้งแถบให้อยู่เหนือ
+     .ylc-editor__surface (sibling ที่วาดทีหลัง) ไม่งั้นเมนูสีจะถูกข้อความเอกสารทับ */
+  z-index: 5;
+}
+.ylc-editor__toolbar button {
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  border: 1px solid #cfd8da;
+  border-radius: 5px;
+  background: #f6f8f9;
+  color: #2a3438;
+  cursor: pointer;
+  width: 100%;
+  text-align: center;
+}
+.ylc-editor__toolbar button:hover {
+  background: #eef2f3;
+}
+.ylc-editor__toolbar button.is-active {
+  background: var(--ylc-teal);
+  border-color: var(--ylc-teal);
+  color: #ffffff;
+}
+.ylc-editor__surface {
+  color: var(--ylc-ink);
+  /* บีบ prose ให้กว้างเท่าเนื้อหา A4 จริง (210mm − ขอบ 18mm สองข้าง = 174mm) → ตัดบรรทัดใกล้ PDF */
+  flex: 0 1 auto;
+  width: 174mm;
+  max-width: 100%;
+  min-width: 0;
+}
+.ylc-editor__surface .ProseMirror {
+  outline: none;
+  min-height: 60px;
+  /* คงช่องว่างที่พิมพ์ (กด space หลายตัวไม่ยุบเหลือ 1) */
+  white-space: pre-wrap;
+}
+/* หัวข้อใน editor เป็น <h2> — จัดให้เหมือน .ylc-sub ของ PDF */
+.ylc-editor__surface h2 {
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  font-size: 14pt;
+  line-height: 1.35;
+  margin: 14px 0 6px;
+}
+.ylc-editor__surface .ylc-warn,
+.ylc-editor__surface strong.ylc-warn {
+  color: var(--ylc-warn);
+  font-weight: 700;
+}
+.ylc-editor__surface .ylc-warn-line {
+  color: var(--ylc-warn);
+  font-weight: 700;
+  text-indent: 0;
+}
+/* เส้นปะ "แบ่งหน้า" บนจอแก้ (ไม่พิมพ์ออก — เป็นแค่ตัวบอกตำแหน่ง [[pagebreak]]) */
+.ylc-edit-pagebreak {
+  margin: 14px 0;
+  padding: 4px 0;
+  text-align: center;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  color: var(--ylc-muted);
+  border-top: 1px dashed #b7c2c5;
+  border-bottom: 1px dashed #b7c2c5;
+  user-select: none;
 }

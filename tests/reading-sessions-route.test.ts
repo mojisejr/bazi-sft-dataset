@@ -106,6 +106,17 @@ describe("SaveReadingSessionRequestSchema", () => {
     expect(() => SaveReadingSessionRequestSchema.parse(body)).toThrow();
   });
 
+  test("keeps pageBreakBefore on relationship lines (ไม่ถูก zod ตัดทิ้งตอนบันทึก)", () => {
+    const body = createValidSessionBody();
+    (body.sessionData as { relationshipLines: unknown }).relationshipLines = [
+      { ageRange: "5-9 ปี", symbol: "壬", relationLine: "ลาภ", deepNote: "x" },
+      { ageRange: "10-14 ปี", symbol: "戌", relationLine: "คู่ธาตุ", deepNote: "y", pageBreakBefore: true },
+    ];
+    const parsed = SaveReadingSessionRequestSchema.parse(body);
+    expect(parsed.sessionData.relationshipLines?.[1].pageBreakBefore).toBe(true);
+    expect(parsed.sessionData.relationshipLines?.[0].pageBreakBefore).toBeUndefined();
+  });
+
   test("rejects an empty birthDate", () => {
     const body = createValidSessionBody();
     body.rawInput.birthDate = "";

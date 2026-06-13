@@ -10,6 +10,7 @@ import {
   CalculatedStateSchema,
   REQUIRED_ANNOTATION_DIMENSION_NAMES,
 } from "@/lib/bazi/schema-types";
+import { computeDomainPower } from "@/lib/bazi/symbolic-engine.domain-power";
 
 function createReviewedRecord() {
   return {
@@ -150,6 +151,28 @@ describe("phase 4 export transformer", () => {
     expect(prompt).toContain("Element Strengths: wood=strength:weak,rooted:yes,seasonal:seasonal-drained");
     expect(prompt).toContain("Precedence Note Signals: SOLAR_TERM_BOUNDARY_NEAR(hours=1.50, solarTermName=立秋, boundaryAt=1992-08-21T15:00:00)");
     expect(prompt).not.toContain("สมบัติ");
+  });
+
+  test("surfaces domain-power scores in the user prompt when present", () => {
+    const record = createReviewedRecord();
+    const withPower = {
+      ...record,
+      calculatedState: {
+        ...record.calculatedState,
+        domainPower: computeDomainPower({
+          year: record.calculatedState.fourPillars.year,
+          month: record.calculatedState.fourPillars.month,
+          day: record.calculatedState.fourPillars.day,
+          hour: record.calculatedState.fourPillars.hour,
+        }),
+      },
+    };
+
+    const prompt = createBaziUserPrompt(withPower);
+
+    expect(prompt).toContain("Domain Power (0-100%):");
+    expect(prompt).toMatch(/career=\d/);
+    expect(prompt).toMatch(/wealth=\d/);
   });
 
   test("builds assistant blocks in schema order with titles and reasoning", () => {

@@ -55,4 +55,26 @@ describe("orchestrator prompt builder", () => {
     expect(bundle.userPrompt).not.toContain("sourceRoot");
     expect(bundle.userPrompt).not.toContain("combinedNormalizedContent");
   });
+
+  test("knowledge overlay ทับ sinsaeLogicRules ที่ป้อนเข้า prompt (แก้ปุ๊บเห็นผล)", async () => {
+    const rawInput = {
+      birthDate: "1992-08-21",
+      birthTime: "14:35",
+      gender: "female",
+      province: "Bangkok",
+      calendarSystem: "solar",
+      timezone: "Asia/Hong_Kong",
+    } as const;
+
+    const chart = await calculateBaziChart(rawInput, createTestKnowledgeRepository());
+    const overlay = {
+      tables: {},
+      appends: {},
+      registry: { suitable_career: { logicRules: { 1: "กฎที่ซินแสแก้ใหม่" } } },
+    };
+    const bundle = buildChunkPromptBundle(rawInput, chart, "life_path", overlay);
+
+    expect(bundle.userPrompt).toContain("กฎที่ซินแสแก้ใหม่");
+    expect(bundle.userPrompt).not.toContain("อ้างอิงจากความแข็ง-อ่อนของดิถีเป็นหลัก");
+  });
 });

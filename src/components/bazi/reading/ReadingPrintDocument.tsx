@@ -1,12 +1,17 @@
+import { Fragment } from "react";
 import type { ReactNode } from "react";
 
 import { buildChapterAnnotation, ChapterChartStrip } from "@/components/bazi/reading/ChapterChartStrip";
-import type { RelationshipLineRow } from "@/components/bazi/reading/TopicCard";
 import {
-  BRANCH_TO_ELEMENT,
-  ELEMENT_COLORS_TH,
+  ChartPillarTable,
+  colorOf,
+  elementOfBranch,
+  elementOfStem,
+} from "@/components/bazi/reading/ChartPillarTable";
+import type { RelationshipLineRow } from "@/components/bazi/reading/TopicCard";
+import { tokenizeInline } from "@/lib/bazi/reading-inline";
+import {
   ELEMENT_LABELS_TH,
-  STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type {
   CalculatedStateValue,
@@ -14,6 +19,7 @@ import type {
   RawInputValue,
 } from "@/lib/bazi/schema-types";
 
+/* ตารางเสาใช้ร่วม (หน้าแผ่นดวง + กำกับบท) ย้ายไป ChartPillarTable.tsx */
 /** หนึ่งบทในเอกสาร PDF (ข้อความ resolve แล้วฝั่ง client: ซินแสแก้ ?? engine humanReading) */
 export type PrintChapter = {
   chapter: number;
@@ -31,24 +37,50 @@ type ReadingPrintDocumentProps = {
   relationshipLines?: RelationshipLineRow[] | null;
   /** ชื่อเจ้าของดวง (ถ้ามี) — ไม่มีก็ใช้วันเกิดแทนใต้หัวเรื่องบท */
   clientName?: string | null;
+  /**
+   * โหมดแก้ (edit): render เนื้อบทเป็น editable แทน markdown read-only
+   * ถ้ามี → หนึ่งแผ่นต่อบท (ไม่ split ตาม [[pagebreak]] — ตัวแบ่งหน้าเป็น marker ใน editor)
+   */
+  renderChapterBody?: (chapter: PrintChapter) => ReactNode;
+  /** โหมดแก้: render ตารางวัยจรท้ายเล่มเป็น editable แทน table read-only */
+  renderAppendix?: () => ReactNode;
+  /** โหมดแก้: ยุบหน้ารูปเต็มหน้า (ปก/คำนำ/สารบัญ/ปกหลัง) เป็นแถบ placeholder ให้เอกสารสั้นลง */
+  editLayout?: boolean;
 };
+
+/** หน้ารูปเต็มหน้า — โหมดปกติแสดง <img>; โหมดแก้ยุบเป็นแถบ placeholder (มี label จาก alt) */
+function ImageSheet({ src, alt, label, editLayout }: { src: string; alt: string; label: string; editLayout?: boolean }) {
+  if (editLayout) {
+    return (
+      <section className="ylc-sheet ylc-sheet--imgph" aria-label={alt}>
+        <span className="ylc-imgph__tag">รูปเต็มหน้า</span>
+        <span className="ylc-imgph__label">{label}</span>
+      </section>
+    );
+  }
+  return (
+    <section className="ylc-sheet ylc-sheet--image">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt={alt} />
+    </section>
+  );
+}
 
 const KICKER = "ถอดรหัสดวงชะตา";
 
 /** marker บรรทัดเดี่ยวสั่งขึ้นหน้าใหม่ (ซินแสแทรกในข้อความ) — ต้องตรงกับ reading-docx.ts */
 const PAGEBREAK_MARKER = "[[pagebreak]]";
+/** marker นำหน้าบรรทัดแรกของย่อหน้าที่เยื้องบรรทัดแรก — ต้องตรงกับ reading-markdown / reading-docx */
+const INDENT_MARKER = "[[indent]]";
+/** กล่อง (box) แยกตามหัวข้อย่อย — ต้องตรงกับ reading-markdown / reading-docx */
+const BOX_OPEN_RE = /^\[\[box=(.*)\]\]$/;
+const BOX_CLOSE_MARKER = "[[/box]]";
 
 const TH_MONTHS = [
   "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-const YANG_STEMS = new Set(["甲", "丙", "戊", "庚", "壬"]);
-const YANG_BRANCHES = new Set(["子", "寅", "辰", "午", "申", "戌"]);
-const BRANCH_ZODIAC_EN: Record<string, string> = {
-  子: "RAT", 丑: "OX", 寅: "TIGER", 卯: "RABBIT", 辰: "DRAGON", 巳: "SNAKE",
-  午: "HORSE", 未: "GOAT", 申: "MONKEY", 酉: "ROOSTER", 戌: "DOG", 亥: "PIG",
-};
 const ELEMENT_ORDER: Array<keyof typeof ELEMENT_LABELS_TH> = ["wood", "fire", "earth", "metal", "water"];
 
 function genderTh(gender: string): string {
@@ -68,51 +100,48 @@ function thaiDate(iso: string): string {
 const EMOJI_RE = /[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE00}-\u{FE0F}\u{200D}]/gu;
 function cleanText(text: string | null | undefined): string {
   if (!text) return "";
-  return text.replace(EMOJI_RE, "").replace(/[ \t]{2,}/g, " ");
+  // ตัด emoji ออก แต่ "คงช่องว่าง" ที่ผู้ใช้พิมพ์ (เดิมยุบ [ \t]{2,}→" " ทำให้กด space หลายตัวเหลือ 1)
+  // การโชว์ช่องว่างจริงอาศัย white-space: pre-wrap ที่ .ylc-prose
+  return text.replace(EMOJI_RE, "");
 }
 
-function elementOfStem(stem: string): keyof typeof ELEMENT_LABELS_TH | undefined {
-  return STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
-}
-function elementOfBranch(branch: string): keyof typeof ELEMENT_LABELS_TH | undefined {
-  return BRANCH_TO_ELEMENT[branch as keyof typeof BRANCH_TO_ELEMENT];
-}
-function colorOf(element: keyof typeof ELEMENT_LABELS_TH | undefined): string {
-  if (!element) return "#3d4548";
-  return ELEMENT_COLORS_TH[ELEMENT_LABELS_TH[element]] ?? "#3d4548";
-}
-
-/* ── เรนเดอร์ markdown ย่อ (ตัวหนา / เน้นแดง / หัวข้อย่อย / bullet / ย่อหน้า) ─ */
+/* ── เรนเดอร์ markdown ย่อ (ตัวหนา / เน้นแดง / สี / หัวข้อย่อย / bullet / ย่อหน้า) ─
+   ใช้ tokenizer กลาง (reading-inline) ตัวเดียวกับ docx/converter — กันตีความไม่ตรง */
 function renderInline(text: string): ReactNode[] {
-  const out: ReactNode[] = [];
-  // ***เน้นแดง*** มาก่อน **ตัวหนา**
-  const re = /\*\*\*(.+?)\*\*\*|\*\*(.+?)\*\*/g;
-  let last = 0;
-  let key = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text)) !== null) {
-    if (m.index > last) out.push(text.slice(last, m.index));
-    if (m[1] !== undefined) {
-      out.push(<strong key={key++} className="ylc-warn">{m[1]}</strong>);
-    } else {
-      out.push(<strong key={key++}>{m[2]}</strong>);
+  return tokenizeInline(text).map((r, i) => {
+    const fontSize = r.fontSize;
+    if (r.color) {
+      return (
+        <span key={i} style={{ color: r.color, fontWeight: r.bold ? 700 : undefined, fontSize }}>
+          {r.text}
+        </span>
+      );
     }
-    last = m.index + m[0].length;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
+    if (r.red) {
+      return <strong key={i} className="ylc-warn" style={fontSize ? { fontSize } : undefined}>{r.text}</strong>;
+    }
+    if (r.bold) return <strong key={i} style={fontSize ? { fontSize } : undefined}>{r.text}</strong>;
+    if (fontSize) return <span key={i} style={{ fontSize }}>{r.text}</span>;
+    return r.text;
+  });
 }
 
 function renderMarkdown(text: string): ReactNode[] {
   const lines = text.replace(/\r/g, "").split("\n");
   const blocks: ReactNode[] = [];
   let para: string[] = [];
+  let paraIndent = false;
   let list: string[] = [];
   let key = 0;
   const flushPara = () => {
     if (para.length) {
-      blocks.push(<p key={key++}>{renderInline(para.join(" "))}</p>);
+      blocks.push(
+        <p key={key++} className={paraIndent ? "ylc-indent" : undefined}>
+          {renderInline(para.join(" "))}
+        </p>,
+      );
       para = [];
+      paraIndent = false;
     }
   };
   const flushList = () => {
@@ -127,8 +156,31 @@ function renderMarkdown(text: string): ReactNode[] {
       list = [];
     }
   };
-  for (const raw of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
+    // กล่อง (box): เป็นเครื่องมือช่วย "ซินแสแก้" เท่านั้น — ใน PDF/เอกสารจริงให้แสดง "ข้อความล้วน"
+    // (ตัดกรอบ + หัวข้อย่อยทิ้ง) โดยแบนเนื้อในเข้าสายบทตรง ๆ. เก็บบรรทัดในจนถึง [[/box]] ที่จับคู่ (รองรับซ้อน)
+    const boxOpen = line.match(BOX_OPEN_RE);
+    if (boxOpen) {
+      flushPara();
+      flushList();
+      const inner: string[] = [];
+      let depth = 1;
+      i++;
+      for (; i < lines.length; i++) {
+        const t = lines[i].trim();
+        if (BOX_OPEN_RE.test(t)) {
+          depth++;
+        } else if (t === BOX_CLOSE_MARKER) {
+          depth--;
+          if (depth === 0) break;
+        }
+        inner.push(lines[i]);
+      }
+      blocks.push(<Fragment key={key++}>{renderMarkdown(inner.join("\n"))}</Fragment>);
+      continue;
+    }
     if (!line) {
       flushPara();
       flushList();
@@ -156,11 +208,84 @@ function renderMarkdown(text: string): ReactNode[] {
       continue;
     }
     flushList();
-    para.push(line);
+    if (!para.length) {
+      // บรรทัดแรกของย่อหน้า: [[indent]] = เยื้อง 2em มิฉะนั้นคงช่องว่างนำหน้าที่พิมพ์เอง (trimEnd อย่างเดียว)
+      if (line.startsWith(INDENT_MARKER)) {
+        paraIndent = true;
+        para.push(line.slice(INDENT_MARKER.length).replace(/^\s+/, ""));
+      } else {
+        para.push(raw.replace(/\s+$/, ""));
+      }
+    } else {
+      para.push(line);
+    }
   }
   flushPara();
   flushList();
   return blocks;
+}
+
+const APPENDIX_TITLE = "บทเสริม · ตารางวิเคราะห์เส้นขีดความสัมพันธ์ (วัยจรช่วงละ 5 ปี)";
+
+/** ตารางบทเสริม (วัยจรช่วงละ 5 ปี) — ใช้ทั้งในเอกสารเต็มและมินิพรีวิวบทเสริม */
+function AppendixTable({ relationshipLines }: { relationshipLines: RelationshipLineRow[] }) {
+  return (
+    <table className="ylc-table ylc-table--appendix">
+      <colgroup>
+        <col className="ylc-col-age" />
+        <col className="ylc-col-pillar" />
+        <col className="ylc-col-desc" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th>ช่วงอายุ</th>
+          <th>เสาวัยจร</th>
+          <th>คำอธิบายดี-ร้ายเชิงลึก</th>
+        </tr>
+      </thead>
+      <tbody>
+        {relationshipLines.map((row, i) => (
+          <tr key={`${row.ageRange}-${i}`}>
+            <td>{row.ageRange}</td>
+            <td>{row.symbol}</td>
+            <td className="ylc-cell-desc">
+              {row.relationLine ? <strong>{cleanText(row.relationLine)}</strong> : null}
+              {cleanText(row.deepNote)}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** แตกแถวบทเสริมเป็นกลุ่มตาม pageBreakBefore — แต่ละกลุ่ม = หนึ่ง ContentSheet (หนึ่งหน้า A4) */
+function appendixGroups(rows: RelationshipLineRow[]): RelationshipLineRow[][] {
+  const groups: RelationshipLineRow[][] = [];
+  for (const row of rows) {
+    if (groups.length === 0 || row.pageBreakBefore) groups.push([row]);
+    else groups[groups.length - 1].push(row);
+  }
+  return groups;
+}
+
+/** บทเสริมเป็นแผ่น A4 (แตกหน้าตาม pageBreakBefore) — sheet แรกมีหัว + chapterId ให้ตัวนับจำนวนหน้า */
+function AppendixSheets({ identity, relationshipLines }: { identity: string; relationshipLines: RelationshipLineRow[] }) {
+  return (
+    <>
+      {appendixGroups(relationshipLines).map((group, gi) => (
+        <ContentSheet
+          key={gi}
+          identity={identity}
+          title={APPENDIX_TITLE}
+          chapterId={gi === 0 ? "appendix" : undefined}
+          showHead={gi === 0}
+        >
+          <AppendixTable relationshipLines={group} />
+        </ContentSheet>
+      ))}
+    </>
+  );
 }
 
 /* ── หัวเรื่องบท: kicker + ชื่อ/วันเกิด + เส้นคั่น + "N. ชื่อบท" ──────── */
@@ -177,58 +302,49 @@ function SheetHead({ identity, title }: { identity: string; title: string }) {
   );
 }
 
-function ContentSheet({ identity, title, children }: { identity: string; title: string; children: ReactNode }) {
+function ContentSheet({
+  identity,
+  title,
+  children,
+  chapterId,
+  showHead = true,
+}: {
+  identity: string;
+  title: string;
+  children: ReactNode;
+  /** tag จุดเริ่มบท (data-ch-start) ให้ตัวนับจำนวนหน้า map บท→หน้าได้ */
+  chapterId?: string;
+  /** false = หน้าต่อ ([[pagebreak]] กลางบท) ไม่ต้องซ้ำหัวข้อบท */
+  showHead?: boolean;
+}) {
   return (
-    <section className="ylc-sheet ylc-sheet--content">
-      <SheetHead identity={identity} title={title} />
+    <section className="ylc-sheet ylc-sheet--content" data-ch-start={chapterId}>
+      {showHead ? <SheetHead identity={identity} title={title} /> : null}
       <div className="ylc-sheet__main">{children}</div>
     </section>
   );
 }
 
 /* ── หน้า 4: แผ่นดวงชะตา (ตามรูปสเปก) ───────────────────────────────────── */
-function PillarColumn({ label, pillar }: { label: string; pillar: PillarValue | undefined }) {
-  if (!pillar) {
-    return (
-      <div className="ylc-chart-col">
-        <div className="ylc-chart-col__head">{label}</div>
-        <div className="ylc-chart-col__body">—</div>
-      </div>
-    );
-  }
-  const stemEl = elementOfStem(pillar.stem);
-  const branchEl = elementOfBranch(pillar.branch);
-  const yyStem = YANG_STEMS.has(pillar.stem) ? "YANG" : "YIN";
-  const yyBranch = YANG_BRANCHES.has(pillar.branch) ? "YANG" : "YIN";
-  const hidden = pillar.hiddenStems ?? [];
-  return (
-    <div className="ylc-chart-col">
-      <div className="ylc-chart-col__head">{label}</div>
-      <div className="ylc-chart-cell ylc-chart-cell--stem">
-        <span className="ylc-chart-glyph" style={{ color: colorOf(stemEl) }}>{pillar.stem}</span>
-        <span className="ylc-chart-en">{yyStem} {stemEl ? stemEl.toUpperCase() : ""}</span>
-      </div>
-      <div className="ylc-chart-cell ylc-chart-cell--branch">
-        <span className="ylc-chart-glyph" style={{ color: colorOf(branchEl) }}>{pillar.branch}</span>
-        {hidden.length > 0 ? (
-          <span className="ylc-chart-hidden">
-            {hidden.map((h, i) => (
-              <span key={i} style={{ color: colorOf(elementOfStem(h)) }}>{h}</span>
-            ))}
-          </span>
-        ) : null}
-        <span className="ylc-chart-en">{yyBranch} {BRANCH_ZODIAC_EN[pillar.branch] ?? ""}</span>
-      </div>
-    </div>
-  );
-}
+type LuckGlyph = { symbol: string; color: string };
 
-function MiniPillar({ label, pillar }: { label: string; pillar: PillarValue | undefined }) {
+function MiniPillar({
+  label,
+  pillar,
+  single,
+}: {
+  label: string;
+  pillar?: PillarValue;
+  /** โชว์ glyph เดียว (วัยจร: ครึ่ง 5 ปีที่ตรงอายุปัจจุบัน) แทนก้าน+กิ่ง */
+  single?: LuckGlyph;
+}) {
   return (
     <div className="ylc-luck-card">
       <span className="ylc-luck-card__label">{label}</span>
       <div className="ylc-luck-card__glyphs">
-        {pillar ? (
+        {single ? (
+          <span style={{ color: single.color }}>{single.symbol}</span>
+        ) : pillar ? (
           <>
             <span style={{ color: colorOf(elementOfStem(pillar.stem)) }}>{pillar.stem}</span>
             <span style={{ color: colorOf(elementOfBranch(pillar.branch)) }}>{pillar.branch}</span>
@@ -239,6 +355,28 @@ function MiniPillar({ label, pillar }: { label: string; pillar: PillarValue | un
       </div>
     </div>
   );
+}
+
+/** วัยจรปัจจุบันโชว์ตัวเดียว: ครึ่งก้าน (5 ปีแรก) หรือครึ่งกิ่ง (5 ปีหลัง) ตามอายุจริง */
+function currentLuckGlyph(daYun: CalculatedStateValue["daYun"]): LuckGlyph | undefined {
+  const cur = daYun?.find((d) => d.isCurrent);
+  if (!cur) return undefined;
+  const phase =
+    cur.currentPhase === "lower"
+      ? cur.lowerPhase
+      : cur.currentPhase === "upper"
+        ? cur.upperPhase
+        : cur.upperPhase?.isCurrent
+          ? cur.upperPhase
+          : cur.lowerPhase?.isCurrent
+            ? cur.lowerPhase
+            : cur.upperPhase ?? cur.lowerPhase;
+  if (phase) {
+    const el = phase.source === "stem" ? elementOfStem(phase.symbol) : elementOfBranch(phase.symbol);
+    return { symbol: phase.symbol, color: colorOf(el) };
+  }
+  // เอกสารเก่าไม่มีข้อมูล phase → fallback เป็นครึ่งก้าน
+  return { symbol: cur.stem, color: colorOf(elementOfStem(cur.stem)) };
 }
 
 function ChartSheet({
@@ -259,7 +397,7 @@ function ChartSheet({
   const counts = calculatedState.elementAnalysis?.totalCounts;
   const total = counts ? ELEMENT_ORDER.reduce((s, el) => s + (counts[el] ?? 0), 0) : 0;
   const chineseAge = calculatedState.ageSnapshot?.chineseAge;
-  const currentDaYun = calculatedState.daYun?.find((d) => d.isCurrent);
+  const luckGlyph = currentLuckGlyph(calculatedState.daYun);
 
   return (
     <section className="ylc-sheet ylc-sheet--chart">
@@ -270,11 +408,7 @@ function ChartSheet({
         <span className="ylc-gender__sym">{genderSymbol(rawInput.gender)}</span> {genderTh(rawInput.gender)}
       </p>
 
-      <div className="ylc-chart-grid">
-        {cols.map((c) => (
-          <PillarColumn key={c.label} label={c.label} pillar={c.pillar} />
-        ))}
-      </div>
+      <ChartPillarTable cols={cols} variant="full" />
 
       {total > 0 && counts ? (
         <div className="ylc-elem">
@@ -311,10 +445,7 @@ function ChartSheet({
         ) : null}
         <div className="ylc-luck-cards">
           <MiniPillar label="ปีจร" pillar={calculatedState.liuNian} />
-          <MiniPillar
-            label="วัยจร"
-            pillar={currentDaYun ? { stem: currentDaYun.stem, branch: currentDaYun.branch } : undefined}
-          />
+          <MiniPillar label="วัยจร" single={luckGlyph} />
         </div>
       </div>
 
@@ -336,25 +467,22 @@ export function ReadingPrintDocument({
   chapters,
   relationshipLines,
   clientName,
+  renderChapterBody,
+  renderAppendix,
+  editLayout,
 }: ReadingPrintDocumentProps) {
   const identity = clientName?.trim() || `เกิด ${thaiDate(rawInput.birthDate)}`;
 
   return (
     <article className="ylc-doc">
       {/* 1 ── ปก ── */}
-      <section className="ylc-sheet ylc-sheet--image">
-        <img src="/ylc/cover.jpg" alt="Your Life Code — คู่มือดวงจีน เฉพาะบุคคล" />
-      </section>
+      <ImageSheet src="/ylc/cover.jpg" alt="Your Life Code — คู่มือดวงจีน เฉพาะบุคคล" label="ปก" editLayout={editLayout} />
 
       {/* 2 ── คำนำ ── */}
-      <section className="ylc-sheet ylc-sheet--image">
-        <img src="/ylc/intro.jpg" alt="คำนำ Your Life Code" />
-      </section>
+      <ImageSheet src="/ylc/intro.jpg" alt="คำนำ Your Life Code" label="คำนำ" editLayout={editLayout} />
 
       {/* 3 ── สารบัญ ── */}
-      <section className="ylc-sheet ylc-sheet--image">
-        <img src="/ylc/toc.jpg" alt="หมวดหมู่ดวงจีน — สารบัญ 15 บท" />
-      </section>
+      <ImageSheet src="/ylc/toc.jpg" alt="หมวดหมู่ดวงจีน — สารบัญ 15 บท" label="สารบัญ" editLayout={editLayout} />
 
       {/* 4 ── แผ่นดวงชะตา (วันเวลาเกิด) ── */}
       <ChartSheet rawInput={rawInput} calculatedState={calculatedState} />
@@ -365,6 +493,15 @@ export function ReadingPrintDocument({
           บน element เปล่าใน prose เพราะ paged.js build นี้จะวนค้าง) */}
       {chapters.flatMap((ch) => {
         const annotation = ch.id ? buildChapterAnnotation(calculatedState, ch.id) : null;
+        // โหมดแก้: หนึ่งแผ่นต่อบท เนื้อหาเป็น editor (ตัวแบ่งหน้าเป็น marker ใน editor ไม่ split แผ่น)
+        if (renderChapterBody) {
+          return [
+            <ContentSheet key={`${ch.chapter}-edit`} identity={identity} title={`${ch.chapter}. ${ch.title}`}>
+              {annotation ? <ChapterChartStrip annotation={annotation} uid={ch.id ?? String(ch.chapter)} /> : null}
+              <div className="ylc-prose">{renderChapterBody(ch)}</div>
+            </ContentSheet>,
+          ];
+        }
         const raw = ch.text ?? "";
         const parts = raw.includes(PAGEBREAK_MARKER)
           ? raw.split(PAGEBREAK_MARKER).map((s) => s.trim()).filter((s) => s.length > 0)
@@ -374,7 +511,9 @@ export function ReadingPrintDocument({
           <ContentSheet
             key={`${ch.chapter}-${si}`}
             identity={identity}
-            title={si === 0 ? `${ch.chapter}. ${ch.title}` : `${ch.chapter}. ${ch.title} (ต่อ)`}
+            title={`${ch.chapter}. ${ch.title}`}
+            chapterId={si === 0 ? ch.id : undefined}
+            showHead={si === 0}
           >
             {si === 0 && annotation ? <ChapterChartStrip annotation={annotation} uid={ch.id ?? String(ch.chapter)} /> : null}
             <div className="ylc-prose">
@@ -385,41 +524,87 @@ export function ReadingPrintDocument({
       })}
 
       {/* ── ภาคผนวก: ตารางวัยจรเชิงลึก ── */}
-      {relationshipLines && relationshipLines.length > 0 ? (
-        <ContentSheet identity={identity} title="บทเสริม · ตารางวิเคราะห์เส้นขีดความสัมพันธ์ (วัยจรช่วงละ 5 ปี)">
-          <table className="ylc-table ylc-table--appendix">
-            <colgroup>
-              <col className="ylc-col-age" />
-              <col className="ylc-col-pillar" />
-              <col className="ylc-col-desc" />
-            </colgroup>
-            <thead>
-              <tr>
-                <th>ช่วงอายุ</th>
-                <th>เสาวัยจร</th>
-                <th>คำอธิบายดี-ร้ายเชิงลึก</th>
-              </tr>
-            </thead>
-            <tbody>
-              {relationshipLines.map((row, i) => (
-                <tr key={`${row.ageRange}-${i}`}>
-                  <td>{row.ageRange}</td>
-                  <td>{row.symbol}</td>
-                  <td className="ylc-cell-desc">
-                    {row.relationLine ? <strong>{cleanText(row.relationLine)}</strong> : null}
-                    {cleanText(row.deepNote)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {renderAppendix && relationshipLines && relationshipLines.length > 0 ? (
+        <ContentSheet identity={identity} title={APPENDIX_TITLE}>
+          {renderAppendix()}
         </ContentSheet>
+      ) : null}
+      {!renderAppendix && relationshipLines && relationshipLines.length > 0 ? (
+        <AppendixSheets identity={identity} relationshipLines={relationshipLines} />
       ) : null}
 
       {/* ── ปกหลัง (QR code / LINE) ── */}
-      <section className="ylc-sheet ylc-sheet--image">
-        <img src="/ylc/back-cover.jpg" alt="MUMATE — Your Fortune, Your Friend · LINE @mumate.co" />
-      </section>
+      <ImageSheet
+        src="/ylc/back-cover.jpg"
+        alt="MUMATE — Your Fortune, Your Friend · LINE @mumate.co"
+        label="ปกหลัง (QR / LINE)"
+        editLayout={editLayout}
+      />
+    </article>
+  );
+}
+
+/**
+ * เรนเดอร์ "บทเดียว" เป็น .ylc-doc สำหรับมินิพรีวิวหน้าจริง (paged.js) ในแผงแก้
+ * โครงเหมือน chapters-map ของเอกสารเต็มทุกอย่าง (chart strip + split [[pagebreak]]) →
+ * เพราะทุกบทเริ่มหัวหน้า (break-before: page) การจัดหน้าบทเดี่ยวจึง = หน้าเดียวกับใน PDF เต็ม
+ */
+export function SingleChapterDocument({
+  rawInput,
+  calculatedState,
+  chapter,
+  clientName,
+}: {
+  rawInput: RawInputValue;
+  calculatedState: CalculatedStateValue;
+  chapter: PrintChapter;
+  clientName?: string | null;
+}) {
+  const identity = clientName?.trim() || `เกิด ${thaiDate(rawInput.birthDate)}`;
+  const annotation = chapter.id ? buildChapterAnnotation(calculatedState, chapter.id) : null;
+  const raw = chapter.text ?? "";
+  const parts = raw.includes(PAGEBREAK_MARKER)
+    ? raw.split(PAGEBREAK_MARKER).map((s) => s.trim()).filter((s) => s.length > 0)
+    : [raw];
+  const segments = parts.length > 0 ? parts : [raw];
+  return (
+    <article className="ylc-doc">
+      {segments.map((segText, si) => (
+        <ContentSheet
+          key={si}
+          identity={identity}
+          title={`${chapter.chapter}. ${chapter.title}`}
+          showHead={si === 0}
+        >
+          {si === 0 && annotation ? (
+            <ChapterChartStrip annotation={annotation} uid={chapter.id ?? String(chapter.chapter)} />
+          ) : null}
+          <div className="ylc-prose">
+            {segText ? renderMarkdown(cleanText(segText)) : <p className="ylc-empty">(ยังไม่ได้ทำนายบทนี้)</p>}
+          </div>
+        </ContentSheet>
+      ))}
+    </article>
+  );
+}
+
+/**
+ * เรนเดอร์ "บทเสริม" (ตารางวัยจร) เป็น .ylc-doc สำหรับมินิพรีวิวหน้าจริง (paged.js) ในแผงแก้
+ * โครงตรงกับหน้าบทเสริมในเอกสารเต็ม — ให้ซินแสเห็นหน้าจริงของบทเสริมขณะแก้ตาราง
+ */
+export function SingleAppendixDocument({
+  rawInput,
+  relationshipLines,
+  clientName,
+}: {
+  rawInput: RawInputValue;
+  relationshipLines: RelationshipLineRow[];
+  clientName?: string | null;
+}) {
+  const identity = clientName?.trim() || `เกิด ${thaiDate(rawInput.birthDate)}`;
+  return (
+    <article className="ylc-doc">
+      <AppendixSheets identity={identity} relationshipLines={relationshipLines} />
     </article>
   );
 }

@@ -470,6 +470,60 @@ export const baziReadingSessions = pgTable("bazi_reading_sessions", {
 export type InsertBaziReadingSession = typeof baziReadingSessions.$inferInsert;
 export type SelectBaziReadingSession = typeof baziReadingSessions.$inferSelect;
 
+/**
+ * กฎแทนคำของซินแส (phrase substitution rules) — เก็บลง DB ให้ persist จริง (ก่อนหน้านี้เคยเป็น
+ * ไฟล์ JSON ใน source tree ซึ่งบน Vercel เขียนไม่ได้ → กฎหายทุก refresh/redeploy)
+ * `source` = ที่มาของกฎ (manual/diff) + chartSignature; replacement = "" หมายถึง "ลบวลีทิ้ง"
+ */
+export const baziSubstitutionRules = pgTable("bazi_substitution_rules", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  scope: text("scope").notNull().default("topic"),
+  topicId: text("topic_id"),
+  match: text("match").notNull(),
+  replacement: text("replacement").notNull().default(""),
+  note: text("note"),
+  source: jsonb("source")
+    .$type<{ kind: "manual" | "diff"; chartSignature?: string }>()
+    .notNull()
+    .default(sql`'{"kind":"manual"}'::jsonb`),
+  hitCount: integer("hit_count").notNull().default(0),
+  ownerId: text("owner_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertBaziSubstitutionRule = typeof baziSubstitutionRules.$inferInsert;
+export type SelectBaziSubstitutionRule = typeof baziSubstitutionRules.$inferSelect;
+
+/**
+ * เฟส 2 — ที่เก็บ "override องค์ความรู้" ของ engine ที่ซินแสแก้ออนไลน์ (live; draft/audit ใช้ตาราง doctrine ร่วม)
+ *  - kind = "table"  → group_key = tableId, item_key = entryKey (แทนค่า TABLE[key])
+ *  - kind = "append" → group_key = topicId, item_key = ลำดับ ("1","2"…) (ย่อหน้าความรู้ที่ต่อท้ายบท)
+ * value = { text }
+ */
+export const baziKnowledgeOverride = pgTable(
+  "bazi_knowledge_override",
+  {
+    kind: text("kind").notNull(),
+    groupKey: text("group_key").notNull(),
+    itemKey: text("item_key").notNull(),
+    value: jsonb("value").$type<{ text: string }>().notNull(),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [primaryKey({ columns: [table.kind, table.groupKey, table.itemKey] })],
+);
+
+export type InsertBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferInsert;
+export type SelectBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferSelect;
+
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;
 export type InsertBaziCanonicalSource = typeof baziCanonicalSources.$inferInsert;

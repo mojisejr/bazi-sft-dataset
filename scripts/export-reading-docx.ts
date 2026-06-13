@@ -18,9 +18,20 @@ import { dirname } from "node:path";
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { RawInputSchema } from "@/lib/bazi/schema-types";
 import { buildReadingDocxBuffer, buildTopicDocxBuffer } from "@/lib/bazi/reading-docx";
+import { createDbSubstitutionRuleRepository } from "@/lib/bazi/substitution-rules-repository";
+import { type SubstitutionRule } from "@/lib/bazi/substitution-rules";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 
 const PREDICT_TOPICS = TOPIC_PATH.filter((t) => t.kind === "predict");
+
+/** ดึงกฎแทนคำจาก DB แบบ best-effort — ถ้าไม่มี DATABASE_URL/ต่อ DB ไม่ได้ ก็ออกเอกสารต่อได้ (กฎว่าง) */
+async function loadSubstitutionRules(): Promise<SubstitutionRule[]> {
+  try {
+    return await createDbSubstitutionRuleRepository().listRules();
+  } catch {
+    return [];
+  }
+}
 
 /** map เลขบท (1-15) หรือ topicId → topicId ที่ถูกต้อง */
 function resolveTopicIds(spec: string | null): string[] {
@@ -79,6 +90,7 @@ async function main() {
   });
 
   const calculatedState = await calculateBaziStateFromRawInput(rawInput);
+  const substitutionRules = await loadSubstitutionRules();
 
   // โหมดแยกบท: ออกหลายไฟล์ทีละหัวข้อ (สำหรับ redline)
   if (perTopic || topicsSpec) {
@@ -87,7 +99,7 @@ async function main() {
     await mkdir(baseDir, { recursive: true });
     for (const topicId of topicIds) {
       const topic = PREDICT_TOPICS.find((t) => t.id === topicId)!;
-      const buffer = await buildTopicDocxBuffer(topicId, rawInput, calculatedState);
+      const buffer = await buildTopicDocxBuffer(topicId, rawInput, calculatedState, { substitutionRules });
       const fileName = `${String(topic.chapter).padStart(2, "0")}-${sanitizeForFile(topic.title)}.docx`;
       const target = `${baseDir}/${fileName}`;
       await writeFile(target, buffer);
@@ -97,7 +109,7 @@ async function main() {
     return;
   }
 
-  const buffer = await buildReadingDocxBuffer(rawInput, calculatedState);
+  const buffer = await buildReadingDocxBuffer(rawInput, calculatedState, { substitutionRules });
   const target = outPath ?? `out/reading-${birthDate}-${gender}.docx`;
   await mkdir(dirname(target), { recursive: true });
   await writeFile(target, buffer);

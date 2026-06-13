@@ -34,7 +34,10 @@ import {
   type ParsedDrafts,
 } from "@/lib/bazi/doctrine-draft-repository";
 import { applySubstitutionRules } from "@/lib/bazi/substitution-rules";
-import { readRules } from "@/lib/bazi/substitution-rules-store";
+import { createDbSubstitutionRuleRepository } from "@/lib/bazi/substitution-rules-repository";
+import { getKnowledgeOverlay } from "@/lib/bazi/knowledge-override.server";
+import { runWithKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay-context";
+import { mergeKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
 
 export const runtime = "nodejs";
 
@@ -118,8 +121,11 @@ export async function POST(req: Request) {
     );
   }
 
-  // ตารางคำแก้ของซินแส (กฎแทนคำ) — ใช้แทนวลีในผลทายทุกโหมดให้เหมือนกันข้ามดวง
-  const substitutionRules = readRules().rules;
+  // ตารางคำแก้ของซินแส (กฎแทนคำ จาก DB) — ใช้แทนวลีในผลทายทุกโหมดให้เหมือนกันข้ามดวง
+  // best-effort: โหลดกฎไม่ได้ (เช่นไม่มี DB) → ทายต่อได้โดยไม่แทนคำ (เทียบเท่าพฤติกรรมไฟล์เดิม)
+  const substitutionRules = await createDbSubstitutionRuleRepository()
+    .listRules()
+    .catch(() => []);
 
   // preview=1 (เฉพาะผู้มีสิทธิ์): วาง "ฉบับร่าง" ทับ published เพื่อดูตัวอย่างก่อนเผยแพร่
   const previewRequested = new URL(req.url).searchParams.get("preview") === "1";
@@ -151,8 +157,16 @@ export async function POST(req: Request) {
   if (drafts?.topicOverrides[topicId]) {
     topicDefinition = mergeTopicDefinition(topicDefinition, drafts.topicOverrides[topicId]);
   }
+  // Knowledge overlay (เฟส 2): องค์ความรู้ที่ซินแสแก้ออนไลน์ (+ ร่างเมื่อ preview) — best-effort fallback ว่าง
+  const publishedOverlay = await getKnowledgeOverlay();
+  const knowledgeOverlay = drafts
+    ? mergeKnowledgeOverlay(publishedOverlay, drafts.knowledge)
+    : publishedOverlay;
+
   const reading = buildTopicEngineReading(stateForReading, topicId, packet, topicDefinition);
-  const humanKnowledge = buildTopicHumanReading(calculatedState, topicId, rawInput);
+  const humanKnowledge = runWithKnowledgeOverlay(knowledgeOverlay, () =>
+    buildTopicHumanReading(calculatedState, topicId, rawInput),
+  );
   const sourceLabel = getTopicKnowledgeSourceLabel(topicId);
   // ตาราง Relationship Lines เฉพาะบทวัยจร (อ้างอิงตำราเคี้ยงคุง)
   const relationshipLines =
@@ -162,10 +176,14 @@ export async function POST(req: Request) {
     // consumer = ร้อยแก้วผู้บริโภค (ถอด scaffolding เทคนิคออก) · engine = เทคนิคครบ
     const humanReading =
       mode === "consumer"
-        ? buildTopicConsumerReading(calculatedState, topicId, rawInput)
+        ? runWithKnowledgeOverlay(knowledgeOverlay, () =>
+            buildTopicConsumerReading(calculatedState, topicId, rawInput),
+          )
         : humanKnowledge;
     // ข้อความ "ตำรา (knownlage) ตรง ๆ" สำหรับส่วนคำอ่าน
-    const knownlageExcerpt = getTopicKnownlageExcerpt(calculatedState, topicId, rawInput);
+    const knownlageExcerpt = runWithKnowledgeOverlay(knowledgeOverlay, () =>
+      getTopicKnownlageExcerpt(calculatedState, topicId, rawInput),
+    );
     return Response.json({
       source: mode,
       reading,
@@ -181,7 +199,9 @@ export async function POST(req: Request) {
   // ให้ผลใกล้ gptCase output สุด → ใช้ consumer reading เป็น ground และ profile ที่ปรับโทน
   try {
     const llmGround =
-      buildTopicConsumerReading(calculatedState, topicId, rawInput) ?? humanKnowledge;
+      runWithKnowledgeOverlay(knowledgeOverlay, () =>
+        buildTopicConsumerReading(calculatedState, topicId, rawInput),
+      ) ?? humanKnowledge;
     const llm = await generateReadingTopicLlm({
       topicId,
       rawInput: rawInput!,
@@ -222,7 +242,9 @@ export async function POST(req: Request) {
       reading, // คำอ่าน/ตาราง engine คงเดิม
       // ผลการทำนาย = ฉบับ LLM เรียบเรียง แล้วผ่านกฎแทนคำของซินแส
       humanReading: applySubstitutionRules(topicId, llm.text, substitutionRules),
-      knownlageExcerpt: getTopicKnownlageExcerpt(calculatedState, topicId, rawInput),
+      knownlageExcerpt: runWithKnowledgeOverlay(knowledgeOverlay, () =>
+        getTopicKnownlageExcerpt(calculatedState, topicId, rawInput),
+      ),
       sourceLabel,
       ...(polishedLines ? { relationshipLines: polishedLines } : {}),
     });

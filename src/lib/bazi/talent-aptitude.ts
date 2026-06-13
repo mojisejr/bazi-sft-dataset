@@ -1,5 +1,6 @@
 import type { SupportedElementValue } from "@/lib/bazi/schema-types";
 import { ELEMENT_LABELS_TH, TWELVE_QI_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
+import { K, KC } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 
 /**
  * พรสวรรค์ 12 เซี่ยงแซ ผสาน 5 ธาตุ (Talent = 12 Life Stages × 5 Elements)
@@ -120,6 +121,13 @@ export const TALENT_APTITUDE_TH: Record<string, Record<SupportedElementValue, st
   },
 };
 
+/** flatten "เซี่ยงแซจีน|ธาตุ" (60 ช่อง) สำหรับตัวแก้ — อ่านจริงผ่าน KC ใน resolveTalentAptitude */
+export const TALENT_APTITUDE_FLAT_TH: Record<string, string> = Object.fromEntries(
+  Object.entries(TALENT_APTITUDE_TH).flatMap(([stage, byElement]) =>
+    Object.entries(byElement).map(([element, text]) => [`${stage}|${element}`, text]),
+  ),
+);
+
 /**
  * "ธาตุบอกว่าความสามารถควรไปแสดงออกในกิจการประเภทใด" (สรุปสายอาชีพต่อธาตุ ตามภาพ)
  * ใช้เป็นสะพานเชื่อมพรสวรรค์ → แนวอาชีพ ในบทการงาน
@@ -154,12 +162,17 @@ export function resolveTalentAptitude(
   outputElement: SupportedElementValue,
 ): string | null {
   const canonical = toCanonicalStage(stage);
-  return TALENT_APTITUDE_TH[canonical]?.[outputElement] ?? null;
+  const base = TALENT_APTITUDE_TH[canonical]?.[outputElement];
+  if (base == null) return null;
+  return KC("TALENT_APTITUDE_TH", base, canonical, outputElement);
 }
 
 /** คืนหัวเรื่อง "รูปแบบพลังของความสามารถ" ต่อเซี่ยงแซ (ไทย/จีน) — null ถ้าไม่พบ */
 export function resolveStageHeadline(stage: string): string | null {
-  return STAGE_APTITUDE_HEADLINE_TH[toCanonicalStage(stage)] ?? null;
+  const canonical = toCanonicalStage(stage);
+  const base = STAGE_APTITUDE_HEADLINE_TH[canonical];
+  if (base == null) return null;
+  return KC("STAGE_APTITUDE_HEADLINE_TH", base, canonical);
 }
 
 /** ประโยคพรสวรรค์ → แนวอาชีพ สำหรับแทรกในบทการงาน (ธาตุถ่ายเท × เซี่ยงแซที่ปรากฏจริง) */
@@ -171,7 +184,7 @@ export function buildAptitudeCareerBridge(
   if (!aptitude) {
     return null;
   }
-  const field = ELEMENT_APTITUDE_FIELD_TH[outputElement];
+  const field = K("ELEMENT_APTITUDE_FIELD_TH", ELEMENT_APTITUDE_FIELD_TH)[outputElement];
   const elementTh = ELEMENT_LABELS_TH[outputElement];
   return (
     `พรสวรรค์ → แนวอาชีพ (ดาวถ่ายเท ธาตุ${elementTh}, เซี่ยงแซ ${toCanonicalStage(stage) ? TWELVE_QI_LABELS_TH[toCanonicalStage(stage) as keyof typeof TWELVE_QI_LABELS_TH] : stage}): ` +

@@ -3,6 +3,7 @@
  * เป็นองค์ความรู้แบบ deterministic (ข้อมูล TS) — ใช้ห่อหุ้มข้อเท็จจริงจาก engine
  * ให้เป็นร้อยแก้วเปิด-เนื้อหา-ปิด ครบ 15 บท โดยไม่ต้องใช้ LLM
  */
+import { K } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 
 /** คอนเซ็ปต์เปิดบท (ขึ้นต้นทุกบทเพื่อปูหลักการอ่าน เลียนโครงเอกสารต้นฉบับ) */
 export const CHAPTER_INTRO_TH: Record<string, string> = {
@@ -174,6 +175,13 @@ export const ELEMENT_CLOSING_SIMILE_TH: Record<string, string[]> = {
   ],
 };
 
+/** flatten "ธาตุ#index" สำหรับตัวแก้ (อ่านจริงผ่าน K ใน buildElementClosingSimile) */
+export const ELEMENT_CLOSING_SIMILE_FLAT_TH: Record<string, string> = Object.fromEntries(
+  Object.entries(ELEMENT_CLOSING_SIMILE_TH).flatMap(([element, list]) =>
+    list.map((text, index) => [`${element}#${index}`, text]),
+  ),
+);
+
 /**
  * ภาพเปรียบปิดบทเฉพาะ "หัวข้อ" (override ภาพธาตุ) — ดึงจาก output จริงที่ผูกภาพกับแก่นบท
  * (ครอบครัว = บ้าน/ท่าเรือ, หุ้นส่วน = แม่น้ำสองสายรวมกัน) ใช้ได้กับทุกธาตุดิถี
@@ -194,7 +202,7 @@ export function buildElementClosingSimile(
   dayElementTh: string,
   topicId: string,
 ): string | null {
-  const topicSimile = TOPIC_CLOSING_SIMILE_TH[topicId];
+  const topicSimile = K("TOPIC_CLOSING_SIMILE_TH", TOPIC_CLOSING_SIMILE_TH)[topicId];
   if (topicSimile) return topicSimile;
   const similes = ELEMENT_CLOSING_SIMILE_TH[dayElementTh];
   if (!similes || similes.length === 0) return null;
@@ -202,7 +210,11 @@ export function buildElementClosingSimile(
   for (let i = 0; i < topicId.length; i += 1) {
     hash = (hash + topicId.charCodeAt(i)) % similes.length;
   }
-  return similes[hash];
+  // override รายช่อง: คีย์ "ธาตุ#index" (เริ่ม 0) ผ่านตาราง flat ELEMENT_CLOSING_SIMILE_FLAT_TH
+  return (
+    K("ELEMENT_CLOSING_SIMILE_TH", ELEMENT_CLOSING_SIMILE_FLAT_TH)[`${dayElementTh}#${hash}`] ??
+    similes[hash]
+  );
 }
 
 /**

@@ -8,11 +8,11 @@ import { ActionButton, ActionLink } from "@/components/bazi/primitives/Action";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
+import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
   ReadingPrintDocument,
   type PrintChapter,
 } from "@/components/bazi/reading/ReadingPrintDocument";
-import { RelationshipLinesEditor } from "@/components/bazi/reading/RelationshipLinesEditor";
 import {
   TopicCard,
   type RelationshipLineRow,
@@ -20,6 +20,7 @@ import {
   type TopicReadingResult,
 } from "@/components/bazi/reading/TopicCard";
 import type { AddRuleInput } from "@/components/bazi/reading/SinsaeRuleBuilder";
+import { SubstitutionRulesTable } from "@/components/bazi/reading/SubstitutionRulesTable";
 import type { SubstitutionRule } from "@/lib/bazi/substitution-rules";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
@@ -424,13 +425,6 @@ export function ReadingPathWorkspace({
     setBatchProgress(null);
   }
 
-  // ปุ่มลัด: gen ทุกบทด้วย Local Claude (Anthropic) — ตั้ง provider+mode แล้วยิงทันทีด้วย override
-  function handleGenerateLocalClaude() {
-    setProvider("anthropic");
-    setAllMode("llm");
-    void handlePredictAll("llm", "anthropic");
-  }
-
   // เพิ่มกฎแทนคำ → server เขียนไฟล์ + อัปเดต state แล้ว re-run engine ให้ผลบนจอสะท้อนกฎใหม่
   async function handleAddRule(input: AddRuleInput) {
     try {
@@ -438,6 +432,30 @@ export function ReadingPathWorkspace({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...input, source: { kind: "manual" } }),
+      });
+      const body = (await response.json()) as { rules?: SubstitutionRule[]; error?: { message: string } };
+      if (!response.ok || !body.rules) {
+        throw new Error(body.error?.message ?? "เพิ่มกฎไม่สำเร็จ");
+      }
+      setRules(body.rules);
+      if (rawInput && calculatedState && !batchProgress) {
+        void runAllEngine(rawInput, calculatedState);
+      }
+    } catch {
+      /* เงียบ — ผู้ใช้กดใหม่ได้ */
+    }
+  }
+
+  // บันทึกหลายกฎพร้อมกัน (ปุ่ม "บันทึกเป็นกฎทั้งหมด") → ยิง POST ชุดเดียว แล้ว re-run engine ครั้งเดียว
+  async function handleAddRules(inputs: AddRuleInput[]) {
+    if (inputs.length === 0) return;
+    try {
+      const response = await fetch("/api/reading/rules", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          rules: inputs.map((input) => ({ ...input, source: { kind: "manual" } })),
+        }),
       });
       const body = (await response.json()) as { rules?: SubstitutionRule[]; error?: { message: string } };
       if (!response.ok || !body.rules) {
@@ -474,6 +492,8 @@ export function ReadingPathWorkspace({
 
   const [exporting, setExporting] = useState<"engine" | "llm" | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  // โหมดแก้ข้อความใน preview (WYSIWYG TipTap) ↔ ดูหน้าจริง (paged.js)
+  const [editMode, setEditMode] = useState(false);
 
   // ดาวน์โหลดรายงาน .docx — แยก 2 ฉบับ:
   //   "engine" = ผล engine ล้วนทุกบท (ครบ-ไม่ตัด ตามคำกำชับซินแซ)
@@ -608,7 +628,11 @@ export function ReadingPathWorkspace({
         error?: { message: string };
       };
       if (response.ok && Array.isArray(body.relationshipLines)) {
-        setRelationshipLines(body.relationshipLines);
+        // merge by-index: เปลี่ยนเฉพาะ deepNote คงฟิลด์ฝั่ง client ไว้ (เช่น pageBreakBefore)
+        const next = body.relationshipLines;
+        setRelationshipLines((prev) =>
+          (prev ?? []).map((r, i) => ({ ...r, deepNote: next[i]?.deepNote ?? r.deepNote })),
+        );
       }
     } catch {
       /* เงียบ — ปุ่มกดซ้ำได้ */
@@ -718,6 +742,20 @@ export function ReadingPathWorkspace({
     window.print();
   }
 
+  // บันทึก PDF "ฉบับที่แก้แล้ว": เซฟลง DB ก่อน (กันข้อมูลที่แก้หาย) แล้วค่อยพิมพ์
+  // - โหมดแก้: สลับไปหน้าจริง A4 → paged.js จัดหน้าเสร็จ (onReady) → สั่งพิมพ์
+  // - อยู่หน้าจริงอยู่แล้ว: พิมพ์ทันที
+  const pendingPrintRef = useRef(false);
+  async function handleSaveEditedPdf() {
+    await handleSaveSession(); // persist คำแก้ซินแส + ตารางบทเสริม ลงฐานข้อมูลก่อนพิมพ์
+    if (editMode) {
+      pendingPrintRef.current = true;
+      setEditMode(false); // PagedPreview onReady ด้านล่างจะสั่งพิมพ์ให้เมื่อจัดหน้าเสร็จ
+    } else {
+      handlePrintYlc();
+    }
+  }
+
   return (
     <div className="reading-path">
       <section className="reading-path__intro surface">
@@ -751,28 +789,8 @@ export function ReadingPathWorkspace({
 
       {isReady && (
         <section className="reading-path__batch surface">
-          <label className="field field--compact reading-path__provider">
-            <span>ค่าย LLM (เลือกครั้งเดียว ใช้ร่วมทุกบท)</span>
-            <select
-              value={provider}
-              onChange={(event) => setProvider(event.target.value as ReadingLlmProvider)}
-            >
-              <option value="gemini">Gemini (Google)</option>
-              <option value="opencode">OpenCode Zen</option>
-              <option value="anthropic">Local Claude (Anthropic)</option>
-            </select>
-          </label>
           <label className="field field--compact reading-path__apikey">
-            <span>
-              {provider === "opencode"
-                ? "OpenCode Zen"
-                : provider === "anthropic"
-                  ? "Anthropic / Local Claude"
-                  : "Gemini"}{" "}
-              API key
-              {" "}(ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก
-              {provider === "anthropic" ? "; Local Claude ผ่าน proxy — เว้นว่างได้" : ""})
-            </span>
+            <span>Gemini API key (ใช้ร่วมทุกบท — กรอกครั้งเดียว, ไม่บันทึก)</span>
             <input
               type="password"
               autoComplete="off"
@@ -809,16 +827,6 @@ export function ReadingPathWorkspace({
               {batchProgress
                 ? `กำลังทำนาย ${batchProgress.done}/${batchProgress.total}...`
                 : `ทำนายรวมทุกบท (${PREDICT_TOPICS.length} บท)`}
-            </ActionButton>
-            <ActionButton
-              tone="primary"
-              type="button"
-              disabled={Boolean(batchProgress)}
-              onClick={() => handleGenerateLocalClaude()}
-            >
-              {batchProgress
-                ? `Local Claude ${batchProgress.done}/${batchProgress.total}...`
-                : `🤖 Gen ด้วย Local Claude`}
             </ActionButton>
             <ActionButton
               tone="primary"
@@ -916,41 +924,11 @@ export function ReadingPathWorkspace({
           </button>
           {showRules && (
             <div className="reading-path__rules-body">
-              {rules.length === 0 ? (
-                <p className="section-note">
-                  ยังไม่มีกฎ — แก้คำทำนายบทใดบทหนึ่งแล้วกด “บันทึกเป็นกฎ” หรือกรอกมือในกล่องของบทนั้น
-                  คำที่ตั้งไว้จะถูกแทนให้ทุกดวงที่ทายได้วลีเดียวกัน
-                </p>
-              ) : (
-                <table className="topic-table reading-path__rules-table">
-                  <thead>
-                    <tr>
-                      <th>ใช้กับ</th>
-                      <th>คำเดิม</th>
-                      <th>แก้เป็น</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.map((rule) => (
-                      <tr key={rule.id}>
-                        <td>{rule.scope === "global" ? "ทุกบท" : rule.topicId}</td>
-                        <td>{rule.match}</td>
-                        <td>{rule.replacement.length === 0 ? "(ลบทิ้ง)" : rule.replacement}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="topic-card__sinsae-link topic-card__sinsae-link--danger"
-                            onClick={() => void handleDeleteRule(rule.id)}
-                          >
-                            ลบ
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <SubstitutionRulesTable
+                rules={rules}
+                onDelete={handleDeleteRule}
+                emptyNote="ยังไม่มีกฎ — แก้คำทำนายบทใดบทหนึ่งแล้วกด “บันทึกเป็นกฎ” หรือกรอกมือในกล่องของบทนั้น คำที่ตั้งไว้จะถูกแทนให้ทุกดวงที่ทายได้วลีเดียวกัน"
+              />
             </div>
           )}
         </section>
@@ -967,10 +945,18 @@ export function ReadingPathWorkspace({
                   <div className="ylc-preview__toolbar-actions">
                     <button
                       type="button"
-                      className="ylc-preview__btn ylc-preview__btn--primary"
-                      onClick={handlePrintYlc}
+                      className={`ylc-preview__btn ${editMode ? "ylc-preview__btn--primary" : "ylc-preview__btn--ghost"}`}
+                      onClick={() => setEditMode((v) => !v)}
                     >
-                      บันทึกเป็น PDF / พิมพ์
+                      {editMode ? "ดูหน้าจริง (A4)" : "แก้ข้อความ"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ylc-preview__btn ylc-preview__btn--primary"
+                      onClick={() => void handleSaveEditedPdf()}
+                      title={editMode ? "บันทึกลงประวัติ (DB) แล้วสลับไปหน้าจริง A4 เปิดหน้าต่างบันทึก PDF ให้อัตโนมัติ" : "บันทึกลงประวัติ (DB) แล้วเปิดหน้าต่างบันทึก PDF"}
+                    >
+                      {editMode ? "บันทึกลงระบบ + PDF (ฉบับที่แก้)" : "บันทึกลงระบบ + PDF"}
                     </button>
                     <button
                       type="button"
@@ -982,14 +968,35 @@ export function ReadingPathWorkspace({
                   </div>
                 </div>
                 <div className="ylc-preview__stage">
-                  <PagedPreview>
-                    <ReadingPrintDocument
+                  {editMode ? (
+                    <ReadingEditPanel
                       rawInput={rawInput}
                       calculatedState={calculatedState}
                       chapters={printChapters}
-                      relationshipLines={relationshipLines}
+                      relationshipLines={null}
+                      onSaveChapter={handleSaveCorrection}
+                      onChangeLines={setRelationshipLines}
+                      onGenerateLines={() => void handleGenerateRelationshipNotes()}
+                      generatingLines={generatingLines}
+                      canGenerateLines={canGenerateLines}
                     />
-                  </PagedPreview>
+                  ) : (
+                    <PagedPreview
+                      onReady={() => {
+                        // ถ้าผู้ใช้กด "บันทึก PDF (ฉบับที่แก้)" จากโหมดแก้ → จัดหน้าเสร็จแล้วสั่งพิมพ์ให้เลย
+                        if (pendingPrintRef.current) {
+                          pendingPrintRef.current = false;
+                          window.setTimeout(() => handlePrintYlc(), 200);
+                        }
+                      }}
+                    >
+                      <ReadingPrintDocument
+                        rawInput={rawInput}
+                        calculatedState={calculatedState}
+                        chapters={printChapters}
+                      />
+                    </PagedPreview>
+                  )}
                 </div>
               </div>
             </div>,
@@ -1017,21 +1024,15 @@ export function ReadingPathWorkspace({
                 onSaveCorrection={handleSaveCorrection}
                 onClearCorrection={handleClearCorrection}
                 onAddRule={handleAddRule}
+                onAddRules={handleAddRules}
               />
             );
           })}
         </section>
       )}
 
-      {isReady && relationshipLines && relationshipLines.length > 0 && (
-        <RelationshipLinesEditor
-          rows={relationshipLines}
-          onChange={setRelationshipLines}
-          onGenerateDeepNotes={() => void handleGenerateRelationshipNotes()}
-          generating={generatingLines}
-          canGenerate={canGenerateLines}
-        />
-      )}
+      {/* ตารางบทเสริมวัยจร (RelationshipLinesEditor) ถูกถอดออก — เนื้อหาเดียวกันอยู่ใน
+          กล่อง "ลิสต์ช่วงอายุ 16 วัยจร" ของบท 12 (แก้ผ่านกล่องในบทแทน) */}
     </div>
   );
 }

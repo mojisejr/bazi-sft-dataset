@@ -7,6 +7,9 @@ import {
 } from "@/features/bazi-math/bazi-engine-adapter";
 import { buildReadingDocxBuffer } from "@/lib/bazi/reading-docx";
 import { CalculatedStateSchema, RawInputSchema } from "@/lib/bazi/schema-types";
+import { createDbSubstitutionRuleRepository } from "@/lib/bazi/substitution-rules-repository";
+import { getKnowledgeOverlay } from "@/lib/bazi/knowledge-override.server";
+import { runWithKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 
 export const runtime = "nodejs";
 
@@ -60,10 +63,21 @@ export async function POST(req: Request) {
     );
   }
 
-  const buffer = await buildReadingDocxBuffer(rawInput, calculatedState, {
-    readings,
-    relationshipLines,
-  });
+  // กฎแทนคำของซินแส (จาก DB) — ใช้กับบทที่ regenerate จาก engine (บทที่มี override ผ่านกฎมาแล้ว)
+  // best-effort: โหลดไม่ได้ → ออกเอกสารต่อได้โดยไม่แทนคำ
+  const substitutionRules = await createDbSubstitutionRuleRepository()
+    .listRules()
+    .catch(() => []);
+
+  // องค์ความรู้ที่ซินแสแก้ออนไลน์ (เฟส 2) — ห่อ build ด้วย overlay context ให้บทที่ regenerate ใช้ค่าใหม่
+  const knowledgeOverlay = await getKnowledgeOverlay();
+  const buffer = await runWithKnowledgeOverlay(knowledgeOverlay, () =>
+    buildReadingDocxBuffer(rawInput, calculatedState, {
+      readings,
+      relationshipLines,
+      substitutionRules,
+    }),
+  );
   const filename = `reading-${rawInput.birthDate}-${rawInput.gender}.docx`;
 
   return new Response(new Uint8Array(buffer), {
