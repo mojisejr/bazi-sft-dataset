@@ -291,6 +291,16 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 8px 0;
+  background: var(--rp-bg, #fff);
+}
+
+.knowledge-edit__bar .knowledge__search {
+  flex: 1 1 240px;
+  min-width: 200px;
 }
 
 .knowledge-edit__status {
@@ -309,6 +319,38 @@
   padding: 12px 14px;
   max-height: 360px;
   overflow-y: auto;
+}
+
+/* ช่องเป้าหมายจาก deep-link "✎ แก้ในคลัง" — ไฮไลต์ให้เห็นชัด */
+.knowledge-edit__field--focus {
+  outline: 2px solid #f0b000;
+  outline-offset: 2px;
+  border-radius: 8px;
+  background: #fffbe9;
+  animation: knowledge-focus-pulse 1.6s ease-out 2;
+}
+@keyframes knowledge-focus-pulse {
+  0% { background: #fff3a0; }
+  100% { background: #fffbe9; }
+}
+
+.knowledge-edit__hl {
+  background: #fff3a0;
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+  box-shadow: 0 0 0 1px #f0d000;
+}
+
+.knowledge-edit__warn {
+  margin: 2px 0 6px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+  color: #9a5b00;
+  background: #fff6e6;
+  border: 1px solid #ffd98a;
+  border-radius: 8px;
+  padding: 5px 9px;
 }
 
 .knowledge-edit__group {

@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
+import { CONDITION_CATEGORY_ORDER } from "@/lib/bazi/knowledge/condition-categories";
 
 type Entry = {
   key: string;
@@ -16,6 +17,8 @@ type Table = {
   tableId: string;
   label: string;
   keyKind: KeyKind;
+  /** หมวด (เฉพาะตาราง raw — ใช้จัดกลุ่มแทน "อื่น ๆ"); null = ใช้กลุ่มตาม keyKind */
+  category?: string | null;
   entries: Entry[];
 };
 
@@ -31,6 +34,22 @@ const KEY_KIND_GROUP_TH: Record<KeyKind, string> = {
   raw: "อื่น ๆ / คีย์เฉพาะ",
 };
 const KEY_KIND_ORDER: KeyKind[] = ["element", "qi", "role", "stem", "pillar", "ganzhi", "raw"];
+
+/**
+ * ตารางที่เนื้อหา "ถูกต่อกับช่องอื่นในประโยคเดียว" ตอน render (composeParagraphs/weaveNarrative)
+ * → เตือนซินแสว่าอย่าพิมพ์ทั้งประโยคที่เห็น render เสร็จลงในช่องเดียว (จะเกิดคำซ้ำ/ทับ layout)
+ * เป็น manual list — เพิ่มตารางใหม่ที่ถูก concat ในอนาคต ต้องมาเติมที่นี่ (เป็นแค่ป้ายเตือน ไม่กระทบ correctness)
+ */
+const CONCATENATED_TABLES = new Set<string>([
+  "ELEMENT_CLOSING_SIMILE_TH",
+  "TOPIC_CLOSING_SIMILE_TH",
+  "QI_WEALTH_TH",
+  "BAND_OPENING_TH",
+  "CHAPTER_INTRO_TH",
+]);
+
+const CONCAT_WARNING_TH =
+  "⚠ ข้อความช่องนี้จะถูกต่อกับช่องอื่นในประโยคเดียว — อย่าพิมพ์ทั้งประโยคที่เห็นลงช่องเดียว (จะเกิดคำซ้ำ) ใช้พรีวิวดูขอบจริง";
 type AppendState = { published: string[]; draft: string[] };
 type RegistryLine = {
   kind: "logic" | "sourcefocus";
@@ -61,6 +80,8 @@ type Props = {
   adminToken: string;
   registryTopicIds?: string[];
   section?: "chapter" | "condition";
+  /** deep-link: entityKey ของช่องที่ต้องเปิด+เลื่อน+ไฮไลต์ (รูป `table|tableId|key`) */
+  focusEntityKey?: string | null;
 };
 
 const SAMPLE_RAW_INPUT = {
@@ -91,11 +112,14 @@ export function KnowledgeEditor({
   adminToken,
   registryTopicIds = [],
   section = "chapter",
+  focusEntityKey = null,
 }: Props) {
   const [data, setData] = useState<OverrideData | null>(null);
   const [status, setStatus] = useState<string>("");
   const [preview, setPreview] = useState<string | null>(null);
   const [tableSearch, setTableSearch] = useState("");
+  // ข้อความของช่องที่ผู้ใช้โฟกัสล่าสุด — ใช้ไฮไลต์ส่วนที่ตรงในพรีวิว (ค่าในผล render ปัจจุบัน ไม่ใช่ค่า live)
+  const [activeFieldText, setActiveFieldText] = useState<string | null>(null);
 
   const headers = useMemo(() => {
     const h: Record<string, string> = { "content-type": "application/json" };
@@ -229,12 +253,30 @@ export function KnowledgeEditor({
         })
         .filter((table): table is Table => table !== null)
     : conditionTables;
+  // ตารางที่มี category (raw) → จัดกลุ่มตามหมวด; ที่ไม่มี → จัดกลุ่มตาม keyKind เดิม
   const conditionTablesByKind = new Map<KeyKind, Table[]>();
+  const conditionTablesByCategory = new Map<string, Table[]>();
   for (const table of filteredConditionTables) {
-    const bucket = conditionTablesByKind.get(table.keyKind) ?? [];
-    bucket.push(table);
-    conditionTablesByKind.set(table.keyKind, bucket);
+    if (table.category) {
+      const bucket = conditionTablesByCategory.get(table.category) ?? [];
+      bucket.push(table);
+      conditionTablesByCategory.set(table.category, bucket);
+    } else {
+      const bucket = conditionTablesByKind.get(table.keyKind) ?? [];
+      bucket.push(table);
+      conditionTablesByKind.set(table.keyKind, bucket);
+    }
   }
+  // เรียงหมวดตามลำดับบท (หมวดที่ไม่อยู่ในลิสต์ → ท้าย)
+  const orderedCategories = [...conditionTablesByCategory.keys()].sort(
+    (a, b) =>
+      (CONDITION_CATEGORY_ORDER.indexOf(a) + 1 || 999) - (CONDITION_CATEGORY_ORDER.indexOf(b) + 1 || 999),
+  );
+  const hasAnyConditionTable = conditionTablesByKind.size > 0 || conditionTablesByCategory.size > 0;
+  const groupHasFocus = (tables: Table[]) =>
+    focusEntityKey != null &&
+    tables.some((table) => table.entries.some((entry) => entityKeyTable(table.tableId, entry.key) === focusEntityKey));
+  const matchedFieldCount = filteredConditionTables.reduce((sum, table) => sum + table.entries.length, 0);
 
   // โหมด "ตารางตามดวง" — ไม่ผูกกับบท แสดงทุกตามเงื่อนไข จัดกลุ่ม + ค้นหา
   if (section === "condition") {
@@ -248,6 +290,9 @@ export function KnowledgeEditor({
             onChange={(event) => setTableSearch(event.target.value)}
             aria-label="ค้นหาตารางตามดวง"
           />
+          {query.length > 0 && (
+            <span className="knowledge-edit__status">พบ {matchedFieldCount} ช่อง</span>
+          )}
           {status && <span className="knowledge-edit__status">{status}</span>}
         </div>
         <p className="section-note">
@@ -256,16 +301,31 @@ export function KnowledgeEditor({
         </p>
         {KEY_KIND_ORDER.filter((kind) => conditionTablesByKind.has(kind)).map((kind) => (
           <ConditionGroup
-            key={kind}
+            key={`kind:${kind}`}
             title={KEY_KIND_GROUP_TH[kind]}
             tables={conditionTablesByKind.get(kind) ?? []}
-            defaultOpen={query.length > 0}
+            defaultOpen={query.length > 0 || groupHasFocus(conditionTablesByKind.get(kind) ?? [])}
             onSave={saveDraft}
             onPublish={publish}
             onDiscard={discardDraft}
+            onFocusField={setActiveFieldText}
+            focusEntityKey={focusEntityKey}
           />
         ))}
-        {conditionTablesByKind.size === 0 && (
+        {orderedCategories.map((category) => (
+          <ConditionGroup
+            key={`cat:${category}`}
+            title={category}
+            tables={conditionTablesByCategory.get(category) ?? []}
+            defaultOpen={query.length > 0 || groupHasFocus(conditionTablesByCategory.get(category) ?? [])}
+            onSave={saveDraft}
+            onPublish={publish}
+            onDiscard={discardDraft}
+            onFocusField={setActiveFieldText}
+            focusEntityKey={focusEntityKey}
+          />
+        ))}
+        {!hasAnyConditionTable && (
           <p className="section-note">ไม่พบตารางที่ตรงกับ “{tableSearch}”</p>
         )}
       </div>
@@ -282,7 +342,7 @@ export function KnowledgeEditor({
       </div>
 
       {preview != null && (
-        <pre className="knowledge-edit__preview">{preview}</pre>
+        <PreviewPane text={preview} highlight={activeFieldText} />
       )}
 
       {/* กรอบบทของบทนี้ */}
@@ -299,6 +359,8 @@ export function KnowledgeEditor({
             onSave={saveDraft}
             onPublish={publish}
             onDiscard={discardDraft}
+            warnConcat={CONCATENATED_TABLES.has(table.tableId)}
+            onFocusField={setActiveFieldText}
           />
         );
       })}
@@ -364,6 +426,36 @@ export function KnowledgeEditor({
   );
 }
 
+/**
+ * พรีวิวดวงตัวอย่าง — ถ้ามี highlight (ข้อความช่องที่โฟกัส) ที่ปรากฏในพรีวิว จะครอบด้วย <mark>
+ * เพื่อให้ซินแสเห็น "ขอบเขต" ของช่องนั้นในประโยคจริง. หาไม่เจอ → เตือนว่าไม่ปรากฏในดวงตัวอย่าง
+ */
+function PreviewPane({ text, highlight }: { text: string; highlight: string | null }) {
+  const needle = highlight?.trim() ?? "";
+  const index = needle.length > 0 ? text.indexOf(needle) : -1;
+
+  if (index < 0) {
+    return (
+      <>
+        {needle.length > 0 && (
+          <p className="knowledge-edit__warn">
+            ช่องที่เลือกไม่ปรากฏในดวงตัวอย่าง (เกิด 1990-01-01) — กดพรีวิวใหม่หรือเลือกช่องอื่น
+          </p>
+        )}
+        <pre className="knowledge-edit__preview">{text}</pre>
+      </>
+    );
+  }
+
+  return (
+    <pre className="knowledge-edit__preview">
+      {text.slice(0, index)}
+      <mark className="knowledge-edit__hl">{text.slice(index, index + needle.length)}</mark>
+      {text.slice(index + needle.length)}
+    </pre>
+  );
+}
+
 function ConditionGroup({
   title,
   tables,
@@ -371,6 +463,8 @@ function ConditionGroup({
   onSave,
   onPublish,
   onDiscard,
+  onFocusField,
+  focusEntityKey = null,
 }: {
   title: string;
   tables: Table[];
@@ -378,6 +472,8 @@ function ConditionGroup({
   onSave: (entityKey: string, text: string) => void | Promise<void>;
   onPublish: (entityKey: string) => void | Promise<void>;
   onDiscard: (entityKey: string) => void | Promise<void>;
+  onFocusField?: (renderedText: string) => void;
+  focusEntityKey?: string | null;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const fieldCount = tables.reduce((sum, table) => sum + table.entries.length, 0);
@@ -404,6 +500,9 @@ function ConditionGroup({
                 onSave={onSave}
                 onPublish={onPublish}
                 onDiscard={onDiscard}
+                warnConcat={CONCATENATED_TABLES.has(table.tableId)}
+                onFocusField={onFocusField}
+                isFocusTarget={entityKeyTable(table.tableId, entry.key) === focusEntityKey}
               />
             ))}
           </div>
@@ -419,6 +518,9 @@ function FieldRow({
   onSave,
   onPublish,
   onDiscard,
+  warnConcat = false,
+  onFocusField,
+  isFocusTarget = false,
 }: {
   label: string;
   entityKey: string;
@@ -426,23 +528,40 @@ function FieldRow({
   onSave: (entityKey: string, text: string) => void | Promise<void>;
   onPublish: (entityKey: string) => void | Promise<void>;
   onDiscard: (entityKey: string) => void | Promise<void>;
+  warnConcat?: boolean;
+  /** ข้อความที่อยู่ในผล render ปัจจุบัน (draft→published→default) ของช่องนี้ สำหรับไฮไลต์พรีวิว */
+  onFocusField?: (renderedText: string) => void;
+  /** ช่องเป้าหมายจาก deep-link → เลื่อนมา + ไฮไลต์ */
+  isFocusTarget?: boolean;
 }) {
   const current = entry.draft ?? entry.published ?? entry.default;
   const [value, setValue] = useState(current);
   const hasDraft = entry.draft != null;
   const isPublishedOverride = entry.published != null;
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isFocusTarget && rootRef.current) {
+      rootRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isFocusTarget]);
 
   return (
-    <div className="knowledge-edit__field">
+    <div
+      ref={rootRef}
+      className={`knowledge-edit__field${isFocusTarget ? " knowledge-edit__field--focus" : ""}`}
+    >
       <div className="knowledge-edit__field-head">
         <span className="knowledge-edit__field-label">{label}</span>
         {hasDraft && <span className="knowledge-edit__tag knowledge-edit__tag--draft">ร่าง</span>}
         {isPublishedOverride && <span className="knowledge-edit__tag">แก้แล้ว</span>}
       </div>
+      {warnConcat && <p className="knowledge-edit__warn">{CONCAT_WARNING_TH}</p>}
       <textarea
         className="knowledge-edit__textarea"
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        onFocus={() => onFocusField?.(current)}
         rows={Math.min(8, Math.max(2, Math.ceil(value.length / 60)))}
       />
       <div className="knowledge-edit__actions">

@@ -34,7 +34,18 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
   const [editMode, setEditMode] = useState(false);
   const [adminToken, setAdminToken] = useState("");
   // 2 โหมด: รายบท (chapter) vs ตารางตามดวง (condition) — แยกกันชัด หาง่าย
+  // เริ่มที่ "chapter" เสมอเพื่อให้ render แรกตรงกับ SSR (กัน hydration mismatch)
+  // แล้วค่อยอ่าน deep-link จาก URL หลัง mount (?tab=condition&table=..&key=..)
   const [mode, setMode] = useState<"chapter" | "condition">("chapter");
+  const [focusEntityKey, setFocusEntityKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "condition") setMode("condition");
+    const table = params.get("table");
+    const key = params.get("key");
+    if (table && key) setFocusEntityKey(`table|${table}|${key}`);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -159,7 +170,12 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
       <div className="knowledge knowledge--single">
         {tabBar}
         <section className="surface knowledge__panel">
-          <KnowledgeEditor topicId="" adminToken={adminToken} section="condition" />
+          <KnowledgeEditor
+            topicId=""
+            adminToken={adminToken}
+            section="condition"
+            focusEntityKey={focusEntityKey}
+          />
         </section>
       </div>
     );

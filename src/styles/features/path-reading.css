@@ -273,6 +273,146 @@
   margin-top: 0.5rem;
   width: 100%;
 }
+/* sub-row ต่อชิ้นย่อย (ย่อหน้า) — แต่ละ "ชิ้น" ที่ engine ประกอบ แก้แยกกันได้ */
+.topic-card__box-para {
+  margin-top: 0.6rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.topic-card__box-para--active {
+  border-color: var(--rp-border, #cbd5e1);
+  background: var(--rp-accent-soft, rgba(37, 99, 235, 0.04));
+}
+.topic-card__box-para-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.76rem;
+}
+.topic-card__box-para-label {
+  font-weight: 600;
+  color: var(--rp-ink, #3d4548);
+}
+.topic-card__box-para-source {
+  font-size: 0.72rem;
+  color: #1d4ed8;
+  background: #eef4ff;
+  border: 1px solid #c3d7ff;
+  border-radius: 999px;
+  padding: 0 0.45rem;
+  text-decoration: none;
+}
+.topic-card__box-para-source:hover {
+  background: #dde9ff;
+}
+.topic-card__box-para-catalog {
+  font-size: 0.72rem;
+  color: #fff;
+  background: #2563eb;
+  border: 1px solid #1d4ed8;
+  border-radius: 999px;
+  padding: 0.05rem 0.55rem;
+  cursor: pointer;
+}
+.topic-card__box-para-catalog:hover {
+  background: #1d4ed8;
+}
+.topic-card__box-para-catalog:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.topic-card__box-para-catalog-done {
+  font-size: 0.72rem;
+  color: #1f5d3a;
+}
+.topic-card__box-para-catalog-err {
+  font-size: 0.72rem;
+  color: #b42318;
+}
+.topic-card__box-add-para {
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  color: #1d4ed8;
+  background: #eef4ff;
+  border: 1px dashed #c3d7ff;
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+.topic-card__box-add-para:hover {
+  background: #dde9ff;
+}
+/* เพิ่มกล่อง/ความรู้ใหม่ท้ายบท */
+.topic-card__add-note {
+  margin-top: 0.75rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--rp-border, #cbd5e1);
+}
+.topic-card__add-note-list {
+  list-style: none;
+  margin: 0 0 0.5rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.topic-card__add-note-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--rp-ink-soft, #5b6770);
+}
+.topic-card__add-note-text {
+  flex: 1;
+}
+.topic-card__add-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.4rem;
+}
+.topic-card__add-note-kind {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.82rem;
+}
+.topic-card__add-note-title {
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--rp-border, #cbd5e1);
+  border-radius: 0.4rem;
+  font: inherit;
+}
+.topic-card__add-note-status {
+  margin: 0.45rem 0 0;
+  font-size: 0.78rem;
+  color: #1f5d3a;
+}
+.topic-card__box-guide-edited {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  color: #9a5b00;
+  background: #fff6e6;
+  border: 1px solid #ffd98a;
+  border-radius: 999px;
+  padding: 0 0.4rem;
+}
+/* บรรทัดสรุปผลกระทบข้ามดวงก่อนกดบันทึก */
+.topic-card__box-impact {
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #1f5d3a;
+  background: #eafbf1;
+  border: 1px solid #b7e7c9;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.7rem;
+}
 /* บล็อก "กฎแทนคำ" ต่อกล่อง (อยู่ในกล่อง ใต้เนื้อหา) */
 .topic-card__box-rules {
   margin-top: 0.6rem;

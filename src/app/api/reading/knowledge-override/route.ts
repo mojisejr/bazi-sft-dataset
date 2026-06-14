@@ -4,6 +4,10 @@
  */
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { BAZI_TOPIC_REGISTRY } from "@/lib/bazi/knowledge/topic-registry";
+import {
+  CONDITION_TABLE_CATEGORY,
+  miscEntryCategory,
+} from "@/lib/bazi/knowledge/condition-categories";
 import { KNOWLEDGE_CATALOG, keyLabel } from "@/lib/bazi/knowledge/knowledge-catalog";
 import { createDbKnowledgeOverrideRepository } from "@/lib/bazi/knowledge-override-repository";
 import { EMPTY_OVERLAY, type KnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
@@ -38,18 +42,42 @@ export async function GET(req: Request) {
     /* ไม่มีร่าง */
   }
 
-  const tables = KNOWLEDGE_CATALOG.map((entry) => ({
-    tableId: entry.tableId,
-    label: entry.label,
-    keyKind: entry.keyKind,
-    entries: Object.keys(entry.defaults).map((key) => ({
+  const tables = KNOWLEDGE_CATALOG.flatMap((entry) => {
+    const mkEntry = (key: string) => ({
       key,
-      keyLabel: keyLabel(entry.keyKind, key),
+      keyLabel: entry.entryLabels?.[key] ?? keyLabel(entry.keyKind, key),
       default: entry.defaults[key],
       published: published.tables[entry.tableId]?.[key] ?? null,
       draft: draft.tables[entry.tableId]?.[key] ?? null,
-    })),
-  }));
+    });
+    const keys = Object.keys(entry.defaults);
+    // MISC คร่อมหลายบท → แตกเป็น virtual table ต่อหมวด (tableId/key เดิม → save/deep-link ไม่กระทบ)
+    if (entry.tableId === "MISC_TEMPLATE_TH") {
+      const byCategory = new Map<string, string[]>();
+      for (const key of keys) {
+        const category = miscEntryCategory(key);
+        const bucket = byCategory.get(category) ?? [];
+        bucket.push(key);
+        byCategory.set(category, bucket);
+      }
+      return [...byCategory.entries()].map(([category, ks]) => ({
+        tableId: entry.tableId,
+        label: `โครงประโยค: ${category}`,
+        keyKind: entry.keyKind,
+        category,
+        entries: ks.map(mkEntry),
+      }));
+    }
+    return [
+      {
+        tableId: entry.tableId,
+        label: entry.label,
+        keyKind: entry.keyKind,
+        category: CONDITION_TABLE_CATEGORY[entry.tableId] ?? null,
+        entries: keys.map(mkEntry),
+      },
+    ];
+  });
 
   const appends = Object.fromEntries(
     PREDICT_TOPICS.map((topic) => [

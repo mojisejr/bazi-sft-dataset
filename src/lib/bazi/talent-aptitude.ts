@@ -1,6 +1,6 @@
 import type { SupportedElementValue } from "@/lib/bazi/schema-types";
 import { ELEMENT_LABELS_TH, TWELVE_QI_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
-import { K, KC } from "@/lib/bazi/knowledge/knowledge-overlay-context";
+import { fillTemplate, K, KC } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 
 /**
  * พรสวรรค์ 12 เซี่ยงแซ ผสาน 5 ธาตุ (Talent = 12 Life Stages × 5 Elements)
@@ -140,6 +140,11 @@ export const ELEMENT_APTITUDE_FIELD_TH: Record<SupportedElementValue, string> = 
   water: "งานค้าขาย เดินทาง โรงแรม อาหาร-เครื่องดื่ม การเงิน-ธนาคาร ข่าวสาร และงานอิสระ",
 };
 
+/** โครงประโยค "พรสวรรค์ → แนวอาชีพ" (มี placeholder) — แก้ออนไลน์ได้ */
+export const TALENT_BRIDGE_TH: Record<string, string> = {
+  default: "พรสวรรค์ → แนวอาชีพ (ดาวถ่ายเท ธาตุ{ธาตุ}, เซี่ยงแซ {เชี่ยงแซ}): จุดแข็งคือ{ความถนัด} ซึ่งเหมาะนำไปต่อยอดในสาย{สาขา}",
+};
+
 const THAI_STAGE_TO_CANONICAL: Record<string, string> = Object.fromEntries(
   Object.entries(TWELVE_QI_LABELS_TH).map(([chinese, thai]) => [thai, chinese]),
 );
@@ -186,8 +191,13 @@ export function buildAptitudeCareerBridge(
   }
   const field = K("ELEMENT_APTITUDE_FIELD_TH", ELEMENT_APTITUDE_FIELD_TH)[outputElement];
   const elementTh = ELEMENT_LABELS_TH[outputElement];
-  return (
-    `พรสวรรค์ → แนวอาชีพ (ดาวถ่ายเท ธาตุ${elementTh}, เซี่ยงแซ ${toCanonicalStage(stage) ? TWELVE_QI_LABELS_TH[toCanonicalStage(stage) as keyof typeof TWELVE_QI_LABELS_TH] : stage}): ` +
-    `จุดแข็งคือ${aptitude} ซึ่งเหมาะนำไปต่อยอดในสาย${field}`
-  );
+  const stageTh = toCanonicalStage(stage)
+    ? TWELVE_QI_LABELS_TH[toCanonicalStage(stage) as keyof typeof TWELVE_QI_LABELS_TH]
+    : stage;
+  return fillTemplate("TALENT_BRIDGE_TH", TALENT_BRIDGE_TH, {
+    "ธาตุ": elementTh,
+    "เชี่ยงแซ": stageTh,
+    "ความถนัด": aptitude,
+    "สาขา": field,
+  }, "default");
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
 import { StatusChip } from "@/components/bazi/primitives/StatusChip";
@@ -8,6 +8,12 @@ import { Surface } from "@/components/bazi/primitives/Surface";
 import { SinsaeRuleBuilder, type AddRuleInput } from "@/components/bazi/reading/SinsaeRuleBuilder";
 import { READING_COLORS } from "@/lib/bazi/reading-colors";
 import { tokenizeInline } from "@/lib/bazi/reading-inline";
+import {
+  compileKnowledgeTables,
+  resolveParagraphSources,
+  type KnowledgeTableLite,
+} from "@/lib/bazi/reading-source-match";
+import { suggestSubstitutions } from "@/lib/bazi/substitution-rules";
 import type { SinsaeCorrection } from "@/lib/bazi/sinsae-corrections";
 import type { TopicDefinition, TopicEngineReading } from "@/lib/bazi/topic-reading";
 
@@ -171,6 +177,38 @@ function normalizeBoxBody(text: string): string {
     prevWasBullet = isBullet;
   }
   return result;
+}
+
+/** entityKey ของช่อง catalog (ตรงกับ encodeKnowledgeEntityKey ฝั่ง server: `table|tableId|key`) */
+function knowledgeTableEntityKey(tableId: string, key: string): string {
+  return `table|${tableId}|${key}`;
+}
+
+/** แยกเนื้อกล่องเป็นย่อหน้า (= "ชิ้น" ที่ engine ประกอบด้วย composeParagraphs คั่น \n\n) */
+function splitBoxParagraphs(body: string): string[] {
+  return body
+    .replace(/\r/g, "")
+    .split(/\n{2,}/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+/**
+ * label สั้นของย่อหน้า (heuristic ฝั่ง client) — สะท้อนรูปแบบที่ engine สร้าง:
+ *  "เกิดถูกฤดู — …" → "เกิดถูกฤดู" · "กำลังดิถีโดยรวม: …" → "กำลังดิถีโดยรวม" · ไม่งั้น "ย่อหน้า #n"
+ */
+function labelForParagraph(text: string, ordinal: number): string {
+  const firstLine = text.split("\n")[0]?.trim() ?? "";
+  // หัวกล่อง **…** (เช่น "**เกริ่นนำ**") → ใช้ข้อความในดาว
+  const bold = firstLine.match(/^\*\*(.{2,40}?)\*\*\s*$/u);
+  if (bold) return bold[1].trim();
+  const stripped = text.replace(/^\*+/, "").trim();
+  const dash = stripped.match(/^(.{2,40}?)\s—\s/u);
+  if (dash) return dash[1].trim();
+  const colon = stripped.match(/^([^\n:：]{2,40}?)[：:]\s/u);
+  if (colon) return colon[1].trim();
+  if (/^ดิถีประจำตัวของคุณคือ/u.test(stripped)) return "ภาพดิถี";
+  return `ส่วนที่ ${ordinal}`;
 }
 
 /** เรนเดอร์ inline (ตัวหนา/เน้นแดง/สี/ขนาด) — ใช้ tokenizer กลางตัวเดียวกับ PDF/docx */
@@ -355,20 +393,183 @@ export function TopicCard({
   const [showSystem, setShowSystem] = useState(false);
   // แก้ทีละกล่อง (บทที่เป็นกล่อง): index ของ box seg ที่กำลังแก้ + ร่างเนื้อในกล่องนั้น
   const [editingBoxIdx, setEditingBoxIdx] = useState<number | null>(null);
-  const [boxDraft, setBoxDraft] = useState("");
+  // แต่ละย่อหน้า ("ชิ้น" ที่ engine ประกอบ) แก้แยกกันได้ — รวมกลับเป็นกล่องเดียวตอนบันทึก
+  const [boxParaDrafts, setBoxParaDrafts] = useState<string[]>([]);
+  const [activeParaIdx, setActiveParaIdx] = useState(0);
   const sinsaeTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const boxTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const boxTextareaRefs = useRef<Array<HTMLTextAreaElement | null>>([]);
+  // catalog องค์ความรู้ (lazy) — ใช้ map ว่าย่อหน้าไหนมาจากตารางไหน (best-effort; ว่าง = fallback heuristic)
+  const [knowledgeTables, setKnowledgeTables] = useState<KnowledgeTableLite[]>([]);
+  // precompile matcher (constant=indexOf, template=regex) ครั้งเดียวต่อ knowledgeTables
+  const compiledTables = useMemo(() => compileKnowledgeTables(knowledgeTables), [knowledgeTables]);
+  // สถานะแก้ catalog inline ราย entityKey ("saving" | "done" | error message)
+  const [catalogEditStatus, setCatalogEditStatus] = useState<Record<string, string>>({});
+  // ความรู้/กล่องที่ซินแสเพิ่มท้ายบท (append global ต่อบท) + ฟอร์มเพิ่มใหม่
+  const [topicAppends, setTopicAppends] = useState<string[]>([]);
+  const [addNoteOpen, setAddNoteOpen] = useState(false);
+  const [addNoteKind, setAddNoteKind] = useState<"box" | "paragraph">("paragraph");
+  const [addNoteTitle, setAddNoteTitle] = useState("");
+  const [addNoteBody, setAddNoteBody] = useState("");
+  const [appendStatus, setAppendStatus] = useState("");
+
+  // ร่างกล่องทั้งก้อน = ย่อหน้าที่แก้แล้ว join กลับ (\n\n) — ใช้ตอนคำนวณ diff/บันทึก/นับกฎ
+  const boxDraft = boxParaDrafts.join("\n\n");
+  const setBoxParaAt = (idx: number, value: string) =>
+    setBoxParaDrafts((cur) => cur.map((para, i) => (i === idx ? value : para)));
+
+  // โหลด catalog องค์ความรู้ครั้งแรกที่ซินแสเริ่มแก้กล่อง/เพิ่มความรู้ (lazy, best-effort)
+  //  - tables → ใช้ map ย่อหน้า→ตาราง
+  //  - appends[topic.id] → ความรู้ที่เคยเพิ่มท้ายบท (published ∪ draft)
+  const needCatalog = editingBoxIdx !== null || addNoteOpen;
+  useEffect(() => {
+    if (!needCatalog || knowledgeTables.length > 0) return;
+    let active = true;
+    void fetch("/api/reading/knowledge-override")
+      .then((res) => (res.ok ? res.json() : null))
+      .then(
+        (
+          body:
+            | {
+                tables?: KnowledgeTableLite[];
+                appends?: Record<string, { published: string[]; draft: string[] }>;
+              }
+            | null,
+        ) => {
+          if (!active || !body) return;
+          if (Array.isArray(body.tables)) setKnowledgeTables(body.tables);
+          const ap = body.appends?.[topic.id];
+          if (ap) {
+            const merged = ap.draft.map((d, i) => d || ap.published[i] || "").filter((t) => t.trim());
+            setTopicAppends(merged.length > 0 ? merged : ap.published.filter((t) => t.trim()));
+          }
+        },
+      )
+      .catch(() => {
+        /* แก้/เพิ่มได้แม้โหลด catalog ไม่สำเร็จ */
+      });
+    return () => {
+      active = false;
+    };
+  }, [needCatalog, knowledgeTables.length, topic.id]);
+
+  // แก้ catalog inline จากกล่อง: PUT ร่าง → POST publish (มีผลทุกดวงทันที) + อัปเดต catalog ใน memory
+  const publishCatalogEdit = async (tableId: string, key: string, text: string) => {
+    const entityKey = knowledgeTableEntityKey(tableId, key);
+    setCatalogEditStatus((cur) => ({ ...cur, [entityKey]: "saving" }));
+    try {
+      const headers = { "content-type": "application/json" };
+      const put = await fetch("/api/reading/doctrine-draft", {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ surface: "knowledge", entityKey, value: { text } }),
+      });
+      if (!put.ok) {
+        const body = (await put.json().catch(() => null)) as { error?: { message: string } } | null;
+        throw new Error(body?.error?.message ?? "บันทึกร่างไม่สำเร็จ");
+      }
+      const pub = await fetch("/api/reading/doctrine-draft", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ surface: "knowledge", entityKey }),
+      });
+      if (!pub.ok) {
+        const body = (await pub.json().catch(() => null)) as { error?: { message: string } } | null;
+        throw new Error(body?.error?.message ?? "เผยแพร่ไม่สำเร็จ");
+      }
+      // อัปเดตค่าใน catalog ที่ถืออยู่ → ย่อหน้านี้ถือเป็น "ตรง catalog" ต่อไป (ปุ่มไม่เด้งซ้ำ)
+      setKnowledgeTables((tables) =>
+        tables.map((table) =>
+          table.tableId === tableId
+            ? {
+                ...table,
+                entries: table.entries.map((entry) =>
+                  entry.key === key ? { ...entry, published: text, draft: null } : entry,
+                ),
+              }
+            : table,
+        ),
+      );
+      setCatalogEditStatus((cur) => ({ ...cur, [entityKey]: "done" }));
+    } catch (error) {
+      setCatalogEditStatus((cur) => ({
+        ...cur,
+        [entityKey]: error instanceof Error ? error.message : "ไม่สำเร็จ",
+      }));
+    }
+  };
+
+  // PUT ร่าง + POST publish ของช่อง knowledge (ใช้ร่วม append) — โยน error ถ้าไม่สำเร็จ
+  const putAndPublishKnowledge = async (entityKey: string, text: string) => {
+    const headers = { "content-type": "application/json" };
+    const put = await fetch("/api/reading/doctrine-draft", {
+      method: "PUT",
+      headers,
+      body: JSON.stringify({ surface: "knowledge", entityKey, value: { text } }),
+    });
+    if (!put.ok) {
+      const body = (await put.json().catch(() => null)) as { error?: { message: string } } | null;
+      throw new Error(body?.error?.message ?? "บันทึกร่างไม่สำเร็จ");
+    }
+    const pub = await fetch("/api/reading/doctrine-draft", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ surface: "knowledge", entityKey }),
+    });
+    if (!pub.ok) {
+      const body = (await pub.json().catch(() => null)) as { error?: { message: string } } | null;
+      throw new Error(body?.error?.message ?? "เผยแพร่ไม่สำเร็จ");
+    }
+  };
+
+  // เพิ่มความรู้/กล่องใหม่ท้ายบท (append global): publish text เป็นช่อง append ลำดับใหม่
+  const addAppend = async () => {
+    const body = addNoteBody.trim();
+    if (body.length === 0) return;
+    const title = addNoteTitle.trim();
+    if (addNoteKind === "box" && title.length === 0) {
+      setAppendStatus("กล่องใหม่ต้องมีชื่อหัวข้อ");
+      return;
+    }
+    const text =
+      addNoteKind === "box" ? `[[box=${title}]]\n**${title}**\n\n${body}\n[[/box]]` : body;
+    const ordinal = topicAppends.length + 1;
+    setAppendStatus("กำลังบันทึก…");
+    try {
+      await putAndPublishKnowledge(`append|${topic.id}|${ordinal}`, text);
+      setTopicAppends((cur) => [...cur, text]);
+      setAddNoteTitle("");
+      setAddNoteBody("");
+      setAddNoteOpen(false);
+      setAppendStatus("เพิ่มแล้ว ✓ มีผลทุกดวง (กดทำนายซ้ำเพื่อดูในดวงนี้)");
+    } catch (error) {
+      setAppendStatus(error instanceof Error ? error.message : "เพิ่มไม่สำเร็จ");
+    }
+  };
+
+  // ลบความรู้ที่เพิ่ม: ตั้ง text="" แล้ว publish (overlay ตัดช่องว่างทิ้งตอน render)
+  const removeAppend = async (index: number) => {
+    setAppendStatus("กำลังลบ…");
+    try {
+      await putAndPublishKnowledge(`append|${topic.id}|${index + 1}`, "");
+      setTopicAppends((cur) => cur.map((t, i) => (i === index ? "" : t)));
+      setAppendStatus("ลบแล้ว ✓ (กดทำนายซ้ำเพื่อดูในดวงนี้)");
+    } catch (error) {
+      setAppendStatus(error instanceof Error ? error.message : "ลบไม่สำเร็จ");
+    }
+  };
 
   // เครื่องมือจัดรูปแบบในกล่องแก้: ครอบข้อความที่เลือกด้วย marker inline (**หนา** / ***แดง*** /
   // [[c=..]] / [[s=..]]) — ไวยากรณ์เดียวกับ PDF/Word/การ์ด (tokenizer กลาง) จึงเห็นผลตรงกันทุกที่
   const wrapBoxSelection = (before: string, after: string) => {
-    const el = boxTextareaRef.current;
+    const idx = activeParaIdx;
+    const el = boxTextareaRefs.current[idx];
+    const current = boxParaDrafts[idx] ?? "";
     if (!el) return;
-    const start = el.selectionStart ?? boxDraft.length;
-    const end = el.selectionEnd ?? boxDraft.length;
-    const selected = boxDraft.slice(start, end) || "ข้อความ";
-    const next = `${boxDraft.slice(0, start)}${before}${selected}${after}${boxDraft.slice(end)}`;
-    setBoxDraft(next);
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const selected = current.slice(start, end) || "ข้อความ";
+    const next = `${current.slice(0, start)}${before}${selected}${after}${current.slice(end)}`;
+    setBoxParaAt(idx, next);
     requestAnimationFrame(() => {
       el.focus();
       el.setSelectionRange(start + before.length, start + before.length + selected.length);
@@ -485,7 +686,7 @@ export function TopicCard({
             const canEdit = Boolean(onSaveCorrection);
             const segments = parseReadingSegments(displayText);
             const hasBoxes = segments.some((seg) => seg.kind === "box");
-            const saveBox = (segIdx: number) => {
+            const saveBox = (segIdx: number, systemBody: string) => {
               // ทุกบรรทัดที่ซินแสกด Enter = ย่อหน้าใหม่ (กันถูกยุบรวมเป็นแถวเดียวตอนเรนเดอร์ markdown)
               const normalizedBody = normalizeBoxBody(boxDraft);
               const rebuilt = serializeReadingSegments(
@@ -493,7 +694,25 @@ export function TopicCard({
                   i === segIdx && seg.kind === "box" ? { ...seg, body: normalizedBody } : seg,
                 ),
               );
+              // (1) คงผลรายดวง (correction ของดวงนี้)
               onSaveCorrection?.(topic.id, rebuilt);
+              // (2) กระจายข้ามดวง: diff เฉพาะ "กล่องนี้" (ฉบับระบบ vs ฉบับแก้) → สร้างกฎแทนคำ (scope=topic)
+              //     อัตโนมัติ เพื่อให้ดวงอื่นที่ทายบทเดียวกันได้วลีเดิม ออกเป็นวลีที่ซินแสแก้
+              if (onAddRules && systemBody && normalizedBody !== systemBody) {
+                const pairs = suggestSubstitutions(systemBody, normalizedBody).filter(
+                  (pair) => pair.match.trim().length > 0,
+                );
+                if (pairs.length > 0) {
+                  void onAddRules(
+                    pairs.map((pair) => ({
+                      scope: "topic" as const,
+                      topicId: topic.id,
+                      match: pair.match,
+                      replacement: pair.replacement,
+                    })),
+                  );
+                }
+              }
               setEditingBoxIdx(null);
             };
             // body ฉบับระบบ (ก่อนซินแสแก้) ของแต่ละกล่อง — ใช้ diff กับ body ปัจจุบันเพื่อเสนอกฎแทนคำต่อกล่อง
@@ -522,6 +741,20 @@ export function TopicCard({
                       }
                       // กล่อง: แก้ทีละกล่อง — กดปุ่มที่กล่องนั้นเพื่อแก้เฉพาะเนื้อในกล่องนั้น
                       if (editingBoxIdx === segIdx) {
+                        const editSystemBody = seg.kind === "box" ? systemBoxBody.get(seg.title) ?? "" : "";
+                        // ย่อหน้าฉบับระบบ (เทียบหาว่าชิ้นไหนถูกแก้) + ธงแก้แล้วราย sub-textarea
+                        const systemParas = splitBoxParagraphs(editSystemBody);
+                        const editedFlags = boxParaDrafts.map(
+                          (para, i) => systemParas[i] === undefined || systemParas[i] !== para.trim(),
+                        );
+                        const anyEdited = editedFlags.some(Boolean);
+                        const multiPara = boxParaDrafts.length > 1;
+                        // ผลกระทบข้ามดวง: จำนวนกฎแทนคำที่จะเกิดเมื่อบันทึก (เฉพาะบทนี้)
+                        const pendingRuleCount = editSystemBody
+                          ? suggestSubstitutions(editSystemBody, normalizeBoxBody(boxDraft)).filter(
+                              (pair) => pair.match.trim().length > 0,
+                            ).length
+                          : 0;
                         return (
                           <div key={segIdx} className="ylc-box topic-card__box topic-card__box--editing">
                             <div className="ylc-box__title">{seg.title}</div>
@@ -577,19 +810,129 @@ export function TopicCard({
                                 ))}
                               </select>
                             </div>
-                            <textarea
-                              ref={boxTextareaRef}
-                              className="topic-card__sinsae-textarea"
-                              value={boxDraft}
-                              rows={Math.min(16, Math.max(4, boxDraft.split("\n").length + 1))}
-                              onChange={(event) => setBoxDraft(event.target.value)}
-                            />
+                            {boxParaDrafts.map((para, pIdx) => {
+                              const sources = resolveParagraphSources(para, compiledTables);
+                              // ชิ้น exact = ย่อหน้าตรงค่าช่องเดียวเป๊ะ → แก้ inline ได้; ไม่งั้นเป็นแค่ "ส่วนประกอบ"
+                              const exactSource = sources.find((s) => s.exact) ?? null;
+                              const canCatalogEdit = Boolean(exactSource && editedFlags[pIdx]);
+                              const entityKey = exactSource
+                                ? knowledgeTableEntityKey(exactSource.tableId, exactSource.key)
+                                : "";
+                              const catStatus = entityKey ? catalogEditStatus[entityKey] : undefined;
+                              return (
+                                <div
+                                  key={pIdx}
+                                  className={`topic-card__box-para${
+                                    activeParaIdx === pIdx ? " topic-card__box-para--active" : ""
+                                  }`}
+                                >
+                                  {multiPara && (
+                                    <div className="topic-card__box-para-head">
+                                      <span className="topic-card__box-para-label">
+                                        {labelForParagraph(para, pIdx + 1)}
+                                      </span>
+                                      {sources.map((s) => (
+                                        <a
+                                          key={`${s.tableId}|${s.key}`}
+                                          className="topic-card__box-para-source"
+                                          href={`/reading/knowledge?tab=condition&table=${encodeURIComponent(
+                                            s.tableId,
+                                          )}&key=${encodeURIComponent(s.key)}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          title={
+                                            s.exact
+                                              ? `ทั้งย่อหน้านี้มาจากตาราง ${s.tableId} — เปิดช่องนี้ในคลัง`
+                                              : s.full
+                                                ? `ทั้งย่อหน้านี้สร้างจากเทมเพลต ${s.tableId} — เปิดแก้โครงประโยคในคลัง (แก้ทุกดวง)`
+                                                : `บางส่วนของย่อหน้านี้มาจากตาราง ${s.tableId} ("${s.value}") — เปิดช่องนี้ในคลัง`
+                                          }
+                                        >
+                                          📚 {s.full && !s.exact ? s.keyLabel : s.label}
+                                          {s.full ? "" : " (บางส่วน)"} · ✎ แก้ในคลัง
+                                        </a>
+                                      ))}
+                                      {editedFlags[pIdx] && (
+                                        <span className="topic-card__box-guide-edited">✎ แก้แล้ว</span>
+                                      )}
+                                      {canCatalogEdit && catStatus !== "done" && exactSource && (
+                                        <button
+                                          type="button"
+                                          className="topic-card__box-para-catalog"
+                                          disabled={catStatus === "saving"}
+                                          title="อัปเดตค่าต้นทางในคลังความรู้ — มีผลทุกดวง"
+                                          onClick={() =>
+                                            void publishCatalogEdit(exactSource.tableId, exactSource.key, para.trim())
+                                          }
+                                        >
+                                          {catStatus === "saving" ? "กำลังบันทึก…" : "💾 แก้ในคลัง (ทุกดวง)"}
+                                        </button>
+                                      )}
+                                      {catStatus === "done" && (
+                                        <span className="topic-card__box-para-catalog-done">
+                                          อัปเดตคลังแล้ว ✓ มีผลทุกดวง
+                                        </span>
+                                      )}
+                                      {catStatus && catStatus !== "saving" && catStatus !== "done" && (
+                                        <span className="topic-card__box-para-catalog-err">{catStatus}</span>
+                                      )}
+                                      {boxParaDrafts.length > 1 && (
+                                        <button
+                                          type="button"
+                                          className="topic-card__sinsae-link topic-card__sinsae-link--danger"
+                                          title="ลบชิ้นนี้ออกจากกล่อง (เฉพาะดวงนี้)"
+                                          onClick={() =>
+                                            setBoxParaDrafts((cur) => cur.filter((_, i) => i !== pIdx))
+                                          }
+                                        >
+                                          ลบชิ้น
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                  <textarea
+                                    ref={(el) => {
+                                      boxTextareaRefs.current[pIdx] = el;
+                                    }}
+                                    className="topic-card__sinsae-textarea"
+                                    value={para}
+                                    rows={Math.min(12, Math.max(2, para.split("\n").length + 1))}
+                                    onFocus={() => setActiveParaIdx(pIdx)}
+                                    onChange={(event) => setBoxParaAt(pIdx, event.target.value)}
+                                  />
+                                </div>
+                              );
+                            })}
+                            <button
+                              type="button"
+                              className="topic-card__box-add-para"
+                              onClick={() => {
+                                setBoxParaDrafts((cur) => [...cur, ""]);
+                                setActiveParaIdx(boxParaDrafts.length);
+                              }}
+                            >
+                              ＋ เพิ่มชิ้นย่อยในหัวข้อนี้
+                            </button>
+                            {anyEdited && (
+                              <p className="topic-card__box-impact">
+                                {pendingRuleCount > 0 ? (
+                                  <>
+                                    บันทึกแล้วจะสร้าง<strong> กฎแทนคำ {pendingRuleCount} รายการ</strong> (เฉพาะบทนี้) —
+                                    ดวงอื่นที่ทายได้วลีเดิมจะเปลี่ยนตาม
+                                  </>
+                                ) : (
+                                  <>การแก้นี้มีผลเฉพาะดวงนี้ (ไม่สร้างกฎข้ามดวง)</>
+                                )}
+                              </p>
+                            )}
                             <div className="topic-card__sinsae-actions">
                               <ActionButton
                                 tone="primary"
                                 type="button"
                                 disabled={boxDraft.trim().length === 0}
-                                onClick={() => saveBox(segIdx)}
+                                onClick={() =>
+                                  saveBox(segIdx, seg.kind === "box" ? systemBoxBody.get(seg.title) ?? "" : "")
+                                }
                               >
                                 บันทึกกล่องนี้
                               </ActionButton>
@@ -617,7 +960,10 @@ export function TopicCard({
                                 className="topic-card__box-edit"
                                 onClick={() => {
                                   setEditingBoxIdx(segIdx);
-                                  setBoxDraft(seg.body);
+                                  const paras = splitBoxParagraphs(seg.body);
+                                  setBoxParaDrafts(paras.length > 0 ? paras : [seg.body]);
+                                  setActiveParaIdx(0);
+                                  boxTextareaRefs.current = [];
                                 }}
                               >
                                 ✎ แก้กล่องนี้
@@ -760,6 +1106,106 @@ export function TopicCard({
                         onAddRule={onAddRule}
                         onAddRules={onAddRules}
                       />
+                    )}
+
+                    {/* เพิ่มกล่อง/ความรู้ใหม่ท้ายบท (append global — มีผลทุกดวงในบทนี้) */}
+                    {!editing && (
+                      <div className="topic-card__add-note">
+                        {topicAppends.filter((t) => t.trim()).length > 0 && (
+                          <ul className="topic-card__add-note-list">
+                            {topicAppends.map((text, i) =>
+                              text.trim() ? (
+                                <li key={i} className="topic-card__add-note-item">
+                                  <span className="topic-card__add-note-text">
+                                    {text.startsWith("[[box=")
+                                      ? `📦 ${text.match(/\[\[box=(.*?)\]\]/)?.[1] ?? "กล่อง"}`
+                                      : text.length > 60
+                                        ? `${text.slice(0, 60)}…`
+                                        : text}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    className="topic-card__sinsae-link topic-card__sinsae-link--danger"
+                                    onClick={() => void removeAppend(i)}
+                                  >
+                                    ลบ
+                                  </button>
+                                </li>
+                              ) : null,
+                            )}
+                          </ul>
+                        )}
+                        {!addNoteOpen ? (
+                          <button
+                            type="button"
+                            className="topic-card__sinsae-toggle"
+                            onClick={() => {
+                              setAddNoteOpen(true);
+                              setAppendStatus("");
+                            }}
+                          >
+                            ＋ เพิ่มความรู้/กล่องใหม่ (ทุกดวงในบทนี้)
+                          </button>
+                        ) : (
+                          <div className="topic-card__add-note-form">
+                            <div className="topic-card__add-note-kind" role="group" aria-label="ชนิด">
+                              <label>
+                                <input
+                                  type="radio"
+                                  name={`addkind-${topic.id}`}
+                                  checked={addNoteKind === "paragraph"}
+                                  onChange={() => setAddNoteKind("paragraph")}
+                                />{" "}
+                                ย่อหน้า
+                              </label>
+                              <label>
+                                <input
+                                  type="radio"
+                                  name={`addkind-${topic.id}`}
+                                  checked={addNoteKind === "box"}
+                                  onChange={() => setAddNoteKind("box")}
+                                />{" "}
+                                กล่อง (มีหัวข้อ)
+                              </label>
+                            </div>
+                            {addNoteKind === "box" && (
+                              <input
+                                className="topic-card__add-note-title"
+                                placeholder="ชื่อหัวข้อกล่อง"
+                                value={addNoteTitle}
+                                onChange={(e) => setAddNoteTitle(e.target.value)}
+                              />
+                            )}
+                            <textarea
+                              className="topic-card__sinsae-textarea"
+                              placeholder="พิมพ์เนื้อความรู้ที่จะต่อท้ายบทนี้…"
+                              value={addNoteBody}
+                              rows={4}
+                              onChange={(e) => setAddNoteBody(e.target.value)}
+                            />
+                            <div className="topic-card__sinsae-actions">
+                              <ActionButton
+                                tone="primary"
+                                type="button"
+                                disabled={addNoteBody.trim().length === 0}
+                                onClick={() => void addAppend()}
+                              >
+                                เพิ่ม (มีผลทุกดวง)
+                              </ActionButton>
+                              <button
+                                type="button"
+                                className="topic-card__sinsae-link"
+                                onClick={() => setAddNoteOpen(false)}
+                              >
+                                ยกเลิก
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {appendStatus && (
+                          <p className="topic-card__add-note-status">{appendStatus}</p>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}
