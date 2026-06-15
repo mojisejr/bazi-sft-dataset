@@ -524,6 +524,26 @@ export const baziKnowledgeOverride = pgTable(
 export type InsertBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferInsert;
 export type SelectBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferSelect;
 
+/**
+ * รูปไพ่ "โหมดเซียน" (ไพ่จิตวิญญาณแดนสวรรค์) — สร้างล่วงหน้าด้วย Imagen เก็บ base64
+ * cardNo = เลขไพ่ (PK) ตรงกับ divine-cards.json
+ */
+export const baziDivineCardImage = pgTable("bazi_divine_card_image", {
+  cardNo: integer("card_no").primaryKey(),
+  prompt: text("prompt").notNull(),
+  imageBase64: text("image_base64").notNull(),
+  mime: text("mime").notNull().default("image/png"),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertBaziDivineCardImage = typeof baziDivineCardImage.$inferInsert;
+export type SelectBaziDivineCardImage = typeof baziDivineCardImage.$inferSelect;
+
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;
 export type InsertBaziCanonicalSource = typeof baziCanonicalSources.$inferInsert;

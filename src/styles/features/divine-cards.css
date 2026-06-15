@@ -1,0 +1,288 @@
+/* โหมดเซียน — ไพ่จิตวิญญาณแดนสวรรค์ (/divine-cards) */
+
+.divine {
+  display: flex;
+  flex-direction: column;
+  gap: var(--layout-page-gap, 18px);
+}
+
+.divine__title {
+  margin: 0;
+  font-size: 1.5rem;
+}
+.divine__lead {
+  margin: 0.35rem 0 0;
+  opacity: 0.85;
+  line-height: 1.6;
+}
+
+/* คำถาม */
+.divine__question-field {
+  max-width: 640px;
+}
+.divine__question {
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* เลือกโหมด */
+.divine__tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+.divine__tab {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.divine__tab--active {
+  background: var(--accent-soft, rgba(99, 102, 241, 0.15));
+  border-color: var(--accent, #6366f1);
+}
+
+/* picker (เลือกเอง) */
+.divine__picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.divine__search {
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: inherit;
+  max-width: 420px;
+}
+.divine__pickhint {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.divine__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 0.4rem;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 0.25rem;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+}
+.divine__chip {
+  text-align: left;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.divine__chip--active {
+  background: var(--accent-soft, rgba(99, 102, 241, 0.18));
+  border-color: var(--accent, #6366f1);
+  font-weight: 600;
+}
+.divine__chip-no {
+  opacity: 0.6;
+  font-size: 0.75rem;
+}
+
+/* จั่วปิดหน้า: ชิปแสดงแค่เลข จัดกึ่งกลาง */
+.divine__chip--blind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  text-align: center;
+  aspect-ratio: 3 / 4;
+  font-weight: 700;
+}
+.divine__chip--blind .divine__chip-no {
+  opacity: 0.85;
+  font-size: 0.95rem;
+}
+.divine__chip-order {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent, #6366f1);
+}
+.divine__chip--blind.divine__chip--active .divine__chip-order {
+  color: inherit;
+}
+
+.divine__actions {
+  display: flex;
+}
+.divine__draw {
+  font: inherit;
+  font-weight: 700;
+  padding: 0.65rem 1.4rem;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: var(--accent, #6366f1);
+  color: #fff;
+}
+.divine__draw:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.divine__error {
+  color: #dc2626;
+  margin: 0;
+}
+
+/* ผลลัพธ์ */
+.divine__result {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.divine__cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+.divine__card {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.divine__card-media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(148, 163, 184, 0.12);
+}
+.divine__card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.divine__card-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-size: 0.85rem;
+  opacity: 0.6;
+}
+.divine__card-weight {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: var(--accent, #6366f1);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+.divine__card-name {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+}
+.divine__card-kw {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+.divine__card-role {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent, #6366f1);
+}
+
+.divine__answer {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
+}
+.divine__answer-head {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+.divine__prose {
+  white-space: pre-wrap;
+  line-height: 1.75;
+}
+
+.divine__llm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.divine__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  max-width: 460px;
+}
+.divine__input {
+  font: inherit;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent;
+  color: inherit;
+}
+.divine__llm-btn {
+  align-self: flex-start;
+  font: inherit;
+  font-weight: 600;
+  padding: 0.55rem 1.1rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent, #6366f1);
+  background: var(--accent-soft, rgba(99, 102, 241, 0.15));
+  color: inherit;
+  cursor: pointer;
+}
+.divine__llm-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* แผงผู้ดูแล */
+.divine__admin {
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+}
+.divine__admin summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.divine__admin-status,
+.divine__admin-hint,
+.divine__admin-msg {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+}
+.divine__admin-hint {
+  opacity: 0.7;
+}
+
+@media (max-width: 640px) {
+  .divine__cards {
+    grid-template-columns: 1fr;
+  }
+}

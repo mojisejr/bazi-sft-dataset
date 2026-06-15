@@ -56,6 +56,15 @@ const HUB_CARDS: HubCard[] = [
     cta: "ทำนายเบอร์",
   },
   {
+    href: "/divine-cards",
+    icon: "🎴",
+    kicker: "โหมดเซียน",
+    title: "ไพ่จิตวิญญาณแดนสวรรค์",
+    description:
+      "จั่วหรือเลือกเอง 3 ใบ ทำนายตามหลักน้ำหนัก 50/30/20 ตอบด้วย engine ก่อน แล้วเกลาคำด้วย LLM ได้",
+    cta: "เปิดโหมดเซียน",
+  },
+  {
     href: "/reading/history",
     icon: "🗂️",
     kicker: "บันทึกย้อนหลัง",
