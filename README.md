@@ -18,6 +18,10 @@
 
 นอกจากนี้ยังเป็น **เครื่องมือสร้าง dataset** สำหรับ supervised fine-tuning (SFT): มีระบบ annotate, จัดคิว generate, และ export เป็นชุดข้อมูล
 
+นอกเหนือจากคำทำนายดวงหลัก ยังมี **โหมดเสี่ยงทายเสริม** อีก 2 โหมด:
+- **โหมดเซียน — ไพ่จิตวิญญาณแดนสวรรค์ (Divine Cards)** จั่วไพ่ 3 ใบ (สำรับ 80 ใบ) แล้วให้ LLM ร้อยคำทำนาย พร้อมรูปไพ่ที่ generate/เก็บไว้บน Supabase Storage
+- **เซียนเสี่ยงทาย (Fortune Sage)** เสี่ยงทายสไตล์เซียมซี สุ่ม 1 หัวเซี่ยงแซ (60 หัว/กะจื่อ) แสดงคำทำนายดิบตามตำรา 5 หัวข้อ (การงาน/การเงิน/สุขภาพ/ความรัก/ครอบครัว)
+
 ---
 
 ## แนวคิดหลัก (Neuro-Symbolic)
@@ -52,9 +56,10 @@ intro (คอนเซ็ปต์ทั่วไป)  →  พาดหัว�
 
 - **Next.js 16** (App Router) + **TypeScript**
 - **Neon PostgreSQL** ผ่าน `@neondatabase/serverless` + **Drizzle ORM**
+- **Supabase Storage** (เก็บรูปไพ่ Divine Cards / Fortune Sage)
 - **Vitest** (เทสต์ deterministic)
 - **Zod** (validate env/schema)
-- `lunar-javascript` (ปฏิทินจีน/สุริยคติ) · `docx` (export Word) · `@google/genai` (LLM เสริม) · `@line/bot-sdk` (LINE bot) · `@clerk/nextjs` (auth)
+- `lunar-javascript` (ปฏิทินจีน/สุริยคติ) · `docx` (export Word) · `@google/genai` (LLM เสริม + generate รูปไพ่) · `@line/bot-sdk` (LINE bot) · `@clerk/nextjs` (auth)
 
 ---
 
@@ -76,6 +81,9 @@ intro (คอนเซ็ปต์ทั่วไป)  →  พาดหัว�
 - `topic-knowledge.ts` — ตัวแต่งคำทำนาย 16 บท (`buildTopicHumanReading`)
 - `reading-phrases.ts` — คลังถ้อยคำ + ตัวร้อยร้อยแก้ว (`weaveNarrative`, headlines, connectors)
 - `reading-docx.ts` — สร้างไฟล์ .docx
+- `divine-cards/` — โหมดเซียน: `deck.ts` (สำรับ 80 ใบ), `reading-engine.ts`, `reading-llm.ts`, `image-gen.ts`, `image-repository.ts`
+- `fortune-sage/` — เซียนเสี่ยงทาย: `deck.ts` (60 หัวเซี่ยงแซ + 5 หัวข้อ)
+- `data/divine-cards.json`, `data/fortune-sage.json` — ข้อมูลไพ่/หัวเซี่ยงแซ (extract จาก `knownlage/`)
 
 ---
 
@@ -127,9 +135,13 @@ npm run db:seed:canonical    # seed องค์ความรู้ canonical
 npm run db:audit:strength    # ตรวจ coverage โปรไฟล์กำลังดิถี
 
 npm run dataset:export:sft   # export ชุดข้อมูล SFT
+
+npm run divine:gen-images    # generate รูปไพ่ Divine Cards (ผ่าน @google/genai)
+npm run divine:import-images # อัปโหลดรูปไพ่ขึ้น Supabase Storage
+npm run fortune:import-images # อัปโหลดรูป Fortune Sage ขึ้น Supabase Storage
 ```
 
-ดูสคริปต์ทั้งหมดได้ใน `package.json` (กลุ่ม `db:*` และ `dataset:*`)
+ดูสคริปต์ทั้งหมดได้ใน `package.json` (กลุ่ม `db:*`, `dataset:*`, `divine:*`, `fortune:*`)
 
 ---
 
