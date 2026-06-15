@@ -22,16 +22,15 @@ describe("source integration — ซินแซ corrections from ai gen M.docx"
   test("บท15 องค์เทพ: นำด้วยเทพเฉพาะดวง (Source7 §5) จากตัวอักษรที่ขึ้นเชี่ยงแซดี + คงเทพตามธาตุ", async () => {
     const { raw, result } = await readM();
     const deities = buildTopicHumanReading(result, "guardian_deities", raw)!;
-    // custom deity = เลือกธาตุปรับดวง (己 อ่อน → คู่ธาตุ=ดิน + ส่งเสริม=ไฟ) แล้วคัดตัวอักษรเชี่ยงแซดี
+    // custom deity (R5.2c, ซินแสยืนยัน): ดวง 己 อ่อน → องค์หลัก = "เทพเตาไฟ" (ไฟ=ส่งเสริม)
+    //   ไม่ใช่เทพธาตุดิถีเอง (ดิน) — เลือกจากการเทียบเชี่ยงแซตัวอักษรทั้งผัง แล้วคัดดีที่สุด 2 องค์
     expect(deities).toContain("สิ่งศักดิ์สิทธิ์เฉพาะดวง");
-    expect(deities).toContain("พระแม่ธรณี"); // 己 (คู่ธาตุ) ราศีบน
-    expect(deities).toContain("เทพสุริยัน ท้าววิรุฬหก"); // 丙 (ส่งเสริม) ราศีบน + องศา
-    expect(deities).toContain("องศา 165°");
+    expect(deities).toContain("เทพเจ้าเตาไฟ"); // องค์หลัก = ธาตุไฟ (ส่งเสริม ดวงอ่อน)
+    expect(deities).toContain("ธาตุไฟ (ราศีบน"); // นำด้วยธาตุไฟ ไม่ใช่ธาตุดิน
     // ไม่ดึงธาตุที่ไม่ใช่ธาตุปรับดวง (申/酉 = ทอง → ไม่เอาเจ้าพ่อเห้งเจีย/พระสังกัจจายน์)
     expect(deities).not.toContain("เจ้าพ่อเห้งเจีย");
     // คงบล็อกตามธาตุ (useful god) ไว้
-    expect(deities).toContain("สิ่งศักดิ์สิทธิ์ตามธาตุที่ดวงต้องการ");
-    expect(deities).toContain("เจ้าพ่อพระเพลิง");
+    expect(deities).toContain("useful god");
   });
 
   test("บท14 สี: สีกระเป๋า/รถ มาจากตาราง Source7 §3.1/§3.2 (ดิถี×ราศีบนเดือน/ยาม)", async () => {
@@ -96,14 +95,14 @@ describe("source integration — ซินแซ corrections from ai gen M.docx"
     expect(subordinates).not.toContain("มีคุณภาพ");
   });
 
-  test("บท12 วัยจร: อ่านสั้น — ช่วงวัยจร (บทบาทธาตุ + 12 เซียงแซ) ไม่มีบล็อก 8 ตัว/พยากรณ์รายปี", async () => {
+  test("บท12 วัยจร: ช่วงวัยจร (บทบาทธาตุ + 12 เซียงแซ) + พยากรณ์รายปี, ไม่มีบล็อก 8 ตัว", async () => {
     const { raw, result } = await readM();
     const turning = buildTopicHumanReading(result, "turning_points", raw)!;
-    // ตามคำกำชับให้ "อ่านสั้น" — คงเฉพาะวิเคราะห์จังหวะชีวิตช่วงวัยจร
     expect(turning).toContain("วิเคราะห์จังหวะชีวิต");
-    // ตัดบล็อกยาวออก (บทเสริม 8 ตัว + พยากรณ์รายปี 20 ปี)
+    // ยังตัด "บทเสริม 8 ตัว" ออก (เทียบทีละตัวอักษรในผัง)
     expect(turning).not.toContain("เทียบทีละตัวอักษรในผัง");
-    expect(turning).not.toContain("พยากรณ์ปีจร");
+    // กล่องพยากรณ์ปีจรรายปี 20 ปีคงไว้ (box refactor — ผู้ใช้ยืนยันให้เก็บ)
+    expect(turning).toContain("พยากรณ์ปีจร");
   });
 
   test("ตำราเคี้ยงคุง: ค้น reference เป็น fallback ได้ (วัยจร)", () => {
