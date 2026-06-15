@@ -418,3 +418,76 @@
   flex-wrap: wrap;
   gap: 12px;
 }
+
+/* ── แท็บ "ข้อมูลหลักแบบใหม่" (ตารางอิสระ) ─────────────────────────── */
+.core-data__section {
+  margin-top: 18px;
+}
+
+.core-data__matrix-wrap {
+  overflow-x: auto;
+}
+
+.core-data__matrix {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 760px;
+}
+
+.core-data__matrix th,
+.core-data__matrix td {
+  border: 1px solid var(--surface-line-soft, rgba(0, 0, 0, 0.14));
+  padding: 6px;
+  vertical-align: top;
+  text-align: left;
+}
+
+.core-data__matrix thead th {
+  background: var(--surface-accent-soft, rgba(0, 0, 0, 0.05));
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.core-data__matrix-corner {
+  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.core-data__matrix-rowhead {
+  background: var(--surface-accent-soft, rgba(0, 0, 0, 0.05));
+  font-size: 1.05rem;
+  text-align: center;
+  width: 3.2rem;
+}
+
+.core-data__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.core-data__grid--dense {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+.core-data__cell {
+  margin-bottom: 0;
+}
+
+.core-data__cell--compact .knowledge-edit__actions {
+  gap: 7px;
+}
+
+.core-data__cell--compact .topic-card__sinsae-link {
+  font-size: 0.72rem;
+}
+
+/* ตาราง 60 กะจี่อ — จัดกลุ่มตามราศีบน 10 แถว × 6 กะจื่อ */
+.core-data__matrix--jiazi {
+  min-width: 1080px;
+}
+
+.core-data__matrix--jiazi td {
+  width: 16.6%;
+  min-width: 150px;
+}

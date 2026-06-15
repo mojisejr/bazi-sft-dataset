@@ -15,6 +15,7 @@ import {
 } from "@/lib/bazi/doctrine-draft-repository";
 import { publishAllDrafts, publishDraft } from "@/lib/bazi/doctrine-publish.service";
 import { getCatalogEntry } from "@/lib/bazi/knowledge/knowledge-catalog";
+import { getStandaloneEntry } from "@/lib/bazi/knowledge/standalone-tables";
 import { BAZI_TOPIC_REGISTRY_BY_ID } from "@/lib/bazi/knowledge/topic-registry";
 
 export const runtime = "nodejs";
@@ -55,6 +56,11 @@ function validateDraftValue(surface: string, entityKey: string, value: unknown):
     const text = (value as { text?: unknown }).text;
     if (typeof text !== "string") return null;
     if (decoded.kind === "table") {
+      // ตารางอิสระ (core data ที่ไม่ผูก engine) ใช้ kind="table" เหมือนกัน — เช็คก่อน catalog หลัก
+      const standalone = getStandaloneEntry(decoded.group);
+      if (standalone) {
+        return decoded.item in standalone.defaults ? { text } : null;
+      }
       const entry = getCatalogEntry(decoded.group);
       if (!entry || !(decoded.item in entry.defaults)) return null;
       return { text };

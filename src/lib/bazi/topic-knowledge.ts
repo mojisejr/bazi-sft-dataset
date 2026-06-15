@@ -4,7 +4,19 @@ import path from "node:path";
 import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from "@/lib/bazi/schema-types";
 import sisingJson from "@/lib/bazi/data/pair/sising.json";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
-import { K, KC, currentAppends, fillTemplate } from "@/lib/bazi/knowledge/knowledge-overlay-context";
+import {
+  K,
+  KC,
+  currentAppends,
+  currentKnowledgeOverlay,
+  fillTemplate,
+} from "@/lib/bazi/knowledge/knowledge-overlay-context";
+import { resolveEntry } from "@/lib/bazi/knowledge/knowledge-overlay";
+import {
+  SIXTY_JIAZI_ID,
+  STEM_STRENGTH_MATRIX_ID,
+  TWELVE_NAKSHATRA_ID,
+} from "@/lib/bazi/knowledge/standalone-tables";
 import {
   resolveDisplayStemPairStage,
   resolveDisplayTwelveQiStage,
@@ -52,6 +64,8 @@ import {
 
 const KNOWLEDGE_DIR = path.resolve(process.cwd(), "knownlage");
 const PERSONALITY_FILE = "ลักษณะนิสัย60แบบ_ราศีบน-ล่าง_12เซี่ยงแซ.txt";
+/** นิสัย 12 นักษัตร (for mumate) — แตกจาก docx เป็น txt บรรทัด `{กิ่ง} : {นิสัย}` */
+const NAKSHATRA_TRAIT_FILE = "นิสัย12นักษัตร.txt";
 
 const HEAVENLY_STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
 const EARTHLY_BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -159,6 +173,88 @@ function getPersonalityIndex(): PersonalityIndex | null {
     cachedPersonality = parsePersonalityFile();
   }
   return cachedPersonality;
+}
+
+let cachedNakshatraTraits: Map<string, string> | null | undefined;
+
+/**
+ * อ่านไฟล์ "นิสัย 12 นักษัตร (for mumate)" → map กิ่ง→ "หัวข้อ + นิสัย" (NFKC แก้ 辰 = U+F971, สระอำ)
+ * รูปแบบไฟล์: บรรทัดหัวข้อ `子(จื้อ)(ชวด)(หนู)` ตามด้วยบรรทัดนิสัย (คั่นแต่ละกิ่งด้วยบรรทัดว่าง)
+ * คืนข้อความเต็ม `${หัวข้อ}\n${นิสัย}` เพื่อให้ช่องในตารางขึ้นต้นด้วยหัวข้อตามไฟล์
+ */
+function parseNakshatraTraitFile(): Map<string, string> | null {
+  let raw: string;
+  try {
+    raw = readFileSync(path.join(KNOWLEDGE_DIR, NAKSHATRA_TRAIT_FILE), "utf8")
+      .normalize("NFKC")
+      .replace(/ํา/g, "ำ");
+  } catch {
+    return null;
+  }
+  const headers = new Map<string, string>();
+  const traits = new Map<string, string>();
+  let current: string | null = null;
+  for (const rawLine of raw.split("\n")) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("===")) continue;
+    // บรรทัดหัวข้อ: ขึ้นต้นด้วยอักษรกิ่งจีน + วงเล็บ เช่น 子(จื้อ)(ชวด)(หนู)
+    if (EARTHLY_BRANCHES.includes(line[0]) && line.includes("(")) {
+      current = line[0];
+      headers.set(current, line);
+      continue;
+    }
+    if (current) {
+      traits.set(current, traits.get(current) ? `${traits.get(current)} ${line}` : line);
+    }
+  }
+  const out = new Map<string, string>();
+  for (const branch of EARTHLY_BRANCHES) {
+    const header = headers.get(branch);
+    const trait = traits.get(branch);
+    if (header && trait) out.set(branch, `${header}\n${trait}`);
+  }
+  return out.size > 0 ? out : null;
+}
+
+function getNakshatraTraitIndex(): Map<string, string> | null {
+  if (cachedNakshatraTraits === undefined) {
+    cachedNakshatraTraits = parseNakshatraTraitFile();
+  }
+  return cachedNakshatraTraits;
+}
+
+/**
+ * คำบรรยายตั้งต้นสำหรับตารางอิสระ (core data) — server-only
+ *  - nakshatra: นิสัยราย "กิ่ง" (12 ราศีล่าง) จากไฟล์ "นิสัย 12 นักษัตร (for mumate)";
+ *    fallback เป็น branchText จากไฟล์ลักษณะนิสัย 60 แบบ ถ้าไฟล์นักษัตรอ่านไม่ได้/ขาดกิ่ง
+ *  - jiazi: คำบรรยายราย 60 กะจื่อ = ก้าน + กิ่ง + (ธาตุ·เชี่ยงแซ) ความหมาย
+ * ถ้าไฟล์อ่านไม่ได้ → คืน map ว่าง (route จะ fallback ไปใช้ default ป้ายเดิม)
+ */
+export function getStandaloneCoreDescriptions(): {
+  nakshatra: Record<string, string>;
+  jiazi: Record<string, string>;
+} {
+  const index = getPersonalityIndex();
+  const traits = getNakshatraTraitIndex();
+  const nakshatra: Record<string, string> = {};
+  const jiazi: Record<string, string> = {};
+  // นักษัตร: ใช้ไฟล์ "นิสัย 12 นักษัตร" เป็นหลัก
+  if (traits) {
+    for (const [branch, text] of traits) nakshatra[branch] = text;
+  }
+  if (!index) return { nakshatra, jiazi };
+  for (const [key, rec] of index.byStemBranch) {
+    const [stem, branch] = key.split("|");
+    if (!stem || !branch) continue;
+    jiazi[stem + branch] = [
+      `ก้าน ${stem}: ${rec.stemText}`,
+      `กิ่ง ${branch}: ${rec.branchText}`,
+      `(${rec.elementLabel} · ${rec.qiLabel}) ${rec.elementText}`,
+    ].join("\n");
+    // fallback: กิ่งที่ไฟล์นักษัตรไม่มี → ใช้ branchText เดิม
+    if (!nakshatra[branch]) nakshatra[branch] = rec.branchText;
+  }
+  return { nakshatra, jiazi };
 }
 
 // ───────────────────────── Batch 1: knowledge จาก docx ที่แตกเป็น txt ─────────────────────────
@@ -1493,6 +1589,15 @@ const STRENGTH_BAND_LABEL_TH: Record<string, string> = {
   "very-strong": "แข็งไป (แข็งมาก)",
 };
 
+/** map กำลังดิถี engine (StrengthBand) → คีย์ band ในตารางอิสระ (STRENGTH_BANDS) */
+const ENGINE_BAND_TO_MATRIX_KEY: Record<string, string> = {
+  "very-weak": "over_weak",
+  weak: "weak",
+  balanced: "balanced",
+  strong: "strong",
+  "very-strong": "over_strong",
+};
+
 /**
  * ประกอบกล่อง (box) markdown: [[box=หัวข้อย่อย]] + เนื้อใน (คั่นด้วยบรรทัดว่าง) — คืน "" ถ้าไม่มีเนื้อหา
  * เนื้อในขึ้นต้นด้วย "ชื่อหัวข้อย่อย" เป็นย่อหน้าแรกเสมอ เพื่อให้ซินแสเห็น/แก้หัวข้อได้ตอนแก้กล่อง
@@ -1534,6 +1639,16 @@ function buildChartFoundationBoxes(
   const ft = (vars: Record<string, string>, key: string) =>
     fillTemplate("FOUNDATION_TEMPLATE_TH", FOUNDATION_TEMPLATE_TH, vars, key);
 
+  // ── override จาก "ตารางอิสระ" ที่ซินแสแก้ออนไลน์ (เฟส 2) ──
+  // อ่าน overlay ตรง (ไม่ผ่าน K/KC) เพื่อเลี่ยง access-recorder → ไม่ชน guardrail catalog-coverage
+  // มีข้อความในช่อง → "แทนที่" เนื้อหาอัตโนมัติของกล่องนั้น; ว่าง → ใช้ของเดิม (fallback)
+  const cell = (tableId: string, key: string): string =>
+    (resolveEntry(currentKnowledgeOverlay(), tableId, key, "") ?? "").trim();
+  // กำลังดิถี engine (very-weak…very-strong) → คีย์เมทริกซ์ (over_weak…over_strong)
+  const matrixBandKey = ENGINE_BAND_TO_MATRIX_KEY[band] ?? "balanced";
+  const stemBandKey = `${dayStem}|${matrixBandKey}`;
+  const jiaziKey = `${dayStem}${dayBranch}`;
+
   // ── กล่อง 1: ดิถี / เกิดถูกฤดู / นั่งถูกที่ / กำลัง (ตอบครบ 4 ส่วนตามหัวข้อ, แต่ละส่วนเป็นย่อหน้า) ──
   const season = SEASON_BY_BRANCH[monthBranch];
   const seasonTh = season ? seasonLabel(season) : "";
@@ -1547,36 +1662,48 @@ function buildChartFoundationBoxes(
     : FALLING_QI.has(selfSeat)
       ? "นั่งผิดที่ (ขาดรากฐาน ดิถีอ่อนแรงลง)"
       : "นั่งระดับกลาง (รากฐานพอมีแต่ไม่เด่น)";
+  // กล่อง 1: ช่องเมทริกซ์ (ก้าน×กำลัง) แทนเฉพาะย่อหน้า "กำลังดิถี" — คงข้อเท็จจริง เกิดถูกฤดู/นั่งถูกที่
+  const strengthPara =
+    cell(STEM_STRENGTH_MATRIX_ID, stemBandKey) ||
+    ft({ "แถบ": STRENGTH_BAND_LABEL_TH[band] ?? band }, "strengthOverall");
   const box1 = readingBox(CHART_FOUNDATION_SUBTOPICS.basis, [
     // ย่อหน้านำ: ภาพดิถี×ฤดู (imagery) — คงสำนวนเอกสาร (เพชรพลอย/ฤดู/บรรยากาศธาตุรอบตัว)
     buildDayMasterImagery(calculatedState),
     seasonLine,
     ft({ "ก้าน": dayStem, "กิ่ง": dayBranch, "เชี่ยงแซ": selfSeat, "คำตัดสิน": seatVerdict }, "seatLine"),
-    ft({ "แถบ": STRENGTH_BAND_LABEL_TH[band] ?? band }, "strengthOverall"),
+    strengthPara,
   ]);
 
-  // ── กล่อง 2: นิสัยจากราศีล่างหลักวัน ──
+  // ── กล่อง 2: นิสัยจากราศีล่างหลักวัน (override จากตาราง 12 นักษัตร ตามราศีล่างวัน) ──
+  const nakshatraCell = cell(TWELVE_NAKSHATRA_ID, dayBranch);
   const box2 = readingBox(CHART_FOUNDATION_SUBTOPICS.lowerBranch, [
-    record?.branchText ? ft({ "กิ่ง": dayBranch, "เนื้อหา": record.branchText }, "branchTraitBox") : null,
+    nakshatraCell ||
+      (record?.branchText ? ft({ "กิ่ง": dayBranch, "เนื้อหา": record.branchText }, "branchTraitBox") : null),
   ]);
 
-  // ── กล่อง 3: นิสัยจากราศีบน + ล่าง (อิม + 12 เชี่ยงแซ) ──
+  // ── กล่อง 3: นิสัยจากราศีบน + ล่าง (override จากตาราง 60 กะจื่อ ตามเสาวัน) ──
   const temper = resolveElementTemper(band);
   const hasTemper = Boolean(ELEMENT_TEMPER_TH[dmElementTh]);
-  const box3 = readingBox(CHART_FOUNDATION_SUBTOPICS.upperLower, [
-    stemText ? ft({ "ก้าน": dayStem, "เนื้อหา": stemText }, "stemTrait") : null,
-    record?.elementText
-      ? ft({
-          "ธาตุ": record.elementLabel,
-          "เชี่ยงแซ": record.qiLabel,
-          "แก่น": qiKeyword ? ft({ "แก่น": qiKeyword }, "qiKeywordSuffix") : "",
-          "เนื้อหา": record.elementText,
-        }, "elementTrait")
-      : null,
-    temper === "balanced" && hasTemper
-      ? ft({ "เนื้อหา": temperText(dmElementTh, "balanced") }, "temperBalanced")
-      : null,
-  ]);
+  const jiaziCell = cell(SIXTY_JIAZI_ID, jiaziKey);
+  const box3 = readingBox(
+    CHART_FOUNDATION_SUBTOPICS.upperLower,
+    jiaziCell
+      ? [jiaziCell]
+      : [
+          stemText ? ft({ "ก้าน": dayStem, "เนื้อหา": stemText }, "stemTrait") : null,
+          record?.elementText
+            ? ft({
+                "ธาตุ": record.elementLabel,
+                "เชี่ยงแซ": record.qiLabel,
+                "แก่น": qiKeyword ? ft({ "แก่น": qiKeyword }, "qiKeywordSuffix") : "",
+                "เนื้อหา": record.elementText,
+              }, "elementTrait")
+            : null,
+          temper === "balanced" && hasTemper
+            ? ft({ "เนื้อหา": temperText(dmElementTh, "balanced") }, "temperBalanced")
+            : null,
+        ],
+  );
 
   // ── กล่อง 4: ดิถี → การกระทำ(ถ่ายเท) → ผลลัพธ์(โชคลาภ) — อธิบายสายโซ่ + แต่ละหลักเป็นย่อหน้า ──
   const transfer = buildOutputTransferReading(calculatedState);
