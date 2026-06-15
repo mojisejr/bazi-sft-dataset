@@ -31,6 +31,20 @@ export function createSupabaseAdmin(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/** สร้าง bucket (public) ถ้ายังไม่มี — idempotent */
+export async function ensureDivineBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getDivineBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  // 409 = มีอยู่แล้ว (race) ข้ามได้
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
 /**
  * อัปโหลดรูปไพ่ขึ้น storage (upsert ทับของเดิม) แล้วคืน public URL
  * path = cards/<no>.<ext>

@@ -10,7 +10,7 @@ import path from "node:path";
 
 import { compressCardImage } from "../src/lib/bazi/divine-cards/image-gen";
 import { createDbDivineCardImageRepository } from "../src/lib/bazi/divine-cards/image-repository";
-import { uploadDivineCardImage } from "../src/lib/supabase/storage";
+import { ensureDivineBucket, uploadDivineCardImage } from "../src/lib/supabase/storage";
 
 const ROOT = process.cwd();
 const IMG_DIR = path.join(ROOT, "knownlage", "ไพ่เทพ");
@@ -33,6 +33,7 @@ async function main() {
   parsed.sort((a, b) => a.no - b.no);
   console.log(`พบไฟล์รูป ${parsed.length} ใบ`);
 
+  await ensureDivineBucket();
   const repo = createDbDivineCardImageRepository();
   const nameByNo = new Map<number, string>();
   let before = 0;
