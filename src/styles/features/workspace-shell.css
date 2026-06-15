@@ -122,6 +122,48 @@
   max-width: 34ch;
 }
 
+/* แถบนำทางด่วน — แสดงบนทุกหน้า (ยกเว้นหน้าหลัก) เพื่อสลับเครื่องมือได้เร็ว */
+.header-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.header-nav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-line-soft);
+  background: var(--surface-raised-strong);
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.2;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.header-nav__link:hover {
+  color: var(--text);
+  border-color: var(--surface-line-muted);
+  background: var(--panel-strong);
+}
+
+.header-nav__link--active {
+  color: var(--text);
+  border-color: var(--accent, var(--surface-line-muted));
+  background: var(--panel-strong);
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.header-nav__icon {
+  font-size: 1rem;
+}
+
 /* หน้า main = ฮับรวมเครื่องมือ (การ์ดนำทาง) */
 .reading-hub {
   display: grid;

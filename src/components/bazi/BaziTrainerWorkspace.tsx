@@ -85,7 +85,7 @@ const HUB_CARDS: HubCard[] = [
 export function BaziTrainerWorkspace() {
   return (
     <main className="trainer-page">
-      <SystemHeader statusCopy={HUB_STATUS_COPY} />
+      <SystemHeader statusCopy={HUB_STATUS_COPY} showNav={false} />
 
       <nav className="reading-hub" aria-label="เมนูหลัก">
         {HUB_CARDS.map((card) => (
