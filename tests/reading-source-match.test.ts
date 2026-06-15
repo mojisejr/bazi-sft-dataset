@@ -65,6 +65,25 @@ describe("reading-source-match: chip จับย่อหน้าที่ม�
     expect(resolveParagraphSources(para, compiled).find((x) => x.key === "careerWealthCustomer")?.full).toBe(true);
   });
 
+  // header template ที่ห่อ "list block" (หลายบรรทัด join \n) — ต้อง full-match ทั้งย่อหน้า
+  // (กันการถอย: ถ้าใครเลิกห่อ header แล้ว push บรรทัด list ตรง ๆ → ย่อหน้าจะ full-match ไม่ได้)
+  test.each([
+    ["eduOutHeader"],
+    ["speechStageHeader"],
+    ["benefactorHitHeader"],
+    ["friendLineHeader"],
+  ])("header list-block (%s) full-match แม้มีหลายบรรทัด", (key) => {
+    const para = fillTemplate(
+      "MISC_TEMPLATE_TH",
+      MISC_TEMPLATE_TH,
+      { "รายการ": "บรรทัดแรกของรายการที่ยาวพอสมควร\nบรรทัดที่สองของรายการที่ยาวพอสมควร" },
+      key,
+    );
+    const s = resolveParagraphSources(para, compiled).find((x) => x.key === key);
+    expect(s, `${key} ต้องจับคู่ได้`).toBeDefined();
+    expect(s!.full).toBe(true);
+  });
+
   test("constant ตรงเป๊ะ → exact=true, full=true", () => {
     const c = compileKnowledgeTables([tableFrom("X", "X", { a: "ข้อความคงที่ยาวพอสมควรไม่มีตัวแปรเลย" })]);
     const s = resolveParagraphSources("ข้อความคงที่ยาวพอสมควรไม่มีตัวแปรเลย", c).find((x) => x.key === "a");
@@ -115,31 +134,41 @@ describe("reading-source-match: integration กับ output จริงขอ�
 
   test("ทุกบท: ย่อหน้าเนื้อหาไม่มี 'ย่อหน้าลอย' (ไม่มี chip เลย)", async () => {
     const repo = createTestKnowledgeRepository();
-    const raw = RawInputSchema.parse({
-      birthDate: "1988-05-17",
-      birthTime: "07:20",
-      gender: "male",
-      province: "Bangkok",
-      calendarSystem: "solar",
-      timezone: "Asia/Bangkok",
-    });
-    const state = await calculateBaziChart(raw, repo);
     const compiled = compileKnowledgeTables(catalogTables());
     const predictTopics = TOPIC_PATH.filter((t) => t.kind === "predict");
     const report: string[] = [];
-    for (const topic of predictTopics) {
-      const human = buildTopicHumanReading(state, topic.id, raw) ?? "";
-      const paras = human
-        .replace(/\r/g, "")
-        .replace(/\[\[[^\]]*\]\]/g, "")
-        .split(/\n{2,}/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 0 && !/^\*\*[^\n]*\*\*$/.test(p));
-      for (const p of paras) {
-        // ตัด bullet/รายการย่อย (ขึ้นต้น • หรือ -) — พวกนี้เป็นชิ้นในย่อหน้าใหญ่ ไม่ใช่ย่อหน้าหลัก
-        if (p.length < 25 || /^[•\-]/.test(p)) continue;
-        if (resolveParagraphSources(p, compiled).length === 0) {
-          report.push(`[${topic.id}] ${p.slice(0, 70)}`);
+    // หลายดวง — บางย่อหน้าโผล่เฉพาะบางผัง (เช่น ไฉ่โข่ว/财库 ในบทโชคลาภ ต้องมีกิ่งคลังในดวง)
+    const charts: Array<[string, string, "male" | "female"]> = [
+      ["1988-05-17", "07:20", "male"],
+      ["1978-08-08", "20:20", "male"], // มีไฉ่โข่ว (vaultBase+vaultOpened/Closed) — กันย่อหน้าคลังลอย
+      ["1990-01-02", "23:10", "female"], // หลายผัง → edu/speech/benefactor/friend มี ≥2 แถว (list block)
+      ["1975-12-15", "05:30", "male"],
+      ["1995-11-11", "18:45", "female"],
+    ];
+    for (const [birthDate, birthTime, gender] of charts) {
+      const raw = RawInputSchema.parse({
+        birthDate,
+        birthTime,
+        gender,
+        province: "Bangkok",
+        calendarSystem: "solar",
+        timezone: "Asia/Bangkok",
+      });
+      const state = await calculateBaziChart(raw, repo);
+      for (const topic of predictTopics) {
+        const human = buildTopicHumanReading(state, topic.id, raw) ?? "";
+        const paras = human
+          .replace(/\r/g, "")
+          .replace(/\[\[[^\]]*\]\]/g, "")
+          .split(/\n{2,}/)
+          .map((p) => p.trim())
+          .filter((p) => p.length > 0 && !/^\*\*[^\n]*\*\*$/.test(p));
+        for (const p of paras) {
+          // ตัด bullet/รายการย่อย (ขึ้นต้น • หรือ -) — พวกนี้เป็นชิ้นในย่อหน้าใหญ่ ไม่ใช่ย่อหน้าหลัก
+          if (p.length < 25 || /^[•\-]/.test(p)) continue;
+          if (resolveParagraphSources(p, compiled).length === 0) {
+            report.push(`[${birthDate}][${topic.id}] ${p.slice(0, 70)}`);
+          }
         }
       }
     }

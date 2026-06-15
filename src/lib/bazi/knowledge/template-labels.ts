@@ -154,6 +154,7 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   benefactorHit: "ผู้อุปถัมภ์ที่ตำแหน่งเสา",
   benefactorCultivate: "แนวทางสร้างผู้อุปถัมภ์",
   benefactorLead: "ผู้อุปถัมภ์ดูจากดาวอะไร",
+  benefactorHitHeader: "หัวข้อตำแหน่งผู้อุปถัมภ์ในผัง",
   benefactorTypes: "กลุ่มผู้อุปถัมภ์ที่หนุนดวง",
   benefactorNoHits: "ไม่พบดาวส่งเสริมเด่น",
   bbPlaceStem: "ตำแหน่งราศีบน",
@@ -208,6 +209,7 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   familyChong: "ครอบครัว: ปีชงเดือน",
   // เพื่อน/ศัตรู
   friendsLead: "เกริ่นเพื่อน/ศัตรู",
+  friendLineHeader: "หัวข้อมิตร/ศัตรูรายตำแหน่ง",
   friendVerdictFriend: "มิตรแท้/ผู้สนับสนุน",
   friendVerdictFoe: "คู่แข่ง/ศัตรู",
   friendVerdictManage: "ต้องคอยประคอง (ดี-ร้ายปน)",
@@ -237,6 +239,7 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   eduVerdictFoe: "การเรียน: ได้ใช้ไม่เต็มที่",
   eduVerdictDefault: "การเรียน: ได้ใช้ตามจังหวะ",
   eduOutLine: "การเรียน รายตำแหน่ง",
+  eduOutHeader: "หัวข้อการเรียนรายตำแหน่ง",
   eduStageLine: "ระดับการศึกษา รายหลัก",
   eduStageHeader: "หัวข้อระดับ/แนวการศึกษา",
   eduFacultyHeader: "หัวข้อคณะ/สาขาที่ควรเรียน",
@@ -296,6 +299,7 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   deityBenefitSuffix: "สิ่งศักดิ์สิทธิ์: ส่วนต่อท้าย",
   speechLead: "เกริ่นการพูด/การสื่อสาร",
   speechStageLine: "การพูด รายหลัก",
+  speechStageHeader: "หัวข้อการพูดรายหลัก",
 };
 
 export const TALENT_BRIDGE_LABELS_TH: Record<string, string> = {

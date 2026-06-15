@@ -1944,11 +1944,14 @@ function collectWealthSegments(calculatedState: CalculatedStateValue): WealthSeg
       const opened = (["year", "month", "day", "hour"] as PillarKey[]).some(
         (pillar) => calculatedState.fourPillars[pillar].branch === opener,
       );
-      const vaultBase = fillTemplate("WEALTH_TEMPLATE_TH", WEALTH_TEMPLATE_TH, { "ธาตุ": wealthLabel, "ตำแหน่ง": where }, "vaultBase");
-      const vaultTail = opened
-        ? fillTemplate("WEALTH_TEMPLATE_TH", WEALTH_TEMPLATE_TH, { "คลัง": vaultBranch, "ตัวเปิด": opener }, "vaultOpened")
-        : fillTemplate("WEALTH_TEMPLATE_TH", WEALTH_TEMPLATE_TH, { "ตัวเปิด": opener }, "vaultClosed");
-      push(`${vaultBase} ${vaultTail}`);
+      // แยกเป็น 2 ย่อหน้า (1 ช่องคลัง = 1 ย่อหน้า) — ให้แต่ละย่อหน้า full-match template ของตัวเอง
+      // → ได้ chip "แก้ในคลัง" เชื่อมถูกช่อง (รวม 2 template ในย่อหน้าเดียวจะไม่ match เลย = ย่อหน้าลอย)
+      push(fillTemplate("WEALTH_TEMPLATE_TH", WEALTH_TEMPLATE_TH, { "ธาตุ": wealthLabel, "ตำแหน่ง": where }, "vaultBase"));
+      push(
+        opened
+          ? fillTemplate("WEALTH_TEMPLATE_TH", WEALTH_TEMPLATE_TH, { "คลัง": vaultBranch, "ตัวเปิด": opener }, "vaultOpened")
+          : fillTemplate("WEALTH_TEMPLATE_TH", WEALTH_TEMPLATE_TH, { "ตัวเปิด": opener }, "vaultClosed"),
+      );
     }
   }
 
@@ -2123,15 +2126,14 @@ function findCurrentDaYunPhase(calculatedState: CalculatedStateValue): CurrentPh
   const pillars = [...calculatedState.daYun].sort((a, b) => a.startAge - b.startAge);
   for (let index = 0; index < pillars.length; index += 1) {
     const pillar = pillars[index];
-    const base = 5 + index * 10; // normalize 5-9 เหมือนหน้า /reading
     for (const phase of [pillar.upperPhase, pillar.lowerPhase]) {
       if (phase?.isCurrent) {
         const element = phase.source === "stem"
           ? (STEM_TO_ELEMENT[phase.symbol as keyof typeof STEM_TO_ELEMENT] ?? "wood")
           : (BRANCH_TO_ELEMENT[phase.symbol as keyof typeof BRANCH_TO_ELEMENT] ?? "wood");
-        const ageRange = phase.source === "stem"
-          ? `${base}-${base + 4} ปี`
-          : `${base + 5}-${base + 9} ปี`;
+        // อายุจริงของช่วง (ตรงกับ buildDaYunPhaseInfos) — เดิม normalize 5+index*10 ทำให้ ageRange
+        // ไม่ตรงแถวจริง → ป้าย "◆ ช่วงปัจจุบัน" ไม่ขึ้น และ parseInt(ageRange) ได้อายุผิด
+        const ageRange = `${phase.startAge}-${phase.endAge} ปี`;
         return {
           symbol: phase.symbol,
           element: element as SupportedElementValue,
@@ -3012,6 +3014,7 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   careerOutputChannel: "ช่องทางที่ดวงนี้สื่อสารและทำการตลาดได้เป็นธรรมชาติ (ดาวถ่ายเท ธาตุ{ธาตุ}): {เนื้อหา}",
   // ── บท 4 ผู้อุปถัมภ์ ──
   benefactorHit: "{เสา} {อักษร} ธาตุ{ธาตุ} = {บทบาท} → {บุคคล}",
+  benefactorHitHeader: "ตำแหน่งผู้อุปถัมภ์ที่เห็นในผังหลัก:\n{รายการ}",
   benefactorCultivate: "แนวทางสร้างผู้อุปถัมภ์: สั่งสมบารมีด้วยคุณธรรมประจำธาตุส่งเสริม (ธาตุ{ธาตุ}) — {คุณธรรม} ยิ่งบ่มเพาะสิ่งเหล่านี้ ดาวส่งเสริมยิ่งแข็ง ผู้ใหญ่และโอกาสจะเข้ามาเองตามจังหวะ",
   benefactorLead: "ผู้อุปถัมภ์ดูจากดาวส่งเสริม (ธาตุ{ส่งเสริม}) และดาวอำนาจ-ตำแหน่ง (ธาตุ{อำนาจ}) โดยเฉพาะที่เสาปี/เดือน ซึ่งแทนผู้ใหญ่และปู่ย่าตระกูล",
   benefactorTypes: "กลุ่มผู้อุปถัมภ์ที่หนุนดวงนี้: {เครือญาติ} (ผู้ให้กำเนิดและครูบาอาจารย์ที่คอยเกื้อหนุน มักเป็นผู้ใหญ่ใจดีหรือผู้ให้ที่มีความเป็นแม่) รวมถึงผู้ใหญ่ในสายงานหรือเจ้านายที่เปิดโอกาส (ดาวอำนาจ-ตำแหน่ง ธาตุ{อำนาจ}) คุณมักได้แรงหนุนผ่านความเมตตาและการชี้แนะ มากกว่าการต้องแก่งแย่งแข่งขันด้วยตนเอง",
@@ -3093,6 +3096,7 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   friendVerdictFoe: "ระวังเป็นคู่แข่ง/ศัตรู — แรงเสียดทานจาก{ใคร} (ธาตุ{ธาตุ})",
   friendVerdictManage: "{ใคร} (ธาตุ{ธาตุ}) แบบที่ต้องคอยประคองและเคลียร์ปัญหา (ดี-ร้ายปนกัน)",
   friendLine: "{เสา} {อักษร} ({เชี่ยงแซ}) = {เนื้อหา}",
+  friendLineHeader: "มิตร/ศัตรูตามตำแหน่งในผัง:\n{รายการ}",
   friendInsightStrong: "ข้อสังเกตเรื่องผลประโยชน์: ดิถีแข็งมีพลังพอจะเป็นฝ่ายนำและให้ เมื่อร่วมงานกับเพื่อน คุณมักได้ชื่อเสียง การยอมรับ และภาพลักษณ์ ส่วนเพื่อนมักได้ผลประโยชน์ทางการเงินมากกว่า — ไม่ใช่เสียเปรียบ แต่สะท้อนว่าจุดแข็งของคุณคือบารมีมากกว่าตัวเงินตรง ๆ ควรตกลงเรื่องผลตอบแทนให้ชัดก่อนเริ่มงาน",
   friendInsightWeak: "ข้อสังเกตเรื่องผลประโยชน์: ดิถีอ่อนได้เพื่อน/พันธมิตรเป็นแรงหนุนสำคัญที่ช่วยแบกภาระและเปิดโอกาส ควรเลือกคบคนที่เติมพลังและจุดที่ดวงขาดจริง ๆ แล้วตอบแทนน้ำใจอย่างสม่ำเสมอ มิตรภาพจะกลายเป็นทุนชีวิตที่ยั่งยืน",
   friendInsightBalanced: "ข้อสังเกตเรื่องผลประโยชน์: ดิถีสมดุลให้-รับกับเพื่อนได้พอ ๆ กัน ความสัมพันธ์จะยืนยาวเมื่อรักษาสมดุลของผลประโยชน์และน้ำใจให้เท่าเทียม",
@@ -3118,6 +3122,7 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   eduVerdictFoe: "เรียนแล้วได้ใช้ไม่เต็มที่ ต้องหาเวที/จังหวะที่ใช่จึงจะแปลงเป็นรายได้",
   eduVerdictDefault: "เรียนแล้วได้ใช้ตามจังหวะ ควรเลือกสายที่ถนัดและฝึกต่อเนื่อง",
   eduOutLine: "{เสา} (ดาวถ่ายเท ธาตุ{ธาตุ}, {เชี่ยงแซ}) = {เนื้อหา}",
+  eduOutHeader: "การเรียนตามตำแหน่งดาวถ่ายเทในผัง (เรียนแล้วได้ใช้/ไม่ได้ใช้):\n{รายการ}",
   eduStageLine: "{บริบท} (ดาวถ่ายเทตกเชี่ยงแซ {เชี่ยงแซ}) = {เนื้อหา}",
   eduStageHeader: "ระดับและแนวการศึกษาตามเชี่ยงแซของดาวถ่ายเทรายหลัก (Step 6.2):\n{รายการ}",
   eduFacultyHeader: "ควรเรียนสายที่ตรงกับธาตุที่ดวงต้องการ (useful god: {ธาตุ}) เพื่อแปลงความรู้เป็นรายได้:",
@@ -3181,6 +3186,7 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   // ── บท 16 การพูด/การสื่อสาร ──
   speechLead: "การพูดและการสื่อสารอ่านจาก \"ดาวถ่ายเท\" (ธาตุ{ธาตุ}) ว่าตกสภาวะ 12 เชี่ยงแซตัวใดในแต่ละหลัก เชี่ยงแซดีจะสื่อสารได้น่าเชื่อถือ ส่วนเชี่ยงแซเสียมักพูดพลาดหรือสื่อสารติดขัด",
   speechStageLine: "{บริบท} (ดาวถ่ายเทตกเชี่ยงแซ {เชี่ยงแซ}) = {เนื้อหา}",
+  speechStageHeader: "ลักษณะการพูด/การสื่อสารตามตำแหน่งดาวถ่ายเทรายหลัก:\n{รายการ}",
 };
 
 /** บท 14 สี/ทิศ = สีตาม useful god + สีที่ควรเลี่ยง (officer) + สีกระเป๋า/รถ + ทิศมงคล */
@@ -4006,7 +4012,7 @@ function buildBenefactorReading(calculatedState: CalculatedStateValue): string |
   if (hits.length === 0) {
     return `${lead}\n\n${benefactorTypes}\n\n${ft({}, "benefactorNoHits")}\n\n${cultivate}`;
   }
-  return `${lead}\n\n${benefactorTypes}\n\n${hits.join("\n")}\n\n${cultivate}`;
+  return `${lead}\n\n${benefactorTypes}\n\n${ft({ "รายการ": hits.join("\n") }, "benefactorHitHeader")}\n\n${cultivate}`;
 }
 
 /**
@@ -4238,7 +4244,7 @@ function buildFriendsReading(calculatedState: CalculatedStateValue): string | nu
   if (lines.length === 0) {
     return `${lead}\n\n${ft({}, "friendNoLines")}\n\n${insight}`;
   }
-  return `${lead}\n\n${lines.join("\n")}\n\n${insight}`;
+  return `${lead}\n\n${ft({ "รายการ": lines.join("\n") }, "friendLineHeader")}\n\n${insight}`;
 }
 
 /** บท 10 ลูกน้อง/บริวาร = เสายาม (ฐานบริวาร) + ดาวถ่ายเท (output) อ่านตาม 12 เชี่ยงแซ ดีคือดี เสียคือเสีย */
@@ -4367,7 +4373,8 @@ function buildEducationReading(calculatedState: CalculatedStateValue): string | 
     outLines.push(ft({ "เสา": PILLAR_LABEL_TH[pillar], "ธาตุ": outputLabel, "เชี่ยงแซ": qi, "เนื้อหา": verdict }, "eduOutLine"));
   }
   if (outLines.length > 0) {
-    segments.push(outLines.join("\n"));
+    // ห่อด้วย header template → ทั้งย่อหน้า full-match ได้ chip "แก้ในคลัง" เดียว (ไม่งั้นหลาย eduOutLine ต่อกัน = ลอย)
+    segments.push(ft({ "รายการ": outLines.join("\n") }, "eduOutHeader"));
   }
 
   // Step 6.2: ระดับ/แนวการศึกษาตามเชี่ยงแซของ "ดาวถ่ายเท" (食神 ตัวแทน) รายหลัก
@@ -4416,7 +4423,8 @@ function buildSpeechReading(calculatedState: CalculatedStateValue): string | nul
     (pillar) =>
       ft({ "บริบท": pillar.context, "เชี่ยงแซ": pillar.stageThai, "เนื้อหา": pillar.speech }, "speechStageLine"),
   );
-  segments.push(lines.join("\n"));
+  // ห่อด้วย header template → ทั้งย่อหน้า full-match ได้ chip "แก้ในคลัง" เดียว
+  segments.push(ft({ "รายการ": lines.join("\n") }, "speechStageHeader"));
 
   return segments.join("\n\n");
 }

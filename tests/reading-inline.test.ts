@@ -27,13 +27,13 @@ describe("tokenizeInline — legacy ** / *** (กันถอย)", () => {
 describe("tokenizeInline — สี [[c=..]]", () => {
   it("สี palette key → color hex", () => {
     expect(tokenizeInline("[[c=fire]]ไฟ[[/c]]")).toEqual([
-      { text: "ไฟ", bold: false, red: false, color: "#c45a3c" },
+      { text: "ไฟ", bold: false, red: false, color: "#cb2c2a" },
     ]);
   });
 
   it("สี + หนา (ซ้อนใน) → color + bold", () => {
     expect(tokenizeInline("[[c=water]]**น้ำ**[[/c]]")).toEqual([
-      { text: "น้ำ", bold: true, red: false, color: "#5a8fa8" },
+      { text: "น้ำ", bold: true, red: false, color: "#1455a4" },
     ]);
   });
 
@@ -68,7 +68,7 @@ describe("tokenizeInline — ขนาดตัวอักษร [[s=..]]", () 
 
   it("ขนาด + สี + หนา (ซ้อนใน) → fontSize + color + bold", () => {
     expect(tokenizeInline("[[s=20]][[c=fire]]**ร้อน**[[/c]][[/s]]")).toEqual([
-      { text: "ร้อน", bold: true, red: false, color: "#c45a3c", fontSize: "20pt" },
+      { text: "ร้อน", bold: true, red: false, color: "#cb2c2a", fontSize: "20pt" },
     ]);
   });
 
