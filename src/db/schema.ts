@@ -531,7 +531,10 @@ export type SelectBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferSel
 export const baziDivineCardImage = pgTable("bazi_divine_card_image", {
   cardNo: integer("card_no").primaryKey(),
   prompt: text("prompt").notNull(),
-  imageBase64: text("image_base64").notNull(),
+  /** URL รูปบน Supabase Storage (แหล่งหลัก) */
+  imageUrl: text("image_url"),
+  /** base64 (legacy / fallback) — nullable หลังย้ายไป Supabase */
+  imageBase64: text("image_base64"),
   mime: text("mime").notNull().default("image/png"),
   model: text("model").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

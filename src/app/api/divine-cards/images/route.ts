@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAllCards, getCardByNo } from "@/lib/bazi/divine-cards/deck";
 import { generateCardImage } from "@/lib/bazi/divine-cards/image-gen";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
+import { uploadDivineCardImage } from "@/lib/supabase/storage";
 
 export const runtime = "nodejs";
 /** gen รูปหลายใบใช้เวลานาน — ขยายเพดาน (Vercel/Node) */
@@ -83,7 +84,14 @@ export async function POST(req: Request) {
     }
     try {
       const img = await generateCardImage(card, { apiKey, model });
-      await repo.upsert(no, img.prompt, img.imageBase64, img.mime, img.model);
+      const url = await uploadDivineCardImage(no, Buffer.from(img.imageBase64, "base64"), img.mime);
+      await repo.upsert(no, {
+        prompt: img.prompt,
+        imageUrl: url,
+        imageBase64: null,
+        mime: img.mime,
+        model: img.model,
+      });
       succeeded.push(no);
     } catch (error) {
       failed.push({ no, error: error instanceof Error ? error.message : "gen ล้มเหลว" });

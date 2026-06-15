@@ -9,18 +9,22 @@ import { baziDivineCardImage, type SelectBaziDivineCardImage } from "@/db/schema
 
 export type DivineCardImageRow = SelectBaziDivineCardImage;
 
+export type DivineCardImageInput = {
+  prompt: string;
+  /** URL บน Supabase Storage (แหล่งหลัก) */
+  imageUrl?: string | null;
+  /** base64 (legacy/fallback) */
+  imageBase64?: string | null;
+  mime: string;
+  model: string;
+};
+
 export type DivineCardImageRepository = {
   /** เลขไพ่ที่มีรูปแล้ว */
   listNos: () => Promise<number[]>;
   /** ดึงรูปตามเลขไพ่ (เฉพาะที่มี) */
   getByNos: (nos: number[]) => Promise<DivineCardImageRow[]>;
-  upsert: (
-    cardNo: number,
-    prompt: string,
-    imageBase64: string,
-    mime: string,
-    model: string,
-  ) => Promise<void>;
+  upsert: (cardNo: number, input: DivineCardImageInput) => Promise<void>;
 };
 
 export function createDbDivineCardImageRepository(
@@ -42,13 +46,14 @@ export function createDbDivineCardImageRepository(
         .where(inArray(baziDivineCardImage.cardNo, nos));
     },
 
-    async upsert(cardNo, prompt, imageBase64, mime, model) {
+    async upsert(cardNo, input) {
+      const { prompt, imageUrl = null, imageBase64 = null, mime, model } = input;
       await db
         .insert(baziDivineCardImage)
-        .values({ cardNo, prompt, imageBase64, mime, model })
+        .values({ cardNo, prompt, imageUrl, imageBase64, mime, model })
         .onConflictDoUpdate({
           target: baziDivineCardImage.cardNo,
-          set: { prompt, imageBase64, mime, model },
+          set: { prompt, imageUrl, imageBase64, mime, model },
         });
     },
   };

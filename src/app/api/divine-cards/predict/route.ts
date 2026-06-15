@@ -31,7 +31,7 @@ const PredictSchema = z
     message: "ต้องส่ง cardNos (เลือกเอง 3 ใบ) หรือ random:true",
   });
 
-type CardPayload = DivineCard & { imageBase64: string | null; mime: string | null };
+type CardPayload = DivineCard & { imageUrl: string | null };
 
 export async function POST(req: Request) {
   let payload: unknown;
@@ -67,18 +67,24 @@ export async function POST(req: Request) {
   const reading = buildDivineReading(cards, question);
 
   // ดึงรูปจาก DB (best-effort — DB/ตารางมีปัญหาก็ยังตอบ engine ได้)
-  let imageByNo = new Map<number, { imageBase64: string; mime: string }>();
+  // ใช้ Supabase URL ก่อน, ถ้าไม่มีค่อย fallback เป็น data-url จาก base64 เดิม
+  let imageByNo = new Map<number, string>();
   try {
     const rows = await createDbDivineCardImageRepository().getByNos(cards.map((c) => c.no));
-    imageByNo = new Map(rows.map((r) => [r.cardNo, { imageBase64: r.imageBase64, mime: r.mime }]));
+    imageByNo = new Map(
+      rows.map((r) => {
+        const url = r.imageUrl ?? (r.imageBase64 ? `data:${r.mime};base64,${r.imageBase64}` : null);
+        return [r.cardNo, url] as const;
+      }).filter((e): e is readonly [number, string] => e[1] !== null),
+    );
   } catch {
     imageByNo = new Map();
   }
 
-  const cardPayload: CardPayload[] = cards.map((card) => {
-    const img = imageByNo.get(card.no);
-    return { ...card, imageBase64: img?.imageBase64 ?? null, mime: img?.mime ?? null };
-  });
+  const cardPayload: CardPayload[] = cards.map((card) => ({
+    ...card,
+    imageUrl: imageByNo.get(card.no) ?? null,
+  }));
 
   if (mode === "engine") {
     return Response.json({

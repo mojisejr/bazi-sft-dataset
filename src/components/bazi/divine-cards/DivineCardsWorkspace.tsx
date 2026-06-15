@@ -10,8 +10,7 @@ type Card = {
   keywords: string;
   lifeImage: string;
   prophecy: string;
-  imageBase64?: string | null;
-  mime?: string | null;
+  imageUrl?: string | null;
 };
 
 type Slot = { position: number; weight: number; role: string; no: number };
@@ -27,10 +26,6 @@ type PredictResult = {
 
 type ImageStatus = { total: number; done: number[] };
 
-function dataUrl(card: Card): string | null {
-  if (!card.imageBase64) return null;
-  return `data:${card.mime || "image/png"};base64,${card.imageBase64}`;
-}
 
 export function DivineCardsWorkspace() {
   const [allCards, setAllCards] = useState<Card[]>([]);
@@ -260,7 +255,7 @@ export function DivineCardsWorkspace() {
           <div className="divine__cards">
             {result.cards.map((card, i) => {
               const slot = result.slots[i];
-              const url = dataUrl(card);
+              const url = card.imageUrl ?? null;
               return (
                 <article key={card.no} className="divine__card">
                   <div className="divine__card-media">

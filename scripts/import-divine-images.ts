@@ -10,6 +10,7 @@ import path from "node:path";
 
 import { compressCardImage } from "../src/lib/bazi/divine-cards/image-gen";
 import { createDbDivineCardImageRepository } from "../src/lib/bazi/divine-cards/image-repository";
+import { uploadDivineCardImage } from "../src/lib/supabase/storage";
 
 const ROOT = process.cwd();
 const IMG_DIR = path.join(ROOT, "knownlage", "ไพ่เทพ");
@@ -42,9 +43,17 @@ async function main() {
     before += raw.length;
     const out = await compressCardImage(raw.toString("base64"));
     after += out.base64.length;
-    await repo.upsert(p.no, `manual upload: ${p.file}`, out.base64, out.mime, "manual-upload");
+    const buf = Buffer.from(out.base64, "base64");
+    const url = await uploadDivineCardImage(p.no, buf, out.mime);
+    await repo.upsert(p.no, {
+      prompt: `manual upload: ${p.file}`,
+      imageUrl: url,
+      imageBase64: null,
+      mime: out.mime,
+      model: "manual-upload",
+    });
     nameByNo.set(p.no, p.name);
-    console.log(`  ✓ #${p.no} ${p.name} (${(out.base64.length / 1024).toFixed(0)}KB)`);
+    console.log(`  ✓ #${p.no} ${p.name} (${(buf.length / 1024).toFixed(0)}KB) → ${url}`);
   }
 
   // อัปเดตชื่อใน JSON ให้ตรงไฟล์

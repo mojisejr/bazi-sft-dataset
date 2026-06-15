@@ -11,6 +11,7 @@
 import { getAllCards } from "../src/lib/bazi/divine-cards/deck";
 import { generateCardImage } from "../src/lib/bazi/divine-cards/image-gen";
 import { createDbDivineCardImageRepository } from "../src/lib/bazi/divine-cards/image-repository";
+import { uploadDivineCardImage } from "../src/lib/supabase/storage";
 
 function arg(name: string): string | undefined {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -38,7 +39,15 @@ async function main() {
   for (const card of cards) {
     try {
       const img = await generateCardImage(card, { apiKey, model });
-      await repo.upsert(card.no, img.prompt, img.imageBase64, img.mime, img.model);
+      const buf = Buffer.from(img.imageBase64, "base64");
+      const url = await uploadDivineCardImage(card.no, buf, img.mime);
+      await repo.upsert(card.no, {
+        prompt: img.prompt,
+        imageUrl: url,
+        imageBase64: null,
+        mime: img.mime,
+        model: img.model,
+      });
       ok += 1;
       console.log(`  ✓ #${card.no} ${card.name} (${ok}/${cards.length})`);
     } catch (error) {
