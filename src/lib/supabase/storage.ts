@@ -71,3 +71,51 @@ export async function uploadDivineCardImage(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+/* ───────────── เซียนเสี่ยงทาย (fortune-sage) — แยก bucket จากโหมดเซียน ───────────── */
+
+export const DEFAULT_FORTUNE_BUCKET = "fortune-sage";
+
+export function getFortuneBucket(): string {
+  return process.env.SUPABASE_FORTUNE_BUCKET?.trim() || DEFAULT_FORTUNE_BUCKET;
+}
+
+/** สร้าง bucket รูปเซียนเสี่ยงทาย (public) ถ้ายังไม่มี — idempotent */
+export async function ensureFortuneBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getFortuneBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/**
+ * อัปโหลดรูปหัวเซี่ยงแซขึ้น storage (upsert ทับของเดิม) แล้วคืน public URL
+ * path = sticks/<no>.<ext>
+ */
+export async function uploadFortuneStickImage(
+  no: number,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getFortuneBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `sticks/${no}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปหัวเซี่ยงแซ #${no} ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
