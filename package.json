@@ -29,6 +29,7 @@
     "db:apply:divine-card-image": "tsx scripts/apply-divine-card-image-migration.ts",
     "divine:gen-images": "node --env-file=.env --import tsx scripts/generate-divine-images.ts",
     "divine:recompress-images": "node --env-file=.env --import tsx scripts/recompress-divine-images.ts",
+    "divine:import-images": "node --env-file=.env --import tsx scripts/import-divine-images.ts",
     "db:push": "tsx scripts/forbid-db-push.ts",
     "db:studio": "drizzle-kit studio",
     "db:check:phase16": "tsx scripts/check-phase16-db-state.ts",
