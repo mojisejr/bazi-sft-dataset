@@ -162,10 +162,11 @@ export function CoreDataPanel({ adminToken }: { adminToken: string }) {
             <table className="core-data__matrix core-data__matrix--jiazi">
               <tbody>
                 {STEM_ORDER.map((stem) => {
+                  const branchOrder = BRANCH_ORDER as readonly string[];
                   const cells = jiazi.entries
                     .filter((entry) => entry.key[0] === stem)
                     .sort(
-                      (a, b) => BRANCH_ORDER.indexOf(a.key[1]) - BRANCH_ORDER.indexOf(b.key[1]),
+                      (a, b) => branchOrder.indexOf(a.key[1]) - branchOrder.indexOf(b.key[1]),
                     );
                   return (
                     <tr key={stem}>
