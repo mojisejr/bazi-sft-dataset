@@ -46,11 +46,13 @@ function writeDayBlock(ws: ExcelJS.Worksheet, top: number, day: AlmanacDay): voi
   }
 
   // ----- คอลัมน์ขวา: เวลามงคล / เทพ / สี / ทิศ / อุปถัมป์ / ประตู / 八神 -----
+  // เวลามงคล: ยามดี 黃道 + ชื่อเทพ + ความหมาย
   day.luckyHours.slice(0, 6).forEach((h, idx) => {
-    set(top + idx, 25, h.code);
-    set(top + idx, 26, h.range);
+    set(top + idx, 25, h.range);
+    set(top + idx, 26, `${h.god} (${h.meaning})`);
   });
-  set(top, 27, "เทพประจำวัน"); set(top + 1, 27, day.deity ?? "");
+  set(top, 27, "เทพประจำวัน");
+  day.deities.slice(0, 2).forEach((nm, idx) => set(top + 1 + idx, 27, nm));
   // สีมงคล 2 ชุด (ธาตุหลัก/รอง)
   set(top, 29, "สีมงคล");
   day.colors.slice(0, 2).forEach((c, idx) => {

@@ -25,6 +25,7 @@ import dayMonthTableJson from "@/lib/bazi/data/almanac/day-month-table.json";
 import monthTableJson from "@/lib/bazi/data/almanac/month-pillar-table.json";
 import spiritLegendJson from "@/lib/bazi/data/almanac/spirit-legend.json";
 import gateLegendJson from "@/lib/bazi/data/almanac/gate-legend.json";
+import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
 
 import type {
   AlmanacDay,
@@ -67,6 +68,10 @@ const MONTH_TABLE = monthTableJson as unknown as Record<
 >;
 const SPIRIT_LEGEND = spiritLegendJson as Record<string, string[]>;
 const GATE_LEGEND = gateLegendJson as Record<string, string>;
+const HOUR_GOD_LEGEND = hourGodLegendJson as Record<
+  string,
+  { god: string | null; meaning: string | null; score: number | null; good: boolean }
+>;
 
 const WEEKDAYS_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"] as const;
 
@@ -85,6 +90,44 @@ function asuraOf(branch: string): string {
   return dir ? `ทิศ ${dir}` : "";
 }
 
+// ----- เวลามงคล: กฎ 黃道 (12 時辰) -----
+const BRANCH_ORDER12 = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] as const;
+const HOUR_RANGE: Record<string, string> = {
+  子: "23:00-00:59", 丑: "1:00-2:59", 寅: "3:00-4:59", 卯: "5:00-6:59",
+  辰: "7:00-8:59", 巳: "9:00-10:59", 午: "11:00-12:59", 未: "13:00-14:59",
+  申: "15:00-16:59", 酉: "17:00-18:59", 戌: "19:00-20:59", 亥: "21:00-22:59",
+};
+// 青龍 起 時辰 ตามกิ่งวัน (derive จากต้นฉบับ ตรง 100%)
+const QINGLONG_START: Record<string, string> = {
+  子: "申", 午: "申", 丑: "戌", 未: "戌", 寅: "子", 申: "子",
+  卯: "寅", 酉: "寅", 辰: "辰", 戌: "辰", 巳: "午", 亥: "午",
+};
+// ลำดับ 12 เทพยาม → B-code (青龍,明堂,天刑,朱雀,金匱,天德,白虎,玉堂,天牢,玄武,司命,勾陳)
+const HOUR_GOD_CODES = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"];
+
+/** 5 ยามมงคล (黃道) ของวัน ตามกิ่งวัน — คำนวณได้ทุกปี */
+function luckyHoursByDayBranch(dayBranch: string): LuckyHour[] {
+  const start = BRANCH_ORDER12.indexOf(QINGLONG_START[dayBranch] as (typeof BRANCH_ORDER12)[number]);
+  if (start < 0) return [];
+  const out: LuckyHour[] = [];
+  for (let i = 0; i < 12; i += 1) {
+    const code = HOUR_GOD_CODES[i];
+    const info = HOUR_GOD_LEGEND[code];
+    if (!info?.good) continue;
+    const branch = BRANCH_ORDER12[(start + i) % 12];
+    out.push({
+      code,
+      branch,
+      range: HOUR_RANGE[branch],
+      god: info.god ?? "",
+      meaning: info.meaning ?? "",
+    });
+  }
+  // เรียงตามลำดับ 時辰 (子→亥) ให้อ่านง่าย
+  return out.sort((a, b) => BRANCH_ORDER12.indexOf(a.branch as (typeof BRANCH_ORDER12)[number]) - BRANCH_ORDER12.indexOf(b.branch as (typeof BRANCH_ORDER12)[number]));
+}
+
+
 function toPillar(ganzhi: string): Pillar {
   const { stem, branch } = splitGanZhi(ganzhi);
   return {
@@ -95,15 +138,21 @@ function toPillar(ganzhi: string): Pillar {
   };
 }
 
-/** เสาวัน/เดือน/ปี (BaZi) ของวันที่ตามปฏิทินสากล — ใช้เที่ยงวันกัน edge ยาม子 */
+/**
+ * เสาวัน/เดือน/ปี (BaZi) ของวันที่ตามปฏิทินสากล
+ * - เสาวัน + วันในสัปดาห์: ประเมินตอนเที่ยง (กัน edge ยาม子)
+ * - เสาเดือน/ปี: ประเมินตอน 00:00 (ต้นวัน) — ตรงกับ convention ของปฏิทินต้นฉบับ
+ *   คือ "วันที่สารทตก ยังนับเป็นเดือนเก่า เปลี่ยนเดือนวันถัดไป" (verified 212/212)
+ *   จึงแก้ปัญหาทิศอสูรเดือน/ปี ที่ขอบสารท โดยไม่ต้องพึ่งตาราง 2450-2600
+ */
 export function pillarsForDate(year: number, month: number, day: number) {
-  const solar = Solar.fromYmdHms(year, month, day, 12, 0, 0);
-  const eightChar = solar.getLunar().getEightChar();
+  const noon = Solar.fromYmdHms(year, month, day, 12, 0, 0);
+  const startOfDay = Solar.fromYmdHms(year, month, day, 0, 0, 0).getLunar().getEightChar();
   return {
-    weekday: WEEKDAYS_TH[solar.getWeek()] ?? "",
-    dayPillar: toPillar(eightChar.getDay()),
-    monthPillar: toPillar(eightChar.getMonth()),
-    yearPillar: toPillar(eightChar.getYear()),
+    weekday: WEEKDAYS_TH[noon.getWeek()] ?? "",
+    dayPillar: toPillar(noon.getLunar().getEightChar().getDay()),
+    monthPillar: toPillar(startOfDay.getMonth()),
+    yearPillar: toPillar(startOfDay.getYear()),
   };
 }
 
@@ -206,6 +255,9 @@ export function buildAlmanacDay(year: number, month: number, day: number): Alman
     yearPillar,
     officer: rec?.officer ?? null,
     officerDesc: rec?.officer_desc ?? null,
+    deities: (rec?.deities && rec.deities.length
+      ? rec.deities
+      : [rec?.deity].filter((x): x is string => Boolean(x))),
     deity: rec?.deity ?? null,
     deityKey: rec?.deity_key ?? null,
     colors,
@@ -214,9 +266,8 @@ export function buildAlmanacDay(year: number, month: number, day: number): Alman
     patrons: toPatrons(rec?.patrons),
     gates: toGates(rec?.gates),
     spirits: toSpirits(rec?.spirits),
-    luckyHours: (rec?.lucky_hours ?? [])
-      .filter((h) => h && h[0])
-      .map(([code, range]) => ({ code: code ?? "", range: range ?? "" }) as LuckyHour),
+    // เวลามงคล: คำนวณกฎ 黃道 จากกิ่งวัน (ถูกต้องทุกปี ไม่พึ่งตารางสกัด)
+    luckyHours: luckyHoursByDayBranch(dayPillar.branch),
     monthInfo,
     strength: buildStrength(m, dayPillar.stem, monthPillar.branch),
   };

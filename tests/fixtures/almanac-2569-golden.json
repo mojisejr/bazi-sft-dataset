@@ -7,6 +7,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -123,7 +126,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "戊子",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-02",
@@ -133,6 +138,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -249,7 +257,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "戊子",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-03",
@@ -259,6 +269,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -375,7 +388,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "戊子",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-04",
@@ -385,6 +400,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -501,7 +519,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "戊子",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-05",
@@ -511,6 +531,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -627,7 +650,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "戊子",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-06",
@@ -637,6 +662,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -753,7 +781,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-07",
@@ -763,6 +793,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -879,7 +912,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-08",
@@ -889,6 +924,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -1005,7 +1043,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-09",
@@ -1015,6 +1055,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -1131,7 +1174,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-10",
@@ -1141,6 +1186,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -1257,7 +1305,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-11",
@@ -1267,6 +1317,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -1383,7 +1436,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-12",
@@ -1393,6 +1448,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -1509,7 +1567,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-13",
@@ -1519,6 +1579,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -1635,7 +1698,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-14",
@@ -1645,6 +1710,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -1761,7 +1829,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-15",
@@ -1771,6 +1841,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -1887,7 +1960,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-16",
@@ -1897,6 +1972,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "辛",
     "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -2013,7 +2091,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-17",
@@ -2023,6 +2103,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -2139,7 +2222,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-18",
@@ -2149,6 +2234,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "申",
     "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -2265,7 +2353,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-19",
@@ -2275,6 +2365,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "丁",
     "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -2391,7 +2484,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-20",
@@ -2401,6 +2496,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -2517,7 +2615,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-21",
@@ -2527,6 +2627,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -2643,7 +2746,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-22",
@@ -2653,6 +2758,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -2769,7 +2877,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-23",
@@ -2779,6 +2889,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "丑",
     "deity": "ไท้เสียงเล่ากุงนั่งวัว",
+    "deities": [
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -2895,7 +3008,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-24",
@@ -2905,6 +3020,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -3021,7 +3139,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-25",
@@ -3031,6 +3151,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -3147,7 +3270,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-26",
@@ -3157,6 +3282,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "丑",
     "deity": "ไท้เสียงเล่ากุงนั่งวัว",
+    "deities": [
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -3273,7 +3401,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-27",
@@ -3283,6 +3413,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -3399,7 +3532,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-28",
@@ -3409,6 +3544,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -3525,7 +3663,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-29",
@@ -3535,6 +3675,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -3651,7 +3794,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-30",
@@ -3661,6 +3806,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -3777,7 +3925,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-01-31",
@@ -3787,6 +3937,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -3951,7 +4104,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-02-01",
@@ -3961,6 +4116,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "辛",
     "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -4077,7 +4235,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-02-02",
@@ -4087,6 +4247,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -4203,7 +4366,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-02-03",
@@ -4213,6 +4378,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -4329,7 +4497,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-02-04",
@@ -4339,6 +4509,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "巳",
     "deity": "ท้าววิรูปักษ์",
+    "deities": [
+      "ท้าววิรูปักษ์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -4455,7 +4628,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "己丑",
+    "year_pillar": "乙巳"
   },
   {
     "date": "2026-02-05",
@@ -4465,6 +4640,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -4581,7 +4759,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-06",
@@ -4591,6 +4771,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "寅",
     "deity": "เจ้าพ่อเสือ",
+    "deities": [
+      "เจ้าพ่อเสือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -4707,7 +4890,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-07",
@@ -4717,6 +4902,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "申",
     "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -4833,7 +5021,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-08",
@@ -4843,6 +5033,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "巳",
     "deity": "ท้าววิรูปักษ์",
+    "deities": [
+      "ท้าววิรูปักษ์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -4959,7 +5152,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-09",
@@ -4969,6 +5164,10 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -5085,7 +5284,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-10",
@@ -5095,6 +5296,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -5211,7 +5415,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-11",
@@ -5221,6 +5427,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -5337,7 +5546,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-12",
@@ -5347,6 +5558,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -5463,7 +5677,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-13",
@@ -5473,6 +5689,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -5589,7 +5808,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-14",
@@ -5599,6 +5820,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -5715,7 +5939,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-15",
@@ -5725,6 +5951,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -5841,7 +6070,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-16",
@@ -5851,6 +6082,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "寅",
     "deity": "เจ้าพ่อเสือ",
+    "deities": [
+      "เจ้าพ่อเสือ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -5967,7 +6201,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-17",
@@ -5977,6 +6213,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -6093,7 +6332,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-18",
@@ -6103,6 +6344,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -6219,7 +6463,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-19",
@@ -6229,6 +6475,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "亥",
     "deity": "เจ้าแม่กวนอิมนั่งบัว",
+    "deities": [
+      "เจ้าแม่กวนอิมนั่งบัว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -6345,7 +6594,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-20",
@@ -6355,6 +6606,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -6471,7 +6725,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-21",
@@ -6481,6 +6737,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -6597,7 +6856,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-22",
@@ -6607,6 +6868,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -6723,7 +6987,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-23",
@@ -6733,6 +6999,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -6849,7 +7118,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-24",
@@ -6859,6 +7130,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -6975,7 +7249,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-25",
@@ -6985,6 +7261,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -7101,7 +7380,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-26",
@@ -7111,6 +7392,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -7227,7 +7511,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-27",
@@ -7237,6 +7523,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -7353,7 +7642,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-02-28",
@@ -7363,6 +7654,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "丁",
     "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -7527,7 +7821,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-01",
@@ -7537,6 +7833,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "亥",
     "deity": "เจ้าแม่กวนอิมนั่งบัว",
+    "deities": [
+      "เจ้าแม่กวนอิมนั่งบัว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -7653,7 +7952,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-02",
@@ -7663,6 +7964,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -7779,7 +8083,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-03",
@@ -7789,6 +8095,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -7905,7 +8214,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-04",
@@ -7915,6 +8226,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -8031,7 +8345,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-05",
@@ -8041,6 +8357,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -8157,7 +8476,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "庚寅",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-06",
@@ -8167,6 +8488,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -8283,7 +8607,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-07",
@@ -8293,6 +8619,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -8409,7 +8738,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-08",
@@ -8419,6 +8750,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -8535,7 +8869,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-09",
@@ -8545,6 +8881,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -8661,7 +9000,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-10",
@@ -8671,6 +9012,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -8787,7 +9131,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-11",
@@ -8797,6 +9143,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -8913,7 +9262,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-12",
@@ -8923,6 +9274,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -9039,7 +9393,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-13",
@@ -9049,6 +9405,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -9165,7 +9524,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-14",
@@ -9175,6 +9536,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -9291,7 +9655,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-15",
@@ -9301,6 +9667,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -9417,7 +9786,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-16",
@@ -9427,6 +9798,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -9543,7 +9917,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-17",
@@ -9553,6 +9929,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "辛",
     "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -9669,7 +10048,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-18",
@@ -9679,6 +10060,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -9795,7 +10179,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-19",
@@ -9805,6 +10191,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "申",
     "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -9921,7 +10310,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-20",
@@ -9931,6 +10322,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "丁",
     "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -10047,7 +10441,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-21",
@@ -10057,6 +10453,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -10173,7 +10572,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-22",
@@ -10183,6 +10584,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -10299,7 +10703,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-23",
@@ -10309,6 +10715,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -10425,7 +10834,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-24",
@@ -10435,6 +10846,10 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -10551,7 +10966,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-25",
@@ -10561,6 +10978,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -10677,7 +11097,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-26",
@@ -10687,6 +11109,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -10803,7 +11228,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-27",
@@ -10813,6 +11240,10 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -10929,7 +11360,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-28",
@@ -10939,6 +11372,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -11055,7 +11491,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-29",
@@ -11065,6 +11503,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -11181,7 +11622,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-30",
@@ -11191,6 +11634,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -11307,7 +11753,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-03-31",
@@ -11317,6 +11765,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -11481,7 +11932,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-01",
@@ -11491,6 +11944,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -11607,7 +12063,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-02",
@@ -11617,6 +12075,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "辛",
     "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -11733,7 +12194,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-03",
@@ -11743,6 +12206,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -11859,7 +12325,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-04",
@@ -11869,6 +12337,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -11985,7 +12456,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-05",
@@ -11995,6 +12468,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "巳",
     "deity": "ท้าววิรูปักษ์",
+    "deities": [
+      "ท้าววิรูปักษ์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -12111,7 +12587,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "辛卯",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-06",
@@ -12121,6 +12599,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -12237,7 +12718,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-07",
@@ -12247,6 +12730,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "寅",
     "deity": "เจ้าพ่อเสือ",
+    "deities": [
+      "เจ้าพ่อเสือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -12363,7 +12849,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-08",
@@ -12373,6 +12861,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "申",
     "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -12489,7 +12980,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-09",
@@ -12499,6 +12992,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "巳",
     "deity": "ท้าววิรูปักษ์",
+    "deities": [
+      "ท้าววิรูปักษ์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -12615,7 +13111,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-10",
@@ -12625,6 +13123,10 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -12741,7 +13243,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-11",
@@ -12751,6 +13255,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -12867,7 +13374,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-12",
@@ -12877,6 +13386,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -12993,7 +13505,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-13",
@@ -13003,6 +13517,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -13119,7 +13636,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-14",
@@ -13129,6 +13648,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -13245,7 +13767,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-15",
@@ -13255,6 +13779,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -13371,7 +13898,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-16",
@@ -13381,6 +13910,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -13497,7 +14029,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-17",
@@ -13507,6 +14041,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "寅",
     "deity": "เจ้าพ่อเสือ",
+    "deities": [
+      "เจ้าพ่อเสือ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -13623,7 +14160,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-18",
@@ -13633,6 +14172,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -13749,7 +14291,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-19",
@@ -13759,6 +14303,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -13875,7 +14422,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-20",
@@ -13885,6 +14434,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "亥",
     "deity": "เจ้าแม่กวนอิมนั่งบัว",
+    "deities": [
+      "เจ้าแม่กวนอิมนั่งบัว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -14001,7 +14553,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-21",
@@ -14011,6 +14565,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -14127,7 +14684,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-22",
@@ -14137,6 +14696,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -14253,7 +14815,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-23",
@@ -14263,6 +14827,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -14379,7 +14946,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-24",
@@ -14389,6 +14958,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -14505,7 +15077,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-25",
@@ -14515,6 +15089,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -14631,7 +15208,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-26",
@@ -14641,6 +15220,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -14757,7 +15339,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-27",
@@ -14767,6 +15351,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -14883,7 +15470,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-28",
@@ -14893,6 +15482,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -15009,7 +15601,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-29",
@@ -15019,6 +15613,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "丁",
     "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -15135,7 +15732,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-04-30",
@@ -15145,6 +15744,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "亥",
     "deity": "เจ้าแม่กวนอิมนั่งบัว",
+    "deities": [
+      "เจ้าแม่กวนอิมนั่งบัว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -15309,7 +15911,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-01",
@@ -15319,6 +15923,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -15435,7 +16042,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-02",
@@ -15445,6 +16054,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -15561,7 +16173,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-03",
@@ -15571,6 +16185,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -15687,7 +16304,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-04",
@@ -15697,6 +16316,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -15813,7 +16435,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-05",
@@ -15823,6 +16447,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -15939,7 +16566,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "壬辰",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-06",
@@ -15949,6 +16578,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -16065,7 +16697,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-07",
@@ -16075,6 +16709,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -16191,7 +16828,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-08",
@@ -16201,6 +16840,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -16317,7 +16959,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-09",
@@ -16327,6 +16971,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -16443,7 +17090,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-10",
@@ -16453,6 +17102,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -16569,7 +17221,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-11",
@@ -16579,6 +17233,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -16695,7 +17352,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-12",
@@ -16705,6 +17364,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -16821,7 +17483,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-13",
@@ -16831,6 +17495,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -16947,7 +17614,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-14",
@@ -16957,6 +17626,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -17073,7 +17745,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-15",
@@ -17083,6 +17757,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -17199,7 +17876,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-16",
@@ -17209,6 +17888,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "辛",
     "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -17325,7 +18007,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-17",
@@ -17335,6 +18019,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -17451,7 +18138,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-18",
@@ -17461,6 +18150,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "申",
     "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -17577,7 +18269,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-19",
@@ -17587,6 +18281,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "丁",
     "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -17703,7 +18400,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-20",
@@ -17713,6 +18412,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -17829,7 +18531,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-21",
@@ -17839,6 +18543,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -17955,7 +18662,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-22",
@@ -17965,6 +18674,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -18081,7 +18793,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-23",
@@ -18091,6 +18805,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -18207,7 +18924,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-24",
@@ -18217,6 +18936,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -18333,7 +19055,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-25",
@@ -18343,6 +19067,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "卯",
     "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -18459,7 +19186,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-26",
@@ -18469,6 +19198,10 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -18585,7 +19318,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-27",
@@ -18595,6 +19330,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -18711,7 +19449,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-28",
@@ -18721,6 +19461,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -18837,7 +19580,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-29",
@@ -18847,6 +19592,7 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": null,
     "deity": null,
+    "deities": [],
     "color_primary": [
       "น้ำ",
       "ฟ้า น้ำเงิน เทา ดำ"
@@ -18963,7 +19709,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-30",
@@ -18973,6 +19721,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -19089,7 +19840,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-05-31",
@@ -19099,6 +19852,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -19263,7 +20019,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-01",
@@ -19273,6 +20031,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "辛",
     "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -19389,7 +20150,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-02",
@@ -19399,6 +20162,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -19515,7 +20281,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-03",
@@ -19525,6 +20293,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -19641,7 +20412,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-04",
@@ -19651,6 +20424,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "巳",
     "deity": "ท้าววิรูปักษ์",
+    "deities": [
+      "ท้าววิรูปักษ์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -19767,7 +20543,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-05",
@@ -19777,6 +20555,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -19893,7 +20674,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "癸巳",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-06",
@@ -19903,6 +20686,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "寅",
     "deity": "เจ้าพ่อเสือ",
+    "deities": [
+      "เจ้าพ่อเสือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -20019,7 +20805,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-07",
@@ -20029,6 +20817,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "申",
     "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -20145,7 +20936,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-08",
@@ -20155,6 +20948,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "巳",
     "deity": "ท้าววิรูปักษ์",
+    "deities": [
+      "ท้าววิรูปักษ์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -20271,7 +21067,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-09",
@@ -20281,6 +21079,10 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
+      "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -20397,7 +21199,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-10",
@@ -20407,6 +21211,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -20523,7 +21330,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-11",
@@ -20533,6 +21342,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -20649,7 +21461,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-12",
@@ -20659,6 +21473,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -20771,7 +21588,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-13",
@@ -20781,6 +21600,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -20897,7 +21719,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-14",
@@ -20907,6 +21731,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -21023,7 +21850,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-15",
@@ -21033,6 +21862,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -21149,7 +21981,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-16",
@@ -21159,6 +21993,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "寅",
     "deity": "เจ้าพ่อเสือ",
+    "deities": [
+      "เจ้าพ่อเสือ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -21275,7 +22112,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-17",
@@ -21285,6 +22124,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "戌",
     "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -21401,7 +22243,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-18",
@@ -21411,6 +22255,7 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": null,
     "deity": null,
+    "deities": [],
     "color_primary": [
       "น้ำ",
       "ฟ้า น้ำเงิน เทา ดำ"
@@ -21527,7 +22372,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-19",
@@ -21537,6 +22384,9 @@
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
     "deity_key": "亥",
     "deity": "เจ้าแม่กวนอิมนั่งบัว",
+    "deities": [
+      "เจ้าแม่กวนอิมนั่งบัว"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -21653,7 +22503,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-20",
@@ -21663,6 +22515,9 @@
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -21779,7 +22634,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-21",
@@ -21789,6 +22646,9 @@
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
     "deity_key": "酉",
     "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -21905,7 +22765,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-22",
@@ -21915,6 +22777,9 @@
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -22031,7 +22896,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-23",
@@ -22041,6 +22908,9 @@
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
     "deity_key": "辰",
     "deity": "เจ้าพ่อมังกรเขียว",
+    "deities": [
+      "เจ้าพ่อมังกรเขียว"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -22157,7 +23027,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-24",
@@ -22167,6 +23039,9 @@
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
     "deity_key": "癸",
     "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
       "ไม้",
       "เขียว"
@@ -22283,7 +23158,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-25",
@@ -22293,6 +23170,9 @@
     "officer_desc": "ตามชะตา ตามสถานการณ์",
     "deity_key": "壬",
     "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -22409,7 +23289,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-26",
@@ -22419,6 +23301,9 @@
     "officer_desc": "อับโชค เสียหาย เดียวดาย ทุกข์โศก",
     "deity_key": "乙",
     "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -22535,7 +23420,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-27",
@@ -22545,6 +23432,9 @@
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
     "deity_key": "午",
     "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -22661,7 +23551,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-28",
@@ -22671,6 +23563,9 @@
     "officer_desc": "ลาภผล อนาคตดี",
     "deity_key": "丁",
     "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
     "color_primary": [
       "ทอง",
       "ขาว"
@@ -22787,7 +23682,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-29",
@@ -22797,6 +23694,9 @@
     "officer_desc": "แปรผัน โทษทัณฐ์",
     "deity_key": "亥",
     "deity": "เจ้าแม่กวนอิมนั่งบัว",
+    "deities": [
+      "เจ้าแม่กวนอิมนั่งบัว"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -22913,7 +23813,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-06-30",
@@ -22923,6 +23825,9 @@
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
     "deity_key": "未",
     "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
       "ดิน",
       "ครีม เหลือง น้ำตาล"
@@ -23087,7 +23992,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-01",
@@ -23095,86 +24002,97 @@
     "month_branch": "午",
     "officer": "ก่อเกิด",
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
-    "deity_key": "B1",
-    "deity": "11:00-12:59",
+    "deity_key": "未",
+    "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
-      null,
-      null
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ SE",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "子"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ],
       [
-        null,
-        null,
-        "子"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ]
     ],
     "gates": [
       [
-        0.0,
-        "คนเกิดปีชวด"
+        "開",
+        "NW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "N"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "NE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "E"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "SE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "S"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "SW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "W"
       ]
     ],
     "spirits": [
-      0.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110.0,
-        60.0
+        "B8",
+        "1:00-2:59"
       ],
       [
-        100.0,
-        100.0
+        "B1",
+        "11:00-12:59"
       ],
       [
-        "A5",
-        "B11"
+        "B2",
+        "13:00-14:59"
+      ],
+      [
+        "B5",
+        "19:00-20:59"
+      ],
+      [
+        "B6",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -23205,7 +24123,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-02",
@@ -23213,86 +24133,97 @@
     "month_branch": "午",
     "officer": "ขุมทรัพย์",
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
-    "deity_key": "B6",
-    "deity": "1:00-2:59",
+    "deity_key": "乙",
+    "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ W",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "亥"
+        "酉",
+        270.0,
+        "คนเกิดปีระกา"
       ],
       [
-        null,
-        null,
-        "亥"
+        "亥",
+        330.0,
+        "คนเกิดปีกุน"
       ]
     ],
     "gates": [
       [
-        330.0,
-        "คนเกิดปีกุน"
+        "開",
+        "S"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "SW"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "W"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "NW"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "N"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "NE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "E"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "SE"
       ]
     ],
     "spirits": [
-      330.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "23:00-0:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "5:00-6:59"
+      ],
+      [
+        "B1",
+        "15:00-16:59"
+      ],
+      [
+        "B2",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -23323,7 +24254,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-03",
@@ -23331,86 +24264,97 @@
     "month_branch": "午",
     "officer": "พัฒนา",
     "officer_desc": "พลัดพลาก ดุร้าย บาดเจ็บ",
-    "deity_key": "B6",
-    "deity": "5:00-6:59",
+    "deity_key": "酉",
+    "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ W",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "酉"
+        "亥",
+        330.0,
+        "คนเกิดปีกุน"
       ],
       [
-        null,
-        null,
-        "酉"
+        "酉",
+        270.0,
+        "คนเกิดปีระกา"
       ]
     ],
     "gates": [
       [
-        270.0,
-        "คนเกิดปีระกา"
+        "開",
+        "SW"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "休",
+        "W"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "生",
+        "NW"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "傷",
+        "N"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "杜",
+        "NE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "景",
+        "E"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "死",
+        "SE"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "驚",
+        "S"
       ]
     ],
     "spirits": [
-      270.0,
       "陳",
       "雀",
       "地",
       "天",
       "符",
       "蛇",
-      "陰"
+      "陰",
+      "合"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "9:00-10:59"
+      ],
+      [
+        "B1",
+        "19:00-20:59"
+      ],
+      [
+        "B2",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -23441,7 +24385,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-04",
@@ -23449,86 +24395,97 @@
     "month_branch": "午",
     "officer": "ห่างไกล",
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
-    "deity_key": "B2",
-    "deity": "1:00-2:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "丑"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ],
       [
-        null,
-        null,
-        "丑"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ]
     ],
     "gates": [
       [
-        30.0,
-        "คนเกิดปีฉลู"
+        "開",
+        "S"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "SW"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "W"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "NW"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "N"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "NE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "E"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "SE"
       ]
     ],
     "spirits": [
-      30.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "23:00-00:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "7:00-8:59"
+      ],
+      [
+        "B6",
+        "9:00-10:59"
+      ],
+      [
+        "B8",
+        "13:00-14:59"
       ]
     ],
     "scores": [
@@ -23559,7 +24516,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-05",
@@ -23567,86 +24526,97 @@
     "month_branch": "午",
     "officer": "ดูแลเอาใจใส่",
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "申"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ],
       [
-        null,
-        null,
-        "申"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ]
     ],
     "gates": [
       [
-        240.0,
-        "คนเกิดปีวอก"
+        "開",
+        "SW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "W"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "NW"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "N"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "NE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "E"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "SE"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "S"
       ]
     ],
     "spirits": [
-      240.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110.0,
-        60.0
+        "B1",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -23677,7 +24647,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-06",
@@ -23685,86 +24657,97 @@
     "month_branch": "午",
     "officer": "สูญเสีย",
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "申"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ],
       [
-        null,
-        null,
-        "申"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ]
     ],
     "gates": [
       [
-        240.0,
-        "คนเกิดปีวอก"
+        "開",
+        "SW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "W"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "NW"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "N"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "NE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "E"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "SE"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "S"
       ]
     ],
     "spirits": [
-      240.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110.0,
-        60.0
+        "B1",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -23795,7 +24778,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "甲午",
+    "year_pillar": "午A5"
   },
   {
     "date": "2026-07-07",
@@ -23803,86 +24788,97 @@
     "month_branch": "午",
     "officer": "ก่อเกิด",
     "officer_desc": "ตามชะตา ตามสถานการณ์",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "申"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ],
       [
-        null,
-        null,
-        "申"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ]
     ],
     "gates": [
       [
-        240.0,
-        "คนเกิดปีวอก"
+        "開",
+        "SW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "W"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "NW"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "N"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "NE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "E"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "SE"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "S"
       ]
     ],
     "spirits": [
-      240.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110.0,
-        60.0
+        "B1",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -23913,7 +24909,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "甲午",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-08",
@@ -23921,86 +24919,97 @@
     "month_branch": "未",
     "officer": "สะสม",
     "officer_desc": "ตามชะตา ตามสถานการณ์",
-    "deity_key": "B2",
-    "deity": "9:00-10:59",
+    "deity_key": "乙",
+    "deity": "เจ้าแม่กวนอิมพันมือ",
+    "deities": [
+      "เจ้าแม่กวนอิมพันมือ"
+    ],
     "color_primary": [
-      null,
-      null
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      null
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ E",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "未"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ],
       [
-        null,
-        null,
-        "未"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ]
     ],
     "gates": [
       [
-        210.0,
-        "คนเกิดปีมะแม"
+        "開",
+        "E"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "休",
+        "SE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "生",
+        "S"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "傷",
+        "SW"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "杜",
+        "W"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "景",
+        "NW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "死",
+        "N"
       ],
       [
-        "合",
-        "เยียวยา"
+        "驚",
+        "NE"
       ]
     ],
     "spirits": [
-      210.0,
       "雀",
       "地",
       "天",
       "符",
       "蛇",
       "陰",
-      "合"
+      "合",
+      "陳"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "7:00-8:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "9:00-10:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "15:00-16:59"
+      ],
+      [
+        "B6",
+        "17:00-18:59"
+      ],
+      [
+        "B8",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -24031,7 +25040,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-09",
@@ -24039,86 +25050,97 @@
     "month_branch": "未",
     "officer": "สูญสิ้น",
     "officer_desc": "ตามชะตา ตามสถานการณ์",
-    "deity_key": "B1",
-    "deity": "11:00-12:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ E",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "午"
+        "寅",
+        60.0,
+        "คนเกิดปีขาล"
       ],
       [
-        null,
-        null,
-        "午"
+        "午",
+        180.0,
+        "คนเกิดปีมะเมีย"
       ]
     ],
     "gates": [
       [
-        180.0,
-        "คนเกิดปีมะเมีย"
+        "開",
+        "E"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "休",
+        "SE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "生",
+        "S"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "傷",
+        "SW"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "杜",
+        "W"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "景",
+        "NW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "死",
+        "N"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "驚",
+        "NE"
       ]
     ],
     "spirits": [
-      180.0,
       "陳",
       "雀",
       "地",
       "天",
       "符",
       "蛇",
-      "陰"
+      "陰",
+      "合"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B8",
+        "1:00-2:59"
       ],
       [
-        100.0,
-        100.0
+        "B1",
+        "11:00-12:59"
       ],
       [
-        "A5",
-        "B11"
+        "B2",
+        "13:00-14:59"
+      ],
+      [
+        "B5",
+        "19:00-20:59"
+      ],
+      [
+        "B6",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -24149,7 +25171,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-10",
@@ -24157,86 +25181,97 @@
     "month_branch": "未",
     "officer": "สูญสิ้น",
     "officer_desc": "ก้าวหน้ารุ่งเรือง",
-    "deity_key": "B6",
-    "deity": "1:00-2:59",
+    "deity_key": "戌",
+    "deity": "เทพ 3 ตา สุนัขสวรรค์",
+    "deities": [
+      "เทพ 3 ตา สุนัขสวรรค์"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ S",
+    "asura_dir": "ทิศ N",
     "patrons": [
       [
-        null,
-        null,
-        "巳"
+        "卯",
+        90.0,
+        "คนเกิดปีเถาะ"
       ],
       [
-        null,
-        null,
-        "巳"
+        "巳",
+        150.0,
+        "คนเกิดปีมะเส็ง"
       ]
     ],
     "gates": [
       [
-        150.0,
-        "คนเกิดปีมะเส็ง"
+        "開",
+        "W"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "休",
+        "NW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "生",
+        "N"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "傷",
+        "NE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "杜",
+        "E"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "景",
+        "SE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "死",
+        "S"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "驚",
+        "SW"
       ]
     ],
     "spirits": [
-      150.0,
       "陰",
       "合",
       "陳",
       "雀",
       "地",
       "天",
-      "符"
+      "符",
+      "蛇"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "23:00-0:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "5:00-6:59"
+      ],
+      [
+        "B1",
+        "15:00-16:59"
+      ],
+      [
+        "B2",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -24267,7 +25302,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-11",
@@ -24275,86 +25312,97 @@
     "month_branch": "未",
     "officer": "สะสม",
     "officer_desc": "ลาภผล อนาคตดี",
-    "deity_key": "B6",
-    "deity": "5:00-6:59",
+    "deity_key": "卯",
+    "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ S",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "卯"
+        "巳",
+        150.0,
+        "คนเกิดปีมะเส็ง"
       ],
       [
-        null,
-        null,
-        "卯"
+        "卯",
+        90.0,
+        "คนเกิดปีเถาะ"
       ]
     ],
     "gates": [
       [
-        90.0,
-        "คนเกิดปีเถาะ"
+        "開",
+        "S"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "休",
+        "SW"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "生",
+        "W"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "傷",
+        "NW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "杜",
+        "N"
       ],
       [
-        "合",
-        "เยียวยา"
+        "景",
+        "NE"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "死",
+        "E"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "驚",
+        "SE"
       ]
     ],
     "spirits": [
-      90.0,
       "天",
       "符",
       "蛇",
       "陰",
       "合",
       "陳",
-      "雀"
+      "雀",
+      "地"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "9:00-10:59"
+      ],
+      [
+        "B1",
+        "19:00-20:59"
+      ],
+      [
+        "B2",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -24385,7 +25433,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-12",
@@ -24393,86 +25443,97 @@
     "month_branch": "未",
     "officer": "ก่อเกิด",
     "officer_desc": null,
-    "deity_key": "B2",
-    "deity": "1:00-2:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ SE",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "丑"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ],
       [
-        null,
-        null,
-        "丑"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ]
     ],
     "gates": [
       [
-        30.0,
-        "คนเกิดปีฉลู"
+        "開",
+        "NW"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "休",
+        "N"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "生",
+        "NE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "傷",
+        "E"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "杜",
+        "SE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "景",
+        "S"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "死",
+        "SW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "驚",
+        "W"
       ]
     ],
     "spirits": [
-      30.0,
       "陳",
       "雀",
       "地",
       "天",
       "符",
       "蛇",
-      "陰"
+      "陰",
+      "合"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "23:00-00:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "7:00-8:59"
+      ],
+      [
+        "B6",
+        "9:00-10:59"
+      ],
+      [
+        "B8",
+        "13:00-14:59"
       ]
     ],
     "scores": [
@@ -24503,7 +25564,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-13",
@@ -24511,86 +25574,97 @@
     "month_branch": "未",
     "officer": "ก่อเกิด",
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": "午",
+    "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ SE",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "子"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ],
       [
-        null,
-        null,
-        "子"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ]
     ],
     "gates": [
       [
-        0.0,
-        "คนเกิดปีชวด"
+        "開",
+        "NW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "休",
+        "N"
       ],
       [
-        "合",
-        "เยียวยา"
+        "生",
+        "NE"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "傷",
+        "E"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "杜",
+        "SE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "景",
+        "S"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "死",
+        "SW"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "驚",
+        "W"
       ]
     ],
     "spirits": [
-      0.0,
       "陰",
       "合",
       "陳",
       "雀",
       "地",
       "天",
-      "符"
+      "符",
+      "蛇"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -24621,7 +25695,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-14",
@@ -24629,86 +25705,97 @@
     "month_branch": "未",
     "officer": "สะสม",
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
-    "deity_key": "B2",
-    "deity": "9:00-10:59",
+    "deity_key": "午",
+    "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ W",
+    "asura_dir": "ทิศ N",
     "patrons": [
       [
-        null,
-        null,
-        "亥"
+        "酉",
+        270.0,
+        "คนเกิดปีระกา"
       ],
       [
-        null,
-        null,
-        "亥"
+        "亥",
+        330.0,
+        "คนเกิดปีกุน"
       ]
     ],
     "gates": [
       [
-        330.0,
-        "คนเกิดปีกุน"
+        "開",
+        "N"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "休",
+        "NE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "生",
+        "E"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "傷",
+        "SE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "杜",
+        "S"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "景",
+        "SW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "死",
+        "W"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "驚",
+        "NW"
       ]
     ],
     "spirits": [
-      330.0,
       "陳",
       "雀",
       "地",
       "天",
       "符",
       "蛇",
-      "陰"
+      "陰",
+      "合"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "7:00-8:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "9:00-10:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "15:00-16:59"
+      ],
+      [
+        "B6",
+        "17:00-18:59"
+      ],
+      [
+        "B8",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -24739,7 +25826,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-15",
@@ -24747,86 +25836,97 @@
     "month_branch": "未",
     "officer": "สูญสิ้น",
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
-    "deity_key": "B1",
-    "deity": "11:00-12:59",
+    "deity_key": "酉",
+    "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
-      null,
-      "ปู่กุ่ยฮุด"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "ปู่กุ่ยฮุด"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ W",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "酉"
+        "亥",
+        330.0,
+        "คนเกิดปีกุน"
       ],
       [
-        null,
-        null,
-        "酉"
+        "酉",
+        270.0,
+        "คนเกิดปีระกา"
       ]
     ],
     "gates": [
       [
-        270.0,
-        "คนเกิดปีระกา"
+        "開",
+        "SE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "休",
+        "S"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "生",
+        "SW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "傷",
+        "W"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "杜",
+        "NW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "景",
+        "N"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "死",
+        "NE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "驚",
+        "E"
       ]
     ],
     "spirits": [
-      270.0,
       "天",
       "符",
       "蛇",
       "陰",
       "合",
       "陳",
-      "雀"
+      "雀",
+      "地"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B8",
+        "1:00-2:59"
       ],
       [
-        100.0,
-        100.0
+        "B1",
+        "11:00-12:59"
       ],
       [
-        "A5",
-        "B11"
+        "B2",
+        "13:00-14:59"
+      ],
+      [
+        "B5",
+        "19:00-20:59"
+      ],
+      [
+        "B6",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -24857,7 +25957,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-16",
@@ -24865,86 +25967,97 @@
     "month_branch": "未",
     "officer": "สูญสิ้น",
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
-    "deity_key": "B6",
-    "deity": "1:00-2:59",
+    "deity_key": "壬",
+    "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
-      null,
-      null
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "丑"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ],
       [
-        null,
-        null,
-        "丑"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ]
     ],
     "gates": [
       [
-        30.0,
-        "คนเกิดปีฉลู"
+        "開",
+        "SE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "休",
+        "S"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "生",
+        "SW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "傷",
+        "W"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "杜",
+        "NW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "景",
+        "N"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "死",
+        "NE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "驚",
+        "E"
       ]
     ],
     "spirits": [
-      30.0,
       "天",
       "符",
       "蛇",
       "陰",
       "合",
       "陳",
-      "雀"
+      "雀",
+      "地"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "23:00-0:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "5:00-6:59"
+      ],
+      [
+        "B1",
+        "15:00-16:59"
+      ],
+      [
+        "B2",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -24975,7 +26088,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-17",
@@ -24983,86 +26098,97 @@
     "month_branch": "未",
     "officer": "สะสม",
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
-    "deity_key": "B6",
-    "deity": "5:00-6:59",
+    "deity_key": "酉",
+    "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
-      null,
-      "ปู่กุ่ยฮุด"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
     "color_secondary": [
-      null,
-      "ปู่กุ่ยฮุด"
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "申"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ],
       [
-        null,
-        null,
-        "申"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ]
     ],
     "gates": [
       [
-        240.0,
-        "คนเกิดปีวอก"
+        "開",
+        "N"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "休",
+        "NE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "生",
+        "E"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "傷",
+        "SE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "杜",
+        "S"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "景",
+        "SW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "死",
+        "W"
       ],
       [
-        "合",
-        "เยียวยา"
+        "驚",
+        "NW"
       ]
     ],
     "spirits": [
-      240.0,
       "雀",
       "地",
       "天",
       "符",
       "蛇",
       "陰",
-      "合"
+      "合",
+      "陳"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "9:00-10:59"
+      ],
+      [
+        "B1",
+        "19:00-20:59"
+      ],
+      [
+        "B2",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -25093,7 +26219,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-18",
@@ -25101,86 +26229,97 @@
     "month_branch": "未",
     "officer": "ก่อเกิด",
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
-    "deity_key": "B2",
-    "deity": "1:00-2:59",
+    "deity_key": "辛",
+    "deity": "ฮั่วท้อเซียงสือกง",
+    "deities": [
+      "ฮั่วท้อเซียงสือกง"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ E",
+    "asura_dir": "ทิศ N",
     "patrons": [
       [
-        null,
-        null,
-        "未"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ],
       [
-        null,
-        null,
-        "未"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ]
     ],
     "gates": [
       [
-        210.0,
-        "คนเกิดปีมะแม"
+        "開",
+        "SE"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "休",
+        "S"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "生",
+        "SW"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "傷",
+        "W"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "杜",
+        "NW"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "景",
+        "N"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "死",
+        "NE"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "驚",
+        "E"
       ]
     ],
     "spirits": [
-      210.0,
       "陳",
       "雀",
       "地",
       "天",
       "符",
       "蛇",
-      "陰"
+      "陰",
+      "合"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "23:00-00:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "7:00-8:59"
+      ],
+      [
+        "B6",
+        "9:00-10:59"
+      ],
+      [
+        "B8",
+        "13:00-14:59"
       ]
     ],
     "scores": [
@@ -25211,7 +26350,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-19",
@@ -25219,86 +26360,97 @@
     "month_branch": "未",
     "officer": "สูญเสีย",
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": "壬",
+    "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ E",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "午"
+        "寅",
+        60.0,
+        "คนเกิดปีขาล"
       ],
       [
-        null,
-        null,
-        "午"
+        "午",
+        180.0,
+        "คนเกิดปีมะเมีย"
       ]
     ],
     "gates": [
       [
-        180.0,
-        "คนเกิดปีมะเมีย"
+        "開",
+        "SE"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "休",
+        "S"
       ],
       [
-        "合",
-        "เยียวยา"
+        "生",
+        "SW"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "傷",
+        "W"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "杜",
+        "NW"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "景",
+        "N"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "死",
+        "NE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "驚",
+        "E"
       ]
     ],
     "spirits": [
-      180.0,
       "陰",
       "合",
       "陳",
       "雀",
       "地",
       "天",
-      "符"
+      "符",
+      "蛇"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -25329,7 +26481,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-20",
@@ -25337,302 +26491,69 @@
     "month_branch": "未",
     "officer": "ดูแลเอาใจใส่",
     "officer_desc": "ตามชะตา ตามสถานการณ์",
-    "deity_key": "B2",
-    "deity": "9:00-10:59",
+    "deity_key": "申",
+    "deity": "เจ้าพ่อเห้งเจีย",
+    "deities": [
+      "เจ้าพ่อเห้งเจีย"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ S",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "巳"
-      ],
-      [
-        null,
-        null,
-        "巳"
-      ]
-    ],
-    "gates": [
-      [
-        150.0,
-        "คนเกิดปีมะเส็ง"
-      ],
-      [
-        "蛇",
-        "เหนือธรรมชาติ"
-      ],
-      [
-        "陰",
-        "กลยุทธ"
-      ],
-      [
-        "合",
-        "เยียวยา"
-      ],
-      [
-        "陳",
-        "ลิขสิทธิ"
-      ],
-      [
-        "雀",
-        "โฆษณา"
-      ],
-      [
-        "地",
-        "วางโครงสร้าง"
-      ],
-      [
-        "天",
-        "วิสัยทัศน์"
-      ]
-    ],
-    "spirits": [
-      150.0,
-      "蛇",
-      "陰",
-      "合",
-      "陳",
-      "雀",
-      "地",
-      "天"
-    ],
-    "lucky_hours": [
-      [
-        110,
-        60
-      ],
-      [
-        100.0,
-        100.0
-      ],
-      [
-        "A5",
-        "B11"
-      ]
-    ],
-    "scores": [
-      0.0,
-      0.0,
-      75.0,
-      40.0,
-      40.0,
-      50.0,
-      75.0,
-      75.0,
-      75,
-      10,
-      30,
-      80
-    ],
-    "max": [
-      0.0,
-      0.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0
-    ],
-    "holy_day": false
-  },
-  {
-    "date": "2026-07-21",
-    "day_pillar": "丙申",
-    "month_branch": "未",
-    "officer": "ห่างไกล",
-    "officer_desc": "ตามชะตา ตามสถานการณ์",
-    "deity_key": "B1",
-    "deity": "11:00-12:59",
-    "color_primary": [
-      null,
-      null
-    ],
-    "color_secondary": [
-      null,
-      null
-    ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
-    "patrons": [
-      [
-        null,
-        null,
-        "卯"
-      ],
-      [
-        null,
-        null,
-        "卯"
-      ]
-    ],
-    "gates": [
-      [
+        "卯",
         90.0,
         "คนเกิดปีเถาะ"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
-      ],
-      [
-        "陰",
-        "กลยุทธ"
-      ],
-      [
-        "合",
-        "เยียวยา"
-      ],
-      [
-        "陳",
-        "ลิขสิทธิ"
-      ],
-      [
-        "雀",
-        "โฆษณา"
-      ],
-      [
-        "地",
-        "วางโครงสร้าง"
-      ],
-      [
-        "天",
-        "วิสัยทัศน์"
-      ]
-    ],
-    "spirits": [
-      90.0,
-      "蛇",
-      "陰",
-      "合",
-      "陳",
-      "雀",
-      "地",
-      "天"
-    ],
-    "lucky_hours": [
-      [
-        110,
-        60
-      ],
-      [
-        100.0,
-        100.0
-      ],
-      [
-        "A5",
-        "B11"
-      ]
-    ],
-    "scores": [
-      0.0,
-      0.0,
-      65.0,
-      10.0,
-      10.0,
-      50.0,
-      65.0,
-      65.0,
-      75,
-      10,
-      30,
-      80
-    ],
-    "max": [
-      0.0,
-      0.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0,
-      100.0
-    ],
-    "holy_day": false
-  },
-  {
-    "date": "2026-07-22",
-    "day_pillar": "丁酉",
-    "month_branch": "未",
-    "officer": "พัฒนา",
-    "officer_desc": "ก้าวหน้ารุ่งเรือง",
-    "deity_key": "B6",
-    "deity": "1:00-2:59",
-    "color_primary": [
-      null,
-      null
-    ],
-    "color_secondary": [
-      null,
-      null
-    ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
-    "patrons": [
-      [
-        null,
-        null,
-        "丑"
-      ],
-      [
-        null,
-        null,
-        "丑"
+        "巳",
+        150.0,
+        "คนเกิดปีมะเส็ง"
       ]
     ],
     "gates": [
       [
-        30.0,
-        "คนเกิดปีฉลู"
+        "開",
+        "NE"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "休",
+        "E"
       ],
       [
-        "合",
-        "เยียวยา"
+        "生",
+        "SE"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "傷",
+        "S"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "杜",
+        "SW"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "景",
+        "W"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "死",
+        "NW"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "驚",
+        "N"
       ]
     ],
     "spirits": [
-      30.0,
+      "蛇",
       "陰",
       "合",
       "陳",
@@ -25643,16 +26564,286 @@
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "7:00-8:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "9:00-10:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "15:00-16:59"
+      ],
+      [
+        "B6",
+        "17:00-18:59"
+      ],
+      [
+        "B8",
+        "21:00-22:59"
+      ]
+    ],
+    "scores": [
+      0.0,
+      0.0,
+      75.0,
+      40.0,
+      40.0,
+      50.0,
+      75.0,
+      75.0,
+      75,
+      10,
+      30,
+      80
+    ],
+    "max": [
+      0.0,
+      0.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0
+    ],
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
+  },
+  {
+    "date": "2026-07-21",
+    "day_pillar": "丙申",
+    "month_branch": "未",
+    "officer": "ห่างไกล",
+    "officer_desc": "ตามชะตา ตามสถานการณ์",
+    "deity_key": "丁",
+    "deity": "เจ้าพ่อเตาไฟ",
+    "deities": [
+      "เจ้าพ่อเตาไฟ"
+    ],
+    "color_primary": [
+      "ไม้",
+      "เขียว"
+    ],
+    "color_secondary": [
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
+    ],
+    "lucky_dir": "ทิศ S",
+    "asura_dir": "ทิศ E",
+    "patrons": [
+      [
+        "巳",
+        150.0,
+        "คนเกิดปีมะเส็ง"
+      ],
+      [
+        "卯",
+        90.0,
+        "คนเกิดปีเถาะ"
+      ]
+    ],
+    "gates": [
+      [
+        "開",
+        "SE"
+      ],
+      [
+        "休",
+        "S"
+      ],
+      [
+        "生",
+        "SW"
+      ],
+      [
+        "傷",
+        "W"
+      ],
+      [
+        "杜",
+        "NW"
+      ],
+      [
+        "景",
+        "N"
+      ],
+      [
+        "死",
+        "NE"
+      ],
+      [
+        "驚",
+        "E"
+      ]
+    ],
+    "spirits": [
+      "蛇",
+      "陰",
+      "合",
+      "陳",
+      "雀",
+      "地",
+      "天",
+      "符"
+    ],
+    "lucky_hours": [
+      [
+        "B8",
+        "1:00-2:59"
+      ],
+      [
+        "B1",
+        "11:00-12:59"
+      ],
+      [
+        "B2",
+        "13:00-14:59"
+      ],
+      [
+        "B5",
+        "19:00-20:59"
+      ],
+      [
+        "B6",
+        "21:00-22:59"
+      ]
+    ],
+    "scores": [
+      0.0,
+      0.0,
+      65.0,
+      10.0,
+      10.0,
+      50.0,
+      65.0,
+      65.0,
+      75,
+      10,
+      30,
+      80
+    ],
+    "max": [
+      0.0,
+      0.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0,
+      100.0
+    ],
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
+  },
+  {
+    "date": "2026-07-22",
+    "day_pillar": "丁酉",
+    "month_branch": "未",
+    "officer": "พัฒนา",
+    "officer_desc": "ก้าวหน้ารุ่งเรือง",
+    "deity_key": "壬",
+    "deity": "เจ้าแม่ทับทิม",
+    "deities": [
+      "เจ้าแม่ทับทิม"
+    ],
+    "color_primary": [
+      "ทอง",
+      "ขาว"
+    ],
+    "color_secondary": [
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
+    ],
+    "lucky_dir": "ทิศ SE",
+    "asura_dir": "ทิศ N",
+    "patrons": [
+      [
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
+      ],
+      [
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
+      ]
+    ],
+    "gates": [
+      [
+        "開",
+        "NW"
+      ],
+      [
+        "休",
+        "N"
+      ],
+      [
+        "生",
+        "NE"
+      ],
+      [
+        "傷",
+        "E"
+      ],
+      [
+        "杜",
+        "SE"
+      ],
+      [
+        "景",
+        "S"
+      ],
+      [
+        "死",
+        "SW"
+      ],
+      [
+        "驚",
+        "W"
+      ]
+    ],
+    "spirits": [
+      "陰",
+      "合",
+      "陳",
+      "雀",
+      "地",
+      "天",
+      "符",
+      "蛇"
+    ],
+    "lucky_hours": [
+      [
+        "B5",
+        "23:00-0:59"
+      ],
+      [
+        "B6",
+        "1:00-2:59"
+      ],
+      [
+        "B8",
+        "5:00-6:59"
+      ],
+      [
+        "B1",
+        "15:00-16:59"
+      ],
+      [
+        "B2",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -25683,7 +26874,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-23",
@@ -25691,86 +26884,97 @@
     "month_branch": "未",
     "officer": "สะสม",
     "officer_desc": "ลาภผล อนาคตดี",
-    "deity_key": "B6",
-    "deity": "5:00-6:59",
+    "deity_key": "午",
+    "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ SE",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "子"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ],
       [
-        null,
-        null,
-        "子"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ]
     ],
     "gates": [
       [
-        0.0,
-        "คนเกิดปีชวด"
+        "開",
+        "NW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "休",
+        "N"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "生",
+        "NE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "傷",
+        "E"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "杜",
+        "SE"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "景",
+        "S"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "SW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "W"
       ]
     ],
     "spirits": [
-      0.0,
       "陰",
       "雀",
       "地",
       "天",
       "符",
       "符",
-      "蛇"
+      "蛇",
+      "合"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "9:00-10:59"
+      ],
+      [
+        "B1",
+        "19:00-20:59"
+      ],
+      [
+        "B2",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -25801,7 +27005,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-24",
@@ -25809,86 +27015,97 @@
     "month_branch": "未",
     "officer": "ก่อเกิด",
     "officer_desc": "แปรผัน โทษทัณฐ์",
-    "deity_key": "B2",
-    "deity": "1:00-2:59",
+    "deity_key": "酉",
+    "deity": "พระสังกัจจายน์",
+    "deities": [
+      "พระสังกัจจายน์"
+    ],
     "color_primary": [
-      null,
-      "ปู่กุ่ยฮุด"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
     "color_secondary": [
-      null,
-      "ปู่กุ่ยฮุด"
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ W",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "亥"
+        "酉",
+        270.0,
+        "คนเกิดปีระกา"
       ],
       [
-        null,
-        null,
-        "亥"
+        "亥",
+        330.0,
+        "คนเกิดปีกุน"
       ]
     ],
     "gates": [
       [
-        330.0,
-        "คนเกิดปีกุน"
+        "開",
+        "NE"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "休",
+        "E"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "生",
+        "SE"
       ],
       [
-        "合",
-        "เยียวยา"
+        "傷",
+        "S"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "杜",
+        "SW"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "景",
+        "W"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "死",
+        "NW"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "驚",
+        "N"
       ]
     ],
     "spirits": [
-      330.0,
       "蛇",
       "陰",
       "合",
       "陳",
       "雀",
       "地",
-      "天"
+      "天",
+      "符"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "23:00-00:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "7:00-8:59"
+      ],
+      [
+        "B6",
+        "9:00-10:59"
+      ],
+      [
+        "B8",
+        "13:00-14:59"
       ]
     ],
     "scores": [
@@ -25919,7 +27136,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-25",
@@ -25927,86 +27146,97 @@
     "month_branch": "未",
     "officer": "สูญเสีย",
     "officer_desc": "มีปากเสียง ทะเลาะ วิวาท",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": "未",
+    "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง"
+    ],
     "color_primary": [
-      null,
-      null
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ W",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "酉"
+        "亥",
+        330.0,
+        "คนเกิดปีกุน"
       ],
       [
-        null,
-        null,
-        "酉"
+        "酉",
+        270.0,
+        "คนเกิดปีระกา"
       ]
     ],
     "gates": [
       [
-        270.0,
-        "คนเกิดปีระกา"
+        "開",
+        "NE"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "休",
+        "E"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "生",
+        "SE"
       ],
       [
-        "合",
-        "เยียวยา"
+        "傷",
+        "S"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "杜",
+        "SW"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "景",
+        "W"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "死",
+        "NW"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "驚",
+        "N"
       ]
     ],
     "spirits": [
-      270.0,
       "蛇",
       "陰",
       "合",
       "陳",
       "雀",
       "地",
-      "天"
+      "天",
+      "符"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -26037,7 +27267,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-26",
@@ -26045,86 +27277,97 @@
     "month_branch": "未",
     "officer": "ดูแลเอาใจใส่",
     "officer_desc": "ลาภผล โชคลาภ ตำแหน่งดี",
-    "deity_key": "B2",
-    "deity": "9:00-10:59",
+    "deity_key": "午",
+    "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ N",
     "patrons": [
       [
-        null,
-        null,
-        "丑"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ],
       [
-        null,
-        null,
-        "丑"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ]
     ],
     "gates": [
       [
-        30.0,
-        "คนเกิดปีฉลู"
+        "開",
+        "NE"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "休",
+        "E"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "生",
+        "SE"
       ],
       [
-        "合",
-        "เยียวยา"
+        "傷",
+        "S"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "杜",
+        "SW"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "景",
+        "W"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "死",
+        "NW"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "驚",
+        "N"
       ]
     ],
     "spirits": [
-      30.0,
       "蛇",
       "陰",
       "合",
       "陳",
       "雀",
       "地",
-      "天"
+      "天",
+      "符"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "7:00-8:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "9:00-10:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "15:00-16:59"
+      ],
+      [
+        "B6",
+        "17:00-18:59"
+      ],
+      [
+        "B8",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -26155,7 +27398,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-27",
@@ -26163,86 +27408,97 @@
     "month_branch": "未",
     "officer": "ห่างไกล",
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
-    "deity_key": "B1",
-    "deity": "11:00-12:59",
+    "deity_key": "卯",
+    "deity": "เจ้าแม่กวนอิมองค์ยืน",
+    "deities": [
+      "เจ้าแม่กวนอิมองค์ยืน"
+    ],
     "color_primary": [
-      null,
-      null
+      "ไม้",
+      "เขียว"
     ],
     "color_secondary": [
-      null,
-      null
+      "ไฟ",
+      "แดง ชมพู ส้ม ม่วง"
     ],
-    "lucky_dir": "ไฟ",
-    "asura_dir": "แดง ชมพู ส้ม ม่วง",
+    "lucky_dir": "ทิศ N",
+    "asura_dir": "ทิศ W",
     "patrons": [
       [
-        null,
-        null,
-        "申"
+        "子",
+        0.0,
+        "คนเกิดปีชวด"
       ],
       [
-        null,
-        null,
-        "申"
+        "申",
+        240.0,
+        "คนเกิดปีวอก"
       ]
     ],
     "gates": [
       [
-        240.0,
-        "คนเกิดปีวอก"
+        "開",
+        "N"
       ],
       [
-        "合",
-        "เยียวยา"
+        "休",
+        "NE"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "生",
+        "E"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "傷",
+        "SE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "杜",
+        "S"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "景",
+        "SW"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "死",
+        "W"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "驚",
+        "NW"
       ]
     ],
     "spirits": [
-      240.0,
       "合",
       "陳",
       "雀",
       "地",
       "天",
       "符",
-      "蛇"
+      "蛇",
+      "陰"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B8",
+        "1:00-2:59"
       ],
       [
-        100.0,
-        100.0
+        "B1",
+        "11:00-12:59"
       ],
       [
-        "A5",
-        "B11"
+        "B2",
+        "13:00-14:59"
+      ],
+      [
+        "B5",
+        "19:00-20:59"
+      ],
+      [
+        "B6",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -26273,7 +27529,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-28",
@@ -26281,86 +27539,98 @@
     "month_branch": "未",
     "officer": "พัฒนา",
     "officer_desc": "ฟ้าประทาน เทพเจ้าคุ้มครอง",
-    "deity_key": "B6",
-    "deity": "1:00-2:59",
-    "color_primary": [
-      "丑",
+    "deity_key": "未",
+    "deity": "ไท้เสียงเล่ากุง",
+    "deities": [
+      "ไท้เสียงเล่ากุง",
       "ไท้เสียงเล่ากุงนั่งวัว"
+    ],
+    "color_primary": [
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      "丑",
-      "ไท้เสียงเล่ากุงนั่งวัว"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ E",
+    "asura_dir": "ทิศ S",
     "patrons": [
       [
-        null,
-        null,
-        "未"
+        "丑",
+        30.0,
+        "คนเกิดปีฉลู"
       ],
       [
-        null,
-        null,
-        "未"
+        "未",
+        210.0,
+        "คนเกิดปีมะแม"
       ]
     ],
     "gates": [
       [
-        210.0,
-        "คนเกิดปีมะแม"
+        "開",
+        "N"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "休",
+        "NE"
       ],
       [
-        "合",
-        "เยียวยา"
+        "生",
+        "E"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "傷",
+        "SE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "杜",
+        "S"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "景",
+        "SW"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "死",
+        "W"
       ],
       [
-        "符",
-        "เพิ่มขวัญกำลังใจ"
+        "驚",
+        "NW"
       ]
     ],
     "spirits": [
-      210.0,
       "陰",
       "合",
       "陳",
       "雀",
       "地",
       "天",
-      "符"
+      "符",
+      "蛇"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "23:00-0:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "5:00-6:59"
+      ],
+      [
+        "B1",
+        "15:00-16:59"
+      ],
+      [
+        "B2",
+        "17:00-18:59"
       ]
     ],
     "scores": [
@@ -26391,7 +27661,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-29",
@@ -26399,86 +27671,97 @@
     "month_branch": "未",
     "officer": "ของเก่า",
     "officer_desc": "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์",
-    "deity_key": "B6",
-    "deity": "5:00-6:59",
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "deities": [
+      "ท้าวเวสสุวรรณ"
+    ],
     "color_primary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เทียนโห่วเสี่ยบ้อ"
+      "ดิน",
+      "ครีม เหลือง น้ำตาล"
     ],
-    "lucky_dir": "ดิน",
-    "asura_dir": "ครีม เหลือง น้ำตาล",
+    "lucky_dir": "ทิศ E",
+    "asura_dir": "ทิศ E",
     "patrons": [
       [
-        null,
-        null,
-        "午"
+        "寅",
+        60.0,
+        "คนเกิดปีขาล"
       ],
       [
-        null,
-        null,
-        "午"
+        "午",
+        180.0,
+        "คนเกิดปีมะเมีย"
       ]
     ],
     "gates": [
       [
-        180.0,
-        "คนเกิดปีมะเมีย"
+        "開",
+        "SW"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "休",
+        "W"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "生",
+        "NW"
       ],
       [
-        "合",
-        "เยียวยา"
+        "傷",
+        "N"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "杜",
+        "NE"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "景",
+        "E"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "死",
+        "SE"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "驚",
+        "S"
       ]
     ],
     "spirits": [
-      180.0,
       "蛇",
       "陰",
       "合",
       "陳",
       "雀",
       "地",
-      "天"
+      "天",
+      "符"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B5",
+        "3:00-4:59"
       ],
       [
-        100.0,
-        100.0
+        "B6",
+        "5:00-6:59"
       ],
       [
-        "A5",
-        "B11"
+        "B8",
+        "9:00-10:59"
+      ],
+      [
+        "B1",
+        "19:00-20:59"
+      ],
+      [
+        "B2",
+        "21:00-22:59"
       ]
     ],
     "scores": [
@@ -26509,7 +27792,9 @@
       100.0,
       100.0
     ],
-    "holy_day": true
+    "holy_day": true,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-30",
@@ -26517,86 +27802,97 @@
     "month_branch": "未",
     "officer": "สะสาง",
     "officer_desc": "มีโทษภัย ถูกกักขัง จำกัดขอบเขต",
-    "deity_key": "B2",
-    "deity": "1:00-2:59",
+    "deity_key": "午",
+    "deity": "เจ้าพ่อพระเพลิง",
+    "deities": [
+      "เจ้าพ่อพระเพลิง"
+    ],
     "color_primary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "ทอง",
+      "ขาว"
     ],
     "color_secondary": [
-      null,
-      "เจ้ากวนอูทรงม้า"
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": "ทิศ S",
+    "asura_dir": "ทิศ N",
     "patrons": [
       [
-        null,
-        null,
-        "巳"
+        "卯",
+        90.0,
+        "คนเกิดปีเถาะ"
       ],
       [
-        null,
-        null,
-        "巳"
+        "巳",
+        150.0,
+        "คนเกิดปีมะเส็ง"
       ]
     ],
     "gates": [
       [
-        150.0,
-        "คนเกิดปีมะเส็ง"
+        "開",
+        "W"
       ],
       [
-        "蛇",
-        "เหนือธรรมชาติ"
+        "休",
+        "NW"
       ],
       [
-        "陰",
-        "กลยุทธ"
+        "生",
+        "N"
       ],
       [
-        "合",
-        "เยียวยา"
+        "傷",
+        "NE"
       ],
       [
-        "陳",
-        "ลิขสิทธิ"
+        "杜",
+        "E"
       ],
       [
-        "雀",
-        "โฆษณา"
+        "景",
+        "SE"
       ],
       [
-        "地",
-        "วางโครงสร้าง"
+        "死",
+        "S"
       ],
       [
-        "天",
-        "วิสัยทัศน์"
+        "驚",
+        "SW"
       ]
     ],
     "spirits": [
-      150.0,
       "蛇",
       "陰",
       "合",
       "陳",
       "雀",
       "地",
-      "天"
+      "天",
+      "符"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "23:00-00:59"
       ],
       [
-        100.0,
-        100.0
+        "B2",
+        "1:00-2:59"
       ],
       [
-        "A5",
-        "B11"
+        "B5",
+        "7:00-8:59"
+      ],
+      [
+        "B6",
+        "9:00-10:59"
+      ],
+      [
+        "B8",
+        "13:00-14:59"
       ]
     ],
     "scores": [
@@ -26627,7 +27923,9 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   },
   {
     "date": "2026-07-31",
@@ -26635,35 +27933,32 @@
     "month_branch": "未",
     "officer": "อำนาจ",
     "officer_desc": "มีของหาย เกิดโจรภัย มีคดีความ",
-    "deity_key": "B2",
-    "deity": "5:00-6:59",
+    "deity_key": null,
+    "deity": null,
+    "deities": [],
     "color_primary": [
-      null,
-      null
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
     "color_secondary": [
-      null,
-      null
+      "น้ำ",
+      "ฟ้า น้ำเงิน เทา ดำ"
     ],
-    "lucky_dir": "น้ำ",
-    "asura_dir": "ฟ้า น้ำเงิน เทา ดำ",
+    "lucky_dir": null,
+    "asura_dir": null,
     "patrons": [
       [
-        null,
-        null,
-        "卯"
-      ],
-      [
-        null,
-        null,
-        "卯"
-      ]
-    ],
-    "gates": [
-      [
+        "卯",
         90.0,
         "คนเกิดปีเถาะ"
       ],
+      [
+        "卯",
+        90.0,
+        "คนเกิดปีเถาะ"
+      ]
+    ],
+    "gates": [
       [
         "天",
         "วิสัยทัศน์"
@@ -26691,30 +27986,90 @@
       [
         "雀",
         "โฆษณา"
+      ],
+      [
+        "地",
+        "วางโครงสร้าง"
       ]
     ],
     "spirits": [
-      90.0,
       "天",
       "符",
       "蛇",
       "陰",
       "合",
       "陳",
-      "雀"
+      "雀",
+      "地"
     ],
     "lucky_hours": [
       [
-        110,
-        60
+        "B1",
+        "3:00-4:59"
+      ],
+      [
+        "B2",
+        "5:00-6:59"
+      ],
+      [
+        "B5",
+        "11:00-12:59"
+      ],
+      [
+        "B6",
+        "13:00-14:59"
+      ],
+      [
+        "B8",
+        "17:00-18:59"
+      ],
+      [
+        50.0,
+        "เกี๋ยง"
+      ],
+      [
+        "30/70",
+        "ตือ"
+      ],
+      [
+        80.0,
+        "มั่ว"
+      ],
+      [
+        50.0,
+        "เพัง"
+      ],
+      [
+        80.0,
+        "เตีย"
+      ],
+      [
+        80.0,
+        "จิป"
+      ],
+      [
+        10.0,
+        "ผั่ว"
+      ],
+      [
+        20.0,
+        "งุ้ย"
       ],
       [
         100.0,
-        100.0
+        "เซ้ง"
       ],
       [
-        "A5",
-        "B11"
+        "30/70",
+        "ซิว"
+      ],
+      [
+        80.0,
+        "ไค"
+      ],
+      [
+        "30/70",
+        "ปี่"
       ]
     ],
     "scores": [
@@ -26745,6 +28100,8 @@
       100.0,
       100.0
     ],
-    "holy_day": false
+    "holy_day": false,
+    "month_pillar": "乙未",
+    "year_pillar": "丙午"
   }
 ]

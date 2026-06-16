@@ -19,7 +19,7 @@
             AG/AH/AI = เทพอุปถัมป์(คีย์/เลข/คำ), AJ..AY = 8 ประตู(八門) + ทิศ.
   ไฟล์มีบล็อกซ้ำ/คอลัมน์เลื่อน -> dedup เก็บบล็อกแรกต่อ (ชีต,วันที่) + majority vote ต่อเสาวัน.
 """
-import json, os, sys, unicodedata
+import json, os, re, sys, unicodedata
 from collections import defaultdict, Counter
 import openpyxl
 
@@ -122,7 +122,9 @@ def extract_calendar(golden_out=None):
     year_tab = defaultdict(Counter)
     spirit_legend = defaultdict(Counter)        # 八神 char -> Counter(tuple 4 คีย์เวิร์ด)
     gate_legend = {}                            # 八門 char -> ไทย (จาก AJ1:AY1)
+    hour_god_legend = {}                        # B1..B12 -> {god, meaning, score, good} (12 時辰 黃道黑道)
     golden = []
+    GOOD_HOUR_CODES = {"B1", "B2", "B5", "B6", "B8"}  # ยามดี 青龍/明堂/金匱/天德/玉堂
 
     SCORE_COLS = list(range(13, 25))            # M..X
     GATE_COLS = list(range(36, 52, 2))          # AJ,AL,...,AX (8 ประตู/八神)
@@ -133,11 +135,27 @@ def extract_calendar(golden_out=None):
     for sh in wb.sheetnames:
         ws = wb[sh]
         mon = sheet_month(sh)
-        # legend ชื่อประตู 八門 -> ไทย (แถว 1: AJ1=開/AK1=เปิด ...)
-        for c in GATE_COLS:
-            g, th = v(ws, 1, c), v(ws, 1, c + 1)
-            if g and th and g not in gate_legend:
-                gate_legend[g] = th
+        # legend ชื่อประตู 八門 -> ไทย (แถว 1: AJ1=開/AK1=เปิด ...) — เอาจากชีตแรก (ไม่เลื่อน)
+        if not gate_legend:
+            for c in GATE_COLS:
+                g, th = v(ws, 1, c), v(ws, 1, c + 1)
+                if g and th:
+                    gate_legend[g] = th
+        # legend 12 時辰 黃道黑道 (B1..B12) จากตารางท้ายชีต: หาแถวที่ J=='B1' แล้วอ่าน 12 แถว
+        if not hour_god_legend:
+            for r in range(1, ws.max_row + 1):
+                if v(ws, r, 10) == "B1":  # คอลัมน์ J
+                    for k in range(12):
+                        code = v(ws, r + k, 10)       # J = B-code
+                        score = v(ws, r + k, 11)      # K = คะแนน
+                        god = v(ws, r + k, 12)        # L = ชื่อเทพยาม
+                        meaning = v(ws, r + k, 13)    # M = ความหมาย
+                        if code:
+                            hour_god_legend[code] = {
+                                "god": god, "meaning": meaning, "score": score,
+                                "good": code in GOOD_HOUR_CODES,
+                            }
+                    break
         # ----- ตารางเดือน/ปี จาก header ของชีต -----
         m_pillar = (v(ws, 3, 7), v(ws, 4, 7))   # G3/G4 = เสาเดือนหัวชีต
         y_pillar = (v(ws, 3, 9), v(ws, 4, 9))   # I3/I4 = เสาปี
@@ -161,43 +179,72 @@ def extract_calendar(golden_out=None):
                 continue
             gz, mb = gz_name(gz_index(stem, branch)), mp[1]
             # header row (แถววันในสัปดาห์): เทพ/สี1/ทิศ/อุปถัมป์1/ประตู
-            hr = h if (v(ws, h, 28) and v(ws, h, 27) in (SS | BR)) else h + 1
+            # ไม่ fix คอลัมน์: บางชีต (เช่น july) แทรก 2 คอลัมน์คะแนนพิเศษ -> บล็อกขวาเลื่อน +off
+            # หา off จากตำแหน่งโค้ดยาม B\d+ (ปกติอยู่คอลัมน์ 25)
+            off = 0
+            for hrow in (h, h + 1):
+                for c in range(25, 30):
+                    val = v(ws, hrow, c)
+                    if isinstance(val, str) and re.fullmatch(r"B\d+", val):
+                        off = c - 25
+                        break
+                else:
+                    continue
+                break
+            DC, AA, AB = 25 + off, 27 + off, 28 + off  # เวลามงคล / deity key / deity
+            ACc, ADc = 29 + off, 30 + off              # สี ธาตุ/ข้อความ
+            AEc, AFc = 31 + off, 32 + off              # ทิศโชคลาภ / ทิศอสูร
+            AGc, AHc, AIc = 33 + off, 34 + off, 35 + off  # อุปถัมป์
+            GATE0 = 36 + off
+            gate_cols = list(range(GATE0, GATE0 + 16, 2))
+            hr = h if (v(ws, h, AB) and v(ws, h, AA) in (SS | BR)) else h + 1
 
             # holy-day marker: คอลัมน์ C ในบล็อก == "วันพระจีน"/"วันพระ"
             holy = any(isinstance(v(ws, r, 3), str) and "วันพระ" in v(ws, r, 3) for r in range(h, nxt))
 
+            # เทพประจำวัน อาจมี 2 องค์ (header row + dayrow) เก็บเป็น list
+            deities = []
+            for r in (hr, hr + 1):
+                nm = canon(v(ws, r, AB))
+                if nm and v(ws, r, AA) in (SS | BR) and nm not in deities:
+                    deities.append(nm)
+
             rec = {
                 "officer": canon(v(ws, dr, 3)),
                 "officer_desc": v(ws, dr + 1, 3),
-                "deity_key": canon(v(ws, hr, 27)),
-                "deity": canon(v(ws, hr, 28)),
-                "color_primary": [v(ws, hr, 29), v(ws, hr, 30)],     # AC/AD แถว header
-                "color_secondary": [v(ws, dr, 29), v(ws, dr, 30)],  # AC/AD แถววัน
-                "lucky_dir": v(ws, hr, 31),
-                "asura_dir": v(ws, hr, 32),
+                "deity_key": canon(v(ws, hr, AA)),
+                "deity": canon(v(ws, hr, AB)),
+                "deities": deities,
+                "color_primary": [v(ws, hr, ACc), v(ws, hr, ADc)],
+                "color_secondary": [v(ws, dr, ACc), v(ws, dr, ADc)],
+                "lucky_dir": v(ws, hr, AEc),
+                "asura_dir": v(ws, hr, AFc),
                 "patrons": [
-                    [v(ws, hr, 33), v(ws, hr, 34), v(ws, hr, 35)],  # อุปถัมป์ 1 (header)
-                    [v(ws, dr, 33), v(ws, dr, 34), v(ws, dr, 35)],  # อุปถัมป์ 2 (dayrow)
+                    [v(ws, hr, AGc), v(ws, hr, AHc), v(ws, hr, AIc)],  # อุปถัมป์ 1 (header)
+                    [v(ws, dr, AGc), v(ws, dr, AHc), v(ws, dr, AIc)],  # อุปถัมป์ 2 (dayrow)
                 ],
-                "gates": [[v(ws, hr, c), v(ws, hr, c + 1)] for c in GATE_COLS],   # 八門 name+dir
-                "spirits": [v(ws, dr, c) for c in GATE_COLS],                     # 八神 arrangement
-                "lucky_hours": [[v(ws, r, 25), v(ws, r, 26)]
-                                for r in range(h, nxt) if v(ws, r, 25) and v(ws, r, 26)],
+                "gates": [[v(ws, hr, c), v(ws, hr, c + 1)] for c in gate_cols],   # 八門 name+dir
+                "spirits": [v(ws, dr, c) for c in gate_cols],                     # 八神 arrangement
+                "lucky_hours": [[v(ws, r, DC), v(ws, r, DC + 1)]
+                                for r in range(h, nxt) if v(ws, r, DC) and v(ws, r, DC + 1)],
                 "scores": [scalar(v(ws, dr, c)) for c in SCORE_COLS],
                 "max": [scalar(v(ws, dr + 1, c)) for c in SCORE_COLS],
                 "holy_day": holy,
+                # เสาเดือน/ปี เต็มจากต้นฉบับ (ไว้ validate source-table; ไม่เข้า DISPLAY_FIELDS)
+                "month_pillar": (mp[0] + mp[1]),
+                "year_pillar": ((v(ws, dr, 9) or "") + (v(ws, dr + 1, 9) or "")),
             }
             blocks.append((gz, mb, f"2026-{mon:02d}-{int(ws.cell(dr, 1).value):02d}" if mon else None, rec))
 
             # legend 八神 -> 4 คีย์เวิร์ด (คอลัมน์ขวาของเทพ แถว dr..dr+3)
-            for c in GATE_COLS:
+            for c in gate_cols:
                 sp = v(ws, dr, c)
                 kws = tuple(v(ws, dr + k, c + 1) for k in range(4))
                 if sp and all(kws):
                     spirit_legend[sp][kws] += 1
 
     # ---- โหวต record ----
-    DISPLAY_FIELDS = ["officer", "officer_desc", "deity_key", "deity", "color_primary",
+    DISPLAY_FIELDS = ["officer", "officer_desc", "deity_key", "deity", "deities", "color_primary",
                       "color_secondary", "lucky_dir", "asura_dir", "patrons", "gates",
                       "spirits", "lucky_hours", "scores", "max", "holy_day"]
 
@@ -250,7 +297,8 @@ def extract_calendar(golden_out=None):
         uniq.sort(key=lambda g: g["date"])
         golden_out.extend(uniq)
 
-    return day_table, score_table, day_month_table, month_out, year_out, spirit_out, gate_legend
+    return (day_table, score_table, day_month_table, month_out, year_out,
+            spirit_out, gate_legend, hour_god_legend)
 
 
 def extract_solar_terms():
@@ -285,7 +333,7 @@ def extract_solar_terms():
 def main():
     golden = []
     (day_table, score_table, day_month_table, month_out, year_out,
-     spirit_legend, gate_legend) = extract_calendar(golden_out=golden)
+     spirit_legend, gate_legend, hour_god_legend) = extract_calendar(golden_out=golden)
     solar = extract_solar_terms()
 
     def dump(path, name, obj):
@@ -303,6 +351,7 @@ def main():
     dump(OUT, "year-pillar-table.json", year_out)
     dump(OUT, "spirit-legend.json", spirit_legend)
     dump(OUT, "gate-legend.json", gate_legend)
+    dump(OUT, "hour-god-legend.json", hour_god_legend)
     dump(OUT, "solar-terms-2450-2600.json", solar)
     dump(os.path.join(ROOT, "tests", "fixtures"), "almanac-2569-golden.json", golden)
 

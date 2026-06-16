@@ -138,6 +138,26 @@
   color: #555;
 }
 
+.almanac-hours-label {
+  font-weight: 600;
+}
+
+.almanac-hourlist {
+  margin: 0.2rem 0 0;
+  padding-inline-start: 1rem;
+  display: grid;
+  gap: 0.1rem;
+}
+
+.almanac-hourlist li b {
+  color: #1455a4;
+}
+
+.almanac-hourlist li em {
+  color: #888;
+  font-style: normal;
+}
+
 .almanac-monthbar {
   display: flex;
   flex-direction: column;

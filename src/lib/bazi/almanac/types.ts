@@ -12,6 +12,12 @@ export type LuckyHour = {
   code: string;
   /** ช่วงเวลา เช่น "1:00-2:59" */
   range: string;
+  /** กิ่งของยาม (時辰) เช่น 午 */
+  branch: string;
+  /** ชื่อเทพยาม (黃道) เช่น แชเล้ง */
+  god: string;
+  /** ความหมายสั้น เช่น ก้าวหน้ารุ่งเรือง */
+  meaning: string;
 };
 
 export type GateInfo = {
@@ -70,6 +76,7 @@ export type AlmanacRecord = {
   officer_desc: string | null;
   deity_key: string | null;
   deity: string | null;
+  deities?: string[] | null;
   color_primary: [string | null, string | null] | null;
   color_secondary: [string | null, string | null] | null;
   lucky_dir: string | null;
@@ -115,6 +122,8 @@ export type AlmanacDay = {
   yearPillar: Pillar;
   officer: string | null;
   officerDesc: string | null;
+  /** เทพประจำวัน (อาจมี 1–2 องค์) */
+  deities: string[];
   deity: string | null;
   deityKey: string | null;
   colors: ColorInfo[];

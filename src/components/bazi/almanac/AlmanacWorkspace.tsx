@@ -9,7 +9,7 @@ type ColorInfo = { element: string; colors: string };
 type PatronInfo = { branch: string; number: number | null; zodiac: string };
 type AsuraDirections = { day: string; month: string; year: string };
 type MonthInfo = { deity: string | null; caishenDir: string | null; lapDir: string | null };
-type LuckyHour = { code: string; range: string };
+type LuckyHour = { code: string; range: string; branch: string; god: string; meaning: string };
 type Strength = { ratioTotal: number; ratioDay: number; exact: boolean };
 type AlmanacDay = {
   date: string;
@@ -20,6 +20,7 @@ type AlmanacDay = {
   yearPillar: Pillar;
   officer: string | null;
   officerDesc: string | null;
+  deities: string[];
   deity: string | null;
   colors: ColorInfo[];
   luckyDirection: string | null;
@@ -141,8 +142,11 @@ export function AlmanacWorkspace() {
                 )}
 
                 <dl className="almanac-meta">
-                  <div><dt>เสาเดือน/ปี</dt><dd>{day.monthPillar.ganzhi} / {day.yearPillar.ganzhi}</dd></div>
-                  {day.deity && <div><dt>เทพประจำวัน</dt><dd>{day.deity}</dd></div>}
+                  <div><dt>เสาเดือน</dt><dd>{day.monthPillar.ganzhi}</dd></div>
+                  <div><dt>เสาปี</dt><dd>{day.yearPillar.ganzhi}</dd></div>
+                  {day.deities.length > 0 && (
+                    <div><dt>เทพประจำวัน</dt><dd>{day.deities.join(" / ")}</dd></div>
+                  )}
                   {day.colors.length > 0 && (
                     <div><dt>สีมงคล</dt><dd>{day.colors.map((c) => c.colors).join(" / ")}</dd></div>
                   )}
@@ -154,14 +158,21 @@ export function AlmanacWorkspace() {
                   <div>
                     <dt>กำลัง (ดิถี/รวม)</dt>
                     <dd>{pct(day.strength.ratioDay)} / {pct(day.strength.ratioTotal)}
-                      {!day.strength.exact && <span className="almanac-approx"> (ประมาณ)</span>}</dd>
+                      {!day.strength.exact && <span className="almanac-approx"> (รวมประมาณ)</span>}</dd>
                   </div>
                 </dl>
 
                 {day.luckyHours.length > 0 && (
-                  <p className="almanac-hours">
-                    ⏰ {day.luckyHours.map((h) => h.range).join(", ")}
-                  </p>
+                  <div className="almanac-hours">
+                    <span className="almanac-hours-label">⏰ เวลามงคล</span>
+                    <ul className="almanac-hourlist">
+                      {day.luckyHours.map((h) => (
+                        <li key={h.code}>
+                          <b>{h.range}</b> {h.god} <em>{h.meaning}</em>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
 
                 {day.gates.length > 0 && (
