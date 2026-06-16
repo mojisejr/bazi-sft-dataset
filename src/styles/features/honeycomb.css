@@ -1,0 +1,237 @@
+/* เบอร์รังผึ้ง — เบอร์ปิรามิด (สามเหลี่ยมปาสคาล) */
+
+.honeycomb {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.honeycomb__title {
+  margin: 0 0 6px;
+}
+
+.honeycomb__lead {
+  margin: 0;
+  color: var(--muted, #6b7280);
+  line-height: 1.7;
+}
+
+.honeycomb__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.honeycomb__input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 12px 16px;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  border-radius: 14px;
+  border: 1px solid var(--surface-line-muted, rgba(120, 120, 140, 0.35));
+  background: var(--panel, #fff);
+  color: var(--text, #111);
+}
+
+.honeycomb__input:focus {
+  outline: none;
+  border-color: var(--accent, #6c5ce7);
+  box-shadow: 0 0 0 3px var(--accent-soft, rgba(108, 92, 231, 0.18));
+}
+
+.honeycomb__submit,
+.honeycomb__llm-btn {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--accent, #6c5ce7);
+  color: #fff;
+}
+
+.honeycomb__submit:disabled,
+.honeycomb__llm-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.honeycomb__error {
+  color: #c0392b;
+  font-weight: 600;
+}
+
+.honeycomb__result {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* ปิรามิด — แถวบนกว้างสุด ไล่แคบลงถึงยอด */
+.honeycomb__pyramid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  border-radius: 18px;
+  background: var(--accent-soft, rgba(108, 92, 231, 0.08));
+  overflow-x: auto;
+}
+
+.honeycomb__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.honeycomb__row-label {
+  width: 56px;
+  text-align: right;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted, #6b7280);
+  flex: 0 0 auto;
+}
+
+.honeycomb__cell {
+  width: 34px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+  border-radius: 10px;
+  background: var(--panel, #fff);
+  color: var(--text, #1f2937);
+  flex: 0 0 auto;
+}
+
+.honeycomb__row--self .honeycomb__cell {
+  background: var(--accent, #6c5ce7);
+  color: #fff;
+}
+
+.honeycomb__row--near .honeycomb__cell {
+  background: var(--accent-soft, rgba(108, 92, 231, 0.3));
+  color: var(--accent, #6c5ce7);
+}
+
+.honeycomb__row--far .honeycomb__cell {
+  background: var(--panel, #fff);
+  border: 1px solid var(--surface-line-muted, rgba(120, 120, 140, 0.3));
+}
+
+/* คำอ่านรายชั้น */
+.honeycomb__layers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.honeycomb__layer {
+  border: 1px solid var(--surface-line-muted, rgba(120, 120, 140, 0.3));
+  border-radius: 14px;
+  padding: 4px 14px;
+  background: var(--panel, #fff);
+}
+
+.honeycomb__layer--self {
+  border-color: var(--accent, #6c5ce7);
+}
+
+.honeycomb__layer > summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 0;
+  list-style: none;
+}
+
+.honeycomb__layer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.honeycomb__layer-no {
+  font-weight: 700;
+  color: var(--accent, #6c5ce7);
+}
+
+.honeycomb__layer-digits {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.honeycomb__layer-zone {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted, #6b7280);
+}
+
+.honeycomb__pair {
+  padding: 8px 0;
+  border-top: 1px dashed var(--surface-line-muted, rgba(120, 120, 140, 0.25));
+}
+
+.honeycomb__pair-code {
+  margin: 0 0 6px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--accent, #6c5ce7);
+}
+
+.honeycomb__meaning {
+  margin: 0 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.honeycomb__meaning-row > dt {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--accent, #6c5ce7);
+  margin-bottom: 2px;
+}
+
+.honeycomb__meaning-row > dd {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--text, #1f2937);
+}
+
+/* แผง AI */
+.honeycomb__llm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.honeycomb__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--muted, #6b7280);
+}
+
+.honeycomb__llm-btn {
+  align-self: flex-start;
+}
+
+.honeycomb__answer-head {
+  margin: 6px 0 8px;
+  font-size: 1.05rem;
+}
+
+.honeycomb__prose {
+  line-height: 1.85;
+  white-space: pre-wrap;
+  color: var(--text, #1f2937);
+}
