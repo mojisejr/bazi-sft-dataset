@@ -150,10 +150,27 @@ function markdownParagraphs(text: string): (Paragraph | Table)[] {
     const bullet = line.match(/^[-*•]\s+(.*)$/);
     if (heading) {
       flushPara();
+      const headingText = heading[1].trim();
+      // บทนำ/สรุป = ส่วนมีสไตล์เฉพาะ (แถบพื้นหลัง + เส้นนำซ้าย) ให้ตรงกับ section band ใน PDF
+      const isIntro = headingText === "บทนำ";
+      const isSummary = headingText === "สรุป";
+      if (isIntro || isSummary) {
+        const fill = isIntro ? "E4F1F4" : "F6ECD6";
+        const barColor = isIntro ? ACCENT : "C79A3A";
+        out.push(
+          new Paragraph({
+            spacing: { before: 200, after: 80 },
+            shading: { type: ShadingType.CLEAR, fill, color: "auto" },
+            border: { left: { style: BorderStyle.SINGLE, size: 18, space: 8, color: barColor } },
+            children: markdownRuns(headingText, { size: 26, bold: true, color: barColor }),
+          }),
+        );
+        continue;
+      }
       out.push(
         new Paragraph({
           spacing: { before: 160, after: 60 },
-          children: markdownRuns(heading[1], { size: 26, bold: true, color: ACCENT }),
+          children: markdownRuns(headingText, { size: 26, bold: true, color: ACCENT }),
         }),
       );
       continue;

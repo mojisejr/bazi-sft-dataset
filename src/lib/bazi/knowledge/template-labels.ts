@@ -106,6 +106,9 @@ export const LOVE_TEMPLATE_LABELS_TH: Record<string, string> = {
 export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   // สี/ของมงคล
   colorItem: "สี/ของมงคล รายธาตุ",
+  colorOnly: "สีมงคล รายธาตุ",
+  gemItem: "เครื่องประดับ/อัญมณี รายธาตุ",
+  amuletItem: "วัตถุมงคล รายธาตุ",
   colorAvoid: "สีที่ควรเลี่ยง",
   bagColor: "สีกระเป๋า/อุปกรณ์ทำกิน",
   bagColorFallback: "สีกระเป๋า (สำรอง)",
@@ -115,16 +118,21 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   direction: "ทิศมงคล",
   luckyAnimal: "สัตว์มงคล",
   shape: "สัญลักษณ์/รูปทรงมงคล",
+  clothingItem: "เสื้อผ้า/เครื่องแต่งกาย รายธาตุ",
+  moneyToolItem: "กระเป๋า/เคส/เครื่องมือหาเงิน รายธาตุ",
   colorsLead: "เกริ่นสี/ของมงคล",
   // สิ่งศักดิ์สิทธิ์/ดาวสี่ซิ้ง
   noGoodQiFallback: "ไม่มีเชี่ยงแซดี (เสริมด้วยทิศ)",
   sisingHeader: "ดาวสี่ซิ้งประจำดวง",
   sisingAspect: "ดาวสี่ซิ้ง รายด้าน",
   deityItem: "สิ่งศักดิ์สิทธิ์ รายธาตุ",
+  meritItem: "ทำบุญเสริมดวง รายธาตุ",
   deityPrimary: "องค์หลักที่ควรบูชา",
   deitySecondary: "องค์รอง",
   deityCustomHeader: "หัวข้อสิ่งศักดิ์สิทธิ์เฉพาะดวง",
   deityUsefulHeader: "หัวข้อสิ่งศักดิ์สิทธิ์ตามธาตุ",
+  deityNegotiation: "องค์เทพขอพร เจรจา/ทำงาน/ลงทุน/เดินทาง",
+  deityWealth: "องค์เทพขอพร โชคลาภ/เงินเก็บ",
   // อาชีพ/ลูกค้า
   careerMoneyWay: "วิธีหาเงินที่ถนัด",
   careerMarket: "กลุ่มลูกค้า/ตลาดเป้าหมาย",
@@ -231,6 +239,7 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   empOutputLine: "ลูกน้อง รายตำแหน่ง (ดาวถ่ายเท)",
   empVerdictLine: "คำทำนายบริวารตามตำรา",
   empLead: "เกริ่นลูกน้อง/บริวาร",
+  empMatch: "ลักษณะบริวาร (60 กะจื่อ matching)",
   empSeatBase: "ฐานบริวาร (เสายาม)",
   // การศึกษา
   eduLead: "เกริ่นการเรียน",
@@ -244,6 +253,8 @@ export const MISC_TEMPLATE_LABELS_TH: Record<string, string> = {
   eduStageHeader: "หัวข้อระดับ/แนวการศึกษา",
   eduFacultyHeader: "หัวข้อคณะ/สาขาที่ควรเรียน",
   eduFacultyLine: "คณะ/สาขา รายธาตุ",
+  eduBankHeader: "หัวข้อคลังความรู้ 5 ธาตุ",
+  eduBankLine: "คลังความรู้ 5 ธาตุ รายธาตุ",
   // พรสวรรค์/วาทศิลป์
   talentStageFallback: "พรสวรรค์ (ค่าเริ่มต้น)",
   talentMeaning: "พรสวรรค์: รูปแบบ+ความถนัด",

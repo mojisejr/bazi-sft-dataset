@@ -24,16 +24,17 @@ describe("reading narrative composer (15 chapters)", () => {
     });
     const state = await calculateBaziChart(raw, repository);
 
-    // ทุกบทเป็นฉบับ "กล่อง": เริ่มด้วยกล่องเกริ่นนำ (คอนเซ็ปต์บท + พาดหัวดิถี YLC) แล้วตามด้วย
-    // กล่องหัวข้อย่อยตาม docx — โครงร้อยแก้วเดิม (intro/สรุปนอกกล่อง) ตรวจผ่าน consumer path แทน
+    // ทุกบทเปิดด้วยส่วน "## บทนำ" (คอนเซ็ปต์บท + พาดหัวดิถี YLC) ตามด้วยกล่องหัวข้อย่อยตาม docx
+    // และปิดท้ายด้วยส่วน "## สรุป" — โครงบทนำ/สรุปเป็นส่วนมีสไตล์ทุกบท
     for (const topic of TOPIC_PATH.filter((x) => x.kind === "predict")) {
       const reading = buildTopicHumanReading(state, topic.id, raw);
       expect(reading, `${topic.id} ควรมีคำทำนาย`).toBeTruthy();
-      // อย่างน้อย 3 ย่อหน้า (เกริ่นนำ + เนื้อหา + ปิดท้าย)
+      // อย่างน้อย 3 ย่อหน้า (บทนำ + เนื้อหา + สรุป)
       expect(reading!.split("\n\n").length).toBeGreaterThanOrEqual(3);
-      // เริ่มด้วยกล่องเกริ่นนำ และเนื้อในกล่องมีคอนเซ็ปต์บท (CHAPTER_INTRO_TH)
-      expect(reading!.startsWith("[[box=เกริ่นนำ]]"), `${topic.id} ต้องเริ่มด้วยกล่องเกริ่นนำ`).toBe(true);
+      // เริ่มด้วยหัวข้อ "## บทนำ" และมีคอนเซ็ปต์บท (CHAPTER_INTRO_TH) + ปิดด้วย "## สรุป"
+      expect(reading!.startsWith("## บทนำ"), `${topic.id} ต้องเริ่มด้วยส่วนบทนำ`).toBe(true);
       expect(reading!).toContain(CHAPTER_INTRO_TH[topic.id]);
+      expect(reading!.includes("## สรุป"), `${topic.id} ต้องมีส่วนสรุป`).toBe(true);
     }
   });
 });

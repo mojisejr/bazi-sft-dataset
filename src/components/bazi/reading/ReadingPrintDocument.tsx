@@ -199,7 +199,15 @@ function renderMarkdown(text: string): ReactNode[] {
     if (heading) {
       flushPara();
       flushList();
-      blocks.push(<h4 key={key++} className="ylc-sub">{renderInline(heading[1])}</h4>);
+      // หัวข้อ "บทนำ"/"สรุป" = ส่วนมีสไตล์เฉพาะ (section band) — ต่างจากหัวข้อย่อยทั่วไป
+      const headingText = heading[1].trim();
+      const sectionClass =
+        headingText === "บทนำ"
+          ? "ylc-sub ylc-sub--intro"
+          : headingText === "สรุป"
+            ? "ylc-sub ylc-sub--summary"
+            : "ylc-sub";
+      blocks.push(<h4 key={key++} className={sectionClass}>{renderInline(headingText)}</h4>);
       continue;
     }
     if (bullet) {

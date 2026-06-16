@@ -344,6 +344,77 @@ export function ChapterEditor({ value, onChange, disabled }: ChapterEditorProps)
         <button type="button" onClick={() => editor.chain().focus().insertContent({ type: "pageBreak" }).run()}>
           แบ่งหน้า
         </button>
+        <span className="ylc-editor__sep" aria-hidden="true" />
+        <button
+          type="button"
+          title="แทรกหัวข้อ “บทนำ” (ส่วนเปิดบทแบบมีสไตล์)"
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertContent([
+                { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "บทนำ" }] },
+                { type: "paragraph" },
+              ])
+              .run()
+          }
+        >
+          + บทนำ
+        </button>
+        <button
+          type="button"
+          title="แทรกหัวข้อ “สรุป” (ส่วนปิดบทแบบมีสไตล์)"
+          onClick={() =>
+            editor
+              .chain()
+              .focus()
+              .insertContent([
+                { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "สรุป" }] },
+                { type: "paragraph" },
+              ])
+              .run()
+          }
+        >
+          + สรุป
+        </button>
+        <button
+          type="button"
+          title="เพิ่มกล่องใหญ่ (หัวข้อย่อย)"
+          onClick={() => {
+            const title = window.prompt("ชื่อหัวข้อกล่อง", "")?.trim();
+            if (title === undefined) return;
+            editor
+              .chain()
+              .focus()
+              .insertContent({ type: "box", attrs: { title }, content: [{ type: "paragraph" }] })
+              .run();
+          }}
+        >
+          + กล่อง
+        </button>
+        <button
+          type="button"
+          title="เพิ่มกล่องย่อย (วางเคอร์เซอร์ในกล่องใหญ่ก่อน)"
+          onClick={() => {
+            const title = window.prompt("ชื่อกล่องย่อย", "")?.trim();
+            if (title === undefined) return;
+            editor
+              .chain()
+              .focus()
+              .insertContent({ type: "box", attrs: { title }, content: [{ type: "paragraph" }] })
+              .run();
+          }}
+        >
+          + กล่องย่อย
+        </button>
+        <button
+          type="button"
+          title="ลบกล่องที่เคอร์เซอร์อยู่"
+          disabled={!editor.isActive("box")}
+          onClick={() => editor.chain().focus().deleteNode("box").run()}
+        >
+          ลบกล่อง
+        </button>
         {status !== "idle" ? (
           <span className={`ylc-editor__status ylc-editor__status--${status}`}>
             {status === "editing" ? "กำลังพิมพ์…" : "บันทึกแล้ว"}

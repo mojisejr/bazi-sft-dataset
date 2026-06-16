@@ -18,6 +18,10 @@ import type { KnowledgeCatalogEntry } from "@/lib/bazi/knowledge/knowledge-catal
 export const STEM_STRENGTH_MATRIX_ID = "STEM_STRENGTH_MATRIX_TH";
 export const TWELVE_NAKSHATRA_ID = "TWELVE_NAKSHATRA_TH";
 export const SIXTY_JIAZI_ID = "SIXTY_JIAZI_TH";
+/** บท 10 บริวาร — ลักษณะบริวารจาก 60 กะจื่อ (matching เสายาม) ให้ซินแสแก้รายกะจื่อ */
+export const SUBORDINATE_MATCHING_ID = "SUBORDINATE_MATCHING_TH";
+/** บท 11 การเรียน — คลังความรู้ 5 ธาตุ (วิชา/ทักษะ/แนวเรียนต่อธาตุ) */
+export const ELEMENT_LEARNING_BANK_ID = "ELEMENT_LEARNING_BANK_TH";
 
 /** 10 ราศีบน (天干) ตามลำดับ */
 export const STEM_ORDER = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
@@ -103,6 +107,48 @@ function buildJiaziEntry(): KnowledgeCatalogEntry {
   };
 }
 
+/** บท 10 · ลักษณะบริวาร 60 กะจื่อ (matching เสายาม) — default = ตัวกะจื่อเอง ให้ซินแสเติมคำอ่าน */
+function buildSubordinateMatchingEntry(): KnowledgeCatalogEntry {
+  const defaults: Record<string, string> = {};
+  const entryLabels: Record<string, string> = {};
+  for (const { ordinal, ganzhi } of SIXTY_JIAZI) {
+    defaults[ganzhi] = "";
+    entryLabels[ganzhi] = `#${ordinal} ${ganzhi}`;
+  }
+  return {
+    tableId: SUBORDINATE_MATCHING_ID,
+    label: "บท 10 · ลักษณะบริวาร (60 กะจื่อ — matching เสายาม)",
+    keyKind: "raw",
+    defaults,
+    entryLabels,
+  };
+}
+
+/** บท 11 · คลังความรู้ 5 ธาตุ — วิชา/ทักษะ/แนวการเรียนตามธาตุ (key = ชื่อธาตุไทย)
+ *  export เพื่อใช้เป็น defaults ของ K() ใน topic-knowledge (overlay override ทับได้) */
+export const ELEMENT_LEARNING_BANK_DEFAULTS: Record<string, string> = {
+  "ไม้": "สายภาษา/การสื่อสาร/การศึกษา/งานเขียน-สร้างสรรค์ และความรู้ที่ต่อยอดเติบโตได้เรื่อย ๆ เรียนแบบค่อยเป็นค่อยไปสะสมทีละขั้น",
+  "ไฟ": "สายสื่อ/ศิลปะ/การนำเสนอ/วิชาที่ใช้ความคิดสร้างสรรค์และพลังแสดงออก เรียนได้ดีเมื่อมีเวทีให้โชว์และแรงบันดาลใจ",
+  "ดิน": "สายปฏิบัติ/วิศวกรรม/อสังหาฯ/บริหารจัดการที่จับต้องได้ เรียนแบบลงมือทำซ้ำจนชำนาญ มั่นคงเป็นระบบ",
+  "ทอง": "สายตรรกะ/เทคนิค/กฎเกณฑ์/วิเคราะห์-ตัดสินใจเฉียบคม (วิศวะ/คอม/กฎหมาย/การเงินเชิงระบบ) เรียนแบบมีโครงสร้างชัด",
+  "น้ำ": "สายการค้า/บริการ/ข้อมูล/การเงิน-การลงทุน/เครือข่าย เรียนแบบยืดหยุ่นปรับตัวไว เก่งเชื่อมโยงและต่อรอง",
+};
+function buildElementLearningBankEntry(): KnowledgeCatalogEntry {
+  const defaults: Record<string, string> = {};
+  const entryLabels: Record<string, string> = {};
+  for (const el of ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"]) {
+    defaults[el] = ELEMENT_LEARNING_BANK_DEFAULTS[el] ?? "";
+    entryLabels[el] = `ธาตุ${el}`;
+  }
+  return {
+    tableId: ELEMENT_LEARNING_BANK_ID,
+    label: "บท 11 · คลังความรู้ 5 ธาตุ (วิชา/ทักษะ/แนวเรียน)",
+    keyKind: "raw",
+    defaults,
+    entryLabels,
+  };
+}
+
 export const STANDALONE_EDITABLE_TABLES: readonly KnowledgeCatalogEntry[] = [
   buildStemBandEntry(
     STEM_STRENGTH_MATRIX_ID,
@@ -110,6 +156,8 @@ export const STANDALONE_EDITABLE_TABLES: readonly KnowledgeCatalogEntry[] = [
   ),
   buildNakshatraEntry(),
   buildJiaziEntry(),
+  buildSubordinateMatchingEntry(),
+  buildElementLearningBankEntry(),
 ];
 
 export const STANDALONE_TABLE_IDS = new Set(

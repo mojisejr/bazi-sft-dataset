@@ -13,8 +13,11 @@ import {
 } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 import { resolveEntry } from "@/lib/bazi/knowledge/knowledge-overlay";
 import {
+  ELEMENT_LEARNING_BANK_DEFAULTS,
+  ELEMENT_LEARNING_BANK_ID,
   SIXTY_JIAZI_ID,
   STEM_STRENGTH_MATRIX_ID,
+  SUBORDINATE_MATCHING_ID,
   TWELVE_NAKSHATRA_ID,
 } from "@/lib/bazi/knowledge/standalone-tables";
 import {
@@ -3114,6 +3117,9 @@ function buildLoveReading(
 export const MISC_TEMPLATE_TH: Record<string, string> = {
   // ── บท 14 สี/ของมงคล ──
   colorItem: "ธาตุ{ธาตุ} (เสริมดวง): สีมงคล {สี}; อัญมณี {อัญมณี}; วัตถุมงคล {วัตถุ}{สรรพคุณ}",
+  colorOnly: "สีมงคล (ธาตุ{ธาตุ}): {สี}{สรรพคุณ}",
+  gemItem: "เครื่องประดับ/อัญมณี (ธาตุ{ธาตุ}): {อัญมณี}",
+  amuletItem: "วัตถุมงคล (ธาตุ{ธาตุ}): {วัตถุ}",
   colorAvoid: "สีที่ควรเลี่ยง: สีธาตุ{ธาตุ}{สี} เพราะเป็นธาตุที่พิฆาตและกดดันดิถี",
   bagColor: "สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต) — เทียบดิถี {ก้าน} กับราศีบนหลักเดือน {ก้านเดือน}: {สี}",
   bagColorFallback: "สีกระเป๋าสตางค์ / อุปกรณ์ทำมาหากิน (มือถือ โน้ตบุ๊ก แท็บเล็ต): เน้นสีธาตุ{ธาตุ} ({สี})",
@@ -3128,7 +3134,8 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   noGoodQiFallback: "ไม่มีตัวอักษรเชี่ยงแซดีที่ใช้เสริมดวงได้ — ให้เสริมธาตุ{ธาตุ}ด้วยทิศมงคล: {ทิศ}",
   sisingHeader: "ดาวสี่ซิ้งประจำดวง (ตามราศีล่างหลักวัน {ก้านล่าง}): {ชื่อจีน} ({ชื่อไทย})",
   sisingAspect: "ด้าน{ด้าน}: {เนื้อหา}",
-  deityItem: "ธาตุ{ธาตุ} (useful god): สิ่งศักดิ์สิทธิ์ {สิ่งศักดิ์สิทธิ์}{สรรพคุณ}; การทำบุญ {ทำบุญ}",
+  deityItem: "ธาตุ{ธาตุ} (useful god): สิ่งศักดิ์สิทธิ์ {สิ่งศักดิ์สิทธิ์}{สรรพคุณ}",
+  meritItem: "ทำบุญเสริมดวง (ธาตุ{ธาตุ}): {ทำบุญ}",
   deityPrimary: "องค์หลักที่ควรบูชา (ดีที่สุดจากการเทียบเชี่ยงแซทั้งผัง): {องค์}",
   deitySecondary: "องค์รอง (บูชาประกอบได้): {องค์}",
   deityCustomHeader: "สิ่งศักดิ์สิทธิ์เฉพาะดวง (เทียบเชี่ยงแซตัวอักษรทั้งผัง แล้วเลือกดีที่สุด 2 องค์ — 1 หลัก + 1 รอง):\n{รายการ}",
@@ -3241,6 +3248,7 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   empOutputLine: "{เสา} (ดาวถ่ายเทธาตุ{ธาตุ}{เชี่ยงแซ}) = {เนื้อหา}",
   empVerdictLine: "คำทำนายบริวารตามตำรา (เซียงแซ {เชี่ยงแซ}): {เนื้อหา}",
   empLead: "ลูกน้อง/บริวารดูจากเสายาม ({บุคคล}) ร่วมกับดาวถ่ายเท (ธาตุ{ธาตุ}) อ่านตาม 12 เชี่ยงแซ ดีคือดี เสียคือเสีย",
+  empMatch: "ลักษณะบริวารตามพื้นดวง (เทียบเสายาม {เสา} กับคลัง 60 กะจื่อ): {เนื้อหา}",
   empSeatBase: "เสายาม {เสา} ธาตุ{ธาตุ}{เชี่ยงแซ} = ฐานของลูกน้อง/บริวารและผลงาน — คุณภาพอ่านจากเซียงแซดังนี้:",
   // ── บท 11 การเรียน/การศึกษา ──
   eduLead: "การเรียนอ่านจาก \"ดาวถ่ายเท\" (ธาตุ{ธาตุ}) = การนำสมอง/ทักษะออกมาใช้ ยิ่ง 12 เซียงแซดี ยิ่งเรียนตรงสายแล้วได้ใช้หาเงินจริง ถ้าเซียงแซไม่ดี มักเรียนแล้วไม่ได้ใช้สายตรง ต้องไปหาเงินตามแนวของเซียงแซนั้นแทน",
@@ -3254,6 +3262,8 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   eduStageHeader: "ระดับและแนวการศึกษาตามเชี่ยงแซของดาวถ่ายเทรายหลัก (Step 6.2):\n{รายการ}",
   eduFacultyHeader: "ควรเรียนสายที่ตรงกับธาตุที่ดวงต้องการ (useful god: {ธาตุ}) เพื่อแปลงความรู้เป็นรายได้:",
   eduFacultyLine: "• สายธาตุ{ธาตุ} — {เนื้อหา}",
+  eduBankHeader: "อ้างอิงคลังความรู้ 5 ธาตุ — แนวการเรียน/ทักษะที่เสริมดวง (ธาตุ{ธาตุ}):",
+  eduBankLine: "• ธาตุ{ธาตุ} — {เนื้อหา}",
   // ── บท 5 พรสวรรค์/ความสามารถ + วาทศิลป์ ──
   talentStageFallback: "ใช้ทักษะได้ดีตามจังหวะที่เหมาะ",
   talentMeaning: "{รูปแบบ} — โดดเด่นด้าน{ความถนัด}",
@@ -3310,6 +3320,10 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   verdictNeutralFall: "ชะลอตัว ควรระมัดระวังและรักษาฐานเดิมเอาไว้",
   colorBenefitSuffix: " — ช่วย{สรรพคุณ}",
   deityBenefitSuffix: " (ช่วยเรื่อง: {สรรพคุณ})",
+  clothingItem: "เสื้อผ้า/เครื่องแต่งกาย (ธาตุ{ธาตุ}): {เนื้อหา}",
+  moneyToolItem: "กระเป๋าสตางค์/เคสโทรศัพท์/เครื่องมือหาเงิน (ธาตุ{ธาตุ}): {เนื้อหา}",
+  deityNegotiation: "องค์เทพขอพร เจรจา/ทำงาน/ลงทุน/เดินทาง (ธาตุ{ธาตุ}): {เนื้อหา}",
+  deityWealth: "องค์เทพขอพร โชคลาภ/เงินเก็บ (ธาตุ{ธาตุ}): {เนื้อหา}",
   // ── บท 16 การพูด/การสื่อสาร ──
   speechLead: "การพูดและการสื่อสารอ่านจาก \"ดาวถ่ายเท\" (ธาตุ{ธาตุ}) ว่าตกสภาวะ 12 เชี่ยงแซตัวใดในแต่ละหลัก เชี่ยงแซดีจะสื่อสารได้น่าเชื่อถือ ส่วนเชี่ยงแซเสียมักพูดพลาดหรือสื่อสารติดขัด",
   speechStageLine: "{บริบท} (ดาวถ่ายเทตกเชี่ยงแซ {เชี่ยงแซ}) = {เนื้อหา}",
@@ -3335,6 +3349,42 @@ export const ELEMENT_SHAPE_TH: Record<ThaiElement, string> = {
   "น้ำ": "ทรงโค้งมน/ลายคลื่น",
 };
 
+/** บท 14 · เสื้อผ้า/เครื่องแต่งกาย ตามธาตุที่ดวงต้องการ (แก้ในคลังได้ — ซินแสปรับ/เพิ่มได้) */
+export const ELEMENT_CLOTHING_TH: Record<ThaiElement, string> = {
+  "ไม้": "เสื้อผ้าโทนเขียว/ลายต้นไม้-ใบไม้ เนื้อผ้าธรรมชาติ ทรงยาวสุภาพ",
+  "ไฟ": "เสื้อผ้าโทนแดง/ส้ม/ม่วง ลายแหลมหรือลายจุดประกาย ทรงเปรี้ยวสดใส",
+  "ดิน": "เสื้อผ้าโทนเหลือง/น้ำตาล/ครีม เนื้อหนาแน่น ทรงเรียบมั่นคง",
+  "ทอง": "เสื้อผ้าโทนขาว/ทอง/เทาเงิน เนื้อเรียบเงา ทรงคม มีโครงสร้างชัด",
+  "น้ำ": "เสื้อผ้าโทนดำ/น้ำเงิน/เทาเข้ม ลายคลื่นหรือทรงพลิ้วไหว",
+};
+
+/** บท 14 · กระเป๋าสตางค์/เคสโทรศัพท์/เครื่องมือหาเงิน ตามธาตุ (แก้ในคลังได้) */
+export const ELEMENT_MONEYTOOL_TH: Record<ThaiElement, string> = {
+  "ไม้": "เคส/กระเป๋าโทนเขียว วัสดุผ้า-หนังแท้ ลายธรรมชาติ",
+  "ไฟ": "เคส/กระเป๋าโทนแดง-ส้ม ลายประกายหรือดีไซน์โดดเด่นสะดุดตา",
+  "ดิน": "เคส/กระเป๋าโทนน้ำตาล-เหลือง วัสดุหนาทนทาน ทรงเหลี่ยมมั่นคง",
+  "ทอง": "เคส/กระเป๋าโทนขาว-ทอง-เงิน วัสดุโลหะ/เรียบเงา มีดีเทลคม",
+  "น้ำ": "เคส/กระเป๋าโทนดำ-น้ำเงิน ลายคลื่นหรือผิวมันเงา",
+};
+
+/** บท 15 · องค์เทพขอพร เจรจา/ทำงาน/ลงทุน/เดินทาง ตามธาตุที่ดวงต้องการ (แก้ในคลังได้) */
+export const ELEMENT_DEITY_NEGOTIATION_TH: Record<ThaiElement, string> = {
+  "ไม้": "พระโพธิสัตว์กวนอิม / เทพเจ้าไท้เผ่ง(สันติ-เจรจา)",
+  "ไฟ": "พระพรหม / เทพเจ้ากวนอู (บารมี-การงาน)",
+  "ดิน": "พระสังกัจจายน์ / เจ้าที่เจ้าทาง (ความมั่นคง-ที่ดิน)",
+  "ทอง": "เทพเจ้ากวนอู / พระแม่กาลี (อำนาจ-ตัดสินใจเด็ดขาด)",
+  "น้ำ": "เทพเจ้าไฉ่ซิงเอี้ย / พระแม่ลักษมี (เจรจา-เดินทาง-หมุนเวียน)",
+};
+
+/** บท 15 · องค์เทพขอพร โชคลาภ/เงินเก็บ ตามธาตุที่ดวงต้องการ (แก้ในคลังได้) */
+export const ELEMENT_DEITY_WEALTH_TH: Record<ThaiElement, string> = {
+  "ไม้": "พระแม่โพสพ / เทพเจ้าไฉ่ซิงเอี้ยปางเขียว (ทรัพย์งอกเงย)",
+  "ไฟ": "เทพเจ้าไฉ่ซิงเอี้ย / พระแม่ลักษมี (โชคลาภ-ชื่อเสียง)",
+  "ดิน": "เจ้าที่เจ้าทาง / ปี่เซียะ (สะสม-เก็บทรัพย์)",
+  "ทอง": "เทพเจ้าไฉ่ซิงเอี้ยปางทอง / กวนอู (เงินก้อน-การเงิน)",
+  "น้ำ": "พระแม่ลักษมี / เทพเจ้าไฉ่ซิงเอี้ย (กระแสเงินหมุนเวียน)",
+};
+
 function buildColorsReading(calculatedState: CalculatedStateValue): string | null {
   const section = parseSource7ElementSection("2.1", 3);
   if (!section) {
@@ -3348,22 +3398,31 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
 
   const colorField = (element: string, idx: number) =>
     elementSectionField("ELEMENT_COLOR_GEM_TH", ELEMENT_COLOR_GEM_TH, "2.1", element, idx);
-  const lines = adjustWithColor.map((element) => {
+  // แยกเป็นกล่องตามหัวข้อ docx: สีมงคล (กล่องหลัก) / เครื่องประดับ-อัญมณี / วัตถุมงคล (กล่องแยก)
+  const colorLines = adjustWithColor.map((element) => {
     const color = colorField(element, 0);
-    const gem = colorField(element, 1);
-    const amulet = colorField(element, 2);
     const benefit = K("ELEMENT_COLOR_BENEFIT_TH", ELEMENT_COLOR_BENEFIT_TH)[element];
     return ft(
       {
         "ธาตุ": element,
         "สี": color ?? "-",
-        "อัญมณี": gem ?? "-",
-        "วัตถุ": amulet ?? "-",
         "สรรพคุณ": benefit ? ft({ "สรรพคุณ": benefit }, "colorBenefitSuffix") : "",
       },
-      "colorItem",
+      "colorOnly",
     );
   });
+  const gemLines = adjustWithColor
+    .map((element) => {
+      const gem = colorField(element, 1);
+      return gem ? ft({ "ธาตุ": element, "อัญมณี": gem }, "gemItem") : null;
+    })
+    .filter((line): line is string => Boolean(line));
+  const amuletLines = adjustWithColor
+    .map((element) => {
+      const amulet = colorField(element, 2);
+      return amulet ? ft({ "ธาตุ": element, "วัตถุ": amulet }, "amuletItem") : null;
+    })
+    .filter((line): line is string => Boolean(line));
 
   const adjustColors = adjustWithColor
     .map((element) => colorField(element, 0))
@@ -3424,10 +3483,37 @@ function buildColorsReading(calculatedState: CalculatedStateValue): string | nul
     ),
   );
 
-  // lead-clause นำกลุ่มลิสต์สี (YLC style) — เกริ่นจาก fact เดิม (สมดุลดิถี) ไม่เจาะจงชื่อธาตุเพื่อไม่ชนลำดับ test
-  const colorsLead = lines.length > 0 ? ft({}, "colorsLead") : null;
+  // เสื้อผ้า + กระเป๋า/เคส/เครื่องมือหาเงิน ตามธาตุที่ดวงต้องการ (overlay ใหม่ — ซินแสแก้ในคลังได้)
+  // แยกเป็นกล่อง "เสื้อผ้า" และรวม "เครื่องมือหาเงิน" เข้ากล่องกระเป๋า/เคส (bagColor ขึ้นต้น "สีกระเป๋าสตางค์")
+  const clothingLines = adjust
+    .map((element) => {
+      const clothing = K("ELEMENT_CLOTHING_TH", ELEMENT_CLOTHING_TH)[element];
+      return clothing ? ft({ "ธาตุ": element, "เนื้อหา": clothing }, "clothingItem") : null;
+    })
+    .filter((line): line is string => Boolean(line));
+  const moneyToolLines = adjust
+    .map((element) => {
+      const tool = K("ELEMENT_MONEYTOOL_TH", ELEMENT_MONEYTOOL_TH)[element];
+      return tool ? ft({ "ธาตุ": element, "เนื้อหา": tool }, "moneyToolItem") : null;
+    })
+    .filter((line): line is string => Boolean(line));
 
-  return [colorsLead, ...lines, avoid, ...extras].filter(Boolean).join("\n\n");
+  // lead-clause นำกลุ่มลิสต์สี (YLC style) — เกริ่นจาก fact เดิม (สมดุลดิถี) ไม่เจาะจงชื่อธาตุเพื่อไม่ชนลำดับ test
+  const colorsLead = colorLines.length > 0 ? ft({}, "colorsLead") : null;
+
+  // เรียงตามหัวข้อ docx: สี/ทิศ(หลัก) → เสื้อผ้า → เครื่องประดับ → วัตถุมงคล → กระเป๋า/เคส/เครื่องมือ → รถ → สัตว์ → ทิศ
+  return [
+    colorsLead,
+    ...colorLines,
+    avoid,
+    ...clothingLines,
+    ...gemLines,
+    ...amuletLines,
+    ...moneyToolLines,
+    ...extras,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 // เชี่ยงแซดีตาม Source7 §5 (custom เทพ) — กว้างกว่า GOOD_QI: รวม หมอ/ทอ/เอี้ยง ด้วย
@@ -3670,22 +3756,26 @@ function buildDeitiesReading(calculatedState: CalculatedStateValue): string | nu
   }
   const ft = (vars: Record<string, string>, key: string) =>
     fillTemplate("MISC_TEMPLATE_TH", MISC_TEMPLATE_TH, vars, key);
-  const elementLines = resolveUsefulElements(calculatedState)
-    .filter((element) => section.has(element))
+  const usefulWithDeity = resolveUsefulElements(calculatedState).filter((element) => section.has(element));
+  // แยกเป็น 2 กล่องตาม docx: "องค์เทพคุ้มครองดวงชะตา" (สิ่งศักดิ์สิทธิ์) และ "ทำบุญเสริมดวง"
+  const elementLines = usefulWithDeity.map((element) => {
+    const deities = elementSectionField("ELEMENT_MERIT_DEITY_TH", ELEMENT_MERIT_DEITY_TH, "2.2", element, 1);
+    const benefit = K("ELEMENT_DEITY_BENEFIT_TH", ELEMENT_DEITY_BENEFIT_TH)[element];
+    return ft(
+      {
+        "ธาตุ": element,
+        "สิ่งศักดิ์สิทธิ์": deities ?? "-",
+        "สรรพคุณ": benefit ? ft({ "สรรพคุณ": benefit }, "deityBenefitSuffix") : "",
+      },
+      "deityItem",
+    );
+  });
+  const meritLines = usefulWithDeity
     .map((element) => {
       const merit = elementSectionField("ELEMENT_MERIT_DEITY_TH", ELEMENT_MERIT_DEITY_TH, "2.2", element, 0);
-      const deities = elementSectionField("ELEMENT_MERIT_DEITY_TH", ELEMENT_MERIT_DEITY_TH, "2.2", element, 1);
-      const benefit = K("ELEMENT_DEITY_BENEFIT_TH", ELEMENT_DEITY_BENEFIT_TH)[element];
-      return ft(
-        {
-          "ธาตุ": element,
-          "สิ่งศักดิ์สิทธิ์": deities ?? "-",
-          "สรรพคุณ": benefit ? ft({ "สรรพคุณ": benefit }, "deityBenefitSuffix") : "",
-          "ทำบุญ": merit ?? "-",
-        },
-        "deityItem",
-      );
-    });
+      return merit ? ft({ "ธาตุ": element, "ทำบุญ": merit }, "meritItem") : null;
+    })
+    .filter((line): line is string => Boolean(line));
   if (elementLines.length === 0) {
     return null;
   }
@@ -3703,9 +3793,85 @@ function buildDeitiesReading(calculatedState: CalculatedStateValue): string | nu
     blocks.push(ft({ "รายการ": lines.join("\n") }, "deityCustomHeader"));
   }
   blocks.push(ft({ "รายการ": elementLines.join("\n\n") }, "deityUsefulHeader"));
+
+  // องค์เทพแยกตามวัตถุประสงค์ (overlay ใหม่ — ซินแสแก้ในคลังได้) ตามธาตุที่ดวงต้องการ
+  const usefulForDeity = resolveUsefulElements(calculatedState);
+  for (const element of usefulForDeity) {
+    const negotiation = K("ELEMENT_DEITY_NEGOTIATION_TH", ELEMENT_DEITY_NEGOTIATION_TH)[element];
+    if (negotiation) {
+      blocks.push(ft({ "ธาตุ": element, "เนื้อหา": negotiation }, "deityNegotiation"));
+    }
+  }
+  for (const element of usefulForDeity) {
+    const wealth = K("ELEMENT_DEITY_WEALTH_TH", ELEMENT_DEITY_WEALTH_TH)[element];
+    if (wealth) {
+      blocks.push(ft({ "ธาตุ": element, "เนื้อหา": wealth }, "deityWealth"));
+    }
+  }
+
+  // กล่อง "ทำบุญเสริมดวง" (แยกตาม docx)
+  for (const line of meritLines) {
+    blocks.push(line);
+  }
+
   const sising = buildSisingBlock(calculatedState);
   if (sising) blocks.push(sising);
   return blocks.join("\n\n");
+}
+
+/**
+ * บท 15 ฉบับ "กล่อง" ตาม docs (5 Box เท่านั้น) — แต่ละกล่องใหญ่มี "กล่องย่อยแยกแต่ละองค์เทพ"
+ * (เพิ่ม/ลดได้ในตัวแก้). กล่องคุ้มครองเอาเฉพาะ "องค์ดีที่สุด" จากเชี่ยงแซ 2-3 องค์
+ * (ไม่รวมดาวสี่ซิ้ง/รายชื่อตามธาตุยาว ๆ ที่อยู่ในฉบับ consumer)
+ */
+function buildDeitiesBoxes(calculatedState: CalculatedStateValue): string | null {
+  const useful = resolveUsefulElements(calculatedState);
+
+  // กล่องใหญ่ 1: องค์เทพคุ้มครองดวงชะตา → กล่องย่อยแยกองค์ (custom ดีที่สุด 2-3 องค์)
+  const guardianSubs = buildCustomDeities(calculatedState)
+    .slice(0, 3)
+    .map((line, i) => readingBox(`องค์ที่ ${i + 1}`, [line]));
+  const box1 = readingBox("องค์เทพคุ้มครองดวงชะตา", guardianSubs);
+
+  // กล่องใหญ่ 2: องค์เทพขอพร เจรจา/ทำงาน/ลงทุน/เดินทาง → กล่องย่อยแยกองค์ตามธาตุ
+  const negSubs = useful
+    .map((el) => {
+      const deity = K("ELEMENT_DEITY_NEGOTIATION_TH", ELEMENT_DEITY_NEGOTIATION_TH)[el];
+      return deity ? readingBox(`องค์เทพธาตุ${el}`, [deity]) : null;
+    })
+    .filter((b): b is string => Boolean(b))
+    .slice(0, 3);
+  const box2 = readingBox("องค์เทพขอพร เจรจา/ทำงาน/ลงทุน/เดินทาง", negSubs);
+
+  // กล่องใหญ่ 3: องค์เทพขอพร โชคลาภ/เงินเก็บ → กล่องย่อยแยกองค์ตามธาตุ
+  const wealthSubs = useful
+    .map((el) => {
+      const deity = K("ELEMENT_DEITY_WEALTH_TH", ELEMENT_DEITY_WEALTH_TH)[el];
+      return deity ? readingBox(`องค์เทพธาตุ${el}`, [deity]) : null;
+    })
+    .filter((b): b is string => Boolean(b))
+    .slice(0, 3);
+  const box3 = readingBox("องค์เทพขอพร โชคลาภ/เงินเก็บ", wealthSubs);
+
+  // กล่องใหญ่ 4: ทำบุญเสริมดวง → กล่องย่อยแยกตามธาตุ
+  const section = parseSource7ElementSection("2.2", 2);
+  const meritSubs = useful
+    .map((el) => {
+      if (!section?.has(el)) return null;
+      const merit = elementSectionField("ELEMENT_MERIT_DEITY_TH", ELEMENT_MERIT_DEITY_TH, "2.2", el, 0);
+      return merit ? readingBox(`ธาตุ${el}`, [merit]) : null;
+    })
+    .filter((b): b is string => Boolean(b))
+    .slice(0, 3);
+  const box4 = readingBox("ทำบุญเสริมดวง", meritSubs);
+
+  // กล่องใหญ่ 5: ข้อเสนอแนะ (ตามความเห็นซินแส)
+  const box5 = readingBox("ข้อเสนอแนะ (ตามความเห็นซินแส)", [
+    buildChapterAdvice(calculatedState, "guardian_deities"),
+  ]);
+
+  const boxes = [box1, box2, box3, box4, box5].filter((box) => box.length > 0);
+  return boxes.length > 0 ? boxes.join("\n\n") : null;
 }
 
 /** บท 2 อาชีพ = กรอบ (ดิถีแข็ง-อ่อน + ดาวถ่ายเท=วิธีหาเงิน) + สายงานตามธาตุที่ดวงต้องการ */
@@ -4450,8 +4616,24 @@ function buildSubordinateReading(calculatedState: CalculatedStateValue): string 
   const empVerdict = careerRelationVerdict("employee", qi);
   const empLine = empVerdict ? ft({ "เชี่ยงแซ": qi, "เนื้อหา": empVerdict }, "empVerdictLine") : null;
 
+  // (0) ลักษณะบริวารตามพื้นดวง — matching เสายาม (ฐานบริวาร) กับคลัง 60 กะจื่อ
+  //     ซินแสแก้รายกะจื่อได้ (overlay) มิฉะนั้น fallback คำนิสัยจาก index 60 กะจื่อ
+  const empMatchLine = ((): string | null => {
+    const jiaziKey = `${hour.stem}${hour.branch}`;
+    const override = (
+      resolveEntry(currentKnowledgeOverlay(), SUBORDINATE_MATCHING_ID, jiaziKey, "") ?? ""
+    ).trim();
+    if (override) {
+      return ft({ "เสา": jiaziKey, "เนื้อหา": override }, "empMatch");
+    }
+    const record = getPersonalityIndex()?.byStemBranch.get(`${hour.stem}|${hour.branch}`);
+    const traits = [record?.stemText, record?.branchText].filter(Boolean).join(" ").trim();
+    return traits ? ft({ "เสา": jiaziKey, "เนื้อหา": traits }, "empMatch") : null;
+  })();
+
   return [
     ft({ "บุคคล": PILLAR_CONTEXT_MAP.hour.businessPerson, "ธาตุ": elementLabel(output) }, "empLead"),
+    empMatchLine,
     // บรรทัดฐานเป็นกลาง (ไม่ตัดสินดี/ร้ายเอง) — คุณภาพอ่านจากเซียงแซในบรรทัดถัดไป กันขัดแย้งเมื่อเซียงแซไม่ดี
     ft({ "เสา": `${hour.stem}${hour.branch}`, "ธาตุ": elementLabel(stemElement(hour.stem)), "เชี่ยงแซ": qi ? ` (เซียงแซ ${qi})` : "" }, "empSeatBase"),
     hourVerdict,
@@ -4527,6 +4709,27 @@ function buildEducationReading(calculatedState: CalculatedStateValue): string | 
     if (K("FACULTY_BY_ELEMENT_TH", FACULTY_BY_ELEMENT_TH)[el]) {
       segments.push(ft({ "ธาตุ": el, "เนื้อหา": K("FACULTY_BY_ELEMENT_TH", FACULTY_BY_ELEMENT_TH)[el] }, "eduFacultyLine"));
     }
+  }
+
+  // คลังความรู้ 5 ธาตุ (มี default + overlay ที่ซินแสแก้ทับได้) — แนวการเรียน/ทักษะตามธาตุที่ดวงต้องการ
+  // อ่าน overlay ตรง (ไม่ผ่าน K) เลี่ยง access-recorder → ตารางอิสระไม่ต้องอยู่ใน KNOWLEDGE_CATALOG
+  const bankLines: string[] = [];
+  for (const el of useful) {
+    const bank = (
+      resolveEntry(
+        currentKnowledgeOverlay(),
+        ELEMENT_LEARNING_BANK_ID,
+        el,
+        ELEMENT_LEARNING_BANK_DEFAULTS[el] ?? "",
+      ) ?? ""
+    ).trim();
+    if (bank) {
+      bankLines.push(ft({ "ธาตุ": el, "เนื้อหา": bank }, "eduBankLine"));
+    }
+  }
+  if (bankLines.length > 0) {
+    segments.push(ft({ "ธาตุ": useful.join(" / ") }, "eduBankHeader"));
+    segments.push(bankLines.join("\n"));
   }
 
   return segments.join("\n\n");
@@ -4695,11 +4898,14 @@ function buildDerivedPersonReading(
 // ทุกบทเริ่มด้วย "กล่องเกริ่นนำ" (คอนเซ็ปต์บท + พาดหัวดิถีสไตล์ YLC) แล้วตามด้วยกล่องหัวข้อย่อย
 // บทที่หัวข้อย่อยแม็พจาก prose เดิมได้ → ใช้ spec จัดย่อหน้าเข้ากล่อง (prose path ไม่แตะ)
 
-const INTRO_BOX_TITLE = "เกริ่นนำ";
+/** หัวข้อ "บทนำ"/"สรุป" เป็นส่วนมีสไตล์ทุกบท (## → render เป็น section บทนำ/สรุป ใน PDF/Word/editor) */
+const INTRO_HEADING = "## บทนำ";
+const SUMMARY_HEADING = "## สรุป";
 
 /** กล่องเกริ่นนำของบท = คอนเซ็ปต์บท (CHAPTER_INTRO_TH) + พาดหัวดิถีสไตล์ YLC (buildChapterOpening) */
 function buildIntroBox(calculatedState: CalculatedStateValue, topicId: string): string {
-  return readingBox(INTRO_BOX_TITLE, [
+  // เนื้อหาบทนำวางใต้หัวข้อ "## บทนำ" เป็นย่อหน้าตรง ๆ (ไม่ห่อกล่อง เลี่ยงหัวข้อซ้ำ "เกริ่นนำ")
+  return composeParagraphs([
     K("CHAPTER_INTRO_TH", CHAPTER_INTRO_TH)[topicId],
     buildChapterOpening(calculatedState, topicId),
   ]);
@@ -4819,17 +5025,19 @@ const TOPIC_BOX_SPECS: Record<string, TopicBoxSpec> = {
     adviceTitle: "ข้อเสนอแนะการดูแลและการรักษา",
   },
   colors_directions: {
-    main: "เสื้อผ้าเครื่องแต่งกาย / สีมงคลประจำดวง",
+    main: "สี และทิศมงคล (สีกระเป๋า / สีรถ)",
     rules: [
-      { title: "โทรศัพท์ โน้ตบุ๊ก แท็บเล็ต เครื่องมือหาเงิน", match: /^สีกระเป๋าสตางค์/ },
+      { title: "เสื้อผ้า", match: /^เสื้อผ้า\/เครื่องแต่งกาย/ },
+      { title: "เครื่องประดับ", match: /^เครื่องประดับ\/อัญมณี/ },
+      { title: "วัตถุมงคล", match: /^วัตถุมงคล \(ธาตุ/ },
+      { title: "กระเป๋าสตางค์/เคสโทรศัพท์/เครื่องมือหาเงิน", match: /^สีกระเป๋าสตางค์|^กระเป๋าสตางค์/ },
       { title: "รถยนต์", match: /^สีรถยนต์/ },
+      { title: "สัตว์มงคล", match: /^สัตว์มงคล/ },
       { title: "ทิศมงคล", match: /^ทิศมงคล:/ },
     ],
+    adviceTitle: "ข้อเสนอแนะ (ตามความเห็นซินแส)",
   },
-  guardian_deities: {
-    main: "องค์เทพคุ้มครองดวงชะตา",
-    rules: [{ title: "ทำบุญเสริมดวง", match: /^สิ่งศักดิ์สิทธิ์ตามธาตุที่ดวงต้องการ/ }],
-  },
+  // หมายเหตุ: guardian_deities ใช้ buildDeitiesBoxes (nested box แยกองค์เทพ) ไม่ผ่าน spec นี้
 };
 
 /** หัวข้อย่อยบท 8 (เพื่อน/ศัตรู) ตาม docx — จัดกล่องจาก scanPositionRelations ตรง ๆ (มิตร/ศัตรูแยกกล่อง) */
@@ -4948,6 +5156,8 @@ function buildTopicBoxes(
       return buildBenefactorBoxes(calculatedState);
     case "friends_foes":
       return buildFriendsFoesBoxes(calculatedState);
+    case "guardian_deities":
+      return buildDeitiesBoxes(calculatedState);
     case "turning_points":
       return buildTurningPointsBoxes(calculatedState);
     default: {
@@ -4986,10 +5196,15 @@ export function buildTopicHumanReading(
   if (useBoxFormat) {
     const boxes = buildTopicBoxes(calculatedState, topicId, rawInput);
     if (boxes != null) {
+      const introBody = buildIntroBox(calculatedState, topicId);
+      const summaryBody =
+        buildElementClosingSimile(elementLabel(dayMasterElement(calculatedState)), topicId) ?? "";
       const composed = composeParagraphs([
-        buildIntroBox(calculatedState, topicId),
+        introBody.trim() ? INTRO_HEADING : null,
+        introBody,
         boxes,
-        buildElementClosingSimile(elementLabel(dayMasterElement(calculatedState)), topicId),
+        summaryBody.trim() ? SUMMARY_HEADING : null,
+        summaryBody,
       ]);
       return [composed, ...currentAppends(topicId)].filter((part) => part.trim().length > 0).join("\n\n");
     }
@@ -5016,12 +5231,14 @@ export function buildTopicHumanReading(
     elementLabel(dayMasterElement(calculatedState)),
     topicId,
   );
+  const introBody = composeParagraphs([K("CHAPTER_INTRO_TH", CHAPTER_INTRO_TH)[topicId], opening]);
+  const summaryBody = composeParagraphs([buildChapterAdvice(calculatedState, topicId), closing]);
   const composed = composeParagraphs([
-    K("CHAPTER_INTRO_TH", CHAPTER_INTRO_TH)[topicId],
-    opening,
+    introBody ? INTRO_HEADING : null,
+    introBody,
     wovenBody,
-    buildChapterAdvice(calculatedState, topicId),
-    closing,
+    summaryBody ? SUMMARY_HEADING : null,
+    summaryBody,
   ]);
   // เฟส 2: ต่อย่อหน้าความรู้ที่ซินแสเพิ่มออนไลน์ (always-on ต่อบท) — ถ้าไม่มี ผลเท่าเดิม
   return [composed, ...currentAppends(topicId)].filter((part) => part.trim().length > 0).join("\n\n");
