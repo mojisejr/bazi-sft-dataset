@@ -138,6 +138,29 @@
   color: #555;
 }
 
+.almanac-deities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.almanac-chip {
+  font-size: 0.72rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.4rem;
+  cursor: help;
+}
+
+.almanac-chip-good {
+  background: #e3f4e6;
+  color: #1f7a35;
+}
+
+.almanac-chip-bad {
+  background: #fbe3e6;
+  color: #b4231f;
+}
+
 .almanac-hours-label {
   font-weight: 600;
 }

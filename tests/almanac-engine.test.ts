@@ -7,6 +7,9 @@ import {
   buildAlmanacDay,
   buildAlmanacMonth,
   buildAlmanacYear,
+  checkHour,
+  huangdaoScore,
+  lifeStageScore,
   pillarsForDate,
 } from "@/lib/bazi/almanac/almanac-engine";
 
@@ -163,6 +166,63 @@ describe("almanac engine — interpretive layers vs ground truth (2569)", () => 
       expect(matchRatioInMonth(pred)).toBeGreaterThanOrEqual(0.98);
     });
   }
+});
+
+describe("almanac engine — สูตรคะแนนทางการ (เคี้ยงคุง) vs ground truth", () => {
+  // helper คำนวณตามตารางเคี้ยงคุงเป๊ะ (黃道/長生): ทดสอบเทียบค่าตารางทางการ
+  test("huangdaoScore/lifeStageScore = ตารางเคี้ยงคุงเป๊ะ", () => {
+    // 黃道(子→亥)=朱雀=B4=30 ; (巳→亥)=天德=B6=90 ; (午→申)=青龍=B1=70
+    expect(huangdaoScore("子", "亥")).toBe(30);
+    expect(huangdaoScore("巳", "亥")).toBe(90);
+    expect(huangdaoScore("午", "申")).toBe(70);
+    // 長生(乙@亥)=死=A8=10 ; (甲@亥)=長生=A1=80 ; (丙@午)=帝旺=A5=110
+    expect(lifeStageScore("乙", "亥")).toBe(10);
+    expect(lifeStageScore("甲", "亥")).toBe(80);
+    expect(lifeStageScore("丙", "午")).toBe(110);
+  });
+
+  // ไฟล์ให้ "รหัส" แต่ "ค่า" ในปฏิทินปรับมือโดยซินแส → กฎ reproduce ได้บางส่วน (documented)
+  test("กฎ approximate ค่าสกัด: P (黃道) ≥ 85%, O (長生 ±5) ≥ 85%", () => {
+    const rows = GOLDEN.filter((r) => pillarsForDate(...parts(r.date)).monthPillar.branch === r.month_branch);
+    let pOk = 0;
+    let oOk = 0;
+    for (const r of rows) {
+      const db = r.day_pillar[1];
+      if (huangdaoScore(r.month_branch, db) === r.scores[3]) pOk += 1;
+      if (Math.abs(lifeStageScore(r.day_pillar[0], db) - r.scores[2]) <= 5) oOk += 1;
+    }
+    expect(pOk / rows.length).toBeGreaterThanOrEqual(0.85);
+    expect(oOk / rows.length).toBeGreaterThanOrEqual(0.85);
+  });
+
+  test("autumn (酉 month) ใช้กฎ: ratioDay คำนวณได้ (0-1) + exact=false", () => {
+    const sep = buildAlmanacMonth(2026, 9);
+    expect(sep.days.some((d) => d.strength.exact === false)).toBe(true);
+    for (const d of sep.days) {
+      expect(d.strength.ratioDay).toBeGreaterThanOrEqual(0);
+      expect(d.strength.ratioDay).toBeLessThanOrEqual(1.2);
+    }
+  });
+});
+
+describe("almanac engine — เทพดี/เทพร้าย + ตรวจยาม", () => {
+  test("มีวันที่เข้าเกณฑ์เทพดี/เทพร้าย ในปี และโครงสร้างถูก", () => {
+    const year = buildAlmanacYear(2569);
+    const days = year.months.flatMap((m) => m.days);
+    expect(days.some((d) => d.goodDeities.length > 0)).toBe(true);
+    expect(days.some((d) => d.badDeities.length > 0)).toBe(true);
+    for (const d of days) {
+      for (const s of [...d.goodDeities, ...d.badDeities]) expect(s.name).toBeTruthy();
+    }
+  });
+
+  test("checkHour คืนคุณภาพยาม (黃道) ของวัน+เวลา", () => {
+    const q = checkHour(2026, 6, 16, 15); // 15:00 = ยาม 申
+    expect(q.dayPillar).toHaveLength(2);
+    expect(q.hourBranch).toBe("申");
+    expect(q.god).not.toBe("");
+    expect(typeof q.good).toBe("boolean");
+  });
 });
 
 describe("almanac engine — any-year generation", () => {

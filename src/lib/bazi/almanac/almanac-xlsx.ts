@@ -83,6 +83,9 @@ function writeDayBlock(ws: ExcelJS.Worksheet, top: number, day: AlmanacDay): voi
   // ข้อมูลเดือน (แถวสุดท้ายของบล็อก)
   set(top + 5, 27, day.monthInfo.deity ? `เทพเดือน: ${day.monthInfo.deity}` : "");
   set(top + 5, 31, day.monthInfo.caishenDir ? `ไฉ่ซิ้ง: ${day.monthInfo.caishenDir}` : "");
+  // เทพดี/เทพร้าย (ฤกษ์ยามเคี้ยงคุง)
+  set(top + 3, 3, day.goodDeities.length ? `ดี: ${day.goodDeities.map((s) => s.name).join(", ")}` : "");
+  set(top + 4, 3, day.badDeities.length ? `ร้าย: ${day.badDeities.map((s) => s.name).join(", ")}` : "");
 }
 
 /** สร้าง workbook ปฏิทินทั้งปี (รับปี พ.ศ.) — คืน Buffer */

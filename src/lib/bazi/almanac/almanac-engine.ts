@@ -11,12 +11,7 @@
  */
 import { createRequire } from "node:module";
 
-import {
-  STEM_TO_ELEMENT,
-  BRANCH_TO_ELEMENT,
-  GENERATES,
-  CONTROLS,
-} from "@/lib/bazi/symbolic-engine.constants";
+import { STEM_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 
 import { splitGanZhi } from "@/lib/bazi/symbolic-engine.birth";
 
@@ -26,6 +21,10 @@ import monthTableJson from "@/lib/bazi/data/almanac/month-pillar-table.json";
 import spiritLegendJson from "@/lib/bazi/data/almanac/spirit-legend.json";
 import gateLegendJson from "@/lib/bazi/data/almanac/gate-legend.json";
 import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
+import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
+import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
+import deitiesGoodJson from "@/lib/bazi/data/almanac/deities-good.json";
+import deitiesBadJson from "@/lib/bazi/data/almanac/deities-bad.json";
 
 import type {
   AlmanacDay,
@@ -34,6 +33,7 @@ import type {
   AlmanacRecord,
   AsuraDirections,
   ColorInfo,
+  DeityStar,
   GateInfo,
   LuckyHour,
   MonthInfo,
@@ -72,6 +72,19 @@ const HOUR_GOD_LEGEND = hourGodLegendJson as Record<
   string,
   { god: string | null; meaning: string | null; score: number | null; good: boolean }
 >;
+const STAGE_LEGEND = stageLegendJson as Record<string, { name: string; score: number }>;
+const JIANCHU_LEGEND = jianchuLegendJson as Record<
+  string,
+  { name: string; score: number | string; meaning?: string; activity?: string }
+>;
+type DeityRow = {
+  name: string;
+  activity: string | null;
+  triggers: Record<string, string[]>;
+  note: string | null;
+};
+const DEITIES_GOOD = deitiesGoodJson as DeityRow[];
+const DEITIES_BAD = deitiesBadJson as DeityRow[];
 
 const WEEKDAYS_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"] as const;
 
@@ -104,6 +117,60 @@ const QINGLONG_START: Record<string, string> = {
 };
 // ลำดับ 12 เทพยาม → B-code (青龍,明堂,天刑,朱雀,金匱,天德,白虎,玉堂,天牢,玄武,司命,勾陳)
 const HOUR_GOD_CODES = ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8", "B9", "B10", "B11", "B12"];
+
+// ----- กฎคะแนนทางการ (ฤกษ์ยามเคี้ยงคุง) สำหรับเดือน autumn ที่ต้นฉบับ ปฏิทิน2569 ไม่มี -----
+const YANG_STEMS = new Set(["甲", "丙", "戊", "庚", "壬"]);
+// 长生 起 กิ่ง ต่อก้าน (จับหยี่เซี่ยงแซ ยืนยัน)
+const CHANGSHENG_START: Record<string, string> = {
+  甲: "亥", 乙: "午", 丙: "寅", 丁: "酉", 戊: "寅",
+  己: "酉", 庚: "巳", 辛: "子", 壬: "申", 癸: "卯",
+};
+const bIdx = (b: string) => BRANCH_ORDER12.indexOf(b as (typeof BRANCH_ORDER12)[number]);
+
+function resolveScore(v: number | string | null | undefined): number {
+  if (typeof v === "number") return v;
+  if (typeof v === "string" && v.includes("/")) {
+    const parts = v.split("/").map(Number).filter((n) => !Number.isNaN(n));
+    return parts.length ? parts.reduce((a, b) => a + b, 0) / parts.length : 0; // '30/70' -> 50
+  }
+  const n = Number(v);
+  return Number.isNaN(n) ? 0 : n;
+}
+
+/** 十二長生 stage score ของ (ก้าน @ กิ่ง) — A1=長生..A12=養 */
+export function lifeStageScore(stem: string, branch: string): number {
+  const start = bIdx(CHANGSHENG_START[stem]);
+  if (start < 0) return 0;
+  const step = YANG_STEMS.has(stem) ? 1 : -1;
+  const idx = (((bIdx(branch) - start) * step) % 12 + 12) % 12; // 0=長生..11=養
+  return resolveScore(STAGE_LEGEND[`A${idx + 1}`]?.score);
+}
+
+/** 黃道 B-score ของ (ฐานกิ่ง → เป้ากิ่ง) — 青龍 起 ที่ QINGLONG_START(ฐาน) */
+export function huangdaoScore(baseBranch: string, targetBranch: string): number {
+  const start = bIdx(QINGLONG_START[baseBranch]);
+  if (start < 0) return 0;
+  const idx = ((bIdx(targetBranch) - start) % 12 + 12) % 12; // 0=青龍(B1)..11=勾陳(B12)
+  return resolveScore(HOUR_GOD_LEGEND[`B${idx + 1}`]?.score);
+}
+
+/** 建除 C-score ของ (กิ่งเดือน → กิ่งวัน) — 建 ที่กิ่งเดือน */
+function jianchuScore(monthBranch: string, dayBranch: string): number {
+  const idx = ((bIdx(dayBranch) - bIdx(monthBranch)) % 12 + 12) % 12; // 0=建(C1)..11=閉(C12)
+  return resolveScore(JIANCHU_LEGEND[`C${idx + 1}`]?.score);
+}
+
+/** ดาวเทพ (ดี/ร้าย) ที่เข้าเกณฑ์ของวัน: คีย์ตามกิ่งเดือน → ตัวกระตุ้น (กิ่ง/ก้านวัน) */
+function deitiesFor(table: DeityRow[], monthBranch: string, dayStem: string, dayBranch: string): DeityStar[] {
+  const out: DeityStar[] = [];
+  for (const star of table) {
+    const trig = star.triggers[monthBranch];
+    if (trig && (trig.includes(dayStem) || trig.includes(dayBranch))) {
+      out.push({ name: star.name, activity: star.activity });
+    }
+  }
+  return out;
+}
 
 /** 5 ยามมงคล (黃道) ของวัน ตามกิ่งวัน — คำนวณได้ทุกปี */
 function luckyHoursByDayBranch(dayBranch: string): LuckyHour[] {
@@ -156,20 +223,24 @@ export function pillarsForDate(year: number, month: number, day: number) {
   };
 }
 
-/** โมเดลฤดู 旺相休囚死: กำลังก้านวันเทียบธาตุประจำฤดู (month-branch) — fallback เดือน autumn */
-function seasonalStrength(dayStem: string, monthBranch: string): number {
-  const d = (STEM_TO_ELEMENT as Record<string, string>)[dayStem];
-  const s = (BRANCH_TO_ELEMENT as Record<string, string>)[monthBranch];
-  if (!d || !s) return 50;
-  if (d === s) return 100; // 旺
-  if ((GENERATES as Record<string, string>)[s] === d) return 80; // 相
-  if ((GENERATES as Record<string, string>)[d] === s) return 40; // 休
-  if ((CONTROLS as Record<string, string>)[d] === s) return 20; // 囚
-  if ((CONTROLS as Record<string, string>)[s] === d) return 10; // 死
-  return 50;
+/**
+ * คะแนน D-group (O,P,Q,R) จากกฎทางการ — ใช้กับเดือน autumn ที่ ปฏิทิน2569 ไม่มีค่าสกัด
+ * O=長生(ก้านวัน@กิ่งวัน), P=黃道(กิ่งเดือน→กิ่งวัน), Q=黃道(กิ่งปี→กิ่งวัน), R=建除(กิ่งเดือน→กิ่งวัน)
+ * (O มี ±5 ปรับมือของซินแสซึ่งไม่อยู่ในไฟล์ → P/Q/R เป๊ะ, O ใช้ stage legend)
+ */
+function ruleDGroup(p: { dayStem: string; dayBranch: string; monthBranch: string; yearBranch: string }): number[] {
+  return [
+    lifeStageScore(p.dayStem, p.dayBranch),
+    huangdaoScore(p.monthBranch, p.dayBranch),
+    huangdaoScore(p.yearBranch, p.dayBranch),
+    jianchuScore(p.monthBranch, p.dayBranch),
+  ];
 }
 
-function buildStrength(rec: AlmanacRecord | null, dayStem: string, monthBranch: string): StrengthScore {
+function buildStrength(
+  rec: AlmanacRecord | null,
+  p: { dayStem: string; dayBranch: string; monthBranch: string; yearBranch: string },
+): StrengthScore {
   let values: number[];
   let max: number[];
   let exact: boolean;
@@ -178,9 +249,10 @@ function buildStrength(rec: AlmanacRecord | null, dayStem: string, monthBranch: 
     max = rec.max;
     exact = true;
   } else {
-    const s = seasonalStrength(dayStem, monthBranch);
-    values = [0, 0, s, s, s, s, s, s, s, s, s, s];
-    max = [0, 0, 100, 100, 100, 100, 100, 100, 100, 100, 100, 100];
+    // เดือน autumn: คำนวณ D-group จากกฎทางการ (E แม่น); DM/M/Y ยังไม่มีกฎครบ -> 0
+    const d = ruleDGroup(p);
+    values = [0, 0, d[0], d[1], d[2], d[3], 0, 0, 0, 0, 0, 0];
+    max = [0, 0, 100, 100, 100, 100, 0, 0, 0, 0, 0, 0];
     exact = false;
   }
   const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
@@ -269,7 +341,48 @@ export function buildAlmanacDay(year: number, month: number, day: number): Alman
     // เวลามงคล: คำนวณกฎ 黃道 จากกิ่งวัน (ถูกต้องทุกปี ไม่พึ่งตารางสกัด)
     luckyHours: luckyHoursByDayBranch(dayPillar.branch),
     monthInfo,
-    strength: buildStrength(m, dayPillar.stem, monthPillar.branch),
+    // เทพดี/เทพร้าย (ฤกษ์ยามเคี้ยงคุง): คีย์ตามกิ่งเดือน → ตัวกระตุ้นของวัน
+    goodDeities: deitiesFor(DEITIES_GOOD, monthPillar.branch, dayPillar.stem, dayPillar.branch),
+    badDeities: deitiesFor(DEITIES_BAD, monthPillar.branch, dayPillar.stem, dayPillar.branch),
+    strength: buildStrength(m, {
+      dayStem: dayPillar.stem,
+      dayBranch: dayPillar.branch,
+      monthBranch: monthPillar.branch,
+      yearBranch: yearPillar.branch,
+    }),
+  };
+}
+
+/** ตรวจคุณภาพ "ยามเดียว" (黃道) ของวัน+เวลาที่เลือก — ตาม กฎ 黃道 จากกิ่งวัน */
+export type HourQuality = {
+  date: string;
+  hour: number;
+  dayPillar: string;
+  hourBranch: string;
+  range: string;
+  god: string;
+  meaning: string;
+  score: number;
+  good: boolean;
+};
+
+export function checkHour(year: number, month: number, day: number, hour24: number): HourQuality {
+  const { dayPillar } = pillarsForDate(year, month, day);
+  // 時辰: 23:00-00:59=子, 1-2:59=丑, ... -> index = floor((hour+1)/2) % 12
+  const hb = BRANCH_ORDER12[Math.floor(((hour24 % 24) + 1) / 2) % 12];
+  const start = bIdx(QINGLONG_START[dayPillar.branch]);
+  const idx = ((bIdx(hb) - start) % 12 + 12) % 12;
+  const info = HOUR_GOD_LEGEND[`B${idx + 1}`];
+  return {
+    date: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+    hour: hour24,
+    dayPillar: dayPillar.ganzhi,
+    hourBranch: hb,
+    range: HOUR_RANGE[hb],
+    god: info?.god ?? "",
+    meaning: info?.meaning ?? "",
+    score: resolveScore(info?.score),
+    good: Boolean(info?.good),
   };
 }
 

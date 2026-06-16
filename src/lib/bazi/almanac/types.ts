@@ -61,6 +61,13 @@ export type AsuraDirections = {
   year: string;
 };
 
+export type DeityStar = {
+  /** ชื่อดาว เช่น วันธงชัย / วันแตกวัน */
+  name: string;
+  /** กิจกรรมที่เหมาะ (ดี) หรือควรเลี่ยง (ร้าย) */
+  activity: string | null;
+};
+
 export type MonthInfo = {
   /** เทพประจำเดือน */
   deity: string | null;
@@ -134,6 +141,10 @@ export type AlmanacDay = {
   spirits: SpiritInfo[];
   luckyHours: LuckyHour[];
   monthInfo: MonthInfo;
+  /** เทพดี (ฤกษ์มงคล) ที่เข้าเกณฑ์ของวัน */
+  goodDeities: DeityStar[];
+  /** เทพร้าย (ฤกษ์อัปมงคล) ที่เข้าเกณฑ์ของวัน */
+  badDeities: DeityStar[];
   strength: StrengthScore;
 };
 

@@ -10,6 +10,11 @@ type PatronInfo = { branch: string; number: number | null; zodiac: string };
 type AsuraDirections = { day: string; month: string; year: string };
 type MonthInfo = { deity: string | null; caishenDir: string | null; lapDir: string | null };
 type LuckyHour = { code: string; range: string; branch: string; god: string; meaning: string };
+type DeityStar = { name: string; activity: string | null };
+type HourQuality = {
+  date: string; hour: number; dayPillar: string; hourBranch: string;
+  range: string; god: string; meaning: string; score: number; good: boolean;
+};
 type Strength = { ratioTotal: number; ratioDay: number; exact: boolean };
 type AlmanacDay = {
   date: string;
@@ -30,6 +35,8 @@ type AlmanacDay = {
   spirits: SpiritInfo[];
   luckyHours: LuckyHour[];
   monthInfo: MonthInfo;
+  goodDeities: DeityStar[];
+  badDeities: DeityStar[];
   strength: Strength;
 };
 type AlmanacMonth = { yearBE: number; month: number; days: AlmanacDay[] };
@@ -51,6 +58,22 @@ export function AlmanacWorkspace() {
   const [data, setData] = useState<AlmanacMonth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // ตรวจยามเดียว (เลือกวัน+เวลา)
+  const today = new Date().toISOString().slice(0, 10);
+  const [checkDate, setCheckDate] = useState(today);
+  const [checkHour, setCheckHour] = useState(9);
+  const [hourResult, setHourResult] = useState<HourQuality | null>(null);
+
+  async function onCheckHour() {
+    try {
+      const res = await fetch(`/api/almanac?checkDate=${checkDate}&checkHour=${checkHour}`);
+      const json = await res.json();
+      if (res.ok) setHourResult(json);
+    } catch {
+      /* ignore */
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -100,6 +123,25 @@ export function AlmanacWorkspace() {
         <a className="almanac-download" href={`/api/almanac?yearBE=${yearBE}&format=xlsx`}>
           ⬇️ ดาวน์โหลด Excel ทั้งปี
         </a>
+      </div>
+
+      <div className="almanac-controls almanac-hourcheck">
+        <label>
+          ตรวจยาม — วันที่ (ค.ศ.)
+          <input type="date" value={checkDate} onChange={(e) => setCheckDate(e.target.value)} />
+        </label>
+        <label>
+          เวลา (ชม. 0–23)
+          <input type="number" min={0} max={23} value={checkHour} onChange={(e) => setCheckHour(Number(e.target.value))} />
+        </label>
+        <button type="button" className="almanac-download" onClick={onCheckHour}>
+          🔎 ตรวจยาม
+        </button>
+        {hourResult && (
+          <span className={`almanac-chip ${hourResult.good ? "almanac-chip-good" : "almanac-chip-bad"}`}>
+            {hourResult.good ? "✅" : "⛔"} ยาม{hourResult.hourBranch} ({hourResult.range}) — {hourResult.god} {hourResult.meaning} · {hourResult.score}%
+          </span>
+        )}
       </div>
 
       {loading && <p className="almanac-status">กำลังโหลด…</p>}
@@ -161,6 +203,21 @@ export function AlmanacWorkspace() {
                       {!day.strength.exact && <span className="almanac-approx"> (รวมประมาณ)</span>}</dd>
                   </div>
                 </dl>
+
+                {(day.goodDeities.length > 0 || day.badDeities.length > 0) && (
+                  <div className="almanac-deities">
+                    {day.goodDeities.map((s) => (
+                      <span key={`g-${s.name}`} className="almanac-chip almanac-chip-good" title={s.activity ?? ""}>
+                        ✅ {s.name}
+                      </span>
+                    ))}
+                    {day.badDeities.map((s) => (
+                      <span key={`b-${s.name}`} className="almanac-chip almanac-chip-bad" title={s.activity ?? ""}>
+                        ⛔ {s.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {day.luckyHours.length > 0 && (
                   <div className="almanac-hours">

@@ -1,0 +1,62 @@
+[
+  {
+    "triad": [
+      "寅",
+      "午",
+      "戌"
+    ],
+    "direction": "ทิศเหนือ",
+    "sectors": [
+      "亥",
+      "子",
+      "丑"
+    ],
+    "degree_from": 315.0,
+    "degree_to": 44.5
+  },
+  {
+    "triad": [
+      "亥",
+      "卯",
+      "未"
+    ],
+    "direction": "ทิศตะวันตก",
+    "sectors": [
+      "申",
+      "酉",
+      "戌"
+    ],
+    "degree_from": 225.0,
+    "degree_to": 314.5
+  },
+  {
+    "triad": [
+      "申",
+      "子",
+      "辰"
+    ],
+    "direction": "ทิศใต้",
+    "sectors": [
+      "巳",
+      "午",
+      "未"
+    ],
+    "degree_from": 135.0,
+    "degree_to": 224.5
+  },
+  {
+    "triad": [
+      "巳",
+      "酉",
+      "丑"
+    ],
+    "direction": "ทิศตะวันออก",
+    "sectors": [
+      "寅",
+      "卯",
+      "辰"
+    ],
+    "degree_from": 45.0,
+    "degree_to": 134.5
+  }
+]
