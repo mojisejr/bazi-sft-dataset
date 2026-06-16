@@ -1,0 +1,51 @@
+{
+  "己丑": {
+    "deity_key": "酉",
+    "deity": "พระสังกัจจายน์",
+    "caishen_dir": "ทิศ N",
+    "lap_dir": "ทิศ SE",
+    "asura_dir": "ทิศ E"
+  },
+  "庚寅": {
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "caishen_dir": "ทิศ E",
+    "lap_dir": "ทิศ SW",
+    "asura_dir": "ทิศ N"
+  },
+  "辛卯": {
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "caishen_dir": "ทิศ E",
+    "lap_dir": "ทิศ SW",
+    "asura_dir": "ทิศ N"
+  },
+  "壬辰": {
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "caishen_dir": "ทิศ S",
+    "lap_dir": "ทิศ W",
+    "asura_dir": "ทิศ S"
+  },
+  "癸巳": {
+    "deity_key": "酉",
+    "deity": "พระสังกัจจายน์",
+    "caishen_dir": "ทิศ S",
+    "lap_dir": "ทิศ NE",
+    "asura_dir": "ทิศ E"
+  },
+  "甲午": {
+    "deity_key": "癸",
+    "deity": "ท้าวเวสสุวรรณ",
+    "caishen_dir": "ทิศ SE",
+    "lap_dir": "ทิศ S",
+    "asura_dir": "ทิศ N"
+  },
+  "乙未": {
+    "deity_key": null,
+    "deity": null,
+    "caishen_dir": "พระสังกัจจายน์",
+    "lap_dir": null,
+    "asura_dir": "ทิศ SE"
+  }
+}

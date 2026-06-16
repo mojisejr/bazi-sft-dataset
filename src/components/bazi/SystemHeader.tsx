@@ -28,6 +28,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/divine-cards", icon: "🎴", label: "โหมดเซียน" },
   { href: "/fortune-sage", icon: "🎋", label: "เซียนเสี่ยงทาย" },
   { href: "/honeycomb", icon: "🐝", label: "เบอร์รังผึ้ง" },
+  { href: "/almanac", icon: "📅", label: "ปฏิทินโหรา" },
   { href: "/reading/history", icon: "🗂️", label: "ประวัติดวง" },
   { href: "/reading/knowledge", icon: "📚", label: "องค์ความรู้" },
 ];
