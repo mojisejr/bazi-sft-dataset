@@ -730,6 +730,12 @@ export function ReadingPathWorkspace({
     };
   });
 
+  // ลายเซ็นเนื้อหา PDF — เปลี่ยนเมื่อบท/ตารางบทเสริมเปลี่ยน (เช่น ลบ/เพิ่มกล่อง)
+  // ใช้เป็น key ของ PagedPreview เพื่อบังคับ paged.js ให้จัดหน้าใหม่ ไม่ค้างเนื้อหาเก่า
+  const pdfContentKey =
+    printChapters.map((chapter) => `${chapter.id}:${chapter.text ?? ""}`).join("|") +
+    `#${relationshipLines ? JSON.stringify(relationshipLines) : ""}`;
+
   // พิมพ์เอกสาร YLC → Save as PDF (ติด class ชั่วคราวให้ @media print ซ่อนทุกอย่างยกเว้นเอกสาร)
   function handlePrintYlc() {
     if (typeof window === "undefined") return;
@@ -982,6 +988,7 @@ export function ReadingPathWorkspace({
                     />
                   ) : (
                     <PagedPreview
+                      key={pdfContentKey}
                       onReady={() => {
                         // ถ้าผู้ใช้กด "บันทึก PDF (ฉบับที่แก้)" จากโหมดแก้ → จัดหน้าเสร็จแล้วสั่งพิมพ์ให้เลย
                         if (pendingPrintRef.current) {

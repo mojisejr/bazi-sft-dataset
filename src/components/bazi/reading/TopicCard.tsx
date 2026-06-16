@@ -521,31 +521,7 @@ export function TopicCard({
     }
   };
 
-  // เพิ่มความรู้/กล่องใหม่ท้ายบท (append global): publish text เป็นช่อง append ลำดับใหม่
-  const addAppend = async () => {
-    const body = addNoteBody.trim();
-    if (body.length === 0) return;
-    const title = addNoteTitle.trim();
-    if (addNoteKind === "box" && title.length === 0) {
-      setAppendStatus("กล่องใหม่ต้องมีชื่อหัวข้อ");
-      return;
-    }
-    const text =
-      addNoteKind === "box" ? `[[box=${title}]]\n**${title}**\n\n${body}\n[[/box]]` : body;
-    const ordinal = topicAppends.length + 1;
-    setAppendStatus("กำลังบันทึก…");
-    try {
-      await putAndPublishKnowledge(`append|${topic.id}|${ordinal}`, text);
-      setTopicAppends((cur) => [...cur, text]);
-      setAddNoteTitle("");
-      setAddNoteBody("");
-      setAddNoteOpen(false);
-      setAppendStatus("เพิ่มแล้ว ✓ มีผลทุกดวง (กดทำนายซ้ำเพื่อดูในดวงนี้)");
-    } catch (error) {
-      setAppendStatus(error instanceof Error ? error.message : "เพิ่มไม่สำเร็จ");
-    }
-  };
-
+  // (การ "เพิ่มกล่อง/ย่อหน้า" ย้ายไปเป็น per-chart ใน addSegmentPerChart — ไม่เขียนคลังกลางแล้ว)
   // ลบความรู้ที่เพิ่ม: ตั้ง text="" แล้ว publish (overlay ตัดช่องว่างทิ้งตอน render)
   const removeAppend = async (index: number) => {
     setAppendStatus("กำลังลบ…");
@@ -714,6 +690,41 @@ export function TopicCard({
                 }
               }
               setEditingBoxIdx(null);
+            };
+            // ลบทั้งกล่อง (เฉพาะดวงนี้): ตัด box seg นี้ออกแล้วบันทึกเป็น correction ของดวงนี้
+            // ไม่สร้างกฎข้ามดวง — ดวงอื่นในบทเดียวกันยังเห็นกล่องนี้ตามเดิม (เรียกคืนด้วย "ล้างการแก้ไข")
+            const deleteBox = (segIdx: number, boxTitle: string) => {
+              if (typeof window !== "undefined") {
+                const ok = window.confirm(
+                  `ลบกล่อง “${boxTitle || "ไม่มีหัวข้อ"}” ทั้งกล่อง?\nมีผลเฉพาะดวงนี้ — กด “ล้างการแก้ไข (กลับใช้ของระบบ)” เพื่อเรียกคืน`,
+                );
+                if (!ok) return;
+              }
+              const rebuilt = serializeReadingSegments(segments.filter((_, i) => i !== segIdx));
+              onSaveCorrection?.(topic.id, rebuilt);
+              if (editingBoxIdx === segIdx) setEditingBoxIdx(null);
+            };
+            // เพิ่มกล่อง/ย่อหน้าใหม่ "เฉพาะดวงนี้": ต่อ segment ใหม่ท้ายผลทำนายแล้วบันทึกเป็น correction ของดวงนี้
+            // (ไม่เขียนคลังกลาง → ไม่มีผลทุกดวง) ผลไหลเข้า displayText เดียวกับการ์ด/PDF จึงตรงกันทุกที่
+            const addSegmentPerChart = () => {
+              const rawBody = addNoteBody.trim();
+              if (rawBody.length === 0) return;
+              const title = addNoteTitle.trim();
+              if (addNoteKind === "box" && title.length === 0) {
+                setAppendStatus("กล่องใหม่ต้องมีชื่อหัวข้อ");
+                return;
+              }
+              const body = normalizeBoxBody(rawBody);
+              const newSeg: ReadingSegment =
+                addNoteKind === "box"
+                  ? { kind: "box", title, body: `**${title}**\n\n${body}` }
+                  : { kind: "text", raw: body };
+              const rebuilt = serializeReadingSegments([...segments, newSeg]);
+              onSaveCorrection?.(topic.id, rebuilt);
+              setAddNoteTitle("");
+              setAddNoteBody("");
+              setAddNoteOpen(false);
+              setAppendStatus("เพิ่มแล้ว ✓ (เฉพาะดวงนี้)");
             };
             // body ฉบับระบบ (ก่อนซินแสแก้) ของแต่ละกล่อง — ใช้ diff กับ body ปัจจุบันเพื่อเสนอกฎแทนคำต่อกล่อง
             const systemBoxBody = new Map<string, string>();
@@ -943,6 +954,14 @@ export function TopicCard({
                               >
                                 ยกเลิก
                               </button>
+                              <button
+                                type="button"
+                                className="topic-card__sinsae-link topic-card__sinsae-link--danger"
+                                title="ลบทั้งกล่องนี้ออกจากดวงนี้ (เรียกคืนได้)"
+                                onClick={() => deleteBox(segIdx, seg.kind === "box" ? seg.title : "")}
+                              >
+                                🗑 ลบทั้งกล่อง
+                              </button>
                             </div>
                           </div>
                         );
@@ -955,19 +974,29 @@ export function TopicCard({
                             {seg.title ? <div className="ylc-box__title">{seg.title}</div> : null}
                             <div className="ylc-box__body">{renderTextParas(seg.body, `b${segIdx}`)}</div>
                             {canEdit && (
-                              <button
-                                type="button"
-                                className="topic-card__box-edit"
-                                onClick={() => {
-                                  setEditingBoxIdx(segIdx);
-                                  const paras = splitBoxParagraphs(seg.body);
-                                  setBoxParaDrafts(paras.length > 0 ? paras : [seg.body]);
-                                  setActiveParaIdx(0);
-                                  boxTextareaRefs.current = [];
-                                }}
-                              >
-                                ✎ แก้กล่องนี้
-                              </button>
+                              <div className="topic-card__box-actions">
+                                <button
+                                  type="button"
+                                  className="topic-card__box-edit"
+                                  onClick={() => {
+                                    setEditingBoxIdx(segIdx);
+                                    const paras = splitBoxParagraphs(seg.body);
+                                    setBoxParaDrafts(paras.length > 0 ? paras : [seg.body]);
+                                    setActiveParaIdx(0);
+                                    boxTextareaRefs.current = [];
+                                  }}
+                                >
+                                  ✎ แก้กล่องนี้
+                                </button>
+                                <button
+                                  type="button"
+                                  className="topic-card__box-edit topic-card__box-edit--danger"
+                                  title="ลบทั้งกล่องนี้ออกจากดวงนี้ (เรียกคืนได้)"
+                                  onClick={() => deleteBox(segIdx, seg.title)}
+                                >
+                                  🗑 ลบทั้งกล่อง
+                                </button>
+                              </div>
                             )}
                             {onAddRule && sysBody && (
                               <CollapsibleBlock
@@ -1108,11 +1137,14 @@ export function TopicCard({
                       />
                     )}
 
-                    {/* เพิ่มกล่อง/ความรู้ใหม่ท้ายบท (append global — มีผลทุกดวงในบทนี้) */}
+                    {/* เพิ่มกล่อง/ย่อหน้าใหม่ท้ายบท "เฉพาะดวงนี้" (บันทึกเป็น correction — ไหลเข้าการ์ด/PDF เหมือนกัน) */}
                     {!editing && (
                       <div className="topic-card__add-note">
                         {topicAppends.filter((t) => t.trim()).length > 0 && (
                           <ul className="topic-card__add-note-list">
+                            <li className="topic-card__add-note-caption">
+                              ความรู้ที่เคยเพิ่มแบบ “ทุกดวง” (เดิม) — กดลบเพื่อเอาออกจากทุกดวง
+                            </li>
                             {topicAppends.map((text, i) =>
                               text.trim() ? (
                                 <li key={i} className="topic-card__add-note-item">
@@ -1144,7 +1176,7 @@ export function TopicCard({
                               setAppendStatus("");
                             }}
                           >
-                            ＋ เพิ่มความรู้/กล่องใหม่ (ทุกดวงในบทนี้)
+                            ＋ เพิ่มกล่อง/ย่อหน้าใหม่ (เฉพาะดวงนี้)
                           </button>
                         ) : (
                           <div className="topic-card__add-note-form">
@@ -1178,7 +1210,7 @@ export function TopicCard({
                             )}
                             <textarea
                               className="topic-card__sinsae-textarea"
-                              placeholder="พิมพ์เนื้อความรู้ที่จะต่อท้ายบทนี้…"
+                              placeholder="พิมพ์เนื้อความที่จะต่อท้ายบทนี้ (เฉพาะดวงนี้)…"
                               value={addNoteBody}
                               rows={4}
                               onChange={(e) => setAddNoteBody(e.target.value)}
@@ -1188,9 +1220,9 @@ export function TopicCard({
                                 tone="primary"
                                 type="button"
                                 disabled={addNoteBody.trim().length === 0}
-                                onClick={() => void addAppend()}
+                                onClick={() => addSegmentPerChart()}
                               >
-                                เพิ่ม (มีผลทุกดวง)
+                                เพิ่ม (เฉพาะดวงนี้)
                               </ActionButton>
                               <button
                                 type="button"

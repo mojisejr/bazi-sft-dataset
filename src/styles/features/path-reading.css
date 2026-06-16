@@ -245,6 +245,24 @@
 .topic-card__box-edit:hover {
   background: var(--rp-accent-soft, rgba(37, 99, 235, 0.08));
 }
+/* แถวปุ่มจัดการกล่อง (แก้ / ลบทั้งกล่อง) ในมุมมองอ่าน */
+.topic-card__box-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.55rem;
+}
+.topic-card__box-actions .topic-card__box-edit {
+  margin-top: 0;
+}
+.topic-card__box-edit--danger {
+  color: var(--state-error, #c0392b);
+  border-color: var(--state-error, #c0392b);
+}
+.topic-card__box-edit--danger:hover {
+  background: rgba(192, 57, 43, 0.08);
+}
 .topic-card__box--editing {
   box-shadow: 0 0 0 2px var(--rp-accent, #2563eb) inset;
 }
@@ -369,6 +387,11 @@
 }
 .topic-card__add-note-text {
   flex: 1;
+}
+.topic-card__add-note-caption {
+  font-size: 0.74rem;
+  font-style: italic;
+  color: var(--text-muted, #8a949c);
 }
 .topic-card__add-note-form {
   display: flex;
