@@ -138,6 +138,8 @@ export function ReadingPathWorkspace({
   const [batchProgress, setBatchProgress] = useState<{ done: number; total: number } | null>(null);
   // คลังคำแก้ของซินแส (localStorage) — โหลดครั้งเดียวตอน mount แล้วซิงค์กลับเมื่อแก้
   const [corrections, setCorrections] = useState<ReturnType<typeof loadCorrections>>({});
+  // ชื่อบท (หัวข้อใหญ่) ที่ซินแสแก้เอง (topicId → ชื่อใหม่) — ว่าง = ใช้ชื่อจาก topic-path
+  const [titleOverrides, setTitleOverrides] = useState<Record<string, string>>({});
 
   // ตารางบทเสริม (วัยจร) แบบแก้ไขได้ — source of truth เดียวสำหรับโชว์/พิมพ์/บันทึก
   // sync จากผลบท turning_points เมื่อรันใหม่ (ref กันการ sync ทับค่าที่แก้/restore จาก DB)
@@ -199,6 +201,7 @@ export function ReadingPathWorkspace({
         );
         setProvider(detail.sessionData?.provider ?? "gemini");
         setCorrections(detail.sessionData?.corrections ?? {});
+        setTitleOverrides(detail.sessionData?.titleOverrides ?? {});
         setLabel(detail.label ?? "");
         setSessionId(detail.id);
         setSavedAt(detail.updatedAt);
@@ -259,6 +262,7 @@ export function ReadingPathWorkspace({
         );
         setProvider(detail.sessionData?.provider ?? "gemini");
         setCorrections(detail.sessionData?.corrections ?? {});
+        setTitleOverrides(detail.sessionData?.titleOverrides ?? {});
         setLabel(detail.label ?? "");
         // ผูกกลับดวงต้นทาง (ถ้ายังอยู่) → กดบันทึกต่อเป็นการอัปเดตดวงนั้น ไม่ใช่สร้างใหม่
         setSessionId(detail.sessionId ?? null);
@@ -441,6 +445,20 @@ export function ReadingPathWorkspace({
     },
     [rawInput],
   );
+
+  // แก้ชื่อบท (หัวข้อใหญ่) เฉพาะดวงนี้ — ค่าว่าง/ตรงกับชื่อเดิม = ล้าง override กลับใช้ชื่อจาก topic-path
+  const handleRenameChapter = useCallback((topicId: string, title: string) => {
+    setTitleOverrides((current) => {
+      const next = { ...current };
+      // เก็บค่าดิบ (ไม่ trim) เพื่อให้พิมพ์เว้นวรรคกลางคำได้ — ว่างล้วน = ล้าง override กลับชื่อเดิม
+      if (title.trim().length === 0) {
+        delete next[topicId];
+      } else {
+        next[topicId] = title;
+      }
+      return next;
+    });
+  }, []);
 
   // คำแก้ของซินแสที่เกี่ยวข้องกับดวงปัจจุบันต่อบท (exact = override, similar = ป้อน LLM)
   const correctionFor = useCallback(
@@ -642,6 +660,7 @@ export function ReadingPathWorkspace({
         topicStates,
         corrections,
         readings,
+        titleOverrides,
         // ตารางบทเสริม "ฉบับที่แก้/gen แล้ว" (state เดียวกับที่โชว์/พิมพ์) → เก็บลง DB
         relationshipLines: relationshipLines ?? null,
       },
@@ -839,7 +858,7 @@ export function ReadingPathWorkspace({
     const result = topicStates[topic.id]?.result;
     return {
       chapter: topic.chapter,
-      title: topic.title,
+      title: titleOverrides[topic.id] ?? topic.title,
       id: topic.id,
       text: sinsae ? sinsae.corrected : (result?.humanReading ?? null),
     };
@@ -1125,6 +1144,7 @@ export function ReadingPathWorkspace({
                       chapters={printChapters}
                       relationshipLines={null}
                       onSaveChapter={handleSaveCorrection}
+                      onRenameChapter={handleRenameChapter}
                       onChangeLines={setRelationshipLines}
                       onGenerateLines={() => void handleGenerateRelationshipNotes()}
                       generatingLines={generatingLines}

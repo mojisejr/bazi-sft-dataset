@@ -32,6 +32,8 @@ export type ReadingSessionDataValue = {
   corrections: Record<string, SinsaeCorrection[]>;
   /** map คำอ่านสำหรับ export-docx (sinsae.corrected ?? humanReading ของ llm) */
   readings: Record<string, string>;
+  /** ชื่อบท (หัวข้อใหญ่) ที่ซินแสแก้เอง — keyed ด้วย topicId; ไม่มี = ใช้ชื่อจาก topic-path */
+  titleOverrides?: Record<string, string>;
   /** ตารางเส้นขีดความสัมพันธ์หมวดวัยจร (เฉพาะ turning_points) */
   relationshipLines: RelationshipLineRow[] | null;
 };

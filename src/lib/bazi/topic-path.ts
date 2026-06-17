@@ -154,7 +154,7 @@ export const TOPIC_PATH: readonly TopicDefinition[] = [
   {
     id: "turning_points",
     chapter: 12,
-    title: "ช่วงอายุที่ดี และช่วงที่ควรระมัดระวัง (Key Turning Points)",
+    title: "ช่วงอายุที่ดี และช่วงที่ควรระมัดระวัง",
     lens: "ดิถีแข็ง/อ่อน + ตารางวัยจรเชิงลึก: เสาวัยจร × ปฏิกิริยาธาตุ 5 ธาตุ × 12 เชี่ยงแซ + ผั่วไฉ่โข่ว/กึ่งผั่วไฉ่โข่ว",
     kind: "predict",
     relationKeys: [],

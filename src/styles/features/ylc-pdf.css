@@ -961,6 +961,38 @@
   font-weight: 700;
   color: var(--ylc-teal-deep);
 }
+.ylc-edit-main__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 14px;
+}
+.ylc-edit-main__title-num {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  flex: none;
+}
+.ylc-edit-main__title-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ylc-teal-deep);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.ylc-edit-main__title-input:hover {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+.ylc-edit-main__title-input:focus {
+  outline: none;
+  border-color: var(--ylc-teal-deep);
+  background: #ffffff;
+}
 .ylc-edit-main .reading-path__appendix {
   background: transparent;
   box-shadow: none;

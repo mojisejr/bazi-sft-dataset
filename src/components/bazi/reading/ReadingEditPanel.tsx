@@ -24,6 +24,8 @@ type ReadingEditPanelProps = {
   chapters: PrintChapter[];
   relationshipLines: RelationshipLineRow[] | null;
   onSaveChapter: (topicId: string, markdown: string) => void;
+  /** แก้ชื่อบท (หัวข้อใหญ่) เฉพาะดวงนี้ — ค่าว่าง = กลับใช้ชื่อเดิม */
+  onRenameChapter: (topicId: string, title: string) => void;
   onChangeLines: (rows: RelationshipLineRow[]) => void;
   onGenerateLines: () => void;
   generatingLines: boolean;
@@ -40,6 +42,7 @@ export function ReadingEditPanel({
   chapters,
   relationshipLines,
   onSaveChapter,
+  onRenameChapter,
   onChangeLines,
   onGenerateLines,
   generatingLines,
@@ -188,9 +191,20 @@ export function ReadingEditPanel({
           />
         ) : selectedChapter ? (
           <div className="ylc-edit-main__chapter">
-            <h3 className="ylc-edit-main__title">
-              {selectedChapter.chapter}. {selectedChapter.title}
-            </h3>
+            <div className="ylc-edit-main__title-row">
+              <span className="ylc-edit-main__title-num">{selectedChapter.chapter}.</span>
+              <input
+                key={`title-${selected}`}
+                className="ylc-edit-main__title-input"
+                type="text"
+                value={selectedChapter.title}
+                aria-label="หัวข้อใหญ่ของบท (แก้ได้)"
+                title="แก้หัวข้อใหญ่ของบทนี้ (เฉพาะดวงนี้) — ลบให้ว่างเพื่อกลับใช้ชื่อเดิม"
+                onChange={(event) =>
+                  selectedChapter.id && onRenameChapter(selectedChapter.id, event.target.value)
+                }
+              />
+            </div>
             {annotation ? (
               <div className="ylc-prose">
                 <ChapterChartStrip annotation={annotation} uid={selectedChapter.id ?? String(selectedChapter.chapter)} />

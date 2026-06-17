@@ -56,6 +56,8 @@ export const SessionDataSchema = z.object({
   topicStates: z.record(z.string(), TopicStateSchema),
   corrections: z.record(z.string(), z.array(SinsaeCorrectionSchema)),
   readings: z.record(z.string(), z.string()),
+  // ชื่อบทที่ซินแสแก้เอง (topicId → หัวข้อใหญ่) — เก่าที่ไม่มีฟิลด์นี้ default เป็น {}
+  titleOverrides: z.record(z.string(), z.string()).default({}),
   relationshipLines: z.array(RelationshipLineSchema).nullable(),
 });
 
