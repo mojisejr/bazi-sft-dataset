@@ -263,6 +263,111 @@
 .topic-card__box-edit--danger:hover {
   background: rgba(192, 57, 43, 0.08);
 }
+/* ปุ่มลูกศรย้ายชิ้น ▲/▼ (กล่อง + ย่อหน้า) — เล็ก จาง ปิดเมื่อสุดทาง */
+.topic-card__box-move {
+  min-width: 1.9rem;
+  padding-inline: 0.4rem;
+  line-height: 1;
+  font-size: 0.72rem;
+}
+.topic-card__box-move:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.topic-card__box-move:disabled:hover {
+  background: transparent;
+}
+/* ย่อหน้า (text segment) ในมุมมองอ่าน — ปุ่มย้ายลอยมุมขวาบน จาง→ชัดเมื่อ hover */
+.topic-card__para-block {
+  position: relative;
+}
+.topic-card__para-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  gap: 0.3rem;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+.topic-card__para-block:hover .topic-card__para-actions,
+.topic-card__para-actions:focus-within {
+  opacity: 1;
+}
+/* ปุ่ม "✎ แก้" ของย่อหน้า/บทนำ/สรุป — เด่นกว่าปุ่มย้าย ให้เห็นชัดไม่ต้อง hover */
+.topic-card__para-edit-btn {
+  min-width: auto;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--rp-accent, #2563eb);
+  border-color: var(--rp-accent, #2563eb);
+}
+.topic-card__para-actions .topic-card__para-edit-btn:hover {
+  background: var(--rp-accent, #2563eb);
+  filter: brightness(1.08);
+}
+.topic-card__para-actions .topic-card__box-move {
+  margin-top: 0;
+  color: var(--rp-accent, #2563eb);
+  background: var(--rp-surface, #fff);
+  border: 1px solid var(--rp-accent, #2563eb);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.topic-card__para-actions .topic-card__box-move:hover {
+  background: var(--rp-accent-soft, rgba(37, 99, 235, 0.08));
+}
+/* แก้ข้อความ text segment (บทนำ/สรุป/ย่อหน้า) inline */
+.topic-card__para-block--editing {
+  box-shadow: 0 0 0 2px var(--rp-accent, #2563eb) inset;
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+.topic-card__para-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.topic-card__para-edit-actions .topic-card__box-edit {
+  margin-top: 0;
+}
+/* ถังขยะกล่องที่ลบ — รายการกู้คืน */
+.topic-card__trash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.topic-card__trash-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.3rem 0.55rem;
+  border: 1px dashed var(--rp-border, #d1d5db);
+  border-radius: 8px;
+}
+.topic-card__trash-title {
+  font-size: 0.85rem;
+  color: var(--rp-text-muted, #6b7280);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topic-card__trash-item .topic-card__box-edit {
+  margin-top: 0;
+  flex: none;
+}
+@media print {
+  .topic-card__box-actions,
+  .topic-card__para-actions,
+  .topic-card__trash {
+    display: none !important;
+  }
+}
 .topic-card__box--editing {
   box-shadow: 0 0 0 2px var(--rp-accent, #2563eb) inset;
 }

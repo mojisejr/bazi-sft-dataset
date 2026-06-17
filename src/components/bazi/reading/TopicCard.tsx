@@ -411,6 +411,11 @@ export function TopicCard({
   const [addNoteTitle, setAddNoteTitle] = useState("");
   const [addNoteBody, setAddNoteBody] = useState("");
   const [appendStatus, setAppendStatus] = useState("");
+  // ถังขยะกล่องที่เพิ่งลบ (in-memory ต่อการ์ด) — กู้คืนได้หลายชิ้น จนกว่าจะรีโหลด/ล้าง
+  const [trashedBoxes, setTrashedBoxes] = useState<{ title: string; body: string }[]>([]);
+  // แก้ข้อความ inline ของ text segment (บทนำ/สรุป/ย่อหน้าทั่วไป) — เก็บ index + ร่าง
+  const [editingTextIdx, setEditingTextIdx] = useState<number | null>(null);
+  const [textDraft, setTextDraft] = useState("");
 
   // ร่างกล่องทั้งก้อน = ย่อหน้าที่แก้แล้ว join กลับ (\n\n) — ใช้ตอนคำนวณ diff/บันทึก/นับกฎ
   const boxDraft = boxParaDrafts.join("\n\n");
@@ -700,9 +705,46 @@ export function TopicCard({
                 );
                 if (!ok) return;
               }
+              // เก็บกล่องที่ลบลงถังขยะก่อน (กู้คืนได้ภายหลัง จนกว่าจะรีโหลด/ล้าง)
+              const removed = segments[segIdx];
+              if (removed?.kind === "box") {
+                setTrashedBoxes((cur) => [{ title: removed.title, body: removed.body }, ...cur]);
+              }
               const rebuilt = serializeReadingSegments(segments.filter((_, i) => i !== segIdx));
               onSaveCorrection?.(topic.id, rebuilt);
               if (editingBoxIdx === segIdx) setEditingBoxIdx(null);
+            };
+            // กู้คืนกล่องจากถังขยะ — ต่อท้ายบท (ย้ายตำแหน่งต่อด้วยปุ่ม ▲/▼ ได้) แล้วเอาออกจากถัง
+            const restoreTrashedBox = (trashIdx: number) => {
+              const item = trashedBoxes[trashIdx];
+              if (!item) return;
+              const rebuilt = serializeReadingSegments([
+                ...segments,
+                { kind: "box", title: item.title, body: item.body },
+              ]);
+              onSaveCorrection?.(topic.id, rebuilt);
+              setTrashedBoxes((cur) => cur.filter((_, i) => i !== trashIdx));
+            };
+            // ย้ายชิ้น (กล่อง/ย่อหน้า) ขึ้น/ลง — สลับกับเพื่อนบ้าน แล้วบันทึกเป็น correction เฉพาะดวงนี้
+            const moveSegment = (segIdx: number, dir: -1 | 1) => {
+              const target = segIdx + dir;
+              if (target < 0 || target >= segments.length) return;
+              const next = segments.slice();
+              [next[segIdx], next[target]] = [next[target], next[segIdx]];
+              onSaveCorrection?.(topic.id, serializeReadingSegments(next));
+              // sync สถานะ "กำลังแก้กล่องนี้" ให้เลื่อนตามชิ้นที่ย้าย
+              if (editingBoxIdx === segIdx) setEditingBoxIdx(target);
+              else if (editingBoxIdx === target) setEditingBoxIdx(segIdx);
+            };
+            // แก้ข้อความ text segment (บทนำ/สรุป/ย่อหน้า) inline — แทนที่ raw แล้วบันทึกเป็น correction เฉพาะดวงนี้
+            const saveTextSegment = (segIdx: number) => {
+              const body = normalizeBoxBody(textDraft);
+              if (!body) return;
+              const rebuilt = serializeReadingSegments(
+                segments.map((seg, i) => (i === segIdx && seg.kind === "text" ? { kind: "text", raw: body } : seg)),
+              );
+              onSaveCorrection?.(topic.id, rebuilt);
+              setEditingTextIdx(null);
             };
             // เพิ่มกล่อง/ย่อหน้าใหม่ "เฉพาะดวงนี้": ต่อ segment ใหม่ท้ายผลทำนายแล้วบันทึกเป็น correction ของดวงนี้
             // (ไม่เขียนคลังกลาง → ไม่มีผลทุกดวง) ผลไหลเข้า displayText เดียวกับการ์ด/PDF จึงตรงกันทุกที่
@@ -748,7 +790,72 @@ export function TopicCard({
                 {displayText
                   ? segments.map((seg, segIdx) => {
                       if (seg.kind === "text") {
-                        return <Fragment key={segIdx}>{renderTextParas(seg.raw, `t${segIdx}`)}</Fragment>;
+                        if (editingTextIdx === segIdx) {
+                          return (
+                            <div key={segIdx} className="topic-card__para-block topic-card__para-block--editing">
+                              <textarea
+                                className="topic-card__sinsae-textarea"
+                                value={textDraft}
+                                rows={Math.min(16, Math.max(3, textDraft.split("\n").length + 1))}
+                                onChange={(event) => setTextDraft(event.target.value)}
+                              />
+                              <div className="topic-card__para-edit-actions">
+                                <button
+                                  type="button"
+                                  className="topic-card__box-edit"
+                                  onClick={() => saveTextSegment(segIdx)}
+                                >
+                                  💾 บันทึก
+                                </button>
+                                <button
+                                  type="button"
+                                  className="topic-card__box-edit"
+                                  onClick={() => setEditingTextIdx(null)}
+                                >
+                                  ยกเลิก
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div key={segIdx} className="topic-card__para-block">
+                            {renderTextParas(seg.raw, `t${segIdx}`)}
+                            {canEdit && (
+                              <div className="topic-card__para-actions">
+                                <button
+                                  type="button"
+                                  className="topic-card__box-move topic-card__para-edit-btn"
+                                  title="แก้ข้อความนี้"
+                                  onClick={() => {
+                                    setEditingTextIdx(segIdx);
+                                    setTextDraft(seg.raw);
+                                  }}
+                                >
+                                  ✎ แก้
+                                </button>
+                                <button
+                                  type="button"
+                                  className="topic-card__box-move"
+                                  title="ย้ายขึ้น"
+                                  disabled={segIdx === 0}
+                                  onClick={() => moveSegment(segIdx, -1)}
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  className="topic-card__box-move"
+                                  title="ย้ายลง"
+                                  disabled={segIdx === segments.length - 1}
+                                  onClick={() => moveSegment(segIdx, 1)}
+                                >
+                                  ▼
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
                       }
                       // กล่อง: แก้ทีละกล่อง — กดปุ่มที่กล่องนั้นเพื่อแก้เฉพาะเนื้อในกล่องนั้น
                       if (editingBoxIdx === segIdx) {
@@ -977,6 +1084,24 @@ export function TopicCard({
                               <div className="topic-card__box-actions">
                                 <button
                                   type="button"
+                                  className="topic-card__box-edit topic-card__box-move"
+                                  title="ย้ายขึ้น"
+                                  disabled={segIdx === 0}
+                                  onClick={() => moveSegment(segIdx, -1)}
+                                >
+                                  ▲
+                                </button>
+                                <button
+                                  type="button"
+                                  className="topic-card__box-edit topic-card__box-move"
+                                  title="ย้ายลง"
+                                  disabled={segIdx === segments.length - 1}
+                                  onClick={() => moveSegment(segIdx, 1)}
+                                >
+                                  ▼
+                                </button>
+                                <button
+                                  type="button"
                                   className="topic-card__box-edit"
                                   onClick={() => {
                                     setEditingBoxIdx(segIdx);
@@ -1025,6 +1150,33 @@ export function TopicCard({
                   )}
                 {result.sourceLabel && (
                   <p className="topic-card__citation">อ้างอิง: {result.sourceLabel}</p>
+                )}
+
+                {canEdit && trashedBoxes.length > 0 && (
+                  <CollapsibleBlock
+                    title={`🗑 ถังขยะ (${trashedBoxes.length})`}
+                    className="topic-card__trash"
+                    defaultOpen
+                    source="กล่องที่ลบ — กู้คืนได้"
+                  >
+                    <ul className="topic-card__trash-list">
+                      {trashedBoxes.map((item, trashIdx) => (
+                        <li key={trashIdx} className="topic-card__trash-item">
+                          <span className="topic-card__trash-title">
+                            {item.title || "ไม่มีหัวข้อ"}
+                          </span>
+                          <button
+                            type="button"
+                            className="topic-card__box-edit"
+                            title="กู้กล่องนี้กลับเข้าบท (ต่อท้าย — ย้ายตำแหน่งด้วย ▲/▼ ได้)"
+                            onClick={() => restoreTrashedBox(trashIdx)}
+                          >
+                            ↩ กู้คืน
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </CollapsibleBlock>
                 )}
 
                 {savedCorrection && showSystem && (
