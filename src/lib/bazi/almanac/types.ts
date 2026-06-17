@@ -5,6 +5,12 @@
  * เกือบทุกชั้นต่อวัน = lookup ตามคีย์ (เสาวัน × month-branch); day-pillar-table เป็น fallback.
  */
 
+import type { ThaiLunarInfo } from "@/lib/bazi/thai-lunar";
+import type { SpecialDay } from "@/lib/bazi/almanac/special-days";
+
+export type { ThaiLunarInfo };
+export type { SpecialDay };
+
 export type GanZhi = string; // เช่น "乙亥"
 
 export type LuckyHour = {
@@ -68,6 +74,13 @@ export type DeityStar = {
   activity: string | null;
 };
 
+/** ดาวประจำวันชุดใหม่ (day-stars) — มี polarity ดี/ร้าย */
+export type DayStar = {
+  name: string;
+  activity: string | null;
+  polarity: "good" | "bad";
+};
+
 export type MonthInfo = {
   /** เทพประจำเดือน */
   deity: string | null;
@@ -75,6 +88,19 @@ export type MonthInfo = {
   caishenDir: string | null;
   /** ทิศลาภเดือน */
   lapDir: string | null;
+};
+
+/** ขอบสารทของวัน (จากปฏิทิน 150 ปี) — major=สารทใหญ่/เปลี่ยนเดือน, minor=สารทเล็ก */
+export type SolarTermInfo = {
+  kind: "major" | "minor";
+  /** ชื่อสารทจีน เช่น 立秋 */
+  name: string;
+  /** ชื่อไทย/ทับศัพท์ */
+  nameTh: string;
+  /** เวลา HH:MM ที่สารทตก */
+  time: string;
+  /** true = วันเปลี่ยนเดือน BaZi (節) */
+  isMonthChange: boolean;
 };
 
 /** เรคคอร์ดในตาราง lookup (สกัดจากไฟล์ต้นฉบับ) — ใช้ทั้ง day-pillar และ day×month-branch */
@@ -141,10 +167,16 @@ export type AlmanacDay = {
   spirits: SpiritInfo[];
   luckyHours: LuckyHour[];
   monthInfo: MonthInfo;
-  /** เทพดี (ฤกษ์มงคล) ที่เข้าเกณฑ์ของวัน */
-  goodDeities: DeityStar[];
-  /** เทพร้าย (ฤกษ์อัปมงคล) ที่เข้าเกณฑ์ของวัน */
-  badDeities: DeityStar[];
+  /** ดาวประจำวัน (ชุดใหม่) ที่เข้าเกณฑ์ของวัน */
+  dayStars: DayStar[];
+  /** ขอบสารทของวัน (null = ไม่ใช่วันสารท) */
+  solarTerm: SolarTermInfo | null;
+  /** ข้อมูลจันทรคติไทย (ขึ้น/แรม ค่ำ เดือน + วันพระ) */
+  thaiLunar: ThaiLunarInfo;
+  /** วันสำคัญ (ศาสนา/ราชการ/เทศกาลไทย/จีน/วันพระจีน) */
+  specialDays: SpecialDay[];
+  /** หมายเหตุที่ผู้ใช้แก้รายวัน (override) — null ถ้าไม่มี */
+  note: string | null;
   strength: StrengthScore;
 };
 

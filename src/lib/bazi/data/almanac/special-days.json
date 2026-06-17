@@ -1,0 +1,31 @@
+[
+  { "id": "buddhist-holidays", "name": "(วันสำคัญพุทธ)", "category": "religion", "rule": { "type": "thai-buddhist-holiday" } },
+
+  { "id": "new-year", "name": "วันขึ้นปีใหม่", "category": "government", "rule": { "type": "gregorian", "month": 1, "day": 1 } },
+  { "id": "chakri", "name": "วันจักรี", "category": "government", "rule": { "type": "gregorian", "month": 4, "day": 6 } },
+  { "id": "labour", "name": "วันแรงงานแห่งชาติ", "category": "government", "rule": { "type": "gregorian", "month": 5, "day": 1 } },
+  { "id": "coronation", "name": "วันฉัตรมงคล", "category": "government", "rule": { "type": "gregorian", "month": 5, "day": 4 } },
+  { "id": "queen-suthida", "name": "วันเฉลิมพระชนมพรรษา สมเด็จพระนางเจ้าฯ พระบรมราชินี", "category": "government", "rule": { "type": "gregorian", "month": 6, "day": 3 } },
+  { "id": "king-rama10", "name": "วันเฉลิมพระชนมพรรษา ร.10", "category": "government", "rule": { "type": "gregorian", "month": 7, "day": 28 } },
+  { "id": "mother-day", "name": "วันแม่แห่งชาติ", "category": "government", "rule": { "type": "gregorian", "month": 8, "day": 12 } },
+  { "id": "nawaminthara", "name": "วันนวมินทรมหาราช (คล้ายวันสวรรคต ร.9)", "category": "government", "rule": { "type": "gregorian", "month": 10, "day": 13 } },
+  { "id": "chulalongkorn", "name": "วันปิยมหาราช", "category": "government", "rule": { "type": "gregorian", "month": 10, "day": 23 } },
+  { "id": "father-day", "name": "วันชาติ/วันพ่อแห่งชาติ (คล้ายวันพระบรมราชสมภพ ร.9)", "category": "government", "rule": { "type": "gregorian", "month": 12, "day": 5 } },
+  { "id": "constitution", "name": "วันรัฐธรรมนูญ", "category": "government", "rule": { "type": "gregorian", "month": 12, "day": 10 } },
+  { "id": "new-year-eve", "name": "วันสิ้นปี", "category": "government", "rule": { "type": "gregorian", "month": 12, "day": 31 } },
+
+  { "id": "teacher-day", "name": "วันครู", "category": "festival-thai", "rule": { "type": "gregorian", "month": 1, "day": 16 } },
+  { "id": "children-day", "name": "วันเด็กแห่งชาติ", "category": "festival-thai", "rule": { "type": "nth-weekday", "month": 1, "weekday": 6, "nth": 2 } },
+  { "id": "songkran", "name": "วันสงกรานต์", "category": "festival-thai", "rule": { "type": "gregorian-range", "month": 4, "dayStart": 13, "dayEnd": 15 } },
+  { "id": "loy-krathong", "name": "วันลอยกระทง", "category": "festival-thai", "rule": { "type": "thai-lunar", "lunarMonth": 12, "phase": "ขึ้น", "kham": 15 } },
+
+  { "id": "cny", "name": "วันตรุษจีน", "category": "festival-chinese", "rule": { "type": "chinese-lunar", "lunarMonth": 1, "lunarDay": 1 } },
+  { "id": "yuanxiao", "name": "เทศกาลโคมไฟ (หยวนเซียว)", "category": "festival-chinese", "rule": { "type": "chinese-lunar", "lunarMonth": 1, "lunarDay": 15 } },
+  { "id": "qingming", "name": "เทศกาลเช็งเม้ง", "category": "festival-chinese", "rule": { "type": "solar-term", "name": "清明" } },
+  { "id": "dragon-boat", "name": "เทศกาลไหว้บะจ่าง (ตวนอู่)", "category": "festival-chinese", "rule": { "type": "chinese-lunar", "lunarMonth": 5, "lunarDay": 5 } },
+  { "id": "ghost", "name": "เทศกาลสารทจีน (ตงง้วน)", "category": "festival-chinese", "rule": { "type": "chinese-lunar", "lunarMonth": 7, "lunarDay": 15 } },
+  { "id": "mid-autumn", "name": "เทศกาลไหว้พระจันทร์ (จงชิว)", "category": "festival-chinese", "rule": { "type": "chinese-lunar", "lunarMonth": 8, "lunarDay": 15 } },
+  { "id": "dongzhi", "name": "เทศกาลตังโจ่ย (ไหว้ขนมบัวลอย)", "category": "festival-chinese", "rule": { "type": "solar-term", "name": "冬至" } },
+
+  { "id": "wan-phra-chinese", "name": "วันพระจีน (初一/十五)", "category": "chinese-religious", "rule": { "type": "chinese-lunar-recurring", "lunarDays": [1, 15] } }
+]

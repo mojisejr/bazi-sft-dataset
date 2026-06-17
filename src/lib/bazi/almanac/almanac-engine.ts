@@ -23,8 +23,13 @@ import gateLegendJson from "@/lib/bazi/data/almanac/gate-legend.json";
 import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
 import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
-import deitiesGoodJson from "@/lib/bazi/data/almanac/deities-good.json";
-import deitiesBadJson from "@/lib/bazi/data/almanac/deities-bad.json";
+import dayStarsJson from "@/lib/bazi/data/almanac/day-stars.json";
+
+import { solarTermFor } from "@/lib/bazi/almanac/solar-terms-data";
+import { thaiLunarDay } from "@/lib/bazi/thai-lunar";
+import { specialDaysFor } from "@/lib/bazi/almanac/special-days";
+
+import type { AlmanacOverrides } from "@/lib/bazi/almanac/almanac-override-repository";
 
 import type {
   AlmanacDay,
@@ -33,7 +38,7 @@ import type {
   AlmanacRecord,
   AsuraDirections,
   ColorInfo,
-  DeityStar,
+  DayStar,
   GateInfo,
   LuckyHour,
   MonthInfo,
@@ -77,14 +82,16 @@ const JIANCHU_LEGEND = jianchuLegendJson as Record<
   string,
   { name: string; score: number | string; meaning?: string; activity?: string }
 >;
-type DeityRow = {
+type DayStarRow = {
+  id: string;
   name: string;
+  polarity: "good" | "bad";
   activity: string | null;
+  /** ตัวกระตุ้นต่อกิ่งเดือน: ก้านวัน / กิ่งวัน / หรือเสาวันเต็ม (กิ่ง+ก้าน เช่น 戊寅 = 天赦) */
   triggers: Record<string, string[]>;
-  note: string | null;
+  note?: string | null;
 };
-const DEITIES_GOOD = deitiesGoodJson as DeityRow[];
-const DEITIES_BAD = deitiesBadJson as DeityRow[];
+const DAY_STARS = dayStarsJson as DayStarRow[];
 
 const WEEKDAYS_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"] as const;
 
@@ -160,13 +167,22 @@ function jianchuScore(monthBranch: string, dayBranch: string): number {
   return resolveScore(JIANCHU_LEGEND[`C${idx + 1}`]?.score);
 }
 
-/** ดาวเทพ (ดี/ร้าย) ที่เข้าเกณฑ์ของวัน: คีย์ตามกิ่งเดือน → ตัวกระตุ้น (กิ่ง/ก้านวัน) */
-function deitiesFor(table: DeityRow[], monthBranch: string, dayStem: string, dayBranch: string): DeityStar[] {
-  const out: DeityStar[] = [];
-  for (const star of table) {
+/**
+ * ดาวประจำวัน (ชุดใหม่ day-stars) ที่เข้าเกณฑ์ของวัน
+ * คีย์ตามกิ่งเดือน → ตัวกระตุ้นซึ่งจับได้ 3 แบบ: ก้านวัน / กิ่งวัน / เสาวันเต็ม (กิ่ง+ก้าน เช่น 戊寅)
+ */
+function dayStarsFor(
+  stars: DayStarRow[],
+  monthBranch: string,
+  dayStem: string,
+  dayBranch: string,
+  dayGanzhi: string,
+): DayStar[] {
+  const out: DayStar[] = [];
+  for (const star of stars) {
     const trig = star.triggers[monthBranch];
-    if (trig && (trig.includes(dayStem) || trig.includes(dayBranch))) {
-      out.push({ name: star.name, activity: star.activity });
+    if (trig && (trig.includes(dayStem) || trig.includes(dayBranch) || trig.includes(dayGanzhi))) {
+      out.push({ name: star.name, activity: star.activity, polarity: star.polarity });
     }
   }
   return out;
@@ -294,8 +310,13 @@ function toSpirits(raw: AlmanacRecord["spirits"]): SpiritInfo[] {
     .map((name) => ({ name, keywords: SPIRIT_LEGEND[name] ?? [] }));
 }
 
-/** ประกอบข้อมูลปฏิทิน 1 วัน */
-export function buildAlmanacDay(year: number, month: number, day: number): AlmanacDay {
+/** ประกอบข้อมูลปฏิทิน 1 วัน (overrides = แก้กฎ/รายวันจาก DB; ไม่ส่ง = ใช้กฎฐาน) */
+export function buildAlmanacDay(
+  year: number,
+  month: number,
+  day: number,
+  overrides?: AlmanacOverrides,
+): AlmanacDay {
   const { weekday, dayPillar, monthPillar, yearPillar } = pillarsForDate(year, month, day);
   const m = DAY_MONTH_TABLE[`${dayPillar.ganzhi}|${monthPillar.branch}`] ?? null; // ตรงตามฤดู (exact)
   const d = DAY_TABLE[dayPillar.ganzhi] ?? null; // fallback
@@ -318,8 +339,13 @@ export function buildAlmanacDay(year: number, month: number, day: number): Alman
     year: asuraOf(yearPillar.branch),
   };
 
-  return {
-    date: `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`,
+  const solarTerm = solarTermFor(year, month, day);
+  const thaiLunar = thaiLunarDay(year, month, day);
+  const dateStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const specialDays = specialDaysFor(year, month, day, { thaiLunar, solarTerm }, overrides?.specialDays);
+
+  const day_: AlmanacDay = {
+    date: dateStr,
     yearBE: year + 543,
     weekday,
     dayPillar,
@@ -341,9 +367,16 @@ export function buildAlmanacDay(year: number, month: number, day: number): Alman
     // เวลามงคล: คำนวณกฎ 黃道 จากกิ่งวัน (ถูกต้องทุกปี ไม่พึ่งตารางสกัด)
     luckyHours: luckyHoursByDayBranch(dayPillar.branch),
     monthInfo,
-    // เทพดี/เทพร้าย (ฤกษ์ยามเคี้ยงคุง): คีย์ตามกิ่งเดือน → ตัวกระตุ้นของวัน
-    goodDeities: deitiesFor(DEITIES_GOOD, monthPillar.branch, dayPillar.stem, dayPillar.branch),
-    badDeities: deitiesFor(DEITIES_BAD, monthPillar.branch, dayPillar.stem, dayPillar.branch),
+    // ดาวประจำวัน (ชุดใหม่): คีย์ตามกิ่งเดือน → ตัวกระตุ้นของวัน (กิ่ง/ก้าน/เสาวันเต็ม)
+    dayStars: dayStarsFor(overrides?.dayStars ?? DAY_STARS, monthPillar.branch, dayPillar.stem, dayPillar.branch, dayPillar.ganzhi),
+    // ขอบสารท (ปฏิทิน 150 ปี): null = ไม่ใช่วันสารท
+    solarTerm,
+    // จันทรคติไทย (ขึ้น/แรม ค่ำ เดือน + วันพระ)
+    thaiLunar,
+    // วันสำคัญ 6 หมวด
+    specialDays,
+    // หมายเหตุที่ผู้ใช้แก้รายวัน (override) — null ถ้าไม่มี
+    note: null,
     strength: buildStrength(m, {
       dayStem: dayPillar.stem,
       dayBranch: dayPillar.branch,
@@ -351,6 +384,11 @@ export function buildAlmanacDay(year: number, month: number, day: number): Alman
       yearBranch: yearPillar.branch,
     }),
   };
+
+  // แก้รายวันแบบ generic: patch ทับ "ฟิลด์ใดก็ได้" ของวันนั้น (officer/deities/colors/…)
+  const patch = overrides?.dayPatches?.[dateStr];
+  if (patch) Object.assign(day_, patch);
+  return day_;
 }
 
 /** ตรวจคุณภาพ "ยามเดียว" (黃道) ของวัน+เวลาที่เลือก — ตาม กฎ 黃道 จากกิ่งวัน */
@@ -391,20 +429,20 @@ function daysInMonth(year: number, month: number): number {
 }
 
 /** ปฏิทิน 1 เดือน (ปฏิทินสากล) ของปี ค.ศ. */
-export function buildAlmanacMonth(year: number, month: number): AlmanacMonth {
+export function buildAlmanacMonth(year: number, month: number, overrides?: AlmanacOverrides): AlmanacMonth {
   const days: AlmanacDay[] = [];
   for (let dd = 1; dd <= daysInMonth(year, month); dd += 1) {
-    days.push(buildAlmanacDay(year, month, dd));
+    days.push(buildAlmanacDay(year, month, dd, overrides));
   }
   return { yearBE: year + 543, month, days };
 }
 
 /** ปฏิทินทั้งปี — รับปี พ.ศ. (เช่น 2569) เหมือนชื่อไฟล์ต้นฉบับ */
-export function buildAlmanacYear(yearBE: number): AlmanacYear {
+export function buildAlmanacYear(yearBE: number, overrides?: AlmanacOverrides): AlmanacYear {
   const yearCE = yearBE - 543;
   const months: AlmanacMonth[] = [];
   for (let m = 1; m <= 12; m += 1) {
-    months.push(buildAlmanacMonth(yearCE, m));
+    months.push(buildAlmanacMonth(yearCE, m, overrides));
   }
   return { yearBE, months };
 }

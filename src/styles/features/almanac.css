@@ -238,3 +238,231 @@
 .almanac-spirits li b {
   color: #b4231f;
 }
+
+/* ----- ขอบสารท: เน้นกรอบสีวันเปลี่ยนสารท ----- */
+.almanac-day--term-major {
+  border-color: #e0962b;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px #fbe8c8 inset;
+}
+
+.almanac-day--term-minor {
+  border-color: #2b8fa3;
+  border-width: 2px;
+  box-shadow: 0 0 0 2px #d6eef3 inset;
+}
+
+.almanac-term {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.45rem;
+}
+
+.almanac-term--major {
+  background: #fbe8c8;
+  color: #8a560e;
+}
+
+.almanac-term--minor {
+  background: #d6eef3;
+  color: #1c5b68;
+}
+
+.almanac-term-cn {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.almanac-term-time {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ----- จันทรคติไทย: ขึ้น/แรม ค่ำ + วันพระ ----- */
+.almanac-thailine {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.almanac-wanphra {
+  font-weight: 700;
+  color: #8a5a00;
+  background: #fdf0d5;
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.4rem;
+}
+
+.almanac-lunarlabel {
+  font-weight: 600;
+}
+
+/* ----- วันสำคัญ 6 หมวด ----- */
+.almanac-special {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.almanac-spchip {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.08rem 0.45rem;
+  border-radius: 0.4rem;
+  border: 1px solid transparent;
+  cursor: help;
+}
+
+.almanac-sp--government {
+  background: #e7eefb;
+  color: #1a44a6;
+  border-color: #b9ccef;
+}
+
+.almanac-sp--religion {
+  background: #fdf0d5;
+  color: #8a5a00;
+  border-color: #ecd6a3;
+}
+
+.almanac-sp--festival-thai {
+  background: #e7f6ec;
+  color: #1f7a4d;
+  border-color: #bfe6cd;
+}
+
+.almanac-sp--festival-chinese {
+  background: #fbe6e6;
+  color: #a51d1d;
+  border-color: #eebcbc;
+}
+
+.almanac-sp--chinese-religious {
+  background: #f1e9f9;
+  color: #6a2b91;
+  border-color: #d8c4ec;
+}
+
+/* ----- แก้ไขรายวัน + ตาราง/กฎ ----- */
+.almanac-note {
+  margin: 0;
+  font-size: 0.78rem;
+  background: #fffbea;
+  border-left: 3px solid #e0c34a;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.3rem;
+}
+
+.almanac-edit-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.almanac-editbtn {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--border, #d0d0d8);
+  border-radius: 0.5rem;
+  background: var(--surface, #fff);
+  color: #444;
+  cursor: pointer;
+}
+
+.almanac-editbtn:hover {
+  background: #f3f4f8;
+}
+
+.almanac-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border: 1px dashed #c2c2cc;
+  border-radius: 0.5rem;
+  background: #fafafe;
+  max-height: 24rem;
+  overflow-y: auto;
+}
+
+.almanac-editor-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: #888;
+}
+
+.almanac-editor textarea.almanac-json {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem;
+  white-space: pre;
+}
+
+.almanac-editor label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #555;
+}
+
+.almanac-editor textarea,
+.almanac-editor input {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.45rem;
+  border: 1px solid var(--border, #d0d0d8);
+  border-radius: 0.4rem;
+  font-family: inherit;
+}
+
+.almanac-editor-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.almanac-rules {
+  border: 1px solid var(--border, #e2e2ea);
+  border-radius: 0.75rem;
+  padding: 0.8rem;
+  background: #fcfcff;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.almanac-rules-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #777;
+}
+
+.almanac-rule-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid #eee;
+}
+
+.almanac-rule-head code {
+  font-size: 0.72rem;
+  color: #888;
+}
+
+.almanac-rule-item textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.74rem;
+  padding: 0.4rem;
+  border: 1px solid var(--border, #d0d0d8);
+  border-radius: 0.4rem;
+  white-space: pre;
+}

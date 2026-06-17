@@ -8,6 +8,7 @@ import ExcelJS from "exceljs";
 
 import { buildAlmanacYear } from "@/lib/bazi/almanac/almanac-engine";
 import type { AlmanacDay } from "@/lib/bazi/almanac/types";
+import type { AlmanacOverrides } from "@/lib/bazi/almanac/almanac-override-repository";
 
 const MONTH_TOKENS = [
   "jan", "feb", "mar", "apr", "may", "jun", "july", "aug", "sep", "oct", "nov", "dec",
@@ -83,16 +84,26 @@ function writeDayBlock(ws: ExcelJS.Worksheet, top: number, day: AlmanacDay): voi
   // ข้อมูลเดือน (แถวสุดท้ายของบล็อก)
   set(top + 5, 27, day.monthInfo.deity ? `เทพเดือน: ${day.monthInfo.deity}` : "");
   set(top + 5, 31, day.monthInfo.caishenDir ? `ไฉ่ซิ้ง: ${day.monthInfo.caishenDir}` : "");
-  // เทพดี/เทพร้าย (ฤกษ์ยามเคี้ยงคุง)
-  set(top + 3, 3, day.goodDeities.length ? `ดี: ${day.goodDeities.map((s) => s.name).join(", ")}` : "");
-  set(top + 4, 3, day.badDeities.length ? `ร้าย: ${day.badDeities.map((s) => s.name).join(", ")}` : "");
+  // ดาวประจำวัน (ชุดใหม่) แยกดี/ร้าย
+  const good = day.dayStars.filter((s) => s.polarity === "good").map((s) => s.name);
+  const bad = day.dayStars.filter((s) => s.polarity === "bad").map((s) => s.name);
+  set(top + 3, 3, good.length ? `ดี: ${good.join(", ")}` : "");
+  set(top + 4, 3, bad.length ? `ร้าย: ${bad.join(", ")}` : "");
+  // ขอบสารท (วันเปลี่ยนสารท + เวลา)
+  set(top + 2, 3, day.solarTerm
+    ? `${day.solarTerm.isMonthChange ? "เปลี่ยนเดือน" : "สารทเล็ก"} ${day.solarTerm.name} ${day.solarTerm.time}`
+    : "");
+  // จันทรคติไทย (ขึ้น/แรม ค่ำ เดือน + วันพระ)
+  set(top + 4, 1, `${day.thaiLunar.isWanPhra ? "วันพระ · " : ""}${day.thaiLunar.label}`);
+  // วันสำคัญ 6 หมวด
+  set(top + 5, 1, day.specialDays.length ? day.specialDays.map((s) => s.name).join(" / ") : "");
 }
 
 /** สร้าง workbook ปฏิทินทั้งปี (รับปี พ.ศ.) — คืน Buffer */
-export async function buildAlmanacWorkbook(yearBE: number): Promise<Buffer> {
+export async function buildAlmanacWorkbook(yearBE: number, overrides?: AlmanacOverrides): Promise<Buffer> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "bazi-sft-dataset almanac";
-  const year = buildAlmanacYear(yearBE);
+  const year = buildAlmanacYear(yearBE, overrides);
 
   for (const month of year.months) {
     const sample = month.days[0];

@@ -205,15 +205,27 @@ describe("almanac engine — สูตรคะแนนทางการ (เ�
   });
 });
 
-describe("almanac engine — เทพดี/เทพร้าย + ตรวจยาม", () => {
-  test("มีวันที่เข้าเกณฑ์เทพดี/เทพร้าย ในปี และโครงสร้างถูก", () => {
+describe("almanac engine — ดาวประจำวัน (ชุดใหม่) + ตรวจยาม", () => {
+  test("มีวันที่เข้าเกณฑ์ดาวประจำวัน ในปี และโครงสร้างถูก", () => {
     const year = buildAlmanacYear(2569);
     const days = year.months.flatMap((m) => m.days);
-    expect(days.some((d) => d.goodDeities.length > 0)).toBe(true);
-    expect(days.some((d) => d.badDeities.length > 0)).toBe(true);
+    expect(days.some((d) => d.dayStars.length > 0)).toBe(true);
     for (const d of days) {
-      for (const s of [...d.goodDeities, ...d.badDeities]) expect(s.name).toBeTruthy();
+      for (const s of d.dayStars) {
+        expect(s.name).toBeTruthy();
+        expect(["good", "bad"]).toContain(s.polarity);
+      }
     }
+  });
+
+  test("วันเทียนเซ่อ (天赦) จับเสาวันเต็มตามฤดู (戊寅/甲午/戊申/甲子)", () => {
+    // หาวันที่เสาวัน = 戊申 ในเดือน autumn (申酉戌) แล้วต้องติดดาวเทียนเซ่อ
+    const days = buildAlmanacYear(2569).months.flatMap((m) => m.days);
+    const tianShe = days.filter((d) => d.dayStars.some((s) => s.name.includes("เทียนเซ่อ")));
+    expect(tianShe.length).toBeGreaterThan(0);
+    // ทุกวันที่ติดเทียนเซ่อ เสาวันต้องเป็นหนึ่งใน 4 เสาตามฤดู
+    const allowed = new Set(["戊寅", "甲午", "戊申", "甲子"]);
+    for (const d of tianShe) expect(allowed.has(d.dayPillar.ganzhi)).toBe(true);
   });
 
   test("checkHour คืนคุณภาพยาม (黃道) ของวัน+เวลา", () => {
@@ -222,6 +234,35 @@ describe("almanac engine — เทพดี/เทพร้าย + ตรว�
     expect(q.hourBranch).toBe("申");
     expect(q.god).not.toBe("");
     expect(typeof q.good).toBe("boolean");
+  });
+});
+
+describe("almanac engine — ขอบสารท (ปฏิทิน 150 ปี)", () => {
+  test("วันสารทใหญ่/เล็ก ตรงไฟล์ 150 ปี (2569) พร้อมเวลา", () => {
+    const major = buildAlmanacDay(2026, 8, 7).solarTerm; // 立秋
+    expect(major).toEqual({ kind: "major", name: "立秋", nameTh: "ลี่ชิว (เริ่มใบไม้ร่วง)", time: "19:42", isMonthChange: true });
+    const minor = buildAlmanacDay(2026, 8, 23).solarTerm; // 处暑
+    expect(minor).toEqual({ kind: "minor", name: "处暑", nameTh: "ฉู่สู่", time: "10:18", isMonthChange: false });
+  });
+
+  test("วันที่ไม่ใช่สารท → solarTerm = null", () => {
+    expect(buildAlmanacDay(2026, 8, 10).solarTerm).toBeNull();
+  });
+
+  test("ทั้งปี 2569 มีสารทใหญ่ 12 + สารทเล็ก 12 (รวม 24)", () => {
+    const days = buildAlmanacYear(2569).months.flatMap((m) => m.days);
+    const major = days.filter((d) => d.solarTerm?.kind === "major").length;
+    const minor = days.filter((d) => d.solarTerm?.kind === "minor").length;
+    expect(major).toBe(12);
+    expect(minor).toBe(12);
+  });
+
+  test("fallback คำนวณ (นอกช่วงไฟล์) ยังให้สารทได้", () => {
+    // ปี 2700 BE = ค.ศ. 2157 อยู่นอกช่วงไฟล์ (≤2058) → ใช้ lunar-javascript ไม่ได้ (≤2100) → null ทั้งปี (ยอมรับได้)
+    // ปี 2620 BE = ค.ศ. 2077 อยู่ในช่วง lunar-javascript → ต้องมีสารทครบ 24
+    const days = buildAlmanacYear(2620).months.flatMap((m) => m.days);
+    const total = days.filter((d) => d.solarTerm).length;
+    expect(total).toBe(24);
   });
 });
 
