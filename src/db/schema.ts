@@ -471,6 +471,36 @@ export type InsertBaziReadingSession = typeof baziReadingSessions.$inferInsert;
 export type SelectBaziReadingSession = typeof baziReadingSessions.$inferSelect;
 
 /**
+ * เวอร์ชัน PDF ที่บันทึก (snapshot) — แช่แข็งสภาพงานของดวงหนึ่ง ณ ตอนกด "บันทึกเวอร์ชัน PDF"
+ * insert-only (ไม่เคย update) → เก็บได้หลายเวอร์ชันต่อ 1 ดวง ย้อนกลับมาแก้/ปริ้นเวอร์ชันเดิมได้
+ * โครงคอลัมน์มิเรอร์ bazi_reading_sessions (ยกเว้น session_id/version_note/ไม่มี updated_at)
+ * `session_id` = ดวงต้นทาง (nullable — ดวงอาจถูกลบ ก็ยังเก็บเวอร์ชันไว้ได้, ไม่ผูก hard FK)
+ */
+export const baziReadingPdfVersions = pgTable("bazi_reading_pdf_versions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sessionId: uuid("session_id"),
+  label: text("label"),
+  versionNote: text("version_note"),
+  birthDate: text("birth_date").notNull(),
+  birthTime: text("birth_time").notNull(),
+  gender: text("gender").notNull(),
+  dayMaster: text("day_master"),
+  provider: text("provider").notNull().default("gemini"),
+  status: readingSessionStatusEnum("status").notNull().default("in_progress"),
+  rawInput: jsonb("raw_input").$type<RawInputValue>().notNull(),
+  calculatedState: jsonb("calculated_state").$type<CalculatedStateValue>(),
+  sessionData: jsonb("session_data")
+    .$type<ReadingSessionDataValue>()
+    .notNull()
+    .default(sql`'{}'::jsonb`),
+  ownerId: text("owner_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InsertBaziReadingPdfVersion = typeof baziReadingPdfVersions.$inferInsert;
+export type SelectBaziReadingPdfVersion = typeof baziReadingPdfVersions.$inferSelect;
+
+/**
  * กฎแทนคำของซินแส (phrase substitution rules) — เก็บลง DB ให้ persist จริง (ก่อนหน้านี้เคยเป็น
  * ไฟล์ JSON ใน source tree ซึ่งบน Vercel เขียนไม่ได้ → กฎหายทุก refresh/redeploy)
  * `source` = ที่มาของกฎ (manual/diff) + chartSignature; replacement = "" หมายถึง "ลบวลีทิ้ง"

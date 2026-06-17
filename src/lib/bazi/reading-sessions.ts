@@ -50,7 +50,7 @@ const SinsaeCorrectionSchema = z.object({
   editedAt: z.string(),
 });
 
-const SessionDataSchema = z.object({
+export const SessionDataSchema = z.object({
   version: z.number().int().default(READING_SESSION_DATA_VERSION),
   provider: z.enum(["gemini", "opencode", "anthropic"]),
   topicStates: z.record(z.string(), TopicStateSchema),

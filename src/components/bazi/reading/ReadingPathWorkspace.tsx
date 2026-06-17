@@ -50,6 +50,7 @@ import {
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import type { ReadingSessionDetail } from "@/lib/bazi/reading-sessions";
+import type { ReadingPdfVersionDetail } from "@/lib/bazi/reading-pdf-versions";
 
 type TopicCardStatus = "idle" | "loading" | "done" | "error";
 
@@ -109,12 +110,15 @@ const RESET_ACTION_COPY = {
 type ReadingPathWorkspaceProps = {
   /** เปิดเซสชันเดิมจากประวัติมาแก้ต่อ (จาก ?session=<id>) */
   resumeSessionId?: string;
+  /** เปิดเวอร์ชัน PDF ที่บันทึกไว้มาแก้ (จาก ?version=<id>) — snapshot แช่แข็ง */
+  resumeVersionId?: string;
   /** เปิด preview/print อัตโนมัติหลังโหลดเซสชัน (จาก ?print=1) */
   autoPrint?: boolean;
 };
 
 export function ReadingPathWorkspace({
   resumeSessionId,
+  resumeVersionId,
   autoPrint = false,
 }: ReadingPathWorkspaceProps = {}) {
   const [formState, setFormState] = useState<FormState>(createDefaultFormState);
@@ -154,16 +158,21 @@ export function ReadingPathWorkspace({
   }, [topicStates]);
 
   useEffect(() => {
-    // เปิดเซสชันเดิม (resume) จะโหลดคลังคำแก้จาก DB เอง — ไม่ทับด้วย localStorage
-    if (resumeSessionId) return;
+    // เปิดเซสชันเดิม/เวอร์ชัน (resume) จะโหลดคลังคำแก้จาก DB เอง — ไม่ทับด้วย localStorage
+    if (resumeSessionId || resumeVersionId) return;
     setCorrections(loadCorrections());
-  }, [resumeSessionId]);
+  }, [resumeSessionId, resumeVersionId]);
 
   // ประวัติการดูดวง (บันทึกลง DB) — เก็บ sessionId ไว้เพื่อให้บันทึกครั้งถัดไปเป็นการ "อัปเดต" ไม่ใช่สร้างใหม่
   const [label, setLabel] = useState("");
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // เวอร์ชัน PDF ที่บันทึก (snapshot) — บันทึกแยกจาก live session, เก็บได้หลายเวอร์ชันต่อดวง
+  const [versionNote, setVersionNote] = useState("");
+  const [versionSaveState, setVersionSaveState] = useState<SaveState>("idle");
+  const [versionSavedAt, setVersionSavedAt] = useState<string | null>(null);
 
   // เปิดเซสชันเดิมจากประวัติมาแก้ต่อ — ดึงจาก DB แล้วคืนสภาพ workspace ทั้งหน้า (ไม่ต้องคำนวณใหม่)
   useEffect(() => {
@@ -225,6 +234,62 @@ export function ReadingPathWorkspace({
     };
   }, [resumeSessionId, autoPrint]);
 
+  // เปิด "เวอร์ชัน PDF ที่บันทึกไว้" (snapshot) มาแก้ — คืนสภาพ workspace เหมือน resume session
+  // ต่างกันตรง sessionId = ดวงต้นทาง (ไม่ใช่ id ของเวอร์ชัน) → กดอัปเดต/บันทึกเวอร์ชันใหม่ต่อเข้าดวงเดิมได้
+  useEffect(() => {
+    if (!resumeVersionId) return;
+    let active = true;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/reading/pdf-versions/${resumeVersionId}`);
+        if (!response.ok) return;
+        const detail = (await response.json()) as ReadingPdfVersionDetail;
+        if (!active) return;
+        setRawInput(detail.rawInput);
+        setFormState(formStateFromRawInput(detail.rawInput));
+        const restoredTopicStates = (detail.sessionData?.topicStates ?? {}) as Record<
+          string,
+          TopicEntryState
+        >;
+        setTopicStates(restoredTopicStates);
+        const restoredTurning = restoredTopicStates["turning_points"]?.result ?? null;
+        lastTurningResultRef.current = restoredTurning;
+        setRelationshipLines(
+          detail.sessionData?.relationshipLines ?? restoredTurning?.relationshipLines ?? null,
+        );
+        setProvider(detail.sessionData?.provider ?? "gemini");
+        setCorrections(detail.sessionData?.corrections ?? {});
+        setLabel(detail.label ?? "");
+        // ผูกกลับดวงต้นทาง (ถ้ายังอยู่) → กดบันทึกต่อเป็นการอัปเดตดวงนั้น ไม่ใช่สร้างใหม่
+        setSessionId(detail.sessionId ?? null);
+        setVersionNote(detail.versionNote ?? "");
+        setVersionSavedAt(detail.createdAt);
+        formHydratedRef.current = true;
+        if (detail.calculatedState) {
+          setCalculatedState(detail.calculatedState);
+          setSubmissionState("ready");
+        }
+        const restoredDone = Object.values(detail.sessionData?.topicStates ?? {}).filter(
+          (entry) => Boolean((entry as TopicEntryState | undefined)?.result?.humanReading),
+        ).length;
+        if (autoPrint && restoredDone > 0 && typeof requestAnimationFrame !== "undefined") {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              if (active) setShowPreview(true);
+            });
+          });
+        } else if (autoPrint && restoredDone > 0) {
+          setShowPreview(true);
+        }
+      } catch {
+        /* เปิดเวอร์ชันไม่สำเร็จ — ผู้ใช้เริ่มเคสใหม่ได้ */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [resumeVersionId, autoPrint]);
+
   // ตารางคำแก้ (กฎแทนคำ) จาก server — โหลดครั้งเดียวตอน mount
   const [rules, setRules] = useState<SubstitutionRule[]>([]);
   const [showRules, setShowRules] = useState(false);
@@ -244,15 +309,15 @@ export function ReadingPathWorkspace({
     };
   }, []);
 
-  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount (ข้ามเมื่อเปิดเซสชันเดิม — resume เติมฟอร์มจาก rawInput เอง)
+  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount (ข้ามเมื่อเปิดเซสชันเดิม/เวอร์ชัน — resume เติมฟอร์มจาก rawInput เอง)
   useEffect(() => {
-    if (resumeSessionId) return;
+    if (resumeSessionId || resumeVersionId) return;
     const stored = loadStoredFormState();
     if (stored) {
       setFormState(stored);
     }
     formHydratedRef.current = true;
-  }, [resumeSessionId]);
+  }, [resumeSessionId, resumeVersionId]);
 
   // บันทึกค่าฟอร์มทุกครั้งที่แก้ (หลัง hydrate แล้วเท่านั้น กันเขียนทับด้วยค่าว่าง)
   // ขณะเปิดเซสชันจาก DB (มี sessionId) ไม่ sync ลง localStorage — กันทับ cache ของเคสสดที่กรอกค้างไว้
@@ -549,13 +614,12 @@ export function ReadingPathWorkspace({
     }
   }
 
-  // บันทึกการดูดวงลงประวัติ (DB) — มี sessionId = อัปเดตเซสชันเดิม, ไม่มี = สร้างใหม่แล้วจำ id ไว้อัปเดตครั้งถัดไป
-  async function handleSaveSession() {
-    if (!rawInput || !calculatedState || saveState === "saving") {
-      return;
-    }
-    setSaveState("saving");
-    // map คำอ่านสำหรับ export-docx — ตรรกะเดียวกับ handleExportDocx (ซินแสแก้ ?? humanReading ของ llm)
+  // ประกอบ payload ร่วม (label/status/rawInput/calculatedState/sessionData) — ใช้ทั้งบันทึกเซสชันและบันทึกเวอร์ชัน
+  // map คำอ่านสำหรับ export-docx: ซินแสแก้ ?? humanReading ของ llm (ตรรกะเดียวกับ handleExportDocx)
+  function buildReadingPayload(
+    rawInputValue: RawInputValue,
+    calculatedStateValue: CalculatedStateValue,
+  ) {
     const readings: Record<string, string> = {};
     for (const topic of PREDICT_TOPICS) {
       const result = topicStates[topic.id]?.result;
@@ -567,12 +631,11 @@ export function ReadingPathWorkspace({
         readings[topic.id] = result.humanReading;
       }
     }
-    const body = {
-      ...(sessionId ? { sessionId } : {}),
+    return {
       label: label.trim() || null,
       status: "in_progress" as const,
-      rawInput,
-      calculatedState,
+      rawInput: rawInputValue,
+      calculatedState: calculatedStateValue,
       sessionData: {
         version: 1,
         provider,
@@ -583,12 +646,32 @@ export function ReadingPathWorkspace({
         relationshipLines: relationshipLines ?? null,
       },
     };
-    try {
-      const response = await fetch("/api/reading/sessions", {
+  }
+
+  // บันทึกการดูดวงลงประวัติ (DB) — มี sessionId = อัปเดตเซสชันเดิม, ไม่มี = สร้างใหม่แล้วจำ id ไว้อัปเดตครั้งถัดไป
+  // คืน sessionId ที่บันทึกได้ (null ถ้าบันทึกไม่สำเร็จ) เพื่อให้ handleSaveVersion ผูก snapshot กับดวงต้นทาง
+  async function handleSaveSession(): Promise<string | null> {
+    if (!rawInput || !calculatedState || saveState === "saving") {
+      return sessionId;
+    }
+    setSaveState("saving");
+    const payload = buildReadingPayload(rawInput, calculatedState);
+    // ส่ง sessionId ไปก่อน (อัปเดตดวงเดิม) — แต่ถ้าดวงต้นทางถูกลบไปแล้ว (เช่นเปิดเวอร์ชัน orphan มาแก้) จะ fallback สร้างใหม่
+    const trySave = async (withSessionId: boolean) =>
+      fetch("/api/reading/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          ...(withSessionId && sessionId ? { sessionId } : {}),
+          ...payload,
+        }),
       });
+    try {
+      let response = await trySave(true);
+      // 404 = ดวงต้นทางถูกลบไปแล้ว → ลองใหม่แบบสร้างดวงใหม่ (กันบันทึกเวอร์ชัน orphan แล้ว error)
+      if (response.status === 404 && sessionId) {
+        response = await trySave(false);
+      }
       if (!response.ok) {
         throw new Error("บันทึกไม่สำเร็จ");
       }
@@ -596,8 +679,40 @@ export function ReadingPathWorkspace({
       setSessionId(saved.sessionId);
       setSavedAt(saved.updatedAt);
       setSaveState("saved");
+      return saved.sessionId;
     } catch {
       setSaveState("error");
+      return null;
+    }
+  }
+
+  // บันทึก "เวอร์ชัน PDF" (snapshot) — insert ใหม่เสมอ ไม่ทับของเดิม → เก็บได้หลายเวอร์ชันต่อดวง
+  // อัปเดตดวงต้นทาง (live session) ก่อน เพื่อผูก snapshot กับ sessionId เดียวกัน (กลับมาแก้ต่อได้)
+  async function handleSaveVersion() {
+    if (!rawInput || !calculatedState || versionSaveState === "saving") {
+      return;
+    }
+    setVersionSaveState("saving");
+    const sourceSessionId = await handleSaveSession();
+    const body = {
+      ...(sourceSessionId ? { sessionId: sourceSessionId } : {}),
+      versionNote: versionNote.trim() || null,
+      ...buildReadingPayload(rawInput, calculatedState),
+    };
+    try {
+      const response = await fetch("/api/reading/pdf-versions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error("บันทึกเวอร์ชันไม่สำเร็จ");
+      }
+      const saved = (await response.json()) as { versionId: string; createdAt: string };
+      setVersionSavedAt(saved.createdAt);
+      setVersionSaveState("saved");
+    } catch {
+      setVersionSaveState("error");
     }
   }
 
@@ -891,6 +1006,33 @@ export function ReadingPathWorkspace({
                 : saveState === "saved" || savedAt
                   ? `บันทึกเข้าประวัติแล้ว · ${formatSaveTimestamp(savedAt)}`
                   : "บันทึกเข้าประวัติเพื่อกลับมาแก้ต่อ ปริ้นซ้ำ หรือฝากคนอื่นแก้"}
+            </span>
+          </div>
+          <div className="reading-path__save reading-path__batch-controls reading-path__version-save">
+            <label className="field field--compact">
+              <span>โน้ตเวอร์ชัน (ไม่บังคับ)</span>
+              <input
+                type="text"
+                autoComplete="off"
+                placeholder="เช่น ก่อนแก้บทคู่ครอง — เว้นว่างได้"
+                value={versionNote}
+                onChange={(event) => setVersionNote(event.target.value)}
+              />
+            </label>
+            <ActionButton
+              tone="secondary"
+              type="button"
+              disabled={versionSaveState === "saving" || saveState === "saving"}
+              onClick={() => void handleSaveVersion()}
+            >
+              {versionSaveState === "saving" ? "กำลังบันทึกเวอร์ชัน..." : "บันทึกเวอร์ชัน PDF"}
+            </ActionButton>
+            <span className="section-note reading-path__save-hint">
+              {versionSaveState === "error"
+                ? "บันทึกเวอร์ชันไม่สำเร็จ — ต้องเชื่อมฐานข้อมูล (DATABASE_URL) แล้วลองใหม่"
+                : versionSaveState === "saved" || versionSavedAt
+                  ? `บันทึกเวอร์ชันแล้ว · ${formatSaveTimestamp(versionSavedAt)} — ดู/แก้เวอร์ชันได้ในหน้าประวัติ`
+                  : "แช่แข็งเวอร์ชันนี้ไว้ย้อนกลับมาแก้/ปริ้นได้ แม้จะแก้ดวงต่อหรือโค้ดเปลี่ยน (เก็บได้หลายเวอร์ชัน)"}
             </span>
           </div>
           {batchProgress && (

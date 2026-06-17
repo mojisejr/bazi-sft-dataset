@@ -115,6 +115,76 @@
   cursor: progress;
 }
 
+/* เวอร์ชัน PDF ที่บันทึก — บล็อกใต้การ์ดดวง (span เต็มแถวด้วย flex-basis 100%) */
+.reading-history__versions {
+  flex: 1 1 100%;
+  display: grid;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--surface-line-softer);
+}
+
+.reading-history__versions-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.reading-history__version-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.reading-history__version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--surface-raised);
+  border: 1px solid var(--surface-line-softer);
+}
+
+.reading-history__version-info {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 220px;
+  min-width: min(100%, 220px);
+}
+
+.reading-history__version-who {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.reading-history__version-birth {
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.reading-history__version-time {
+  font-size: 0.85rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.reading-history__version-note {
+  line-height: 1.5;
+}
+
+.reading-history__version-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 /* status badge tints — layered on top of .pending-badge (this file imported last) */
 .reading-history__status--done {
   background: rgba(38, 122, 79, 0.14);

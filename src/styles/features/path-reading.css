@@ -667,6 +667,13 @@
   gap: var(--space-3, 0.75rem);
 }
 
+/* แถบบันทึกเวอร์ชัน PDF — คั่นจากแถบบันทึกการดูดวงด้านบนด้วยเส้นบาง */
+.reading-path__version-save {
+  margin-top: var(--space-3, 0.75rem);
+  padding-top: var(--space-3, 0.75rem);
+  border-top: 1px dashed var(--surface-line-softer, rgba(0, 0, 0, 0.12));
+}
+
 .reading-path__progress {
   position: relative;
   margin-top: var(--space-3, 0.75rem);

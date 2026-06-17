@@ -4,6 +4,7 @@ import { SystemHeader } from "@/components/bazi/SystemHeader";
 type ReadingPageProps = {
   searchParams?: Promise<{
     session?: string;
+    version?: string;
     print?: string;
   }>;
 };
@@ -11,6 +12,7 @@ type ReadingPageProps = {
 export default async function ReadingPage({ searchParams }: ReadingPageProps) {
   const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const resumeSessionId = resolvedSearchParams?.session?.trim() || undefined;
+  const resumeVersionId = resolvedSearchParams?.version?.trim() || undefined;
   const autoPrint = resolvedSearchParams?.print === "1";
 
   return (
@@ -22,7 +24,11 @@ export default async function ReadingPage({ searchParams }: ReadingPageProps) {
           detail: "อ่านดวงทีละหัวข้อจาก engine truth พร้อมเลือกเรียบเรียงด้วย LLM",
         }}
       />
-      <ReadingPathWorkspace resumeSessionId={resumeSessionId} autoPrint={autoPrint} />
+      <ReadingPathWorkspace
+        resumeSessionId={resumeSessionId}
+        resumeVersionId={resumeVersionId}
+        autoPrint={autoPrint}
+      />
     </main>
   );
 }
