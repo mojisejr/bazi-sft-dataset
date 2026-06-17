@@ -863,12 +863,14 @@ export function ReadingPathWorkspace({
     window.print();
   }
 
-  // บันทึก PDF "ฉบับที่แก้แล้ว": เซฟลง DB ก่อน (กันข้อมูลที่แก้หาย) แล้วค่อยพิมพ์
+  // บันทึก PDF "ฉบับที่แก้แล้ว": เซฟลง DB + สร้างเวอร์ชัน PDF snapshot ของฉบับที่แก้ แล้วค่อยพิมพ์
+  // handleSaveVersion จะอัปเดตดวงต้นทาง (persist คำแก้ซินแส + ตารางบทเสริม) ก่อน แล้ว insert เวอร์ชันใหม่
+  // → ทุกครั้งที่กดปุ่มนี้จากฉบับที่แก้ จะได้เวอร์ชัน PDF เก็บไว้ย้อนกลับมาดู/แก้ได้ (ไม่ทับของเดิม)
   // - โหมดแก้: สลับไปหน้าจริง A4 → paged.js จัดหน้าเสร็จ (onReady) → สั่งพิมพ์
   // - อยู่หน้าจริงอยู่แล้ว: พิมพ์ทันที
   const pendingPrintRef = useRef(false);
   async function handleSaveEditedPdf() {
-    await handleSaveSession(); // persist คำแก้ซินแส + ตารางบทเสริม ลงฐานข้อมูลก่อนพิมพ์
+    await handleSaveVersion();
     if (editMode) {
       pendingPrintRef.current = true;
       setEditMode(false); // PagedPreview onReady ด้านล่างจะสั่งพิมพ์ให้เมื่อจัดหน้าเสร็จ
@@ -1102,7 +1104,7 @@ export function ReadingPathWorkspace({
                       type="button"
                       className="ylc-preview__btn ylc-preview__btn--primary"
                       onClick={() => void handleSaveEditedPdf()}
-                      title={editMode ? "บันทึกลงประวัติ (DB) แล้วสลับไปหน้าจริง A4 เปิดหน้าต่างบันทึก PDF ให้อัตโนมัติ" : "บันทึกลงประวัติ (DB) แล้วเปิดหน้าต่างบันทึก PDF"}
+                      title={editMode ? "บันทึกลงประวัติ + เก็บเป็นเวอร์ชัน PDF (ย้อนกลับมาแก้ได้) แล้วสลับไปหน้าจริง A4 เปิดหน้าต่างบันทึก PDF ให้อัตโนมัติ" : "บันทึกลงประวัติ + เก็บเป็นเวอร์ชัน PDF (ย้อนกลับมาแก้ได้) แล้วเปิดหน้าต่างบันทึก PDF"}
                     >
                       {editMode ? "บันทึกลงระบบ + PDF (ฉบับที่แก้)" : "บันทึกลงระบบ + PDF"}
                     </button>
