@@ -57,6 +57,10 @@ const MONTH_NAMES = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
+// ลำดับวัน (อาทิตย์=0) สำหรับจัดตาราง 7 คอลัมน์ + ตัวย่อหัวคอลัมน์
+const WEEKDAY_ORDER = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const WEEKDAY_ABBR = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+
 const NOW = new Date();
 const CURRENT_YEAR_BE = NOW.getFullYear() + 543;
 const CURRENT_MONTH = NOW.getMonth() + 1;
@@ -109,6 +113,8 @@ export function AlmanacWorkspace() {
   const [data, setData] = useState<AlmanacMonth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // วันที่เปิดดูรายละเอียด (modal) — null = ไม่เปิด
+  const [detailDate, setDetailDate] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -262,6 +268,136 @@ export function AlmanacWorkspace() {
   const yearInfo = principalDay?.yearInfo;
   const monthPillar = principalDay?.monthPillar.ganzhi;
 
+  // เนื้อหารายละเอียดเต็มของ 1 วัน (ใช้ใน modal เมื่อคลิกช่องปฏิทิน)
+  const renderDayDetail = (day: AlmanacDay) => (
+    <>
+      {day.solarTerm && (
+        <div className={`almanac-term almanac-term--${day.solarTerm.kind}`}>
+          <span>{day.solarTerm.isMonthChange ? "🟠 เปลี่ยนเดือน" : "🔵 สารทเล็ก"}</span>
+          <span className="almanac-term-cn">{day.solarTerm.name}</span>
+          <span>{day.solarTerm.nameTh}</span>
+          <span className="almanac-term-time">⏱ {day.solarTerm.time}</span>
+        </div>
+      )}
+      <header className="almanac-day-head">
+        <span className="almanac-daynum">{Number(day.date.slice(8, 10))}</span>
+        {day.date === TODAY_ISO && <span className="almanac-today-badge">วันนี้</span>}
+        <span className="almanac-weekday">{day.weekday}</span>
+        <span className="almanac-strength" title="กำลังดิถี E = (O+P+Q+R)/รวม max">
+          {pct(day.strength.ratioDay)}
+          {!day.strength.exact && <span className="almanac-approx"> ~</span>}
+        </span>
+        <span className="almanac-pillar">{day.dayPillar.ganzhi}</span>
+      </header>
+
+      <p className="almanac-thailine">
+        {day.thaiLunar.isWanPhra && <span className="almanac-wanphra">🙏 วันพระ</span>}
+        <span className="almanac-lunarlabel">{day.thaiLunar.label}</span>
+      </p>
+
+      {day.specialDays.length > 0 && (
+        <div className="almanac-special">
+          {day.specialDays.map((s) => (
+            <span
+              key={s.id}
+              className={`almanac-spchip ${SPECIAL_CAT[s.category]?.cls ?? ""}`}
+              title={SPECIAL_CAT[s.category]?.label ?? ""}
+            >
+              {s.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {(day.officer || day.officerDesc || day.jianchu) && (
+        <ul className="almanac-officer">
+          {day.officer && <li>{day.officer}</li>}
+          {day.officerDesc && <li>{day.officerDesc}</li>}
+          {day.jianchu && <li>{day.jianchu.meaning}</li>}
+        </ul>
+      )}
+
+      <dl className="almanac-meta">
+        <div><dt>เสาเดือน</dt><dd>{day.monthPillar.ganzhi}</dd></div>
+        <div><dt>เสาปี</dt><dd>{day.yearPillar.ganzhi}</dd></div>
+        {day.deities.length > 0 && (
+          <div><dt>เทพประจำวัน</dt><dd>{day.deities.join(" / ")}</dd></div>
+        )}
+        {day.colors.length > 0 && (
+          <div><dt>สีมงคล</dt><dd>{day.colors.map((c) => c.colors).join(" / ")}</dd></div>
+        )}
+        {day.luckyDirection && <div><dt>ทิศโชคลาภ</dt><dd>{day.luckyDirection}</dd></div>}
+        <div><dt>ทิศอสูร ว/ด/ป</dt><dd>{day.asura.day} · {day.asura.month} · {day.asura.year}</dd></div>
+        {day.patrons.length > 0 && (
+          <div><dt>เทพอุปถัมภ์</dt><dd>
+            <ul className="almanac-patrons">
+              {day.patrons.map((p, i) => (
+                <li key={`${p.branch}-${i}`}>{p.zodiac}/ทิศ{p.zodiac.replace("คนเกิดปี", "")}</li>
+              ))}
+            </ul>
+          </dd></div>
+        )}
+        <div>
+          <dt>กำลัง (ดิถี)</dt>
+          <dd>{pct(day.strength.ratioDay)}</dd>
+        </div>
+      </dl>
+
+      {day.dayStars.length > 0 && (
+        <div className="almanac-deities">
+          {day.dayStars.map((s) => (
+            <span
+              key={s.name}
+              className={`almanac-chip ${s.polarity === "good" ? "almanac-chip-good" : "almanac-chip-bad"}`}
+              title={s.activity ?? ""}
+            >
+              {s.polarity === "good" ? "✅" : "⛔"} {s.name}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {day.luckyHours.length > 0 && (
+        <div className="almanac-hours">
+          <span className="almanac-hours-label">⏰ เวลามงคล</span>
+          <ul className="almanac-hourlist">
+            {day.luckyHours.map((h) => (
+              <li key={h.code}>
+                <b>{h.range}</b> <em>{h.meaning}</em>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {day.gates.length > 0 && (
+        <details className="almanac-detail">
+          <summary>8 ประตู 八門</summary>
+          <ul className="almanac-tags">
+            {day.gates.map((g) => (
+              <li key={g.name}>{g.name} {g.meaning ?? ""} <em>{g.direction}</em></li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {day.spirits.length > 0 && (
+        <details className="almanac-detail">
+          <summary>8 เทพ 八神 + คีย์เวิร์ด</summary>
+          <ul className="almanac-spirits">
+            {day.spirits.map((s, i) => (
+              <li key={`${s.name}-${i}`}>
+                <b>{s.name}</b> {s.keywords.join(" · ")}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {day.note && <p className="almanac-note">📝 {day.note}</p>}
+    </>
+  );
+
   return (
     <section className="almanac-workspace">
       <div className="almanac-controls">
@@ -364,180 +500,101 @@ export function AlmanacWorkspace() {
             </div>
           </div>
 
-          <div className="almanac-grid">
-            {data.days.map((day) => (
-              <article
-                key={day.date}
-                className={`almanac-day${day.solarTerm ? ` almanac-day--term-${day.solarTerm.kind}` : ""}${day.date === TODAY_ISO ? " almanac-day--today" : ""}`}
-              >
-                {day.solarTerm && (
-                  <div className={`almanac-term almanac-term--${day.solarTerm.kind}`}>
-                    <span>{day.solarTerm.isMonthChange ? "🟠 เปลี่ยนเดือน" : "🔵 สารทเล็ก"}</span>
-                    <span className="almanac-term-cn">{day.solarTerm.name}</span>
-                    <span>{day.solarTerm.nameTh}</span>
-                    <span className="almanac-term-time">⏱ {day.solarTerm.time}</span>
-                  </div>
-                )}
-                <header className="almanac-day-head">
-                  <span className="almanac-daynum">{Number(day.date.slice(8, 10))}</span>
-                  {day.date === TODAY_ISO && <span className="almanac-today-badge">วันนี้</span>}
-                  <span className="almanac-weekday">{day.weekday}</span>
-                  <span className="almanac-strength" title="กำลังดิถี E = (O+P+Q+R)/รวม max">
-                    {pct(day.strength.ratioDay)}
-                    {!day.strength.exact && <span className="almanac-approx"> ~</span>}
-                  </span>
-                  <span className="almanac-pillar">{day.dayPillar.ganzhi}</span>
-                </header>
-
-                <p className="almanac-thailine">
-                  {day.thaiLunar.isWanPhra && <span className="almanac-wanphra">🙏 วันพระ</span>}
-                  <span className="almanac-lunarlabel">{day.thaiLunar.label}</span>
-                </p>
-
-                {day.specialDays.length > 0 && (
-                  <div className="almanac-special">
-                    {day.specialDays.map((s) => (
-                      <span
-                        key={s.id}
-                        className={`almanac-spchip ${SPECIAL_CAT[s.category]?.cls ?? ""}`}
-                        title={SPECIAL_CAT[s.category]?.label ?? ""}
-                      >
-                        {s.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {(day.officer || day.officerDesc || day.jianchu) && (
-                  <ul className="almanac-officer">
-                    {day.officer && <li>{day.officer}</li>}
-                    {day.officerDesc && <li>{day.officerDesc}</li>}
-                    {day.jianchu && <li>{day.jianchu.meaning}</li>}
-                  </ul>
-                )}
-
-                <dl className="almanac-meta">
-                  <div><dt>เสาเดือน</dt><dd>{day.monthPillar.ganzhi}</dd></div>
-                  <div><dt>เสาปี</dt><dd>{day.yearPillar.ganzhi}</dd></div>
-                  {day.deities.length > 0 && (
-                    <div><dt>เทพประจำวัน</dt><dd>{day.deities.join(" / ")}</dd></div>
-                  )}
-                  {day.colors.length > 0 && (
-                    <div><dt>สีมงคล</dt><dd>{day.colors.map((c) => c.colors).join(" / ")}</dd></div>
-                  )}
-                  {day.luckyDirection && <div><dt>ทิศโชคลาภ</dt><dd>{day.luckyDirection}</dd></div>}
-                  <div><dt>ทิศอสูร ว/ด/ป</dt><dd>{day.asura.day} · {day.asura.month} · {day.asura.year}</dd></div>
-                  {day.patrons.length > 0 && (
-                    <div><dt>เทพอุปถัมภ์</dt><dd>
-                      <ul className="almanac-patrons">
-                        {day.patrons.map((p, i) => (
-                          <li key={`${p.branch}-${i}`}>{p.zodiac}/ทิศ{p.zodiac.replace("คนเกิดปี", "")}</li>
-                        ))}
-                      </ul>
-                    </dd></div>
-                  )}
-                  <div>
-                    <dt>กำลัง (ดิถี)</dt>
-                    <dd>{pct(day.strength.ratioDay)}</dd>
-                  </div>
-                </dl>
-
-                {day.dayStars.length > 0 && (
-                  <div className="almanac-deities">
-                    {day.dayStars.map((s) => (
-                      <span
-                        key={s.name}
-                        className={`almanac-chip ${s.polarity === "good" ? "almanac-chip-good" : "almanac-chip-bad"}`}
-                        title={s.activity ?? ""}
-                      >
-                        {s.polarity === "good" ? "✅" : "⛔"} {s.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {day.luckyHours.length > 0 && (
-                  <div className="almanac-hours">
-                    <span className="almanac-hours-label">⏰ เวลามงคล</span>
-                    <ul className="almanac-hourlist">
-                      {day.luckyHours.map((h) => (
-                        <li key={h.code}>
-                          <b>{h.range}</b> <em>{h.meaning}</em>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {day.gates.length > 0 && (
-                  <details className="almanac-detail">
-                    <summary>8 ประตู 八門</summary>
-                    <ul className="almanac-tags">
-                      {day.gates.map((g) => (
-                        <li key={g.name}>{g.name} {g.meaning ?? ""} <em>{g.direction}</em></li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-
-                {day.spirits.length > 0 && (
-                  <details className="almanac-detail">
-                    <summary>8 เทพ 八神 + คีย์เวิร์ด</summary>
-                    <ul className="almanac-spirits">
-                      {day.spirits.map((s, i) => (
-                        <li key={`${s.name}-${i}`}>
-                          <b>{s.name}</b> {s.keywords.join(" · ")}
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                )}
-
-                {day.note && <p className="almanac-note">📝 {day.note}</p>}
-
-                <div className="almanac-edit-row">
-                  <button type="button" className="almanac-editbtn" onClick={() => openEditor(day)}>
-                    ✏️ แก้ไข
-                  </button>
-                </div>
-
-                {editDate === day.date && (
-                  <div className="almanac-editor">
-                    <p className="almanac-editor-hint">แก้ได้ทุกฟิลด์ · เว้นว่าง = คืนค่าเดิมของฟิลด์นั้น</p>
-                    {DAY_FIELDS.map((f) => (
-                      <label key={f.key}>
-                        {f.label}
-                        {f.type === "textarea" ? (
-                          <textarea value={editDraft[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} rows={2} />
-                        ) : f.type === "json" ? (
-                          <textarea
-                            className="almanac-json"
-                            value={editDraft[f.key] ?? ""}
-                            onChange={(e) => setField(f.key, e.target.value)}
-                            rows={Math.min(10, (editDraft[f.key] ?? "").split("\n").length + 1)}
-                            spellCheck={false}
-                          />
-                        ) : (
-                          <input value={editDraft[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} />
-                        )}
-                      </label>
-                    ))}
-                    <div className="almanac-editor-actions">
-                      <button type="button" className="almanac-download" disabled={busy} onClick={saveDay}>
-                        💾 บันทึก + รันใหม่
-                      </button>
-                      <button type="button" className="almanac-editbtn" disabled={busy} onClick={() => resetDay(day.date)}>
-                        ♻️ คืนค่าทั้งวัน
-                      </button>
-                      <button type="button" className="almanac-editbtn" disabled={busy} onClick={() => setEditDate(null)}>
-                        ยกเลิก
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </article>
+          <div className="almanac-cal">
+            {WEEKDAY_ABBR.map((wd, i) => (
+              <div key={wd} className={`almanac-cal-head${i === 0 ? " almanac-cal-head--sun" : ""}${i === 6 ? " almanac-cal-head--sat" : ""}`}>
+                {wd}
+              </div>
             ))}
+            {Array.from({ length: Math.max(0, WEEKDAY_ORDER.indexOf(data.days[0]?.weekday ?? "")) }).map((_, i) => (
+              <div key={`blank-${i}`} className="almanac-cell almanac-cell--empty" />
+            ))}
+            {data.days.map((day) => {
+              const wi = WEEKDAY_ORDER.indexOf(day.weekday);
+              return (
+                <button
+                  key={day.date}
+                  type="button"
+                  onClick={() => setDetailDate(day.date)}
+                  className={`almanac-cell${day.solarTerm ? ` almanac-cell--term-${day.solarTerm.kind}` : ""}${day.date === TODAY_ISO ? " almanac-cell--today" : ""}${wi === 0 ? " almanac-cell--sun" : ""}${wi === 6 ? " almanac-cell--sat" : ""}`}
+                >
+                  <span className="almanac-cell-top">
+                    <span className="almanac-cell-num">{Number(day.date.slice(8, 10))}</span>
+                    <span className="almanac-cell-pillar">{day.dayPillar.ganzhi}</span>
+                  </span>
+                  {day.officer && <span className="almanac-cell-officer">{day.officer}</span>}
+                  <span className="almanac-cell-bottom">
+                    {day.luckyDirection && <span className="almanac-cell-dir">{day.luckyDirection}</span>}
+                    <span className="almanac-cell-strength">{pct(day.strength.ratioDay)}</span>
+                  </span>
+                  <span className="almanac-cell-marks">
+                    {day.date === TODAY_ISO && <span className="almanac-cell-mark almanac-cell-mark--today">วันนี้</span>}
+                    {day.thaiLunar.isWanPhra && <span className="almanac-cell-mark" title="วันพระ">🙏</span>}
+                    {day.solarTerm && <span className="almanac-cell-mark" title={`${day.solarTerm.name} ${day.solarTerm.nameTh}`}>{day.solarTerm.isMonthChange ? "🟠" : "🔵"}</span>}
+                    {day.specialDays.length > 0 && <span className="almanac-cell-mark" title={day.specialDays.map((s) => s.name).join(", ")}>🔖</span>}
+                  </span>
+                </button>
+              );
+            })}
           </div>
+
+          {detailDate && (() => {
+            const day = data.days.find((d) => d.date === detailDate);
+            if (!day) return null;
+            const close = () => { setDetailDate(null); setEditDate(null); };
+            return (
+              <div className="almanac-modal-backdrop" onClick={close}>
+                <div
+                  className={`almanac-modal almanac-day${day.solarTerm ? ` almanac-day--term-${day.solarTerm.kind}` : ""}${day.date === TODAY_ISO ? " almanac-day--today" : ""}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button type="button" className="almanac-modal-close" onClick={close} aria-label="ปิด">✕</button>
+                  {renderDayDetail(day)}
+
+                  <div className="almanac-edit-row">
+                    <button type="button" className="almanac-editbtn" onClick={() => openEditor(day)}>
+                      ✏️ แก้ไข
+                    </button>
+                  </div>
+
+                  {editDate === day.date && (
+                    <div className="almanac-editor">
+                      <p className="almanac-editor-hint">แก้ได้ทุกฟิลด์ · เว้นว่าง = คืนค่าเดิมของฟิลด์นั้น</p>
+                      {DAY_FIELDS.map((f) => (
+                        <label key={f.key}>
+                          {f.label}
+                          {f.type === "textarea" ? (
+                            <textarea value={editDraft[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} rows={2} />
+                          ) : f.type === "json" ? (
+                            <textarea
+                              className="almanac-json"
+                              value={editDraft[f.key] ?? ""}
+                              onChange={(e) => setField(f.key, e.target.value)}
+                              rows={Math.min(10, (editDraft[f.key] ?? "").split("\n").length + 1)}
+                              spellCheck={false}
+                            />
+                          ) : (
+                            <input value={editDraft[f.key] ?? ""} onChange={(e) => setField(f.key, e.target.value)} />
+                          )}
+                        </label>
+                      ))}
+                      <div className="almanac-editor-actions">
+                        <button type="button" className="almanac-download" disabled={busy} onClick={saveDay}>
+                          💾 บันทึก + รันใหม่
+                        </button>
+                        <button type="button" className="almanac-editbtn" disabled={busy} onClick={() => resetDay(day.date)}>
+                          ♻️ คืนค่าทั้งวัน
+                        </button>
+                        <button type="button" className="almanac-editbtn" disabled={busy} onClick={() => setEditDate(null)}>
+                          ยกเลิก
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </>
       )}
     </section>

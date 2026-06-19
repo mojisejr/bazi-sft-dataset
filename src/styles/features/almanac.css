@@ -64,6 +64,199 @@
   gap: 0.75rem;
 }
 
+/* ===== ตารางปฏิทิน 7 คอลัมน์ (เหมือนปฏิทินจริง) ===== */
+.almanac-cal {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  background: #e7d9c5;
+  border: 1px solid #e7d9c5;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.almanac-cal-head {
+  background: #2b4a8b;
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.35rem 0;
+}
+
+.almanac-cal-head--sun {
+  background: #b4231f;
+}
+
+.almanac-cal-head--sat {
+  background: #7a3fa0;
+}
+
+.almanac-cell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-height: 5.2rem;
+  padding: 0.3rem 0.35rem;
+  background: #fff;
+  border: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.almanac-cell:hover {
+  background: #fff7e6;
+}
+
+.almanac-cell--empty {
+  background: #faf6ef;
+  cursor: default;
+}
+
+.almanac-cell-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.almanac-cell-num {
+  font-size: 1.15rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.almanac-cell--sun .almanac-cell-num {
+  color: #b4231f;
+}
+
+.almanac-cell--sat .almanac-cell-num {
+  color: #7a3fa0;
+}
+
+.almanac-cell-pillar {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #333;
+}
+
+.almanac-cell-officer {
+  font-size: 0.72rem;
+  color: #7a4a1e;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.almanac-cell-bottom {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+  color: #666;
+}
+
+.almanac-cell-strength {
+  padding: 0.02rem 0.3rem;
+  border-radius: 0.3rem;
+  background: #fbe3e6;
+  color: #b4231f;
+  font-weight: 700;
+}
+
+.almanac-cell-marks {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.3rem;
+  display: flex;
+  gap: 0.1rem;
+  font-size: 0.7rem;
+}
+
+.almanac-cell-mark--today {
+  padding: 0.02rem 0.25rem;
+  border-radius: 0.3rem;
+  background: #d4380d;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.almanac-cell--today {
+  background: #fff7e6;
+  box-shadow: 0 0 0 2px #d4380d inset;
+}
+
+.almanac-cell--term-major {
+  box-shadow: 0 0 0 2px #e0962b inset;
+}
+
+.almanac-cell--term-minor {
+  box-shadow: 0 0 0 2px #2b8fa3 inset;
+}
+
+/* ===== Modal รายละเอียดวัน ===== */
+.almanac-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+  overflow-y: auto;
+}
+
+.almanac-modal {
+  position: relative;
+  width: min(34rem, 100%);
+  max-height: calc(100vh - 5rem);
+  overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.almanac-modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: none;
+  border-radius: 50%;
+  background: #f0e9dd;
+  color: #555;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.almanac-modal-close:hover {
+  background: #e2d6c2;
+}
+
+@media (max-width: 640px) {
+  .almanac-cell {
+    min-height: 4.4rem;
+    padding: 0.25rem 0.25rem;
+  }
+  .almanac-cell-num {
+    font-size: 1rem;
+  }
+  .almanac-cell-pillar {
+    font-size: 0.8rem;
+  }
+  .almanac-cell-officer {
+    display: none;
+  }
+}
+
 .almanac-day {
   border: 1px solid var(--border, #e2e2ea);
   border-radius: 0.75rem;
