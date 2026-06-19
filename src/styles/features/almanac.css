@@ -97,7 +97,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.12rem;
-  min-height: 8.5rem;
+  min-height: 9.4rem;
   padding: 0.28rem 0.32rem;
   background: #fff;
   border: none;
@@ -174,9 +174,36 @@
   font-size: 0.68rem;
 }
 
+.almanac-cell-row2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
 .almanac-cell-dots {
   display: flex;
   gap: 0.18rem;
+}
+
+.almanac-cell-colors {
+  display: flex;
+  gap: 0.1rem;
+}
+
+.almanac-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  display: inline-block;
+}
+
+.almanac-cell-figs {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
 }
 
 .almanac-dot {
@@ -229,20 +256,104 @@
   font-weight: 700;
 }
 
+/* 八門 + ทิศใต้ตัวอักษร (ในช่อง) */
+.almanac-cell-gaterow {
+  display: flex;
+  gap: 0.04rem;
+}
+
+.almanac-gatecell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-size: 0.6rem;
+}
+
+.almanac-gatedir {
+  font-size: 0.5rem;
+  color: #888;
+}
+
+/* ตารางความหมาย (legend) ท้ายหน้า */
+.almanac-legend {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.almanac-legend > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: #8a5a2b;
+}
+
+.almanac-legend-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1.5rem;
+  margin-top: 0.4rem;
+}
+
+.almanac-legend-grid h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.almanac-legend-grid ul {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.almanac-legend-grid li {
+  color: #555;
+}
+
+.almanac-legend-grid .almanac-gatechar {
+  display: inline-block;
+  width: 1.1rem;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  .almanac-legend-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .almanac-headgates {
   display: flex;
-  gap: 0.15rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.1rem 0.18rem;
   font-size: 0.95rem;
   margin: 0.05rem 0;
 }
 
+.almanac-headgates .almanac-gatecell {
+  font-size: 0.82rem;
+}
+
+.almanac-headgates .almanac-gatedir {
+  font-size: 0.55rem;
+  color: #777;
+}
+
 .almanac-cell-marks {
-  position: absolute;
-  top: 0.25rem;
-  right: 0.3rem;
+  order: -1;
   display: flex;
-  gap: 0.1rem;
-  font-size: 0.7rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.3rem;
+  font-size: 0.62rem;
+}
+
+.almanac-cell-mark {
+  color: #777;
+  white-space: nowrap;
 }
 
 .almanac-cell-mark--today {

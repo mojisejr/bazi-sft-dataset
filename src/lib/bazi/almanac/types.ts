@@ -90,6 +90,8 @@ export type MonthInfo = {
   lapDir: string | null;
   /** ทิศอสูรเดือน (三煞 ตามกิ่งเดือน) */
   asuraDir: string | null;
+  /** ทิศ 八神 ระดับเดือน [ตัวอักษร, ทิศ] (สกัดจากปฏิทินจริง) */
+  spiritDirs: [string, string][] | null;
 };
 
 export type YearInfo = {
@@ -103,6 +105,8 @@ export type YearInfo = {
   lapDir: string | null;
   /** เทพประจำปี */
   deity: string | null;
+  /** ทิศ 八神 ระดับปี [ตัวอักษร, ทิศ] (สกัดจากปฏิทินจริง) */
+  spiritDirs: [string, string][] | null;
 };
 
 /** ขอบสารทของวัน (จากปฏิทิน 150 ปี) — major=สารทใหญ่/เปลี่ยนเดือน, minor=สารทเล็ก */

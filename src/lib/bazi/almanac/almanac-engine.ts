@@ -71,12 +71,14 @@ const DAY_TABLE = dayTableJson as unknown as Record<string, AlmanacRecord>;
 const DAY_MONTH_TABLE = dayMonthTableJson as unknown as Record<string, AlmanacRecord>;
 const MONTH_TABLE = monthTableJson as unknown as Record<
   string,
-  { deity: string | null; caishen_dir: string | null; lap_dir: string | null; asura_dir?: string | null }
+  { deity: string | null; caishen_dir: string | null; lap_dir: string | null; asura_dir?: string | null; spirit_dirs?: [string, string][] }
 >;
 const YEAR_TABLE = yearTableJson as unknown as Record<
   string,
-  { asura_dir?: string | null; caishen_dir?: string | null; lap_dir?: string | null; deity?: string | null }
+  { asura_dir?: string | null; caishen_dir?: string | null; lap_dir?: string | null; deity?: string | null; spirit_dirs?: [string, string][] }
 >;
+const GATE_SET = new Set("開休生傷杜景死驚");
+const SPIRIT_SET = new Set("天地玄虎合陰蛇符陳雀");
 const SPIRIT_LEGEND = spiritLegendJson as Record<string, string[]>;
 const GATE_LEGEND = gateLegendJson as Record<string, string>;
 const HOUR_GOD_LEGEND = hourGodLegendJson as Record<
@@ -338,6 +340,11 @@ export function buildAlmanacDay(
   const m = DAY_MONTH_TABLE[`${dayPillar.ganzhi}|${monthPillar.branch}`] ?? null; // ตรงตามฤดู (exact)
   const d = DAY_TABLE[dayPillar.ganzhi] ?? null; // fallback
   const rec = m ?? d;
+  // กัน gates/spirits เพี้ยน (บางเสาคอลัมน์เลื่อนตอนสกัด) → fallback ไป day-pillar-table
+  const gatesOk = (g: AlmanacRecord["gates"]) => !!g && g.length > 0 && g.every((x) => x && x[0] && GATE_SET.has(x[0]));
+  const spiritsOk = (s: AlmanacRecord["spirits"]) => !!s && s.length > 0 && s.every((x) => x && SPIRIT_SET.has(x));
+  const gateRec = gatesOk(m?.gates) ? m : (gatesOk(d?.gates) ? d : rec);
+  const spiritRec = spiritsOk(m?.spirits) ? m : (spiritsOk(d?.spirits) ? d : rec);
 
   const colors = [toColors(rec?.color_primary), toColors(rec?.color_secondary)].filter(
     (c): c is ColorInfo => c !== null,
@@ -349,6 +356,7 @@ export function buildAlmanacDay(
     caishenDir: monthRec?.caishen_dir ?? null,
     lapDir: monthRec?.lap_dir ?? null,
     asuraDir: monthRec?.asura_dir ?? (asuraOf(monthPillar.branch) || null),
+    spiritDirs: monthRec?.spirit_dirs ?? null,
   };
 
   // ระดับปี: อสูรปีคำนวณได้ทุกปี (三煞); ไฉ่ซิ้ง/โชคลาภ/เทพประจำปี = lookup (มีเท่าที่กรอกใน year-pillar-table)
@@ -359,6 +367,7 @@ export function buildAlmanacDay(
     caishenDir: yearRec?.caishen_dir ?? null,
     lapDir: yearRec?.lap_dir ?? null,
     deity: yearRec?.deity ?? null,
+    spiritDirs: yearRec?.spirit_dirs ?? null,
   };
 
   const asura: AsuraDirections = {
@@ -391,8 +400,8 @@ export function buildAlmanacDay(
     luckyDirection: rec?.lucky_dir ?? null,
     asura,
     patrons: toPatrons(rec?.patrons),
-    gates: toGates(rec?.gates),
-    spirits: toSpirits(rec?.spirits),
+    gates: toGates(gateRec?.gates),
+    spirits: toSpirits(spiritRec?.spirits),
     // เวลามงคล: คำนวณกฎ 黃道 จากกิ่งวัน (ถูกต้องทุกปี ไม่พึ่งตารางสกัด)
     luckyHours: luckyHoursByDayBranch(dayPillar.branch),
     monthInfo,
