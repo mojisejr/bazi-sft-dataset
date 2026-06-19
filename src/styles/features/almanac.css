@@ -193,7 +193,8 @@
 }
 
 .almanac-hourlist li em {
-  color: #888;
+  color: #222;
+  font-weight: 600;
   font-style: normal;
 }
 

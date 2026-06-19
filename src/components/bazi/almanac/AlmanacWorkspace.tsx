@@ -437,7 +437,7 @@ export function AlmanacWorkspace() {
                     <ul className="almanac-hourlist">
                       {day.luckyHours.map((h) => (
                         <li key={h.code}>
-                          <b>{h.range}</b> {h.god} <em>{h.meaning}</em>
+                          <b>{h.range}</b> <em>{h.meaning}</em>
                         </li>
                       ))}
                     </ul>
