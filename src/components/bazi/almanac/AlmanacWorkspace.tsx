@@ -386,7 +386,7 @@ export function AlmanacWorkspace() {
                   <ul className="almanac-officer">
                     {day.officer && <li>{day.officer}</li>}
                     {day.officerDesc && <li>{day.officerDesc}</li>}
-                    {day.jianchu && <li>{day.jianchu.name} {day.jianchu.meaning}</li>}
+                    {day.jianchu && <li>{day.jianchu.meaning}</li>}
                   </ul>
                 )}
 
@@ -411,9 +411,8 @@ export function AlmanacWorkspace() {
                     </dd></div>
                   )}
                   <div>
-                    <dt>กำลัง (ดิถี/รวม)</dt>
-                    <dd>{pct(day.strength.ratioDay)} / {pct(day.strength.ratioTotal)}
-                      {!day.strength.exact && <span className="almanac-approx"> (รวมประมาณ)</span>}</dd>
+                    <dt>กำลัง (ดิถี)</dt>
+                    <dd>{pct(day.strength.ratioDay)}</dd>
                   </div>
                 </dl>
 
