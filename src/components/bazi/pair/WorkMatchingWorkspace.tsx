@@ -35,6 +35,11 @@ function candidateName(names: string[], index: number): string {
   return names[index]?.trim() || `ผู้สมัครคนที่ ${index + 1}`;
 }
 
+/** กรอกวัน-เวลาครบทุกช่องหรือยัง (กันส่ง payload ที่ยังว่าง). */
+function isFormComplete(f: FormState): boolean {
+  return Boolean(f.birthDay && f.birthMonth && f.birthYearBe && f.birthHour && f.birthMinute);
+}
+
 export function WorkMatchingWorkspace() {
   const [selfForm, setSelfForm] = useState<FormState>(createDefaultFormState);
   const [candForms, setCandForms] = useState<FormState[]>(() => [
@@ -82,8 +87,19 @@ export function WorkMatchingWorkspace() {
     setError(null);
     setLlmText({});
     try {
+      if (!isFormComplete(selfForm)) {
+        throw new Error("กรอกวัน-เวลาเกิดของ “เรา” ให้ครบก่อน");
+      }
+      // ส่งเฉพาะผู้ร่วมงานที่กรอกครบ (ช่องที่เว้นว่างจะถูกข้าม)
+      const filled = candForms
+        .map((form, i) => ({ form, name: candidateName(names, i) }))
+        .filter(({ form }) => isFormComplete(form));
+      if (filled.length === 0) {
+        throw new Error("กรอกข้อมูลผู้ร่วมงานอย่างน้อย 1 คนให้ครบก่อน");
+      }
+
       const selfPayload = buildPayload(selfForm);
-      const candPayloads = candForms.map(buildPayload);
+      const candPayloads = filled.map(({ form }) => buildPayload(form));
       const response = await fetch("/api/bazi/work", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -96,7 +112,7 @@ export function WorkMatchingWorkspace() {
       setResult(data as WorkResponse);
       setSubmittedSelf(selfPayload);
       setSubmittedCands(candPayloads);
-      setSubmittedNames(candForms.map((_, i) => candidateName(names, i)));
+      setSubmittedNames(filled.map(({ name }) => name));
       const now = new Date();
       setCurrentYear(now.getFullYear());
       setDateText(now.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" }));
@@ -214,15 +230,26 @@ export function WorkMatchingWorkspace() {
           {/* ── อันดับ ── */}
           <SectionHeading kicker="ผลจัดอันดับ" title="ใครเข้ากับเราดีที่สุด (ด้านการงาน)" compact />
           <ol className="pair-ranking">
-            {rankedCandidates.map(({ rank, candidate, name }) => (
-              <li key={candidate.index} className="pair-ranking__item" data-best={rank === 0 ? "true" : undefined}>
-                <span className="pair-ranking__pos">{rank === 0 ? "👑" : `#${rank + 1}`}</span>
-                <span className="pair-ranking__name">{name}</span>
-                <span className="pair-ranking__pillar">{candidate.profile.dayPillar.stem}{candidate.profile.dayPillar.branch}</span>
-                <span className="pair-ranking__score">{candidate.rankScore ?? "-"}%</span>
-                <span className="pair-ranking__grade">{candidate.match.forward.grade}</span>
-              </li>
-            ))}
+            {rankedCandidates.map(({ rank, candidate, name }) => {
+              const score = candidate.rankScore;
+              const width = score == null ? 0 : Math.max(2, Math.min(100, score));
+              return (
+                <li key={candidate.index} className="pair-ranking__item" data-best={rank === 0 ? "true" : undefined}>
+                  <span className="pair-ranking__pos">{rank === 0 ? "👑" : `#${rank + 1}`}</span>
+                  <div className="pair-ranking__main">
+                    <div className="pair-ranking__namerow">
+                      <span className="pair-ranking__name">{name}</span>
+                      <span className="pair-ranking__pillar">{candidate.profile.dayPillar.stem}{candidate.profile.dayPillar.branch}</span>
+                    </div>
+                    <span className="pair-ranking__bar">
+                      <span className="pair-ranking__bar-fill" style={{ width: `${width}%` }} />
+                    </span>
+                  </div>
+                  <span className="pair-ranking__score">{score ?? "-"}%</span>
+                  <span className="pair-ranking__grade">{candidate.match.forward.grade}</span>
+                </li>
+              );
+            })}
           </ol>
           <p className="pair-rating-text" style={{ opacity: 0.7 }}>
             * จัดอันดับจากคะแนนทิศ “เรา → ผู้ร่วมงาน” (forward) ตามตำราคู่สมพงษ์ด้านการงาน

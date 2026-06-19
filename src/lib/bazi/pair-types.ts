@@ -113,6 +113,28 @@ export type PairMatchResult = {
 
 export type RoleReading = { perspective: string; stageName: string; narrative: string };
 
+/** ตำแหน่งเสาที่ใช้จับคู่ในมิติความเข้ากัน. */
+export type PillarPos = "hour" | "day" | "month" | "year";
+
+/**
+ * หนึ่งมิติความเข้ากัน (กราฟแท่ง 4 แท่ง) — คะแนนจากตารางความรัก 60×60
+ * โดยจับคู่เสาของเรา (ourPos) กับเสาของเขา (partnerPos) ที่ต่างกันต่อมิติ.
+ */
+export type LoveFacet = {
+  key: "intimacy" | "kalyanamitra" | "lifePartner" | "karmic";
+  /** ชื่อมิติ (ไทย). */
+  label: string;
+  /** คู่เสาแบบอ่านง่าย เช่น "ยามเรา × วันเขา". */
+  pairingLabel: string;
+  ourPos: PillarPos;
+  partnerPos: PillarPos;
+  ourGanzhi: string;
+  partnerGanzhi: string;
+  percent: number | null;
+  grade: string;
+  found: boolean;
+};
+
 /** Both directional readings for a domain + an order-independent overall. */
 export type PairMatchPair = {
   /** คนที่ 1 มองคนที่ 2 (เรา = A). */

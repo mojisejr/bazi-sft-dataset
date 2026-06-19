@@ -8,6 +8,8 @@ import { Surface } from "@/components/bazi/primitives/Surface";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { PairDetailModal } from "@/components/bazi/pair/PairDetailModal";
 import { PairPrintReport } from "@/components/bazi/pair/PairPrintReport";
+import { PairPillarsCompare } from "@/components/bazi/pair/PairPillarsCompare";
+import { PairCompatBars } from "@/components/bazi/pair/PairCompatBars";
 import { PersonInputs } from "@/components/bazi/pair/PersonInputs";
 import {
   buildEngineText,
@@ -22,7 +24,7 @@ import {
   type FormState,
 } from "@/lib/bazi/trainer-workspace";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
-import type { PairComparisonResult } from "@/lib/bazi/pair-types";
+import type { LoveFacet, PairComparisonResult } from "@/lib/bazi/pair-types";
 import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 
 const DOMAIN = "love" as const;
@@ -31,6 +33,7 @@ type PairResponse = {
   personA: CalculatedStateValue;
   personB: CalculatedStateValue;
   comparison: PairComparisonResult;
+  loveFacets: LoveFacet[];
 };
 
 type ModalKind = "chart" | "sising" | null;
@@ -143,8 +146,8 @@ export function PairMatchingWorkspace() {
           note="ระบบใช้เวลาประเทศไทย + ปฏิทินสุริยคติ และจับคู่จากหลักวัน (วันเกิด) ของทั้งคู่"
         />
         <div className="pair-forms">
-          <PersonInputs label="คนที่ 1" form={formA} onChange={onChangeA} />
-          <PersonInputs label="คนที่ 2" form={formB} onChange={onChangeB} />
+          <PersonInputs label="ตัวเรา" form={formA} onChange={onChangeA} />
+          <PersonInputs label="เขา" form={formB} onChange={onChangeB} />
         </div>
         <div className="pair-actions" style={{ marginTop: "1rem" }}>
           <ActionButton tone="primary" type="button" disabled={submitting} onClick={onCompare}>
@@ -160,8 +163,8 @@ export function PairMatchingWorkspace() {
           <SectionHeading kicker="คำทำนายพื้นฐาน" title="หลักวัน & นิสัยของแต่ละคน" compact />
           <div className="pair-person-grid">
             {([
-              { who: "คนที่ 1", p: result.comparison.personA },
-              { who: "คนที่ 2", p: result.comparison.personB },
+              { who: "ตัวเรา", p: result.comparison.personA },
+              { who: "เขา", p: result.comparison.personB },
             ]).map(({ who, p }) => (
               <div key={who} className="pair-person-card">
                 <div className="pair-person-card__head">
@@ -179,6 +182,10 @@ export function PairMatchingWorkspace() {
             ))}
           </div>
 
+          {/* ── เทียบสี่เสา 2 คน ── */}
+          <SectionHeading kicker="ผังธาตุ" title="เทียบสี่เสาของทั้งสองฝ่าย" compact />
+          <PairPillarsCompare personA={result.personA} personB={result.personB} />
+
           {/* ── ความเข้ากัน ── */}
           <SectionHeading kicker="ความเข้ากัน" title={`ดวงสมพงษ์ด้าน${DOMAIN_LABEL[DOMAIN]}`} compact />
 
@@ -188,14 +195,18 @@ export function PairMatchingWorkspace() {
                 <div className="pair-verdict__grade">{pair.overallGrade}</div>
                 <div className="pair-verdict__main">
                   <div className="pair-verdict__label">{verdictLabel(pair.overallPercent)}</div>
-                  <div className="pair-verdict__pct">คะแนนรวม {pair.overallPercent}% · เฉลี่ยสองทิศ (สลับลำดับการกรอกได้ผลเท่าเดิม)</div>
+                  <div className="pair-verdict__pct">คะแนนรวม {pair.overallPercent}%</div>
                 </div>
               </div>
 
+              {result.loveFacets?.length ? (
+                <PairCompatBars facets={result.loveFacets} />
+              ) : null}
+
               <div className="pair-direction-grid">
                 {([
-                  { dir: pair.forward, label: "คนที่ 1 ได้รับจากคนที่ 2" },
-                  { dir: pair.reverse, label: "คนที่ 2 ได้รับจากคนที่ 1" },
+                  { dir: pair.forward, label: "ตัวเรา ได้รับจากเขา" },
+                  { dir: pair.reverse, label: "เขา ได้รับจากตัวเรา" },
                 ]).map(({ dir, label }) => (
                   <div key={label} className="pair-direction">
                     <div className="pair-direction__head">
@@ -213,7 +224,7 @@ export function PairMatchingWorkspace() {
               </div>
 
               <div className="pair-elem">
-                <strong>ปฏิกิริยาธาตุ คนที่ 1 ({result.comparison.elementInteraction.aElementTh}) ↔ คนที่ 2 ({result.comparison.elementInteraction.bElementTh})</strong>
+                <strong>ปฏิกิริยาธาตุ ตัวเรา ({result.comparison.elementInteraction.aElementTh}) ↔ เขา ({result.comparison.elementInteraction.bElementTh})</strong>
                 <span>{result.comparison.elementInteraction.summaryTh}</span>
               </div>
 
@@ -295,11 +306,11 @@ export function PairMatchingWorkspace() {
           {modal === "chart" ? (
             <div className="pair-charts">
               <div>
-                <SectionHeading kicker="คนที่ 1" title="พื้นดวง" compact />
+                <SectionHeading kicker="ตัวเรา" title="พื้นดวง" compact />
                 <ReadingChartFoundation calculatedState={result.personA} />
               </div>
               <div>
-                <SectionHeading kicker="คนที่ 2" title="พื้นดวง" compact />
+                <SectionHeading kicker="เขา" title="พื้นดวง" compact />
                 <ReadingChartFoundation calculatedState={result.personB} />
               </div>
             </div>

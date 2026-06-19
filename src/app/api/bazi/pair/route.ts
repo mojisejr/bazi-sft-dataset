@@ -1,8 +1,8 @@
 import { ZodError } from "zod";
 
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
-import { buildPairComparison } from "@/lib/bazi/pair-matching";
-import type { DayPillar } from "@/lib/bazi/pair-types";
+import { buildLoveFacets, buildPairComparison } from "@/lib/bazi/pair-matching";
+import type { DayPillar, PillarPos } from "@/lib/bazi/pair-types";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
@@ -12,6 +12,15 @@ type HandlerOptions = {
 
 function dayPillarOf(state: Awaited<ReturnType<typeof calculateBaziStateFromRawInput>>): DayPillar {
   return { stem: state.fourPillars.day.stem, branch: state.fourPillars.day.branch };
+}
+
+/** สี่เสา (ก้าน/กิ่ง) ของหนึ่งคน สำหรับคำนวณ 4 มิติความเข้ากัน. */
+function facetPillarsOf(
+  state: Awaited<ReturnType<typeof calculateBaziStateFromRawInput>>,
+): Record<PillarPos, DayPillar> {
+  const p = state.fourPillars;
+  const lite = (x: { stem: string; branch: string }): DayPillar => ({ stem: x.stem, branch: x.branch });
+  return { hour: lite(p.hour), day: lite(p.day), month: lite(p.month), year: lite(p.year) };
 }
 
 /**
@@ -39,9 +48,10 @@ export function createPairBaziHandler(options: HandlerOptions = {}) {
       ]);
 
       const comparison = buildPairComparison(dayPillarOf(stateA), dayPillarOf(stateB));
+      const loveFacets = buildLoveFacets(facetPillarsOf(stateA), facetPillarsOf(stateB));
 
       return Response.json(
-        { personA: stateA, personB: stateB, comparison },
+        { personA: stateA, personB: stateB, comparison, loveFacets },
         { status: 200 },
       );
     } catch (error) {

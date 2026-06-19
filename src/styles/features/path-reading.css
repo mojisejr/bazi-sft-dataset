@@ -14,6 +14,11 @@
   gap: var(--space-4, 1rem);
 }
 
+.reading-path__intro-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .reading-path__topics {
   display: flex;
   flex-direction: column;
@@ -1068,6 +1073,26 @@
 .reading-path .reading-path__batch-controls {
   gap: 0.6rem 0.75rem;
   align-items: center;
+}
+
+/* แถวบันทึก (ชื่อเคส / โน้ตเวอร์ชัน): ช่องกรอกยืดได้ ปุ่มชิดขอบล่างช่อง
+   คำอธิบายลงบรรทัดเต็มความกว้างของตัวเอง ไม่เบียดปุ่ม */
+.reading-path .reading-path__save {
+  align-items: flex-end;
+  row-gap: 0.4rem;
+}
+
+.reading-path .reading-path__save > .field {
+  flex: 1 1 18rem;
+  min-width: 13rem;
+  margin: 0;
+}
+
+.reading-path .reading-path__save-hint {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
 }
 
 /* การ์ดหัวข้อ: เว้นวรรคโปร่งขึ้น เส้นคั่นบาง */

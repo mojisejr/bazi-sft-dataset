@@ -9,12 +9,21 @@
 .pair-forms {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--space-4, 1rem);
+  gap: var(--space-4, 1rem) 2rem;
+  align-items: start;
 }
 
 @media (max-width: 720px) {
   .pair-forms {
     grid-template-columns: 1fr;
+  }
+}
+
+/* เส้นคั่นบาง ๆ ระหว่างสองฝ่าย (เฉพาะจอกว้าง) */
+@media (min-width: 721px) {
+  .pair-forms > .pair-person + .pair-person {
+    border-left: 1px solid var(--surface-line-soft, rgba(120, 140, 210, 0.18));
+    padding-left: 2rem;
   }
 }
 
@@ -24,9 +33,17 @@
   gap: var(--space-3, 0.75rem);
 }
 
+/* ป้องกัน select เพศ ถูกยืดสูงผิดปกติ (grid stretch) — ทุกช่องชิดบน */
+.pair-person .field-grid {
+  align-items: start;
+}
+
 .pair-person__title {
-  font-weight: 600;
-  font-size: 1.05rem;
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent, #1b9aaf);
 }
 
 .pair-actions {
@@ -45,7 +62,7 @@
 .pair-domain-toggle {
   display: inline-flex;
   gap: 0.25rem;
-  border: 1px solid var(--border-subtle, #d9d2c4);
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
   border-radius: 999px;
   padding: 0.2rem;
   width: fit-content;
@@ -58,11 +75,11 @@
   padding: 0.4rem 1.1rem;
   cursor: pointer;
   font-weight: 600;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
 }
 
 .pair-domain-toggle button[data-active="true"] {
-  background: var(--accent, #b8744f);
+  background: var(--accent, #1b9aaf);
   color: #fff;
 }
 
@@ -81,7 +98,7 @@
 
 .pair-score-card__pct {
   font-size: 1.1rem;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
 }
 
 .pair-score-card__emoji {
@@ -118,9 +135,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding: var(--space-3, 0.75rem);
-  border: 1px solid var(--border-subtle, #e2dccd);
-  border-radius: 0.6rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 24px -16px rgba(120, 140, 210, 0.55);
+}
+
+.pair-direction__grade {
+  color: var(--accent, #1b9aaf);
 }
 
 .pair-direction__head {
@@ -141,7 +164,7 @@
 
 .pair-direction__note {
   font-size: 0.85rem;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
 }
 
 .pair-elem {
@@ -149,7 +172,7 @@
   gap: 0.4rem;
   padding: var(--space-3, 0.75rem);
   border-radius: 0.6rem;
-  background: var(--surface-sunken, #f3eee3);
+  background: var(--accent-soft, #eef4fc);
 }
 
 .pair-popup-buttons {
@@ -162,7 +185,7 @@
   display: flex;
   gap: 0.75rem;
   flex-wrap: wrap;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
   font-size: 0.9rem;
 }
 
@@ -180,12 +203,22 @@
 }
 
 .pair-person-card {
-  border: 1px solid var(--border-subtle, #e2dccd);
-  border-radius: 0.6rem;
-  padding: var(--space-3, 0.75rem);
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
+  border-radius: 14px;
+  padding: 1rem 1.1rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  background: #fff;
+  box-shadow: 0 10px 24px -16px rgba(120, 140, 210, 0.55);
+}
+
+.pair-person-card__who {
+  color: var(--accent, #1b9aaf);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .pair-person-card__head {
@@ -200,7 +233,7 @@
 
 .pair-person-card__pillar {
   font-size: 0.9rem;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
 }
 
 .pair-nisai-list {
@@ -217,9 +250,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-4, 1rem);
-  padding: var(--space-4, 1rem);
-  border-radius: 0.7rem;
-  background: var(--surface-sunken, #f3eee3);
+  padding: 1.1rem 1.3rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1b9aaf 0%, #4b96e5 100%);
+  color: #fff;
+  box-shadow: 0 16px 34px -14px rgba(27, 154, 175, 0.55);
 }
 
 .pair-verdict__grade {
@@ -237,7 +272,7 @@
 
 .pair-verdict__pct {
   font-size: 0.9rem;
-  color: var(--text-muted, #6b6253);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .pair-direction__meta {
@@ -246,7 +281,7 @@
   align-items: center;
   flex-wrap: wrap;
   font-size: 0.9rem;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
 }
 
 .pair-direction__emoji {
@@ -259,8 +294,8 @@
   gap: 0.4rem;
   padding: var(--space-3, 0.75rem);
   border-radius: 0.6rem;
-  border: 1px solid var(--accent, #b8744f);
-  background: var(--surface-sunken, #f6efe1);
+  border: 1px solid var(--accent, #1b9aaf);
+  background: var(--accent-soft, #eef4fc);
 }
 
 .pair-sising-feature__title {
@@ -287,7 +322,7 @@
 }
 
 .pair-modal {
-  background: var(--surface, #fbf7ee);
+  background: var(--surface-panel, #fff);
   border-radius: 0.9rem;
   max-width: 880px;
   width: 100%;
@@ -322,7 +357,7 @@
 }
 
 .pair-sising-card {
-  border: 1px solid var(--border-subtle, #e2dccd);
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
   border-radius: 0.6rem;
   padding: 0.75rem;
   display: flex;
@@ -331,8 +366,8 @@
 }
 
 .pair-sising-card[data-active="true"] {
-  border-color: var(--accent, #b8744f);
-  background: var(--surface-sunken, #f6efe1);
+  border-color: var(--accent, #1b9aaf);
+  background: var(--accent-soft, #eef4fc);
 }
 
 .pair-sising-card__name {
@@ -341,7 +376,7 @@
 
 .pair-sising-card__score {
   font-size: 0.85rem;
-  color: var(--text-muted, #6b6253);
+  color: var(--muted, #667085);
 }
 
 .pair-charts {
@@ -355,7 +390,7 @@
   flex-direction: column;
   gap: 0.25rem;
   padding-bottom: 0.6rem;
-  border-bottom: 1px dashed var(--border-subtle, #e2dccd);
+  border-bottom: 1px dashed var(--border, rgba(120, 140, 210, 0.18));
 }
 
 .pair-role__perspective {
@@ -363,7 +398,121 @@
 }
 
 .pair-error {
-  color: var(--danger, #b3402f);
+  color: var(--danger, #cb2c2a);
+}
+
+/* ── เทียบสี่เสา 2 คน (บนหน้า) ── */
+.pair-pillars-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4, 1rem) 1.5rem;
+}
+
+@media (max-width: 760px) {
+  .pair-pillars-compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pair-pillars-compare__chart {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 10px 24px -16px rgba(120, 140, 210, 0.55);
+}
+
+.pair-pillars-compare__who {
+  color: var(--accent, #1b9aaf);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* เราใส่ 4 คอลัมน์ (ยาม/วัน/เดือน/ปี) แต่ grid เดิมตั้งไว้ 5 → บังคับ 4 เต็มกว้าง
+   (คงขนาดฟอนต์ variant chapter เดิม ไม่ขยายตัวอักษร) */
+.pair-pillars-compare .ylc-chart-grid {
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+}
+
+/* ฝั่ง "เขา": เสาที่ไม่ถูกเน้น (ไม่ใช่ วัน/ปี) ทำจางตามสเก็ตช์ */
+.pair-pillars-compare__chart--partner .ylc-chart-col:not(.ylc-chart-col--hl) {
+  opacity: 0.4;
+}
+
+.pair-pillars-compare .ylc-chart-col__role:empty {
+  display: none;
+}
+
+/* ── กราฟแท่งความเข้ากัน 4 มิติ ── */
+.pair-compat-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem 0;
+}
+
+@media (max-width: 560px) {
+  .pair-compat-bars {
+    gap: 0.4rem;
+  }
+}
+
+.pair-compat-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  text-align: center;
+}
+
+.pair-compat-bar__value {
+  display: flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  font-weight: 800;
+  font-size: 1.05rem;
+  color: var(--accent, #1b9aaf);
+}
+
+.pair-compat-bar__grade {
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  background: var(--accent, #1b9aaf);
+  border-radius: 999px;
+  padding: 0.02rem 0.45rem;
+}
+
+.pair-compat-bar__track {
+  width: 100%;
+  max-width: 66px;
+  height: 150px;
+  display: flex;
+  align-items: flex-end;
+  border-radius: 12px;
+  background: var(--accent-soft, #eef4fc);
+  overflow: hidden;
+}
+
+.pair-compat-bar__fill {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 12px 12px 0 0;
+  background: linear-gradient(180deg, #4b96e5 0%, #1b9aaf 100%);
+  transition: height 0.5s ease;
+}
+
+.pair-compat-bar__label {
+  font-weight: 700;
+  font-size: 0.82rem;
+  line-height: 1.3;
 }
 
 /* ── Print / PDF report (hidden on screen) ── */
@@ -395,7 +544,7 @@
 
 .pair-print__header {
   text-align: center;
-  border-bottom: 2px solid #b8744f;
+  border-bottom: 2px solid #1b9aaf;
   padding-bottom: 10px;
   margin-bottom: 16px;
 }
@@ -407,7 +556,7 @@
 
 .pair-print__date {
   font-size: 10pt;
-  color: #6b6253;
+  color: var(--muted, #667085);
 }
 
 .pair-print__people {
@@ -441,7 +590,7 @@
 
 .pair-print__domain-title {
   font-size: 14pt;
-  border-left: 4px solid #b8744f;
+  border-left: 4px solid #1b9aaf;
   padding-left: 8px;
   margin: 0 0 8px;
 }
@@ -482,7 +631,7 @@
 
 .pair-print__birth {
   font-size: 10pt;
-  color: #6b6253;
+  color: var(--muted, #667085);
   margin: 0 0 6px;
 }
 
@@ -506,7 +655,7 @@
 
 .pair-print__chart-pos {
   white-space: nowrap;
-  color: #6b6253;
+  color: var(--muted, #667085);
 }
 
 .pair-print__chart tr[data-row="current"] td {
@@ -520,7 +669,7 @@
 
 .pair-print__sub {
   font-size: 9pt;
-  color: #6b6253;
+  color: var(--muted, #667085);
 }
 
 .pair-print__footer {
@@ -528,7 +677,7 @@
   padding-top: 8px;
   border-top: 1px solid #d9d2c4;
   font-size: 9.5pt;
-  color: #6b6253;
+  color: var(--muted, #667085);
   text-align: center;
 }
 
@@ -543,7 +692,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
-  border: 1px solid var(--border-subtle, #d9d2c4);
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
   border-radius: 12px;
   padding: var(--space-4, 1rem);
 }
@@ -556,17 +705,17 @@
 }
 
 .pair-person__remove {
-  border: 1px solid var(--border-subtle, #d9d2c4);
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
   background: transparent;
   border-radius: 8px;
   padding: 0.25rem 0.75rem;
   cursor: pointer;
   font-size: 0.85rem;
-  color: #9a2f2f;
+  color: var(--danger, #cb2c2a);
 }
 
 .pair-person__remove:hover {
-  background: #f7e9e9;
+  background: rgba(203, 44, 42, 0.08);
 }
 
 .pair-ranking {
@@ -580,22 +729,61 @@
 
 .pair-ranking__item {
   display: grid;
-  grid-template-columns: 2.5rem 1fr auto auto auto;
+  grid-template-columns: 2.5rem 1fr auto auto;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.6rem 0.85rem;
-  border: 1px solid var(--border-subtle, #d9d2c4);
-  border-radius: 10px;
+  gap: 0.6rem 0.85rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 8px 20px -16px rgba(120, 140, 210, 0.55);
 }
 
 .pair-ranking__item[data-best="true"] {
-  border-color: #d9a441;
-  background: #fdf6e6;
+  border-color: var(--accent, #1b9aaf);
+  background: var(--accent-soft, #eef4fc);
+  box-shadow: 0 12px 26px -14px rgba(27, 154, 175, 0.45);
 }
 
 .pair-ranking__pos {
   font-weight: 700;
   text-align: center;
+  font-size: 1.05rem;
+}
+
+/* คอลัมน์กลาง = ชื่อ + แท่งบาร์ความเข้ากัน (กราฟจัดอันดับแนวนอน) */
+.pair-ranking__main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.pair-ranking__namerow {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.pair-ranking__bar {
+  display: block;
+  width: 100%;
+  height: 0.55rem;
+  border-radius: 999px;
+  background: var(--accent-soft, #eef4fc);
+  overflow: hidden;
+}
+
+.pair-ranking__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #4b96e5 0%, #1b9aaf 100%);
+  transition: width 0.5s ease;
+}
+
+.pair-ranking__item[data-best="true"] .pair-ranking__bar {
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .pair-ranking__name {
@@ -603,7 +791,7 @@
 }
 
 .pair-ranking__pillar {
-  color: #6b6253;
+  color: var(--muted, #667085);
   font-size: 0.9rem;
 }
 
@@ -613,16 +801,18 @@
 
 .pair-ranking__grade {
   font-weight: 600;
-  color: #8a6d1f;
+  color: var(--accent, #1b9aaf);
 }
 
 .pair-candidate-card {
   display: flex;
   flex-direction: column;
   gap: var(--space-3, 0.75rem);
-  border: 1px solid var(--border-subtle, #d9d2c4);
-  border-radius: 12px;
-  padding: var(--space-4, 1rem);
+  border: 1px solid var(--border, rgba(120, 140, 210, 0.18));
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  background: #fff;
+  box-shadow: 0 10px 24px -16px rgba(120, 140, 210, 0.55);
 }
 
 .pair-candidate-card__head {
@@ -630,13 +820,13 @@
   align-items: baseline;
   gap: 0.6rem;
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--border-subtle, #ece6d8);
+  border-bottom: 1px solid var(--border, rgba(120, 140, 210, 0.18));
   padding-bottom: 0.5rem;
 }
 
 .pair-candidate-card__rank {
   font-weight: 700;
-  color: #8a6d1f;
+  color: var(--accent, #1b9aaf);
 }
 
 .pair-candidate-card__name {
@@ -645,6 +835,6 @@
 }
 
 .pair-candidate-card__pillar {
-  color: #6b6253;
+  color: var(--muted, #667085);
   font-size: 0.9rem;
 }

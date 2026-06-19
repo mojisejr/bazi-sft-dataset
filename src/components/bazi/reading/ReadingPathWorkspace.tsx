@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 
 import { BirthForm } from "@/components/bazi/BirthForm";
 import { ActionButton, ActionLink } from "@/components/bazi/primitives/Action";
-import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
@@ -901,17 +900,11 @@ export function ReadingPathWorkspace({
   return (
     <div className="reading-path">
       <section className="reading-path__intro surface">
-        <SectionHeading
-          kicker="อ่านดวงทีละหัวข้อ"
-          title="Stepwise Path Reading"
-          titleLevel="h2"
-          note="กรอกข้อมูลเกิด คำนวณดวง แล้วกดทำนายทีละหัวข้อจนครบทั้ง path — ทุกคำอ่าน ground จาก engine truth ไม่ได้มาจากการแต่งของ AI"
-          actions={
-            <ActionLink href="/reading/history" tone="secondary">
-              ดูประวัติการดูดวง
-            </ActionLink>
-          }
-        />
+        <div className="reading-path__intro-actions">
+          <ActionLink href="/reading/history" tone="secondary">
+            ดูประวัติการดูดวง
+          </ActionLink>
+        </div>
         <BirthForm
           formState={formState}
           submittedInput={rawInput}

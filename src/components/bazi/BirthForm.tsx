@@ -3,7 +3,6 @@
 import type { ChangeEvent, FormEvent } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
-import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import {
   BIRTH_HOUR_OPTIONS,
   BIRTH_MINUTE_OPTIONS,
@@ -11,7 +10,6 @@ import {
   formatThaiBirthMoment,
   THAI_MONTH_OPTIONS,
   getBirthDayOptions,
-  workflowSteps,
   type FormState,
   type ResetActionCopy,
   type SubmissionState,
@@ -60,14 +58,6 @@ export function BirthForm({
   if (isSessionLocked) {
     return (
       <section className="case-rail" aria-label="case rail" data-case-rail="true">
-        <div className="case-rail__header">
-          <div>
-            <p className="section-kicker">เคสนี้</p>
-            <h2>พร้อมอ่านดวง</h2>
-          </div>
-          <p className="section-note">ข้อมูลตั้งต้นถูกล็อกไว้เพื่อกัน record ปนกันระหว่างการอ่านและเขียนคำพยากรณ์</p>
-        </div>
-
         <dl className="case-rail__list">
           <div className="case-rail__row">
             <dt>วันเวลาเกิด</dt>
@@ -99,19 +89,6 @@ export function BirthForm({
 
   return (
     <>
-      <SectionHeading
-        kicker="เริ่มต้นงาน"
-        title="ตั้งข้อมูลก่อนอ่านดวง"
-        titleLevel="h2"
-        note="ลำดับการทำงานถูกย่อให้สั้นและชัด เพื่อให้ใช้ได้คล่องโดยไม่ต้องคิดเยอะ"
-      />
-
-      <ol className="workflow-list">
-        {workflowSteps.map((step) => (
-          <li key={step}>{step}</li>
-        ))}
-      </ol>
-
       <form className="input-form" onSubmit={onSubmit}>
         <fieldset
           className="input-form-shell"

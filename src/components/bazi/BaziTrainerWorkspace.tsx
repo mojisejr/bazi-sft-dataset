@@ -1,14 +1,5 @@
 import Link from "next/link";
 
-import { SystemHeader } from "@/components/bazi/SystemHeader";
-import type { StatusCopy } from "@/lib/bazi/trainer-workspace";
-
-const HUB_STATUS_COPY: StatusCopy = {
-  tone: "ready",
-  label: "เลือกเครื่องมือเพื่อเริ่มงาน",
-  detail: "หน้าหลักเป็นจุดเริ่มต้น — เลือกการ์ดด้านล่างเพื่อเข้าสู่งานอ่านดวงหรือเปรียบเทียบดวงได้ทันที",
-};
-
 type HubCard = {
   href: string;
   icon: string;
@@ -112,8 +103,6 @@ const HUB_CARDS: HubCard[] = [
 export function BaziTrainerWorkspace() {
   return (
     <main className="trainer-page">
-      <SystemHeader statusCopy={HUB_STATUS_COPY} showNav={false} />
-
       <nav className="reading-hub" aria-label="เมนูหลัก">
         {HUB_CARDS.map((card) => (
           <Link

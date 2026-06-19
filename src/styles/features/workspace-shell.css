@@ -56,6 +56,11 @@
   margin-bottom: 24px;
 }
 
+/* ไม่มีแถบข้าง (เช่นหน้าหลัก) → แบรนด์เต็มความกว้าง */
+.trainer-header--solo {
+  grid-template-columns: 1fr;
+}
+
 .header-sidebar {
   display: grid;
   gap: 14px;
@@ -126,42 +131,57 @@
 .header-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 10px;
   padding-top: 4px;
 }
 
+/* แถบนำทางแบบเดี่ยว (เป็นแถบไอคอนบนสุดของหน้าเครื่องมือ) */
+.header-nav--bar {
+  gap: 8px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  border-radius: var(--radius-panel, 20px);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  box-shadow: var(--shadow-panel, 0 18px 48px -16px rgba(120, 140, 210, 0.45));
+  backdrop-filter: blur(var(--blur-panel, 16px));
+}
+
+/* แถบนำทาง = ปุ่มแคปซูล ไอคอน + ชื่อ */
 .header-nav__link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 12px;
+  gap: 7px;
+  padding: 7px 14px;
   border-radius: 999px;
   border: 1px solid var(--surface-line-soft);
   background: var(--surface-raised-strong);
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.2;
-  text-decoration: none;
   white-space: nowrap;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
 }
 
 .header-nav__link:hover {
   color: var(--text);
-  border-color: var(--surface-line-muted);
+  border-color: var(--surface-accent-line-strong);
   background: var(--panel-strong);
+  transform: translateY(-1px);
 }
 
 .header-nav__link--active {
   color: var(--text);
   border-color: var(--accent, var(--surface-line-muted));
-  background: var(--panel-strong);
+  background: var(--accent-soft);
   font-weight: 600;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  box-shadow: inset 0 0 0 1.5px var(--surface-accent-line-strong);
 }
 
 .header-nav__icon {
-  font-size: 1rem;
+  font-size: 1.1rem;
+  line-height: 1;
 }
 
 /* หน้า main = ฮับรวมเครื่องมือ (การ์ดนำทาง) */

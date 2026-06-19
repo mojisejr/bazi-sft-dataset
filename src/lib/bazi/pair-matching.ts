@@ -25,11 +25,13 @@ import type {
   ElementInteractionAB,
   ElementRelation,
   ElementRelationKey,
+  LoveFacet,
   PairComparisonResult,
   PairDomain,
   PairMatchPair,
   PairMatchResult,
   PairMatrixCell,
+  PillarPos,
   RatingScale,
   ReferenceData,
   RoleReading,
@@ -148,8 +150,8 @@ export function buildElementInteractionAB(aStem: string, bStem: string): Element
   const aToB = elementRelation(aEl, bEl);
   const bToA = elementRelation(bEl, aEl);
   const summaryTh =
-    `ดิถีคนที่ 1 (${aLabel}) มองคนที่ 2 (${bLabel}) เป็น “${aToB.labelTh}” (${aToB.meaningTh}); ` +
-    `ส่วนคนที่ 2 มองคนที่ 1 เป็น “${bToA.labelTh}” (${bToA.meaningTh})`;
+    `ดิถีเรา (${aLabel}) มองเขา (${bLabel}) เป็น “${aToB.labelTh}” (${aToB.meaningTh}); ` +
+    `ส่วนเขามองเรา เป็น “${bToA.labelTh}” (${bToA.meaningTh})`;
 
   return { aElementTh: aLabel, bElementTh: bLabel, aToB, bToA, summaryTh };
 }
@@ -248,6 +250,47 @@ export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonR
     loveRoles: buildLoveRoleReadings(aPillar, bPillar),
     sisingReference: SISING,
   };
+}
+
+/**
+ * 4 มิติความเข้ากันด้านความรัก (กราฟแท่ง) — ใช้ตารางความรัก 60×60 ที่มีอยู่
+ * โดยจับคู่ "เสาของเรา × เสาของเขา" ต่างกันต่อมิติ (ทิศทางเดียวตามที่ซินแสกำหนด):
+ *   ยามเรา×วันเขา = เสน่หา/ความใกล้ชิด · วันเรา×วันเขา = กัลยาณมิตร
+ *   วันเรา×ปีเขา = คู่รักคู่ชีวิต · ปีเรา×ปีเขา = เจ้ากรรม/เจ้าบุญ
+ */
+const LOVE_FACET_SPECS: ReadonlyArray<{
+  key: LoveFacet["key"];
+  label: string;
+  pairingLabel: string;
+  ourPos: PillarPos;
+  partnerPos: PillarPos;
+}> = [
+  { key: "intimacy", label: "เสน่หา / ความใกล้ชิด", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
+  { key: "kalyanamitra", label: "กัลยาณมิตร เข้าอกเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
+  { key: "lifePartner", label: "คู่สร้างคู่สม คู่รักคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year" },
+  { key: "karmic", label: "เจ้ากรรมนายเวร / เจ้าบุญนายคุณ", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
+];
+
+/** คำนวณ 4 มิติความเข้ากันจากสี่เสาของสองคน (a = เรา, b = เขา). */
+export function buildLoveFacets(
+  a: Record<PillarPos, DayPillar>,
+  b: Record<PillarPos, DayPillar>,
+): LoveFacet[] {
+  return LOVE_FACET_SPECS.map((spec) => {
+    const m = computePairMatch(a[spec.ourPos], b[spec.partnerPos], "love");
+    return {
+      key: spec.key,
+      label: spec.label,
+      pairingLabel: spec.pairingLabel,
+      ourPos: spec.ourPos,
+      partnerPos: spec.partnerPos,
+      ourGanzhi: m.ourPillar,
+      partnerGanzhi: m.partnerPillar,
+      percent: m.percent,
+      grade: m.grade,
+      found: m.found,
+    };
+  });
 }
 
 /**
