@@ -12,7 +12,7 @@ type MonthInfo = { deity: string | null; caishenDir: string | null; lapDir: stri
 type YearInfo = { pillar: string; asuraDir: string | null; caishenDir: string | null; lapDir: string | null; deity: string | null };
 type LuckyHour = { code: string; range: string; branch: string; god: string; meaning: string };
 type DayStar = { name: string; activity: string | null; polarity: "good" | "bad" };
-type Strength = { ratioTotal: number; ratioDay: number; exact: boolean };
+type Strength = { ratioTotal: number; ratioDay: number; exact: boolean; values?: number[]; max?: number[] };
 type SolarTerm = { kind: "major" | "minor"; name: string; nameTh: string; time: string; isMonthChange: boolean };
 type ThaiLunar = {
   lunarMonth: number; isLeapMonth: boolean; monthLabel: string;
@@ -60,6 +60,34 @@ const MONTH_NAMES = [
 // ลำดับวัน (อาทิตย์=0) สำหรับจัดตาราง 7 คอลัมน์ + ตัวย่อหัวคอลัมน์
 const WEEKDAY_ORDER = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const WEEKDAY_ABBR = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+
+// กิ่งนักษัตร → emoji สัตว์ (แทนรูปปั้นในปฏิทินจริง — เทพอุปถัมภ์)
+const BRANCH_EMOJI: Record<string, string> = {
+  子: "🐭", 丑: "🐮", 寅: "🐯", 卯: "🐰", 辰: "🐲", 巳: "🐍",
+  午: "🐴", 未: "🐑", 申: "🐵", 酉: "🐔", 戌: "🐶", 亥: "🐷",
+};
+
+// สีตัวอักษร 八門/八神 ตามปฏิทินจริง (ค่าโดยประมาณ)
+const GATE_COLOR: Record<string, string> = {
+  // 八門
+  開: "#222", 休: "#2b6cb0", 生: "#2f855a", 傷: "#b7791f", 杜: "#444", 景: "#2f855a", 死: "#c53030", 驚: "#6b46c1",
+  // 八神
+  陳: "#8a5a2b", 雀: "#c53030", 地: "#b7791f", 天: "#2b6cb0", 符: "#2f855a", 蛇: "#c53030", 陰: "#444", 合: "#2f855a",
+  虎: "#8a5a2b", 玄: "#2b6cb0",
+};
+const gateColor = (ch: string) => GATE_COLOR[ch] ?? "#333";
+
+// คะแนน → สีจุด (แถว "สิ่งมงคล")
+function dotColor(score: number): string {
+  if (!score) return "#d8d8d8";
+  if (score < 50) return "#e0524b";
+  if (score < 80) return "#e6b800";
+  return "#3aa657";
+}
+
+// ตัวอักษร 八門/八神 มาตรฐาน (legend หัวเดือน)
+const GATE_CHARS = ["開", "休", "生", "傷", "杜", "景", "死", "驚"];
+const SPIRIT_CHARS = ["天", "地", "玄", "虎", "合", "陰", "蛇", "符"];
 
 const NOW = new Date();
 const CURRENT_YEAR_BE = NOW.getFullYear() + 543;
@@ -482,6 +510,12 @@ export function AlmanacWorkspace() {
               {yearInfo && (
                 <div className="almanac-headcol">
                   <h3>ปี <span className="almanac-headpillar">{yearInfo.pillar}</span></h3>
+                  <span className="almanac-headgates">
+                    {GATE_CHARS.map((c) => <span key={c} className="almanac-gatechar" style={{ color: gateColor(c) }}>{c}</span>)}
+                  </span>
+                  <span className="almanac-headgates">
+                    {SPIRIT_CHARS.map((c) => <span key={c} className="almanac-gatechar" style={{ color: gateColor(c) }}>{c}</span>)}
+                  </span>
                   {yearInfo.asuraDir && <span>อสูรปี: <b>{yearInfo.asuraDir}</b></span>}
                   {yearInfo.caishenDir && <span>ทิศไฉ่ซิ้งปี: <b>{yearInfo.caishenDir}</b></span>}
                   {yearInfo.lapDir && <span>โชคลาภปี: <b>{yearInfo.lapDir}</b></span>}
@@ -491,6 +525,12 @@ export function AlmanacWorkspace() {
               {monthInfo && (
                 <div className="almanac-headcol">
                   <h3>เดือน <span className="almanac-headpillar">{monthPillar}</span></h3>
+                  <span className="almanac-headgates">
+                    {GATE_CHARS.map((c) => <span key={c} className="almanac-gatechar" style={{ color: gateColor(c) }}>{c}</span>)}
+                  </span>
+                  <span className="almanac-headgates">
+                    {SPIRIT_CHARS.map((c) => <span key={c} className="almanac-gatechar" style={{ color: gateColor(c) }}>{c}</span>)}
+                  </span>
                   {monthInfo.asuraDir && <span>อสูรเดือน: <b>{monthInfo.asuraDir}</b></span>}
                   {monthInfo.caishenDir && <span>ทิศไฉ่ซิ้ง: <b>{monthInfo.caishenDir}</b></span>}
                   {monthInfo.lapDir && <span>ทิศลาภเดือน: <b>{monthInfo.lapDir}</b></span>}
@@ -520,13 +560,51 @@ export function AlmanacWorkspace() {
                 >
                   <span className="almanac-cell-top">
                     <span className="almanac-cell-num">{Number(day.date.slice(8, 10))}</span>
-                    <span className="almanac-cell-pillar">{day.dayPillar.ganzhi}</span>
+                    <span className="almanac-cell-ganzhi">
+                      <span>{day.dayPillar.stem}</span>
+                      <span>{day.dayPillar.branch}</span>
+                    </span>
+                    <span className="almanac-cell-cai">
+                      {day.luckyDirection && <span className="almanac-cell-dir">財 {day.luckyDirection.replace("ทิศ ", "")}</span>}
+                      <span className="almanac-cell-strength">{pct(day.strength.ratioDay)}</span>
+                    </span>
                   </span>
+
+                  <span className="almanac-cell-dots" title="สิ่งมงคล (長生/黃道เดือน/黃道ปี/建除)">
+                    {[2, 3, 4, 5].map((idx) => (
+                      <span key={idx} className="almanac-dot" style={{ background: dotColor(day.strength.values?.[idx] ?? 0) }} />
+                    ))}
+                  </span>
+
                   {day.officer && <span className="almanac-cell-officer">{day.officer}</span>}
-                  <span className="almanac-cell-bottom">
-                    {day.luckyDirection && <span className="almanac-cell-dir">{day.luckyDirection}</span>}
-                    <span className="almanac-cell-strength">{pct(day.strength.ratioDay)}</span>
-                  </span>
+
+                  {day.patrons.length > 0 && (
+                    <span className="almanac-cell-animals" title={day.patrons.map((p) => p.zodiac).join(", ")}>
+                      {day.patrons.map((p, i) => (
+                        <span key={`${p.branch}-${i}`}>{BRANCH_EMOJI[p.branch] ?? "🐾"}</span>
+                      ))}
+                    </span>
+                  )}
+
+                  {day.deities.length > 0 && (
+                    <span className="almanac-cell-deity">{day.deities.join(" ")}</span>
+                  )}
+
+                  {day.gates.length > 0 && (
+                    <span className="almanac-cell-gates">
+                      {day.gates.map((g, i) => (
+                        <span key={`${g.name}-${i}`} className="almanac-gatechar" style={{ color: gateColor(g.name) }} title={`${g.meaning ?? ""} ${g.direction}`}>{g.name}</span>
+                      ))}
+                    </span>
+                  )}
+                  {day.spirits.length > 0 && (
+                    <span className="almanac-cell-gates">
+                      {day.spirits.map((s, i) => (
+                        <span key={`${s.name}-${i}`} className="almanac-gatechar" style={{ color: gateColor(s.name) }} title={s.keywords.join(" · ")}>{s.name}</span>
+                      ))}
+                    </span>
+                  )}
+
                   <span className="almanac-cell-marks">
                     {day.date === TODAY_ISO && <span className="almanac-cell-mark almanac-cell-mark--today">วันนี้</span>}
                     {day.thaiLunar.isWanPhra && <span className="almanac-cell-mark" title="วันพระ">🙏</span>}
