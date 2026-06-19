@@ -1,23 +1,36 @@
 :root {
-  --ref-color-sand-050: #f7f2e9;
-  --ref-color-sand-100: #f2eadf;
-  --ref-color-sand-150: #efe5d5;
+  /* ===== mootech rebrand (ค่าโทน mootech แต่คงชื่อ token เดิมไว้ ไม่ให้ feature พัง) =====
+     ฟ้าเทอร์ควอยซ์ #1B9AAF เป็นสีหลัก · พื้นหลังฟ้าอมเทาอ่อน · การ์ด frosted-glass สีขาว ·
+     เงานุ่มสีฟ้า · ฟอนต์ IBM Plex Sans Thai */
+
+  /* พื้นหลังหน้า (เดิมชื่อ sand → ตอนนี้ฟ้าอมเทาอ่อน) */
+  --ref-color-sand-050: #f7fafe;
+  --ref-color-sand-100: #eef4fc;
+  --ref-color-sand-150: #e7effa;
+
+  /* การ์ด/พื้นผิวโปร่งแสงสีขาว (frosted glass) */
   --ref-color-ivory-050: #fff;
-  --ref-color-ivory-100: rgba(255, 255, 255, 0.88);
-  --ref-color-ivory-200: rgba(255, 251, 245, 0.82);
-  --ref-color-ivory-300: rgba(255, 248, 239, 0.94);
-  --ref-color-ivory-330: rgba(255, 255, 255, 0.72);
+  --ref-color-ivory-100: rgba(255, 255, 255, 0.9);
+  --ref-color-ivory-200: rgba(255, 255, 255, 0.55);
+  --ref-color-ivory-300: rgba(255, 255, 255, 0.72);
+  --ref-color-ivory-330: rgba(255, 255, 255, 0.7);
   --ref-color-ivory-340: rgba(255, 255, 255, 0.74);
-  --ref-color-ivory-350: rgba(255, 255, 255, 0.76);
-  --ref-color-ivory-360: rgba(255, 255, 255, 0.78);
-  --ref-color-ivory-320: rgba(255, 255, 255, 0.68);
-  --ref-color-copper-400: #9f5320;
-  --ref-color-copper-500: #6e4f30;
-  --ref-color-bark-700: #4c301b;
-  --ref-color-ink-900: #231b16;
-  --ref-color-moss-600: #456a32;
-  --ref-color-clay-600: #9a3c35;
-  --ref-color-earth-700: #69594c;
+  --ref-color-ivory-350: rgba(255, 255, 255, 0.78);
+  --ref-color-ivory-360: rgba(255, 255, 255, 0.82);
+  --ref-color-ivory-320: rgba(255, 255, 255, 0.62);
+
+  /* สีหลัก/เน้น (เดิม copper → ฟ้าเทอร์ควอยซ์ mootech) */
+  --ref-color-copper-400: #1b9aaf;
+  --ref-color-copper-500: #178799;
+  --ref-color-bark-700: #0e6e7e;
+
+  /* ตัวอักษร / สถานะ */
+  --ref-color-ink-900: #101828;
+  --ref-color-moss-600: #2b9d6e;
+  --ref-color-clay-600: #cb2c2a;
+  --ref-color-earth-700: #667085;
+
+  /* เส้นความสัมพันธ์ (relation edges) — คงสีเชิงความหมายไว้ */
   --ref-edge-combination: #3b7dd8;
   --ref-edge-clash: #c89b3c;
   --ref-edge-harm: #c07a5a;
@@ -25,29 +38,42 @@
   --ref-edge-punishment: #456a32;
   --ref-edge-stem-combination: #6a9fd8;
   --ref-edge-stem-clash: #d87a6a;
+
+  /* ธาตุทั้งห้า — คงสีเชิงความหมายไว้ */
   --ref-element-wood: #388659;
-  --ref-element-fire: #CB2C2A;
-  --ref-element-earth: #F19953;
-  --ref-element-metal: #5A5A5A;
-  --ref-element-water: #1455A4;
-  --ref-shadow-soft: rgba(76, 48, 27, 0.12);
-  --ref-line-soft: rgba(110, 79, 48, 0.12);
-  --ref-line-muted: rgba(110, 79, 48, 0.1);
-  --ref-line-softer: rgba(110, 79, 48, 0.08);
-  --ref-line-emphasis: rgba(110, 79, 48, 0.14);
-  --ref-accent-soft: rgba(159, 83, 32, 0.14);
-  --ref-accent-soft-strong: rgba(159, 83, 32, 0.12);
-  --ref-success-soft: rgba(69, 106, 50, 0.12);
-  --ref-success-line: rgba(69, 106, 50, 0.18);
-  --ref-accent-line: rgba(159, 83, 32, 0.16);
-  --ref-accent-line-strong: rgba(159, 83, 32, 0.18);
-  --ref-bg-glow-left: radial-gradient(circle at top left, rgba(255, 255, 255, 0.88), transparent 28%);
-  --ref-bg-glow-right: radial-gradient(circle at top right, rgba(217, 168, 121, 0.18), transparent 24%);
-  --ref-bg-canvas: linear-gradient(180deg, #efe5d5 0%, #f2eadf 45%, #f7f2e9 100%);
-  --ref-font-serif: Georgia, "Times New Roman", serif;
-  --ref-radius-panel: 28px;
-  --ref-blur-panel: 18px;
-  --ref-shadow-panel: 0 18px 60px rgba(76, 48, 27, 0.12);
+  --ref-element-fire: #cb2c2a;
+  --ref-element-earth: #f19953;
+  --ref-element-metal: #5a5a5a;
+  --ref-element-water: #1455a4;
+
+  /* เงา/เส้น (เดิมโทนน้ำตาล → โทนฟ้าเย็น) */
+  --ref-shadow-soft: rgba(120, 140, 210, 0.4);
+  --ref-line-soft: rgba(120, 140, 210, 0.18);
+  --ref-line-muted: rgba(120, 140, 210, 0.14);
+  --ref-line-softer: rgba(120, 140, 210, 0.1);
+  --ref-line-emphasis: rgba(120, 140, 210, 0.22);
+
+  /* ทินต์สีเน้น/สำเร็จ */
+  --ref-accent-soft: rgba(27, 154, 175, 0.12);
+  --ref-accent-soft-strong: rgba(27, 154, 175, 0.1);
+  --ref-success-soft: rgba(43, 157, 110, 0.12);
+  --ref-success-line: rgba(43, 157, 110, 0.2);
+  --ref-accent-line: rgba(27, 154, 175, 0.18);
+  --ref-accent-line-strong: rgba(27, 154, 175, 0.24);
+
+  /* เลเยอร์พื้นหลัง */
+  --ref-bg-glow-left: radial-gradient(circle at top left, rgba(255, 255, 255, 0.92), transparent 30%);
+  --ref-bg-glow-right: radial-gradient(circle at top right, rgba(27, 154, 175, 0.14), transparent 26%);
+  --ref-bg-canvas: linear-gradient(180deg, #e7effa 0%, #eef4fc 45%, #f7fafe 100%);
+
+  /* ฟอนต์ (เดิม serif → IBM Plex Sans Thai โมเดิร์น) — คงชื่อ token เดิม */
+  --ref-font-serif: "IBM Plex Sans Thai", "Prompt", "Noto Sans Thai", system-ui, -apple-system, sans-serif;
+
+  /* รูปทรง/เงาแผง */
+  --ref-radius-panel: 20px;
+  --ref-blur-panel: 16px;
+  --ref-shadow-panel: 0 18px 48px -16px rgba(120, 140, 210, 0.45);
+
   --ref-layout-max-width: 1380px;
   --ref-space-page-inline: 20px;
   --ref-space-page-top: 32px;

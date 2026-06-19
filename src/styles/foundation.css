@@ -25,7 +25,8 @@ textarea {
   font: inherit;
 }
 
-.trainer-page {
+.trainer-page,
+.page-shell {
   max-width: var(--layout-page-max-width);
   margin: 0 auto;
   padding: var(--layout-page-top) var(--layout-page-inline) var(--layout-page-bottom);

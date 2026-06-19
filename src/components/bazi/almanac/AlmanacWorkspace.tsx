@@ -201,6 +201,15 @@ export function AlmanacWorkspace() {
     setError(null);
     try {
       const res = await fetch(`/api/almanac?yearBE=${yearBE}&month=${month}`);
+      // ระวังกรณี dev server กำลัง recompile → ตอบ HTML ไม่ใช่ JSON (res.json() จะพัง)
+      const ct = res.headers.get("content-type") ?? "";
+      if (!ct.includes("application/json")) {
+        throw new Error(
+          res.ok
+            ? "เซิร์ฟเวอร์กำลังคอมไพล์ใหม่ — ลองโหลดอีกครั้ง"
+            : `โหลดปฏิทินไม่สำเร็จ (HTTP ${res.status})`
+        );
+      }
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message ?? "โหลดปฏิทินไม่สำเร็จ");
       setData(json);

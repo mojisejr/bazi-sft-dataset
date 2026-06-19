@@ -1,9 +1,9 @@
 .surface {
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(var(--blur-panel, 16px));
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 28px;
-  box-shadow: 0 18px 60px var(--shadow);
+  border-radius: var(--radius-panel, 20px);
+  box-shadow: var(--shadow-panel, 0 18px 48px -16px rgba(120, 140, 210, 0.45));
 }
 
 .identity-strip > div,
@@ -127,13 +127,19 @@
   min-height: 56px;
   padding: 0 20px;
   border: 0;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #8f4313 0%, #bf6a2d 100%);
-  color: #fff8f0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #1b9aaf 0%, #4b96e5 100%);
+  color: #fff;
   font-weight: 700;
   text-decoration: none;
   cursor: pointer;
-  box-shadow: 0 14px 36px rgba(143, 67, 19, 0.22);
+  box-shadow: 0 14px 30px -8px rgba(27, 154, 175, 0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-action:hover {
+  transform: translateY(-1px) scale(1.01);
+  box-shadow: 0 18px 36px -10px rgba(27, 154, 175, 0.5);
 }
 
 .primary-action:disabled {
@@ -148,8 +154,8 @@
   align-self: start;
   min-height: 48px;
   padding: 0 18px;
-  border-radius: 16px;
-  border: 1px solid var(--surface-accent-line-strong);
+  border-radius: 999px;
+  border: 1.5px solid var(--surface-accent-line-strong);
   background: var(--surface-raised-strong);
   color: var(--accent);
   font-weight: 700;
@@ -219,8 +225,8 @@
 }
 
 .status-chip--busy {
-  color: #8c5b1a;
-  border-color: rgba(140, 91, 26, 0.2);
+  color: #4b96e5;
+  border-color: rgba(75, 150, 229, 0.25);
 }
 
 .status-chip--ready {
