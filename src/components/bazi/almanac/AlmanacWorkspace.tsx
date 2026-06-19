@@ -11,10 +11,6 @@ type AsuraDirections = { day: string; month: string; year: string };
 type MonthInfo = { deity: string | null; caishenDir: string | null; lapDir: string | null };
 type LuckyHour = { code: string; range: string; branch: string; god: string; meaning: string };
 type DayStar = { name: string; activity: string | null; polarity: "good" | "bad" };
-type HourQuality = {
-  date: string; hour: number; dayPillar: string; hourBranch: string;
-  range: string; god: string; meaning: string; score: number; good: boolean;
-};
 type Strength = { ratioTotal: number; ratioDay: number; exact: boolean };
 type SolarTerm = { kind: "major" | "minor"; name: string; nameTh: string; time: string; isMonthChange: boolean };
 type ThaiLunar = {
@@ -33,6 +29,7 @@ type AlmanacDay = {
   yearPillar: Pillar;
   officer: string | null;
   officerDesc: string | null;
+  jianchu: { name: string; meaning: string } | null;
   deities: string[];
   deity: string | null;
   colors: ColorInfo[];
@@ -80,6 +77,7 @@ const DAY_FIELDS: DayField[] = [
   { key: "weekday", label: "วันในสัปดาห์", type: "text" },
   { key: "officer", label: "ดิถี (officer)", type: "text" },
   { key: "officerDesc", label: "คำอธิบายดิถี", type: "text" },
+  { key: "jianchu", label: "建除 (jianchu)", type: "json" },
   { key: "deity", label: "เทพประจำวัน (หลัก)", type: "text" },
   { key: "luckyDirection", label: "ทิศโชคลาภ", type: "text" },
   { key: "dayPillar", label: "เสาวัน", type: "json" },
@@ -106,22 +104,6 @@ export function AlmanacWorkspace() {
   const [data, setData] = useState<AlmanacMonth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // ตรวจยามเดียว (เลือกวัน+เวลา)
-  const today = new Date().toISOString().slice(0, 10);
-  const [checkDate, setCheckDate] = useState(today);
-  const [checkHour, setCheckHour] = useState(9);
-  const [hourResult, setHourResult] = useState<HourQuality | null>(null);
-
-  async function onCheckHour() {
-    try {
-      const res = await fetch(`/api/almanac?checkDate=${checkDate}&checkHour=${checkHour}`);
-      const json = await res.json();
-      if (res.ok) setHourResult(json);
-    } catch {
-      /* ignore */
-    }
-  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -338,25 +320,6 @@ export function AlmanacWorkspace() {
         </div>
       )}
 
-      <div className="almanac-controls almanac-hourcheck">
-        <label>
-          ตรวจยาม — วันที่ (ค.ศ.)
-          <input type="date" value={checkDate} onChange={(e) => setCheckDate(e.target.value)} />
-        </label>
-        <label>
-          เวลา (ชม. 0–23)
-          <input type="number" min={0} max={23} value={checkHour} onChange={(e) => setCheckHour(Number(e.target.value))} />
-        </label>
-        <button type="button" className="almanac-download" onClick={onCheckHour}>
-          🔎 ตรวจยาม
-        </button>
-        {hourResult && (
-          <span className={`almanac-chip ${hourResult.good ? "almanac-chip-good" : "almanac-chip-bad"}`}>
-            {hourResult.good ? "✅" : "⛔"} ยาม{hourResult.hourBranch} ({hourResult.range}) — {hourResult.god} {hourResult.meaning} · {hourResult.score}%
-          </span>
-        )}
-      </div>
-
       {loading && <p className="almanac-status">กำลังโหลด…</p>}
       {error && <p className="almanac-status almanac-error">{error}</p>}
 
@@ -419,11 +382,12 @@ export function AlmanacWorkspace() {
                   </div>
                 )}
 
-                {day.officer && (
-                  <p className="almanac-officer">
-                    <strong>{day.officer}</strong>
-                    {day.officerDesc ? ` — ${day.officerDesc}` : ""}
-                  </p>
+                {(day.officer || day.officerDesc || day.jianchu) && (
+                  <ul className="almanac-officer">
+                    {day.officer && <li>{day.officer}</li>}
+                    {day.officerDesc && <li>{day.officerDesc}</li>}
+                    {day.jianchu && <li>{day.jianchu.name} {day.jianchu.meaning}</li>}
+                  </ul>
                 )}
 
                 <dl className="almanac-meta">
@@ -438,7 +402,13 @@ export function AlmanacWorkspace() {
                   {day.luckyDirection && <div><dt>ทิศโชคลาภ</dt><dd>{day.luckyDirection}</dd></div>}
                   <div><dt>ทิศอสูร ว/ด/ป</dt><dd>{day.asura.day} · {day.asura.month} · {day.asura.year}</dd></div>
                   {day.patrons.length > 0 && (
-                    <div><dt>เทพอุปถัมภ์</dt><dd>{day.patrons.map((p) => p.zodiac).join(", ")}</dd></div>
+                    <div><dt>เทพอุปถัมภ์</dt><dd>
+                      <ul className="almanac-patrons">
+                        {day.patrons.map((p) => (
+                          <li key={p.branch}>{p.zodiac}/ทิศ{p.zodiac.replace("คนเกิดปี", "")}</li>
+                        ))}
+                      </ul>
+                    </dd></div>
                   )}
                   <div>
                     <dt>กำลัง (ดิถี/รวม)</dt>

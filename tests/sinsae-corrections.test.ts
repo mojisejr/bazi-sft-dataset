@@ -24,6 +24,7 @@ function makeReading(
       sourceSymbol: "x",
       pointsTo: "y",
       relationResult,
+      timing: "",
     })),
     method: [],
     prose: [],

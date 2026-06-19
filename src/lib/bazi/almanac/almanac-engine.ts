@@ -161,10 +161,21 @@ export function huangdaoScore(baseBranch: string, targetBranch: string): number 
   return resolveScore(HOUR_GOD_LEGEND[`B${idx + 1}`]?.score);
 }
 
+/** 建除 C-index ของ (กิ่งเดือน → กิ่งวัน) — 0=建(C1)..11=閉(C12) */
+function jianchuIndex(monthBranch: string, dayBranch: string): number {
+  return ((bIdx(dayBranch) - bIdx(monthBranch)) % 12 + 12) % 12;
+}
+
 /** 建除 C-score ของ (กิ่งเดือน → กิ่งวัน) — 建 ที่กิ่งเดือน */
 function jianchuScore(monthBranch: string, dayBranch: string): number {
-  const idx = ((bIdx(dayBranch) - bIdx(monthBranch)) % 12 + 12) % 12; // 0=建(C1)..11=閉(C12)
-  return resolveScore(JIANCHU_LEGEND[`C${idx + 1}`]?.score);
+  return resolveScore(JIANCHU_LEGEND[`C${jianchuIndex(monthBranch, dayBranch) + 1}`]?.score);
+}
+
+/** 建除 ชื่อ + ความหมาย ของ (กิ่งเดือน → กิ่งวัน) */
+function jianchuInfo(monthBranch: string, dayBranch: string): { name: string; meaning: string } | null {
+  const rec = JIANCHU_LEGEND[`C${jianchuIndex(monthBranch, dayBranch) + 1}`];
+  if (!rec) return null;
+  return { name: rec.name, meaning: rec.meaning ?? "" };
 }
 
 /**
@@ -353,6 +364,7 @@ export function buildAlmanacDay(
     yearPillar,
     officer: rec?.officer ?? null,
     officerDesc: rec?.officer_desc ?? null,
+    jianchu: jianchuInfo(monthPillar.branch, dayPillar.branch),
     deities: (rec?.deities && rec.deities.length
       ? rec.deities
       : [rec?.deity].filter((x): x is string => Boolean(x))),

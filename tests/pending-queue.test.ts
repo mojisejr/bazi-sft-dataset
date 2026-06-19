@@ -2,10 +2,6 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, test, vi } from "vitest";
 
-vi.mock("@clerk/nextjs", () => ({
-  UserButton: () => "User menu",
-}));
-
 import { PendingDraftQueue } from "@/components/bazi/PendingDraftQueue";
 import {
   createListDraftDatasetRecordsHandler,

@@ -11,7 +11,7 @@ describe("orchestrator draft mapper", () => {
   test("maps a full Step 3 topic draft into the legacy 15-dimension draft payload", () => {
     const draftByTopic = Object.fromEntries(
       BAZI_TOPIC_IDS.map((topicId) => [topicId, `${topicId}:draft`]),
-    );
+    ) as Record<(typeof BAZI_TOPIC_IDS)[number], string>;
 
     const result = mapTopicDraftToDraftAnnotationData(draftByTopic);
     const parsed = DraftAnnotationDataSchema.parse(result);
@@ -31,7 +31,7 @@ describe("orchestrator draft mapper", () => {
   test("merges shared legacy dimensions from multiple topic outputs", () => {
     const draftByTopic = Object.fromEntries(
       BAZI_TOPIC_IDS.map((topicId) => [topicId, `${topicId}:draft`]),
-    );
+    ) as Record<(typeof BAZI_TOPIC_IDS)[number], string>;
 
     const result = mapTopicDraftToDraftAnnotationData(draftByTopic);
     const careerDimension = result.dimensions.find(
@@ -52,7 +52,7 @@ describe("orchestrator draft mapper", () => {
   test("fills unmapped legacy dimensions with explicit proof placeholders instead of dropping them", () => {
     const draftByTopic = Object.fromEntries(
       BAZI_TOPIC_IDS.map((topicId) => [topicId, `${topicId}:draft`]),
-    );
+    ) as Record<(typeof BAZI_TOPIC_IDS)[number], string>;
 
     const result = mapTopicDraftToDraftAnnotationData(draftByTopic);
     const annualStarDimension = result.dimensions.find(

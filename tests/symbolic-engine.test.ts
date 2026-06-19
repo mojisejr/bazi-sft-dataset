@@ -686,7 +686,10 @@ describe("createCalculateBaziHandler", () => {
 
 describe("isForwardDaYunDirection", () => {
   function mockLunar(yearGanIndex: number) {
-    return { getYearGanIndexExact: () => yearGanIndex };
+    // stub มีแค่ getYearGanIndexExact ซึ่งเป็นเมธอดเดียวที่ isForwardDaYunDirection ใช้
+    return { getYearGanIndexExact: () => yearGanIndex } as unknown as Parameters<
+      typeof isForwardDaYunDirection
+    >[0];
   }
 
   test("male + Yang year stem (甲=index 0) → forward", () => {

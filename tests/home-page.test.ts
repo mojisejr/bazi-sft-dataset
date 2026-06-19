@@ -1,9 +1,5 @@
 import { describe, expect, test, vi } from "vitest";
 
-vi.mock("@clerk/nextjs", () => ({
-  UserButton: () => "User menu",
-}));
-
 vi.mock("next/navigation", () => ({
   usePathname: () => "/",
   useSearchParams: () => new URLSearchParams(),

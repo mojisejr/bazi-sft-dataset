@@ -16,6 +16,7 @@
     "extract:kiang": "python scripts/extract-kiang-kung-tables.py",
     "start": "next start",
     "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:line-memory": "vitest run tests/line-memory.test.ts",
     "test:runtime-critical": "vitest run tests/symbolic-engine.test.ts tests/symbolic-engine.e2e.test.ts tests/schema.test.ts tests/domain-power.test.ts tests/export-sft-dataset.test.ts tests/dataset-save-route.test.ts tests/dataset-purge-drafts-route.test.ts tests/reading-sessions-route.test.ts tests/reading-pdf-versions-route.test.ts tests/substitution-rules-route.test.ts",
@@ -58,8 +59,6 @@
     "dataset:export:sft": "tsx scripts/export-sft-dataset.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^7.0.12",
-    "@floating-ui/react": "^0.27.19",
     "@google/genai": "^1.50.1",
     "@line/bot-sdk": "^11.0.0",
     "@neondatabase/serverless": "^1.0.2",
@@ -73,7 +72,6 @@
     "csv-parse": "^6.2.1",
     "docx": "^9.7.1",
     "drizzle-orm": "^0.45.2",
-    "elkjs": "^0.11.1",
     "exceljs": "^4.4.0",
     "lunar-javascript": "^1.7.7",
     "motion": "^12.38.0",

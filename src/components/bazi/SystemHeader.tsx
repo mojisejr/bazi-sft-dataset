@@ -29,6 +29,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/fortune-sage", icon: "🎋", label: "เซียนเสี่ยงทาย" },
   { href: "/honeycomb", icon: "🐝", label: "เบอร์รังผึ้ง" },
   { href: "/almanac", icon: "📅", label: "ปฏิทินโหรา" },
+  { href: "/almanac/yam", icon: "⏱️", label: "ตรวจยาม" },
   { href: "/reading/history", icon: "🗂️", label: "ประวัติดวง" },
   { href: "/reading/knowledge", icon: "📚", label: "องค์ความรู้" },
 ];

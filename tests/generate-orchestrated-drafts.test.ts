@@ -65,7 +65,7 @@ function createProofRecord(id: string): ProofDatasetRecord {
         code: "己巳",
         narrative: "Measured earth that grows through patience and timing.",
       },
-    } as ProofDatasetRecord["calculatedState"],
+    } as unknown as ProofDatasetRecord["calculatedState"],
     intentDomain: "love",
     annotationData: null,
     status: "draft",

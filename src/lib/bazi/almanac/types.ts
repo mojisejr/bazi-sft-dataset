@@ -155,6 +155,8 @@ export type AlmanacDay = {
   yearPillar: Pillar;
   officer: string | null;
   officerDesc: string | null;
+  /** 建除 (jianchu) ของวัน — ชื่อ + ความหมาย (คำนวณจากกิ่งเดือน → กิ่งวัน) */
+  jianchu: { name: string; meaning: string } | null;
   /** เทพประจำวัน (อาจมี 1–2 องค์) */
   deities: string[];
   deity: string | null;

@@ -168,7 +168,7 @@ function createProofRecord() {
         queueBatchId: "fresh-2026-04-24",
       },
       reviewLifecycle: {
-        state: "active",
+        state: "active" as const,
       },
       revision: {
         latestEffectiveRecordId: "f1d128dc-8a32-4659-88c0-e42dc742b171",

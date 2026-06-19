@@ -14,7 +14,7 @@ describe("proof dimension composer", () => {
   test("locks a 15-dimension composition contract with explicit provenance", () => {
     const draftByTopic = Object.fromEntries(
       BAZI_TOPIC_IDS.map((topicId) => [topicId, `${topicId}:draft`]),
-    );
+    ) as Record<(typeof BAZI_TOPIC_IDS)[number], string>;
 
     const result = composeProofDimensions({ draftByTopic });
 
@@ -48,7 +48,7 @@ describe("proof dimension composer", () => {
   test("writes proof-facing reasoning for direct, shared, and unmapped dimensions", async () => {
     const draftByTopic = Object.fromEntries(
       BAZI_TOPIC_IDS.map((topicId) => [topicId, `${topicId}:draft`]),
-    );
+    ) as Record<(typeof BAZI_TOPIC_IDS)[number], string>;
     const calculatedState = await calculateBaziChart(
       {
         birthDate: "1992-08-21",

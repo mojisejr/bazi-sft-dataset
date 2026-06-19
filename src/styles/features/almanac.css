@@ -100,8 +100,24 @@
 
 .almanac-officer {
   margin: 0;
+  padding-left: 1.1rem;
   font-size: 0.85rem;
   line-height: 1.35;
+  list-style: disc;
+}
+
+.almanac-officer li {
+  margin: 0;
+}
+
+.almanac-patrons {
+  margin: 0;
+  padding-left: 1.1rem;
+  list-style: disc;
+}
+
+.almanac-patrons li {
+  margin: 0;
 }
 
 .almanac-meta {

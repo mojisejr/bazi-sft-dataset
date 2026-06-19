@@ -43,7 +43,7 @@ describe("orchestrated draft persistence", () => {
         generateTopicDraft: async () => ({
           draftByTopic: Object.fromEntries(
             BAZI_TOPIC_IDS.map((topicId) => [topicId, `${topicId}:draft`]),
-          ),
+          ) as Record<(typeof BAZI_TOPIC_IDS)[number], string>,
           chunkResults: [],
           model: "gemini-3-flash-preview",
           generationSeed: 12345,
