@@ -8,7 +8,8 @@ type SpiritInfo = { name: string; keywords: string[] };
 type ColorInfo = { element: string; colors: string };
 type PatronInfo = { branch: string; number: number | null; zodiac: string };
 type AsuraDirections = { day: string; month: string; year: string };
-type MonthInfo = { deity: string | null; caishenDir: string | null; lapDir: string | null };
+type MonthInfo = { deity: string | null; caishenDir: string | null; lapDir: string | null; asuraDir: string | null };
+type YearInfo = { pillar: string; asuraDir: string | null; caishenDir: string | null; lapDir: string | null; deity: string | null };
 type LuckyHour = { code: string; range: string; branch: string; god: string; meaning: string };
 type DayStar = { name: string; activity: string | null; polarity: "good" | "bad" };
 type Strength = { ratioTotal: number; ratioDay: number; exact: boolean };
@@ -40,6 +41,7 @@ type AlmanacDay = {
   spirits: SpiritInfo[];
   luckyHours: LuckyHour[];
   monthInfo: MonthInfo;
+  yearInfo: YearInfo;
   dayStars: DayStar[];
   solarTerm: SolarTerm | null;
   thaiLunar: ThaiLunar;
@@ -55,7 +57,10 @@ const MONTH_NAMES = [
   "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
 ];
 
-const CURRENT_YEAR_BE = new Date().getFullYear() + 543;
+const NOW = new Date();
+const CURRENT_YEAR_BE = NOW.getFullYear() + 543;
+const CURRENT_MONTH = NOW.getMonth() + 1;
+const TODAY_ISO = `${NOW.getFullYear()}-${String(NOW.getMonth() + 1).padStart(2, "0")}-${String(NOW.getDate()).padStart(2, "0")}`;
 
 const SPECIAL_CAT: Record<SpecialDayCategory, { label: string; cls: string }> = {
   religion: { label: "ศาสนา", cls: "almanac-sp--religion" },
@@ -100,7 +105,7 @@ const DAY_FIELDS: DayField[] = [
 
 export function AlmanacWorkspace() {
   const [yearBE, setYearBE] = useState(CURRENT_YEAR_BE);
-  const [month, setMonth] = useState(1);
+  const [month, setMonth] = useState(CURRENT_MONTH);
   const [data, setData] = useState<AlmanacMonth | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -244,8 +249,18 @@ export function AlmanacWorkspace() {
     }
   }
 
-  const monthInfo = data?.days[0]?.monthInfo;
-  const monthPillar = data?.days[0]?.monthPillar.ganzhi;
+  // เสาเดือน "หลัก" ของหน้านี้ = ตัวที่ครองวันมากสุด (mode) — ตรงกับปฏิทินเล่ม
+  // (วันต้นเดือนยังเป็นเสาเดือนเก่าจนกว่าจะถึงสารท 節 จึงเปลี่ยน)
+  const principalDay = (() => {
+    if (!data?.days.length) return null;
+    const counts = new Map<string, number>();
+    for (const d of data.days) counts.set(d.monthPillar.ganzhi, (counts.get(d.monthPillar.ganzhi) ?? 0) + 1);
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+    return data.days.find((d) => d.monthPillar.ganzhi === top) ?? data.days[0];
+  })();
+  const monthInfo = principalDay?.monthInfo;
+  const yearInfo = principalDay?.yearInfo;
+  const monthPillar = principalDay?.monthPillar.ganzhi;
 
   return (
     <section className="almanac-workspace">
@@ -326,24 +341,34 @@ export function AlmanacWorkspace() {
       {data && !loading && (
         <>
           <div className="almanac-monthbar">
-            <h2 className="almanac-title">
-              {MONTH_NAMES[data.month - 1]} {data.yearBE}
-              {monthPillar && <span className="almanac-monthpillar"> · เสาเดือน {monthPillar}</span>}
-            </h2>
-            {monthInfo && (
-              <p className="almanac-monthmeta">
-                {monthInfo.deity && <span>เทพประจำเดือน: <b>{monthInfo.deity}</b></span>}
-                {monthInfo.caishenDir && <span>ทิศไฉ่ซิ้ง: <b>{monthInfo.caishenDir}</b></span>}
-                {monthInfo.lapDir && <span>ทิศลาภเดือน: <b>{monthInfo.lapDir}</b></span>}
-              </p>
-            )}
+            <h2 className="almanac-title">{MONTH_NAMES[data.month - 1]} {data.yearBE}</h2>
+            <div className="almanac-headcols">
+              {yearInfo && (
+                <div className="almanac-headcol">
+                  <h3>ปี <span className="almanac-headpillar">{yearInfo.pillar}</span></h3>
+                  {yearInfo.asuraDir && <span>อสูรปี: <b>{yearInfo.asuraDir}</b></span>}
+                  {yearInfo.caishenDir && <span>ทิศไฉ่ซิ้งปี: <b>{yearInfo.caishenDir}</b></span>}
+                  {yearInfo.lapDir && <span>โชคลาภปี: <b>{yearInfo.lapDir}</b></span>}
+                  {yearInfo.deity && <span>เทพประจำปี: <b>{yearInfo.deity}</b></span>}
+                </div>
+              )}
+              {monthInfo && (
+                <div className="almanac-headcol">
+                  <h3>เดือน <span className="almanac-headpillar">{monthPillar}</span></h3>
+                  {monthInfo.asuraDir && <span>อสูรเดือน: <b>{monthInfo.asuraDir}</b></span>}
+                  {monthInfo.caishenDir && <span>ทิศไฉ่ซิ้ง: <b>{monthInfo.caishenDir}</b></span>}
+                  {monthInfo.lapDir && <span>ทิศลาภเดือน: <b>{monthInfo.lapDir}</b></span>}
+                  {monthInfo.deity && <span>เทพประจำเดือน: <b>{monthInfo.deity}</b></span>}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="almanac-grid">
             {data.days.map((day) => (
               <article
                 key={day.date}
-                className={`almanac-day${day.solarTerm ? ` almanac-day--term-${day.solarTerm.kind}` : ""}`}
+                className={`almanac-day${day.solarTerm ? ` almanac-day--term-${day.solarTerm.kind}` : ""}${day.date === TODAY_ISO ? " almanac-day--today" : ""}`}
               >
                 {day.solarTerm && (
                   <div className={`almanac-term almanac-term--${day.solarTerm.kind}`}>
@@ -355,6 +380,7 @@ export function AlmanacWorkspace() {
                 )}
                 <header className="almanac-day-head">
                   <span className="almanac-daynum">{Number(day.date.slice(8, 10))}</span>
+                  {day.date === TODAY_ISO && <span className="almanac-today-badge">วันนี้</span>}
                   <span className="almanac-weekday">{day.weekday}</span>
                   <span className="almanac-strength" title="กำลังดิถี E = (O+P+Q+R)/รวม max">
                     {pct(day.strength.ratioDay)}
@@ -404,8 +430,8 @@ export function AlmanacWorkspace() {
                   {day.patrons.length > 0 && (
                     <div><dt>เทพอุปถัมภ์</dt><dd>
                       <ul className="almanac-patrons">
-                        {day.patrons.map((p) => (
-                          <li key={p.branch}>{p.zodiac}/ทิศ{p.zodiac.replace("คนเกิดปี", "")}</li>
+                        {day.patrons.map((p, i) => (
+                          <li key={`${p.branch}-${i}`}>{p.zodiac}/ทิศ{p.zodiac.replace("คนเกิดปี", "")}</li>
                         ))}
                       </ul>
                     </dd></div>

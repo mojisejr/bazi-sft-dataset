@@ -210,6 +210,35 @@
   color: #666;
 }
 
+.almanac-headcols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.almanac-headcol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #e7d9c5;
+  border-radius: 0.5rem;
+  background: #fdf8f1;
+  font-size: 0.8rem;
+  color: #555;
+}
+
+.almanac-headcol h3 {
+  margin: 0 0 0.1rem;
+  font-size: 0.85rem;
+  color: #8a5a2b;
+}
+
+.almanac-headpillar {
+  font-weight: 700;
+  color: #333;
+}
+
 .almanac-monthmeta {
   margin: 0;
   display: flex;
@@ -267,6 +296,22 @@
   border-color: #2b8fa3;
   border-width: 2px;
   box-shadow: 0 0 0 2px #d6eef3 inset;
+}
+
+.almanac-day--today {
+  border-color: #d4380d;
+  border-width: 2px;
+  background: #fff7e6;
+  box-shadow: 0 0 0 3px #ffd6b0 inset;
+}
+
+.almanac-today-badge {
+  padding: 0.05rem 0.4rem;
+  border-radius: 0.4rem;
+  background: #d4380d;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .almanac-term {

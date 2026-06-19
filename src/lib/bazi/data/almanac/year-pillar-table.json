@@ -3,6 +3,9 @@
     "asura_dir": "อสูรปี E"
   },
   "丙午": {
-    "asura_dir": "อสูรปี N"
+    "asura_dir": "อสูรปี N",
+    "caishen_dir": "ทิศ W",
+    "lap_dir": "ทิศ E",
+    "deity": "ฮั่วท้อเซียงซือ"
   }
 }

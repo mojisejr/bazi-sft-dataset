@@ -18,6 +18,7 @@ import { splitGanZhi } from "@/lib/bazi/symbolic-engine.birth";
 import dayTableJson from "@/lib/bazi/data/almanac/day-pillar-table.json";
 import dayMonthTableJson from "@/lib/bazi/data/almanac/day-month-table.json";
 import monthTableJson from "@/lib/bazi/data/almanac/month-pillar-table.json";
+import yearTableJson from "@/lib/bazi/data/almanac/year-pillar-table.json";
 import spiritLegendJson from "@/lib/bazi/data/almanac/spirit-legend.json";
 import gateLegendJson from "@/lib/bazi/data/almanac/gate-legend.json";
 import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
@@ -46,6 +47,7 @@ import type {
   Pillar,
   SpiritInfo,
   StrengthScore,
+  YearInfo,
 } from "@/lib/bazi/almanac/types";
 
 const require = createRequire(import.meta.url);
@@ -69,7 +71,11 @@ const DAY_TABLE = dayTableJson as unknown as Record<string, AlmanacRecord>;
 const DAY_MONTH_TABLE = dayMonthTableJson as unknown as Record<string, AlmanacRecord>;
 const MONTH_TABLE = monthTableJson as unknown as Record<
   string,
-  { deity: string | null; caishen_dir: string | null; lap_dir: string | null }
+  { deity: string | null; caishen_dir: string | null; lap_dir: string | null; asura_dir?: string | null }
+>;
+const YEAR_TABLE = yearTableJson as unknown as Record<
+  string,
+  { asura_dir?: string | null; caishen_dir?: string | null; lap_dir?: string | null; deity?: string | null }
 >;
 const SPIRIT_LEGEND = spiritLegendJson as Record<string, string[]>;
 const GATE_LEGEND = gateLegendJson as Record<string, string>;
@@ -342,6 +348,17 @@ export function buildAlmanacDay(
     deity: monthRec?.deity ?? null,
     caishenDir: monthRec?.caishen_dir ?? null,
     lapDir: monthRec?.lap_dir ?? null,
+    asuraDir: monthRec?.asura_dir ?? (asuraOf(monthPillar.branch) || null),
+  };
+
+  // ระดับปี: อสูรปีคำนวณได้ทุกปี (三煞); ไฉ่ซิ้ง/โชคลาภ/เทพประจำปี = lookup (มีเท่าที่กรอกใน year-pillar-table)
+  const yearRec = YEAR_TABLE[yearPillar.ganzhi];
+  const yearInfo: YearInfo = {
+    pillar: yearPillar.ganzhi,
+    asuraDir: asuraOf(yearPillar.branch) || null,
+    caishenDir: yearRec?.caishen_dir ?? null,
+    lapDir: yearRec?.lap_dir ?? null,
+    deity: yearRec?.deity ?? null,
   };
 
   const asura: AsuraDirections = {
@@ -379,6 +396,7 @@ export function buildAlmanacDay(
     // เวลามงคล: คำนวณกฎ 黃道 จากกิ่งวัน (ถูกต้องทุกปี ไม่พึ่งตารางสกัด)
     luckyHours: luckyHoursByDayBranch(dayPillar.branch),
     monthInfo,
+    yearInfo,
     // ดาวประจำวัน (ชุดใหม่): คีย์ตามกิ่งเดือน → ตัวกระตุ้นของวัน (กิ่ง/ก้าน/เสาวันเต็ม)
     dayStars: dayStarsFor(overrides?.dayStars ?? DAY_STARS, monthPillar.branch, dayPillar.stem, dayPillar.branch, dayPillar.ganzhi),
     // ขอบสารท (ปฏิทิน 150 ปี): null = ไม่ใช่วันสารท

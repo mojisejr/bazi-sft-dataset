@@ -88,6 +88,21 @@ export type MonthInfo = {
   caishenDir: string | null;
   /** ทิศลาภเดือน */
   lapDir: string | null;
+  /** ทิศอสูรเดือน (三煞 ตามกิ่งเดือน) */
+  asuraDir: string | null;
+};
+
+export type YearInfo = {
+  /** เสาปี (干支) เช่น 丙午 */
+  pillar: string;
+  /** ทิศอสูรปี (三煞 ตามกิ่งปี) */
+  asuraDir: string | null;
+  /** ทิศไฉ่ซิ้งปี (เทพโชคลาภ) */
+  caishenDir: string | null;
+  /** ทิศโชคลาภปี */
+  lapDir: string | null;
+  /** เทพประจำปี */
+  deity: string | null;
 };
 
 /** ขอบสารทของวัน (จากปฏิทิน 150 ปี) — major=สารทใหญ่/เปลี่ยนเดือน, minor=สารทเล็ก */
@@ -169,6 +184,7 @@ export type AlmanacDay = {
   spirits: SpiritInfo[];
   luckyHours: LuckyHour[];
   monthInfo: MonthInfo;
+  yearInfo: YearInfo;
   /** ดาวประจำวัน (ชุดใหม่) ที่เข้าเกณฑ์ของวัน */
   dayStars: DayStar[];
   /** ขอบสารทของวัน (null = ไม่ใช่วันสารท) */
