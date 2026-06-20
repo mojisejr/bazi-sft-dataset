@@ -1,12 +1,13 @@
 /**
  * chapter → primitive map — "กาวเชื่อม" ระหว่าง 15 บท กับก้อนความรู้ NewData
- * บอกว่าแต่ละบทหยิบ primitive กลุ่มไหนไปใช้ (อิง bullets ใน chapter-outline.ts)
- * นี่คือหัวใจของ "ใช้หลักการคำนวณเดิม แต่ผลคำทายเป็น NewData"
  *
- * บทที่ยังไม่มี NewData (อาชีพ/ลูกน้อง/สี-ทิศ/องค์เทพ) → spec ว่าง → บทแสดง placeholder
+ * โครง box ของแต่ละบท = "หัวข้อย่อยมาตรฐาน (bullets)" ใน chapter-outline.ts ครบทุกข้อ
+ * แต่ละ bullet = 1 box (หัว box = ข้อความ bullet เต็ม) → NewData เติมอัตโนมัติช่องที่ map ได้
+ * ช่องที่ยังไม่มี NewData = กล่องว่าง รอซินแสเติมในตัวแก้ PDF
  *
  * pure + client/server-safe
  */
+import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
 import {
   matchBranchPairs,
   matchPhua,
@@ -21,93 +22,121 @@ import {
 } from "@/lib/bazi/newdata-lookup";
 import type { NewdataMap } from "@/lib/bazi/newdata-repository";
 
-type Section =
-  | { id: string; title: string; kind: "state"; group: string; pillar: PillarPosition }
-  | { id: string; title: string; kind: "branchPairs"; group: string }
-  | { id: string; title: string; kind: "stemPairs" }
-  | { id: string; title: string; kind: "selfPunish" }
-  | { id: string; title: string; kind: "samHeng" }
-  | { id: string; title: string; kind: "trinity" }
-  | { id: string; title: string; kind: "phua" }
-  | { id: string; title: string; kind: "daYun" };
+/** ตัวดึง NewData 1 ชนิด (ไม่มี title — title มาจาก bullet ของ outline) */
+type Resolver =
+  | { kind: "state"; group: string; pillar: PillarPosition }
+  | { kind: "branchPairs"; group: string }
+  | { kind: "stemPairs" }
+  | { kind: "selfPunish" }
+  | { kind: "samHeng" }
+  | { kind: "trinity" }
+  | { kind: "phua" }
+  | { kind: "daYun" };
 
-/** key = topic id (ตรงกับ chapter-outline.ts / TOPIC_PATH) */
-export const CHAPTER_NEWDATA: Record<string, Section[]> = {
+/**
+ * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
+ * แต่ละช่อง = Resolver[] (0..n) ที่เติม box ของ bullet นั้น · [] = กล่องว่าง (รอซินแสเติม)
+ */
+export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
+  // 6 bullets: [กำลังดิถี] [12นักษัตร] [60กะจื่อ/ราศีบน-ล่าง] [ดิถี→ถ่ายเท→ผลลัพธ์] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
   chart_foundation: [
-    { id: "core-state", title: "แก่นตัวตนจากเชี่ยงแซดิถี", kind: "state", group: "shengxiang", pillar: "day" },
-    { id: "combine-stem", title: "ภาคีราศีบน (สิ่งที่ถูกกำหนดมา)", kind: "stemPairs" },
-    { id: "combine-branch", title: "ภาคีราศีล่าง (สิ่งที่เลือกลงมือทำ)", kind: "branchPairs", group: "combine_branch" },
-    { id: "self-punish", title: "จื่อเฮ้ง (สิ่งพึงระวัง — ทำร้ายตัวเอง)", kind: "selfPunish" },
+    [],
+    [],
+    [{ kind: "stemPairs" }, { kind: "branchPairs", group: "combine_branch" }],
+    [{ kind: "state", group: "shengxiang", pillar: "day" }],
+    [{ kind: "selfPunish" }],
+    [],
   ],
-  career_potential: [], // ยังไม่มี NewData (อาชีพตามธาตุ)
+  // 5 bullets — ยังไม่มี NewData อาชีพตามธาตุ
+  career_potential: [[], [], [], [], []],
+  // 3 bullets: [โชคลาภ ดิถี→ถ่ายเท→ผลลัพธ์] [ผั่วไฉ่โข่ว] [ข้อเสนอแนะ]
   wealth_and_investment: [
-    { id: "wealth-state", title: "ลักษณะโชคลาภจากเชี่ยงแซดิถี", kind: "state", group: "shengxiang", pillar: "day" },
-    { id: "phua", title: "สิ่งพึงระวัง (ผั่วไฉ่โข่ว — รั่วไหลทรัพย์)", kind: "phua" },
+    [{ kind: "state", group: "shengxiang", pillar: "day" }],
+    [{ kind: "phua" }],
+    [],
   ],
+  // 4 bullets: [ธาตุส่งเสริม] [คู่ธาตุ] [ธาตุถ่ายเท/บริวาร] [ธาตุโชคลาภ/ลูกค้า]
   benefactor: [
-    { id: "month-state", title: "ผู้อุปถัมภ์ (เชี่ยงแซหลักเดือน)", kind: "state", group: "shengxiang", pillar: "month" },
-    { id: "combine-branch", title: "คู่ธาตุภาคี (คนหนุนหลัง)", kind: "branchPairs", group: "combine_branch" },
+    [{ kind: "state", group: "shengxiang", pillar: "month" }],
+    [{ kind: "branchPairs", group: "combine_branch" }],
+    [],
+    [],
   ],
+  // 4 bullets: [พรสวรรค์] [พรแสวง] [พรในราศีแฝง] [ข้อเสนอแนะ]
   talent: [
-    { id: "talent-state", title: "พรสวรรค์จากเชี่ยงแซดิถี", kind: "state", group: "shengxiang", pillar: "day" },
-    { id: "trinity", title: "พลังไตรภาคี (ซาฮะ)", kind: "trinity" },
+    [{ kind: "state", group: "shengxiang", pillar: "day" }],
+    [{ kind: "trinity" }],
+    [],
+    [],
   ],
+  // 6 bullets: [หลักปี] [หลักเดือน] [พ่อ] [แม่] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
   family: [
-    { id: "year-state", title: "รากฐานบรรพบุรุษ (เชี่ยงแซหลักปี)", kind: "state", group: "shengxiang", pillar: "year" },
-    { id: "month-state", title: "ครอบครัวพ่อแม่ (เชี่ยงแซหลักเดือน)", kind: "state", group: "shengxiang", pillar: "month" },
-    { id: "combine-branch", title: "ความผูกพันในครอบครัว (ภาคี)", kind: "branchPairs", group: "combine_branch" },
-    { id: "heng", title: "สิ่งพึงระวังในครอบครัว (เฮ้ง)", kind: "branchPairs", group: "harm_heng" },
+    [{ kind: "state", group: "shengxiang", pillar: "year" }],
+    [{ kind: "state", group: "shengxiang", pillar: "month" }],
+    [],
+    [],
+    [{ kind: "branchPairs", group: "harm_heng" }],
+    [],
   ],
+  // 5 bullets: [ชีวิตคู่พื้นดวง] [ลักษณะคู่ครอง] [มีคู่เหมาะไหม มาเมื่อไร] [สิ่งที่ควรระวัง] [ข้อเสนอแนะ]
   love_partner: [
-    { id: "combine-branch", title: "ความผูกพัน (ภาคีราศีล่าง)", kind: "branchPairs", group: "combine_branch" },
-    { id: "clash", title: "สิ่งที่ควรระวัง (ชง)", kind: "branchPairs", group: "clash" },
-    { id: "hai", title: "สิ่งที่ควรระวัง (ไห่)", kind: "branchPairs", group: "harm_hai" },
+    [{ kind: "branchPairs", group: "combine_branch" }],
+    [],
+    [],
+    [{ kind: "branchPairs", group: "clash" }, { kind: "branchPairs", group: "harm_hai" }],
+    [],
   ],
+  // 4 bullets: [มิตรแท้] [ระวัง/ข้อเสนอ-มิตร] [ศัตรู] [ระวัง/ข้อเสนอ-ศัตรู]
   friends_foes: [
-    { id: "combine-branch", title: "มิตรแท้ (ภาคีราศีล่าง)", kind: "branchPairs", group: "combine_branch" },
-    { id: "hai", title: "ศัตรู — การให้ร้าย/แทงข้างหลัง (ไห่)", kind: "branchPairs", group: "harm_hai" },
-    { id: "heng", title: "ความขัดแย้งเรื้อรัง (เฮ้ง)", kind: "branchPairs", group: "harm_heng" },
-    { id: "samheng", title: "ภัยหมู่ (ซำเฮ้ง)", kind: "samHeng" },
+    [{ kind: "branchPairs", group: "combine_branch" }],
+    [],
+    [{ kind: "branchPairs", group: "harm_hai" }, { kind: "branchPairs", group: "harm_heng" }, { kind: "samHeng" }],
+    [],
   ],
+  // 3 bullets: [ลักษณะหุ้นส่วน หลักวันราศีล่าง] [มีส่วนหา/รักษา/ยักยอกทรัพย์] [ควรมี/ไม่มี]
   partnership: [
-    { id: "day-state", title: "ลักษณะหุ้นส่วน (เชี่ยงแซหลักวันราศีล่าง)", kind: "state", group: "shengxiang", pillar: "day" },
+    [{ kind: "state", group: "shengxiang", pillar: "day" }],
+    [],
+    [],
   ],
-  subordinates: [], // ยังไม่มี NewData (60 กะจื่อ matching)
+  // 3 bullets — ยังไม่มี NewData (60 กะจื่อ matching)
+  subordinates: [[], [], []],
+  // 3 bullets: [วิธี/ทักษะได้โชคลาภ] [ดิถี→ถ่ายเท→เชี่ยงแซดี] [เรียนตามอาชีพถูกดวง]
   education: [
-    { id: "edu", title: "ระดับการศึกษา (วุฒิ)", kind: "state", group: "edu_level", pillar: "day" },
-    { id: "study", title: "สไตล์การเรียน", kind: "state", group: "study_style", pillar: "day" },
+    [{ kind: "state", group: "study_style", pillar: "day" }],
+    [{ kind: "state", group: "edu_level", pillar: "day" }],
+    [],
   ],
+  // 2 bullets: [วัยจรแต่ละช่วง] [ช่วงดี/ช่วงระวัง]
   turning_points: [
-    { id: "dayun", title: "วัยจรแต่ละช่วง (เชี่ยงแซตามวัยจร)", kind: "daYun" },
+    [{ kind: "daYun" }],
+    [],
   ],
+  // 3 bullets: [โรคจาก เจ๊า/ผั่ว/ซำเฮ้ง/จื่อเฮ้ง] [โรคจากธาตุมาก/น้อย] [ข้อเสนอแนะดูแล]
   health: [
-    { id: "clash", title: "โรค/อุบัติเหตุจากชง", kind: "branchPairs", group: "clash" },
-    { id: "self", title: "โรคจากจื่อเฮ้ง (ทำร้ายตัวเอง)", kind: "selfPunish" },
-    { id: "samheng", title: "โรคจากซำเฮ้ง", kind: "samHeng" },
-    { id: "hai", title: "โรคจากไห่", kind: "branchPairs", group: "harm_hai" },
+    [
+      { kind: "branchPairs", group: "clash" },
+      { kind: "selfPunish" },
+      { kind: "samHeng" },
+      { kind: "branchPairs", group: "harm_hai" },
+    ],
+    [],
+    [],
   ],
-  colors_directions: [], // ยังไม่มี NewData (สี/ทิศ/ของมงคล)
-  guardian_deities: [], // ยังไม่มี NewData (องค์เทพ)
+  // 9 bullets — ยังไม่มี NewData (สี/ทิศ/ของมงคล)
+  colors_directions: [[], [], [], [], [], [], [], [], []],
+  // 5 bullets — ยังไม่มี NewData (องค์เทพ)
+  guardian_deities: [[], [], [], [], []],
 };
 
-export type ResolvedSection = { id: string; title: string; blocks: NewdataBlock[] };
-export type ResolvedChapter = {
-  chapterId: string;
-  /** มี spec ผูกกับ NewData หรือไม่ (false = บทนี้ยังไม่มีก้อนความรู้รองรับ) */
-  defined: boolean;
-  /** มี block ที่ match จริงในดวงนี้หรือไม่ */
-  hasContent: boolean;
-  sections: ResolvedSection[];
-};
-
-function resolveSection(section: Section, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
-  switch (section.kind) {
+function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
+  switch (r.kind) {
     case "state": {
-      const block = matchPillarState(map, section.group, facts, section.pillar);
+      const block = matchPillarState(map, r.group, facts, r.pillar);
       return block ? [block] : [];
     }
     case "branchPairs":
-      return matchBranchPairs(map, section.group, facts);
+      return matchBranchPairs(map, r.group, facts);
     case "stemPairs":
       return matchStemPairs(map, facts);
     case "selfPunish":
@@ -119,7 +148,6 @@ function resolveSection(section: Section, facts: ChartFacts, map: NewdataMap): N
     case "phua":
       return matchPhua(map, facts);
     case "daYun": {
-      // ทุกช่วงวัยจร → เชี่ยงแซของราศีล่างช่วงนั้น (lookup shengxiang)
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {
         const state = d.lowerState;
@@ -141,31 +169,41 @@ function resolveSection(section: Section, facts: ChartFacts, map: NewdataMap): N
   }
 }
 
-/** resolve 1 บท → sections ที่ match (ตัด section ที่ไม่มี block ออก) */
-export function resolveChapterNewdata(
+/** จัดรูป block เป็นย่อหน้า markdown: **ป้าย** เนื้อ _(บริบท)_ */
+function blockToParagraph(b: NewdataBlock): string {
+  const head = b.label ? `**${b.label}** ` : "";
+  const ctx = b.context ? ` _(${b.context})_` : "";
+  return `${head}${b.text}${ctx}`.trim();
+}
+
+export type ChapterBox = { title: string; body: string };
+export type ResolvedChapterBoxes = {
+  chapterId: string;
+  /** มี resolver ผูก NewData อย่างน้อย 1 ช่องหรือไม่ (false = บทยังไม่มีก้อนความรู้รองรับ) */
+  defined: boolean;
+  /** มี box ที่ NewData เติมจริงในดวงนี้หรือไม่ */
+  hasContent: boolean;
+  /** box เรียงตามหัวข้อย่อยมาตรฐาน (1 box ต่อ 1 bullet) — body ว่าง = รอซินแสเติม */
+  boxes: ChapterBox[];
+};
+
+/** สร้าง box ครบทุก bullet ของบท (NewData เติมที่ map ได้, ที่เหลือว่างรอเติม) */
+export function resolveChapterBoxes(
   chapterId: string,
   facts: ChartFacts,
   map: NewdataMap,
-): ResolvedChapter {
-  const spec = CHAPTER_NEWDATA[chapterId] ?? [];
-  const sections: ResolvedSection[] = [];
-  for (const section of spec) {
-    const blocks = resolveSection(section, facts, map);
-    if (blocks.length > 0) sections.push({ id: section.id, title: section.title, blocks });
-  }
-  return {
-    chapterId,
-    defined: spec.length > 0,
-    hasContent: sections.length > 0,
-    sections,
-  };
-}
+): ResolvedChapterBoxes {
+  const bullets = CHAPTER_OUTLINE[chapterId]?.bullets ?? [];
+  const resolvers = CHAPTER_BULLET_RESOLVERS[chapterId] ?? [];
+  const defined = resolvers.some((rs) => rs.length > 0);
+  let hasContent = false;
 
-/** resolve ทุกบทตามลำดับ key ที่ส่งเข้ามา (ปกติ = ลำดับ TOPIC_PATH 15 บท) */
-export function resolveAllChapters(
-  chapterIds: readonly string[],
-  facts: ChartFacts,
-  map: NewdataMap,
-): ResolvedChapter[] {
-  return chapterIds.map((id) => resolveChapterNewdata(id, facts, map));
+  const boxes: ChapterBox[] = bullets.map((bullet, i) => {
+    const blocks = (resolvers[i] ?? []).flatMap((r) => resolveOne(r, facts, map));
+    const body = blocks.map(blockToParagraph).join("\n\n");
+    if (body.trim()) hasContent = true;
+    return { title: bullet, body };
+  });
+
+  return { chapterId, defined, hasContent, boxes };
 }

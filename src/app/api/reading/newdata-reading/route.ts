@@ -9,45 +9,13 @@ import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 import { getNewdataMap } from "@/lib/bazi/newdata.server";
 import { extractChartFacts } from "@/lib/bazi/newdata-lookup";
-import { resolveChapterNewdata, type ResolvedChapter } from "@/lib/bazi/chapter-newdata-map";
+import { resolveChapterBoxes } from "@/lib/bazi/chapter-newdata-map";
 import { getChapterOutline } from "@/lib/bazi/chapter-outline";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 
 export const runtime = "nodejs";
 
 const PREDICT_TOPICS = TOPIC_PATH.filter((t) => t.kind === "predict");
-
-const PLACEHOLDER_NO_DATA = "ซินแสยังไม่ได้ใส่ข้อมูลสำหรับบทนี้ (รอเพิ่มภายหลัง)";
-const PLACEHOLDER_NO_MATCH = "ดวงนี้ไม่เข้าเงื่อนไขของบทนี้";
-
-export type ReadingBox = { title: string; body: string };
-
-/** แปลง resolved chapter → กล่องตั้งต้น (เพิ่ม/ลบ/แก้ได้ในหน้า) — body รองรับ **ตัวหนา** _เอียง_ */
-function composeBoxes(intro: string | undefined, r: ResolvedChapter): ReadingBox[] {
-  const boxes: ReadingBox[] = [];
-  if (intro) boxes.push({ title: "ภาพรวม", body: intro });
-
-  if (!r.defined) {
-    boxes.push({ title: "", body: PLACEHOLDER_NO_DATA });
-    return boxes;
-  }
-  if (!r.hasContent) {
-    boxes.push({ title: "", body: PLACEHOLDER_NO_MATCH });
-    return boxes;
-  }
-
-  for (const section of r.sections) {
-    const body = section.blocks
-      .map((block) => {
-        const head = block.label ? `**${block.label}** ` : "";
-        const ctx = block.context ? ` _(${block.context})_` : "";
-        return `${head}${block.text}${ctx}`;
-      })
-      .join("\n\n");
-    boxes.push({ title: section.title, body });
-  }
-  return boxes;
-}
 
 export async function POST(request: Request) {
   try {
@@ -59,8 +27,13 @@ export async function POST(request: Request) {
     const map = await getNewdataMap();
 
     const chapters = PREDICT_TOPICS.map((topic) => {
-      const resolved = resolveChapterNewdata(topic.id, facts, map);
+      const resolved = resolveChapterBoxes(topic.id, facts, map);
       const outline = getChapterOutline(topic.id);
+      // box ครบทุกหัวข้อย่อย (bullet) + กล่อง "ภาพรวม" นำหน้า (จาก outline.intro)
+      const boxes = [
+        ...(outline?.intro ? [{ title: "ภาพรวม", body: outline.intro }] : []),
+        ...resolved.boxes,
+      ];
       return {
         id: topic.id,
         chapter: topic.chapter,
@@ -68,8 +41,7 @@ export async function POST(request: Request) {
         intro: outline?.intro ?? null,
         defined: resolved.defined,
         hasContent: resolved.hasContent,
-        sections: resolved.sections,
-        boxes: composeBoxes(outline?.intro ?? undefined, resolved),
+        boxes,
       };
     });
 

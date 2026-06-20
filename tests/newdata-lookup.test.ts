@@ -8,9 +8,10 @@ import {
   type ChartFacts,
 } from "@/lib/bazi/newdata-lookup";
 import {
-  CHAPTER_NEWDATA,
-  resolveChapterNewdata,
+  CHAPTER_BULLET_RESOLVERS,
+  resolveChapterBoxes,
 } from "@/lib/bazi/chapter-newdata-map";
+import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
 
 /**
  * ดวงจริง 1988-05-15 14:30 ชาย (ยืนยันจาก /api/bazi/calculate):
@@ -74,51 +75,62 @@ describe("newdata-lookup: matchers (set-membership)", () => {
   });
 });
 
-describe("chapter-newdata-map: resolve", () => {
-  test("education → edu_level + study_style ของ หมกยก", () => {
-    const r = resolveChapterNewdata("education", FACTS, MAP);
+describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bullet)", () => {
+  test("education → box=3 (เท่า bullets), เติม study_style + edu_level", () => {
+    const r = resolveChapterBoxes("education", FACTS, MAP);
     expect(r.hasContent).toBe(true);
-    const texts = r.sections.flatMap((s) => s.blocks.map((b) => b.text));
-    expect(texts).toContain("การศึกษามักล่าช้า เรียนซ้ำชั้น");
-    expect(texts).toContain("การเรียนซ้ำชั้น เรียนรู้เรื่องลึกลับ");
+    expect(r.boxes).toHaveLength(3); // = จำนวน bullets
+    expect(r.boxes[0].body).toContain("การเรียนซ้ำชั้น เรียนรู้เรื่องลึกลับ"); // study_style
+    expect(r.boxes[1].body).toContain("การศึกษามักล่าช้า เรียนซ้ำชั้น"); // edu_level
+    expect(r.boxes[2].body).toBe(""); // เรียนตามอาชีพ — ยังไม่มี NewData = ว่าง
   });
 
-  test("chart_foundation → เชี่ยงแซดิถี(หมกยก) + ภาคีราศีล่าง(午未) + ภาคีราศีบน(戊癸), ไม่มีจื่อเฮ้ง", () => {
-    const r = resolveChapterNewdata("chart_foundation", FACTS, MAP);
-    const ids = r.sections.map((s) => s.id);
-    expect(ids).toContain("core-state");
-    expect(ids).toContain("combine-branch");
-    expect(ids).toContain("combine-stem");
-    expect(ids).not.toContain("self-punish"); // ตัด section ว่างออก
+  test("chart_foundation → box=6, ภาคี+เชี่ยงแซเติม, จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
+    const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
+    expect(r.boxes).toHaveLength(6);
+    expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
+    expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
+    expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
+    expect(r.boxes[4].body).toBe(""); // สิ่งพึงระวัง (จื่อเฮ้ง) — ดวงนี้ไม่มี
+    // หัว box = ข้อความ bullet เต็มจาก outline
+    expect(r.boxes[1].title).toContain("12 นักษัตร");
   });
 
-  test("love_partner → ภาคี(午未) ติด แต่ ชง ไม่ติด", () => {
-    const r = resolveChapterNewdata("love_partner", FACTS, MAP);
-    const ids = r.sections.map((s) => s.id);
-    expect(ids).toContain("combine-branch");
-    expect(ids).not.toContain("clash");
+  test("love_partner → box=5, ภาคีติด(box0) ชง/ไห่ ไม่ติด(box3 ว่าง)", () => {
+    const r = resolveChapterBoxes("love_partner", FACTS, MAP);
+    expect(r.boxes).toHaveLength(5);
+    expect(r.boxes[0].body).toContain("ความผูกพันแห่งความกลมเกลียว");
+    expect(r.boxes[3].body).toBe(""); // สิ่งที่ควรระวัง (ชง/ไห่) — ดวงนี้ไม่มี
   });
 
-  test("turning_points → เชี่ยงแซตามวัยจร (lowerState ของแต่ละช่วง)", () => {
-    const r = resolveChapterNewdata("turning_points", FACTS, MAP);
+  test("turning_points → box0 = เชี่ยงแซตามวัยจร พร้อมป้ายอายุ", () => {
+    const r = resolveChapterBoxes("turning_points", FACTS, MAP);
     expect(r.hasContent).toBe(true);
-    const blocks = r.sections[0].blocks;
-    expect(blocks.map((b) => b.context)).toEqual([
-      "อายุ 6-15",
-      "อายุ 16-25 (ปัจจุบัน)",
-    ]);
-    expect(blocks.map((b) => b.itemKey)).toEqual(["เอี้ยง", "ตี้อ๋วง"]);
+    expect(r.boxes[0].body).toContain("อายุ 6-15");
+    expect(r.boxes[0].body).toContain("อายุ 16-25 (ปัจจุบัน)");
   });
 
-  test("บทที่ยังไม่มี NewData → defined=false, hasContent=false", () => {
-    for (const id of ["career_potential", "subordinates", "colors_directions", "guardian_deities"]) {
-      const r = resolveChapterNewdata(id, FACTS, MAP);
+  test("บทไม่มี NewData → defined=false, hasContent=false แต่ box ครบทุก bullet (ว่าง)", () => {
+    const cases: Record<string, number> = {
+      career_potential: 5,
+      subordinates: 3,
+      colors_directions: 9,
+      guardian_deities: 5,
+    };
+    for (const [id, n] of Object.entries(cases)) {
+      const r = resolveChapterBoxes(id, FACTS, MAP);
       expect(r.defined, id).toBe(false);
       expect(r.hasContent, id).toBe(false);
+      expect(r.boxes, id).toHaveLength(n); // box ครบทุก bullet
+      expect(r.boxes.every((b) => b.body === ""), id).toBe(true); // ว่างหมด
     }
   });
 
-  test("ครบ 15 บทใน CHAPTER_NEWDATA", () => {
-    expect(Object.keys(CHAPTER_NEWDATA)).toHaveLength(15);
+  test("CHAPTER_BULLET_RESOLVERS มีครบ 15 บท และ resolver align กับจำนวน bullets", () => {
+    expect(Object.keys(CHAPTER_BULLET_RESOLVERS)).toHaveLength(15);
+    for (const [id, resolvers] of Object.entries(CHAPTER_BULLET_RESOLVERS)) {
+      const bullets = CHAPTER_OUTLINE[id]?.bullets.length ?? -1;
+      expect(resolvers.length, id).toBe(bullets);
+    }
   });
 });
