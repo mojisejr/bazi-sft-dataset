@@ -188,11 +188,18 @@ export function buildOpenWebUiGeminiPromptPayload(
       consultMode ? `Consult mode: ${consultMode}.` : null,
       intentClassification?.requiresBaziConsult && baziConsult?.truthPacket && baziConsult.rawInput
         ? [
-          "Verified Bazi consult context:",
+          "ข้อมูลวันเกิดที่ยืนยันแล้ว:",
           formatConsultBirthContext(baziConsult.rawInput),
-          "Truth packet:",
+          "ผลอ่านจากซินแส (วัตถุดิบดิบจาก engine — เป็นแหล่งข้อมูลให้คุณวิเคราะห์ ไม่ใช่คำตอบที่จะคัดลอกไปแปะ):",
           baziConsult.truthPacket,
-          "Use only this narrowed chart context for Bazi-specific claims. If more detail is needed, say what is missing instead of inventing it.",
+          [
+            "วิธีตอบ (ห้ามฝ่าฝืน):",
+            "- วิเคราะห์ผลอ่านข้างบนเทียบกับคำถามของผู้ใช้ แล้วดึงเฉพาะส่วนที่ตอบคำถามนั้นมาตอบ",
+            "- ตอบสั้น กระชับ ตรงประเด็น สรุปเป็นแก่นไม่กี่ประโยค — ห้ามคัดลอกหรือเล่าผลอ่านทั้งบท (ไม่ดั้มลงมาหมด)",
+            "- ฟันธงตรงไปตรงมา ตามหลักสำนัก ไม่อ้อมค้อม ไม่ตอบเชิงปลอบใจ/จิตวิทยา ไม่ใช่คำให้กำลังใจลอยๆ",
+            "- ห้ามเพิ่มคำทำนายที่ไม่มีในผลอ่าน และห้ามเปลี่ยน/ตัดสัญลักษณ์ ธาตุ ยาม หรืออักษรจีนในผลอ่าน",
+            "- ถ้าผลอ่านไม่ครอบคลุมสิ่งที่ถาม ให้บอกตรงๆ ว่าข้อมูลไม่พอ ห้ามแต่งเพิ่ม",
+          ].join("\n"),
         ].join("\n")
         : null,
       intentClassification?.requiresBaziConsult && !baziConsult?.truthPacket

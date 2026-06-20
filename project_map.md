@@ -1,5 +1,37 @@
 # Bazi SFT Dataset Collector - Project Map
 
+## 0. 🔗 Cross-Project Relations — "mumate" product group
+> Added 2026-06-20. This repo is **1 of 3 sibling repos** behind the MuMate (สายมู/ดวงจีน) product. Use this to orient when work spans repos.
+
+| Repo | Role | Stack / Host | DB |
+|------|------|--------------|-----|
+| **mootech-fe-fork** (FE) | Consumer frontend — `bazichart.mumate.co` | Next.js Pages Router · Vercel `mootech-fe` | none of its own; ~11 `/api/*` routes query Supabase Pro `soxs` directly via `DATABASE_URL` |
+| **mootech-be** (BE) | Legacy backend for FE — auth, horoscope calc, payment, master-data, legacy `ai` chat, LINE multicast | NestJS · Render | Supabase Pro `soxsccdlsycaevusndro` |
+| **bazi** (`bazi-sft-dataset`) ← *you are here* | Deterministic Bazi platform — symbolic engine, reading/PDF, **chat brain (API-only, OpenAI-compatible)**, LINE | Next.js App Router · Clerk | Neon (Drizzle) |
+
+### Edges (grounded in code)
+- **bazi exposes a chat brain** at `/api/v1/chat/completions` (OpenAI/Open WebUI-compatible SSE, API-only — **no chat UI inside bazi**) + `/api/bazi/calculate`. Consumers: **Open WebUI**, **LINE** (`/api/webhooks/line`), and now **FE's BFF**.
+- **FE → bazi**: FE BFF `pages/api/chat/bazi.ts` (server-side `OPEN_WEBUI_API_TOKEN`, `BAZI_BASE_URL`) → bazi calculate + chat completions; FE UI prototype `dev-access/bazi-chat-modal.tsx`. From bazi's view, FE is just another OpenAI-compatible client.
+- **bazi ⟂ BE**: **no direct code dependency.** Domain overlap only. Future integration touch points = user/auth, horoscope, payment/membership.
+- bazi DB = **Neon** (separate from BE/FE's Supabase `soxs`).
+
+```mermaid
+graph LR
+  FE[mootech-fe-fork<br/>MuMate frontend] -->|core /api/v1| BE[mootech-be<br/>NestJS]
+  FE -->|~11 routes DATABASE_URL| SOXS[(Supabase Pro soxs)]
+  BE --> SOXS
+  FE -->|BFF /api/chat/bazi| BAZI[bazi<br/>chat brain · you are here]
+  BAZI --> NEON[(Neon)]
+  BE -. domain overlap, no code dep .- BAZI
+```
+
+> **This repo = bazi.** You expose a **chat brain (API-only)** consumed by FE's BFF + Open WebUI + LINE. You do **NOT** depend on BE.
+
+### 🧩 Chat layer ownership (chat ↔ engine seam)
+- **Chat layer = ours** (upper layer): `src/features/open-webui/**`, `src/app/api/v1/chat/**`. The grounding bridge `src/features/open-webui/reading-bridge.ts` calls the **seam `/api/reading/topic`** (mode llm→consumer) to inherit doctrine + substitution + ซินแสฟันธง prose — closing the "Chat Interpretation Divergence" dragon.
+- **Engine = friend's** (🔒 frozen for chat work): `src/lib/bazi/**`, `src/app/api/reading/**`, doctrine, symbolic-engine, PDF/WYSIWYG. We are consumers of the seam, not editors of the engine.
+- **Branch model (current)**: friend's `pdf-dev` is the de-facto hub; chat work lands via PR `chat/integrate-on-pdf-dev → pdf-dev`. Follow-up: consolidate `pdf-dev → main` to restore the documented main-hub vow.
+
 ## 1. 🧠 Philosophy (The Vibe)
 **Deterministic Bazi Platform for Reading, Proof, Matching, and Conversation**
 
