@@ -435,6 +435,14 @@ export function NewdataReadingWorkspace() {
         {saveStatus && <span className="newdata-reading__savestatus">{saveStatus}</span>}
       </form>
 
+      {data && (
+        <p className="newdata-reading__hint no-print">
+          ✏️ แก้กล่องในหน้านี้ได้เลย — <strong>บันทึกอัตโนมัติในเครื่อง</strong> (รีเฟรชไม่หาย)
+          {editedCount > 0 ? ` · แก้แล้ว ${editedCount} บท` : ""} · กด <strong>💾 บันทึกดวงนี้</strong>{" "}
+          เพื่อเก็บถาวรลงระบบ (เปิดข้ามเครื่อง / ปรินซ้ำได้)
+        </p>
+      )}
+
       {savedList.length > 0 && (
         <details className="newdata-reading__saved no-print">
           <summary>ดวงที่บันทึกไว้ ({savedList.length})</summary>

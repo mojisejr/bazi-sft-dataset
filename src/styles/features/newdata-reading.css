@@ -13,7 +13,23 @@
   padding: 0.9rem;
   border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
   border-radius: 0.7rem;
-  background: var(--surface, rgba(255, 255, 255, 0.6));
+  background: var(--surface, rgba(255, 255, 255, 0.92));
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  backdrop-filter: blur(6px);
+}
+.newdata-reading__hint {
+  margin: 0;
+  padding: 0.5rem 0.8rem;
+  border-radius: 0.5rem;
+  background: rgba(47, 143, 157, 0.08);
+  border: 1px solid rgba(47, 143, 157, 0.2);
+  font-size: 0.82rem;
+  color: var(--muted, #4a6b73);
+}
+.newdata-reading__hint strong {
+  color: var(--accent, #2f8f9d);
 }
 .newdata-reading__form label {
   display: flex;
