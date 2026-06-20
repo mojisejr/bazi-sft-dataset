@@ -19,7 +19,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:line-memory": "vitest run tests/line-memory.test.ts",
-    "test:runtime-critical": "vitest run tests/symbolic-engine.test.ts tests/symbolic-engine.e2e.test.ts tests/schema.test.ts tests/domain-power.test.ts tests/export-sft-dataset.test.ts tests/dataset-save-route.test.ts tests/dataset-purge-drafts-route.test.ts tests/reading-sessions-route.test.ts tests/reading-pdf-versions-route.test.ts tests/substitution-rules-route.test.ts",
+    "test:runtime-critical": "vitest run tests/symbolic-engine.test.ts tests/symbolic-engine.e2e.test.ts tests/schema.test.ts tests/domain-power.test.ts tests/export-sft-dataset.test.ts tests/dataset-save-route.test.ts tests/dataset-purge-drafts-route.test.ts tests/reading-sessions-route.test.ts tests/reading-pdf-versions-route.test.ts tests/substitution-rules-route.test.ts tests/bazi-derived-routes.test.ts",
     "test:default-gate": "npm run test:runtime-critical",
     "test:heavy-lane": "VITEST_BAZI_PROFILE=heavy vitest run tests/real-case-1981-03-17.test.ts tests/compile-knowledge.test.ts tests/canonical-knowledge.test.ts tests/solar-terms.test.ts tests/orchestrator-gemini-runner.test.ts",
     "gate:default": "npm run build && npm run lint && npm run test:default-gate",

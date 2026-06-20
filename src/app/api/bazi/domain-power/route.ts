@@ -1,0 +1,39 @@
+import { ZodError } from "zod";
+
+import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
+import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
+import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
+
+export const runtime = "nodejs";
+
+type HandlerOptions = {
+  repository?: BaziKnowledgeRepository;
+};
+
+/**
+ * POST — ค่าพลังรายด้าน (เงิน/งาน/เรียนรู้/เพื่อน) จากวันเกิด
+ * เป็น slice เบาของ /api/bazi/calculate (ตัวเต็มคืน state ก้อนใหญ่ ~946KB)
+ */
+export function createDomainPowerHandler(options: HandlerOptions = {}) {
+  return async function POST(request: Request) {
+    try {
+      const payload = await request.json();
+      const repository = options.repository ?? createDbKnowledgeRepository();
+      const calculatedState = await calculateBaziStateFromRawInput(payload, { repository });
+
+      return Response.json({ domainPower: calculatedState.domainPower }, { status: 200 });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return Response.json(
+          { error: "Invalid calculate payload.", details: error.issues },
+          { status: 400 },
+        );
+      }
+
+      const message = error instanceof Error ? error.message : "Unknown calculation error.";
+      return Response.json({ error: message }, { status: 500 });
+    }
+  };
+}
+
+export const POST = createDomainPowerHandler();
