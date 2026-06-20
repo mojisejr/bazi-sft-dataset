@@ -1,0 +1,332 @@
+/* Tab อ่านดวง 15 บท (NewData) — สไตล์ mootech + print-friendly (A4) */
+.newdata-reading {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.newdata-reading__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.7rem;
+  background: var(--surface, rgba(255, 255, 255, 0.6));
+}
+.newdata-reading__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--muted, #5b7c84);
+}
+.newdata-reading__form input,
+.newdata-reading__form select {
+  padding: 0.4rem 0.55rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.14));
+  border-radius: 0.45rem;
+  background: #fff;
+  font-size: 0.9rem;
+}
+.newdata-reading__btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 0.5rem;
+  border: 0;
+  background: var(--accent, #2f8f9d);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+.newdata-reading__btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.newdata-reading__btn--print {
+  background: #3a3a3a;
+}
+.newdata-reading__btn--ghost {
+  background: transparent;
+  color: #b4540a;
+  border: 1px solid rgba(180, 84, 10, 0.4);
+}
+.newdata-reading__btn--save {
+  background: #1f8a4c;
+}
+.newdata-reading__savestatus {
+  font-size: 0.8rem;
+  color: var(--muted, #5b7c84);
+  align-self: center;
+}
+
+/* ── ดวงที่บันทึกไว้ ──────────────────────────────────────────────────────── */
+.newdata-reading__saved {
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--surface, rgba(255, 255, 255, 0.5));
+}
+.newdata-reading__saved summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.88rem;
+}
+.newdata-reading__saved ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.newdata-reading__saved li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.newdata-reading__saved li.is-current .newdata-reading__saved-load {
+  border-color: var(--accent, #2f8f9d);
+  font-weight: 600;
+}
+.newdata-reading__saved-load {
+  flex: 1;
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 0.4rem;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+.newdata-reading__saved-load:hover {
+  border-color: var(--accent, #2f8f9d);
+}
+.newdata-reading__saved-del {
+  flex: none;
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid rgba(180, 40, 40, 0.35);
+  border-radius: 0.35rem;
+  background: #fff;
+  color: #b42828;
+  cursor: pointer;
+}
+.newdata-reading__error {
+  color: #b42828;
+}
+
+.newdata-reading__doc {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.newdata-reading__cover {
+  text-align: center;
+  padding: 1.2rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.8rem;
+  background: var(--accent-soft, rgba(47, 143, 157, 0.08));
+}
+.newdata-reading__kicker {
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  color: var(--accent, #2f8f9d);
+  margin: 0;
+}
+.newdata-reading__cover h1 {
+  margin: 0.3rem 0;
+  font-size: 1.5rem;
+}
+.newdata-reading__birth {
+  margin: 0.2rem 0 0.7rem;
+  font-size: 0.85rem;
+  color: var(--muted, #5b7c84);
+}
+.newdata-reading__pillars {
+  margin: 0.5rem auto 0;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.newdata-reading__pillars th,
+.newdata-reading__pillars td {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 0.3rem 0.9rem;
+  text-align: center;
+}
+.newdata-reading__pillars th {
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 0.78rem;
+}
+.newdata-reading__pillars-stage td {
+  font-size: 0.78rem;
+  color: var(--accent, #2f8f9d);
+}
+.newdata-reading__summary {
+  margin: 0.7rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted, #5b7c84);
+}
+
+.newdata-reading__chapter {
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.7rem;
+  padding: 0.8rem 1rem;
+  background: var(--surface, rgba(255, 255, 255, 0.55));
+}
+.newdata-reading__chapter.is-empty {
+  opacity: 0.7;
+  border-style: dashed;
+}
+.newdata-reading__chapter-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+.newdata-reading__chapter-no {
+  flex: none;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--accent, #2f8f9d);
+  color: #fff;
+}
+.newdata-reading__badge {
+  margin-left: auto;
+  font-size: 0.7rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.4rem;
+}
+.newdata-reading__badge.is-ok {
+  background: rgba(47, 157, 90, 0.16);
+  color: #1f8a4c;
+}
+.newdata-reading__badge.is-empty {
+  background: rgba(0, 0, 0, 0.07);
+  color: #777;
+}
+.newdata-reading__badge.is-nomatch {
+  background: rgba(200, 140, 20, 0.15);
+  color: #9a6b10;
+}
+.newdata-reading__badge.is-edited {
+  margin-left: auto;
+  background: rgba(47, 143, 157, 0.16);
+  color: #2f8f9d;
+}
+.newdata-reading__badge.is-edited + .newdata-reading__badge {
+  margin-left: 0.4rem;
+}
+
+.newdata-reading__revert {
+  margin-top: 0.4rem;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.75rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--muted, #5b7c84);
+  cursor: pointer;
+}
+.newdata-reading__revert:hover {
+  border-color: var(--accent, #2f8f9d);
+  color: var(--accent, #2f8f9d);
+}
+
+/* ── เนื้อบทอ่านอย่างเดียวบนจอ (แก้จริงในตัวอย่าง PDF) ───────────────────────── */
+.newdata-reading__readonly {
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+.newdata-reading__readonly p {
+  margin: 0 0 0.5rem;
+}
+.newdata-reading__readonly strong {
+  color: var(--accent, #2f8f9d);
+}
+
+/* ── box editor (screen) [legacy — เผื่อใช้ภายหลัง] ───────────────────────────── */
+.newdata-reading__boxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.newdata-reading__box {
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-left: 3px solid var(--accent, #2f8f9d);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  background: rgba(255, 255, 255, 0.75);
+}
+.newdata-reading__box-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.newdata-reading__box-title {
+  flex: 1;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 0.4rem;
+  background: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.newdata-reading__box-tools {
+  display: flex;
+  gap: 0.25rem;
+  flex: none;
+}
+.newdata-reading__box-tools button {
+  width: 1.8rem;
+  height: 1.8rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.14));
+  border-radius: 0.35rem;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.newdata-reading__box-tools button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.newdata-reading__box-del {
+  color: #b42828 !important;
+  border-color: rgba(180, 40, 40, 0.4) !important;
+  width: auto !important;
+  padding: 0 0.5rem;
+}
+.newdata-reading__box-body {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.1));
+  border-radius: 0.4rem;
+  background: #fff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  resize: vertical;
+}
+.newdata-reading__box-actions {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.newdata-reading__box-add {
+  align-self: flex-start;
+  padding: 0.35rem 0.8rem;
+  border: 1px dashed var(--accent, #2f8f9d);
+  border-radius: 0.45rem;
+  background: rgba(47, 143, 157, 0.06);
+  color: var(--accent, #2f8f9d);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* PDF ออกผ่าน ReadingPrintDocument + paged.js (.ylc-print-portal + body.ylc-printing)
+   — กฎพิมพ์อยู่ใน ylc-pdf.css แล้ว ที่นี่จึงไม่ต้องมี @media print ของตัวเอง */

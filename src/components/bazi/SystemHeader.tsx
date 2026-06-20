@@ -33,6 +33,8 @@ const NAV_LINKS: NavLink[] = [
   { href: "/almanac/yam", icon: "⏱️", label: "ตรวจยาม" },
   { href: "/reading/history", icon: "🗂️", label: "ประวัติดวง" },
   { href: "/reading/knowledge", icon: "📚", label: "องค์ความรู้" },
+  { href: "/reading/newdata-reading", icon: "📖", label: "อ่าน 15 บท" },
+  { href: "/reading/newdata", icon: "🗃️", label: "ข้อมูลใหม่" },
 ];
 
 function isActiveLink(pathname: string | null, href: string) {

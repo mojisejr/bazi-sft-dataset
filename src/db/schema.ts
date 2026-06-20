@@ -555,6 +555,73 @@ export type InsertBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferIns
 export type SelectBaziKnowledgeOverride = typeof baziKnowledgeOverride.$inferSelect;
 
 /**
+ * "ข้อมูลหลักแบบใหม่" (NewData) — คำอ่านชุดใหม่ที่ซินแสส่งเข้ามา (knownlage/NewData)
+ * เก็บเป็น dictionary ของ "ก้อนความรู้พื้นฐาน (primitive)" ที่ engine คำนวณได้แล้วหยิบไป lookup
+ *   group_key = ชนิดก้อนความรู้ (1 ไฟล์ = 1 group) เช่น "shengxiang" | "clash" | "phua" | "edu_level"
+ *   item_key  = คีย์ภายในก้อน ตรงกับค่าที่ engine คำนวณได้ เช่น "กวงตั่ว" | "子-午" | "甲午"
+ * value = { text, label?, category?, branches?, combos? } — ช่องที่ซินแสแก้/เพิ่มได้ในอนาคต
+ */
+export type NewdataValue = {
+  text: string;
+  label?: string;
+  category?: string;
+  branches?: string[];
+  combos?: string[][];
+};
+
+export const baziNewdata = pgTable(
+  "bazi_newdata",
+  {
+    groupKey: text("group_key").notNull(),
+    itemKey: text("item_key").notNull(),
+    ordinal: integer("ordinal").notNull().default(0),
+    value: jsonb("value").$type<NewdataValue>().notNull(),
+    sourceFile: text("source_file"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [primaryKey({ columns: [table.groupKey, table.itemKey] })],
+);
+
+export type InsertBaziNewdata = typeof baziNewdata.$inferInsert;
+export type SelectBaziNewdata = typeof baziNewdata.$inferSelect;
+
+/**
+ * "ดวงที่บันทึกไว้" ของ tab อ่าน 15 บท (NewData) — เปิดมาแก้/ปรินซ้ำข้ามเครื่องได้
+ * edits = { text: { [chapterId]: markdown }, titles: { [chapterId]: title } }
+ *   — override คำทำนาย (markdown) + ชื่อบท เฉพาะที่ซินแสแก้ (โมเดลเดียวกับหน้าดูดวงหลัก)
+ */
+export type NewdataReadingEdits = {
+  text?: Record<string, string>;
+  titles?: Record<string, string>;
+};
+
+export const baziNewdataReading = pgTable(
+  "bazi_newdata_reading",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    clientName: text("client_name"),
+    birthDate: text("birth_date").notNull(),
+    birthTime: text("birth_time").notNull(),
+    gender: text("gender").notNull(),
+    province: text("province"),
+    edits: jsonb("edits").$type<NewdataReadingEdits>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+);
+
+export type InsertBaziNewdataReading = typeof baziNewdataReading.$inferInsert;
+export type SelectBaziNewdataReading = typeof baziNewdataReading.$inferSelect;
+
+/**
  * รูปไพ่ "โหมดเซียน" (ไพ่จิตวิญญาณแดนสวรรค์) — สร้างล่วงหน้าด้วย Imagen เก็บ base64
  * cardNo = เลขไพ่ (PK) ตรงกับ divine-cards.json
  */

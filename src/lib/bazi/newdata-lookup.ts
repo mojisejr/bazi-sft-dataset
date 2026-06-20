@@ -1,0 +1,189 @@
+/**
+ * NewData lookup — แปลง "ผลคำนวณ engine" → "คีย์ NewData ที่ match" → ข้อความคำอ่าน
+ *
+ * หลักการ (สำคัญ): จับคู่แบบ **set-membership** จากราศีบน/ล่าง (ฮั่นจื้อ) + สถานะ 12 เชี่ยงแซ (ไทย)
+ * ที่ engine คายออกมาแน่นอน (fourPillars + lookingStage/lowerStagePrimary) — ไม่พึ่ง interactionState
+ * ที่บางดวงว่างเปล่า และไม่พึ่ง taxonomy ภายในของ engine (เฮ้ง/破/刑 ที่ปนกันในตำราซินแส)
+ *
+ * pure + client-safe (type-only import จาก schema-types) — ทดสอบได้ตรง ๆ
+ */
+import type { NewdataValue } from "@/db/schema";
+import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
+import type { NewdataMap } from "@/lib/bazi/newdata-repository";
+
+export type PillarPosition = "year" | "month" | "day" | "hour";
+
+export type PillarFact = {
+  position: PillarPosition;
+  /** ราศีบน (天干) ฮั่นจื้อ */
+  stem: string;
+  /** ราศีล่าง (地支) ฮั่นจื้อ */
+  branch: string;
+  /** สถานะ 12 เชี่ยงแซ ของราศีล่างเทียบดิถี (ไทย) เช่น "หมกยก" */
+  state: string | null;
+};
+
+export type LuckFact = {
+  startAge: number;
+  endAge: number;
+  stem: string;
+  branch: string;
+  isCurrent: boolean;
+  upperState: string | null;
+  lowerState: string | null;
+};
+
+export type ChartFacts = {
+  dayMaster: string;
+  pillars: PillarFact[];
+  daYun: LuckFact[];
+};
+
+/** ผลคำอ่าน 1 ก้อนที่ match */
+export type NewdataBlock = {
+  group: string;
+  itemKey: string;
+  label?: string;
+  text: string;
+  /** ราศี/เสาที่ทำให้ match (ไว้โชว์บริบท) */
+  context?: string;
+};
+
+// ── helper ────────────────────────────────────────────────────────────────
+function isCjk(ch: string): boolean {
+  const c = ch.codePointAt(0) ?? 0;
+  return c >= 0x3400 && c <= 0x9fff;
+}
+/** ดึงเฉพาะอักษรจีนจากคีย์ (normalize NFC กันเคส compatibility ideograph) */
+export function cjkChars(s: string): string[] {
+  return [...s.normalize("NFC")].filter(isCjk);
+}
+
+// ── adapter: CalculatedStateValue → ChartFacts ──────────────────────────────
+const PILLAR_POSITIONS: PillarPosition[] = ["year", "month", "day", "hour"];
+
+export function extractChartFacts(state: CalculatedStateValue): ChartFacts {
+  const fp = state.fourPillars;
+  const pillars: PillarFact[] = PILLAR_POSITIONS.map((position) => {
+    const p = fp[position];
+    return {
+      position,
+      stem: p.stem.normalize("NFC"),
+      branch: p.branch.normalize("NFC"),
+      state: p.lowerStagePrimary ?? p.lookingStage ?? null,
+    };
+  });
+  const daYun: LuckFact[] = (state.daYun ?? []).map((d) => ({
+    startAge: d.startAge,
+    endAge: d.endAge,
+    stem: d.stem.normalize("NFC"),
+    branch: d.branch.normalize("NFC"),
+    isCurrent: Boolean(d.isCurrent),
+    upperState: d.upperStageDisplay ?? null,
+    lowerState: d.lowerStageDisplay ?? null,
+  }));
+  return { dayMaster: state.dayMaster.normalize("NFC"), pillars, daYun };
+}
+
+/** มัลติเซ็ตของราศีล่างในดวง (รวมตัวซ้ำ) + เซ็ตราศีบน */
+function chartSets(facts: ChartFacts) {
+  const branchCount = new Map<string, number>();
+  const stemSet = new Set<string>();
+  const ganzhiSet = new Set<string>();
+  for (const p of facts.pillars) {
+    branchCount.set(p.branch, (branchCount.get(p.branch) ?? 0) + 1);
+    stemSet.add(p.stem);
+    ganzhiSet.add(`${p.stem}${p.branch}`);
+  }
+  const branchSet = new Set(branchCount.keys());
+  return { branchCount, branchSet, stemSet, ganzhiSet };
+}
+
+// ── matcher per group ───────────────────────────────────────────────────────
+function groupItems(map: NewdataMap, group: string): Array<{ key: string; value: NewdataValue }> {
+  return Object.entries(map[group] ?? {}).map(([key, value]) => ({ key, value }));
+}
+function toBlock(group: string, key: string, value: NewdataValue, context?: string): NewdataBlock {
+  return { group, itemKey: key, label: value.label, text: value.text, context };
+}
+
+/** กลุ่มคู่ราศีล่าง (clash/harm_hai/harm_heng/combine_branch/trinity_half) — active เมื่อราศีทั้งคู่อยู่ในดวง */
+export function matchBranchPairs(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const { branchSet } = chartSets(facts);
+  return groupItems(map, group)
+    .filter(({ key }) => {
+      const chars = cjkChars(key);
+      return chars.length >= 2 && chars.every((b) => branchSet.has(b));
+    })
+    .map(({ key, value }) => toBlock(group, key, value));
+}
+
+/** จื่อเฮ้ง — ราศีล่างปรากฏซ้ำ ≥2 ครั้ง */
+export function matchSelfPunish(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
+  const { branchCount } = chartSets(facts);
+  return groupItems(map, "self_punish")
+    .filter(({ key }) => {
+      const [b] = cjkChars(key);
+      return b !== undefined && (branchCount.get(b) ?? 0) >= 2;
+    })
+    .map(({ key, value }) => toBlock("self_punish", key, value));
+}
+
+/** ซำเฮ้ง — ชุดตัวแทน 3 ตัวครบในดวง (จาก value.combos) */
+export function matchSamHeng(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
+  const { branchSet } = chartSets(facts);
+  const out: NewdataBlock[] = [];
+  for (const { key, value } of groupItems(map, "sam_heng")) {
+    const combos = value.combos ?? [];
+    const hit = combos.find((trio) => trio.length >= 3 && trio.every((b) => branchSet.has(b.normalize("NFC"))));
+    if (hit) out.push(toBlock("sam_heng", key, value, hit.join("")));
+  }
+  return out;
+}
+
+/** ไตรภาคีเต็มชุด — ราศี 3 ตัวครบ (จาก value.branches) */
+export function matchTrinity(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
+  const { branchSet } = chartSets(facts);
+  return groupItems(map, "trinity")
+    .filter(({ value }) => {
+      const b = value.branches ?? [];
+      return b.length >= 3 && b.every((x) => branchSet.has(x.normalize("NFC")));
+    })
+    .map(({ key, value }) => toBlock("trinity", key, value));
+}
+
+/** ภาคีราศีบน — ราศีบนทั้งคู่อยู่ในดวง */
+export function matchStemPairs(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
+  const { stemSet } = chartSets(facts);
+  return groupItems(map, "combine_stem")
+    .filter(({ key }) => {
+      const chars = cjkChars(key);
+      return chars.length >= 2 && chars.every((s) => stemSet.has(s));
+    })
+    .map(({ key, value }) => toBlock("combine_stem", key, value));
+}
+
+/** ผั่ว — เสาใดเสาหนึ่งมีกะจื่อ (ราศีบน+ล่าง) ตรงกับคีย์ */
+export function matchPhua(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
+  const out: NewdataBlock[] = [];
+  for (const { key, value } of groupItems(map, "phua")) {
+    const target = key.normalize("NFC");
+    const pillar = facts.pillars.find((p) => `${p.stem}${p.branch}` === target);
+    if (pillar) out.push(toBlock("phua", key, value, `เสา${pillar.position}`));
+  }
+  return out;
+}
+
+/** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */
+export function matchPillarState(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  position: PillarPosition,
+): NewdataBlock | null {
+  const pillar = facts.pillars.find((p) => p.position === position);
+  if (!pillar?.state) return null;
+  const value = map[group]?.[pillar.state];
+  if (!value) return null;
+  return toBlock(group, pillar.state, value, `เสา${position}`);
+}
