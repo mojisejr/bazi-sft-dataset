@@ -237,16 +237,22 @@
   color: var(--accent, #2f8f9d);
 }
 
-/* ── เนื้อบทอ่านอย่างเดียวบนจอ (แก้จริงในตัวอย่าง PDF) ───────────────────────── */
-.newdata-reading__readonly {
-  font-size: 0.92rem;
-  line-height: 1.65;
+/* ── กล่องเนื้อบทบนจอ (อ่านอย่างเดียว — แก้จริงในตัวอย่าง PDF) ───────────────── */
+.newdata-reading__boxes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
 }
-.newdata-reading__readonly p {
-  margin: 0 0 0.5rem;
+.newdata-reading .ylc-box--empty {
+  border-style: dashed;
+  opacity: 0.7;
 }
-.newdata-reading__readonly strong {
-  color: var(--accent, #2f8f9d);
+.newdata-reading__emptybox {
+  margin: 0;
+  color: var(--muted, #8aa);
+  font-style: italic;
+  font-size: 0.85rem;
 }
 
 /* ── box editor (screen) [legacy — เผื่อใช้ภายหลัง] ───────────────────────────── */

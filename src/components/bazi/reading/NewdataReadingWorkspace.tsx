@@ -47,14 +47,44 @@ function defaultMarkdown(ch: ChapterView): string {
     .trim();
 }
 
-/** render markdown แบบอ่านอย่างเดียวบนจอ (รองรับ [[box=]] → หัวข้อ, **ตัวหนา**, _เอียง_) */
-function renderReadonly(md: string) {
-  const norm = md
-    .replace(/\[\[box=(.*?)\]\]/g, (_m, t: string) => (t.trim() ? `**${t.trim()}**` : ""))
-    .replace(/\[\[\/box\]\]/g, "")
-    .replace(/\[\[pagebreak\]\]/g, "")
-    .replace(/\[\[indent\]\]/g, "");
-  return norm
+/** แยก markdown เป็น "กล่อง" สำหรับโชว์บนจอ: รองรับ [[box=หัว]]..[[/box]] และย่อหน้า **หัวข้อ** เดี่ยว */
+function parseDisplayBoxes(md: string): Array<{ title: string; body: string }> {
+  const lines = md.replace(/\r/g, "").split("\n");
+  const boxes: Array<{ title: string; body: string[] }> = [];
+  const appendBody = (line: string) => {
+    if (boxes.length === 0) boxes.push({ title: "", body: [] });
+    boxes[boxes.length - 1].body.push(line);
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    const boxOpen = t.match(/^\[\[box=(.*)\]\]$/);
+    if (boxOpen) {
+      boxes.push({ title: boxOpen[1].trim(), body: [] });
+      i++;
+      while (i < lines.length && lines[i].trim() !== "[[/box]]") {
+        boxes[boxes.length - 1].body.push(lines[i]);
+        i++;
+      }
+      continue;
+    }
+    if (t === "[[/box]]") continue;
+    const boldOnly = t.match(/^\*\*(.+?)\*\*$/);
+    if (boldOnly) {
+      boxes.push({ title: boldOnly[1].trim(), body: [] });
+      continue;
+    }
+    if (!t) {
+      if (boxes.length) boxes[boxes.length - 1].body.push("");
+      continue;
+    }
+    appendBody(lines[i]);
+  }
+  return boxes.map((b) => ({ title: b.title, body: b.body.join("\n").trim() }));
+}
+
+/** render เนื้อในกล่อง (ย่อหน้า + **ตัวหนา** _เอียง_) */
+function renderBoxBody(body: string) {
+  return body
     .split(/\n{2,}/)
     .filter((p) => p.trim())
     .map((para, i) => {
@@ -459,9 +489,18 @@ export function NewdataReadingWorkspace() {
                   {edited && <span className="newdata-reading__badge no-print is-edited">✎ แก้แล้ว</span>}
                   <span className={`newdata-reading__badge no-print ${status.cls}`}>{status.label}</span>
                 </h2>
-                <div className="newdata-reading__readonly">
-                  {renderReadonly(markdownOf(ch)).map((node, i) => (
-                    <Fragment key={i}>{node}</Fragment>
+                <div className="newdata-reading__boxes">
+                  {parseDisplayBoxes(markdownOf(ch)).map((box, i) => (
+                    <section key={i} className={`ylc-box${box.body ? "" : " ylc-box--empty"}`}>
+                      {box.title ? <div className="ylc-box__title">{box.title}</div> : null}
+                      <div className="ylc-box__body">
+                        {box.body ? (
+                          renderBoxBody(box.body).map((node, j) => <Fragment key={j}>{node}</Fragment>)
+                        ) : (
+                          <p className="newdata-reading__emptybox">— (รอซินแสเติม)</p>
+                        )}
+                      </div>
+                    </section>
                   ))}
                 </div>
                 {edited && (
