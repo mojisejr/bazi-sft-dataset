@@ -105,6 +105,8 @@ export function NewdataReadingWorkspace() {
   const [data, setData] = useState<ReadingData | null>(null);
   const [edits, setEdits] = useState<Edits>(EMPTY_EDITS);
   const [storageKey, setStorageKey] = useState<string | null>(null);
+  /** ร่างกล่องที่กำลังแก้ (ยังไม่บันทึก) ต่อบท — กด "บันทึกกล่อง" ถึงจะมีผล */
+  const [drafts, setDrafts] = useState<Record<string, ReadingBox[]>>({});
 
   const [showPreview, setShowPreview] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -157,6 +159,7 @@ export function NewdataReadingWorkspace() {
           }
         }
         setEdits(saved);
+        setDrafts({});
       } catch {
         setError("เชื่อมต่อไม่สำเร็จ");
       } finally {
@@ -171,10 +174,6 @@ export function NewdataReadingWorkspace() {
     return runReading({ birthDate, birthTime, gender, province });
   }, [runReading, birthDate, birthTime, gender, province]);
 
-  const boxesOf = useCallback(
-    (ch: ChapterView) => edits.boxes[ch.id] ?? ch.boxes,
-    [edits],
-  );
   const titleOf = useCallback((ch: ChapterView) => edits.titles[ch.id] ?? ch.title, [edits]);
 
   /** ตั้งกล่องของบท — เท่ากับต้นฉบับ = ลบ override */
@@ -191,33 +190,73 @@ export function NewdataReadingWorkspace() {
     },
     [persist, storageKey],
   );
+  /** กล่องที่โชว์ในช่องแก้ = ร่าง (ถ้ามี) ไม่งั้น = ที่บันทึกไว้ */
+  const viewBoxes = useCallback(
+    (ch: ChapterView): ReadingBox[] => drafts[ch.id] ?? edits.boxes[ch.id] ?? ch.boxes,
+    [drafts, edits],
+  );
+  /** แก้ลง "ร่าง" (ยังไม่บันทึก) */
+  const editDraft = useCallback(
+    (ch: ChapterView, transform: (boxes: ReadingBox[]) => ReadingBox[]) => {
+      setDrafts((prev) => ({ ...prev, [ch.id]: transform(prev[ch.id] ?? edits.boxes[ch.id] ?? ch.boxes) }));
+    },
+    [edits],
+  );
   const updateBox = useCallback(
     (ch: ChapterView, idx: number, field: "title" | "body", value: string) =>
-      setBoxes(ch, boxesOf(ch).map((b, i) => (i === idx ? { ...b, [field]: value } : b))),
-    [boxesOf, setBoxes],
+      editDraft(ch, (bs) => bs.map((b, i) => (i === idx ? { ...b, [field]: value } : b))),
+    [editDraft],
   );
   const addBox = useCallback(
-    (ch: ChapterView) => setBoxes(ch, [...boxesOf(ch), { title: "", body: "" }]),
-    [boxesOf, setBoxes],
+    (ch: ChapterView) => editDraft(ch, (bs) => [...bs, { title: "", body: "" }]),
+    [editDraft],
   );
   const removeBox = useCallback(
     (ch: ChapterView, idx: number) => {
-      const box = boxesOf(ch)[idx];
+      const box = viewBoxes(ch)[idx];
       if (!window.confirm(`ลบกล่อง "${box?.title || "ไม่มีหัวข้อ"}" ?`)) return;
-      setBoxes(ch, boxesOf(ch).filter((_, i) => i !== idx));
+      editDraft(ch, (bs) => bs.filter((_, i) => i !== idx));
     },
-    [boxesOf, setBoxes],
+    [viewBoxes, editDraft],
   );
   const moveBox = useCallback(
-    (ch: ChapterView, idx: number, dir: -1 | 1) => {
-      const arr = [...boxesOf(ch)];
-      const j = idx + dir;
-      if (j < 0 || j >= arr.length) return;
-      [arr[idx], arr[j]] = [arr[j], arr[idx]];
-      setBoxes(ch, arr);
-    },
-    [boxesOf, setBoxes],
+    (ch: ChapterView, idx: number, dir: -1 | 1) =>
+      editDraft(ch, (bs) => {
+        const arr = [...bs];
+        const j = idx + dir;
+        if (j < 0 || j >= arr.length) return arr;
+        [arr[idx], arr[j]] = [arr[j], arr[idx]];
+        return arr;
+      }),
+    [editDraft],
   );
+  /** มีร่างที่ยังไม่บันทึกในบทนี้ไหม */
+  const isDirty = useCallback(
+    (ch: ChapterView) => ch.id in drafts && !sameBoxes(drafts[ch.id], edits.boxes[ch.id] ?? ch.boxes),
+    [drafts, edits],
+  );
+  /** บันทึกกล่องของบทนี้ (ร่าง → มีผลจริง + เซฟในเครื่อง) */
+  const saveBoxesDraft = useCallback(
+    (ch: ChapterView) => {
+      const draft = drafts[ch.id];
+      if (draft) setBoxes(ch, draft);
+      setDrafts((prev) => {
+        const next = { ...prev };
+        delete next[ch.id];
+        return next;
+      });
+    },
+    [drafts, setBoxes],
+  );
+  /** ยกเลิกร่าง (กลับไปค่าที่บันทึกไว้ล่าสุด) */
+  const cancelDraft = useCallback((chapterId: string) => {
+    setDrafts((prev) => {
+      const next = { ...prev };
+      delete next[chapterId];
+      return next;
+    });
+  }, []);
+
   const setTitle = useCallback(
     (chapterId: string, title: string) => {
       setEdits((prev) => {
@@ -233,6 +272,7 @@ export function NewdataReadingWorkspace() {
   );
   const revertChapter = useCallback(
     (chapterId: string) => {
+      cancelDraft(chapterId);
       setEdits((prev) => {
         const boxes = { ...prev.boxes };
         const titles = { ...prev.titles };
@@ -243,11 +283,12 @@ export function NewdataReadingWorkspace() {
         return out;
       });
     },
-    [persist, storageKey],
+    [persist, storageKey, cancelDraft],
   );
   const clearAll = useCallback(() => {
     if (!window.confirm("ล้างคำที่แก้ทั้งหมด กลับไปใช้ต้นฉบับ NewData?")) return;
     setEdits(EMPTY_EDITS);
+    setDrafts({});
     persist(storageKey, EMPTY_EDITS);
   }, [persist, storageKey]);
 
@@ -437,9 +478,9 @@ export function NewdataReadingWorkspace() {
 
       {data && (
         <p className="newdata-reading__hint no-print">
-          ✏️ แก้กล่องในหน้านี้ได้เลย — <strong>บันทึกอัตโนมัติในเครื่อง</strong> (รีเฟรชไม่หาย)
-          {editedCount > 0 ? ` · แก้แล้ว ${editedCount} บท` : ""} · กด <strong>💾 บันทึกดวงนี้</strong>{" "}
-          เพื่อเก็บถาวรลงระบบ (เปิดข้ามเครื่อง / ปรินซ้ำได้)
+          ✏️ แก้กล่องแล้วกด <strong>💾 บันทึกกล่องบทนี้</strong> (ต่อบท) เพื่อให้มีผล · จากนั้นกด{" "}
+          <strong>💾 บันทึกดวงนี้</strong> เพื่อเก็บถาวรลงระบบ (เปิดข้ามเครื่อง / ปรินซ้ำได้)
+          {editedCount > 0 ? ` · บันทึกแล้ว ${editedCount} บท` : ""}
         </p>
       )}
 
@@ -513,10 +554,11 @@ export function NewdataReadingWorkspace() {
               : ch.hasContent
                 ? { cls: "is-ok", label: "✓" }
                 : { cls: "is-nomatch", label: "ดวงนี้ไม่เข้าเงื่อนไข" };
-            const boxes = boxesOf(ch);
+            const boxes = viewBoxes(ch);
+            const dirty = isDirty(ch);
             const edited = edits.boxes[ch.id] !== undefined || edits.titles[ch.id] !== undefined;
             return (
-              <section key={ch.id} className={`newdata-reading__chapter ${status.cls}`}>
+              <section key={ch.id} className={`newdata-reading__chapter ${status.cls}${dirty ? " is-dirty" : ""}`}>
                 <h2 className="newdata-reading__chapter-title">
                   <span className="newdata-reading__chapter-no">บทที่ {ch.chapter}</span>
                   <input
@@ -525,7 +567,8 @@ export function NewdataReadingWorkspace() {
                     aria-label="ชื่อบท (แก้ได้)"
                     onChange={(e) => setTitle(ch.id, e.target.value)}
                   />
-                  {edited && <span className="newdata-reading__badge no-print is-edited">✎ แก้แล้ว</span>}
+                  {dirty && <span className="newdata-reading__badge no-print is-dirty">● ยังไม่บันทึก</span>}
+                  {!dirty && edited && <span className="newdata-reading__badge no-print is-edited">✎ แก้แล้ว</span>}
                   <span className={`newdata-reading__badge no-print ${status.cls}`}>{status.label}</span>
                 </h2>
 
@@ -564,7 +607,20 @@ export function NewdataReadingWorkspace() {
                     <button type="button" className="newdata-reading__box-add" onClick={() => addBox(ch)}>
                       ＋ เพิ่มกล่อง
                     </button>
-                    {edited && (
+                    <button
+                      type="button"
+                      className="newdata-reading__btn newdata-reading__btn--save newdata-reading__savebox"
+                      disabled={!dirty}
+                      onClick={() => saveBoxesDraft(ch)}
+                    >
+                      💾 บันทึกกล่องบทนี้
+                    </button>
+                    {dirty && (
+                      <button type="button" className="newdata-reading__revert" onClick={() => cancelDraft(ch.id)}>
+                        ✕ ยกเลิกที่แก้
+                      </button>
+                    )}
+                    {!dirty && edited && (
                       <button type="button" className="newdata-reading__revert" onClick={() => revertChapter(ch.id)}>
                         ↺ คืนค่าต้นฉบับบทนี้
                       </button>
