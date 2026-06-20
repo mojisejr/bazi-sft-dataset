@@ -592,11 +592,12 @@ export type SelectBaziNewdata = typeof baziNewdata.$inferSelect;
 
 /**
  * "ดวงที่บันทึกไว้" ของ tab อ่าน 15 บท (NewData) — เปิดมาแก้/ปรินซ้ำข้ามเครื่องได้
- * edits = { text: { [chapterId]: markdown }, titles: { [chapterId]: title } }
- *   — override คำทำนาย (markdown) + ชื่อบท เฉพาะที่ซินแสแก้ (โมเดลเดียวกับหน้าดูดวงหลัก)
+ * edits = { boxes: { [chapterId]: {title,body}[] }, titles: { [chapterId]: title } }
+ *   — override กล่อง (เพิ่ม/ลบ/แก้) + ชื่อบท เฉพาะที่ซินแสแก้
  */
+export type NewdataReadingBox = { title: string; body: string };
 export type NewdataReadingEdits = {
-  text?: Record<string, string>;
+  boxes?: Record<string, NewdataReadingBox[]>;
   titles?: Record<string, string>;
 };
 

@@ -237,22 +237,41 @@
   color: var(--accent, #2f8f9d);
 }
 
-/* ── กล่องเนื้อบทบนจอ (อ่านอย่างเดียว — แก้จริงในตัวอย่าง PDF) ───────────────── */
+/* ── กล่องเนื้อบทบนจอ (แก้ได้: เพิ่ม/ลบ/ย้าย/พิมพ์) ───────────────────────────── */
 .newdata-reading__boxes {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
   margin-top: 0.3rem;
 }
-.newdata-reading .ylc-box--empty {
-  border-style: dashed;
-  opacity: 0.7;
+.newdata-reading__editbox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
-.newdata-reading__emptybox {
-  margin: 0;
-  color: var(--muted, #8aa);
-  font-style: italic;
-  font-size: 0.85rem;
+.newdata-reading__editbox-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.newdata-reading__title-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.4rem;
+  background: transparent;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+}
+.newdata-reading__title-input:hover {
+  border-color: var(--border, rgba(0, 0, 0, 0.12));
+}
+.newdata-reading__title-input:focus {
+  background: #fff;
+  border-color: var(--accent, #2f8f9d);
+  outline: none;
 }
 
 /* ── box editor (screen) [legacy — เผื่อใช้ภายหลัง] ───────────────────────────── */

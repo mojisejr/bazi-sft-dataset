@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
@@ -27,10 +27,10 @@ type ReadingData = {
   chapters?: ChapterView[];
   error?: string;
 };
-/** override ต่อบท: คำทำนาย (markdown) + ชื่อบท — โมเดลเดียวกับหน้าดูดวงหลัก */
-type Edits = { text: Record<string, string>; titles: Record<string, string> };
+/** override ต่อบท: กล่อง (เพิ่ม/ลบ/แก้) + ชื่อบท — เก็บเฉพาะบทที่ซินแสแก้ */
+type Edits = { boxes: Record<string, ReadingBox[]>; titles: Record<string, string> };
 
-const EMPTY_EDITS: Edits = { text: {}, titles: {} };
+const EMPTY_EDITS: Edits = { boxes: {}, titles: {} };
 
 const PILLAR_LABELS: Array<["year" | "month" | "day" | "hour", string]> = [
   ["year", "ปี"],
@@ -39,16 +39,23 @@ const PILLAR_LABELS: Array<["year" | "month" | "day" | "hour", string]> = [
   ["hour", "ยาม"],
 ];
 
-/** กล่อง NewData → markdown ตั้งต้นของบท (หัวข้อ = **ตัวหนา**, เนื้อตามย่อหน้า) */
-function defaultMarkdown(ch: ChapterView): string {
-  return ch.boxes
-    .map((box) => [box.title ? `**${box.title}**` : "", box.body].filter(Boolean).join("\n\n"))
+function sameBoxes(a: ReadingBox[], b: ReadingBox[]): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/** กล่อง → markdown สำหรับ PDF (หัวข้อ = **ตัวหนา** ให้ ReadingPrintDocument เก็บหัวข้อไว้) */
+function boxesToBoldMarkdown(boxes: ReadingBox[]): string {
+  return boxes
+    .map((b) => [b.title ? `**${b.title}**` : "", b.body].filter(Boolean).join("\n\n"))
     .join("\n\n")
     .trim();
 }
-
-/** แยก markdown เป็น "กล่อง" สำหรับโชว์บนจอ: รองรับ [[box=หัว]]..[[/box]] และย่อหน้า **หัวข้อ** เดี่ยว */
-function parseDisplayBoxes(md: string): Array<{ title: string; body: string }> {
+/** กล่อง → markdown รูปกล่อง [[box=]] สำหรับ ChapterEditor (โชว์กล่องจริง round-trip ได้) */
+function boxesToBoxMarkdown(boxes: ReadingBox[]): string {
+  return boxes.map((b) => `[[box=${b.title}]]\n${b.body}\n[[/box]]`).join("\n");
+}
+/** markdown ([[box=]] หรือ **หัวข้อ** เดี่ยว) → กล่อง — ใช้ตอน ChapterEditor บันทึก */
+function parseBoxMarkdown(md: string): ReadingBox[] {
   const lines = md.replace(/\r/g, "").split("\n");
   const boxes: Array<{ title: string; body: string[] }> = [];
   const appendBody = (line: string) => {
@@ -82,25 +89,9 @@ function parseDisplayBoxes(md: string): Array<{ title: string; body: string }> {
   return boxes.map((b) => ({ title: b.title, body: b.body.join("\n").trim() }));
 }
 
-/** render เนื้อในกล่อง (ย่อหน้า + **ตัวหนา** _เอียง_) */
-function renderBoxBody(body: string) {
-  return body
-    .split(/\n{2,}/)
-    .filter((p) => p.trim())
-    .map((para, i) => {
-      const html = para
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-        .replace(/_(.+?)_/g, "<em>$1</em>")
-        .replace(/\n/g, "<br/>");
-      return <p key={i} dangerouslySetInnerHTML={{ __html: html }} />;
-    });
-}
-
 /**
- * Tab "อ่านดวงทีละบท (NewData)" — ทำทุกอย่างเหมือนหน้าดูดวงหลัก (preview A4 + แก้ WYSIWYG + พิมพ์ PDF)
- * ต่างแค่ "คำทำนาย" มาจาก NewData (ไม่ใช่ LLM). แก้รายบทในตัวอย่าง PDF → บันทึก/โหลดข้ามเครื่องได้
+ * Tab "อ่านดวงทีละบท (NewData)" — คำทายจาก NewData, แก้เป็นกล่อง (เพิ่ม/ลบ) ได้ทั้งหน้าจอและในตัวอย่าง PDF
+ * PDF ดีไซน์เดียวกับหน้าดูดวงหลัก · บันทึก/โหลดดวงข้ามเครื่อง (DB)
  */
 export function NewdataReadingWorkspace() {
   const [birthDate, setBirthDate] = useState("1988-05-15");
@@ -115,11 +106,9 @@ export function NewdataReadingWorkspace() {
   const [edits, setEdits] = useState<Edits>(EMPTY_EDITS);
   const [storageKey, setStorageKey] = useState<string | null>(null);
 
-  // ── PDF preview (เหมือนหน้าหลัก: ดูหน้าจริง A4 ↔ แก้ข้อความ) ──
   const [showPreview, setShowPreview] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  // ── ดวงที่บันทึกไว้ใน DB ──
   type SavedItem = { id: string; clientName: string | null; birthDate: string; birthTime: string; gender: string; updatedAt: string };
   const [savedList, setSavedList] = useState<SavedItem[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -157,12 +146,12 @@ export function NewdataReadingWorkspace() {
         setStorageKey(key);
         let saved: Edits = EMPTY_EDITS;
         if (editsOverride) {
-          saved = { text: editsOverride.text ?? {}, titles: editsOverride.titles ?? {} };
+          saved = { boxes: editsOverride.boxes ?? {}, titles: editsOverride.titles ?? {} };
           persist(key, saved);
         } else {
           try {
             const raw = JSON.parse(localStorage.getItem(key) ?? "{}") as Partial<Edits>;
-            saved = { text: raw.text ?? {}, titles: raw.titles ?? {} };
+            saved = { boxes: raw.boxes ?? {}, titles: raw.titles ?? {} };
           } catch {
             saved = EMPTY_EDITS;
           }
@@ -182,29 +171,62 @@ export function NewdataReadingWorkspace() {
     return runReading({ birthDate, birthTime, gender, province });
   }, [runReading, birthDate, birthTime, gender, province]);
 
-  // อัปเดต edit ของบท (text หรือ title) — เท่ากับต้นฉบับ = ลบ override
-  const setChapterText = useCallback(
-    (chapterId: string, markdown: string, fallback: string) => {
+  const boxesOf = useCallback(
+    (ch: ChapterView) => edits.boxes[ch.id] ?? ch.boxes,
+    [edits],
+  );
+  const titleOf = useCallback((ch: ChapterView) => edits.titles[ch.id] ?? ch.title, [edits]);
+
+  /** ตั้งกล่องของบท — เท่ากับต้นฉบับ = ลบ override */
+  const setBoxes = useCallback(
+    (ch: ChapterView, next: ReadingBox[]) => {
       setEdits((prev) => {
-        const text = { ...prev.text };
-        if (markdown.trim() === fallback.trim()) delete text[chapterId];
-        else text[chapterId] = markdown;
-        const next = { ...prev, text };
-        persist(storageKey, next);
-        return next;
+        const boxes = { ...prev.boxes };
+        if (sameBoxes(next, ch.boxes)) delete boxes[ch.id];
+        else boxes[ch.id] = next;
+        const out = { ...prev, boxes };
+        persist(storageKey, out);
+        return out;
       });
     },
     [persist, storageKey],
   );
-  const setChapterTitle = useCallback(
+  const updateBox = useCallback(
+    (ch: ChapterView, idx: number, field: "title" | "body", value: string) =>
+      setBoxes(ch, boxesOf(ch).map((b, i) => (i === idx ? { ...b, [field]: value } : b))),
+    [boxesOf, setBoxes],
+  );
+  const addBox = useCallback(
+    (ch: ChapterView) => setBoxes(ch, [...boxesOf(ch), { title: "", body: "" }]),
+    [boxesOf, setBoxes],
+  );
+  const removeBox = useCallback(
+    (ch: ChapterView, idx: number) => {
+      const box = boxesOf(ch)[idx];
+      if (!window.confirm(`ลบกล่อง "${box?.title || "ไม่มีหัวข้อ"}" ?`)) return;
+      setBoxes(ch, boxesOf(ch).filter((_, i) => i !== idx));
+    },
+    [boxesOf, setBoxes],
+  );
+  const moveBox = useCallback(
+    (ch: ChapterView, idx: number, dir: -1 | 1) => {
+      const arr = [...boxesOf(ch)];
+      const j = idx + dir;
+      if (j < 0 || j >= arr.length) return;
+      [arr[idx], arr[j]] = [arr[j], arr[idx]];
+      setBoxes(ch, arr);
+    },
+    [boxesOf, setBoxes],
+  );
+  const setTitle = useCallback(
     (chapterId: string, title: string) => {
       setEdits((prev) => {
         const titles = { ...prev.titles };
         if (!title.trim()) delete titles[chapterId];
         else titles[chapterId] = title;
-        const next = { ...prev, titles };
-        persist(storageKey, next);
-        return next;
+        const out = { ...prev, titles };
+        persist(storageKey, out);
+        return out;
       });
     },
     [persist, storageKey],
@@ -212,13 +234,13 @@ export function NewdataReadingWorkspace() {
   const revertChapter = useCallback(
     (chapterId: string) => {
       setEdits((prev) => {
-        const text = { ...prev.text };
+        const boxes = { ...prev.boxes };
         const titles = { ...prev.titles };
-        delete text[chapterId];
+        delete boxes[chapterId];
         delete titles[chapterId];
-        const next = { text, titles };
-        persist(storageKey, next);
-        return next;
+        const out = { boxes, titles };
+        persist(storageKey, out);
+        return out;
       });
     },
     [persist, storageKey],
@@ -229,7 +251,7 @@ export function NewdataReadingWorkspace() {
     persist(storageKey, EMPTY_EDITS);
   }, [persist, storageKey]);
 
-  // ── DB: บันทึก/โหลด/ลบ ──
+  // ── DB ──
   const reloadSavedList = useCallback(async () => {
     try {
       const res = await fetch("/api/reading/newdata-reading/sessions");
@@ -287,7 +309,7 @@ export function NewdataReadingWorkspace() {
         setSaveStatus(`เปิดดวง "${r.clientName || r.birthDate}" แล้ว`);
         await runReading(
           { birthDate: r.birthDate, birthTime: r.birthTime, gender: g, province: r.province ?? "" },
-          { text: r.edits.text ?? {}, titles: r.edits.titles ?? {} },
+          { boxes: r.edits.boxes ?? {}, titles: r.edits.titles ?? {} },
         );
       } catch {
         setSaveStatus("โหลดไม่สำเร็จ");
@@ -309,9 +331,9 @@ export function NewdataReadingWorkspace() {
     [sessionId, reloadSavedList],
   );
 
-  // ── เนื้อหา + PrintChapter ──
+  // ── เนื้อหา ──
   const editedCount = useMemo(
-    () => new Set([...Object.keys(edits.text), ...Object.keys(edits.titles)]).size,
+    () => new Set([...Object.keys(edits.boxes), ...Object.keys(edits.titles)]).size,
     [edits],
   );
   const pillars = data?.calculatedState?.fourPillars;
@@ -320,16 +342,19 @@ export function NewdataReadingWorkspace() {
     return { got: data.chapters.filter((c) => c.hasContent).length, total: data.chapters.length };
   }, [data]);
 
-  const markdownOf = useCallback(
-    (ch: ChapterView) => edits.text[ch.id] ?? defaultMarkdown(ch),
-    [edits],
-  );
-  const titleOf = useCallback((ch: ChapterView) => edits.titles[ch.id] ?? ch.title, [edits]);
-
+  // PDF (หัวข้อ = ตัวหนา, คงไว้ในเอกสาร)
   const printChapters: PrintChapter[] = useMemo(() => {
     if (!data?.chapters) return [];
     return data.chapters.map((ch) => {
-      const text = edits.text[ch.id] ?? defaultMarkdown(ch);
+      const text = boxesToBoldMarkdown(edits.boxes[ch.id] ?? ch.boxes);
+      return { chapter: ch.chapter, title: edits.titles[ch.id] ?? ch.title, id: ch.id, text: text || null };
+    });
+  }, [data, edits]);
+  // ChapterEditor (รูปกล่อง [[box=]] เพื่อให้แก้เป็นกล่องในตัวอย่าง PDF ได้)
+  const editChapters: PrintChapter[] = useMemo(() => {
+    if (!data?.chapters) return [];
+    return data.chapters.map((ch) => {
+      const text = boxesToBoxMarkdown(edits.boxes[ch.id] ?? ch.boxes);
       return { chapter: ch.chapter, title: edits.titles[ch.id] ?? ch.title, id: ch.id, text: text || null };
     });
   }, [data, edits]);
@@ -394,7 +419,7 @@ export function NewdataReadingWorkspace() {
               setShowPreview(true);
             }}
           >
-            🖨 ดู/แก้/พิมพ์ PDF
+            🖨 ดู/พิมพ์ PDF
           </button>
         )}
         {data && (
@@ -469,7 +494,7 @@ export function NewdataReadingWorkspace() {
             )}
             {summary && (
               <p className="newdata-reading__summary no-print">
-                บทที่มีคำทายจาก NewData: {summary.got}/{summary.total} · กด “ดู/แก้/พิมพ์ PDF” เพื่อแก้คำทำนายแบบ WYSIWYG (กล่อง เพิ่ม/ลบ ได้)
+                บทที่มีคำทายจาก NewData: {summary.got}/{summary.total} · แก้กล่องได้ในหน้านี้ (เพิ่ม/ลบ/พิมพ์) แล้วกด “ดู/พิมพ์ PDF”
               </p>
             )}
           </header>
@@ -480,34 +505,64 @@ export function NewdataReadingWorkspace() {
               : ch.hasContent
                 ? { cls: "is-ok", label: "✓" }
                 : { cls: "is-nomatch", label: "ดวงนี้ไม่เข้าเงื่อนไข" };
-            const edited = edits.text[ch.id] !== undefined || edits.titles[ch.id] !== undefined;
+            const boxes = boxesOf(ch);
+            const edited = edits.boxes[ch.id] !== undefined || edits.titles[ch.id] !== undefined;
             return (
               <section key={ch.id} className={`newdata-reading__chapter ${status.cls}`}>
                 <h2 className="newdata-reading__chapter-title">
                   <span className="newdata-reading__chapter-no">บทที่ {ch.chapter}</span>
-                  {titleOf(ch)}
+                  <input
+                    className="newdata-reading__title-input"
+                    value={titleOf(ch)}
+                    aria-label="ชื่อบท (แก้ได้)"
+                    onChange={(e) => setTitle(ch.id, e.target.value)}
+                  />
                   {edited && <span className="newdata-reading__badge no-print is-edited">✎ แก้แล้ว</span>}
                   <span className={`newdata-reading__badge no-print ${status.cls}`}>{status.label}</span>
                 </h2>
-                <div className="newdata-reading__boxes">
-                  {parseDisplayBoxes(markdownOf(ch)).map((box, i) => (
-                    <section key={i} className={`ylc-box${box.body ? "" : " ylc-box--empty"}`}>
-                      {box.title ? <div className="ylc-box__title">{box.title}</div> : null}
-                      <div className="ylc-box__body">
-                        {box.body ? (
-                          renderBoxBody(box.body).map((node, j) => <Fragment key={j}>{node}</Fragment>)
-                        ) : (
-                          <p className="newdata-reading__emptybox">— (รอซินแสเติม)</p>
-                        )}
+
+                <div className="newdata-reading__boxes no-print">
+                  {boxes.map((box, idx) => (
+                    <section key={idx} className="ylc-box newdata-reading__editbox">
+                      <div className="newdata-reading__editbox-head">
+                        <input
+                          className="newdata-reading__box-title"
+                          value={box.title}
+                          placeholder="หัวข้อกล่อง (เว้นว่างได้)"
+                          onChange={(e) => updateBox(ch, idx, "title", e.target.value)}
+                        />
+                        <div className="newdata-reading__box-tools">
+                          <button type="button" title="ย้ายขึ้น" disabled={idx === 0} onClick={() => moveBox(ch, idx, -1)}>
+                            ↑
+                          </button>
+                          <button type="button" title="ย้ายลง" disabled={idx === boxes.length - 1} onClick={() => moveBox(ch, idx, 1)}>
+                            ↓
+                          </button>
+                          <button type="button" className="newdata-reading__box-del" title="ลบกล่อง" onClick={() => removeBox(ch, idx)}>
+                            ลบ
+                          </button>
+                        </div>
                       </div>
+                      <textarea
+                        className="newdata-reading__box-body"
+                        value={box.body}
+                        rows={Math.min(12, Math.max(2, box.body.split("\n").length + 1))}
+                        placeholder="(รอซินแสเติมคำทำนาย)"
+                        onChange={(e) => updateBox(ch, idx, "body", e.target.value)}
+                      />
                     </section>
                   ))}
+                  <div className="newdata-reading__box-actions">
+                    <button type="button" className="newdata-reading__box-add" onClick={() => addBox(ch)}>
+                      ＋ เพิ่มกล่อง
+                    </button>
+                    {edited && (
+                      <button type="button" className="newdata-reading__revert" onClick={() => revertChapter(ch.id)}>
+                        ↺ คืนค่าต้นฉบับบทนี้
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {edited && (
-                  <button type="button" className="newdata-reading__revert no-print" onClick={() => revertChapter(ch.id)}>
-                    ↺ คืนค่าต้นฉบับบทนี้
-                  </button>
-                )}
               </section>
             );
           })}
@@ -550,13 +605,13 @@ export function NewdataReadingWorkspace() {
                     <ReadingEditPanel
                       rawInput={data.rawInput}
                       calculatedState={data.calculatedState}
-                      chapters={printChapters}
+                      chapters={editChapters}
                       relationshipLines={null}
                       onSaveChapter={(topicId, markdown) => {
                         const ch = data.chapters?.find((c) => c.id === topicId);
-                        setChapterText(topicId, markdown, ch ? defaultMarkdown(ch) : "");
+                        if (ch) setBoxes(ch, parseBoxMarkdown(markdown));
                       }}
-                      onRenameChapter={setChapterTitle}
+                      onRenameChapter={setTitle}
                       onChangeLines={() => {}}
                       onGenerateLines={() => {}}
                       generatingLines={false}
