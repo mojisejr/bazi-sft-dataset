@@ -17,6 +17,7 @@ import {
   matchLoveBase,
   matchLoveChance,
   matchMerit,
+  matchSpouseStar,
   matchPhua,
   matchPillarBranch,
   matchPillarGanzhi,
@@ -49,7 +50,8 @@ type Resolver =
   | { kind: "daYunTransfer"; group: string }
   | { kind: "merit"; group: string }
   | { kind: "loveBase"; group: string }
-  | { kind: "loveChance"; group: string };
+  | { kind: "loveChance"; group: string }
+  | { kind: "spouseStar"; group: string };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -121,7 +123,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 5 bullets: [ชีวิตคู่พื้นดวง] [ลักษณะคู่ครอง] [มีคู่เหมาะไหม มาเมื่อไร] [สิ่งที่ควรระวัง] [ข้อเสนอแนะ]
   love_partner: [
     [{ kind: "loveBase", group: "love_base" }, { kind: "branchPairs", group: "combine_branch" }],
-    [],
+    [{ kind: "spouseStar", group: "shengxiang" }],
     [{ kind: "loveChance", group: "love_chance" }],
     [{ kind: "branchPairs", group: "clash" }, { kind: "branchPairs", group: "harm_hai" }],
     [],
@@ -211,6 +213,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchLoveBase(map, r.group, facts);
     case "loveChance":
       return matchLoveChance(map, r.group, facts);
+    case "spouseStar":
+      return matchSpouseStar(map, r.group, facts);
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {

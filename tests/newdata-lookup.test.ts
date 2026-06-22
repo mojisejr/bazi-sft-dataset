@@ -169,6 +169,15 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[2].body).toContain("โอกาสมีคู่ยาก"); // มีคู่เหมาะไหม
   });
 
+  test("love_partner ลักษณะคู่ครอง → หญิง: ธาตุพิฆาต(ไฟ)ที่เสาเดือน=เชี่ยงแซ · ชาย: ธาตุโชคลาภ(ไม้)ไม่มี=ว่าง", () => {
+    const female = resolveChapterBoxes("love_partner", { ...FACTS, gender: "female" }, MAP);
+    // 庚(ทอง) หญิง → ธาตุพิฆาต = ไฟ → เสาเดือน 丁巳(ไฟ) เชี่ยงแซ → shengxiang
+    expect(female.boxes[1].body).toContain("มีนิสัยใฝ่รู้");
+    const male = resolveChapterBoxes("love_partner", { ...FACTS, gender: "male" }, MAP);
+    // 庚 ชาย → ธาตุโชคลาภ = ไม้ → ดวงนี้ไม่มีธาตุไม้ = ว่าง
+    expect(male.boxes[1].body).toBe("");
+  });
+
   test("love_chance ไม่มี gender → ไม่ทาย (กล่องว่าง)", () => {
     const map: NewdataMap = { ...MAP, love_chance: { "male|weak": { text: "x", label: "y" } } };
     const r = resolveChapterBoxes("love_partner", FACTS, map); // FACTS ไม่มี gender

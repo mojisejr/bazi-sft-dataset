@@ -381,6 +381,32 @@ export function matchLoveBase(map: NewdataMap, group: string, facts: ChartFacts)
 }
 
 /**
+ * บท 7 · ลักษณะคู่ครอง — ชาย: ธาตุโชคลาภ(財) · หญิง: ธาตุพิฆาตดิถี(官杀) นั่งเสาไหน
+ * → อ่านเชี่ยงแซของเสานั้น (กลุ่ม group เช่น shengxiang) = ลักษณะคู่ครอง
+ */
+export function matchSpouseStar(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  if (!facts.gender) return [];
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl) return [];
+  const spouseEl =
+    facts.gender === "female"
+      ? (Object.keys(CONTROLS) as Array<keyof typeof CONTROLS>).find((x) => CONTROLS[x] === dayEl) // 官杀
+      : CONTROLS[dayEl as keyof typeof CONTROLS]; // 財
+  if (!spouseEl) return [];
+  const roleTh = facts.gender === "female" ? "ธาตุพิฆาตดิถี (คู่ครอง)" : "ธาตุโชคลาภ (คู่ครอง)";
+  for (const p of facts.pillars) {
+    const onStem = STEM_TO_ELEMENT[p.stem as keyof typeof STEM_TO_ELEMENT] === spouseEl;
+    const onBranch = BRANCH_TO_ELEMENT[p.branch as keyof typeof BRANCH_TO_ELEMENT] === spouseEl;
+    if (!onStem && !onBranch) continue;
+    if (!p.state) continue;
+    const value = map[group]?.[p.state];
+    if (!value) continue;
+    return [toBlock(group, p.state, value, `${roleTh} เสา${p.position} · เชี่ยงแซ${p.state}`)];
+  }
+  return [];
+}
+
+/**
  * บท 7 · โอกาสมีคู่ — เพศ × กำลังดิถี → lookup คีย์ "{male|female}|{band}" ในกลุ่ม love_chance
  */
 export function matchLoveChance(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
