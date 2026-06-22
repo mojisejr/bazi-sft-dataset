@@ -157,6 +157,24 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[4].body).toContain("สื่อสิ่งพิมพ์"); // ไม่ควรทำ2 = ธาตุไม้ (ทรัพย์)
   });
 
+  test("love_partner → ชีวิตคู่(ปฏิกิริยา power) + โอกาสมีคู่(ชาย×อ่อน)", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      love_base: { power: { text: "ดิถีมีหน้าที่ดูแลรับผิดชอบคู่ครอง", label: "พิฆาตธาตุ" } },
+      love_chance: { "male|weak": { text: "เพศชายดิถีอ่อน โอกาสมีคู่ยาก (20-40%)", label: "ชาย อ่อน" } },
+    };
+    // 庚(ทอง) นั่งบน 午(ไฟ) → ไฟพิฆาตทอง = power · gender male · score -1.25 = weak
+    const r = resolveChapterBoxes("love_partner", { ...FACTS, gender: "male" }, map);
+    expect(r.boxes[0].body).toContain("ดูแลรับผิดชอบคู่ครอง"); // ลักษณะชีวิตคู่
+    expect(r.boxes[2].body).toContain("โอกาสมีคู่ยาก"); // มีคู่เหมาะไหม
+  });
+
+  test("love_chance ไม่มี gender → ไม่ทาย (กล่องว่าง)", () => {
+    const map: NewdataMap = { ...MAP, love_chance: { "male|weak": { text: "x", label: "y" } } };
+    const r = resolveChapterBoxes("love_partner", FACTS, map); // FACTS ไม่มี gender
+    expect(r.boxes[2].body).toBe("");
+  });
+
   test("guardian_deities box ทำบุญ → ดิถีทองอ่อน เสริมธาตุ ดิน+ทอง", () => {
     const map: NewdataMap = {
       ...MAP,

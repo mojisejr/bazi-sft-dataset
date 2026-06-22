@@ -353,6 +353,70 @@ function parseCareerByElement(file: string): SeedRow[] {
   return rows;
 }
 
+// ── parser: บท 7 ลักษณะชีวิตคู่ (ปฏิกิริยาธาตุหลักวัน → 5 แบบ) ────────────────────
+function parseLoveBase(file: string): SeedRow[] {
+  const lines = splitLines(read(file));
+  // เรียง keyword กันชนกัน (ธาตุลาภ ก่อน พิฆาตธาตุ; ก่อเกิด/คู่ธาตุ เฉพาะตัว)
+  const REL: Array<[string, string]> = [
+    ["ก่อเกิด", "resource"], ["คู่ธาตุ", "same"], ["ธาตุลาภ", "wealth"],
+    ["พิฆาตธาตุ", "power"], ["ถ่ายเท", "output"],
+  ];
+  const rows: SeedRow[] = [];
+  const seen = new Set<string>();
+  let order = 0;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t.startsWith("*") || !t.includes("ราศีล่างหลักวัน") || !t.includes("หมายถึง")) continue;
+    const content = t.replace(/^\*+\s*/, "").trim();
+    const rel = REL.find(([w]) => content.includes(w));
+    if (!rel || seen.has(rel[1])) continue;
+    seen.add(rel[1]);
+    rows.push({
+      groupKey: "love_base",
+      itemKey: rel[1],
+      ordinal: ++order,
+      value: { text: content.split("หมายถึง").slice(1).join("หมายถึง").trim(), label: rel[0] },
+      sourceFile: file,
+    });
+  }
+  return rows;
+}
+
+// ── parser: บท 7 โอกาสมีคู่ (เพศ × กำลังดิถี → 10 ช่อง) ───────────────────────────
+function parseLoveChance(file: string): SeedRow[] {
+  const lines = splitLines(read(file));
+  // band keyword เรียง "เกินไป/มาก" ก่อนตัวสั้น (substring กันชน)
+  const BANDS: Array<[string, string]> = [
+    ["อ่อนมาก", "very-weak"], ["แข็งแรงเกินไป", "very-strong"], ["สมดุล", "balanced"],
+    ["แข็งแรง", "strong"], ["อ่อน", "weak"],
+  ];
+  const rows: SeedRow[] = [];
+  const seen = new Set<string>();
+  let gender: string | null = null;
+  let order = 0;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (t.includes("ดิถีเป็นเพศชาย")) { gender = "male"; continue; }
+    if (t.includes("ดิถีเป็นเพศหญิง")) { gender = "female"; continue; }
+    if (!gender || !t.startsWith("*")) continue;
+    const content = t.replace(/^\*+\s*/, "").trim();
+    const band = BANDS.find(([w]) => content.includes(w));
+    if (!band) continue;
+    const key = `${gender}|${band[1]}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push({
+      groupKey: "love_chance",
+      itemKey: key,
+      ordinal: ++order,
+      value: { text: content, label: `${gender === "female" ? "หญิง" : "ชาย"} ${band[0]}` },
+      sourceFile: file,
+    });
+  }
+  return rows;
+}
+
 // ── parser: ทำบุญ 5 ธาตุ (element → คำทำบุญ) — เก็บ occurrence แรกต่อธาตุ ──────────
 function parseMeritByElement(file: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -497,6 +561,8 @@ function collectAll(): SeedRow[] {
   push("career_by_element", () => parseCareerByElement("อาชีพ 5 ธาตุ.txt"));
   push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
+  push("love_base", () => parseLoveBase("ความรักและความสัมพันธ์.txt"));
+  push("love_chance", () => parseLoveChance("ความรักและความสัมพันธ์.txt"));
   push("chart_foundation_core", collectChartFoundationCore);
   return all;
 }

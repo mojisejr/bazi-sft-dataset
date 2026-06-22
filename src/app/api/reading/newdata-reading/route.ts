@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const repository = createDbKnowledgeRepository();
     const calculatedState = await calculateBaziStateFromRawInput(payload, { repository });
 
-    const facts = extractChartFacts(calculatedState);
+    const facts = extractChartFacts(calculatedState, payload?.gender);
     const map = await getNewdataMap();
 
     const chapters = PREDICT_TOPICS.map((topic) => {

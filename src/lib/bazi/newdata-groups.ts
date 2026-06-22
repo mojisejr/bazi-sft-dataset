@@ -173,6 +173,20 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     keyKind: "element",
     sourceFile: "ทำบุญ 5 ธาตุ.txt",
   },
+  {
+    key: "love_base",
+    label: "บท 7 · ลักษณะชีวิตคู่ (ปฏิกิริยาธาตุหลักวัน)",
+    description: "ปฏิกิริยาธาตุ ราศีบน↔ราศีล่างหลักวัน (5 แบบ) → ลักษณะชีวิตคู่ตามพื้นดวง",
+    keyKind: "element",
+    sourceFile: "ความรักและความสัมพันธ์.txt",
+  },
+  {
+    key: "love_chance",
+    label: "บท 7 · โอกาสมีคู่ (เพศ × กำลังดิถี)",
+    description: "โอกาสมีคู่ตามเพศกำเนิด × กำลังดิถี (10 ช่อง) — บท 7 'มีคู่ครองที่เหมาะสมหรือไม่'",
+    keyKind: "stemBand",
+    sourceFile: "ความรักและความสัมพันธ์.txt",
+  },
 ] as const;
 
 export const NEWDATA_GROUP_KEYS = NEWDATA_GROUPS.map((g) => g.key);

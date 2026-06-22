@@ -19,6 +19,22 @@ import {
 } from "@/lib/bazi/constants/career-finance-table";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { meritBandFromScore, meritFavorElements } from "@/lib/bazi/constants/merit-table";
+import {
+  BRANCH_TO_ELEMENT,
+  CONTROLS,
+  GENERATES,
+  STEM_TO_ELEMENT,
+} from "@/lib/bazi/symbolic-engine.constants";
+
+/** ปฏิกิริยาธาตุของ self เทียบ other (มุมดิถี): same/output(ถ่ายเท)/resource(ก่อเกิด)/wealth(ลาภ)/power(พิฆาต) */
+function elementRelationKey(self: string, other: string): string {
+  if (self === other) return "same";
+  if (GENERATES[self as keyof typeof GENERATES] === other) return "output";
+  if (GENERATES[other as keyof typeof GENERATES] === self) return "resource";
+  if (CONTROLS[self as keyof typeof CONTROLS] === other) return "wealth";
+  if (CONTROLS[other as keyof typeof CONTROLS] === self) return "power";
+  return "same";
+}
 
 export type PillarPosition = "year" | "month" | "day" | "hour";
 
@@ -46,6 +62,8 @@ export type ChartFacts = {
   dayMaster: string;
   /** คะแนนกำลังดิถี (engine strengthScore) — ใช้จัด band บทอาชีพ */
   strengthScore: number;
+  /** เพศกำเนิด ("male"/"female") — ใช้บทความรัก (โอกาสมีคู่) · undefined = ไม่ระบุ */
+  gender?: string;
   pillars: PillarFact[];
   daYun: LuckFact[];
 };
@@ -73,7 +91,7 @@ export function cjkChars(s: string): string[] {
 // ── adapter: CalculatedStateValue → ChartFacts ──────────────────────────────
 const PILLAR_POSITIONS: PillarPosition[] = ["year", "month", "day", "hour"];
 
-export function extractChartFacts(state: CalculatedStateValue): ChartFacts {
+export function extractChartFacts(state: CalculatedStateValue, gender?: string): ChartFacts {
   const fp = state.fourPillars;
   const pillars: PillarFact[] = PILLAR_POSITIONS.map((position) => {
     const p = fp[position];
@@ -96,6 +114,7 @@ export function extractChartFacts(state: CalculatedStateValue): ChartFacts {
   return {
     dayMaster: state.dayMaster.normalize("NFC"),
     strengthScore: state.strengthScore,
+    gender,
     pillars,
     daYun,
   };
@@ -343,6 +362,35 @@ export function matchMerit(map: NewdataMap, group: string, facts: ChartFacts): N
     if (value) out.push(toBlock(group, el, value, `เสริมธาตุ${el}`));
   }
   return out;
+}
+
+/**
+ * บท 7 · ลักษณะชีวิตคู่ตามพื้นดวง — ปฏิกิริยาธาตุ ราศีบนหลักวัน(ดิถี) เทียบ ราศีล่างหลักวัน
+ * → lookup คีย์ปฏิกิริยา (same/output/resource/wealth/power) ในกลุ่ม love_base
+ */
+export function matchLoveBase(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  const dayPillar = facts.pillars.find((p) => p.position === "day");
+  if (!dayEl || !dayPillar) return [];
+  const branchEl = BRANCH_TO_ELEMENT[dayPillar.branch as keyof typeof BRANCH_TO_ELEMENT];
+  if (!branchEl) return [];
+  const rel = elementRelationKey(dayEl, branchEl);
+  const value = map[group]?.[rel];
+  if (!value) return [];
+  return [toBlock(group, rel, value, "ราศีบน↔ราศีล่างหลักวัน")];
+}
+
+/**
+ * บท 7 · โอกาสมีคู่ — เพศ × กำลังดิถี → lookup คีย์ "{male|female}|{band}" ในกลุ่ม love_chance
+ */
+export function matchLoveChance(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  if (!facts.gender) return [];
+  const g = facts.gender === "female" ? "female" : "male";
+  const band = classifyOperatorStrengthScore(facts.strengthScore).id;
+  const key = `${g}|${band}`;
+  const value = map[group]?.[key];
+  if (!value) return [];
+  return [toBlock(group, key, value, g === "female" ? "เพศหญิง" : "เพศชาย")];
 }
 
 /** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */
