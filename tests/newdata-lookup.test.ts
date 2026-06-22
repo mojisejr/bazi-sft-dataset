@@ -157,10 +157,24 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[4].body).toContain("สื่อสิ่งพิมพ์"); // ไม่ควรทำ2 = ธาตุไม้ (ทรัพย์)
   });
 
+  test("guardian_deities box ทำบุญ → ดิถีทองอ่อน เสริมธาตุ ดิน+ทอง", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      merit_by_element: {
+        ดิน: { text: "ทำบุญ ดิน หิน ปูน ทราย", label: "ทำบุญ ธาตุดิน" },
+        ทอง: { text: "ทำบุญถวายของโลหะ", label: "ทำบุญ ธาตุทอง" },
+      },
+    };
+    const r = resolveChapterBoxes("guardian_deities", FACTS, map);
+    expect(r.defined).toBe(true);
+    // boxes ของ resolveChapterBoxes = ตาม bullets ตรง ๆ (intro เติมที่ API) → bullet[3] = box[3]
+    expect(r.boxes[3].body).toContain("ทำบุญ ดิน หิน ปูน");
+    expect(r.boxes[3].body).toContain("ทำบุญถวายของโลหะ");
+  });
+
   test("บทไม่มี NewData → defined=false, hasContent=false แต่ box ครบทุก bullet (ว่าง)", () => {
     const cases: Record<string, number> = {
       colors_directions: 9,
-      guardian_deities: 5,
     };
     for (const [id, n] of Object.entries(cases)) {
       const r = resolveChapterBoxes(id, FACTS, MAP);

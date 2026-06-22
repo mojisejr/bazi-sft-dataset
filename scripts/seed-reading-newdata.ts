@@ -353,6 +353,44 @@ function parseCareerByElement(file: string): SeedRow[] {
   return rows;
 }
 
+// ── parser: ทำบุญ 5 ธาตุ (element → คำทำบุญ) — เก็บ occurrence แรกต่อธาตุ ──────────
+function parseMeritByElement(file: string): SeedRow[] {
+  const lines = splitLines(read(file));
+  const ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
+  const ORDER: Record<string, number> = { ไม้: 1, ไฟ: 2, ดิน: 3, ทอง: 4, น้ำ: 5 };
+  const collected: Record<string, string> = {};
+  let cur: string | null = null;
+  let buf: string[] = [];
+  const flush = () => {
+    if (cur && collected[cur] === undefined && buf.length) collected[cur] = buf.join(" ").trim();
+    buf = [];
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    if (t.startsWith("ดิถ")) {
+      flush();
+      cur = null;
+      continue;
+    } // หัวข้อ "ดิถีธาตุ..กำลัง" (มี typo ดิถึ ด้วย)
+    const el = ELEMENTS.find((e) => t === `ธาตุ${e}`);
+    if (el) {
+      flush();
+      cur = collected[el] !== undefined ? null : el; // มีแล้วข้าม (occurrence แรกชนะ)
+      continue;
+    }
+    if (cur) buf.push(t);
+  }
+  flush();
+  return ELEMENTS.filter((e) => collected[e]).map((e) => ({
+    groupKey: "merit_by_element",
+    itemKey: e,
+    ordinal: ORDER[e],
+    value: { text: collected[e], label: `ทำบุญ ธาตุ${e}` },
+    sourceFile: file,
+  }));
+}
+
 // ── parser: ดิถีถ่ายเททุกแบบ (ก้านดิถี ถ่ายเท → ปลายทาง) — คีย์ "{ดิถี}|{ปลายทาง}" ─────
 function parseDithiTransfer(file: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -458,6 +496,7 @@ function collectAll(): SeedRow[] {
   push("pillars_meaning", () => parsePillars("4 แถว 8 อักษร.txt"));
   push("career_by_element", () => parseCareerByElement("อาชีพ 5 ธาตุ.txt"));
   push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
+  push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   push("chart_foundation_core", collectChartFoundationCore);
   return all;
 }

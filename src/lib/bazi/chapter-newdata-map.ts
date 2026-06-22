@@ -14,6 +14,7 @@ import {
   matchDaYunTransfer,
   matchDayMasterStrength,
   matchDithiTransfer,
+  matchMerit,
   matchPhua,
   matchPillarBranch,
   matchPillarGanzhi,
@@ -43,7 +44,8 @@ type Resolver =
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
   | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" }
-  | { kind: "daYunTransfer"; group: string };
+  | { kind: "daYunTransfer"; group: string }
+  | { kind: "merit"; group: string };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -164,8 +166,9 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   ],
   // 9 bullets — ยังไม่มี NewData (สี/ทิศ/ของมงคล)
   colors_directions: [[], [], [], [], [], [], [], [], []],
-  // 5 bullets — ยังไม่มี NewData (องค์เทพ)
-  guardian_deities: [[], [], [], [], []],
+  // 5 bullets: [องค์เทพคุ้มครอง] [ขอพรงาน] [ขอพรโชคลาภ] [ทำบุญเสริมดวง] [ข้อเสนอแนะ]
+  // องค์เทพ 3 บทแรก รอซินแสเติม · ทำบุญเสริมดวง = ธาตุที่ควรเสริม (ตารางทำบุญ 5 ธาตุ)
+  guardian_deities: [[], [], [], [{ kind: "merit", group: "merit_by_element" }], []],
 };
 
 function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
@@ -198,6 +201,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchDithiTransfer(map, r.group, facts, r.scope ?? "all");
     case "daYunTransfer":
       return matchDaYunTransfer(map, r.group, facts);
+    case "merit":
+      return matchMerit(map, r.group, facts);
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {

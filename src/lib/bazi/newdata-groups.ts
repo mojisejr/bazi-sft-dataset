@@ -166,6 +166,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     keyKind: "stemTransfer",
     sourceFile: "ดิถีถ่ายเททุกแบบ.txt",
   },
+  {
+    key: "merit_by_element",
+    label: "ทำบุญตามธาตุ (5 ธาตุ)",
+    description: "คำทำบุญเสริมดวงของแต่ละธาตุ — บท 15 หยิบตามธาตุที่ควรเสริม (ตารางทำบุญ 5 ธาตุ)",
+    keyKind: "element",
+    sourceFile: "ทำบุญ 5 ธาตุ.txt",
+  },
 ] as const;
 
 export const NEWDATA_GROUP_KEYS = NEWDATA_GROUPS.map((g) => g.key);

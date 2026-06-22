@@ -18,6 +18,7 @@ import {
   type ElementTh,
 } from "@/lib/bazi/constants/career-finance-table";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
+import { meritBandFromScore, meritFavorElements } from "@/lib/bazi/constants/merit-table";
 
 export type PillarPosition = "year" | "month" | "day" | "hour";
 
@@ -324,6 +325,22 @@ export function matchDaYunTransfer(map: NewdataMap, group: string, facts: ChartF
       const value = map[group]?.[`${day}|${ch}`];
       if (value) out.push(toBlock(group, `${day}|${ch}`, value, ageCtx));
     }
+  }
+  return out;
+}
+
+/**
+ * บท 15 · ทำบุญเสริมดวง — ธาตุดิถี × กำลัง → ธาตุที่ควรทำบุญ → คำทำบุญรายธาตุ (group merit_by_element)
+ * คืน 1 ก้อนต่อธาตุที่แนะนำ (1-2 ธาตุ)
+ */
+export function matchMerit(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const dayElement = elementThOfStem(facts.dayMaster);
+  if (!dayElement) return [];
+  const band = meritBandFromScore(facts.strengthScore);
+  const out: NewdataBlock[] = [];
+  for (const el of meritFavorElements(dayElement, band)) {
+    const value = map[group]?.[el];
+    if (value) out.push(toBlock(group, el, value, `เสริมธาตุ${el}`));
   }
   return out;
 }
