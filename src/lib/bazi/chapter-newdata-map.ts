@@ -10,6 +10,7 @@
 import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
 import {
   matchBranchPairs,
+  matchCareer,
   matchPhua,
   matchPillarState,
   matchSamHeng,
@@ -31,7 +32,8 @@ type Resolver =
   | { kind: "samHeng" }
   | { kind: "trinity" }
   | { kind: "phua" }
-  | { kind: "daYun" };
+  | { kind: "daYun" }
+  | { kind: "career"; role: "do" | "avoid"; order: number };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -47,8 +49,14 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "selfPunish" }],
     [],
   ],
-  // 5 bullets — ยังไม่มี NewData อาชีพตามธาตุ
-  career_potential: [[], [], [], [], []],
+  // 5 bullets: [ควรทำ1] [ควรทำ2] [ควรทำ3 (บางคนมี)] [ไม่ควรทำ1] [ไม่ควรทำ2 (บางคนมี)]
+  career_potential: [
+    [{ kind: "career", role: "do", order: 1 }],
+    [{ kind: "career", role: "do", order: 2 }],
+    [{ kind: "career", role: "do", order: 3 }],
+    [{ kind: "career", role: "avoid", order: 1 }],
+    [{ kind: "career", role: "avoid", order: 2 }],
+  ],
   // 3 bullets: [โชคลาภ ดิถี→ถ่ายเท→ผลลัพธ์] [ผั่วไฉ่โข่ว] [ข้อเสนอแนะ]
   wealth_and_investment: [
     [{ kind: "state", group: "shengxiang", pillar: "day" }],
@@ -147,6 +155,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchTrinity(map, facts);
     case "phua":
       return matchPhua(map, facts);
+    case "career":
+      return matchCareer(map, facts, r.role, r.order);
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {

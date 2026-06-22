@@ -129,6 +129,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     keyKind: "pillar",
     sourceFile: "4 แถว 8 อักษร.txt",
   },
+  {
+    key: "career_by_element",
+    label: "อาชีพ/ธุรกิจ ตามธาตุ (5 ธาตุ)",
+    description: "รายชื่ออาชีพ/ธุรกิจของแต่ละธาตุ — บทอาชีพหยิบตามธาตุที่ควร/ไม่ควรทำ (ตารางหาอาชีพ)",
+    keyKind: "element",
+    sourceFile: "อาชีพ 5 ธาตุ.txt",
+  },
 ] as const;
 
 export const NEWDATA_GROUP_KEYS = NEWDATA_GROUPS.map((g) => g.key);

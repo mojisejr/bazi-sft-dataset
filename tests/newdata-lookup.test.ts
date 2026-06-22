@@ -20,6 +20,7 @@ import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
  */
 const FACTS: ChartFacts = {
   dayMaster: "庚",
+  strengthScore: -1.25, // ดวงอ่อน (band weak) — ตรงกับ ground truth 1988
   pillars: [
     { position: "year", stem: "戊", branch: "辰", state: "เอี้ยง" },
     { position: "month", stem: "丁", branch: "巳", state: "เชี่ยงแซ" },
@@ -53,6 +54,13 @@ const MAP: NewdataMap = {
   clash: { "子-午": { text: "ชงรุนแรง เห็นผลชัด", label: "ชวด×มะเมีย" } },
   harm_hai: { "子-未": { text: "ถูกแทงข้างหลัง", label: "ชวด×มะแม" } },
   self_punish: { 辰: { text: "แบกภาระหนัก ทิฐิสูง", label: "มะโรง" } },
+  career_by_element: {
+    ไม้: { text: "สื่อสิ่งพิมพ์ เสื้อผ้า เฟอร์นิเจอร์ไม้", label: "อาชีพ/ธุรกิจ ธาตุไม้" },
+    ไฟ: { text: "ครู อาจารย์ การตลาด แพทย์", label: "อาชีพ/ธุรกิจ ธาตุไฟ" },
+    ดิน: { text: "อสังหาริมทรัพย์ รับเหมาก่อสร้าง", label: "อาชีพ/ธุรกิจ ธาตุดิน" },
+    ทอง: { text: "เหล็ก เครื่องประดับ เทคโนโลยี ยานยนต์", label: "อาชีพ/ธุรกิจ ธาตุทอง" },
+    น้ำ: { text: "อาหารเครื่องดื่ม การเงิน การบริการ", label: "อาชีพ/ธุรกิจ ธาตุน้ำ" },
+  },
 };
 
 describe("newdata-lookup: matchers (set-membership)", () => {
@@ -110,9 +118,20 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[0].body).toContain("อายุ 16-25 (ปัจจุบัน)");
   });
 
+  test("career_potential → ดิถีทองอ่อน เดือนไฟ: ควรทำ=ทอง, ไม่ควรทำ=ไฟ/ไม้", () => {
+    const r = resolveChapterBoxes("career_potential", FACTS, MAP);
+    expect(r.defined).toBe(true);
+    expect(r.hasContent).toBe(true);
+    expect(r.boxes).toHaveLength(5);
+    expect(r.boxes[0].body).toContain("เหล็ก เครื่องประดับ"); // ควรทำ1 = ธาตุทอง
+    expect(r.boxes[1].body).toBe(""); // ควรทำ2 — ตารางให้ธาตุเดียว = ว่าง
+    expect(r.boxes[2].body).toBe(""); // ควรทำ3 — ว่าง
+    expect(r.boxes[3].body).toContain("ครู อาจารย์"); // ไม่ควรทำ1 = ธาตุไฟ (พิฆาตทอง)
+    expect(r.boxes[4].body).toContain("สื่อสิ่งพิมพ์"); // ไม่ควรทำ2 = ธาตุไม้ (ทรัพย์)
+  });
+
   test("บทไม่มี NewData → defined=false, hasContent=false แต่ box ครบทุก bullet (ว่าง)", () => {
     const cases: Record<string, number> = {
-      career_potential: 5,
       subordinates: 3,
       colors_directions: 9,
       guardian_deities: 5,

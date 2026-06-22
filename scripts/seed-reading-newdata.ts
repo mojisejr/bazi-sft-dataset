@@ -311,6 +311,40 @@ function parseSamHeng(file: string): SeedRow[] {
   return rows;
 }
 
+// ── parser: อาชีพ 5 ธาตุ (element → รายชื่ออาชีพ) ────────────────────────────
+function parseCareerByElement(file: string): SeedRow[] {
+  const lines = splitLines(read(file));
+  const ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
+  const ORDER: Record<string, number> = { ไม้: 1, ไฟ: 2, ดิน: 3, ทอง: 4, น้ำ: 5 };
+  const rows: SeedRow[] = [];
+  let current: { key: string; bullets: string[] } | null = null;
+  const flush = () => {
+    if (current) {
+      rows.push({
+        groupKey: "career_by_element",
+        itemKey: current.key,
+        ordinal: ORDER[current.key] ?? 0,
+        value: { text: current.bullets.join("\n"), label: `อาชีพ/ธุรกิจ ธาตุ${current.key}` },
+        sourceFile: file,
+      });
+    }
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    const content = t.replace(/^[•*]+\s*/, "").trim();
+    const head = ELEMENTS.find((el) => content === `ธาตุ${el}`);
+    if (head) {
+      flush();
+      current = { key: head, bullets: [] };
+      continue;
+    }
+    if (current && /^[•*]/.test(t)) current.bullets.push(content);
+  }
+  flush();
+  return rows;
+}
+
 // ── รวมทุก parser ──────────────────────────────────────────────────────────
 function collectAll(): SeedRow[] {
   const all: SeedRow[] = [];
@@ -335,6 +369,7 @@ function collectAll(): SeedRow[] {
   push("combine", () => parseCombine("ภาคีคู่ บน-ล่าง.txt"));
   push("trinity", () => parseTrinity("ไตรภาคี.txt"));
   push("pillars_meaning", () => parsePillars("4 แถว 8 อักษร.txt"));
+  push("career_by_element", () => parseCareerByElement("อาชีพ 5 ธาตุ.txt"));
   return all;
 }
 

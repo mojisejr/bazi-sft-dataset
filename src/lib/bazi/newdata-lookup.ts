@@ -10,6 +10,13 @@
 import type { NewdataValue } from "@/db/schema";
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
 import type { NewdataMap } from "@/lib/bazi/newdata-repository";
+import {
+  avoidElementsTh,
+  careerBandFromScore,
+  doElementsTh,
+  elementThOfStem,
+  type ElementTh,
+} from "@/lib/bazi/constants/career-finance-table";
 
 export type PillarPosition = "year" | "month" | "day" | "hour";
 
@@ -35,6 +42,8 @@ export type LuckFact = {
 
 export type ChartFacts = {
   dayMaster: string;
+  /** คะแนนกำลังดิถี (engine strengthScore) — ใช้จัด band บทอาชีพ */
+  strengthScore: number;
   pillars: PillarFact[];
   daYun: LuckFact[];
 };
@@ -82,7 +91,12 @@ export function extractChartFacts(state: CalculatedStateValue): ChartFacts {
     upperState: d.upperStageDisplay ?? null,
     lowerState: d.lowerStageDisplay ?? null,
   }));
-  return { dayMaster: state.dayMaster.normalize("NFC"), pillars, daYun };
+  return {
+    dayMaster: state.dayMaster.normalize("NFC"),
+    strengthScore: state.strengthScore,
+    pillars,
+    daYun,
+  };
 }
 
 /** มัลติเซ็ตของราศีล่างในดวง (รวมตัวซ้ำ) + เซ็ตราศีบน */
@@ -172,6 +186,46 @@ export function matchPhua(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
     if (pillar) out.push(toBlock("phua", key, value, `เสา${pillar.position}`));
   }
   return out;
+}
+
+/**
+ * บทอาชีพ/ธุรกิจ (career_potential) — ธาตุดิถี × กำลัง × ธาตุราศีบนหลักเดือน
+ *   role "do"    → ธาตุที่ควรทำ (เรียงลำดับจากตาราง B)
+ *   role "avoid" → ธาตุที่ไม่ควรทำ (heuristic ความสัมพันธ์ธาตุ)
+ * order = ลำดับ 1..n ของธาตุในรายการ · คืนกล่องเดียว (รายชื่ออาชีพของธาตุนั้น) หรือ [] ถ้าไม่มี
+ */
+export function matchCareer(
+  map: NewdataMap,
+  facts: ChartFacts,
+  role: "do" | "avoid",
+  order: number,
+): NewdataBlock[] {
+  const dayElement = elementThOfStem(facts.dayMaster);
+  if (!dayElement) return [];
+  const band = careerBandFromScore(facts.strengthScore);
+  const monthPillar = facts.pillars.find((p) => p.position === "month");
+  const monthElement = monthPillar ? elementThOfStem(monthPillar.stem) : null;
+
+  let elements: ElementTh[];
+  if (role === "do") {
+    if (!monthElement) return [];
+    elements = doElementsTh(dayElement, band, monthElement);
+  } else {
+    elements = avoidElementsTh(dayElement, band);
+  }
+
+  const element = elements[order - 1];
+  if (!element) return [];
+
+  const value = map.career_by_element?.[element];
+  if (!value) return [];
+
+  const bandTh = band === "weak" ? "อ่อน" : band === "veryStrong" ? "แข็งเกินไป" : "สมดุล/แข็งแรง";
+  const context =
+    role === "do"
+      ? `ดิถีธาตุ${dayElement} (${bandTh}) · เดือนธาตุ${monthElement} → ธาตุ${element}`
+      : `ดิถีธาตุ${dayElement} (${bandTh}) → เลี่ยงธาตุ${element}`;
+  return [toBlock("career_by_element", element, value, context)];
 }
 
 /** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */
