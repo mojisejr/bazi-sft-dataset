@@ -118,6 +118,19 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[0].body).toContain("อายุ 16-25 (ปัจจุบัน)");
   });
 
+  test("chart_foundation box3 → ดิถีถ่ายเท: 庚 ถ่ายเท 癸 (เสายาม ราศีบน)", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      dithi_transfer: {
+        "庚|癸": { text: "พูด/แสดงออก/ลงทุน แบบ ซวย", label: "庚 ถ่ายเท 癸" },
+      },
+    };
+    const r = resolveChapterBoxes("chart_foundation", FACTS, map);
+    // box3 = ดิถีถ่ายเท + เชี่ยงแซดิถี (庚 ถ่ายเท 癸 = ราศีบนเสายาม)
+    expect(r.boxes[3].body).toContain("พูด/แสดงออก/ลงทุน แบบ ซวย");
+    expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // shengxiang/day ยังอยู่
+  });
+
   test("chart_foundation → บท1 box0/1/2 เติม กำลังดิถี/12นักษัตร/60กะจื่อ จากหลักวัน", () => {
     const map: NewdataMap = {
       ...MAP,

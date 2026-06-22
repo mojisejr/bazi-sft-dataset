@@ -12,6 +12,7 @@ import {
   matchBranchPairs,
   matchCareer,
   matchDayMasterStrength,
+  matchDithiTransfer,
   matchPhua,
   matchPillarBranch,
   matchPillarGanzhi,
@@ -39,7 +40,8 @@ type Resolver =
   | { kind: "career"; role: "do" | "avoid"; order: number }
   | { kind: "dayMasterStrength"; group: string }
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
-  | { kind: "ganzhiOf"; group: string; pillar: PillarPosition };
+  | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
+  | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -55,7 +57,10 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "stemPairs" },
       { kind: "branchPairs", group: "combine_branch" },
     ],
-    [{ kind: "state", group: "shengxiang", pillar: "day" }],
+    [
+      { kind: "dithiTransfer", group: "dithi_transfer" },
+      { kind: "state", group: "shengxiang", pillar: "day" },
+    ],
     [{ kind: "selfPunish" }],
     [],
   ],
@@ -69,7 +74,10 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   ],
   // 3 bullets: [โชคลาภ ดิถี→ถ่ายเท→ผลลัพธ์] [ผั่วไฉ่โข่ว] [ข้อเสนอแนะ]
   wealth_and_investment: [
-    [{ kind: "state", group: "shengxiang", pillar: "day" }],
+    [
+      { kind: "dithiTransfer", group: "dithi_transfer" },
+      { kind: "state", group: "shengxiang", pillar: "day" },
+    ],
     [{ kind: "phua" }],
     [],
   ],
@@ -173,6 +181,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchPillarBranch(map, r.group, facts, r.pillar);
     case "ganzhiOf":
       return matchPillarGanzhi(map, r.group, facts, r.pillar);
+    case "dithiTransfer":
+      return matchDithiTransfer(map, r.group, facts, r.scope ?? "all");
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {

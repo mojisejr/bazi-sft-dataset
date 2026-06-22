@@ -17,6 +17,7 @@ export type NewdataKeyKind =
   | "element" // ธาตุ เช่น "น้ำ"
   | "group3" // กลุ่มซำเฮ้ง เช่น "พาหะ"
   | "stemBand" // ราศีบน × กำลังดิถี เช่น "甲|over_strong" (50 ช่อง)
+  | "stemTransfer" // ดิถีถ่ายเท เช่น "甲|丙" (ก้านดิถี|ปลายทาง)
   | "pillar"; // เสา เช่น "ปี"
 
 export type NewdataGroup = {
@@ -157,6 +158,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "นิสัยราย 60 กะจื่อ (ราศีบน+ล่างหลักวัน) — บท 1 กล่อง '60 กะจื่อ'",
     keyKind: "ganzhi",
     sourceFile: "ลักษณะนิสัย 60 แบบ.txt",
+  },
+  {
+    key: "dithi_transfer",
+    label: "ดิถีถ่ายเท (การกระทำ ตามปฏิกิริยาธาตุ)",
+    description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 1/3/5/12 (พูด/ทำงาน/ลงทุน ฯลฯ)",
+    keyKind: "stemTransfer",
+    sourceFile: "ดิถีถ่ายเททุกแบบ.txt",
   },
 ] as const;
 

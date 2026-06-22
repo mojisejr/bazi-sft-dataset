@@ -281,6 +281,36 @@ export function matchPillarGanzhi(
   return [toBlock(group, key, value, `เสา${position}`)];
 }
 
+/**
+ * ดิถีถ่ายเท — ก้านดิถี (D) "ถ่ายเท" ไปยังราศีบน/ล่างในดวง → lookup คีย์ "{D}|{ปลายทาง}"
+ * scope: "all" = ทั้งราศีบน+ล่าง · "stems" = เฉพาะราศีบน (พรสวรรค์) · "branches" = เฉพาะราศีล่าง (พรแสวง)
+ * คืนหลายก้อน (ดีดุปตามคีย์) — match เฉพาะปลายทางที่เป็นธาตุถ่ายเท (มีคีย์ในตาราง)
+ */
+export function matchDithiTransfer(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  scope: "all" | "stems" | "branches" = "all",
+): NewdataBlock[] {
+  const day = facts.dayMaster;
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  for (const p of facts.pillars) {
+    const targets: Array<{ ch: string; kind: string }> = [];
+    if (scope !== "branches") targets.push({ ch: p.stem, kind: "ราศีบน" });
+    if (scope !== "stems") targets.push({ ch: p.branch, kind: "ราศีล่าง" });
+    for (const { ch, kind } of targets) {
+      const key = `${day}|${ch}`;
+      if (seen.has(key)) continue;
+      const value = map[group]?.[key];
+      if (!value) continue;
+      seen.add(key);
+      out.push(toBlock(group, key, value, `เสา${p.position} ${kind}`));
+    }
+  }
+  return out;
+}
+
 /** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */
 export function matchPillarState(
   map: NewdataMap,

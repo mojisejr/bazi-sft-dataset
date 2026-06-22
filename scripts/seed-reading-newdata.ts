@@ -353,6 +353,39 @@ function parseCareerByElement(file: string): SeedRow[] {
   return rows;
 }
 
+// ── parser: ดิถีถ่ายเททุกแบบ (ก้านดิถี ถ่ายเท → ปลายทาง) — คีย์ "{ดิถี}|{ปลายทาง}" ─────
+function parseDithiTransfer(file: string): SeedRow[] {
+  const lines = splitLines(read(file));
+  const rows: SeedRow[] = [];
+  const seen = new Set<string>();
+  let order = 0;
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t.startsWith("*")) continue;
+    const body = t.replace(/^\*+\s*/, "");
+    // ดึงอักษรจีน 2 ตัวแรก = ก้านดิถี + ปลายทาง (กันเคส "ถ่ายเท ถ่ายเท" ซ้ำ)
+    const cjk = [...body].filter((c) => STEMS.has(c) || c in BRANCHES);
+    if (cjk.length < 2) continue;
+    const day = cjk[0];
+    const target = cjk[1];
+    if (!STEMS.has(day)) continue;
+    const tIdx = body.indexOf(target, body.indexOf(day) + 1);
+    const text = body.slice(tIdx + target.length).trim();
+    if (!text) continue;
+    const key = `${day}|${target}`;
+    if (seen.has(key)) continue; // คีย์แรกชนะ (กันซ้ำข้ามหมวดภาคี/ไตรภาคี)
+    seen.add(key);
+    rows.push({
+      groupKey: "dithi_transfer",
+      itemKey: key,
+      ordinal: ++order,
+      value: { text, label: `${day} ถ่ายเท ${target}` },
+      sourceFile: file,
+    });
+  }
+  return rows;
+}
+
 // ── seeder: บท 1 core (ย้ายตารางอิสระ 50/12/60 → NewData box) ────────────────
 function collectChartFoundationCore(): SeedRow[] {
   const rows: SeedRow[] = [];
@@ -424,6 +457,7 @@ function collectAll(): SeedRow[] {
   push("trinity", () => parseTrinity("ไตรภาคี.txt"));
   push("pillars_meaning", () => parsePillars("4 แถว 8 อักษร.txt"));
   push("career_by_element", () => parseCareerByElement("อาชีพ 5 ธาตุ.txt"));
+  push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
   push("chart_foundation_core", collectChartFoundationCore);
   return all;
 }
