@@ -159,7 +159,6 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("บทไม่มี NewData → defined=false, hasContent=false แต่ box ครบทุก bullet (ว่าง)", () => {
     const cases: Record<string, number> = {
-      subordinates: 3,
       colors_directions: 9,
       guardian_deities: 5,
     };

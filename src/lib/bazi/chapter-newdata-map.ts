@@ -130,11 +130,16 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 3 bullets: [ลักษณะหุ้นส่วน หลักวันราศีล่าง] [มีส่วนหา/รักษา/ยักยอกทรัพย์] [ควรมี/ไม่มี]
   partnership: [
     [{ kind: "state", group: "shengxiang", pillar: "day" }],
-    [],
+    [{ kind: "phua" }],
     [],
   ],
-  // 3 bullets — ยังไม่มี NewData (60 กะจื่อ matching)
-  subordinates: [[], [], []],
+  // 3 bullets: [ลักษณะบริวารตามพื้นดวง (เสายาม)] [มีส่วนหา/รักษา/ยักยอกทรัพย์ (ผั่วไฉ่โข่ว)] [ควรมี/ไม่มี]
+  // หมายเหตุ: matching ดวงลูกน้อง (60 กะจื่อ) รออาจารย์คอนเฟิร์ม — ตรงนี้คือลักษณะพื้นดวงจากเสายาม
+  subordinates: [
+    [{ kind: "state", group: "shengxiang", pillar: "hour" }],
+    [{ kind: "phua" }],
+    [],
+  ],
   // 3 bullets: [วิธี/ทักษะได้โชคลาภ] [ดิถี→ถ่ายเท→เชี่ยงแซดี] [เรียนตามอาชีพถูกดวง]
   education: [
     [{ kind: "state", group: "study_style", pillar: "day" }],
