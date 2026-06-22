@@ -42,6 +42,18 @@
   background: #fff;
   font-size: 0.9rem;
 }
+.newdata-reading__time {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.newdata-reading__time select {
+  flex: 1;
+}
+.newdata-reading__time-unit {
+  font-size: 0.85rem;
+  color: var(--muted, #5b7c84);
+}
 .newdata-reading__btn {
   padding: 0.5rem 1.1rem;
   border-radius: 0.5rem;

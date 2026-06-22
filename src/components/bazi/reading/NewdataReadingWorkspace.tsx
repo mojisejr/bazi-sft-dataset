@@ -435,7 +435,32 @@ export function NewdataReadingWorkspace() {
         </label>
         <label>
           เวลาเกิด
-          <input type="time" value={birthTime} onChange={(e) => setBirthTime(e.target.value)} required />
+          <span className="newdata-reading__time">
+            <select
+              aria-label="ชั่วโมง (24 ชม.)"
+              value={(birthTime.split(":")[0] ?? "00").padStart(2, "0")}
+              onChange={(e) => setBirthTime(`${e.target.value}:${birthTime.split(":")[1] ?? "00"}`)}
+            >
+              {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).map((h) => (
+                <option key={h} value={h}>
+                  {h}
+                </option>
+              ))}
+            </select>
+            <span aria-hidden>:</span>
+            <select
+              aria-label="นาที"
+              value={(birthTime.split(":")[1] ?? "00").padStart(2, "0")}
+              onChange={(e) => setBirthTime(`${birthTime.split(":")[0] ?? "00"}:${e.target.value}`)}
+            >
+              {Array.from({ length: 60 }, (_, m) => String(m).padStart(2, "0")).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <span className="newdata-reading__time-unit">น.</span>
+          </span>
         </label>
         <label>
           เพศ

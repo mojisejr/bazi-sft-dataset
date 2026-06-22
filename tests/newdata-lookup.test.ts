@@ -61,6 +61,9 @@ const MAP: NewdataMap = {
     ทอง: { text: "เหล็ก เครื่องประดับ เทคโนโลยี ยานยนต์", label: "อาชีพ/ธุรกิจ ธาตุทอง" },
     น้ำ: { text: "อาหารเครื่องดื่ม การเงิน การบริการ", label: "อาชีพ/ธุรกิจ ธาตุน้ำ" },
   },
+  love_base_60: {
+    庚午: { text: "คู่ครองที่มีการใช้อำนาจ หรือ มีตำแหน่ง", label: "庚午" },
+  },
 };
 
 describe("newdata-lookup: matchers (set-membership)", () => {
@@ -107,7 +110,8 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
   test("love_partner → box=5, ภาคีติด(box0) ชง/ไห่ ไม่ติด(box3 ว่าง)", () => {
     const r = resolveChapterBoxes("love_partner", FACTS, MAP);
     expect(r.boxes).toHaveLength(5);
-    expect(r.boxes[0].body).toContain("ความผูกพันแห่งความกลมเกลียว");
+    expect(r.boxes[0].body).toContain("คู่ครองที่มีการใช้อำนาจ"); // ลักษณะชีวิตคู่ 60 box (庚午 หลักวัน)
+    expect(r.boxes[0].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // + ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toBe(""); // สิ่งที่ควรระวัง (ชง/ไห่) — ดวงนี้ไม่มี
   });
 
@@ -165,15 +169,14 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[4].body).toContain("สื่อสิ่งพิมพ์"); // ไม่ควรทำ2 = ธาตุไม้ (ทรัพย์)
   });
 
-  test("love_partner → ชีวิตคู่(ปฏิกิริยา power) + โอกาสมีคู่(ชาย×อ่อน)", () => {
+  test("love_partner → ชีวิตคู่(60 box หลักวัน) + โอกาสมีคู่(ชาย×อ่อน)", () => {
     const map: NewdataMap = {
       ...MAP,
-      love_base: { power: { text: "ดิถีมีหน้าที่ดูแลรับผิดชอบคู่ครอง", label: "พิฆาตธาตุ" } },
       love_chance: { "male|weak": { text: "เพศชายดิถีอ่อน โอกาสมีคู่ยาก (20-40%)", label: "ชาย อ่อน" } },
     };
-    // 庚(ทอง) นั่งบน 午(ไฟ) → ไฟพิฆาตทอง = power · gender male · score -1.25 = weak
+    // หลักวัน 庚午 → love_base_60[庚午] · gender male · score -1.25 = weak
     const r = resolveChapterBoxes("love_partner", { ...FACTS, gender: "male" }, map);
-    expect(r.boxes[0].body).toContain("ดูแลรับผิดชอบคู่ครอง"); // ลักษณะชีวิตคู่
+    expect(r.boxes[0].body).toContain("คู่ครองที่มีการใช้อำนาจ"); // ลักษณะชีวิตคู่ 60 box
     expect(r.boxes[2].body).toContain("โอกาสมีคู่ยาก"); // มีคู่เหมาะไหม
   });
 

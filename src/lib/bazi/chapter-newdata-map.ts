@@ -123,7 +123,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   ],
   // 5 bullets: [ชีวิตคู่พื้นดวง] [ลักษณะคู่ครอง] [มีคู่เหมาะไหม มาเมื่อไร] [สิ่งที่ควรระวัง] [ข้อเสนอแนะ]
   love_partner: [
-    [{ kind: "loveBase", group: "love_base" }, { kind: "branchPairs", group: "combine_branch" }],
+    // ลักษณะชีวิตคู่ = 60 box ตามกะจื่อหลักวัน (ราศีบน-ล่าง) + ภาคีราศีล่าง
+    [{ kind: "ganzhiOf", group: "love_base_60", pillar: "day" }, { kind: "branchPairs", group: "combine_branch" }],
     [{ kind: "spouseStar", group: "shengxiang" }],
     [{ kind: "loveChance", group: "love_chance" }],
     [{ kind: "branchPairs", group: "clash" }, { kind: "branchPairs", group: "harm_hai" }],

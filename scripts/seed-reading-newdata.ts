@@ -382,6 +382,26 @@ function parseLoveBase(file: string): SeedRow[] {
   return rows;
 }
 
+// ── parser: บท 7 ลักษณะชีวิตคู่ 60 กะจื่อ (สกัดจาก xlsx → JSON {ganzhi: {text}}) ──────
+function parseLoveBase60(file: string): SeedRow[] {
+  const raw = readFileSync(path.join(NEWDATA_DIR, file), "utf8").normalize("NFC");
+  const map = JSON.parse(raw) as Record<string, { text: string }>;
+  // เรียงตามลำดับ 60 กะจื่อ canonical (เพื่อ ordinal คงที่)
+  const order = new Map(SIXTY_JIAZI.map(({ ganzhi, ordinal }) => [ganzhi.normalize("NFC"), ordinal]));
+  return Object.entries(map)
+    .map(([ganzhi, v]) => {
+      const key = ganzhi.normalize("NFC");
+      return {
+        groupKey: "love_base_60",
+        itemKey: key,
+        ordinal: order.get(key) ?? 999,
+        value: { text: (v.text ?? "").trim(), label: key } as NewdataValue,
+        sourceFile: file,
+      };
+    })
+    .sort((a, b) => a.ordinal - b.ordinal);
+}
+
 // ── parser: บท 7 โอกาสมีคู่ (เพศ × กำลังดิถี → 10 ช่อง) ───────────────────────────
 function parseLoveChance(file: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -562,6 +582,7 @@ function collectAll(): SeedRow[] {
   push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   push("love_base", () => parseLoveBase("ความรักและความสัมพันธ์.txt"));
+  push("love_base_60", () => parseLoveBase60("love-base-60.json"));
   push("love_chance", () => parseLoveChance("ความรักและความสัมพันธ์.txt"));
   push("chart_foundation_core", collectChartFoundationCore);
   return all;
