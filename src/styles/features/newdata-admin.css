@@ -47,6 +47,16 @@
   gap: 0.3rem;
   position: sticky;
   top: 0.5rem;
+  /* รายการกลุ่มยาว → ให้เลื่อนในแถบเองได้ ไม่ต้องเลื่อนทั้งหน้า */
+  max-height: calc(100vh - 1rem);
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+@media (max-width: 760px) {
+  .newdata-admin__groups {
+    position: static;
+    max-height: 40vh;
+  }
 }
 .newdata-admin__group-btn {
   display: flex;
