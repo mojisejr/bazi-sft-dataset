@@ -17,6 +17,7 @@ import {
   elementThOfStem,
   type ElementTh,
 } from "@/lib/bazi/constants/career-finance-table";
+import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 
 export type PillarPosition = "year" | "month" | "day" | "hour";
 
@@ -226,6 +227,58 @@ export function matchCareer(
       ? `ดิถีธาตุ${dayElement} (${bandTh}) · เดือนธาตุ${monthElement} → ธาตุ${element}`
       : `ดิถีธาตุ${dayElement} (${bandTh}) → เลี่ยงธาตุ${element}`;
   return [toBlock("career_by_element", element, value, context)];
+}
+
+/** engine 5 band id → คีย์/ป้าย band ของตารางดิถี/กำลัง (50 ช่อง) */
+const STRENGTH_BAND_KEY: Record<string, { key: string; label: string }> = {
+  "very-strong": { key: "over_strong", label: "แข็งเกินไป" },
+  strong: { key: "strong", label: "แข็ง" },
+  balanced: { key: "balanced", label: "สมดุล" },
+  weak: { key: "weak", label: "อ่อน" },
+  "very-weak": { key: "over_weak", label: "อ่อนเกินไป" },
+};
+
+/** บท 1 · กำลังดิถี — ราศีบนหลักวัน (ก้านดิถี) × กำลังดิถี → คีย์ "{ก้าน}|{band}" */
+export function matchDayMasterStrength(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+): NewdataBlock[] {
+  const band = STRENGTH_BAND_KEY[classifyOperatorStrengthScore(facts.strengthScore).id];
+  if (!band) return [];
+  const key = `${facts.dayMaster}|${band.key}`;
+  const value = map[group]?.[key];
+  if (!value) return [];
+  return [toBlock(group, key, value, `ดิถี ${facts.dayMaster} · ${band.label}`)];
+}
+
+/** ราศีล่างของเสาที่ระบุ → lookup คีย์ราศีล่างเดี่ยว (12 นักษัตร) */
+export function matchPillarBranch(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  position: PillarPosition,
+): NewdataBlock[] {
+  const pillar = facts.pillars.find((p) => p.position === position);
+  if (!pillar) return [];
+  const value = map[group]?.[pillar.branch];
+  if (!value) return [];
+  return [toBlock(group, pillar.branch, value, `เสา${position}`)];
+}
+
+/** กะจื่อ (ราศีบน+ล่าง) ของเสาที่ระบุ → lookup คีย์กะจื่อ (60 กะจื่อ) */
+export function matchPillarGanzhi(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  position: PillarPosition,
+): NewdataBlock[] {
+  const pillar = facts.pillars.find((p) => p.position === position);
+  if (!pillar) return [];
+  const key = `${pillar.stem}${pillar.branch}`;
+  const value = map[group]?.[key];
+  if (!value) return [];
+  return [toBlock(group, key, value, `เสา${position}`)];
 }
 
 /** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */

@@ -9,12 +9,7 @@ import {
   miscEntryCategory,
 } from "@/lib/bazi/knowledge/condition-categories";
 import { KNOWLEDGE_CATALOG, keyLabel } from "@/lib/bazi/knowledge/knowledge-catalog";
-import {
-  SIXTY_JIAZI_ID,
-  STANDALONE_EDITABLE_TABLES,
-  TWELVE_NAKSHATRA_ID,
-} from "@/lib/bazi/knowledge/standalone-tables";
-import { getStandaloneCoreDescriptions } from "@/lib/bazi/topic-knowledge";
+import { STANDALONE_EDITABLE_TABLES } from "@/lib/bazi/knowledge/standalone-tables";
 import { createDbKnowledgeOverrideRepository } from "@/lib/bazi/knowledge-override-repository";
 import { EMPTY_OVERLAY, type KnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
 import { createDbDoctrineDraftRepository } from "@/lib/bazi/doctrine-draft-repository";
@@ -86,23 +81,6 @@ export async function GET(req: Request) {
   });
 
   // ตารางอิสระ (core data ที่แก้ได้ แต่ไม่ผูก engine) — surface แยก field ไม่ปนกับ tables ของ engine
-  // เติม "คำบรรยายตั้งต้น" จากไฟล์ลักษณะนิสัย (server-only) ให้ 12 นักษัตร + 60 กะจื่อ
-  let descriptions: ReturnType<typeof getStandaloneCoreDescriptions> = { nakshatra: {}, jiazi: {} };
-  try {
-    descriptions = getStandaloneCoreDescriptions();
-  } catch {
-    /* ไฟล์อ่านไม่ได้ — ใช้ default ป้ายเดิม */
-  }
-  const enrichDefault = (tableId: string, key: string, base: string): string => {
-    // 12 นักษัตร: ใช้ "หัวข้อ + นิสัย" จากไฟล์เป็นค่าทั้งช่อง (ขึ้นต้นด้วย 子(จื้อ)(ชวด)(หนู))
-    if (tableId === TWELVE_NAKSHATRA_ID && descriptions.nakshatra[key]) {
-      return descriptions.nakshatra[key];
-    }
-    if (tableId === SIXTY_JIAZI_ID && descriptions.jiazi[key]) {
-      return `${base}\n${descriptions.jiazi[key]}`;
-    }
-    return base;
-  };
   const standaloneTables = STANDALONE_EDITABLE_TABLES.map((entry) => ({
     tableId: entry.tableId,
     label: entry.label,
@@ -111,7 +89,7 @@ export async function GET(req: Request) {
     entries: Object.keys(entry.defaults).map((key) => ({
       key,
       keyLabel: entry.entryLabels?.[key] ?? keyLabel(entry.keyKind, key),
-      default: enrichDefault(entry.tableId, key, entry.defaults[key]),
+      default: entry.defaults[key],
       published: published.tables[entry.tableId]?.[key] ?? null,
       draft: draft.tables[entry.tableId]?.[key] ?? null,
     })),

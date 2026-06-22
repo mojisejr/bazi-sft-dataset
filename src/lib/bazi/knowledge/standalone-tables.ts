@@ -6,18 +6,12 @@
  * ใช้กลไกบันทึก/เผยแพร่เดิมทุกอย่าง: surface="knowledge", kind="table",
  *   entityKey = `table|{tableId}|{key}` → เก็บใน bazi_doctrine_draft / bazi_knowledge_override (kind="table")
  *
- * pure data — import ได้ทั้ง server (route) และ client (CoreDataPanel) เพราะดึงแค่ค่าคงที่บริสุทธิ์
+ * pure data — import ได้ทั้ง server (route) และ client เพราะดึงแค่ค่าคงที่บริสุทธิ์
  */
-import {
-  BRANCH_LABELS_TH,
-  BRANCH_TO_ELEMENT,
-  ELEMENT_LABELS_TH,
-} from "@/lib/bazi/symbolic-engine.constants";
 import type { KnowledgeCatalogEntry } from "@/lib/bazi/knowledge/knowledge-catalog";
 
-export const STEM_STRENGTH_MATRIX_ID = "STEM_STRENGTH_MATRIX_TH";
-export const TWELVE_NAKSHATRA_ID = "TWELVE_NAKSHATRA_TH";
-export const SIXTY_JIAZI_ID = "SIXTY_JIAZI_TH";
+// หมายเหตุ: ตาราง 50 ดิถี/กำลัง · 12 นักษัตร · 60 กะจื่อ ถูกย้ายไป NewData แล้ว
+// (group daymaster_strength / zodiac_nisai / ganzhi_nisai) — แก้ในแอดมิน "ข้อมูลใหม่" แทน
 /** บท 10 บริวาร — ลักษณะบริวารจาก 60 กะจื่อ (matching เสายาม) ให้ซินแสแก้รายกะจื่อ */
 export const SUBORDINATE_MATCHING_ID = "SUBORDINATE_MATCHING_TH";
 /** บท 11 การเรียน — คลังความรู้ 5 ธาตุ (วิชา/ทักษะ/แนวเรียนต่อธาตุ) */
@@ -56,56 +50,6 @@ export const SIXTY_JIAZI: { ordinal: number; ganzhi: string }[] = (() => {
   });
   return list;
 })();
-
-/** ตารางเมทริกซ์ 10 ราศีบน × 5 ดิถี = 50 ช่องว่าง (key=`{ก้าน}|{band}`) — ใช้ซ้ำกับกล่อง 1/5/6 */
-function buildStemBandEntry(tableId: string, label: string): KnowledgeCatalogEntry {
-  const defaults: Record<string, string> = {};
-  const entryLabels: Record<string, string> = {};
-  for (const stem of STEM_ORDER) {
-    for (const band of STRENGTH_BANDS) {
-      const key = `${stem}|${band.key}`;
-      defaults[key] = "";
-      entryLabels[key] = `${stem} × ${band.label}`;
-    }
-  }
-  return { tableId, label, keyKind: "raw", defaults, entryLabels };
-}
-
-/** ตาราง 2: 12 นักษัตร — แต่ละช่อง default = จีน + ชื่อไทย + ธาตุ */
-function buildNakshatraEntry(): KnowledgeCatalogEntry {
-  const defaults: Record<string, string> = {};
-  const entryLabels: Record<string, string> = {};
-  for (const branch of BRANCH_ORDER) {
-    const thai = BRANCH_LABELS_TH[branch];
-    const elementTh = ELEMENT_LABELS_TH[BRANCH_TO_ELEMENT[branch]];
-    defaults[branch] = `${branch} · ${thai} · ธาตุ${elementTh}`;
-    entryLabels[branch] = `${branch} ${thai}`;
-  }
-  return {
-    tableId: TWELVE_NAKSHATRA_ID,
-    label: "12 นักษัตร (จีน · ชื่อไทย · ธาตุ)",
-    keyKind: "raw",
-    defaults,
-    entryLabels,
-  };
-}
-
-/** ตาราง 3: 60 กะจี่อ — default = ตัวกะจี่อเอง */
-function buildJiaziEntry(): KnowledgeCatalogEntry {
-  const defaults: Record<string, string> = {};
-  const entryLabels: Record<string, string> = {};
-  for (const { ordinal, ganzhi } of SIXTY_JIAZI) {
-    defaults[ganzhi] = ganzhi;
-    entryLabels[ganzhi] = `#${ordinal} ${ganzhi}`;
-  }
-  return {
-    tableId: SIXTY_JIAZI_ID,
-    label: "60 กะจี่อ (六十甲子)",
-    keyKind: "raw",
-    defaults,
-    entryLabels,
-  };
-}
 
 /** บท 10 · ลักษณะบริวาร 60 กะจื่อ (matching เสายาม) — default = ตัวกะจื่อเอง ให้ซินแสเติมคำอ่าน */
 function buildSubordinateMatchingEntry(): KnowledgeCatalogEntry {
@@ -150,12 +94,6 @@ function buildElementLearningBankEntry(): KnowledgeCatalogEntry {
 }
 
 export const STANDALONE_EDITABLE_TABLES: readonly KnowledgeCatalogEntry[] = [
-  buildStemBandEntry(
-    STEM_STRENGTH_MATRIX_ID,
-    "บท 1 · กล่อง 1 — ดิถี/กำลัง (10 ราศีบน × 5 ดิถี)",
-  ),
-  buildNakshatraEntry(),
-  buildJiaziEntry(),
   buildSubordinateMatchingEntry(),
   buildElementLearningBankEntry(),
 ];

@@ -16,6 +16,14 @@ import { sql } from "drizzle-orm";
 
 import { createDbClient } from "../src/db/client";
 import { baziNewdata, type NewdataValue } from "../src/db/schema";
+import { getStandaloneCoreDescriptions } from "../src/lib/bazi/topic-knowledge";
+import {
+  BRANCH_ORDER,
+  SIXTY_JIAZI,
+  STEM_ORDER,
+  STRENGTH_BANDS,
+} from "../src/lib/bazi/knowledge/standalone-tables";
+import { BRANCH_LABELS_TH } from "../src/lib/bazi/symbolic-engine.constants";
 
 const NEWDATA_DIR = path.resolve(process.cwd(), "knownlage/NewData");
 
@@ -345,6 +353,52 @@ function parseCareerByElement(file: string): SeedRow[] {
   return rows;
 }
 
+// ── seeder: บท 1 core (ย้ายตารางอิสระ 50/12/60 → NewData box) ────────────────
+function collectChartFoundationCore(): SeedRow[] {
+  const rows: SeedRow[] = [];
+
+  // (1) ดิถี/กำลัง 50 ช่อง — ว่างทั้งหมด (ซินแสกรอกในแอดมิน) คีย์ "{ก้าน}|{band}"
+  let ord = 0;
+  for (const stem of STEM_ORDER) {
+    for (const band of STRENGTH_BANDS) {
+      rows.push({
+        groupKey: "daymaster_strength",
+        itemKey: `${stem}|${band.key}`,
+        ordinal: ++ord,
+        value: { text: "", label: `${stem} × ${band.label}` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+
+  // เนื้อ 12 นักษัตร + 60 กะจื่อ จาก knownlage (reuse ตัว parse เดิม)
+  const { nakshatra, jiazi } = getStandaloneCoreDescriptions();
+
+  // (2) 12 นักษัตร — คีย์ราศีล่าง
+  BRANCH_ORDER.forEach((branch, i) => {
+    rows.push({
+      groupKey: "zodiac_nisai",
+      itemKey: branch,
+      ordinal: i + 1,
+      value: { text: nakshatra[branch] ?? "", label: `${branch} ${BRANCH_LABELS_TH[branch]}` },
+      sourceFile: "นิสัย 12 นักษัตร.txt",
+    });
+  });
+
+  // (3) 60 กะจื่อ — คีย์กะจื่อ
+  for (const { ordinal, ganzhi } of SIXTY_JIAZI) {
+    rows.push({
+      groupKey: "ganzhi_nisai",
+      itemKey: ganzhi,
+      ordinal,
+      value: { text: jiazi[ganzhi] ?? "", label: `#${ordinal} ${ganzhi}` },
+      sourceFile: "ลักษณะนิสัย 60 แบบ.txt",
+    });
+  }
+
+  return rows;
+}
+
 // ── รวมทุก parser ──────────────────────────────────────────────────────────
 function collectAll(): SeedRow[] {
   const all: SeedRow[] = [];
@@ -370,6 +424,7 @@ function collectAll(): SeedRow[] {
   push("trinity", () => parseTrinity("ไตรภาคี.txt"));
   push("pillars_meaning", () => parsePillars("4 แถว 8 อักษร.txt"));
   push("career_by_element", () => parseCareerByElement("อาชีพ 5 ธาตุ.txt"));
+  push("chart_foundation_core", collectChartFoundationCore);
   return all;
 }
 

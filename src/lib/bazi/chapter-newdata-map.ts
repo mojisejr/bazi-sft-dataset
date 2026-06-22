@@ -11,7 +11,10 @@ import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
 import {
   matchBranchPairs,
   matchCareer,
+  matchDayMasterStrength,
   matchPhua,
+  matchPillarBranch,
+  matchPillarGanzhi,
   matchPillarState,
   matchSamHeng,
   matchSelfPunish,
@@ -33,7 +36,10 @@ type Resolver =
   | { kind: "trinity" }
   | { kind: "phua" }
   | { kind: "daYun" }
-  | { kind: "career"; role: "do" | "avoid"; order: number };
+  | { kind: "career"; role: "do" | "avoid"; order: number }
+  | { kind: "dayMasterStrength"; group: string }
+  | { kind: "branchOf"; group: string; pillar: PillarPosition }
+  | { kind: "ganzhiOf"; group: string; pillar: PillarPosition };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -42,9 +48,13 @@ type Resolver =
 export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 6 bullets: [กำลังดิถี] [12นักษัตร] [60กะจื่อ/ราศีบน-ล่าง] [ดิถี→ถ่ายเท→ผลลัพธ์] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
   chart_foundation: [
-    [],
-    [],
-    [{ kind: "stemPairs" }, { kind: "branchPairs", group: "combine_branch" }],
+    [{ kind: "dayMasterStrength", group: "daymaster_strength" }],
+    [{ kind: "branchOf", group: "zodiac_nisai", pillar: "day" }],
+    [
+      { kind: "ganzhiOf", group: "ganzhi_nisai", pillar: "day" },
+      { kind: "stemPairs" },
+      { kind: "branchPairs", group: "combine_branch" },
+    ],
     [{ kind: "state", group: "shengxiang", pillar: "day" }],
     [{ kind: "selfPunish" }],
     [],
@@ -157,6 +167,12 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchPhua(map, facts);
     case "career":
       return matchCareer(map, facts, r.role, r.order);
+    case "dayMasterStrength":
+      return matchDayMasterStrength(map, r.group, facts);
+    case "branchOf":
+      return matchPillarBranch(map, r.group, facts, r.pillar);
+    case "ganzhiOf":
+      return matchPillarGanzhi(map, r.group, facts, r.pillar);
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {

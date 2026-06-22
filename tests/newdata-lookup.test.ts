@@ -118,6 +118,20 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[0].body).toContain("อายุ 16-25 (ปัจจุบัน)");
   });
 
+  test("chart_foundation → บท1 box0/1/2 เติม กำลังดิถี/12นักษัตร/60กะจื่อ จากหลักวัน", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      daymaster_strength: { "庚|weak": { text: "ดิถีทองอ่อน ใจกว้างแต่ขาดกำลัง", label: "庚 × อ่อน" } },
+      zodiac_nisai: { 午: { text: "นิสัยมะเมีย รักอิสระ เปิดเผย", label: "午 มะเมีย" } },
+      ganzhi_nisai: { 庚午: { text: "庚午 โลหะนั่งบนไฟ เด็ดเดี่ยว", label: "#7 庚午" } },
+    };
+    const r = resolveChapterBoxes("chart_foundation", FACTS, map);
+    expect(r.boxes[0].body).toContain("ดิถีทองอ่อน"); // กำลังดิถี (庚|weak)
+    expect(r.boxes[1].body).toContain("นิสัยมะเมีย"); // 12 นักษัตร (ราศีล่างหลักวัน 午)
+    expect(r.boxes[2].body).toContain("庚午 โลหะนั่งบนไฟ"); // 60 กะจื่อ (หลักวัน 庚午)
+    expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // + ภาคีเดิมยังอยู่
+  });
+
   test("career_potential → ดิถีทองอ่อน เดือนไฟ: ควรทำ=ทอง, ไม่ควรทำ=ไฟ/ไม้", () => {
     const r = resolveChapterBoxes("career_potential", FACTS, MAP);
     expect(r.defined).toBe(true);

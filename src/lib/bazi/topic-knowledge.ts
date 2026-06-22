@@ -15,10 +15,7 @@ import { resolveEntry } from "@/lib/bazi/knowledge/knowledge-overlay";
 import {
   ELEMENT_LEARNING_BANK_DEFAULTS,
   ELEMENT_LEARNING_BANK_ID,
-  SIXTY_JIAZI_ID,
-  STEM_STRENGTH_MATRIX_ID,
   SUBORDINATE_MATCHING_ID,
-  TWELVE_NAKSHATRA_ID,
 } from "@/lib/bazi/knowledge/standalone-tables";
 import {
   resolveDisplayStemPairStage,
@@ -1592,15 +1589,6 @@ const STRENGTH_BAND_LABEL_TH: Record<string, string> = {
   "very-strong": "แข็งไป (แข็งมาก)",
 };
 
-/** map กำลังดิถี engine (StrengthBand) → คีย์ band ในตารางอิสระ (STRENGTH_BANDS) */
-const ENGINE_BAND_TO_MATRIX_KEY: Record<string, string> = {
-  "very-weak": "over_weak",
-  weak: "weak",
-  balanced: "balanced",
-  strong: "strong",
-  "very-strong": "over_strong",
-};
-
 /**
  * ประกอบกล่อง (box) markdown: [[box=หัวข้อย่อย]] + เนื้อใน (คั่นด้วยบรรทัดว่าง) — คืน "" ถ้าไม่มีเนื้อหา
  * เนื้อในขึ้นต้นด้วย "ชื่อหัวข้อย่อย" เป็นย่อหน้าแรกเสมอ เพื่อให้ซินแสเห็น/แก้หัวข้อได้ตอนแก้กล่อง
@@ -1642,16 +1630,6 @@ function buildChartFoundationBoxes(
   const ft = (vars: Record<string, string>, key: string) =>
     fillTemplate("FOUNDATION_TEMPLATE_TH", FOUNDATION_TEMPLATE_TH, vars, key);
 
-  // ── override จาก "ตารางอิสระ" ที่ซินแสแก้ออนไลน์ (เฟส 2) ──
-  // อ่าน overlay ตรง (ไม่ผ่าน K/KC) เพื่อเลี่ยง access-recorder → ไม่ชน guardrail catalog-coverage
-  // มีข้อความในช่อง → "แทนที่" เนื้อหาอัตโนมัติของกล่องนั้น; ว่าง → ใช้ของเดิม (fallback)
-  const cell = (tableId: string, key: string): string =>
-    (resolveEntry(currentKnowledgeOverlay(), tableId, key, "") ?? "").trim();
-  // กำลังดิถี engine (very-weak…very-strong) → คีย์เมทริกซ์ (over_weak…over_strong)
-  const matrixBandKey = ENGINE_BAND_TO_MATRIX_KEY[band] ?? "balanced";
-  const stemBandKey = `${dayStem}|${matrixBandKey}`;
-  const jiaziKey = `${dayStem}${dayBranch}`;
-
   // ── กล่อง 1: ดิถี / เกิดถูกฤดู / นั่งถูกที่ / กำลัง (ตอบครบ 4 ส่วนตามหัวข้อ, แต่ละส่วนเป็นย่อหน้า) ──
   const season = SEASON_BY_BRANCH[monthBranch];
   const seasonTh = season ? seasonLabel(season) : "";
@@ -1665,10 +1643,8 @@ function buildChartFoundationBoxes(
     : FALLING_QI.has(selfSeat)
       ? "นั่งผิดที่ (ขาดรากฐาน ดิถีอ่อนแรงลง)"
       : "นั่งระดับกลาง (รากฐานพอมีแต่ไม่เด่น)";
-  // กล่อง 1: ช่องเมทริกซ์ (ก้าน×กำลัง) แทนเฉพาะย่อหน้า "กำลังดิถี" — คงข้อเท็จจริง เกิดถูกฤดู/นั่งถูกที่
-  const strengthPara =
-    cell(STEM_STRENGTH_MATRIX_ID, stemBandKey) ||
-    ft({ "แถบ": STRENGTH_BAND_LABEL_TH[band] ?? band }, "strengthOverall");
+  // กล่อง 1: ย่อหน้า "กำลังดิถี" (ตาราง ก้าน×กำลัง ย้ายไป NewData แล้ว — ใช้สำนวนตั้งต้น)
+  const strengthPara = ft({ "แถบ": STRENGTH_BAND_LABEL_TH[band] ?? band }, "strengthOverall");
   const box1 = readingBox(CHART_FOUNDATION_SUBTOPICS.basis, [
     // ย่อหน้านำ: ภาพดิถี×ฤดู (imagery) — คงสำนวนเอกสาร (เพชรพลอย/ฤดู/บรรยากาศธาตุรอบตัว)
     buildDayMasterImagery(calculatedState),
@@ -1677,36 +1653,29 @@ function buildChartFoundationBoxes(
     strengthPara,
   ]);
 
-  // ── กล่อง 2: นิสัยจากราศีล่างหลักวัน (override จากตาราง 12 นักษัตร ตามราศีล่างวัน) ──
-  const nakshatraCell = cell(TWELVE_NAKSHATRA_ID, dayBranch);
+  // ── กล่อง 2: นิสัยจากราศีล่างหลักวัน (ตาราง 12 นักษัตร ย้ายไป NewData แล้ว) ──
   const box2 = readingBox(CHART_FOUNDATION_SUBTOPICS.lowerBranch, [
-    nakshatraCell ||
-      (record?.branchText ? ft({ "กิ่ง": dayBranch, "เนื้อหา": record.branchText }, "branchTraitBox") : null),
+    record?.branchText ? ft({ "กิ่ง": dayBranch, "เนื้อหา": record.branchText }, "branchTraitBox") : null,
   ]);
 
   // ── กล่อง 3: นิสัยจากราศีบน + ล่าง (override จากตาราง 60 กะจื่อ ตามเสาวัน) ──
   const temper = resolveElementTemper(band);
   const hasTemper = Boolean(ELEMENT_TEMPER_TH[dmElementTh]);
-  const jiaziCell = cell(SIXTY_JIAZI_ID, jiaziKey);
-  const box3 = readingBox(
-    CHART_FOUNDATION_SUBTOPICS.upperLower,
-    jiaziCell
-      ? [jiaziCell]
-      : [
-          stemText ? ft({ "ก้าน": dayStem, "เนื้อหา": stemText }, "stemTrait") : null,
-          record?.elementText
-            ? ft({
-                "ธาตุ": record.elementLabel,
-                "เชี่ยงแซ": record.qiLabel,
-                "แก่น": qiKeyword ? ft({ "แก่น": qiKeyword }, "qiKeywordSuffix") : "",
-                "เนื้อหา": record.elementText,
-              }, "elementTrait")
-            : null,
-          temper === "balanced" && hasTemper
-            ? ft({ "เนื้อหา": temperText(dmElementTh, "balanced") }, "temperBalanced")
-            : null,
-        ],
-  );
+  // ── กล่อง 3: นิสัยจากราศีบน + ล่าง (ตาราง 60 กะจื่อ ย้ายไป NewData แล้ว) ──
+  const box3 = readingBox(CHART_FOUNDATION_SUBTOPICS.upperLower, [
+    stemText ? ft({ "ก้าน": dayStem, "เนื้อหา": stemText }, "stemTrait") : null,
+    record?.elementText
+      ? ft({
+          "ธาตุ": record.elementLabel,
+          "เชี่ยงแซ": record.qiLabel,
+          "แก่น": qiKeyword ? ft({ "แก่น": qiKeyword }, "qiKeywordSuffix") : "",
+          "เนื้อหา": record.elementText,
+        }, "elementTrait")
+      : null,
+    temper === "balanced" && hasTemper
+      ? ft({ "เนื้อหา": temperText(dmElementTh, "balanced") }, "temperBalanced")
+      : null,
+  ]);
 
   // ── กล่อง 4: ดิถี → การกระทำ(ถ่ายเท) → ผลลัพธ์(โชคลาภ) — อธิบายสายโซ่ + แต่ละหลักเป็นย่อหน้า ──
   const transfer = buildOutputTransferReading(calculatedState);

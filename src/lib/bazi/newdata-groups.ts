@@ -16,6 +16,7 @@ export type NewdataKeyKind =
   | "ganzhi" // กะจื่อ (บน+ล่าง) เช่น "甲午"
   | "element" // ธาตุ เช่น "น้ำ"
   | "group3" // กลุ่มซำเฮ้ง เช่น "พาหะ"
+  | "stemBand" // ราศีบน × กำลังดิถี เช่น "甲|over_strong" (50 ช่อง)
   | "pillar"; // เสา เช่น "ปี"
 
 export type NewdataGroup = {
@@ -135,6 +136,27 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "รายชื่ออาชีพ/ธุรกิจของแต่ละธาตุ — บทอาชีพหยิบตามธาตุที่ควร/ไม่ควรทำ (ตารางหาอาชีพ)",
     keyKind: "element",
     sourceFile: "อาชีพ 5 ธาตุ.txt",
+  },
+  {
+    key: "daymaster_strength",
+    label: "บท 1 · ดิถี/กำลัง (10 ราศีบน × 5 ดิถี)",
+    description: "นิสัยตามราศีบนหลักวัน × กำลังดิถี (50 ช่อง) — บท 1 กล่อง 'กำลังดิถี' (ซินแสกรอก)",
+    keyKind: "stemBand",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "zodiac_nisai",
+    label: "บท 1 · 12 นักษัตร (ราศีล่างหลักวัน)",
+    description: "นิสัยราย 12 นักษัตร (ราศีล่าง) — บท 1 กล่อง '12 นักษัตร'",
+    keyKind: "branch",
+    sourceFile: "นิสัย 12 นักษัตร.txt",
+  },
+  {
+    key: "ganzhi_nisai",
+    label: "บท 1 · 60 กะจื่อ (ราศีบน-ล่างหลักวัน)",
+    description: "นิสัยราย 60 กะจื่อ (ราศีบน+ล่างหลักวัน) — บท 1 กล่อง '60 กะจื่อ'",
+    keyKind: "ganzhi",
+    sourceFile: "ลักษณะนิสัย 60 แบบ.txt",
   },
 ] as const;
 

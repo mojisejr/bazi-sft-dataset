@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ActionButton } from "@/components/bazi/primitives/Action";
 import { SubstitutionRulesTable } from "@/components/bazi/reading/SubstitutionRulesTable";
 import { KnowledgeEditor } from "@/components/bazi/reading/KnowledgeEditor";
-import { CoreDataPanel } from "@/components/bazi/reading/CoreDataPanel";
 import type { TopicKnowledgeView } from "@/lib/bazi/knowledge/topic-knowledge-view";
 import {
   type SubstitutionRule,
@@ -37,13 +36,12 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
   // 2 โหมด: รายบท (chapter) vs ตารางตามดวง (condition) — แยกกันชัด หาง่าย
   // เริ่มที่ "chapter" เสมอเพื่อให้ render แรกตรงกับ SSR (กัน hydration mismatch)
   // แล้วค่อยอ่าน deep-link จาก URL หลัง mount (?tab=condition&table=..&key=..)
-  const [mode, setMode] = useState<"chapter" | "condition" | "newcore">("chapter");
+  const [mode, setMode] = useState<"chapter" | "condition">("chapter");
   const [focusEntityKey, setFocusEntityKey] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("tab") === "condition") setMode("condition");
-    else if (params.get("tab") === "newcore") setMode("newcore");
     const table = params.get("table");
     const key = params.get("key");
     if (table && key) setFocusEntityKey(`table|${table}|${key}`);
@@ -154,15 +152,6 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
       >
         🎴 ตารางคำทำนายตามดวง
       </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={mode === "newcore"}
-        className={`knowledge__tab${mode === "newcore" ? " knowledge__tab--active" : ""}`}
-        onClick={() => setMode("newcore")}
-      >
-        🧭 ข้อมูลหลักแบบใหม่
-      </button>
       <label className="knowledge__tab-token">
         <input
           type="password"
@@ -174,18 +163,6 @@ export function KnowledgeWorkspace({ topics, unavailable = false }: Props) {
       </label>
     </div>
   );
-
-  // โหมด "ข้อมูลหลักแบบใหม่" — ตารางอิสระ 3 ตาราง (แก้ + บันทึกออนไลน์)
-  if (mode === "newcore") {
-    return (
-      <div className="knowledge knowledge--single">
-        {tabBar}
-        <section className="surface knowledge__panel">
-          <CoreDataPanel adminToken={adminToken} />
-        </section>
-      </div>
-    );
-  }
 
   // โหมด "ตารางคำทำนายตามดวง" — ไม่ผูกกับบท เปิดตัวแก้ section=condition ตรง ๆ
   if (mode === "condition") {
