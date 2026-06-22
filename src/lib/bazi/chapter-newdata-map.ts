@@ -14,6 +14,7 @@ import {
   matchDaYunTransfer,
   matchDayMasterStrength,
   matchDithiTransfer,
+  matchHiddenTransfer,
   matchLoveBase,
   matchLoveChance,
   matchMerit,
@@ -47,6 +48,7 @@ type Resolver =
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
   | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" }
+  | { kind: "hiddenTransfer"; group: string }
   | { kind: "daYunTransfer"; group: string }
   | { kind: "merit"; group: string }
   | { kind: "loveBase"; group: string }
@@ -108,7 +110,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "dithiTransfer", group: "dithi_transfer", scope: "branches" },
       { kind: "trinity" },
     ],
-    [],
+    // พรในราศีแฝง — ดิถีถ่ายเทไปยังราศีแฝง(藏干)ของหลักยาม (reuse dithi_transfer) · interpretive
+    [{ kind: "hiddenTransfer", group: "dithi_transfer" }],
     [],
   ],
   // 6 bullets: [หลักปี] [หลักเดือน] [พ่อ] [แม่] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
@@ -131,10 +134,16 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [],
   ],
   // 4 bullets: [มิตรแท้] [ระวัง/ข้อเสนอ-มิตร] [ศัตรู] [ระวัง/ข้อเสนอ-ศัตรู]
+  // มิตรแท้ = ภาคีราศีล่าง + หลักวันเชี่ยงแซ(ความหมายดี) · ศัตรู = ไห่/เฮ้ง/ซำเฮ้ง + ผั่วไฉ่โข่ว · interpretive
   friends_foes: [
-    [{ kind: "branchPairs", group: "combine_branch" }],
+    [{ kind: "branchPairs", group: "combine_branch" }, { kind: "state", group: "shengxiang", pillar: "day" }],
     [],
-    [{ kind: "branchPairs", group: "harm_hai" }, { kind: "branchPairs", group: "harm_heng" }, { kind: "samHeng" }],
+    [
+      { kind: "branchPairs", group: "harm_hai" },
+      { kind: "branchPairs", group: "harm_heng" },
+      { kind: "samHeng" },
+      { kind: "phua" },
+    ],
     [],
   ],
   // 3 bullets: [ลักษณะหุ้นส่วน หลักวันราศีล่าง] [มีส่วนหา/รักษา/ยักยอกทรัพย์] [ควรมี/ไม่มี]
@@ -207,6 +216,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchPillarGanzhi(map, r.group, facts, r.pillar);
     case "dithiTransfer":
       return matchDithiTransfer(map, r.group, facts, r.scope ?? "all");
+    case "hiddenTransfer":
+      return matchHiddenTransfer(map, r.group, facts);
     case "daYunTransfer":
       return matchDaYunTransfer(map, r.group, facts);
     case "merit":

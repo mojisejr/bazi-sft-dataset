@@ -20,6 +20,7 @@ import {
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { meritBandFromScore, meritFavorElements } from "@/lib/bazi/constants/merit-table";
 import {
+  BRANCH_HIDDEN_STEMS,
   BRANCH_TO_ELEMENT,
   CONTROLS,
   GENERATES,
@@ -330,6 +331,28 @@ export function matchDithiTransfer(
       seen.add(key);
       out.push(toBlock(group, key, value, `เสา${p.position} ${kind}`));
     }
+  }
+  return out;
+}
+
+/**
+ * บท 5 · พรในราศีแฝง — ก้านดิถี (D) ถ่ายเทไปยัง "ราศีแฝง" (藏干) ของราศีล่างหลักยาม
+ * → lookup คีย์ "{D}|{ราศีแฝง}" ในกลุ่ม dithi_transfer (reuse) · คืนหลายก้อน (ดีดุปตามคีย์)
+ */
+export function matchHiddenTransfer(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const hour = facts.pillars.find((p) => p.position === "hour");
+  if (!hour) return [];
+  const hidden = BRANCH_HIDDEN_STEMS[hour.branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [];
+  const day = facts.dayMaster;
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  for (const h of hidden) {
+    const key = `${day}|${h}`;
+    if (seen.has(key)) continue;
+    const value = map[group]?.[key];
+    if (!value) continue;
+    seen.add(key);
+    out.push(toBlock(group, key, value, `ราศีแฝงหลักยาม ${h}`));
   }
   return out;
 }

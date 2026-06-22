@@ -123,6 +123,23 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[3].body).toContain("ใฝ่รู้ ชอบพัฒนาตัวเอง"); // เชี่ยงแซ (ราศีล่างเดือน) = แม่
   });
 
+  test("talent box2 → ราศีแฝง: 庚 ถ่ายเท ราศีแฝงหลักยาม 未(己丁乙)", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      // หลักยาม 癸未 → ราศีล่าง 未 ราศีแฝง = 己丁乙 → lookup 庚|乙
+      dithi_transfer: { "庚|乙": { text: "พรแฝงด้านการสร้างสรรค์", label: "庚 ถ่ายเท 乙" } },
+    };
+    const r = resolveChapterBoxes("talent", FACTS, map);
+    expect(r.boxes[2].body).toContain("พรแฝงด้านการสร้างสรรค์");
+    expect(r.boxes[2].body).toContain("ราศีแฝงหลักยาม 乙");
+  });
+
+  test("friends_foes box0 มิตรแท้ → ภาคีราศีล่าง + หลักวันเชี่ยงแซ(หมกยก)", () => {
+    const r = resolveChapterBoxes("friends_foes", FACTS, MAP);
+    expect(r.boxes[0].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคี 午未
+    expect(r.boxes[0].body).toContain("มีเสน่ห์ดึงดูด"); // หลักวันเชี่ยงแซ หมกยก
+  });
+
   test("turning_points → box0 = เชี่ยงแซตามวัยจร พร้อมป้ายอายุ", () => {
     const r = resolveChapterBoxes("turning_points", FACTS, MAP);
     expect(r.hasContent).toBe(true);
