@@ -22,10 +22,10 @@ const FACTS: ChartFacts = {
   dayMaster: "庚",
   strengthScore: -1.25, // ดวงอ่อน (band weak) — ตรงกับ ground truth 1988
   pillars: [
-    { position: "year", stem: "戊", branch: "辰", state: "เอี้ยง" },
-    { position: "month", stem: "丁", branch: "巳", state: "เชี่ยงแซ" },
-    { position: "day", stem: "庚", branch: "午", state: "หมกยก" },
-    { position: "hour", stem: "癸", branch: "未", state: "กวงตั่ว" },
+    { position: "year", stem: "戊", branch: "辰", state: "เอี้ยง", upperState: "ตี้อ๋วง" },
+    { position: "month", stem: "丁", branch: "巳", state: "เชี่ยงแซ", upperState: "กวงตั่ว" },
+    { position: "day", stem: "庚", branch: "午", state: "หมกยก", upperState: "เอี้ยง" },
+    { position: "hour", stem: "癸", branch: "未", state: "กวงตั่ว", upperState: "หมกยก" },
   ],
   daYun: [
     { startAge: 6, endAge: 15, stem: "丙", branch: "辰", isCurrent: false, upperState: "แป่", lowerState: "เอี้ยง" },
@@ -109,6 +109,14 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes).toHaveLength(5);
     expect(r.boxes[0].body).toContain("ความผูกพันแห่งความกลมเกลียว");
     expect(r.boxes[3].body).toBe(""); // สิ่งที่ควรระวัง (ชง/ไห่) — ดวงนี้ไม่มี
+  });
+
+  test("family → box2 พ่อ = เชี่ยงแซราศีบนหลักเดือน · box3 แม่ = ราศีล่างหลักเดือน", () => {
+    const r = resolveChapterBoxes("family", FACTS, MAP);
+    expect(r.boxes).toHaveLength(6);
+    expect(r.boxes[2].body).toContain("เรียนรู้สำเร็จการศึกษา"); // กวงตั่ว (ราศีบนเดือน) = พ่อ
+    expect(r.boxes[2].body).toContain("ราศีบนเสาmonth");
+    expect(r.boxes[3].body).toContain("ใฝ่รู้ ชอบพัฒนาตัวเอง"); // เชี่ยงแซ (ราศีล่างเดือน) = แม่
   });
 
   test("turning_points → box0 = เชี่ยงแซตามวัยจร พร้อมป้ายอายุ", () => {

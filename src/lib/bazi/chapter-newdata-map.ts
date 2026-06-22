@@ -34,7 +34,7 @@ import type { NewdataMap } from "@/lib/bazi/newdata-repository";
 
 /** ตัวดึง NewData 1 ชนิด (ไม่มี title — title มาจาก bullet ของ outline) */
 type Resolver =
-  | { kind: "state"; group: string; pillar: PillarPosition }
+  | { kind: "state"; group: string; pillar: PillarPosition; tier?: "upper" | "lower" }
   | { kind: "branchPairs"; group: string }
   | { kind: "stemPairs" }
   | { kind: "selfPunish" }
@@ -115,8 +115,9 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   family: [
     [{ kind: "state", group: "shengxiang", pillar: "year" }],
     [{ kind: "state", group: "shengxiang", pillar: "month" }],
-    [],
-    [],
+    // พ่อ = เชี่ยงแซราศีบนหลักเดือน · แม่ = เชี่ยงแซราศีล่างหลักเดือน (reuse shengxiang, รอซินแสตรวจ)
+    [{ kind: "state", group: "shengxiang", pillar: "month", tier: "upper" }],
+    [{ kind: "state", group: "shengxiang", pillar: "month", tier: "lower" }],
     [{ kind: "branchPairs", group: "harm_heng" }],
     [],
   ],
@@ -180,7 +181,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
 function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
   switch (r.kind) {
     case "state": {
-      const block = matchPillarState(map, r.group, facts, r.pillar);
+      const block = matchPillarState(map, r.group, facts, r.pillar, r.tier ?? "lower");
       return block ? [block] : [];
     }
     case "branchPairs":

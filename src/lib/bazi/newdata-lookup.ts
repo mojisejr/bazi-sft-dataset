@@ -46,6 +46,8 @@ export type PillarFact = {
   branch: string;
   /** สถานะ 12 เชี่ยงแซ ของราศีล่างเทียบดิถี (ไทย) เช่น "หมกยก" */
   state: string | null;
+  /** สถานะ 12 เชี่ยงแซ ของราศีบน (ก้านเสา) — ใช้บท 6 (พ่อ = ราศีบนหลักเดือน) */
+  upperState: string | null;
 };
 
 export type LuckFact = {
@@ -100,6 +102,7 @@ export function extractChartFacts(state: CalculatedStateValue, gender?: string):
       stem: p.stem.normalize("NFC"),
       branch: p.branch.normalize("NFC"),
       state: p.lowerStagePrimary ?? p.lookingStage ?? null,
+      upperState: p.upperStagePrimary ?? p.upperStageDisplay ?? null,
     };
   });
   const daYun: LuckFact[] = (state.daYun ?? []).map((d) => ({
@@ -419,16 +422,22 @@ export function matchLoveChance(map: NewdataMap, group: string, facts: ChartFact
   return [toBlock(group, key, value, g === "female" ? "เพศหญิง" : "เพศชาย")];
 }
 
-/** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */
+/**
+ * สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style)
+ * tier "lower" = ราศีล่าง (ค่าเริ่มต้น) · "upper" = ราศีบน (ก้านเสา) — ใช้บท 6 พ่อ = ราศีบนหลักเดือน
+ */
 export function matchPillarState(
   map: NewdataMap,
   group: string,
   facts: ChartFacts,
   position: PillarPosition,
+  tier: "upper" | "lower" = "lower",
 ): NewdataBlock | null {
   const pillar = facts.pillars.find((p) => p.position === position);
-  if (!pillar?.state) return null;
-  const value = map[group]?.[pillar.state];
+  const state = tier === "upper" ? pillar?.upperState : pillar?.state;
+  if (!state) return null;
+  const value = map[group]?.[state];
   if (!value) return null;
-  return toBlock(group, pillar.state, value, `เสา${position}`);
+  const ctx = tier === "upper" ? `ราศีบนเสา${position}` : `เสา${position}`;
+  return toBlock(group, state, value, ctx);
 }
