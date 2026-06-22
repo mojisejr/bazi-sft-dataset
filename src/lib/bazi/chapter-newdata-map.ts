@@ -88,10 +88,16 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [],
     [],
   ],
-  // 4 bullets: [พรสวรรค์] [พรแสวง] [พรในราศีแฝง] [ข้อเสนอแนะ]
+  // 4 bullets: [พรสวรรค์: ถ่ายเทราศีบน] [พรแสวง: ถ่ายเทราศีล่าง] [พรในราศีแฝง] [ข้อเสนอแนะ]
   talent: [
-    [{ kind: "state", group: "shengxiang", pillar: "day" }],
-    [{ kind: "trinity" }],
+    [
+      { kind: "dithiTransfer", group: "dithi_transfer", scope: "stems" },
+      { kind: "state", group: "shengxiang", pillar: "day" },
+    ],
+    [
+      { kind: "dithiTransfer", group: "dithi_transfer", scope: "branches" },
+      { kind: "trinity" },
+    ],
     [],
     [],
   ],
