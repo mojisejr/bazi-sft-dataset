@@ -117,11 +117,11 @@ export type RoleReading = { perspective: string; stageName: string; narrative: s
 export type PillarPos = "hour" | "day" | "month" | "year";
 
 /**
- * หนึ่งมิติความเข้ากัน (กราฟแท่ง 4 แท่ง) — คะแนนจากตารางความรัก 60×60
+ * หนึ่งมิติความเข้ากัน (กราฟแท่ง 5 แท่ง) — คะแนนจากตารางความรัก 60×60
  * โดยจับคู่เสาของเรา (ourPos) กับเสาของเขา (partnerPos) ที่ต่างกันต่อมิติ.
  */
 export type LoveFacet = {
-  key: "intimacy" | "kalyanamitra" | "lifePartner" | "karmic";
+  key: "intimacy" | "kalyanamitra" | "lifePartner" | "karmic" | "family";
   /** ชื่อมิติ (ไทย). */
   label: string;
   /** คู่เสาแบบอ่านง่าย เช่น "ยามเรา × วันเขา". */

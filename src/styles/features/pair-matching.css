@@ -449,10 +449,10 @@
   display: none;
 }
 
-/* ── กราฟแท่งความเข้ากัน 4 มิติ ── */
+/* ── กราฟแท่งความเข้ากัน 5 มิติ ── */
 .pair-compat-bars {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.75rem;
   padding: 0.5rem 0.25rem 0;
 }

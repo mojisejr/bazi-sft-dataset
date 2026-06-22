@@ -253,10 +253,11 @@ export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonR
 }
 
 /**
- * 4 มิติความเข้ากันด้านความรัก (กราฟแท่ง) — ใช้ตารางความรัก 60×60 ที่มีอยู่
+ * 5 มิติความเข้ากันด้านความรัก (กราฟแท่ง) — ใช้ตารางความรัก 60×60 ที่มีอยู่
  * โดยจับคู่ "เสาของเรา × เสาของเขา" ต่างกันต่อมิติ (ทิศทางเดียวตามที่ซินแสกำหนด):
  *   ยามเรา×วันเขา = เสน่หา/ความใกล้ชิด · วันเรา×วันเขา = กัลยาณมิตร
  *   วันเรา×ปีเขา = คู่รักคู่ชีวิต · ปีเรา×ปีเขา = เจ้ากรรม/เจ้าบุญ
+ *   เดือนเรา×วันเขา = เข้ากับครอบครัวเรา (เสาเดือน = ครอบครัว/พ่อแม่)
  */
 const LOVE_FACET_SPECS: ReadonlyArray<{
   key: LoveFacet["key"];
@@ -267,6 +268,7 @@ const LOVE_FACET_SPECS: ReadonlyArray<{
 }> = [
   { key: "intimacy", label: "เสน่หา / ความใกล้ชิด", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
   { key: "kalyanamitra", label: "กัลยาณมิตร เข้าอกเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
+  { key: "family", label: "เข้ากับครอบครัวเรา", pairingLabel: "เดือนเรา × วันเขา", ourPos: "month", partnerPos: "day" },
   { key: "lifePartner", label: "คู่สร้างคู่สม คู่รักคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year" },
   { key: "karmic", label: "เจ้ากรรมนายเวร / เจ้าบุญนายคุณ", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
 ];
