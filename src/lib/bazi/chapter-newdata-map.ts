@@ -11,6 +11,7 @@ import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
 import {
   matchBranchPairs,
   matchCareer,
+  matchDaYunTransfer,
   matchDayMasterStrength,
   matchDithiTransfer,
   matchPhua,
@@ -41,7 +42,8 @@ type Resolver =
   | { kind: "dayMasterStrength"; group: string }
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
-  | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" };
+  | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" }
+  | { kind: "daYunTransfer"; group: string };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -141,7 +143,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   ],
   // 2 bullets: [วัยจรแต่ละช่วง] [ช่วงดี/ช่วงระวัง]
   turning_points: [
-    [{ kind: "daYun" }],
+    [{ kind: "daYun" }, { kind: "daYunTransfer", group: "dithi_transfer" }],
     [],
   ],
   // 3 bullets: [โรคจาก เจ๊า/ผั่ว/ซำเฮ้ง/จื่อเฮ้ง] [โรคจากธาตุมาก/น้อย] [ข้อเสนอแนะดูแล]
@@ -189,6 +191,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchPillarGanzhi(map, r.group, facts, r.pillar);
     case "dithiTransfer":
       return matchDithiTransfer(map, r.group, facts, r.scope ?? "all");
+    case "daYunTransfer":
+      return matchDaYunTransfer(map, r.group, facts);
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {

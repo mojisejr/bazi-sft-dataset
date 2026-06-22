@@ -311,6 +311,23 @@ export function matchDithiTransfer(
   return out;
 }
 
+/**
+ * ดิถีถ่ายเทตามวัยจร — ก้านดิถี (D) ถ่ายเทไปยังราศีบน/ล่างของแต่ละวัยจร → "{D}|{ปลายทาง}"
+ * บท 12: คำอ่านการกระทำในแต่ละช่วงวัย (พร้อมป้ายอายุ + บอกช่วงปัจจุบัน)
+ */
+export function matchDaYunTransfer(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const day = facts.dayMaster;
+  const out: NewdataBlock[] = [];
+  for (const d of facts.daYun) {
+    const ageCtx = `อายุ ${d.startAge}-${d.endAge}${d.isCurrent ? " (ปัจจุบัน)" : ""}`;
+    for (const ch of [d.stem, d.branch]) {
+      const value = map[group]?.[`${day}|${ch}`];
+      if (value) out.push(toBlock(group, `${day}|${ch}`, value, ageCtx));
+    }
+  }
+  return out;
+}
+
 /** สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style) */
 export function matchPillarState(
   map: NewdataMap,
