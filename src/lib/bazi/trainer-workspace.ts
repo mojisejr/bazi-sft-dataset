@@ -383,6 +383,17 @@ export function normalizeErrorMessage(error: unknown) {
   return "ยังไม่สามารถคำนวณดวงได้ในตอนนี้";
 }
 
+/** กรอกวัน-เวลาเกิดครบทุกช่องหรือยัง (กันส่ง payload ที่ยังว่าง / กันกดทำนายตอนข้อมูลไม่ครบ). */
+export function isFormComplete(formState: FormState): boolean {
+  return Boolean(
+    formState.birthDay
+    && formState.birthMonth
+    && formState.birthYearBe
+    && formState.birthHour
+    && formState.birthMinute,
+  );
+}
+
 export function buildPayload(formState: FormState): RawInputValue {
   return {
     birthDate: buildBirthDateValue(formState),

@@ -8,6 +8,7 @@ import {
   BIRTH_MINUTE_OPTIONS,
   BUDDHIST_ERA_YEAR_OPTIONS,
   formatThaiBirthMoment,
+  isFormComplete,
   THAI_MONTH_OPTIONS,
   getBirthDayOptions,
   type FormState,
@@ -38,6 +39,7 @@ export function BirthForm({
   onReset,
 }: BirthFormProps) {
   const dayOptions = getBirthDayOptions(formState.birthMonth, formState.birthYearBe);
+  const complete = isFormComplete(formState);
 
   function getGenderCopy(value: string | undefined) {
     if (value === "female") {
@@ -202,10 +204,13 @@ export function BirthForm({
           <ActionButton
             tone="primary"
             type="submit"
-            disabled={submissionState === "submitting"}
+            disabled={submissionState === "submitting" || !complete}
           >
             {submissionState === "submitting" ? "กำลังคำนวณ..." : "คำนวณภาพรวมดวง"}
           </ActionButton>
+          {!complete ? (
+            <p className="field-hint">กรอกวัน-เดือน-ปี และเวลาเกิดให้ครบก่อนจึงจะคำนวณได้</p>
+          ) : null}
         </div>
 
         <p className="form-footnote">

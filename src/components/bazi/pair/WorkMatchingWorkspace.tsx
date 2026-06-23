@@ -14,6 +14,7 @@ import {
   applyFormFieldChange,
   buildPayload,
   createDefaultFormState,
+  isFormComplete,
   type FormState,
 } from "@/lib/bazi/trainer-workspace";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
@@ -33,11 +34,6 @@ type ModalKind = "chart" | "sising" | null;
 
 function candidateName(names: string[], index: number): string {
   return names[index]?.trim() || `ผู้สมัครคนที่ ${index + 1}`;
-}
-
-/** กรอกวัน-เวลาครบทุกช่องหรือยัง (กันส่ง payload ที่ยังว่าง). */
-function isFormComplete(f: FormState): boolean {
-  return Boolean(f.birthDay && f.birthMonth && f.birthYearBe && f.birthHour && f.birthMinute);
 }
 
 export function WorkMatchingWorkspace() {
@@ -171,6 +167,9 @@ export function WorkMatchingWorkspace() {
 
   const modalTitle = modal === "chart" ? "ผังธาตุทุกคน" : modal === "sising" ? "12 สี่ซิ้ง (ดาวประจำดวง)" : "";
 
+  // กดเปรียบเทียบได้เมื่อ "เรา" กรอกครบ + มีผู้ร่วมงานที่กรอกครบอย่างน้อย 1 คน
+  const canCompare = isFormComplete(selfForm) && candForms.some(isFormComplete);
+
   return (
     <div className="pair-shell">
       <Surface as="section" inset>
@@ -210,9 +209,12 @@ export function WorkMatchingWorkspace() {
           {candForms.length < MAX_CANDIDATES ? (
             <ActionButton type="button" onClick={addCandidate}>+ เพิ่มผู้ร่วมงาน</ActionButton>
           ) : null}
-          <ActionButton tone="primary" type="button" disabled={submitting} onClick={onCompare}>
+          <ActionButton tone="primary" type="button" disabled={submitting || !canCompare} onClick={onCompare}>
             {submitting ? "กำลังคำนวณ..." : "เปรียบเทียบการงาน"}
           </ActionButton>
+          {!canCompare ? (
+            <span className="pair-hint">กรอกวัน-เวลาเกิดของ “เรา” และผู้ร่วมงานอย่างน้อย 1 คนให้ครบก่อน</span>
+          ) : null}
           {error ? <span className="pair-error">{error}</span> : null}
         </div>
       </Surface>

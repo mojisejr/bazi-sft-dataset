@@ -401,6 +401,11 @@
   color: var(--danger, #cb2c2a);
 }
 
+.pair-hint {
+  color: var(--text-muted, #6b7280);
+  font-size: 0.85rem;
+}
+
 /* ── เทียบสี่เสา 2 คน (บนหน้า) ── */
 .pair-pillars-compare {
   display: grid;

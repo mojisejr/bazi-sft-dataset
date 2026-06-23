@@ -541,6 +541,14 @@ export function ReadingPrintDocument({
         <AppendixSheets identity={identity} relationshipLines={relationshipLines} />
       ) : null}
 
+      {/* ── โค้ดส่วนลด Mumate VIP (ก่อนปกหลัง) ── */}
+      <ImageSheet
+        src="/ylc/mumate-vip.png"
+        alt="ชวนเพื่อนรับสิทธิ์ Mumate VIP — REFERRAL CODE"
+        label="โค้ด Mumate VIP"
+        editLayout={editLayout}
+      />
+
       {/* ── ปกหลัง (QR code / LINE) ── */}
       <ImageSheet
         src="/ylc/back-cover.jpg"

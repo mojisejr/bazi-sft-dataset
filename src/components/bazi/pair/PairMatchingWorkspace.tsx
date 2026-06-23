@@ -21,6 +21,7 @@ import {
   applyFormFieldChange,
   buildPayload,
   createDefaultFormState,
+  isFormComplete,
   type FormState,
 } from "@/lib/bazi/trainer-workspace";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
@@ -91,6 +92,8 @@ export function PairMatchingWorkspace() {
     }
   }, [formA, formB]);
 
+  const canCompare = isFormComplete(formA) && isFormComplete(formB);
+
   const pair = result ? result.comparison.match[DOMAIN] : null;
 
   const onRephrase = useCallback(async () => {
@@ -150,9 +153,12 @@ export function PairMatchingWorkspace() {
           <PersonInputs label="เขา" form={formB} onChange={onChangeB} />
         </div>
         <div className="pair-actions" style={{ marginTop: "1rem" }}>
-          <ActionButton tone="primary" type="button" disabled={submitting} onClick={onCompare}>
+          <ActionButton tone="primary" type="button" disabled={submitting || !canCompare} onClick={onCompare}>
             {submitting ? "กำลังคำนวณ..." : "เปรียบเทียบดวง"}
           </ActionButton>
+          {!canCompare ? (
+            <span className="pair-hint">กรอกวัน-เวลาเกิดของทั้งสองฝ่ายให้ครบก่อนจึงจะเปรียบเทียบได้</span>
+          ) : null}
           {error ? <span className="pair-error">{error}</span> : null}
         </div>
       </Surface>
