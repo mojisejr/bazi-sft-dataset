@@ -88,6 +88,30 @@
   object-fit: cover;
 }
 
+/* หน้าโค้ด Mumate VIP: เรฟโค้ดแก้ได้ทับช่องโค้ดในรูป (รูปอัตราส่วน ≈ A4 จัด % ได้ตรง) */
+.ylc-sheet--mumate {
+  position: relative;
+}
+.ylc-mumate-code {
+  position: absolute;
+  left: 57%;
+  top: 58.4%;
+  width: 29%;
+  height: 3.7%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* กล่องขาวทับโค้ดที่ฝังในรูป (ภายในพิลล์สีขาวอยู่แล้ว → กลืนเนียน) */
+  background: #ffffff;
+  color: #111111;
+  font-weight: 800;
+  font-size: 22pt;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 /* หน้าบท: บล็อกเนื้อหาที่ไหลข้ามหน้า A4 ได้ (paged.js แบ่งให้) */
 .ylc-sheet--content {
   page: ylc-text;

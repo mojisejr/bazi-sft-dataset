@@ -37,6 +37,8 @@ type ReadingPrintDocumentProps = {
   relationshipLines?: RelationshipLineRow[] | null;
   /** ชื่อเจ้าของดวง (ถ้ามี) — ไม่มีก็ใช้วันเกิดแทนใต้หัวเรื่องบท */
   clientName?: string | null;
+  /** เรฟโค้ด Mumate VIP สำหรับหน้าก่อนปกหลัง (เว้นว่าง = ใช้ค่าเริ่มต้น MM-A7K2) */
+  referralCode?: string | null;
   /**
    * โหมดแก้ (edit): render เนื้อบทเป็น editable แทน markdown read-only
    * ถ้ามี → หนึ่งแผ่นต่อบท (ไม่ split ตาม [[pagebreak]] — ตัวแบ่งหน้าเป็น marker ใน editor)
@@ -67,6 +69,32 @@ function ImageSheet({ src, alt, label, editLayout }: { src: string; alt: string;
 }
 
 const KICKER = "ถอดรหัสดวงชะตา";
+
+/** เรฟโค้ด Mumate VIP เริ่มต้น (ตรงกับที่ฝังในรูป) — ซินแสแก้ต่อคนได้ */
+export const DEFAULT_REFERRAL_CODE = "MM-A7K2";
+
+/**
+ * หน้าโค้ด Mumate VIP (ก่อนปกหลัง) — รูปเต็มหน้า + ทับ "เรฟโค้ด" ที่แก้ได้ลงบนช่องโค้ด
+ * (กล่องสีขาวทับโค้ดที่ฝังในรูป แล้วพิมพ์โค้ดใหม่ลงไป — จัดตำแหน่งด้วย % ใน ylc-pdf.css)
+ */
+function MumateVipSheet({ code, editLayout }: { code?: string | null; editLayout?: boolean }) {
+  const shown = (code ?? "").trim() || DEFAULT_REFERRAL_CODE;
+  if (editLayout) {
+    return (
+      <section className="ylc-sheet ylc-sheet--imgph" aria-label="โค้ด Mumate VIP">
+        <span className="ylc-imgph__tag">รูปเต็มหน้า</span>
+        <span className="ylc-imgph__label">โค้ด Mumate VIP · เรฟโค้ด {shown}</span>
+      </section>
+    );
+  }
+  return (
+    <section className="ylc-sheet ylc-sheet--image ylc-sheet--mumate">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/ylc/mumate-vip.png" alt="ชวนเพื่อนรับสิทธิ์ Mumate VIP — REFERRAL CODE" />
+      <div className="ylc-mumate-code">{shown}</div>
+    </section>
+  );
+}
 
 /** marker บรรทัดเดี่ยวสั่งขึ้นหน้าใหม่ (ซินแสแทรกในข้อความ) — ต้องตรงกับ reading-docx.ts */
 const PAGEBREAK_MARKER = "[[pagebreak]]";
@@ -478,6 +506,7 @@ export function ReadingPrintDocument({
   renderChapterBody,
   renderAppendix,
   editLayout,
+  referralCode,
 }: ReadingPrintDocumentProps) {
   const identity = clientName?.trim() || `เกิด ${thaiDate(rawInput.birthDate)}`;
 
@@ -541,13 +570,8 @@ export function ReadingPrintDocument({
         <AppendixSheets identity={identity} relationshipLines={relationshipLines} />
       ) : null}
 
-      {/* ── โค้ดส่วนลด Mumate VIP (ก่อนปกหลัง) ── */}
-      <ImageSheet
-        src="/ylc/mumate-vip.png"
-        alt="ชวนเพื่อนรับสิทธิ์ Mumate VIP — REFERRAL CODE"
-        label="โค้ด Mumate VIP"
-        editLayout={editLayout}
-      />
+      {/* ── โค้ดส่วนลด Mumate VIP (ก่อนปกหลัง) — เรฟโค้ดแก้ได้ต่อคน ── */}
+      <MumateVipSheet code={referralCode} editLayout={editLayout} />
 
       {/* ── ปกหลัง (QR code / LINE) ── */}
       <ImageSheet

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
+  DEFAULT_REFERRAL_CODE,
   ReadingPrintDocument,
   type PrintChapter,
 } from "@/components/bazi/reading/ReadingPrintDocument";
@@ -99,6 +100,7 @@ export function NewdataReadingWorkspace() {
   const [gender, setGender] = useState<"male" | "female">("male");
   const [province, setProvince] = useState("กรุงเทพมหานคร");
   const [clientName, setClientName] = useState("");
+  const [referralCode, setReferralCode] = useState(DEFAULT_REFERRAL_CODE);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -430,6 +432,15 @@ export function NewdataReadingWorkspace() {
           <input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="(ไม่บังคับ)" />
         </label>
         <label>
+          เรฟโค้ด Mumate VIP
+          <input
+            value={referralCode}
+            onChange={(e) => setReferralCode(e.target.value)}
+            placeholder={DEFAULT_REFERRAL_CODE}
+            title="โค้ดชวนเพื่อน (แก้ต่อคนได้) — แสดงบนหน้าก่อนปกหลังใน PDF"
+          />
+        </label>
+        <label>
           วันเกิด
           <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required />
         </label>
@@ -713,6 +724,7 @@ export function NewdataReadingWorkspace() {
                         calculatedState={data.calculatedState}
                         chapters={printChapters}
                         clientName={clientName || null}
+                        referralCode={referralCode}
                       />
                     </PagedPreview>
                   )}

@@ -9,6 +9,7 @@ import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFo
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
+  DEFAULT_REFERRAL_CODE,
   ReadingPrintDocument,
   type PrintChapter,
 } from "@/components/bazi/reading/ReadingPrintDocument";
@@ -166,6 +167,7 @@ export function ReadingPathWorkspace({
 
   // ประวัติการดูดวง (บันทึกลง DB) — เก็บ sessionId ไว้เพื่อให้บันทึกครั้งถัดไปเป็นการ "อัปเดต" ไม่ใช่สร้างใหม่
   const [label, setLabel] = useState("");
+  const [referralCode, setReferralCode] = useState(DEFAULT_REFERRAL_CODE);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -999,6 +1001,17 @@ export function ReadingPathWorkspace({
                 onChange={(event) => setLabel(event.target.value)}
               />
             </label>
+            <label className="field field--compact">
+              <span>เรฟโค้ด Mumate VIP (แก้ได้ต่อคน)</span>
+              <input
+                type="text"
+                autoComplete="off"
+                placeholder={DEFAULT_REFERRAL_CODE}
+                title="โค้ดชวนเพื่อน — แสดงบนหน้าก่อนปกหลังใน PDF"
+                value={referralCode}
+                onChange={(event) => setReferralCode(event.target.value)}
+              />
+            </label>
             <ActionButton
               tone="primary"
               type="button"
@@ -1158,6 +1171,7 @@ export function ReadingPathWorkspace({
                         rawInput={rawInput}
                         calculatedState={calculatedState}
                         chapters={printChapters}
+                        referralCode={referralCode}
                       />
                     </PagedPreview>
                   )}
