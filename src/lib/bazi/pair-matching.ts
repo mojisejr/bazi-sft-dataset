@@ -255,9 +255,9 @@ export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonR
 /**
  * 5 มิติความเข้ากันด้านความรัก (กราฟแท่ง) — ใช้ตารางความรัก 60×60 ที่มีอยู่
  * โดยจับคู่ "เสาของเรา × เสาของเขา" ต่างกันต่อมิติ (ทิศทางเดียวตามที่ซินแสกำหนด):
- *   ยามเรา×วันเขา = เสน่หา/ความใกล้ชิด · วันเรา×วันเขา = กัลยาณมิตร
- *   วันเรา×ปีเขา = คู่รักคู่ชีวิต · ปีเรา×ปีเขา = เจ้ากรรม/เจ้าบุญ
- *   เดือนเรา×วันเขา = เข้ากับครอบครัวเรา (เสาเดือน = ครอบครัว/พ่อแม่)
+ *   วันเรา×วันเขา = มิตรภาพ/ความเข้าใจ · ยามเรา×วันเขา = ความใกล้ชิด/เสน่หาทางกาย
+ *   วันเรา×ปีเขา = วาสนาคู่ชีวิต · ปีเรา×ปีเขา = คู่บุญ/คู่กรรม
+ *   เดือนเรา×วันเขา = ความเข้ากันของครอบครัว (เสาเดือน = ครอบครัว/พ่อแม่)
  */
 const LOVE_FACET_SPECS: ReadonlyArray<{
   key: LoveFacet["key"];
@@ -266,11 +266,11 @@ const LOVE_FACET_SPECS: ReadonlyArray<{
   ourPos: PillarPos;
   partnerPos: PillarPos;
 }> = [
-  { key: "intimacy", label: "เสน่หา / ความใกล้ชิด", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
-  { key: "kalyanamitra", label: "กัลยาณมิตร เข้าอกเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
-  { key: "family", label: "เข้ากับครอบครัวเรา", pairingLabel: "เดือนเรา × วันเขา", ourPos: "month", partnerPos: "day" },
-  { key: "lifePartner", label: "คู่สร้างคู่สม คู่รักคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year" },
-  { key: "karmic", label: "เจ้ากรรมนายเวร / เจ้าบุญนายคุณ", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
+  { key: "kalyanamitra", label: "🤝 มิตรภาพ / ความเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
+  { key: "intimacy", label: "❤️ ความใกล้ชิด / เสน่หาทางกาย", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
+  { key: "family", label: "🏡 ความเข้ากันของครอบครัว", pairingLabel: "เดือนเรา × วันเขา", ourPos: "month", partnerPos: "day" },
+  { key: "lifePartner", label: "💍 วาสนาการเป็นคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year" },
+  { key: "karmic", label: "☯️ คู่บุญ / คู่กรรม", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
 ];
 
 /** คำนวณ 4 มิติความเข้ากันจากสี่เสาของสองคน (a = เรา, b = เขา). */
