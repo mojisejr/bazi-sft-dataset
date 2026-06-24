@@ -109,6 +109,29 @@ export function clearCorrection(
   return next;
 }
 
+/**
+ * ย้ายคำแก้ทั้งหมดจาก chart signature เดิม → ใหม่ (ใช้ตอน "แก้เพศ" ของดวงเดิม)
+ * เพศเปลี่ยน → chartSignature เปลี่ยน → ถ้าไม่ย้าย คำที่แก้มือจะกลายเป็นกำพร้า (ไม่ exact match)
+ * ที่นี่ re-key เฉพาะ signature ให้คำเดิมยังเป็น override บนดวงเพศใหม่ (เนื้อหาเดิม — ผู้ใช้ค่อยตรวจวัยจรใหม่เอง)
+ */
+export function migrateCorrectionsSignature(
+  store: CorrectionStore,
+  oldSignature: string,
+  newSignature: string,
+): CorrectionStore {
+  if (oldSignature === newSignature) return store;
+  const next: CorrectionStore = {};
+  for (const [topicId, list] of Object.entries(store)) {
+    next[topicId] = list.map((item) =>
+      item.chartSignature === oldSignature
+        ? { ...item, chartSignature: newSignature }
+        : item,
+    );
+  }
+  persist(next);
+  return next;
+}
+
 export type CorrectionMatch = {
   /** คำแก้ของดวงนี้เป๊ะ (chartSignature ตรง) — ใช้ override 100% */
   exact: SinsaeCorrection | null;

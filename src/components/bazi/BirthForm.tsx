@@ -26,6 +26,10 @@ type BirthFormProps = {
   onFieldChange: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   onReset: () => void;
+  /** แก้เพศของดวงที่ผูกแล้ว → คำนวณวัยจรใหม่ (คงคำอ่านที่แก้ไว้) — ไม่ส่ง = ซ่อนตัวแก้เพศ */
+  onEditGender?: (gender: string) => void;
+  /** กำลังคำนวณดวงใหม่หลังแก้เพศ */
+  editingGender?: boolean;
 };
 
 export function BirthForm({
@@ -37,6 +41,8 @@ export function BirthForm({
   onFieldChange,
   onSubmit,
   onReset,
+  onEditGender,
+  editingGender = false,
 }: BirthFormProps) {
   const dayOptions = getBirthDayOptions(formState.birthMonth, formState.birthYearBe);
   const complete = isFormComplete(formState);
@@ -67,7 +73,25 @@ export function BirthForm({
           </div>
           <div className="case-rail__row">
             <dt>เพศ</dt>
-            <dd>{getGenderCopy(submittedInput?.gender)}</dd>
+            <dd>
+              {onEditGender ? (
+                <select
+                  className="case-rail__gender-select"
+                  value={submittedInput?.gender ?? "female"}
+                  disabled={editingGender}
+                  aria-label="แก้เพศ (คำนวณวัยจรใหม่)"
+                  title="เปลี่ยนเพศจะคำนวณทิศ/อายุเริ่มวัยจรใหม่ทั้งดวง"
+                  onChange={(event) => onEditGender(event.target.value)}
+                >
+                  <option value="female">หญิง</option>
+                  <option value="male">ชาย</option>
+                  <option value="other">อื่นๆ</option>
+                </select>
+              ) : (
+                getGenderCopy(submittedInput?.gender)
+              )}
+              {editingGender ? <span className="case-rail__gender-busy"> · กำลังคำนวณวัยจรใหม่…</span> : null}
+            </dd>
           </div>
         </dl>
 

@@ -28,6 +28,7 @@ import {
   chartSignatureOf,
   clearCorrection,
   loadCorrections,
+  migrateCorrectionsSignature,
   readingFingerprint,
   resolveCorrection,
   saveCorrection,
@@ -594,6 +595,9 @@ export function ReadingPathWorkspace({
   const [showPreview, setShowPreview] = useState(false);
   // โหมดแก้ข้อความใน preview (WYSIWYG TipTap) ↔ ดูหน้าจริง (paged.js)
   const [editMode, setEditMode] = useState(false);
+  // แก้เพศของดวงที่ผูกแล้ว: คำนวณวัยจรใหม่ระหว่างทาง + แถบเตือนให้ตรวจบทที่อิงวัยจร
+  const [editingGender, setEditingGender] = useState(false);
+  const [genderRecalcNote, setGenderRecalcNote] = useState<string | null>(null);
 
   // ดาวน์โหลดรายงาน .docx — แยก 2 ฉบับ:
   //   "engine" = ผล engine ล้วนทุกบท (ครบ-ไม่ตัด ตามคำกำชับซินแซ)
@@ -907,6 +911,50 @@ export function ReadingPathWorkspace({
     }
   }
 
+  // แก้เพศของดวงที่ผูกแล้ว — ทิศ/อายุเริ่มวัยจร (大運) ขึ้นกับเพศ → คำนวณดวงใหม่ทั้งชุด
+  // เก็บคำที่แก้มือไว้ (ย้าย signature คำแก้ซินแสตามดวงเพศใหม่) แล้วเตือนให้ตรวจบทที่อิงวัยจร
+  async function handleEditGender(nextGender: string) {
+    if (!rawInput || editingGender || nextGender === rawInput.gender) {
+      return;
+    }
+    const prevGender = rawInput.gender;
+    const oldSignature = chartSignatureOf(rawInput);
+    const nextInput: RawInputValue = { ...rawInput, gender: nextGender };
+    const newSignature = chartSignatureOf(nextInput);
+
+    setEditingGender(true);
+    setCalcError(null);
+    try {
+      const response = await fetch("/api/bazi/calculate", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(nextInput),
+      });
+      const body = (await response.json()) as { calculatedState?: unknown; error?: string };
+      if (!response.ok) {
+        throw new Error(body.error ?? "ยังไม่สามารถคำนวณดวงได้ในตอนนี้");
+      }
+      const parsedState = CalculatedStateSchema.parse(body.calculatedState);
+
+      // ย้ายคำแก้ซินแสไปดวงเพศใหม่ก่อน setRawInput (correctionFor ใช้ signature ใหม่)
+      setCorrections((current) => migrateCorrectionsSignature(current, oldSignature, newSignature));
+      setRawInput(nextInput);
+      setCalculatedState(parsedState);
+      setFormState((current) => applyFormFieldChange(current, "gender", nextGender));
+      // คำนวณ engine ทุกบทใหม่ตามวัยจรใหม่ — คำที่ซินแสแก้ไว้ override ทับเหมือนเดิม
+      void runAllEngine(nextInput, parsedState);
+      setGenderRecalcNote(
+        `คำนวณวัยจรใหม่ตามเพศ "${nextGender === "male" ? "ชาย" : nextGender === "female" ? "หญิง" : "อื่นๆ"}" แล้ว ` +
+          `(เดิม ${prevGender === "male" ? "ชาย" : "หญิง"}) — คำอ่านที่แก้ไว้ยังเป็นของวัยจรเดิม ` +
+          `กรุณาตรวจบทจุดเปลี่ยน/สุขภาพ/คู่ครอง ให้ตรงกับวัยจรใหม่`,
+      );
+    } catch (error) {
+      setCalcError(normalizeErrorMessage(error));
+    } finally {
+      setEditingGender(false);
+    }
+  }
+
   const isReady = Boolean(calculatedState && rawInput);
   // Local Claude (anthropic) ไม่ต้องกรอก key จริง → ใช้ "local" แทน เพื่อให้ปุ่ม/รายบททำงานได้
   const localClaudeMode = provider === "anthropic";
@@ -981,7 +1029,17 @@ export function ReadingPathWorkspace({
           onFieldChange={handleFieldChange}
           onSubmit={handleSubmit}
           onReset={handleReset}
+          onEditGender={isReady ? handleEditGender : undefined}
+          editingGender={editingGender}
         />
+        {genderRecalcNote && (
+          <div className="reading-path__gender-note" role="status">
+            <span>⚠️ {genderRecalcNote}</span>
+            <button type="button" onClick={() => setGenderRecalcNote(null)}>
+              เข้าใจแล้ว
+            </button>
+          </div>
+        )}
         {calcError && <p className="topic-card__error" role="alert">{calcError}</p>}
       </section>
 
