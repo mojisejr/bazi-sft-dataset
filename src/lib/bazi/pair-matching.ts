@@ -266,8 +266,8 @@ const LOVE_FACET_SPECS: ReadonlyArray<{
   ourPos: PillarPos;
   partnerPos: PillarPos;
 }> = [
-  { key: "kalyanamitra", label: "🤝 มิตรภาพ / ความเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
   { key: "intimacy", label: "❤️ ความใกล้ชิด / เสน่หาทางกาย", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
+  { key: "kalyanamitra", label: "🤝 มิตรภาพ / ความเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
   { key: "family", label: "🏡 ความเข้ากันของครอบครัว", pairingLabel: "เดือนเรา × วันเขา", ourPos: "month", partnerPos: "day" },
   { key: "lifePartner", label: "💍 วาสนาการเป็นคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year" },
   { key: "karmic", label: "☯️ คู่บุญ / คู่กรรม", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
