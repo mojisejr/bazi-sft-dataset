@@ -12,9 +12,10 @@ import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
 import type { NewdataMap } from "@/lib/bazi/newdata-repository";
 import {
   avoidElementsTh,
-  careerBandFromScore,
+  careerBandFromId,
   doElementsTh,
   elementThOfStem,
+  type CareerBand,
   type ElementTh,
 } from "@/lib/bazi/constants/career-finance-table";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
@@ -51,6 +52,18 @@ export type PillarFact = {
   upperState: string | null;
 };
 
+/** ช่วงย่อย 5 ปีของวัยจร (upper = ก้าน, lower = กิ่ง) */
+export type LuckPhase = {
+  /** "stem" (ราศีบน) | "branch" (ราศีล่าง) */
+  source: "stem" | "branch";
+  symbol: string;
+  startAge: number;
+  endAge: number;
+  /** สถานะ 12 เชี่ยงแซเทียบดิถี */
+  qi: string | null;
+  isCurrent: boolean;
+};
+
 export type LuckFact = {
   startAge: number;
   endAge: number;
@@ -59,6 +72,8 @@ export type LuckFact = {
   isCurrent: boolean;
   upperState: string | null;
   lowerState: string | null;
+  /** ช่วงย่อย 5 ปี (ก้าน→กิ่ง) สำหรับ turning_points ละเอียด */
+  phases: LuckPhase[];
 };
 
 export type ChartFacts = {
@@ -106,15 +121,33 @@ export function extractChartFacts(state: CalculatedStateValue, gender?: string):
       upperState: p.upperStagePrimary ?? p.upperStageDisplay ?? null,
     };
   });
-  const daYun: LuckFact[] = (state.daYun ?? []).map((d) => ({
-    startAge: d.startAge,
-    endAge: d.endAge,
-    stem: d.stem.normalize("NFC"),
-    branch: d.branch.normalize("NFC"),
-    isCurrent: Boolean(d.isCurrent),
-    upperState: d.upperStageDisplay ?? null,
-    lowerState: d.lowerStageDisplay ?? null,
-  }));
+  const daYun: LuckFact[] = (state.daYun ?? []).map((d) => {
+    const phases: LuckPhase[] = [];
+    for (const [source, ph] of [
+      ["stem", d.upperPhase],
+      ["branch", d.lowerPhase],
+    ] as const) {
+      if (!ph) continue;
+      phases.push({
+        source,
+        symbol: (ph.symbol ?? "").normalize("NFC"),
+        startAge: ph.startAge,
+        endAge: ph.endAge,
+        qi: ph.twelveQiDisplay ?? null,
+        isCurrent: Boolean(ph.isCurrent),
+      });
+    }
+    return {
+      startAge: d.startAge,
+      endAge: d.endAge,
+      stem: d.stem.normalize("NFC"),
+      branch: d.branch.normalize("NFC"),
+      isCurrent: Boolean(d.isCurrent),
+      upperState: d.upperStageDisplay ?? null,
+      lowerState: d.lowerStageDisplay ?? null,
+      phases,
+    };
+  });
   return {
     dayMaster: state.dayMaster.normalize("NFC"),
     strengthScore: state.strengthScore,
@@ -142,8 +175,66 @@ function chartSets(facts: ChartFacts) {
 function groupItems(map: NewdataMap, group: string): Array<{ key: string; value: NewdataValue }> {
   return Object.entries(map[group] ?? {}).map(([key, value]) => ({ key, value }));
 }
-function toBlock(group: string, key: string, value: NewdataValue, context?: string): NewdataBlock {
-  return { group, itemKey: key, label: value.label, text: value.text, context };
+function toBlock(
+  group: string,
+  key: string,
+  value: NewdataValue,
+  context?: string,
+  labelOverride?: string,
+): NewdataBlock {
+  return { group, itemKey: key, label: labelOverride ?? value.label, text: value.text, context };
+}
+
+/** ชื่อเสาแบบไทย (สไตล์ซินแส) */
+const THAI_PILLAR_NAME: Record<PillarPosition, string> = {
+  year: "เสาปี",
+  month: "เสาเดือน",
+  day: "เสาวัน",
+  hour: "เสายาม",
+};
+
+/** กะจื่อ (ก้าน+กิ่ง) ของเสาที่ระบุ จาก facts */
+function pillarGanzhi(facts: ChartFacts, position: PillarPosition): string {
+  const p = facts.pillars.find((x) => x.position === position);
+  return p ? `${p.stem}${p.branch}` : "";
+}
+
+/** ป้ายสไตล์ซินแส: "เสาเดือน 庚戌 (ซวย)" — qi ในวงเล็บถ้ามี */
+function pillarLabel(facts: ChartFacts, position: PillarPosition, qi?: string | null): string {
+  const gz = pillarGanzhi(facts, position);
+  const head = `${THAI_PILLAR_NAME[position]} ${gz}`.trim();
+  return qi ? `${head} (${qi})` : head;
+}
+
+// ── 得令 (เกิดถูกฤดู) — ปรับ band เฉพาะชั้น newdata/career ────────────────────
+// engine คะแนนหลัก "ไม่นับ 得令/通根" (ดู operator-strength.ts) แต่ ground-truth ซินแส
+// ใช้ 得令 ชัดเจน: ดิถีได้แรงหนุนจากฤดูเมื่อ "กิ่งเดือน = ธาตุเดียวกับดิถี" เท่านั้น
+// (ธาตุที่แค่ส่งเสริม/相 ไม่นับ — ซินแสยืนยัน 庚 ใน 戌 ดิน = "เกิดไม่ถูกฤดู")
+// เมื่อ 得令 → ยก band ขึ้น 1 ขั้น (calibrate จากดวง 丁 ใน 午: สมดุล → แข็ง)
+// ปรับเฉพาะการอ่าน 15 บท (กล่องกำลังดิถี + บทอาชีพ) ไม่แตะ strength engine กลาง
+const STRENGTH_ID_ORDER = ["very-weak", "weak", "balanced", "strong", "very-strong"] as const;
+
+/** ดิถีเกิดถูกฤดูไหม — กิ่งเดือนเป็นธาตุเดียวกับดิถี (旺) */
+export function isInSeason(facts: ChartFacts): boolean {
+  const month = facts.pillars.find((p) => p.position === "month");
+  if (!month) return false;
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  const monthEl = BRANCH_TO_ELEMENT[month.branch as keyof typeof BRANCH_TO_ELEMENT];
+  return Boolean(dayEl && monthEl && dayEl === monthEl);
+}
+
+/** id band 5 ชั้น หลังปรับ 得令 (+1 ขั้นถ้าเกิดถูกฤดู) — base = classify จากคะแนน engine */
+export function seasonalStrengthId(facts: ChartFacts): string {
+  const base = classifyOperatorStrengthScore(facts.strengthScore).id;
+  if (!isInSeason(facts)) return base;
+  const i = STRENGTH_ID_ORDER.indexOf(base as (typeof STRENGTH_ID_ORDER)[number]);
+  if (i < 0) return base;
+  return STRENGTH_ID_ORDER[Math.min(i + 1, STRENGTH_ID_ORDER.length - 1)];
+}
+
+/** band อาชีพ 3 ระดับ หลังปรับ 得令 */
+export function seasonalCareerBand(facts: ChartFacts): CareerBand {
+  return careerBandFromId(seasonalStrengthId(facts));
 }
 
 /** กลุ่มคู่ราศีล่าง (clash/harm_hai/harm_heng/combine_branch/trinity_half) — active เมื่อราศีทั้งคู่อยู่ในดวง */
@@ -228,7 +319,7 @@ export function matchCareer(
 ): NewdataBlock[] {
   const dayElement = elementThOfStem(facts.dayMaster);
   if (!dayElement) return [];
-  const band = careerBandFromScore(facts.strengthScore);
+  const band = seasonalCareerBand(facts); // ปรับ 得令 (เกิดถูกฤดู) ก่อนจัด band
   const monthPillar = facts.pillars.find((p) => p.position === "month");
   const monthElement = monthPillar ? elementThOfStem(monthPillar.stem) : null;
 
@@ -269,12 +360,14 @@ export function matchDayMasterStrength(
   group: string,
   facts: ChartFacts,
 ): NewdataBlock[] {
-  const band = STRENGTH_BAND_KEY[classifyOperatorStrengthScore(facts.strengthScore).id];
+  const band = STRENGTH_BAND_KEY[seasonalStrengthId(facts)]; // ปรับ 得令 (เกิดถูกฤดู)
   if (!band) return [];
   const key = `${facts.dayMaster}|${band.key}`;
   const value = map[group]?.[key];
   if (!value) return [];
-  return [toBlock(group, key, value, `ดิถี ${facts.dayMaster} · ${band.label}`)];
+  const elTh = elementThOfStem(facts.dayMaster);
+  const label = `ดิถี ${facts.dayMaster}${elTh ? ` (${elTh})` : ""} · ${band.label}`;
+  return [toBlock(group, key, value, `ดิถี ${facts.dayMaster} · ${band.label}`, label)];
 }
 
 /** ราศีล่างของเสาที่ระบุ → lookup คีย์ราศีล่างเดี่ยว (12 นักษัตร) */
@@ -288,7 +381,8 @@ export function matchPillarBranch(
   if (!pillar) return [];
   const value = map[group]?.[pillar.branch];
   if (!value) return [];
-  return [toBlock(group, pillar.branch, value, `เสา${position}`)];
+  const label = `${THAI_PILLAR_NAME[position]} ${value.label ?? pillar.branch}`;
+  return [toBlock(group, pillar.branch, value, `เสา${position}`, label)];
 }
 
 /** กะจื่อ (ราศีบน+ล่าง) ของเสาที่ระบุ → lookup คีย์กะจื่อ (60 กะจื่อ) */
@@ -303,7 +397,7 @@ export function matchPillarGanzhi(
   const key = `${pillar.stem}${pillar.branch}`;
   const value = map[group]?.[key];
   if (!value) return [];
-  return [toBlock(group, key, value, `เสา${position}`)];
+  return [toBlock(group, key, value, `เสา${position}`, pillarLabel(facts, position))];
 }
 
 /**
@@ -370,6 +464,46 @@ export function matchDaYunTransfer(map: NewdataMap, group: string, facts: ChartF
     for (const ch of [d.stem, d.branch]) {
       const value = map[group]?.[`${day}|${ch}`];
       if (value) out.push(toBlock(group, `${day}|${ch}`, value, ageCtx));
+    }
+  }
+  return out;
+}
+
+/** ปฏิกิริยาธาตุ (มุมดิถี) → ป้ายบทบาทแบบซินแส สำหรับวัยจร */
+const RELATION_ROLE_TH: Record<string, string> = {
+  same: "คู่ธาตุ",
+  output: "ถ่ายเท",
+  resource: "ส่งเสริม",
+  wealth: "ลาภ (ดิถีพิฆาต)",
+  power: "อำนาจ (พิฆาตดิถี)",
+};
+
+/** ธาตุ (อังกฤษ) ของสัญลักษณ์วัยจร — ก้านใช้ STEM, กิ่งใช้ BRANCH */
+function elementOfSymbol(symbol: string, source: "stem" | "branch"): string | undefined {
+  return source === "stem"
+    ? STEM_TO_ELEMENT[symbol as keyof typeof STEM_TO_ELEMENT]
+    : BRANCH_TO_ELEMENT[symbol as keyof typeof BRANCH_TO_ELEMENT];
+}
+
+/**
+ * บท 14 (turning_points) · วัยจรช่วงละ 5 ปี — แตก upperPhase(ก้าน)+lowerPhase(กิ่ง) ของทุกวัยจร
+ * แต่ละช่วง: label = "อายุ X-Y ปี[ ช่วงปัจจุบัน] (สัญลักษณ์ บทบาทธาตุ → เชี่ยงแซ)" · body = ความหมาย 12 เชี่ยงแซ
+ * (provisional — ซินแสเขียนคำทำนายจริง + ใส่เกรดทับ) แทน dump เดิมที่ใช้กิ่งช่วง 10 ปีอย่างเดียว
+ */
+export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  const out: NewdataBlock[] = [];
+  for (const d of facts.daYun) {
+    for (const ph of d.phases) {
+      if (!ph.qi) continue;
+      const value = map.shengxiang?.[ph.qi];
+      if (!value) continue;
+      const symEl = elementOfSymbol(ph.symbol, ph.source);
+      const role = dayEl && symEl ? RELATION_ROLE_TH[elementRelationKey(dayEl, symEl)] : null;
+      const current = ph.isCurrent ? " ช่วงปัจจุบัน" : "";
+      const roleTxt = role ? ` ${role} →` : " →";
+      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi})`;
+      out.push({ group: "shengxiang", itemKey: ph.qi, label, text: value.text });
     }
   }
   return out;
@@ -463,7 +597,9 @@ export function matchPillarState(
   const value = map[group]?.[state];
   if (!value) return null;
   const ctx = tier === "upper" ? `ราศีบนเสา${position}` : `เสา${position}`;
-  return toBlock(group, state, value, ctx);
+  const tierTxt = tier === "upper" ? " ราศีบน" : "";
+  const label = `${THAI_PILLAR_NAME[position]}${tierTxt} ${pillarGanzhi(facts, position)} (${state})`;
+  return toBlock(group, state, value, ctx, label);
 }
 
 /** ธาตุอังกฤษ → ไทย (สำหรับคีย์กลุ่มที่ใช้ธาตุไทย เช่น health_by_element) */
@@ -484,21 +620,37 @@ export function favorableElements(facts: ChartFacts): ElementTh[] {
 
 /**
  * บท 4 · อุปถัมภ์ (ข้อ 3-4) — หาเสาที่ "ธาตุตามบทบาท" นั่งอยู่ แล้วอ่านเชี่ยงแซของเสานั้น (reuse shengxiang)
- *   role "output" → ธาตุถ่ายเท (บริวาร 食傷 = ธาตุที่ดิถีก่อเกิด)
- *   role "wealth" → ธาตุโชคลาภ (ลูกค้า 財 = ธาตุที่ดิถีพิฆาต)
+ *   role "output"   → ธาตุถ่ายเท (บริวาร 食傷 = ธาตุที่ดิถีก่อเกิด)
+ *   role "wealth"   → ธาตุโชคลาภ (ลูกค้า 財 = ธาตุที่ดิถีพิฆาต)
+ *   role "resource" → ธาตุส่งเสริม (ผู้อุปถัมภ์ 印 = ธาตุที่ก่อเกิดดิถี)
+ * โทนบวก/ลบ = เชี่ยงแซดี/เสียของเสาที่ธาตุนั้นนั่ง (ตรงหลักซินแส ไม่ผูกเสาตายตัว)
  * คืนหลายก้อน (ดีดุปตามเชี่ยงแซ) — ปลายทางว่างถ้า DB ยังไม่มี
  */
 export function matchElementRoleState(
   map: NewdataMap,
   group: string,
   facts: ChartFacts,
-  role: "output" | "wealth",
+  role: "output" | "wealth" | "resource",
 ): NewdataBlock[] {
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   if (!dayEl) return [];
-  const targetEl = role === "output" ? GENERATES[dayEl as keyof typeof GENERATES] : CONTROLS[dayEl as keyof typeof CONTROLS];
+  // 印 = ธาตุที่ "ก่อเกิด" ดิถี → reverse ของ GENERATES
+  const resourceEl = (Object.keys(GENERATES) as Array<keyof typeof GENERATES>).find(
+    (x) => GENERATES[x] === dayEl,
+  );
+  const targetEl =
+    role === "output"
+      ? GENERATES[dayEl as keyof typeof GENERATES]
+      : role === "wealth"
+        ? CONTROLS[dayEl as keyof typeof CONTROLS]
+        : resourceEl;
   if (!targetEl) return [];
-  const roleTh = role === "output" ? "ธาตุถ่ายเท (บริวาร)" : "ธาตุโชคลาภ (ลูกค้า)";
+  const roleTh =
+    role === "output"
+      ? "ธาตุถ่ายเท (บริวาร)"
+      : role === "wealth"
+        ? "ธาตุโชคลาภ (ลูกค้า)"
+        : "ธาตุส่งเสริม (ผู้อุปถัมภ์)";
   const out: NewdataBlock[] = [];
   const seen = new Set<string>();
   for (const p of facts.pillars) {
@@ -509,7 +661,8 @@ export function matchElementRoleState(
     const value = map[group]?.[p.state];
     if (!value) continue;
     seen.add(p.state);
-    out.push(toBlock(group, p.state, value, `${roleTh} เสา${p.position} · เชี่ยงแซ${p.state}`));
+    const label = `${roleTh} ${pillarLabel(facts, p.position, p.state)}`;
+    out.push(toBlock(group, p.state, value, `${roleTh} เสา${p.position} · เชี่ยงแซ${p.state}`, label));
   }
   return out;
 }

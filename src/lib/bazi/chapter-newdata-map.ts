@@ -11,7 +11,7 @@ import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
 import {
   matchBranchPairs,
   matchCareer,
-  matchDaYunTransfer,
+  matchDaYun,
   matchDayMasterStrength,
   matchDithiTransfer,
   matchElementCategory,
@@ -52,12 +52,11 @@ type Resolver =
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
   | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" }
   | { kind: "hiddenTransfer"; group: string }
-  | { kind: "daYunTransfer"; group: string }
   | { kind: "merit"; group: string }
   | { kind: "loveBase"; group: string }
   | { kind: "loveChance"; group: string }
   | { kind: "spouseStar"; group: string }
-  | { kind: "elementRoleState"; group: string; role: "output" | "wealth" }
+  | { kind: "elementRoleState"; group: string; role: "output" | "wealth" | "resource" }
   | { kind: "healthElement"; group: string }
   | { kind: "elementCategory"; group: string; category: string };
 
@@ -102,7 +101,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 4 bullets: [ธาตุส่งเสริม] [คู่ธาตุ] [ธาตุถ่ายเท/บริวาร] [ธาตุโชคลาภ/ลูกค้า]
   // ข้อ 3-4: หาเสาที่ธาตุถ่ายเท(食傷)/ธาตุโชคลาภ(財) นั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (reuse shengxiang)
   benefactor: [
-    [{ kind: "state", group: "shengxiang", pillar: "month" }],
+    // ผู้อุปถัมภ์ (印) = หาเสาที่ธาตุส่งเสริมดิถีนั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (印 ไม่ได้อยู่เสาเดือนเสมอ)
+    [{ kind: "elementRoleState", group: "shengxiang", role: "resource" }],
     [{ kind: "branchPairs", group: "combine_branch" }],
     [{ kind: "elementRoleState", group: "shengxiang", role: "output" }],
     [{ kind: "elementRoleState", group: "shengxiang", role: "wealth" }],
@@ -141,9 +141,10 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [],
   ],
   // 4 bullets: [มิตรแท้] [ระวัง/ข้อเสนอ-มิตร] [ศัตรู] [ระวัง/ข้อเสนอ-ศัตรู]
-  // มิตรแท้ = ภาคีราศีล่าง + หลักวันเชี่ยงแซ(ความหมายดี) · ศัตรู = ไห่/เฮ้ง/ซำเฮ้ง + ผั่วไฉ่โข่ว · interpretive
+  // มิตรแท้ = ภาคีราศีล่าง + เชี่ยงแซเสาปี(ผู้ใหญ่หนุน) · ศัตรู = ไห่/เฮ้ง/ซำเฮ้ง + ผั่วไฉ่โข่ว · interpretive
   friends_foes: [
-    [{ kind: "branchPairs", group: "combine_branch" }, { kind: "state", group: "shengxiang", pillar: "day" }],
+    // มิตรแท้/ผู้ใหญ่หนุน = เสาปี (เชี่ยงแซดี) ตามหลักซินแส — ไม่ใช่เสาวัน
+    [{ kind: "branchPairs", group: "combine_branch" }, { kind: "state", group: "shengxiang", pillar: "year" }],
     [],
     [
       { kind: "branchPairs", group: "harm_hai" },
@@ -180,7 +181,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   ],
   // 2 bullets: [วัยจรแต่ละช่วง] [ช่วงดี/ช่วงระวัง]
   turning_points: [
-    [{ kind: "daYun" }, { kind: "daYunTransfer", group: "dithi_transfer" }],
+    [{ kind: "daYun" }],
     [],
   ],
   // 3 bullets: [โรคจาก เจ๊า/ผั่ว/ซำเฮ้ง/จื่อเฮ้ง] [โรคจากธาตุมาก/น้อย] [ข้อเสนอแนะดูแล]
@@ -248,8 +249,6 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchDithiTransfer(map, r.group, facts, r.scope ?? "all");
     case "hiddenTransfer":
       return matchHiddenTransfer(map, r.group, facts);
-    case "daYunTransfer":
-      return matchDaYunTransfer(map, r.group, facts);
     case "merit":
       return matchMerit(map, r.group, facts);
     case "loveBase":
@@ -264,23 +263,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchHealthElement(map, r.group, facts);
     case "elementCategory":
       return matchElementCategory(map, r.group, facts, r.category);
-    case "daYun": {
-      const blocks: NewdataBlock[] = [];
-      for (const d of facts.daYun) {
-        const state = d.lowerState;
-        if (!state) continue;
-        const value = map.shengxiang?.[state];
-        if (!value) continue;
-        const age = `อายุ ${d.startAge}-${d.endAge}${d.isCurrent ? " (ปัจจุบัน)" : ""}`;
-        blocks.push({
-          group: "shengxiang",
-          itemKey: state,
-          label: `${age} · ${value.label}`,
-          text: value.text,
-        });
-      }
-      return blocks;
-    }
+    case "daYun":
+      return matchDaYun(map, facts);
     default:
       return [];
   }

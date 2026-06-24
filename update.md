@@ -5,7 +5,35 @@
 
 ---
 
-## ✅ ทำเพิ่มรอบล่าสุด (2026-06-22, บน `pdf-dev`)
+## ✅ ทำเพิ่มรอบล่าสุด (2026-06-24, บน `pdf-dev`) — แก้บั๊ก + format จากการเทียบซินแส 4 ดวง (庚/辛/甲/丁)
+
+> ขอบเขต: กระทบ **เฉพาะ `/reading/newdata-reading`** · ไม่แตะ `/reading` หลัก, strength engine กลาง, domain power
+> ฐานก่อนแก้: commit `5b5617e`
+
+**โค้ด (3 ไฟล์):**
+- **得令 (เกิดถูกฤดู)** `newdata-lookup.ts` — `isInSeason`/`seasonalStrengthId`/`seasonalCareerBand`: ยก band +1 เมื่อกิ่งเดือน=ธาตุดิถี (丁 ใน 午: สมดุล→แข็ง) ใช้ใน `matchCareer`+`matchDayMasterStrength` → "ควรทำ" ตรงซินแส
+- **avoidElementsTh** `career-finance-table.ts` — "ไม่ควรทำ": 官杀 อันดับ 1 เสมอ + 印 อันดับ 2 (ดวงไม่อ่อน) · เพิ่ม `careerBandFromId` → ตรง 4/4
+- **benefactor 印** — เพิ่ม role `"resource"` ใน `matchElementRoleState` (หาเสาที่ธาตุ印นั่งจริง โทนตามเสา) แทน hardcode เสาเดือน
+- **friends มิตรแท้** — อ่านเสาปี (ผู้ใหญ่หนุน) แทนเสาวัน
+- **ตัด daYunTransfer** (ก็อปซ้ำ "X ถ่ายเท Y") ออกจาก turning_points
+- **turning_points** — `matchDaYun` ใหม่ + `LuckPhase`: วัยจรช่วงละ 5 ปี รูป "อายุ X-Y ปี[ ช่วงปัจจุบัน] (สัญลักษณ์ บทบาทธาตุ → เชี่ยงแซ)"
+- **รูปแบบป้ายสไตล์ซินแส** — helper `pillarLabel` + `toBlock(labelOverride)` → `เสา{ตำแหน่ง} {กะจื่อ} ({เชี่ยงแซ})` (คงอักษรจีน) ทั้ง 5 matcher · พ่อ/แม่ แยก qi กันแล้ว
+
+**ข้อมูล DB (`bazi_newdata`) seed เพิ่ม:**
+- `health_by_element` 5 ธาตุ (จาก `knownlage/extracted/health.txt` §5.1) → บท 13 เติม
+- `auspicious_by_element` 28 เซลล์ `{หมวด}|{ธาตุ}` (harvest คำซินแส 4 ดวง) → บท 14 เติม
+
+**↩️ วิธี revert กลับก่อนแก้รอบนี้:**
+```bash
+git checkout 5b5617e -- src/lib/bazi/newdata-lookup.ts src/lib/bazi/chapter-newdata-map.ts src/lib/bazi/constants/career-finance-table.ts
+```
+ลบ seed (ถ้าต้องการ): `DELETE /api/reading/newdata?groupKey=health_by_element&itemKey=<ธาตุ>` และ `groupKey=auspicious_by_element&itemKey=<หมวด|ธาตุ>` (ไม่ลบก็ได้ — ถ้า revert โค้ดแล้ว resolver ยังเรียกใช้กลุ่มเดิมตามปกติ)
+
+**ยังไม่ทำ (รอซินแส/ต้นฉบับ):** `deity_by_element`, `subordinate_60`, เกรด 0-3 + คำทำนายรายช่วง + ปีจร (turning_points), `auspicious_by_element` ที่ขาด (สี|ไฟ/ไม้/น้ำ, สัตว์มงคล)
+
+---
+
+## ✅ ทำเพิ่มรอบก่อน (2026-06-22, บน `pdf-dev`)
 
 - **บท 6 พ่อ/แม่** — พ่อ=เชี่ยงแซราศีบนหลักเดือน · แม่=เชี่ยงแซราศีล่างหลักเดือน (matchPillarState tier upper/lower)
 - **บท 7 ลักษณะชีวิตคู่ 60 box** — สกัด xlsx → `love-base-60.json` · group `love_base_60` · wire ganzhiOf หลักวัน (เลิกใช้สูตร 5 ธาตุ)

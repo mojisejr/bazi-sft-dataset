@@ -31,26 +31,30 @@ export function elementThOfStem(stem: string): ElementTh | null {
   return en ? EN_TO_TH[en] ?? null : null;
 }
 
-/** จัดกำลังดิถี (คะแนน engine 5 band) → 3 band ของตาราง B */
-export function careerBandFromScore(score: number): CareerBand {
-  const id = classifyOperatorStrengthScore(score).id;
+/** จัด band 3 ระดับของตาราง B จาก id 5-band ของ engine (operator-strength) */
+export function careerBandFromId(id: string): CareerBand {
   if (id === "very-weak" || id === "weak") return "weak";
   if (id === "very-strong") return "veryStrong";
   return "balanced"; // balanced | strong
 }
 
+/** จัดกำลังดิถี (คะแนน engine 5 band) → 3 band ของตาราง B */
+export function careerBandFromScore(score: number): CareerBand {
+  return careerBandFromId(classifyOperatorStrengthScore(score).id);
+}
+
 /**
- * ธาตุที่ "ไม่ควรทำ" (heuristic จากความสัมพันธ์ธาตุเทียบดิถี — ไม่มีในไฟล์ต้นทาง):
- *   ดวงอ่อน  → เลี่ยงธาตุพิฆาตดิถี (官杀) + ธาตุที่ดิถีพิฆาต/ทรัพย์ (財) ที่ยิ่งรีดกำลัง
- *   ดวงแข็ง  → เลี่ยงธาตุส่งเสริมดิถี (印) + ธาตุเสมอดิถี (比劫) ที่ยิ่งเติมกำลังล้น
- * คืน 2 ธาตุเรียงลำดับ — ซินแสปรับ/ลบได้ในตัวแก้ (กล่องแก้ไขได้)
+ * ธาตุที่ "ไม่ควรทำ" (heuristic — ไฟล์ต้นทางมีแต่ "ควรทำ"):
+ * ปรับให้ตรง ground-truth ซินแส (4 ดวง 庚/辛/甲/丁): อันดับ 1 = ธาตุพิฆาตดิถี (官杀) เสมอ
+ * ทุก band · อันดับ 2 = ธาตุส่งเสริมดิถี (印) เฉพาะดวงไม่อ่อน (สมดุล/แข็ง ยิ่งเติมกำลังล้น)
+ *   - ดวงอ่อน → คืนแค่ [官杀] (อ่อนยังต้องพึ่ง 印 จึงไม่เลี่ยง)
+ * ซินแสปรับ/ลบได้ในตัวแก้ (กล่องแก้ไขได้)
  */
 export function avoidElementsTh(dayElement: ElementTh, band: CareerBand): ElementTh[] {
   const en = (Object.entries(EN_TO_TH).find(([, th]) => th === dayElement)?.[0]) as
     | keyof typeof GENERATES
     | undefined;
   if (!en) return [];
-  const wealth = EN_TO_TH[CONTROLS[en]]; // ดิถีพิฆาต/ทรัพย์ (財)
   const resourceEn = (Object.keys(GENERATES) as Array<keyof typeof GENERATES>).find(
     (x) => GENERATES[x] === en,
   );
@@ -60,8 +64,8 @@ export function avoidElementsTh(dayElement: ElementTh, band: CareerBand): Elemen
   const resource = resourceEn ? EN_TO_TH[resourceEn] : null; // ส่งเสริมดิถี (印)
   const power = powerEn ? EN_TO_TH[powerEn] : null; // พิฆาตดิถี (官杀)
 
-  // ดวงอ่อน → เลี่ยง พิฆาต(官杀)+ทรัพย์(財) · ดวงแข็ง → เลี่ยง ส่งเสริม(印)+เสมอ(比劫)
-  const list = band === "weak" ? [power, wealth] : [resource, dayElement];
+  // อันดับ 1 = 官杀 เสมอ · อันดับ 2 = 印 เฉพาะดวงไม่อ่อน
+  const list = band === "weak" ? [power] : [power, resource];
   return list.filter((x): x is ElementTh => Boolean(x));
 }
 
