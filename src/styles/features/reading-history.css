@@ -131,6 +131,40 @@
   color: var(--muted);
 }
 
+/* summary (ปุ่มย่อ/กาง) ของ details — ซ่อน marker เริ่มต้น ใส่ลูกศรหมุนเอง */
+/* details ต้องเป็น block (ไม่ใช่ grid ที่ base ตั้งไว้) ไม่งั้นกลไกย่อ/กางของ <details> พัง (ลิสต์โผล่แม้ปิด) */
+details.reading-history__versions {
+  display: block;
+}
+
+details.reading-history__versions > .reading-history__version-list {
+  margin-top: 10px;
+}
+
+summary.reading-history__versions-title {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+summary.reading-history__versions-title::-webkit-details-marker {
+  display: none;
+}
+
+summary.reading-history__versions-title::before {
+  content: "\25B8"; /* ▸ */
+  font-size: 0.8em;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+details.reading-history__versions[open] > summary.reading-history__versions-title::before {
+  transform: rotate(90deg);
+}
+
 .reading-history__version-list {
   display: grid;
   gap: 8px;

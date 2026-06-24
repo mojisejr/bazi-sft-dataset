@@ -10,6 +10,7 @@ import { Surface } from "@/components/bazi/primitives/Surface";
 import type { ReadingSessionListItem } from "@/lib/bazi/reading-sessions";
 import type { ReadingPdfVersionListItem } from "@/lib/bazi/reading-pdf-versions";
 import type { ReadingSessionRevisionListItem } from "@/lib/bazi/reading-session-revisions";
+import type { NewdataReadingRevisionListItem } from "@/lib/bazi/newdata-reading-revisions";
 
 /** ดวงที่บันทึกจากหน้า "อ่าน 15 บท (NewData)" — ตาราง bazi_newdata_reading */
 export type NewdataReadingHistoryItem = {
@@ -26,6 +27,7 @@ type ReadingHistoryWorkspaceProps = {
   versions?: ReadingPdfVersionListItem[];
   revisions?: ReadingSessionRevisionListItem[];
   newdataReadings?: NewdataReadingHistoryItem[];
+  newdataRevisions?: NewdataReadingRevisionListItem[];
   unavailable?: boolean;
 };
 
@@ -82,6 +84,7 @@ export function ReadingHistoryWorkspace({
   versions = [],
   revisions = [],
   newdataReadings = [],
+  newdataRevisions = [],
   unavailable = false,
 }: ReadingHistoryWorkspaceProps) {
   const router = useRouter();
@@ -90,6 +93,63 @@ export function ReadingHistoryWorkspace({
   const [deletingRevisionId, setDeletingRevisionId] = useState<string | null>(null);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const [deletingNewdataId, setDeletingNewdataId] = useState<string | null>(null);
+  const [deletingNewdataRevisionId, setDeletingNewdataRevisionId] = useState<string | null>(null);
+  const [restoringNewdataRevisionId, setRestoringNewdataRevisionId] = useState<string | null>(null);
+
+  async function handleDeleteNewdataRevision(id: string) {
+    if (typeof window !== "undefined" && !window.confirm("ลบจุดบันทึกนี้ออกจากประวัติ ?")) {
+      return;
+    }
+    setDeletingNewdataRevisionId(id);
+    try {
+      const response = await fetch(`/api/reading/newdata-reading/revisions/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("ลบไม่สำเร็จ");
+      }
+      router.refresh();
+    } catch {
+      setDeletingNewdataRevisionId(null);
+    }
+  }
+
+  // กู้คืน NewData: ดึง edits ของจุดบันทึกนั้น แล้วเขียนทับดวงต้นทาง (เป็นการบันทึกครั้งใหม่ → มี revision ใหม่ด้วย)
+  async function handleRestoreNewdataRevision(id: string, readingId: string) {
+    if (
+      typeof window !== "undefined"
+      && !window.confirm(
+        "กู้คืนงานกลับไปเป็นจุดบันทึกนี้ ?\n\nสภาพปัจจุบันจะถูกแทนที่ (สภาพปัจจุบันยังถูกเก็บเป็นจุดบันทึกก่อนหน้าอยู่ — ย้อนกลับได้)",
+      )
+    ) {
+      return;
+    }
+    setRestoringNewdataRevisionId(id);
+    try {
+      const detailResponse = await fetch(`/api/reading/newdata-reading/revisions/${id}`);
+      if (!detailResponse.ok) {
+        throw new Error("โหลดจุดบันทึกไม่สำเร็จ");
+      }
+      const detail = await detailResponse.json();
+      const saveResponse = await fetch("/api/reading/newdata-reading/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          id: readingId,
+          clientName: detail.clientName,
+          birthDate: detail.birthDate,
+          birthTime: detail.birthTime,
+          gender: detail.gender,
+          province: detail.province,
+          edits: detail.edits,
+        }),
+      });
+      if (!saveResponse.ok) {
+        throw new Error("กู้คืนไม่สำเร็จ");
+      }
+      router.push(`/reading/newdata-reading?session=${readingId}`);
+    } catch {
+      setRestoringNewdataRevisionId(null);
+    }
+  }
 
   async function handleDeleteRevision(id: string) {
     if (typeof window !== "undefined" && !window.confirm("ลบจุดบันทึกนี้ออกจากประวัติ ?")) {
@@ -306,6 +366,53 @@ export function ReadingHistoryWorkspace({
     );
   }
 
+  // จัดกลุ่ม "ประวัติการบันทึก" ของ NewData ตามดวงต้นทาง (readingId)
+  const newdataRevisionsByReading = new Map<string, NewdataReadingRevisionListItem[]>();
+  for (const revision of newdataRevisions) {
+    const list = newdataRevisionsByReading.get(revision.readingId) ?? [];
+    list.push(revision);
+    newdataRevisionsByReading.set(revision.readingId, list);
+  }
+
+  function renderNewdataRevisionItem(revision: NewdataReadingRevisionListItem) {
+    const isDeleting = deletingNewdataRevisionId === revision.id;
+    const isRestoring = restoringNewdataRevisionId === revision.id;
+    return (
+      <li key={revision.id} className="reading-history__version">
+        <div className="reading-history__version-info">
+          <span className="reading-history__version-time">
+            บันทึกเมื่อ {formatUpdatedAt(revision.createdAt)}
+          </span>
+        </div>
+        <div className="reading-history__version-actions">
+          <ActionLink
+            href={`/reading/newdata-reading?revision=${revision.id}`}
+            tone="secondary"
+            className="reading-history__action"
+          >
+            เปิดดู
+          </ActionLink>
+          <button
+            type="button"
+            className="reading-history__action reading-history__action--restore"
+            disabled={isRestoring}
+            onClick={() => void handleRestoreNewdataRevision(revision.id, revision.readingId)}
+          >
+            {isRestoring ? "กำลังกู้คืน..." : "กู้คืน"}
+          </button>
+          <button
+            type="button"
+            className="reading-history__delete"
+            disabled={isDeleting}
+            onClick={() => void handleDeleteNewdataRevision(revision.id)}
+          >
+            {isDeleting ? "กำลังลบ..." : "ลบ"}
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   const inProgressCount = records.filter((record) => record.status === "in_progress").length;
   const doneCount = records.filter((record) => record.status === "done").length;
 
@@ -413,25 +520,25 @@ export function ReadingHistoryWorkspace({
                   </div>
 
                   {recordVersions.length > 0 ? (
-                    <div className="reading-history__versions">
-                      <span className="reading-history__versions-title">
+                    <details className="reading-history__versions" open>
+                      <summary className="reading-history__versions-title">
                         เวอร์ชัน PDF ที่บันทึก ({recordVersions.length})
-                      </span>
+                      </summary>
                       <ul className="reading-history__version-list">
                         {recordVersions.map((version) => renderVersionItem(version))}
                       </ul>
-                    </div>
+                    </details>
                   ) : null}
 
                   {recordRevisions.length > 0 ? (
-                    <div className="reading-history__versions reading-history__revisions">
-                      <span className="reading-history__versions-title">
+                    <details className="reading-history__versions reading-history__revisions">
+                      <summary className="reading-history__versions-title">
                         ประวัติการบันทึก ({recordRevisions.length}) — ทุกครั้งที่กด ‘บันทึกการดูดวง’ เก็บไว้ย้อนดู/กู้คืนได้
-                      </span>
+                      </summary>
                       <ul className="reading-history__version-list">
                         {recordRevisions.map((revision) => renderRevisionItem(revision))}
                       </ul>
-                    </div>
+                    </details>
                   ) : null}
                 </article>
               );
@@ -453,6 +560,7 @@ export function ReadingHistoryWorkspace({
               const title = item.clientName?.trim() || item.id.slice(0, 8);
               const birthMoment = formatThaiBirthMoment(item.birthDate, item.birthTime);
               const isDeleting = deletingNewdataId === item.id;
+              const itemRevisions = newdataRevisionsByReading.get(item.id) ?? [];
               return (
                 <article key={item.id} className="reading-history__row">
                   <div className="reading-history__main">
@@ -487,6 +595,17 @@ export function ReadingHistoryWorkspace({
                       </button>
                     </div>
                   </div>
+
+                  {itemRevisions.length > 0 ? (
+                    <details className="reading-history__versions reading-history__revisions">
+                      <summary className="reading-history__versions-title">
+                        ประวัติการบันทึก ({itemRevisions.length}) — ทุกครั้งที่กด ‘บันทึกดวงนี้’ เก็บไว้ย้อนดู/กู้คืนได้
+                      </summary>
+                      <ul className="reading-history__version-list">
+                        {itemRevisions.map((revision) => renderNewdataRevisionItem(revision))}
+                      </ul>
+                    </details>
+                  ) : null}
                 </article>
               );
             })}

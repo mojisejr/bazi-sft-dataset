@@ -12,6 +12,10 @@ import {
   listReadingSessionRevisions,
   type ReadingSessionRevisionListItem,
 } from "@/lib/bazi/reading-session-revisions";
+import {
+  listNewdataReadingRevisions,
+  type NewdataReadingRevisionListItem,
+} from "@/lib/bazi/newdata-reading-revisions";
 import { createDbNewdataReadingRepository } from "@/lib/bazi/newdata-reading-repository";
 import type { NewdataReadingHistoryItem } from "@/components/bazi/reading/ReadingHistoryWorkspace";
 
@@ -29,19 +33,22 @@ export default async function ReadingHistoryPage() {
   let versions: ReadingPdfVersionListItem[] = [];
   let revisions: ReadingSessionRevisionListItem[] = [];
   let newdataReadings: NewdataReadingHistoryItem[] = [];
+  let newdataRevisions: NewdataReadingRevisionListItem[] = [];
   let unavailable = false;
 
   try {
-    // โหลดดวง + เวอร์ชัน PDF + ประวัติการบันทึก + ดวง "อ่าน 15 บท (NewData)" พร้อมกัน (คนละตาราง แต่ unavailable ร่วมกัน)
-    const [sessions, pdfVersions, sessionRevisions, newdataRows] = await Promise.all([
+    // โหลดดวง + เวอร์ชัน PDF + ประวัติการบันทึก + ดวง NewData + ประวัติการบันทึก NewData พร้อมกัน
+    const [sessions, pdfVersions, sessionRevisions, newdataRows, newdataRevs] = await Promise.all([
       listReadingSessions(),
       listReadingPdfVersions(),
       listReadingSessionRevisions(),
       createDbNewdataReadingRepository().list(),
+      listNewdataReadingRevisions(),
     ]);
     records = sessions;
     versions = pdfVersions;
     revisions = sessionRevisions;
+    newdataRevisions = newdataRevs;
     newdataReadings = newdataRows.map((row) => ({
       id: row.id,
       clientName: row.clientName,
@@ -63,6 +70,7 @@ export default async function ReadingHistoryPage() {
         versions={versions}
         revisions={revisions}
         newdataReadings={newdataReadings}
+        newdataRevisions={newdataRevisions}
         unavailable={unavailable}
       />
     </main>

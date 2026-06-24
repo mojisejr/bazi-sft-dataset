@@ -9,6 +9,7 @@ import {
   type NewdataReadingEdits,
   type SelectBaziNewdataReading,
 } from "@/db/schema";
+import { recordNewdataReadingRevision } from "@/lib/bazi/newdata-reading-revisions";
 
 export type NewdataReadingRow = SelectBaziNewdataReading;
 
@@ -62,16 +63,37 @@ export function createDbNewdataReadingRepository(db = createDbClient()): Newdata
         province: input.province ?? null,
         edits: input.edits,
       };
+      let saved: NewdataReadingRow | undefined;
       if (input.id) {
         const rows = await db
           .update(baziNewdataReading)
           .set({ ...values, updatedAt: new Date() })
           .where(eq(baziNewdataReading.id, input.id))
           .returning();
-        if (rows[0]) return rows[0];
+        saved = rows[0];
       }
-      const inserted = await db.insert(baziNewdataReading).values(values).returning();
-      return inserted[0];
+      if (!saved) {
+        const inserted = await db.insert(baziNewdataReading).values(values).returning();
+        saved = inserted[0];
+      }
+
+      // เก็บ "ประวัติการบันทึก" หนึ่งสแน็ปช็อตทุกครั้งที่บันทึก (insert-only, เก็บ 30 ล่าสุด/ดวง)
+      // best-effort: ถ้า revision ล้มเหลวไม่ทำให้การบันทึกหลักพัง
+      try {
+        await recordNewdataReadingRevision({
+          readingId: saved.id,
+          clientName: saved.clientName,
+          birthDate: saved.birthDate,
+          birthTime: saved.birthTime,
+          gender: saved.gender,
+          province: saved.province,
+          edits: saved.edits,
+        });
+      } catch {
+        /* บันทึกประวัติไม่สำเร็จ — ข้ามได้ */
+      }
+
+      return saved;
     },
 
     async remove(id) {

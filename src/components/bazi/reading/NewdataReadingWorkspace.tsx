@@ -205,6 +205,19 @@ export function NewdataReadingWorkspace() {
     return runReading({ birthDate, birthTime, gender, province });
   }, [runReading, birthDate, birthTime, gender, province]);
 
+  // เปลี่ยนเพศ: ทิศ/อายุเริ่มวัยจร (大運) ขึ้นกับเพศ → ถ้ามีผลอ่านอยู่แล้ว ให้คำนวณใหม่ทันที
+  // โดยคงคำที่แก้ไว้ (ส่ง edits เดิมเป็น override ติดไปดวงเพศใหม่ — ไม่ให้หลุด)
+  const handleGenderField = useCallback(
+    (event: ChangeEvent<HTMLSelectElement>) => {
+      const nextGender: "male" | "female" = event.target.value === "female" ? "female" : "male";
+      setFormState((prev) => applyFormFieldChange(prev, "gender", nextGender));
+      if (data && formComplete) {
+        void runReading({ birthDate, birthTime, gender: nextGender, province }, edits);
+      }
+    },
+    [data, formComplete, runReading, birthDate, birthTime, province, edits],
+  );
+
   const titleOf = useCallback((ch: ChapterView) => edits.titles[ch.id] ?? ch.title, [edits]);
 
   /** ตั้งกล่องของบท — เท่ากับต้นฉบับ = ลบ override */
@@ -393,6 +406,50 @@ export function NewdataReadingWorkspace() {
     },
     [runReading],
   );
+  // เปิด "จุดบันทึก" (revision) มาดู/แก้ต่อ — โหลด edits ของจุดนั้น ผูก sessionId = ดวงต้นทาง (บันทึกต่อได้)
+  const loadRevision = useCallback(
+    async (id: string) => {
+      try {
+        const res = await fetch(`/api/reading/newdata-reading/revisions/${id}`);
+        const body = (await res.json()) as {
+          id?: string;
+          readingId?: string;
+          clientName?: string | null;
+          birthDate?: string;
+          birthTime?: string;
+          gender?: string;
+          province?: string | null;
+          edits?: Partial<Edits>;
+          createdAt?: string;
+          error?: string;
+        };
+        if (!res.ok || !body.id || !body.readingId) {
+          setSaveStatus(body.error ?? "โหลดไม่สำเร็จ");
+          return;
+        }
+        const g = body.gender === "female" ? "female" : "male";
+        setClientName(body.clientName ?? "");
+        setFormState(
+          formStateFromRawInput({
+            birthDate: body.birthDate ?? "",
+            birthTime: body.birthTime ?? "",
+            gender: g,
+            province: body.province ?? "",
+          }),
+        );
+        setSessionId(body.readingId);
+        setSaveStatus("เปิดจุดบันทึกจากประวัติแล้ว");
+        await runReading(
+          { birthDate: body.birthDate ?? "", birthTime: body.birthTime ?? "", gender: g, province: body.province ?? "" },
+          { boxes: body.edits?.boxes ?? {}, titles: body.edits?.titles ?? {} },
+        );
+      } catch {
+        setSaveStatus("โหลดไม่สำเร็จ");
+      }
+    },
+    [runReading],
+  );
+
   const deleteSession = useCallback(
     async (id: string) => {
       if (!window.confirm("ลบดวงที่บันทึกนี้?")) return;
@@ -407,15 +464,18 @@ export function NewdataReadingWorkspace() {
     [sessionId, reloadSavedList],
   );
 
-  // เปิดจากหน้าประวัติดวง: /reading/newdata-reading?session=<id> → โหลดดวงนั้นอัตโนมัติ (ครั้งเดียว)
+  // เปิดจากหน้าประวัติดวง: ?session=<id> โหลดดวง · ?revision=<id> โหลดจุดบันทึกจากประวัติ (ครั้งเดียว)
   const autoLoadedRef = useRef(false);
   useEffect(() => {
     if (autoLoadedRef.current || typeof window === "undefined") return;
-    const id = new URLSearchParams(window.location.search).get("session");
-    if (!id) return;
+    const params = new URLSearchParams(window.location.search);
+    const revisionId = params.get("revision");
+    const sessionParam = params.get("session");
+    if (!revisionId && !sessionParam) return;
     autoLoadedRef.current = true;
-    void loadSession(id);
-  }, [loadSession]);
+    if (revisionId) void loadRevision(revisionId);
+    else if (sessionParam) void loadSession(sessionParam);
+  }, [loadSession, loadRevision]);
 
   // ── เนื้อหา ──
   const editedCount = useMemo(
@@ -536,7 +596,7 @@ export function NewdataReadingWorkspace() {
         </label>
         <label>
           เพศ
-          <select name="gender" value={formState.gender} onChange={handleField}>
+          <select name="gender" value={formState.gender} onChange={handleGenderField} disabled={loading}>
             <option value="male">ชาย</option>
             <option value="female">หญิง</option>
           </select>

@@ -654,6 +654,28 @@ export type InsertBaziNewdataReading = typeof baziNewdataReading.$inferInsert;
 export type SelectBaziNewdataReading = typeof baziNewdataReading.$inferSelect;
 
 /**
+ * "ประวัติการบันทึก" ของ tab อ่าน 15 บท (NewData) — สแน็ปช็อต edits ทุกครั้งที่กด "บันทึกดวงนี้"
+ * insert-only เหมือน bazi_reading_session_revisions ของอ่านดวงหลัก → ย้อนเปิดดู/กู้คืนได้ (เก็บ ~30 ล่าสุด/ดวง)
+ * ผูก FK ON DELETE CASCADE กับ bazi_newdata_reading
+ */
+export const baziNewdataReadingRevisions = pgTable("bazi_newdata_reading_revisions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  readingId: uuid("reading_id")
+    .notNull()
+    .references(() => baziNewdataReading.id, { onDelete: "cascade" }),
+  clientName: text("client_name"),
+  birthDate: text("birth_date").notNull(),
+  birthTime: text("birth_time").notNull(),
+  gender: text("gender").notNull(),
+  province: text("province"),
+  edits: jsonb("edits").$type<NewdataReadingEdits>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InsertBaziNewdataReadingRevision = typeof baziNewdataReadingRevisions.$inferInsert;
+export type SelectBaziNewdataReadingRevision = typeof baziNewdataReadingRevisions.$inferSelect;
+
+/**
  * รูปไพ่ "โหมดเซียน" (ไพ่จิตวิญญาณแดนสวรรค์) — สร้างล่วงหน้าด้วย Imagen เก็บ base64
  * cardNo = เลขไพ่ (PK) ตรงกับ divine-cards.json
  */
