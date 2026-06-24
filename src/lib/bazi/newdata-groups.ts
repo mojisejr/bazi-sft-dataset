@@ -18,6 +18,7 @@ export type NewdataKeyKind =
   | "group3" // กลุ่มซำเฮ้ง เช่น "พาหะ"
   | "stemBand" // ราศีบน × กำลังดิถี เช่น "甲|over_strong" (50 ช่อง)
   | "stemTransfer" // ดิถีถ่ายเท เช่น "甲|丙" (ก้านดิถี|ปลายทาง)
+  | "elementCategory" // หมวด × ธาตุ เช่น "สี|ไม้" (บท 14/15 ตามธาตุที่ดวงต้องการ)
   | "pillar"; // เสา เช่น "ปี"
 
 export type NewdataGroup = {
@@ -167,6 +168,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     sourceFile: "ดิถีถ่ายเททุกแบบ.txt",
   },
   {
+    key: "study_by_element",
+    label: "บท 11 · วิชา/คณะ ตามธาตุ (5 ธาตุ)",
+    description: "รายชื่อวิชา/คณะของแต่ละธาตุ — บท 11 'เรียนวิชาตามอาชีพถูกดวง' หยิบตามธาตุที่ควรทำ (คลังความรู้ 5 ธาตุ)",
+    keyKind: "element",
+    sourceFile: "การเรียน 5 ธาตุ.txt",
+  },
+  {
     key: "merit_by_element",
     label: "ทำบุญตามธาตุ (5 ธาตุ)",
     description: "คำทำบุญเสริมดวงของแต่ละธาตุ — บท 15 หยิบตามธาตุที่ควรเสริม (ตารางทำบุญ 5 ธาตุ)",
@@ -193,6 +201,36 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "โอกาสมีคู่ตามเพศกำเนิด × กำลังดิถี (10 ช่อง) — บท 7 'มีคู่ครองที่เหมาะสมหรือไม่'",
     keyKind: "stemBand",
     sourceFile: "ความรักและความสัมพันธ์.txt",
+  },
+  {
+    key: "subordinate_60",
+    label: "บท 10 · ลักษณะบริวาร 60 กะจื่อ (เสายาม)",
+    description: "ลักษณะลูกน้องบริวารราย 60 กะจื่อ (ราศีบน+ล่างเสายาม) — บท 10 กล่อง 'ลักษณะบริวารตามพื้นดวง' (ระบบ matching)",
+    keyKind: "ganzhi",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "health_by_element",
+    label: "บท 13 · โรคตามธาตุ มาก/น้อย (5 ธาตุ)",
+    description: "โรค/จุดอ่อนสุขภาพเมื่อธาตุนั้นมากเกินไป/น้อยเกินไปในพื้นดวง — บท 13 กล่อง 'โรคจากธาตุมาก/น้อย'",
+    keyKind: "element",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "auspicious_by_element",
+    label: "บท 14 · ของมงคลตามธาตุที่ดวงต้องการ (หมวด × ธาตุ)",
+    description:
+      "สี/เสื้อผ้า/เครื่องประดับ/วัตถุมงคล/กระเป๋าเงิน/รถ/สัตว์มงคล/ทิศ ตามธาตุที่ดวงต้องการ — คีย์ '{หมวด}|{ธาตุ}' เช่น 'รถ|ไฟ'",
+    keyKind: "elementCategory",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "deity_by_element",
+    label: "บท 15 · องค์เทพตามธาตุที่ดวงต้องการ (หมวด × ธาตุ)",
+    description:
+      "องค์เทพคุ้มครอง/ขอพรการงาน/ขอพรโชคลาภ ตามธาตุที่ดวงต้องการ — คีย์ '{หมวด}|{ธาตุ}' เช่น 'โชคลาภ|ทอง'",
+    keyKind: "elementCategory",
+    sourceFile: "(กรอกในแอดมิน)",
   },
 ] as const;
 

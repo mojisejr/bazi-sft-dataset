@@ -98,6 +98,23 @@ const HUB_CARDS: HubCard[] = [
     description: "ดูหลักการ/แหล่งอ้างอิงที่ engine ใช้แต่ละบท และจัดการกฎแทนคำ (เปลี่ยนคำเดิม → คำใหม่)",
     cta: "ดูองค์ความรู้",
   },
+  {
+    href: "/reading/newdata-reading",
+    icon: "📖",
+    kicker: "คำทำนายจาก NewData",
+    title: "อ่าน 15 บท (ข้อมูลใหม่)",
+    description:
+      "กรอกวันเกิด คำนวณดวงด้วย engine เดิม แต่ดึงคำทำนายจากข้อมูลใหม่ที่ซินแสแก้ได้ บันทึกดวงและพิมพ์ PDF ได้",
+    cta: "เริ่มอ่าน 15 บท",
+  },
+  {
+    href: "/reading/newdata",
+    icon: "🗃️",
+    kicker: "คลังคำทำนาย",
+    title: "ข้อมูลใหม่ (NewData)",
+    description: "จัดการคลังคำทำนายพื้นฐานที่ใช้ในการอ่าน 15 บท เพิ่ม/แก้/ลบรายกลุ่มได้ทันที",
+    cta: "จัดการข้อมูลใหม่",
+  },
 ];
 
 export function BaziTrainerWorkspace() {

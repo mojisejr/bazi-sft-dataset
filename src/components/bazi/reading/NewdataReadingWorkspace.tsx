@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
+import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
   DEFAULT_REFERRAL_CODE,
@@ -11,6 +12,19 @@ import {
   type PrintChapter,
 } from "@/components/bazi/reading/ReadingPrintDocument";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
+import {
+  applyFormFieldChange,
+  buildBirthDateValue,
+  buildBirthTimeValue,
+  BIRTH_HOUR_OPTIONS,
+  BIRTH_MINUTE_OPTIONS,
+  BUDDHIST_ERA_YEAR_OPTIONS,
+  createDefaultFormState,
+  formStateFromRawInput,
+  getBirthDayOptions,
+  THAI_MONTH_OPTIONS,
+  type FormState,
+} from "@/lib/bazi/trainer-workspace";
 
 type ReadingBox = { title: string; body: string };
 type ChapterView = {
@@ -32,13 +46,6 @@ type ReadingData = {
 type Edits = { boxes: Record<string, ReadingBox[]>; titles: Record<string, string> };
 
 const EMPTY_EDITS: Edits = { boxes: {}, titles: {} };
-
-const PILLAR_LABELS: Array<["year" | "month" | "day" | "hour", string]> = [
-  ["year", "ปี"],
-  ["month", "เดือน"],
-  ["day", "วัน (ดิถี)"],
-  ["hour", "ยาม"],
-];
 
 function sameBoxes(a: ReadingBox[], b: ReadingBox[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -95,12 +102,34 @@ function parseBoxMarkdown(md: string): ReadingBox[] {
  * PDF ดีไซน์เดียวกับหน้าดูดวงหลัก · บันทึก/โหลดดวงข้ามเครื่อง (DB)
  */
 export function NewdataReadingWorkspace() {
-  const [birthDate, setBirthDate] = useState("1988-05-15");
-  const [birthTime, setBirthTime] = useState("14:30");
-  const [gender, setGender] = useState<"male" | "female">("male");
-  const [province, setProvince] = useState("กรุงเทพมหานคร");
+  // ฟอร์มวันเกิดแบบเดียวกับหน้าอ่านดวงหลัก: dropdown วัน/เดือน/ปี พ.ศ. + ชั่วโมง/นาที
+  const [formState, setFormState] = useState<FormState>(() => ({
+    ...createDefaultFormState(),
+    birthDay: "15",
+    birthMonth: "5",
+    birthYearBe: "2531", // ค.ศ.1988
+    birthHour: "14",
+    birthMinute: "30",
+    gender: "male",
+  }));
   const [clientName, setClientName] = useState("");
   const [referralCode, setReferralCode] = useState(DEFAULT_REFERRAL_CODE);
+
+  // ค่าที่ derive จาก formState — รูปแบบเดิมที่ API/บันทึก/โหลดใช้
+  const birthDate = buildBirthDateValue(formState);
+  const birthTime = buildBirthTimeValue(formState.birthHour, formState.birthMinute);
+  const gender: "male" | "female" = formState.gender === "female" ? "female" : "male";
+  const province = formState.province;
+  const dayOptions = getBirthDayOptions(formState.birthMonth, formState.birthYearBe);
+  const formComplete = Boolean(birthDate && birthTime);
+
+  const handleField = useCallback(
+    (event: ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
+      const { name, value } = event.target;
+      setFormState((prev) => applyFormFieldChange(prev, name, value));
+    },
+    [],
+  );
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -344,10 +373,14 @@ export function NewdataReadingWorkspace() {
         const r = body.reading;
         const g = r.gender === "female" ? "female" : "male";
         setClientName(r.clientName ?? "");
-        setBirthDate(r.birthDate);
-        setBirthTime(r.birthTime);
-        setGender(g);
-        setProvince(r.province ?? "");
+        setFormState(
+          formStateFromRawInput({
+            birthDate: r.birthDate,
+            birthTime: r.birthTime,
+            gender: g,
+            province: r.province ?? "",
+          }),
+        );
         setSessionId(id);
         setSaveStatus(`เปิดดวง "${r.clientName || r.birthDate}" แล้ว`);
         await runReading(
@@ -374,12 +407,21 @@ export function NewdataReadingWorkspace() {
     [sessionId, reloadSavedList],
   );
 
+  // เปิดจากหน้าประวัติดวง: /reading/newdata-reading?session=<id> → โหลดดวงนั้นอัตโนมัติ (ครั้งเดียว)
+  const autoLoadedRef = useRef(false);
+  useEffect(() => {
+    if (autoLoadedRef.current || typeof window === "undefined") return;
+    const id = new URLSearchParams(window.location.search).get("session");
+    if (!id) return;
+    autoLoadedRef.current = true;
+    void loadSession(id);
+  }, [loadSession]);
+
   // ── เนื้อหา ──
   const editedCount = useMemo(
     () => new Set([...Object.keys(edits.boxes), ...Object.keys(edits.titles)]).size,
     [edits],
   );
-  const pillars = data?.calculatedState?.fourPillars;
   const summary = useMemo(() => {
     if (!data?.chapters) return null;
     return { got: data.chapters.filter((c) => c.hasContent).length, total: data.chapters.length };
@@ -442,29 +484,48 @@ export function NewdataReadingWorkspace() {
         </label>
         <label>
           วันเกิด
-          <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} required />
+          <span className="newdata-reading__time">
+            <select name="birthDay" aria-label="วัน" value={formState.birthDay} onChange={handleField} required>
+              <option value="">วัน</option>
+              {dayOptions.map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
+            <select name="birthMonth" aria-label="เดือน" value={formState.birthMonth} onChange={handleField} required>
+              <option value="">เดือน</option>
+              {THAI_MONTH_OPTIONS.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+            <select name="birthYearBe" aria-label="ปี พ.ศ." value={formState.birthYearBe} onChange={handleField} required>
+              <option value="">ปี พ.ศ.</option>
+              {BUDDHIST_ERA_YEAR_OPTIONS.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </span>
         </label>
         <label>
           เวลาเกิด
           <span className="newdata-reading__time">
-            <select
-              aria-label="ชั่วโมง (24 ชม.)"
-              value={(birthTime.split(":")[0] ?? "00").padStart(2, "0")}
-              onChange={(e) => setBirthTime(`${e.target.value}:${birthTime.split(":")[1] ?? "00"}`)}
-            >
-              {Array.from({ length: 24 }, (_, h) => String(h).padStart(2, "0")).map((h) => (
+            <select name="birthHour" aria-label="ชั่วโมง (24 ชม.)" value={formState.birthHour} onChange={handleField} required>
+              <option value="">ชม.</option>
+              {BIRTH_HOUR_OPTIONS.map((h) => (
                 <option key={h} value={h}>
                   {h}
                 </option>
               ))}
             </select>
             <span aria-hidden>:</span>
-            <select
-              aria-label="นาที"
-              value={(birthTime.split(":")[1] ?? "00").padStart(2, "0")}
-              onChange={(e) => setBirthTime(`${birthTime.split(":")[0] ?? "00"}:${e.target.value}`)}
-            >
-              {Array.from({ length: 60 }, (_, m) => String(m).padStart(2, "0")).map((m) => (
+            <select name="birthMinute" aria-label="นาที" value={formState.birthMinute} onChange={handleField} required>
+              <option value="">นาที</option>
+              {BIRTH_MINUTE_OPTIONS.map((m) => (
                 <option key={m} value={m}>
                   {m}
                 </option>
@@ -475,16 +536,16 @@ export function NewdataReadingWorkspace() {
         </label>
         <label>
           เพศ
-          <select value={gender} onChange={(e) => setGender(e.target.value as "male" | "female")}>
+          <select name="gender" value={formState.gender} onChange={handleField}>
             <option value="male">ชาย</option>
             <option value="female">หญิง</option>
           </select>
         </label>
         <label>
           จังหวัด
-          <input value={province} onChange={(e) => setProvince(e.target.value)} />
+          <input name="province" value={formState.province} onChange={handleField} />
         </label>
-        <button type="submit" className="newdata-reading__btn" disabled={loading}>
+        <button type="submit" className="newdata-reading__btn" disabled={loading || !formComplete}>
           {loading ? "กำลังคำนวณ…" : "อ่านดวง 15 บท"}
         </button>
         {data && (
@@ -549,33 +610,8 @@ export function NewdataReadingWorkspace() {
               เกิด {data.rawInput?.birthDate} {data.rawInput?.birthTime} · {gender === "male" ? "ชาย" : "หญิง"}
               {data.calculatedState?.dayMaster ? ` · ดิถี ${data.calculatedState.dayMaster}` : ""}
             </p>
-            {pillars && (
-              <table className="newdata-reading__pillars">
-                <thead>
-                  <tr>
-                    {PILLAR_LABELS.map(([, label]) => (
-                      <th key={label}>{label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {PILLAR_LABELS.map(([pos]) => (
-                      <td key={pos}>{pillars[pos]?.stem}</td>
-                    ))}
-                  </tr>
-                  <tr>
-                    {PILLAR_LABELS.map(([pos]) => (
-                      <td key={pos}>{pillars[pos]?.branch}</td>
-                    ))}
-                  </tr>
-                  <tr className="newdata-reading__pillars-stage">
-                    {PILLAR_LABELS.map(([pos]) => (
-                      <td key={pos}>{pillars[pos]?.lowerStagePrimary ?? pillars[pos]?.lookingStage ?? "—"}</td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
+            {data.calculatedState && (
+              <ReadingChartFoundation calculatedState={data.calculatedState} />
             )}
             {summary && (
               <p className="newdata-reading__summary no-print">

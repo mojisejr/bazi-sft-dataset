@@ -319,8 +319,12 @@ function parseSamHeng(file: string): SeedRow[] {
   return rows;
 }
 
-// ── parser: อาชีพ 5 ธาตุ (element → รายชื่ออาชีพ) ────────────────────────────
-function parseCareerByElement(file: string): SeedRow[] {
+// ── parser: รายการแยกตามธาตุ (element → bullets) — ใช้ทั้งอาชีพ/การเรียน 5 ธาตุ ──
+function parseElementBullets(
+  file: string,
+  group: string,
+  labelFor: (el: string) => string,
+): SeedRow[] {
   const lines = splitLines(read(file));
   const ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
   const ORDER: Record<string, number> = { ไม้: 1, ไฟ: 2, ดิน: 3, ทอง: 4, น้ำ: 5 };
@@ -329,10 +333,10 @@ function parseCareerByElement(file: string): SeedRow[] {
   const flush = () => {
     if (current) {
       rows.push({
-        groupKey: "career_by_element",
+        groupKey: group,
         itemKey: current.key,
         ordinal: ORDER[current.key] ?? 0,
-        value: { text: current.bullets.join("\n"), label: `อาชีพ/ธุรกิจ ธาตุ${current.key}` },
+        value: { text: current.bullets.join("\n"), label: labelFor(current.key) },
         sourceFile: file,
       });
     }
@@ -578,7 +582,12 @@ function collectAll(): SeedRow[] {
   push("combine", () => parseCombine("ภาคีคู่ บน-ล่าง.txt"));
   push("trinity", () => parseTrinity("ไตรภาคี.txt"));
   push("pillars_meaning", () => parsePillars("4 แถว 8 อักษร.txt"));
-  push("career_by_element", () => parseCareerByElement("อาชีพ 5 ธาตุ.txt"));
+  push("career_by_element", () =>
+    parseElementBullets("อาชีพ 5 ธาตุ.txt", "career_by_element", (el) => `อาชีพ/ธุรกิจ ธาตุ${el}`),
+  );
+  push("study_by_element", () =>
+    parseElementBullets("การเรียน 5 ธาตุ.txt", "study_by_element", (el) => `วิชา/คณะ ธาตุ${el}`),
+  );
   push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   push("love_base", () => parseLoveBase("ความรักและความสัมพันธ์.txt"));

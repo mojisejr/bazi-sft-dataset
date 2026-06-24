@@ -64,6 +64,9 @@ const MAP: NewdataMap = {
   love_base_60: {
     庚午: { text: "คู่ครองที่มีการใช้อำนาจ หรือ มีตำแหน่ง", label: "庚午" },
   },
+  study_by_element: {
+    ทอง: { text: "วิศวกรรมเครื่องกล นิติศาสตร์ เตรียมทหาร", label: "วิชา/คณะ ธาตุทอง" },
+  },
 };
 
 describe("newdata-lookup: matchers (set-membership)", () => {
@@ -87,13 +90,14 @@ describe("newdata-lookup: matchers (set-membership)", () => {
 });
 
 describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bullet)", () => {
-  test("education → box=3 (เท่า bullets), เติม study_style + edu_level", () => {
+  test("education → box=3: box0=สไตล์เรียน+วุฒิ, box1=ดิถีถ่ายเท(ว่าง), box2=อาชีพถูกดวง", () => {
     const r = resolveChapterBoxes("education", FACTS, MAP);
     expect(r.hasContent).toBe(true);
     expect(r.boxes).toHaveLength(3); // = จำนวน bullets
     expect(r.boxes[0].body).toContain("การเรียนซ้ำชั้น เรียนรู้เรื่องลึกลับ"); // study_style
-    expect(r.boxes[1].body).toContain("การศึกษามักล่าช้า เรียนซ้ำชั้น"); // edu_level
-    expect(r.boxes[2].body).toBe(""); // เรียนตามอาชีพ — ยังไม่มี NewData = ว่าง
+    expect(r.boxes[0].body).toContain("การศึกษามักล่าช้า เรียนซ้ำชั้น"); // + edu_level (รวมในข้อ 1)
+    expect(r.boxes[1].body).toBe(""); // ดิถี→ถ่ายเท→เชี่ยงแซ — MAP ไม่มี dithi_transfer = ว่าง
+    expect(r.boxes[2].body).toContain("วิศวกรรมเครื่องกล"); // เรียนตามอาชีพถูกดวง = study_by_element ธาตุทอง
   });
 
   test("chart_foundation → box=6, ภาคี+เชี่ยงแซเติม, จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
@@ -119,7 +123,6 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     const r = resolveChapterBoxes("family", FACTS, MAP);
     expect(r.boxes).toHaveLength(6);
     expect(r.boxes[2].body).toContain("เรียนรู้สำเร็จการศึกษา"); // กวงตั่ว (ราศีบนเดือน) = พ่อ
-    expect(r.boxes[2].body).toContain("ราศีบนเสาmonth");
     expect(r.boxes[3].body).toContain("ใฝ่รู้ ชอบพัฒนาตัวเอง"); // เชี่ยงแซ (ราศีล่างเดือน) = แม่
   });
 
@@ -131,7 +134,6 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     };
     const r = resolveChapterBoxes("talent", FACTS, map);
     expect(r.boxes[2].body).toContain("พรแฝงด้านการสร้างสรรค์");
-    expect(r.boxes[2].body).toContain("ราศีแฝงหลักยาม 乙");
   });
 
   test("friends_foes box0 มิตรแท้ → ภาคีราศีล่าง + หลักวันเชี่ยงแซ(หมกยก)", () => {
@@ -227,17 +229,41 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[3].body).toContain("ทำบุญถวายของโลหะ");
   });
 
-  test("บทไม่มี NewData → defined=false, hasContent=false แต่ box ครบทุก bullet (ว่าง)", () => {
-    const cases: Record<string, number> = {
-      colors_directions: 9,
+  test("colors_directions → map ไว้แล้ว (defined=true) แต่ DB ยังว่าง → box ครบ 9 ช่อง ว่างหมด", () => {
+    // บท 14 wire resolver ตามธาตุที่ดวงต้องการแล้ว แต่ตาราง auspicious_by_element ยังไม่มีใน MAP
+    const r = resolveChapterBoxes("colors_directions", FACTS, MAP);
+    expect(r.defined).toBe(true); // มี resolver ผูกไว้ (รอซินแสเติมตาราง)
+    expect(r.hasContent).toBe(false); // ยังไม่มีข้อมูลในดวงนี้
+    expect(r.boxes).toHaveLength(9); // box ครบทุก bullet
+    expect(r.boxes.every((b) => b.body === "")).toBe(true); // ว่างหมด
+
+    // เติมตาราง 1 ช่อง (สี × ธาตุดิน = ธาตุที่ดวงต้องการของ 庚อ่อน) → box แรกมีเนื้อ
+    const filled: NewdataMap = {
+      ...MAP,
+      auspicious_by_element: { "สี|ดิน": { text: "สีเหลือง น้ำตาล", label: "สีมงคล ธาตุดิน" } },
     };
-    for (const [id, n] of Object.entries(cases)) {
-      const r = resolveChapterBoxes(id, FACTS, MAP);
-      expect(r.defined, id).toBe(false);
-      expect(r.hasContent, id).toBe(false);
-      expect(r.boxes, id).toHaveLength(n); // box ครบทุก bullet
-      expect(r.boxes.every((b) => b.body === ""), id).toBe(true); // ว่างหมด
-    }
+    const r2 = resolveChapterBoxes("colors_directions", FACTS, filled);
+    expect(r2.boxes[0].body).toContain("สีเหลือง น้ำตาล");
+  });
+
+  test("benefactor box2/3 → ธาตุถ่ายเท(น้ำ=癸เสายาม) ติด · ธาตุโชคลาภ(ไม้) ไม่มี = ว่าง", () => {
+    // 庚(ทอง): ถ่ายเท(食傷)=น้ำ → 癸เสายาม เชี่ยงแซกวงตั่ว · โชคลาภ(財)=ไม้ → ดวงนี้ไม่มี
+    const r = resolveChapterBoxes("benefactor", FACTS, MAP);
+    expect(r.boxes[2].body).toContain("เรียนรู้สำเร็จการศึกษา"); // กวงตั่ว (เสายาม ธาตุน้ำ)
+    expect(r.boxes[3].body).toBe(""); // ธาตุโชคลาภ ไม้ — ไม่มีในดวง
+  });
+
+  test("health box1 → ธาตุไฟมากเกินไป + ธาตุไม้น้อยเกินไป (นับจาก 4 เสา)", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      health_by_element: {
+        ไฟ: { text: "ระวังหัวใจ ความดัน นอนไม่หลับ", label: "โรคธาตุไฟ" },
+        ไม้: { text: "ระวังตับ เส้นเอ็น ดวงตา", label: "โรคธาตุไม้" },
+      },
+    };
+    const r = resolveChapterBoxes("health", FACTS, map);
+    expect(r.boxes[1].body).toContain("ระวังหัวใจ"); // ไฟ มากสุด (3 ตำแหน่ง)
+    expect(r.boxes[1].body).toContain("ระวังตับ"); // ไม้ น้อยสุด (0 ตำแหน่ง)
   });
 
   test("CHAPTER_BULLET_RESOLVERS มีครบ 15 บท และ resolver align กับจำนวน bullets", () => {

@@ -224,6 +224,7 @@ export function matchCareer(
   facts: ChartFacts,
   role: "do" | "avoid",
   order: number,
+  group = "career_by_element",
 ): NewdataBlock[] {
   const dayElement = elementThOfStem(facts.dayMaster);
   if (!dayElement) return [];
@@ -242,7 +243,7 @@ export function matchCareer(
   const element = elements[order - 1];
   if (!element) return [];
 
-  const value = map.career_by_element?.[element];
+  const value = map[group]?.[element];
   if (!value) return [];
 
   const bandTh = band === "weak" ? "อ่อน" : band === "veryStrong" ? "แข็งเกินไป" : "สมดุล/แข็งแรง";
@@ -250,7 +251,7 @@ export function matchCareer(
     role === "do"
       ? `ดิถีธาตุ${dayElement} (${bandTh}) · เดือนธาตุ${monthElement} → ธาตุ${element}`
       : `ดิถีธาตุ${dayElement} (${bandTh}) → เลี่ยงธาตุ${element}`;
-  return [toBlock("career_by_element", element, value, context)];
+  return [toBlock(group, element, value, context)];
 }
 
 /** engine 5 band id → คีย์/ป้าย band ของตารางดิถี/กำลัง (50 ช่อง) */
@@ -463,4 +464,99 @@ export function matchPillarState(
   if (!value) return null;
   const ctx = tier === "upper" ? `ราศีบนเสา${position}` : `เสา${position}`;
   return toBlock(group, state, value, ctx);
+}
+
+/** ธาตุอังกฤษ → ไทย (สำหรับคีย์กลุ่มที่ใช้ธาตุไทย เช่น health_by_element) */
+const EN_TO_TH_ELEMENT: Record<string, ElementTh> = {
+  wood: "ไม้",
+  fire: "ไฟ",
+  earth: "ดิน",
+  metal: "ทอง",
+  water: "น้ำ",
+};
+
+/** ธาตุที่ดวงต้องการ (useful god) — ธาตุดิถี × กำลัง → 1-2 ธาตุ (reuse ตารางทำบุญ) */
+export function favorableElements(facts: ChartFacts): ElementTh[] {
+  const dayElement = elementThOfStem(facts.dayMaster);
+  if (!dayElement) return [];
+  return meritFavorElements(dayElement, meritBandFromScore(facts.strengthScore));
+}
+
+/**
+ * บท 4 · อุปถัมภ์ (ข้อ 3-4) — หาเสาที่ "ธาตุตามบทบาท" นั่งอยู่ แล้วอ่านเชี่ยงแซของเสานั้น (reuse shengxiang)
+ *   role "output" → ธาตุถ่ายเท (บริวาร 食傷 = ธาตุที่ดิถีก่อเกิด)
+ *   role "wealth" → ธาตุโชคลาภ (ลูกค้า 財 = ธาตุที่ดิถีพิฆาต)
+ * คืนหลายก้อน (ดีดุปตามเชี่ยงแซ) — ปลายทางว่างถ้า DB ยังไม่มี
+ */
+export function matchElementRoleState(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  role: "output" | "wealth",
+): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl) return [];
+  const targetEl = role === "output" ? GENERATES[dayEl as keyof typeof GENERATES] : CONTROLS[dayEl as keyof typeof CONTROLS];
+  if (!targetEl) return [];
+  const roleTh = role === "output" ? "ธาตุถ่ายเท (บริวาร)" : "ธาตุโชคลาภ (ลูกค้า)";
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  for (const p of facts.pillars) {
+    const onStem = STEM_TO_ELEMENT[p.stem as keyof typeof STEM_TO_ELEMENT] === targetEl;
+    const onBranch = BRANCH_TO_ELEMENT[p.branch as keyof typeof BRANCH_TO_ELEMENT] === targetEl;
+    if (!onStem && !onBranch) continue;
+    if (!p.state || seen.has(p.state)) continue;
+    const value = map[group]?.[p.state];
+    if (!value) continue;
+    seen.add(p.state);
+    out.push(toBlock(group, p.state, value, `${roleTh} เสา${p.position} · เชี่ยงแซ${p.state}`));
+  }
+  return out;
+}
+
+/**
+ * บท 13 · สุขภาพ (ข้อ 2) — โรคจากธาตุที่มากเกินไป / น้อยเกินไป ในพื้นดวง
+ * นับธาตุจากราศีบน+ล่าง 4 เสา → ธาตุมากสุด (มากเกินไป) และ น้อยสุด (น้อยเกินไป) → lookup คีย์ธาตุไทย
+ */
+export function matchHealthElement(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const order: ElementTh[] = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
+  const count: Record<ElementTh, number> = { ไม้: 0, ไฟ: 0, ดิน: 0, ทอง: 0, น้ำ: 0 };
+  for (const p of facts.pillars) {
+    const se = elementThOfStem(p.stem);
+    if (se) count[se] += 1;
+    const beEn = BRANCH_TO_ELEMENT[p.branch as keyof typeof BRANCH_TO_ELEMENT];
+    const be = beEn ? EN_TO_TH_ELEMENT[beEn] : undefined;
+    if (be) count[be] += 1;
+  }
+  const maxEl = order.reduce((a, b) => (count[b] > count[a] ? b : a));
+  const minEl = order.reduce((a, b) => (count[b] < count[a] ? b : a));
+  const out: NewdataBlock[] = [];
+  const push = (el: ElementTh, tier: string) => {
+    const value = map[group]?.[el];
+    if (value) out.push(toBlock(group, el, value, `ธาตุ${el} ${tier} (${count[el]} ตำแหน่ง)`));
+  };
+  push(maxEl, "มากเกินไป");
+  if (minEl !== maxEl) push(minEl, "น้อยเกินไป");
+  return out;
+}
+
+/**
+ * บท 14/15 · ตามธาตุที่ดวงต้องการ × หมวด — lookup คีย์ "{หมวด}|{ธาตุ}"
+ *   บท 14: หมวด = สี/เสื้อผ้า/เครื่องประดับ/วัตถุมงคล/กระเป๋าเงิน/รถ/สัตว์มงคล/ทิศ (group auspicious_by_element)
+ *   บท 15: หมวด = คุ้มครอง/การงาน/โชคลาภ (group deity_by_element)
+ * คืน 1 ก้อนต่อธาตุที่ดวงต้องการ (1-2 ธาตุ) — ปลายทางว่างถ้า DB ยังไม่มี (รอซินแสเติม)
+ */
+export function matchElementCategory(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  category: string,
+): NewdataBlock[] {
+  const out: NewdataBlock[] = [];
+  for (const el of favorableElements(facts)) {
+    const key = `${category}|${el}`;
+    const value = map[group]?.[key];
+    if (value) out.push(toBlock(group, key, value, `ธาตุ${el}`));
+  }
+  return out;
 }

@@ -14,6 +14,9 @@ import {
   matchDaYunTransfer,
   matchDayMasterStrength,
   matchDithiTransfer,
+  matchElementCategory,
+  matchElementRoleState,
+  matchHealthElement,
   matchHiddenTransfer,
   matchLoveBase,
   matchLoveChance,
@@ -43,7 +46,7 @@ type Resolver =
   | { kind: "trinity" }
   | { kind: "phua" }
   | { kind: "daYun" }
-  | { kind: "career"; role: "do" | "avoid"; order: number }
+  | { kind: "career"; role: "do" | "avoid"; order: number; group?: string }
   | { kind: "dayMasterStrength"; group: string }
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
@@ -53,7 +56,10 @@ type Resolver =
   | { kind: "merit"; group: string }
   | { kind: "loveBase"; group: string }
   | { kind: "loveChance"; group: string }
-  | { kind: "spouseStar"; group: string };
+  | { kind: "spouseStar"; group: string }
+  | { kind: "elementRoleState"; group: string; role: "output" | "wealth" }
+  | { kind: "healthElement"; group: string }
+  | { kind: "elementCategory"; group: string; category: string };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -94,11 +100,12 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [],
   ],
   // 4 bullets: [ธาตุส่งเสริม] [คู่ธาตุ] [ธาตุถ่ายเท/บริวาร] [ธาตุโชคลาภ/ลูกค้า]
+  // ข้อ 3-4: หาเสาที่ธาตุถ่ายเท(食傷)/ธาตุโชคลาภ(財) นั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (reuse shengxiang)
   benefactor: [
     [{ kind: "state", group: "shengxiang", pillar: "month" }],
     [{ kind: "branchPairs", group: "combine_branch" }],
-    [],
-    [],
+    [{ kind: "elementRoleState", group: "shengxiang", role: "output" }],
+    [{ kind: "elementRoleState", group: "shengxiang", role: "wealth" }],
   ],
   // 4 bullets: [พรสวรรค์: ถ่ายเทราศีบน] [พรแสวง: ถ่ายเทราศีล่าง] [พรในราศีแฝง] [ข้อเสนอแนะ]
   talent: [
@@ -153,17 +160,23 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [],
   ],
   // 3 bullets: [ลักษณะบริวารตามพื้นดวง (เสายาม)] [มีส่วนหา/รักษา/ยักยอกทรัพย์ (ผั่วไฉ่โข่ว)] [ควรมี/ไม่มี]
-  // หมายเหตุ: matching ดวงลูกน้อง (60 กะจื่อ) รออาจารย์คอนเฟิร์ม — ตรงนี้คือลักษณะพื้นดวงจากเสายาม
+  // ข้อ 1: เสายามเชี่ยงแซ (มีอยู่) + 60 กะจื่อเสายาม (subordinate_60 รอซินแสเติม ตามที่ซินแสสั่ง matching)
   subordinates: [
-    [{ kind: "state", group: "shengxiang", pillar: "hour" }],
+    [{ kind: "state", group: "shengxiang", pillar: "hour" }, { kind: "ganzhiOf", group: "subordinate_60", pillar: "hour" }],
     [{ kind: "phua" }],
     [],
   ],
-  // 3 bullets: [วิธี/ทักษะได้โชคลาภ] [ดิถี→ถ่ายเท→เชี่ยงแซดี] [เรียนตามอาชีพถูกดวง]
+  // 3 bullets: [วิธี/ทักษะได้โชคลาภ (สไตล์เรียน+วุฒิ)] [ดิถี→ถ่ายเท→เชี่ยงแซดี] [เรียนตามอาชีพถูกดวง (คลัง 5 ธาตุ)]
   education: [
-    [{ kind: "state", group: "study_style", pillar: "day" }],
-    [{ kind: "state", group: "edu_level", pillar: "day" }],
-    [],
+    [
+      { kind: "state", group: "study_style", pillar: "day" },
+      { kind: "state", group: "edu_level", pillar: "day" },
+    ],
+    [{ kind: "dithiTransfer", group: "dithi_transfer" }],
+    [
+      { kind: "career", role: "do", order: 1, group: "study_by_element" },
+      { kind: "career", role: "do", order: 2, group: "study_by_element" },
+    ],
   ],
   // 2 bullets: [วัยจรแต่ละช่วง] [ช่วงดี/ช่วงระวัง]
   turning_points: [
@@ -178,14 +191,31 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "samHeng" },
       { kind: "branchPairs", group: "harm_hai" },
     ],
-    [],
+    [{ kind: "healthElement", group: "health_by_element" }],
     [],
   ],
-  // 9 bullets — ยังไม่มี NewData (สี/ทิศ/ของมงคล)
-  colors_directions: [[], [], [], [], [], [], [], [], []],
+  // 9 bullets: [สี+ทิศ] [เสื้อผ้า] [เครื่องประดับ] [วัตถุมงคล] [กระเป๋าเงิน] [รถ] [สัตว์มงคล] [ทิศ] [ข้อเสนอแนะ]
+  // ทุกช่อง (ยกเว้นข้อเสนอแนะ) = ตามธาตุที่ดวงต้องการ × หมวด (auspicious_by_element รอซินแสเติม)
+  colors_directions: [
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "สี" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "เสื้อผ้า" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "เครื่องประดับ" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "วัตถุมงคล" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "กระเป๋าเงิน" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "รถ" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "สัตว์มงคล" }],
+    [{ kind: "elementCategory", group: "auspicious_by_element", category: "ทิศ" }],
+    [],
+  ],
   // 5 bullets: [องค์เทพคุ้มครอง] [ขอพรงาน] [ขอพรโชคลาภ] [ทำบุญเสริมดวง] [ข้อเสนอแนะ]
-  // องค์เทพ 3 บทแรก รอซินแสเติม · ทำบุญเสริมดวง = ธาตุที่ควรเสริม (ตารางทำบุญ 5 ธาตุ)
-  guardian_deities: [[], [], [], [{ kind: "merit", group: "merit_by_element" }], []],
+  // องค์เทพ 3 บทแรก = ตามธาตุที่ดวงต้องการ × หมวด (deity_by_element รอซินแสเติม) · ทำบุญ = ตารางทำบุญ 5 ธาตุ
+  guardian_deities: [
+    [{ kind: "elementCategory", group: "deity_by_element", category: "คุ้มครอง" }],
+    [{ kind: "elementCategory", group: "deity_by_element", category: "การงาน" }],
+    [{ kind: "elementCategory", group: "deity_by_element", category: "โชคลาภ" }],
+    [{ kind: "merit", group: "merit_by_element" }],
+    [],
+  ],
 };
 
 function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
@@ -207,7 +237,7 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
     case "phua":
       return matchPhua(map, facts);
     case "career":
-      return matchCareer(map, facts, r.role, r.order);
+      return matchCareer(map, facts, r.role, r.order, r.group);
     case "dayMasterStrength":
       return matchDayMasterStrength(map, r.group, facts);
     case "branchOf":
@@ -228,6 +258,12 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchLoveChance(map, r.group, facts);
     case "spouseStar":
       return matchSpouseStar(map, r.group, facts);
+    case "elementRoleState":
+      return matchElementRoleState(map, r.group, facts, r.role);
+    case "healthElement":
+      return matchHealthElement(map, r.group, facts);
+    case "elementCategory":
+      return matchElementCategory(map, r.group, facts, r.category);
     case "daYun": {
       const blocks: NewdataBlock[] = [];
       for (const d of facts.daYun) {
@@ -235,12 +271,12 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
         if (!state) continue;
         const value = map.shengxiang?.[state];
         if (!value) continue;
+        const age = `อายุ ${d.startAge}-${d.endAge}${d.isCurrent ? " (ปัจจุบัน)" : ""}`;
         blocks.push({
           group: "shengxiang",
           itemKey: state,
-          label: value.label,
+          label: `${age} · ${value.label}`,
           text: value.text,
-          context: `อายุ ${d.startAge}-${d.endAge}${d.isCurrent ? " (ปัจจุบัน)" : ""}`,
         });
       }
       return blocks;
@@ -250,11 +286,10 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
   }
 }
 
-/** จัดรูป block เป็นย่อหน้า markdown: **ป้าย** เนื้อ _(บริบท)_ */
+/** จัดรูป block เป็นย่อหน้า markdown: **ป้าย** เนื้อ (ไม่ใส่บริบทห้อยท้าย — ซินแสไม่ต้องมาลบเอง) */
 function blockToParagraph(b: NewdataBlock): string {
   const head = b.label ? `**${b.label}** ` : "";
-  const ctx = b.context ? ` _(${b.context})_` : "";
-  return `${head}${b.text}${ctx}`.trim();
+  return `${head}${b.text}`.trim();
 }
 
 export type ChapterBox = { title: string; body: string };
