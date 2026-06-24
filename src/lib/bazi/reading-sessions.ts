@@ -10,6 +10,7 @@ import { ZodError, z } from "zod";
 
 import { createDbClient, createDbSqlClient } from "@/db/client";
 import { baziReadingSessions } from "@/db/schema";
+import { recordSessionRevision } from "@/lib/bazi/reading-session-revisions";
 import {
   CalculatedStateSchema,
   RawInputSchema,
@@ -70,6 +71,11 @@ export const SaveReadingSessionRequestSchema = z.object({
   /** snapshot ดวง — บังคับตอนบันทึก (หน้า reading มีค่านี้เสมอเมื่อกดบันทึกได้) */
   calculatedState: CalculatedStateSchema,
   sessionData: SessionDataSchema,
+  /**
+   * สร้าง "จุดประวัติการบันทึก" (revision) ไหม — default true (กดปุ่ม "บันทึกการดูดวง" เอง)
+   * auto-save หลังแก้กล่องส่ง false → บันทึกลง DB ทุกครั้งแต่ไม่รก revision (จุดประวัติ = การกดบันทึกเองเท่านั้น)
+   */
+  createRevision: z.boolean().default(true),
 });
 
 export type SaveReadingSessionRequest = z.infer<typeof SaveReadingSessionRequestSchema>;
@@ -164,6 +170,9 @@ export function createDbReadingSessionRepository(
         ownerId,
       };
 
+      let resolvedSessionId: string;
+      let updatedAt: Date;
+
       if (input.sessionId) {
         const [updatedRecord] = await db
           .update(baziReadingSessions)
@@ -178,25 +187,38 @@ export function createDbReadingSessionRepository(
           throw new Error(`Reading session ${input.sessionId} was not found.`);
         }
 
-        return {
-          sessionId: updatedRecord.sessionId,
-          status: input.status,
-          updatedAt: updatedRecord.updatedAt.toISOString(),
-        };
+        resolvedSessionId = updatedRecord.sessionId;
+        updatedAt = updatedRecord.updatedAt;
+      } else {
+        const [createdRecord] = await db
+          .insert(baziReadingSessions)
+          .values(values)
+          .returning({
+            sessionId: baziReadingSessions.id,
+            updatedAt: baziReadingSessions.updatedAt,
+          });
+
+        resolvedSessionId = createdRecord.sessionId;
+        updatedAt = createdRecord.updatedAt;
       }
 
-      const [createdRecord] = await db
-        .insert(baziReadingSessions)
-        .values(values)
-        .returning({
-          sessionId: baziReadingSessions.id,
-          updatedAt: baziReadingSessions.updatedAt,
-        });
+      // เก็บ "ประวัติการบันทึก" หนึ่งสแน็ปช็อตเฉพาะตอนกดบันทึกเอง (createRevision !== false) — auto-save ข้าม
+      // best-effort: ถ้า revision ล้มเหลวไม่ทำให้การบันทึก session หลักพัง
+      if (input.createRevision !== false) {
+        try {
+          await recordSessionRevision(
+            { ...values, sessionId: resolvedSessionId },
+            databaseUrl,
+          );
+        } catch {
+          /* บันทึกประวัติไม่สำเร็จ — ข้ามได้ (session หลักบันทึกแล้ว) */
+        }
+      }
 
       return {
-        sessionId: createdRecord.sessionId,
+        sessionId: resolvedSessionId,
         status: input.status,
-        updatedAt: createdRecord.updatedAt.toISOString(),
+        updatedAt: updatedAt.toISOString(),
       };
     },
     async listSessions() {

@@ -112,6 +112,8 @@ type ReadingPathWorkspaceProps = {
   resumeSessionId?: string;
   /** เปิดเวอร์ชัน PDF ที่บันทึกไว้มาแก้ (จาก ?version=<id>) — snapshot แช่แข็ง */
   resumeVersionId?: string;
+  /** เปิด "ประวัติการบันทึก" (revision) มาดู/แก้ (จาก ?revision=<id>) — โหลด path เดียวกับเวอร์ชัน PDF */
+  resumeRevisionId?: string;
   /** เปิด preview/print อัตโนมัติหลังโหลดเซสชัน (จาก ?print=1) */
   autoPrint?: boolean;
 };
@@ -119,6 +121,7 @@ type ReadingPathWorkspaceProps = {
 export function ReadingPathWorkspace({
   resumeSessionId,
   resumeVersionId,
+  resumeRevisionId,
   autoPrint = false,
 }: ReadingPathWorkspaceProps = {}) {
   const [formState, setFormState] = useState<FormState>(createDefaultFormState);
@@ -160,10 +163,10 @@ export function ReadingPathWorkspace({
   }, [topicStates]);
 
   useEffect(() => {
-    // เปิดเซสชันเดิม/เวอร์ชัน (resume) จะโหลดคลังคำแก้จาก DB เอง — ไม่ทับด้วย localStorage
-    if (resumeSessionId || resumeVersionId) return;
+    // เปิดเซสชันเดิม/เวอร์ชัน/ประวัติการบันทึก (resume) จะโหลดคลังคำแก้จาก DB เอง — ไม่ทับด้วย localStorage
+    if (resumeSessionId || resumeVersionId || resumeRevisionId) return;
     setCorrections(loadCorrections());
-  }, [resumeSessionId, resumeVersionId]);
+  }, [resumeSessionId, resumeVersionId, resumeRevisionId]);
 
   // ประวัติการดูดวง (บันทึกลง DB) — เก็บ sessionId ไว้เพื่อให้บันทึกครั้งถัดไปเป็นการ "อัปเดต" ไม่ใช่สร้างใหม่
   const [label, setLabel] = useState("");
@@ -238,14 +241,19 @@ export function ReadingPathWorkspace({
     };
   }, [resumeSessionId, autoPrint]);
 
-  // เปิด "เวอร์ชัน PDF ที่บันทึกไว้" (snapshot) มาแก้ — คืนสภาพ workspace เหมือน resume session
-  // ต่างกันตรง sessionId = ดวงต้นทาง (ไม่ใช่ id ของเวอร์ชัน) → กดอัปเดต/บันทึกเวอร์ชันใหม่ต่อเข้าดวงเดิมได้
+  // เปิด "เวอร์ชัน PDF ที่บันทึกไว้" หรือ "ประวัติการบันทึก" (snapshot) มาแก้ — คืนสภาพ workspace เหมือน resume session
+  // ต่างกันตรง sessionId = ดวงต้นทาง (ไม่ใช่ id ของ snapshot) → กดอัปเดต/บันทึกต่อเข้าดวงเดิมได้
+  // ทั้งสอง endpoint คืน detail รูปเดียวกัน (revision คืน versionNote=null) จึงใช้ load path เดียวกัน
   useEffect(() => {
-    if (!resumeVersionId) return;
+    const snapshotId = resumeVersionId ?? resumeRevisionId;
+    if (!snapshotId) return;
+    const snapshotUrl = resumeVersionId
+      ? `/api/reading/pdf-versions/${snapshotId}`
+      : `/api/reading/session-revisions/${snapshotId}`;
     let active = true;
     void (async () => {
       try {
-        const response = await fetch(`/api/reading/pdf-versions/${resumeVersionId}`);
+        const response = await fetch(snapshotUrl);
         if (!response.ok) return;
         const detail = (await response.json()) as ReadingPdfVersionDetail;
         if (!active) return;
@@ -293,7 +301,7 @@ export function ReadingPathWorkspace({
     return () => {
       active = false;
     };
-  }, [resumeVersionId, autoPrint]);
+  }, [resumeVersionId, resumeRevisionId, autoPrint]);
 
   // ตารางคำแก้ (กฎแทนคำ) จาก server — โหลดครั้งเดียวตอน mount
   const [rules, setRules] = useState<SubstitutionRule[]>([]);
@@ -314,15 +322,15 @@ export function ReadingPathWorkspace({
     };
   }, []);
 
-  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount (ข้ามเมื่อเปิดเซสชันเดิม/เวอร์ชัน — resume เติมฟอร์มจาก rawInput เอง)
+  // โหลดค่าฟอร์มที่เคยกรอกครั้งเดียวตอน mount (ข้ามเมื่อเปิดเซสชัน/เวอร์ชัน/ประวัติการบันทึก — resume เติมฟอร์มจาก rawInput เอง)
   useEffect(() => {
-    if (resumeSessionId || resumeVersionId) return;
+    if (resumeSessionId || resumeVersionId || resumeRevisionId) return;
     const stored = loadStoredFormState();
     if (stored) {
       setFormState(stored);
     }
     formHydratedRef.current = true;
-  }, [resumeSessionId, resumeVersionId]);
+  }, [resumeSessionId, resumeVersionId, resumeRevisionId]);
 
   // บันทึกค่าฟอร์มทุกครั้งที่แก้ (หลัง hydrate แล้วเท่านั้น กันเขียนทับด้วยค่าว่าง)
   // ขณะเปิดเซสชันจาก DB (มี sessionId) ไม่ sync ลง localStorage — กันทับ cache ของเคสสดที่กรอกค้างไว้
@@ -422,19 +430,27 @@ export function ReadingPathWorkspace({
   const handleSaveCorrection = useCallback(
     (topicId: string, text: string) => {
       if (!rawInput) return;
+      const chartSignature = chartSignatureOf(rawInput);
       const result = topicStates[topicId]?.result;
-      if (!result?.reading) return;
+      // ห้าม return ทิ้งเมื่อบทยังไม่มีผล engine (เช่นค้าง loading/idle) — ไม่งั้น "บันทึกกล่อง" จะหายเงียบ
+      // ถ้ามีผล engine ใช้ fingerprint/original จากผลนั้น; ถ้าไม่มี เก็บคำแก้ไว้แบบผูกกับดวงนี้ (exact match)
+      // โดยคง fingerprint/original ของคำแก้เดิมไว้ถ้ามี ไม่งั้นใช้ fingerprint เฉพาะดวง (กันไป match ดวงอื่นเป็น "คล้ายกัน")
+      const existing = (corrections[topicId] ?? []).find(
+        (item) => item.chartSignature === chartSignature,
+      );
       const entry: SinsaeCorrection = {
         topicId,
-        fingerprint: readingFingerprint(result.reading),
-        chartSignature: chartSignatureOf(rawInput),
-        original: result.humanReading ?? "",
+        fingerprint: result?.reading
+          ? readingFingerprint(result.reading)
+          : existing?.fingerprint ?? `no-engine:${chartSignature}`,
+        chartSignature,
+        original: result?.humanReading ?? existing?.original ?? "",
         corrected: text,
         editedAt: new Date().toISOString(),
       };
       setCorrections((current) => saveCorrection(current, entry));
     },
-    [rawInput, topicStates],
+    [rawInput, topicStates, corrections],
   );
 
   const handleClearCorrection = useCallback(
@@ -668,6 +684,13 @@ export function ReadingPathWorkspace({
     };
   }
 
+  // snapshot ของ "สิ่งที่ซินแสแก้" ที่บันทึกลง DB ครั้งล่าสุด — กัน auto-save ยิงซ้ำค่าเดิม
+  const lastPersistedRef = useRef<string | null>(null);
+  const serializeEdits = useCallback(
+    () => JSON.stringify({ corrections, titleOverrides, relationshipLines }),
+    [corrections, titleOverrides, relationshipLines],
+  );
+
   // บันทึกการดูดวงลงประวัติ (DB) — มี sessionId = อัปเดตเซสชันเดิม, ไม่มี = สร้างใหม่แล้วจำ id ไว้อัปเดตครั้งถัดไป
   // คืน sessionId ที่บันทึกได้ (null ถ้าบันทึกไม่สำเร็จ) เพื่อให้ handleSaveVersion ผูก snapshot กับดวงต้นทาง
   async function handleSaveSession(): Promise<string | null> {
@@ -699,12 +722,54 @@ export function ReadingPathWorkspace({
       setSessionId(saved.sessionId);
       setSavedAt(saved.updatedAt);
       setSaveState("saved");
+      // จำสภาพที่เพิ่งบันทึก — กัน auto-save ยิงซ้ำทันทีหลังกดบันทึกเอง
+      lastPersistedRef.current = serializeEdits();
       return saved.sessionId;
     } catch {
       setSaveState("error");
       return null;
     }
   }
+
+  // Auto-save: บันทึกคำแก้ (กล่อง/ชื่อบท/ตารางบทเสริม) ลง DB อัตโนมัติทุกครั้งที่แก้ — เฉพาะดวงที่บันทึกในระบบแล้ว (มี sessionId)
+  // ส่ง createRevision:false → ลง DB ทุกครั้งแต่ไม่สร้างจุดประวัติรก (จุดประวัติ = กด "บันทึกการดูดวง" เองเท่านั้น)
+  // ไม่เฝ้า topicStates (กันบันทึกสถานะ loading) — เฝ้าเฉพาะสิ่งที่ซินแสแก้มือ
+  useEffect(() => {
+    if (!sessionId || !rawInput || !calculatedState) return;
+    const snapshot = serializeEdits();
+    // ครั้งแรกหลังโหลด/ผูก session — จำค่าไว้เฉย ๆ ไม่บันทึกซ้ำ
+    if (lastPersistedRef.current === null) {
+      lastPersistedRef.current = snapshot;
+      return;
+    }
+    if (snapshot === lastPersistedRef.current) return;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const response = await fetch("/api/reading/sessions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              sessionId,
+              ...buildReadingPayload(rawInput, calculatedState),
+              createRevision: false,
+            }),
+          });
+          if (response.ok) {
+            lastPersistedRef.current = snapshot;
+            const saved = (await response.json()) as { updatedAt: string };
+            setSavedAt(saved.updatedAt);
+            setSaveState("saved");
+          }
+        } catch {
+          /* เงียบ — ลองใหม่รอบแก้ถัดไป */
+        }
+      })();
+    }, 1200);
+    return () => clearTimeout(timer);
+    // buildReadingPayload อ่านค่าสดทุกครั้ง (ไม่ใส่ใน deps) — snapshot guard กันยิงซ้ำอยู่แล้ว
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [corrections, titleOverrides, relationshipLines, sessionId, rawInput, calculatedState, serializeEdits]);
 
   // บันทึก "เวอร์ชัน PDF" (snapshot) — insert ใหม่เสมอ ไม่ทับของเดิม → เก็บได้หลายเวอร์ชันต่อดวง
   // อัปเดตดวงต้นทาง (live session) ก่อน เพื่อผูก snapshot กับ sessionId เดียวกัน (กลับมาแก้ต่อได้)

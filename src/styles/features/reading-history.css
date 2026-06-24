@@ -198,6 +198,34 @@
   color: var(--accent);
 }
 
+/* ประวัติการบันทึก (revision) — บล็อกแยกจากเวอร์ชัน PDF, ปุ่ม "กู้คืน" เป็น button (ไม่ใช่ลิงก์) */
+.reading-history__revisions {
+  border-top-style: solid;
+}
+
+.reading-history__action--restore {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid rgba(38, 122, 79, 0.3);
+  color: #267a4f;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reading-history__action--restore:hover:not(:disabled) {
+  background: rgba(38, 122, 79, 0.08);
+}
+
+.reading-history__action--restore:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
 .reading-history__empty {
   min-height: 220px;
   align-content: center;

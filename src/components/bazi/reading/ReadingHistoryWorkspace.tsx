@@ -9,10 +9,23 @@ import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import type { ReadingSessionListItem } from "@/lib/bazi/reading-sessions";
 import type { ReadingPdfVersionListItem } from "@/lib/bazi/reading-pdf-versions";
+import type { ReadingSessionRevisionListItem } from "@/lib/bazi/reading-session-revisions";
+
+/** ดวงที่บันทึกจากหน้า "อ่าน 15 บท (NewData)" — ตาราง bazi_newdata_reading */
+export type NewdataReadingHistoryItem = {
+  id: string;
+  clientName: string | null;
+  birthDate: string;
+  birthTime: string;
+  gender: string;
+  updatedAt: string;
+};
 
 type ReadingHistoryWorkspaceProps = {
   records: ReadingSessionListItem[];
   versions?: ReadingPdfVersionListItem[];
+  revisions?: ReadingSessionRevisionListItem[];
+  newdataReadings?: NewdataReadingHistoryItem[];
   unavailable?: boolean;
 };
 
@@ -67,11 +80,86 @@ function formatUpdatedAt(timestamp: string) {
 export function ReadingHistoryWorkspace({
   records,
   versions = [],
+  revisions = [],
+  newdataReadings = [],
   unavailable = false,
 }: ReadingHistoryWorkspaceProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
+  const [deletingRevisionId, setDeletingRevisionId] = useState<string | null>(null);
+  const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
+  const [deletingNewdataId, setDeletingNewdataId] = useState<string | null>(null);
+
+  async function handleDeleteRevision(id: string) {
+    if (typeof window !== "undefined" && !window.confirm("ลบจุดบันทึกนี้ออกจากประวัติ ?")) {
+      return;
+    }
+    setDeletingRevisionId(id);
+    try {
+      const response = await fetch(`/api/reading/session-revisions/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("ลบไม่สำเร็จ");
+      }
+      router.refresh();
+    } catch {
+      setDeletingRevisionId(null);
+    }
+  }
+
+  // กู้คืน: ดึงสแน็ปช็อตของจุดบันทึกนั้น แล้วเขียนทับ live session ของดวงต้นทาง (เป็นการบันทึกครั้งใหม่ → มี revision ใหม่ด้วย)
+  async function handleRestoreRevision(id: string, sessionId: string) {
+    if (
+      typeof window !== "undefined"
+      && !window.confirm(
+        "กู้คืนงานกลับไปเป็นจุดบันทึกนี้ ?\n\nสภาพปัจจุบันจะถูกแทนที่ด้วยจุดนี้ (สภาพปัจจุบันยังถูกเก็บเป็นจุดบันทึกก่อนหน้าอยู่ — ย้อนกลับได้)",
+      )
+    ) {
+      return;
+    }
+    setRestoringRevisionId(id);
+    try {
+      const detailResponse = await fetch(`/api/reading/session-revisions/${id}`);
+      if (!detailResponse.ok) {
+        throw new Error("โหลดจุดบันทึกไม่สำเร็จ");
+      }
+      const detail = await detailResponse.json();
+      const saveResponse = await fetch("/api/reading/sessions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          label: detail.label ?? null,
+          status: detail.status,
+          rawInput: detail.rawInput,
+          calculatedState: detail.calculatedState,
+          sessionData: detail.sessionData,
+        }),
+      });
+      if (!saveResponse.ok) {
+        throw new Error("กู้คืนไม่สำเร็จ");
+      }
+      router.push(`/reading?session=${sessionId}`);
+    } catch {
+      setRestoringRevisionId(null);
+    }
+  }
+
+  async function handleDeleteNewdata(id: string, title: string) {
+    if (typeof window !== "undefined" && !window.confirm(`ลบดวง "${title}" (อ่าน 15 บท) ?`)) {
+      return;
+    }
+    setDeletingNewdataId(id);
+    try {
+      const response = await fetch(`/api/reading/newdata-reading/sessions/${id}`, { method: "DELETE" });
+      if (!response.ok) {
+        throw new Error("ลบไม่สำเร็จ");
+      }
+      router.refresh();
+    } catch {
+      setDeletingNewdataId(null);
+    }
+  }
 
   async function handleDelete(id: string, title: string, versionCount: number) {
     // ลบ "ดวง" ไม่ลบเวอร์ชัน PDF ที่บันทึกไว้ — เวอร์ชันจะย้ายไปกลุ่ม "ไม่มีดวงต้นทาง" (ยังเปิด/แก้/ปริ้นได้)
@@ -171,6 +259,53 @@ export function ReadingHistoryWorkspace({
     );
   }
 
+  // จัดกลุ่ม "ประวัติการบันทึก" (revision) ตามดวงต้นทาง — แต่ละครั้งที่กดบันทึกการดูดวงจะมีหนึ่งจุด
+  const revisionsBySession = new Map<string, ReadingSessionRevisionListItem[]>();
+  for (const revision of revisions) {
+    const list = revisionsBySession.get(revision.sessionId) ?? [];
+    list.push(revision);
+    revisionsBySession.set(revision.sessionId, list);
+  }
+
+  function renderRevisionItem(revision: ReadingSessionRevisionListItem) {
+    const isDeleting = deletingRevisionId === revision.id;
+    const isRestoring = restoringRevisionId === revision.id;
+    return (
+      <li key={revision.id} className="reading-history__version">
+        <div className="reading-history__version-info">
+          <span className="reading-history__version-time">
+            บันทึกเมื่อ {formatUpdatedAt(revision.createdAt)}
+          </span>
+        </div>
+        <div className="reading-history__version-actions">
+          <ActionLink
+            href={`/reading?revision=${revision.id}`}
+            tone="secondary"
+            className="reading-history__action"
+          >
+            เปิดดู
+          </ActionLink>
+          <button
+            type="button"
+            className="reading-history__action reading-history__action--restore"
+            disabled={isRestoring}
+            onClick={() => void handleRestoreRevision(revision.id, revision.sessionId)}
+          >
+            {isRestoring ? "กำลังกู้คืน..." : "กู้คืน"}
+          </button>
+          <button
+            type="button"
+            className="reading-history__delete"
+            disabled={isDeleting}
+            onClick={() => void handleDeleteRevision(revision.id)}
+          >
+            {isDeleting ? "กำลังลบ..." : "ลบ"}
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   const inProgressCount = records.filter((record) => record.status === "in_progress").length;
   const doneCount = records.filter((record) => record.status === "done").length;
 
@@ -220,6 +355,7 @@ export function ReadingHistoryWorkspace({
               const birthMoment = formatThaiBirthMoment(record.birthDate, record.birthTime);
               const isDeleting = deletingId === record.id;
               const recordVersions = versionsBySession.get(record.id) ?? [];
+              const recordRevisions = revisionsBySession.get(record.id) ?? [];
 
               return (
                 <article key={record.id} className="reading-history__row">
@@ -286,12 +422,77 @@ export function ReadingHistoryWorkspace({
                       </ul>
                     </div>
                   ) : null}
+
+                  {recordRevisions.length > 0 ? (
+                    <div className="reading-history__versions reading-history__revisions">
+                      <span className="reading-history__versions-title">
+                        ประวัติการบันทึก ({recordRevisions.length}) — ทุกครั้งที่กด ‘บันทึกการดูดวง’ เก็บไว้ย้อนดู/กู้คืนได้
+                      </span>
+                      <ul className="reading-history__version-list">
+                        {recordRevisions.map((revision) => renderRevisionItem(revision))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
           </div>
         </Surface>
       )}
+
+      {!unavailable && newdataReadings.length > 0 ? (
+        <Surface as="section" inset className="reading-history" aria-label="ประวัติอ่าน 15 บท (NewData)">
+          <SectionHeading
+            kicker="อ่าน 15 บท (NewData)"
+            title="ดวงที่บันทึกจากหน้า ‘อ่าน 15 บท’"
+            titleLevel="h3"
+            note="ดวงที่กด ‘บันทึกดวงนี้’ ในหน้าอ่าน 15 บท — เปิดกลับมาแก้คำทำนายต่อ หรือปริ้น PDF ซ้ำได้"
+          />
+          <div className="reading-history__list">
+            {newdataReadings.map((item) => {
+              const title = item.clientName?.trim() || item.id.slice(0, 8);
+              const birthMoment = formatThaiBirthMoment(item.birthDate, item.birthTime);
+              const isDeleting = deletingNewdataId === item.id;
+              return (
+                <article key={item.id} className="reading-history__row">
+                  <div className="reading-history__main">
+                    <div className="reading-history__badges">
+                      <Badge tone="ai">อ่าน 15 บท</Badge>
+                      {GENDER_LABEL[item.gender] ? <Badge>{GENDER_LABEL[item.gender]}</Badge> : null}
+                    </div>
+                    <div className="reading-history__identity">
+                      <strong>{title}</strong>
+                      <span>{birthMoment}</span>
+                    </div>
+                  </div>
+                  <div className="reading-history__meta">
+                    <span className="reading-history__updated">
+                      อัปเดตล่าสุด {formatUpdatedAt(item.updatedAt)}
+                    </span>
+                    <div className="reading-history__actions">
+                      <ActionLink
+                        href={`/reading/newdata-reading?session=${item.id}`}
+                        tone="primary"
+                        className="reading-history__action"
+                      >
+                        เปิด/แก้ต่อ
+                      </ActionLink>
+                      <button
+                        type="button"
+                        className="reading-history__delete"
+                        disabled={isDeleting}
+                        onClick={() => void handleDeleteNewdata(item.id, title)}
+                      >
+                        {isDeleting ? "กำลังลบ..." : "ลบ"}
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </Surface>
+      ) : null}
 
       {!unavailable && orphanVersions.length > 0 ? (
         <Surface as="section" inset className="reading-history" aria-label="เวอร์ชันที่ไม่มีดวงต้นทาง">
