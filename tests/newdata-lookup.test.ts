@@ -20,7 +20,7 @@ import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
  */
 const FACTS: ChartFacts = {
   dayMaster: "庚",
-  strengthScore: -1.25, // ดวงอ่อน (band weak) — ตรงกับ ground truth 1988
+  strengthScore: 2.5, // ดวงอ่อน (band weak ตามสเปก 8.1: 2–3.75) — ทดสอบเส้นทาง weak
   pillars: [
     { position: "year", stem: "戊", branch: "辰", state: "เอี้ยง", upperState: "ตี้อ๋วง" },
     { position: "month", stem: "丁", branch: "巳", state: "เชี่ยงแซ", upperState: "กวงตั่ว" },

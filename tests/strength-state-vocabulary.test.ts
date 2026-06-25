@@ -28,7 +28,7 @@ describe("resolveCanonicalDayMasterStrengthState", () => {
 
 describe("buildDayMasterStrengthVocabulary", () => {
   test("keeps display band and canonical lookup state separate", () => {
-    expect(buildDayMasterStrengthVocabulary(3.75)).toEqual({
+    expect(buildDayMasterStrengthVocabulary(2.5)).toEqual({
       displayBand: "ดวงอ่อน",
       displayLabel: "ดิถีอ่อน",
       lookupState: "อ่อนแอ",

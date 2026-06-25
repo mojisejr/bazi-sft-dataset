@@ -36,11 +36,12 @@ describe("Real-world test case: 24 November 1993, 15:09, Chiang Rai, male", () =
     expect(result.fourPillars.hour).toMatchObject({ stem: "壬", branch: "申" });
     expect(result.dayMaster).toBe("己");
     expect(result.strengthScore).toBe(0.25);
-    // R5.2b re-baseline: score 0.25 → band "ดวงอ่อน" (weak) ไม่ใช่ very-weak
-    //   (very-weak เพดานลด 2 → -2; structural reading ของ M.docx ก็ว่า "ดวงอ่อน")
+    // 2026-06-25: คืนเกณฑ์ band ตามสเปกซินแสข้อ 8.1 (<2 = อ่อนมาก) → score 0.25 = "ดิถีอ่อนเกินไป"
+    //   (ทับ R5.2b ที่เคยกดเป็น "ดวงอ่อน"; สเปก 8.1 ขัดกับการอ่านมือ M.docx ที่ว่า "ดวงอ่อน")
+    //   strengthState ยังเป็น "อ่อนแอ" (canonical lookup รวม very-weak → อ่อนแอ)
     expect(result.dayMasterStrengthProfile).toMatchObject({
       strengthState: "อ่อนแอ",
-      displayLabel: "ดิถีอ่อน",
+      displayLabel: "ดิถีอ่อนเกินไป",
     });
   });
 

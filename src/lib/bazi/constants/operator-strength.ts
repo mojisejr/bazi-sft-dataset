@@ -26,45 +26,48 @@ function hasMinInclusive(
 
 // เกณฑ์ band ต่อเนื่องไม่มีช่องว่าง (รองรับคะแนนเศษจากโบนัสราก 通根/得地 + ฤดู 得令)
 // ขอบล่างใช้ minExclusive = ขอบบนชั้นก่อนหน้า → คะแนนใด ๆ จัด band ได้เสมอ ไม่ตกช่องว่าง
-// R5.2b (2026-06-08): ลดเพดาน very-weak 2 → -2 เพราะ engine "กดกำลังแรงเกิน 1 ขั้น"
-//   ซินแสยืนยัน 1988 (score -1.25) + ภวรัญชน์ (0.25) = "ดวงอ่อน" (weak) ไม่ใช่ very-weak
-//   ground truth แทบไม่เคยเป็น very-weak → สงวน very-weak ไว้เฉพาะดวงถูกถ่ายเท/พิฆาตรุนแรง (≤ -2)
-//   ดู docs/r5-strength-useful-divergence-2026-06-08.md + memory strength-1988-divergence
+// 2026-06-25: คืนเกณฑ์ band ตามสเปกซินแสข้อ 8.1 (เจ้าของระบบสั่งปรับ) — แทนที่ R5.2b calibration
+//   ที่มา: knownlage/distilled/เกณฑ์ความแข็งอ่อน_ดวง5แบบ/2026-04-23_strength-evaluation-step.md ข้อ 8.1
+//     <2 อ่อนมาก · 2.25–3.75 อ่อน · 4–5.5 สมดุล · 5.75–6.75 แข็ง · >7 แข็งมาก
+//   หมายเหตุ: สูตรคะแนน (ข้อ 7–8) = engine ปัจจุบันอยู่แล้ว (ไม่นับ 通根/得令) → คะแนน = สเกลตำรา
+//   คะแนนเป็นทวีคูณ 0.25 เสมอ → ตั้ง "จุดตัด" ที่กึ่งกลางกริด (.875/.625) ให้ขอบจำนวนเต็มตกถูกฝั่ง
+//     (เช่น score 2 = "อ่อน" ตรง ground truth ซินแส 己 ปี 1981)
+//   ⚠ ทับการอ่านมือ 2 ดวง: 1993 (0.25) / 1988 (1.0) ซินแสเคยอ่าน "อ่อน" → ตามสเปกเป็น "อ่อนมาก"
 export const OPERATOR_STRENGTH_CLASS_BANDS = [
   {
     id: "very-weak",
     label: "อ่อนเกินไป",
     displayLabel: "ดิถีอ่อนเกินไป",
     minExclusive: Number.NEGATIVE_INFINITY,
-    maxInclusive: -2,
+    maxInclusive: 1.875, // < 2
   },
   {
     id: "weak",
     label: "ดวงอ่อน",
     displayLabel: "ดิถีอ่อน",
-    minExclusive: -2,
-    maxInclusive: 3.75,
+    minExclusive: 1.875,
+    maxInclusive: 3.875, // 2–3.75
   },
   {
     id: "balanced",
     label: "สมดุล",
     displayLabel: "ดิถีสมดุล",
-    minExclusive: 3.75,
-    maxInclusive: 5.5,
+    minExclusive: 3.875,
+    maxInclusive: 5.625, // 4–5.5
   },
   {
     id: "strong",
     label: "ดวงแข็ง",
     displayLabel: "ดิถีแข็ง",
-    minExclusive: 5.5,
-    maxInclusive: 6.75,
+    minExclusive: 5.625,
+    maxInclusive: 6.875, // 5.75–6.75
   },
   {
     id: "very-strong",
     label: "แข็งเกินไป",
     displayLabel: "ดิถีแข็งเกินไป",
-    minExclusive: 6.75,
-    maxInclusive: Number.POSITIVE_INFINITY,
+    minExclusive: 6.875,
+    maxInclusive: Number.POSITIVE_INFINITY, // >7
   },
 ] as const satisfies readonly OperatorStrengthClassBand[];
 
