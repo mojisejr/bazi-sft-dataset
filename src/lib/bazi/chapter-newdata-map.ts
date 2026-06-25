@@ -12,6 +12,8 @@ import {
   matchBranchPairs,
   matchCareer,
   matchDaYun,
+  matchDayElement,
+  matchDeityByRasi,
   matchDayMasterStrength,
   matchDithiTransfer,
   matchElementCategory,
@@ -26,6 +28,7 @@ import {
   matchPillarBranch,
   matchPillarGanzhi,
   matchPillarState,
+  matchPillarStem,
   matchSamHeng,
   matchSelfPunish,
   matchStemPairs,
@@ -48,7 +51,10 @@ type Resolver =
   | { kind: "daYun" }
   | { kind: "career"; role: "do" | "avoid"; order: number; group?: string }
   | { kind: "dayMasterStrength"; group: string }
+  | { kind: "dayElement"; group: string }
+  | { kind: "deityRasi"; group: string; role: "protect" | "career" | "wealth" }
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
+  | { kind: "stemOf"; group: string; pillar: PillarPosition }
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
   | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" }
   | { kind: "hiddenTransfer"; group: string }
@@ -65,12 +71,13 @@ type Resolver =
  * แต่ละช่อง = Resolver[] (0..n) ที่เติม box ของ bullet นั้น · [] = กล่องว่าง (รอซินแสเติม)
  */
 export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
-  // 6 bullets: [กำลังดิถี] [12นักษัตร] [60กะจื่อ/ราศีบน-ล่าง] [ดิถี→ถ่ายเท→ผลลัพธ์] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
+  // 7 bullets: [กำลังดิถี] [12นักษัตร] [60กะจื่อ/ราศีบน-ล่าง] [ดิถี→ถ่ายเท→ผลลัพธ์] [นิสัยด้านมืดตามธาตุ] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
   chart_foundation: [
     [{ kind: "dayMasterStrength", group: "daymaster_strength" }],
     [{ kind: "branchOf", group: "zodiac_nisai", pillar: "day" }],
     [
       { kind: "ganzhiOf", group: "ganzhi_nisai", pillar: "day" },
+      { kind: "stemOf", group: "stem_nisai", pillar: "day" },
       { kind: "stemPairs" },
       { kind: "branchPairs", group: "combine_branch" },
     ],
@@ -78,6 +85,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "dithiTransfer", group: "dithi_transfer" },
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
+    [{ kind: "dayElement", group: "dark_side_by_element" }],
     [{ kind: "selfPunish" }],
     [],
   ],
@@ -195,13 +203,12 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "healthElement", group: "health_by_element" }],
     [],
   ],
-  // 9 bullets: [สี+ทิศ] [เสื้อผ้า] [เครื่องประดับ] [วัตถุมงคล] [กระเป๋าเงิน] [รถ] [สัตว์มงคล] [ทิศ] [ข้อเสนอแนะ]
+  // 8 bullets: [สี+ทิศ] [เสื้อผ้า] [เครื่องประดับ] [กระเป๋าเงิน] [รถ] [สัตว์มงคล] [ทิศ] [ข้อเสนอแนะ]
   // ทุกช่อง (ยกเว้นข้อเสนอแนะ) = ตามธาตุที่ดวงต้องการ × หมวด (auspicious_by_element รอซินแสเติม)
   colors_directions: [
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "สี" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "เสื้อผ้า" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "เครื่องประดับ" }],
-    [{ kind: "elementCategory", group: "auspicious_by_element", category: "วัตถุมงคล" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "กระเป๋าเงิน" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "รถ" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "สัตว์มงคล" }],
@@ -209,11 +216,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [],
   ],
   // 5 bullets: [องค์เทพคุ้มครอง] [ขอพรงาน] [ขอพรโชคลาภ] [ทำบุญเสริมดวง] [ข้อเสนอแนะ]
-  // องค์เทพ 3 บทแรก = ตามธาตุที่ดวงต้องการ × หมวด (deity_by_element รอซินแสเติม) · ทำบุญ = ตารางทำบุญ 5 ธาตุ
+  // องค์เทพ 3 บทแรก = องค์เทพราย 26 ราศี (deity_by_rasi) เลือกตามราศีที่ถือธาตุที่ต้องใช้+เชี่ยงแซดี · ทำบุญ = ตารางทำบุญ 5 ธาตุ
   guardian_deities: [
-    [{ kind: "elementCategory", group: "deity_by_element", category: "คุ้มครอง" }],
-    [{ kind: "elementCategory", group: "deity_by_element", category: "การงาน" }],
-    [{ kind: "elementCategory", group: "deity_by_element", category: "โชคลาภ" }],
+    [{ kind: "deityRasi", group: "deity_by_rasi", role: "protect" }],
+    [{ kind: "deityRasi", group: "deity_by_rasi", role: "career" }],
+    [{ kind: "deityRasi", group: "deity_by_rasi", role: "wealth" }],
     [{ kind: "merit", group: "merit_by_element" }],
     [],
   ],
@@ -241,8 +248,14 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchCareer(map, facts, r.role, r.order, r.group);
     case "dayMasterStrength":
       return matchDayMasterStrength(map, r.group, facts);
+    case "dayElement":
+      return matchDayElement(map, r.group, facts);
+    case "deityRasi":
+      return matchDeityByRasi(map, r.group, facts, r.role);
     case "branchOf":
       return matchPillarBranch(map, r.group, facts, r.pillar);
+    case "stemOf":
+      return matchPillarStem(map, r.group, facts, r.pillar);
     case "ganzhiOf":
       return matchPillarGanzhi(map, r.group, facts, r.pillar);
     case "dithiTransfer":

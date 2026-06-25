@@ -100,13 +100,14 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[2].body).toContain("วิศวกรรมเครื่องกล"); // เรียนตามอาชีพถูกดวง = study_by_element ธาตุทอง
   });
 
-  test("chart_foundation → box=6, ภาคี+เชี่ยงแซเติม, จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
+  test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
     const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
-    expect(r.boxes).toHaveLength(6);
+    expect(r.boxes).toHaveLength(7);
     expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
     expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
-    expect(r.boxes[4].body).toBe(""); // สิ่งพึงระวัง (จื่อเฮ้ง) — ดวงนี้ไม่มี
+    expect(r.boxes[4].body).toBe(""); // นิสัยด้านมืดตามธาตุ — MAP ว่าง
+    expect(r.boxes[5].body).toBe(""); // สิ่งพึงระวัง (จื่อเฮ้ง) — ดวงนี้ไม่มี
     // หัว box = ข้อความ bullet เต็มจาก outline
     expect(r.boxes[1].title).toContain("12 นักษัตร");
   });
@@ -214,7 +215,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[2].body).toBe("");
   });
 
-  test("guardian_deities box ทำบุญ → ดิถีทองอ่อน เสริมธาตุ ดิน+ทอง", () => {
+  test("guardian_deities box ทำบุญ → ดิถีทองอ่อน เสริมธาตุ ดิน+ทอง (merit band)", () => {
     const map: NewdataMap = {
       ...MAP,
       merit_by_element: {
@@ -224,20 +225,22 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     };
     const r = resolveChapterBoxes("guardian_deities", FACTS, map);
     expect(r.defined).toBe(true);
+    // ทำบุญใช้ favorableElements (merit band) → 庚อ่อน = ส่งเสริม(ดิน)+คู่ธาตุ(ทอง)
     // boxes ของ resolveChapterBoxes = ตาม bullets ตรง ๆ (intro เติมที่ API) → bullet[3] = box[3]
     expect(r.boxes[3].body).toContain("ทำบุญ ดิน หิน ปูน");
     expect(r.boxes[3].body).toContain("ทำบุญถวายของโลหะ");
   });
 
-  test("colors_directions → map ไว้แล้ว (defined=true) แต่ DB ยังว่าง → box ครบ 9 ช่อง ว่างหมด", () => {
+  test("colors_directions → map ไว้แล้ว (defined=true) แต่ DB ยังว่าง → box ครบ 8 ช่อง ว่างหมด", () => {
     // บท 14 wire resolver ตามธาตุที่ดวงต้องการแล้ว แต่ตาราง auspicious_by_element ยังไม่มีใน MAP
+    // (ตัดหัวข้อ "วัตถุมงคล" ออกตามที่ซินแสสั่ง → เหลือ 8 bullet)
     const r = resolveChapterBoxes("colors_directions", FACTS, MAP);
     expect(r.defined).toBe(true); // มี resolver ผูกไว้ (รอซินแสเติมตาราง)
     expect(r.hasContent).toBe(false); // ยังไม่มีข้อมูลในดวงนี้
-    expect(r.boxes).toHaveLength(9); // box ครบทุก bullet
+    expect(r.boxes).toHaveLength(8); // box ครบทุก bullet
     expect(r.boxes.every((b) => b.body === "")).toBe(true); // ว่างหมด
 
-    // เติมตาราง 1 ช่อง (สี × ธาตุดิน = ธาตุที่ดวงต้องการของ 庚อ่อน) → box แรกมีเนื้อ
+    // เติมตาราง 1 ช่อง (สี × ธาตุดิน = ธาตุที่ดวงต้องการของ 庚อ่อน ตาม merit band) → box แรกมีเนื้อ
     const filled: NewdataMap = {
       ...MAP,
       auspicious_by_element: { "สี|ดิน": { text: "สีเหลือง น้ำตาล", label: "สีมงคล ธาตุดิน" } },

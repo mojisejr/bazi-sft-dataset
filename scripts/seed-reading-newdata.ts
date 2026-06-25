@@ -357,6 +357,147 @@ function parseElementBullets(
   return rows;
 }
 
+// ── parser: ไฟล์แบ่งตามธาตุ "ธาตุไม้\n<เนื้อ>\nธาตุไฟ..." (ข้าม comment #) ─────────
+// ใช้กับไฟล์ บท14 (สี/เสื้อผ้า/เครื่องประดับ/กระเป๋า/รถ/สัตว์มงคล/ทิศ), บท15 (องค์เทพ),
+// บท1 (นิสัยด้านมืด), บท13 (สุขภาพ) — ไฟล์ template (ธาตุว่าง) จะได้ 0 row โดยไม่ error
+function parseElementSections(
+  file: string,
+  group: string,
+  keyFor: (el: string) => string,
+  labelFor: (el: string) => string,
+): SeedRow[] {
+  const lines = splitLines(read(file));
+  const ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
+  const ORDER: Record<string, number> = { ไม้: 1, ไฟ: 2, ดิน: 3, ทอง: 4, น้ำ: 5 };
+  const rows: SeedRow[] = [];
+  let cur: string | null = null;
+  let buf: string[] = [];
+  const flush = () => {
+    if (cur) {
+      const text = buf.join("\n").trim();
+      if (text) {
+        rows.push({
+          groupKey: group,
+          itemKey: keyFor(cur),
+          ordinal: ORDER[cur] ?? 0,
+          value: { text, label: labelFor(cur) },
+          sourceFile: file,
+        });
+      }
+    }
+    buf = [];
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue; // ข้ามหัวข้อ/คอมเมนต์/อ้างอิง
+    const el = ELEMENTS.find((e) => t === `ธาตุ${e}`);
+    if (el) {
+      flush();
+      cur = el;
+      continue;
+    }
+    if (cur) buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
+// ── parser: บท 1 นิสัยราศีบน 10 ก้าน (คีย์ = ราศีบน 甲..癸) ───────────────────────
+function parseStemNisai(file: string): SeedRow[] {
+  const order = [...STEM_ORDER];
+  const ORD: Record<string, number> = {};
+  order.forEach((c, i) => (ORD[c] = i + 1));
+  const lines = splitLines(read(file));
+  const rows: SeedRow[] = [];
+  let cur: { key: string; buf: string[] } | null = null;
+  const flush = () => {
+    if (cur) {
+      const label = (cur.buf.find((l) => l.startsWith("ฉายา:")) ?? "").replace("ฉายา:", "").trim();
+      // body = พลังงาน + อุปนิสัย (ตัดบรรทัดฉายาออก เพราะใช้เป็น label แล้ว)
+      const text = cur.buf.filter((l) => !l.startsWith("ฉายา:")).join("\n").trim();
+      if (text) {
+        rows.push({
+          groupKey: "stem_nisai",
+          itemKey: cur.key,
+          ordinal: ORD[cur.key] ?? 0,
+          value: { text, label: label || cur.key },
+          sourceFile: file,
+        });
+      }
+    }
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    if (t.length === 1 && STEMS.has(t)) {
+      flush();
+      cur = { key: t, buf: [] };
+      continue;
+    }
+    if (cur) cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
+// ── parser: บท 15 องค์เทพราย 26 ราศี (คีย์ = อักษรราศี 甲../子../乾坤巽艮) ──────────
+function parseDeityRasi(file: string): SeedRow[] {
+  const CORNERS = ["乾", "坤", "巽", "艮"];
+  const order = [...STEM_ORDER, ...BRANCH_ORDER, ...CORNERS];
+  const ORD: Record<string, number> = {};
+  order.forEach((c, i) => (ORD[c] = i + 1));
+  const valid = new Set(order);
+  const lines = splitLines(read(file));
+  const rows: SeedRow[] = [];
+  let cur: { key: string; buf: string[] } | null = null;
+  const flush = () => {
+    if (cur) {
+      const text = cur.buf.join(", ").trim();
+      if (text) {
+        rows.push({
+          groupKey: "deity_by_rasi",
+          itemKey: cur.key,
+          ordinal: ORD[cur.key] ?? 0,
+          value: { text, label: cur.key },
+          sourceFile: file,
+        });
+      }
+    }
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    if (valid.has(t)) {
+      flush();
+      cur = { key: t, buf: [] };
+      continue;
+    }
+    if (cur) cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
+/** บท 14/15 · คีย์ "{หมวด}|{ธาตุ}" (auspicious_by_element / deity_by_element) */
+function parseElementCategoryFile(file: string, group: string, category: string): SeedRow[] {
+  return parseElementSections(
+    file,
+    group,
+    (el) => `${category}|${el}`,
+    (el) => `${category} ธาตุ${el}`,
+  );
+}
+
+/** คีย์ "{ธาตุ}" ตรง ๆ (dark_side_by_element / health_by_element) */
+function parseElementKeyedFile(file: string, group: string, labelPrefix: string): SeedRow[] {
+  return parseElementSections(
+    file,
+    group,
+    (el) => el,
+    (el) => `${labelPrefix} ธาตุ${el}`,
+  );
+}
+
 // ── parser: บท 7 ลักษณะชีวิตคู่ (ปฏิกิริยาธาตุหลักวัน → 5 แบบ) ────────────────────
 function parseLoveBase(file: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -590,6 +731,40 @@ function collectAll(): SeedRow[] {
   );
   push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
+  // บท 1 · นิสัยราศีบน 10 ก้าน (เพิ่มเติมกล่อง 60 กะจื่อ)
+  push("stem_nisai", () => parseStemNisai("บท1 นิสัยราศีบน 10 ก้าน.txt"));
+  // บท 1 · นิสัยด้านมืด 5 ธาตุ (group ใหม่ คีย์รายธาตุ)
+  push("dark_side_by_element", () =>
+    parseElementKeyedFile("บท1 นิสัยด้านมืด 5 ธาตุ.txt", "dark_side_by_element", "นิสัยด้านมืด"),
+  );
+  // บท 13 · สุขภาพ 5 ธาตุ (template — ว่างจนกว่าซินแสเติม)
+  push("health_by_element", () =>
+    parseElementKeyedFile("บท13 สุขภาพ 5 ธาตุ.txt", "health_by_element", "โรคจากธาตุ"),
+  );
+  // บท 14 · ของมงคลตามธาตุ — auspicious_by_element (หมวด × ธาตุ); สัตว์มงคล/ทิศ เป็น template
+  const AUSPICIOUS: Array<[string, string]> = [
+    ["บท14 สี 5 ธาตุ.txt", "สี"],
+    ["บท14 เสื้อผ้า 5 ธาตุ.txt", "เสื้อผ้า"],
+    ["บท14 เครื่องประดับ 5 ธาตุ.txt", "เครื่องประดับ"],
+    ["บท14 กระเป๋าเงิน 5 ธาตุ.txt", "กระเป๋าเงิน"],
+    ["บท14 รถ 5 ธาตุ.txt", "รถ"],
+    ["บท14 สัตว์มงคล 5 ธาตุ.txt", "สัตว์มงคล"],
+    ["บท14 ทิศมงคล.txt", "ทิศ"],
+  ];
+  for (const [f, cat] of AUSPICIOUS) {
+    push(`auspicious:${cat}`, () => parseElementCategoryFile(f, "auspicious_by_element", cat));
+  }
+  // บท 15 · องค์เทพตามธาตุ — deity_by_element (หมวด × ธาตุ); การงาน/โชคลาภ เป็น template
+  const DEITY: Array<[string, string]> = [
+    ["บท15 องค์เทพคุ้มครอง 5 ธาตุ.txt", "คุ้มครอง"],
+    ["บท15 องค์เทพการงาน 5 ธาตุ.txt", "การงาน"],
+    ["บท15 องค์เทพโชคลาภ 5 ธาตุ.txt", "โชคลาภ"],
+  ];
+  for (const [f, cat] of DEITY) {
+    push(`deity:${cat}`, () => parseElementCategoryFile(f, "deity_by_element", cat));
+  }
+  // บท 15 · องค์เทพราย 26 ราศี (group หลักที่ใช้ตอนนี้)
+  push("deity_by_rasi", () => parseDeityRasi("บท15 องค์เทพ 26 ราศี.txt"));
   push("love_base", () => parseLoveBase("ความรักและความสัมพันธ์.txt"));
   push("love_base_60", () => parseLoveBase60("love-base-60.json"));
   push("love_chance", () => parseLoveChance("ความรักและความสัมพันธ์.txt"));

@@ -385,6 +385,21 @@ export function matchPillarBranch(
   return [toBlock(group, pillar.branch, value, `เสา${position}`, label)];
 }
 
+/** ราศีบน (ก้าน) ของเสาที่ระบุ → lookup คีย์ราศีบน (นิสัยราศีบน 10 ก้าน) */
+export function matchPillarStem(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  position: PillarPosition,
+): NewdataBlock[] {
+  const pillar = facts.pillars.find((p) => p.position === position);
+  if (!pillar) return [];
+  const value = map[group]?.[pillar.stem];
+  if (!value) return [];
+  const label = `ราศีบน${THAI_PILLAR_NAME[position]} ${value.label ?? pillar.stem}`;
+  return [toBlock(group, pillar.stem, value, `ราศีบนเสา${position}`, label)];
+}
+
 /** กะจื่อ (ราศีบน+ล่าง) ของเสาที่ระบุ → lookup คีย์กะจื่อ (60 กะจื่อ) */
 export function matchPillarGanzhi(
   map: NewdataMap,
@@ -514,11 +529,9 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
  * คืน 1 ก้อนต่อธาตุที่แนะนำ (1-2 ธาตุ)
  */
 export function matchMerit(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
-  const dayElement = elementThOfStem(facts.dayMaster);
-  if (!dayElement) return [];
-  const band = meritBandFromScore(facts.strengthScore);
   const out: NewdataBlock[] = [];
-  for (const el of meritFavorElements(dayElement, band)) {
+  // ใช้ useful-god ชุดเดียวกับบทอาชีพ/บท14/15 (favorableElements) เพื่อให้สอดคล้องกัน
+  for (const el of favorableElements(facts)) {
     const value = map[group]?.[el];
     if (value) out.push(toBlock(group, el, value, `เสริมธาตุ${el}`));
   }
@@ -611,11 +624,32 @@ const EN_TO_TH_ELEMENT: Record<string, ElementTh> = {
   water: "น้ำ",
 };
 
-/** ธาตุที่ดวงต้องการ (useful god) — ธาตุดิถี × กำลัง → 1-2 ธาตุ (reuse ตารางทำบุญ) */
+/**
+ * ธาตุที่ดวงต้องการ (useful god / palette) — บท14 (สี/อัญมณี/รถ ฯลฯ) · บท15 (องค์เทพ/ทำบุญ)
+ * palette กว้างตามกำลังดิถี (5 band, ปรับ 得令) ให้ใกล้ที่ซินแสลิสต์จริง:
+ *   อ่อน/อ่อนมาก → 印(ส่งเสริม) + 比(คู่ธาตุ)            [เสริมกำลัง]
+ *   แข็ง/แข็งมาก → 食傷(ถ่ายเท) + 財(ลาภ)                [ระบายกำลัง]
+ *   สมดุล        → 印 + 比 + 食傷 + 財 (ทุกธาตุมิตร ยกเว้น 官杀 ที่พิฆาตดิถี)
+ * NB: บท2 career ใช้ doElementsTh (ดิถี×กำลัง×ธาตุเดือน) ตรงในตัว ไม่ผ่านฟังก์ชันนี้
+ */
 export function favorableElements(facts: ChartFacts): ElementTh[] {
-  const dayElement = elementThOfStem(facts.dayMaster);
-  if (!dayElement) return [];
-  return meritFavorElements(dayElement, meritBandFromScore(facts.strengthScore));
+  const dayElEn = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayElEn) return [];
+  const th = (en?: string): ElementTh | null => (en ? EN_TO_TH_ELEMENT[en] ?? null : null);
+  const self = th(dayElEn); // 比
+  const resource = th((Object.keys(GENERATES) as Array<keyof typeof GENERATES>).find((x) => GENERATES[x] === dayElEn)); // 印
+  const output = th(GENERATES[dayElEn as keyof typeof GENERATES]); // 食傷
+  const wealth = th(CONTROLS[dayElEn as keyof typeof CONTROLS]); // 財
+  // 官杀 (ธาตุที่พิฆาตดิถี) = ตัดออกเสมอ
+  const id = seasonalStrengthId(facts);
+  let picked: Array<ElementTh | null>;
+  if (id === "very-weak" || id === "weak") picked = [resource, self];
+  else if (id === "very-strong" || id === "strong") picked = [output, wealth];
+  else picked = [resource, self, output, wealth]; // สมดุล = มิตรครบ
+  const out = [...new Set(picked.filter((e): e is ElementTh => Boolean(e)))];
+  // fallback (ดิถีพิเศษ/ตารางว่าง): merit band เดิม
+  const dayTh = elementThOfStem(facts.dayMaster);
+  return out.length ? out : dayTh ? meritFavorElements(dayTh, meritBandFromScore(facts.strengthScore)) : [];
 }
 
 /**
@@ -694,8 +728,119 @@ export function matchHealthElement(map: NewdataMap, group: string, facts: ChartF
 }
 
 /**
+ * บท 1 · นิสัยด้านมืดตามธาตุ — lookup ตามธาตุของดิถี (ราศีบนหลักวัน) คีย์ = ธาตุไทย
+ * คืน 1 ก้อน (ปลายทางว่างถ้า DB ยังไม่มี)
+ */
+export function matchDayElement(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const el = elementThOfStem(facts.dayMaster);
+  if (!el) return [];
+  const value = map[group]?.[el];
+  return value ? [toBlock(group, el, value, `ธาตุ${el} (ดิถี)`)] : [];
+}
+
+/** เชี่ยงแซ "ดี" (ใช้ได้) ตามตำราองค์เทพ — กวงตั่ว/ลิ่มกัว/ตี้อ๋วง/หมอ/ทอ/เอี้ยง/เชี่ยงแซ */
+const GOOD_STATES = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง"]);
+/** ธาตุไทย → ราศีบนหยาง (ตัวแทนเมื่อธาตุนั้นไม่อยู่ในดวง) */
+const ELEMENT_TH_TO_YANG_STEM: Record<ElementTh, string> = {
+  ไม้: "甲", ไฟ: "丙", ดิน: "戊", ทอง: "庚", น้ำ: "壬",
+};
+/** องค์มุม 4 ทิศ (fallback เมื่อไม่มีราศีถือธาตุที่ต้องใช้แบบเชี่ยงแซดี) */
+const DEITY_CORNER_RULES: Array<{ rasi: string; els: ElementTh[] }> = [
+  { rasi: "乾", els: ["ทอง", "น้ำ"] },
+  { rasi: "坤", els: ["ดิน", "ทอง"] },
+  { rasi: "巽", els: ["ไม้", "ไฟ"] },
+  { rasi: "艮", els: ["ไม้", "ดิน"] },
+];
+function elementThOfBranch(branch: string): ElementTh | undefined {
+  const en = BRANCH_TO_ELEMENT[branch as keyof typeof BRANCH_TO_ELEMENT];
+  return en ? EN_TO_TH_ELEMENT[en] : undefined;
+}
+
+/**
+ * บท 15 · องค์เทพราย "ราศี" (group deity_by_rasi, คีย์ = อักษรราศี 甲..癸/亥..戌/乾坤巽艮)
+ * เลือกธาตุเป้าหมายตามบทบาท → หา "ราศี" ที่ถือธาตุนั้นในดวง + เชี่ยงแซดี → องค์เทพของราศีนั้น
+ *   role "protect" = ธาตุที่ดวงต้องการ (คุ้มครองดวง) · fallback องค์มุม 4 ทิศ
+ *   role "career"  = ธาตุถ่ายเท (เจรจา/ทำงาน/ลงทุน/เดินทาง)
+ *   role "wealth"  = ธาตุโชคลาภ (โชคลาภ/เงินเก็บ)
+ * career/wealth: ถ้าไม่มีราศีเชี่ยงแซดี → ใช้ราศีที่ถือธาตุ(ทุกเชี่ยงแซ) → ราศีตัวแทนหยาง
+ */
+export function matchDeityByRasi(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  role: "protect" | "career" | "wealth",
+): NewdataBlock[] {
+  const dayElEn = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayElEn) return [];
+  let targets: ElementTh[];
+  let purpose: string;
+  if (role === "protect") {
+    targets = favorableElements(facts);
+    purpose = "องค์เทพคุ้มครองดวง";
+  } else if (role === "career") {
+    const en = GENERATES[dayElEn as keyof typeof GENERATES];
+    targets = en ? [EN_TO_TH_ELEMENT[en]] : [];
+    purpose = "ขอพรการงาน/เจรจา/ลงทุน/เดินทาง (ธาตุถ่ายเท)";
+  } else {
+    const en = CONTROLS[dayElEn as keyof typeof CONTROLS];
+    targets = en ? [EN_TO_TH_ELEMENT[en]] : [];
+    purpose = "ขอพรโชคลาภ/เงินเก็บ (ธาตุโชคลาภ)";
+  }
+  if (!targets.length) return [];
+  const tset = new Set(targets);
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  const add = (rasi: string, ctx: string) => {
+    if (seen.has(rasi)) return;
+    const value = map[group]?.[rasi];
+    if (!value) return;
+    seen.add(rasi);
+    out.push(toBlock(group, rasi, value, ctx));
+  };
+  // 1) ราศีในดวงที่ถือธาตุเป้าหมาย + เชี่ยงแซดี
+  for (const p of facts.pillars) {
+    const se = elementThOfStem(p.stem);
+    if (se && tset.has(se) && p.upperState && GOOD_STATES.has(p.upperState)) {
+      add(p.stem, `${purpose} · ราศีบนเสา${p.position} ${p.stem} (เชี่ยงแซ${p.upperState})`);
+    }
+    const be = elementThOfBranch(p.branch);
+    if (be && tset.has(be) && p.state && GOOD_STATES.has(p.state)) {
+      add(p.branch, `${purpose} · ราศีล่างเสา${p.position} ${p.branch} (เชี่ยงแซ${p.state})`);
+    }
+  }
+  if (out.length) return out;
+  // 2) career/wealth: ราศีที่ถือธาตุ (ทุกเชี่ยงแซ) → ราศีตัวแทนหยาง
+  if (role !== "protect") {
+    for (const p of facts.pillars) {
+      const se = elementThOfStem(p.stem);
+      if (se && tset.has(se)) add(p.stem, `${purpose} · ราศีบนเสา${p.position} ${p.stem}`);
+      const be = elementThOfBranch(p.branch);
+      if (be && tset.has(be)) add(p.branch, `${purpose} · ราศีล่างเสา${p.position} ${p.branch}`);
+    }
+    if (out.length) return out;
+    for (const el of targets) {
+      const r = ELEMENT_TH_TO_YANG_STEM[el];
+      if (r) add(r, `${purpose} · ธาตุ${el} (ราศีตัวแทน ${r})`);
+    }
+    return out;
+  }
+  // 3) protect fallback: องค์มุม ตามคู่ธาตุที่ต้องใช้
+  let best = DEITY_CORNER_RULES[0];
+  let bestScore = -1;
+  for (const rule of DEITY_CORNER_RULES) {
+    const score = rule.els.filter((e) => tset.has(e)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = rule;
+    }
+  }
+  if (bestScore > 0) add(best.rasi, `${purpose} · องค์มุม ${best.rasi} (ธาตุ${targets.join("/")})`);
+  return out;
+}
+
+/**
  * บท 14/15 · ตามธาตุที่ดวงต้องการ × หมวด — lookup คีย์ "{หมวด}|{ธาตุ}"
- *   บท 14: หมวด = สี/เสื้อผ้า/เครื่องประดับ/วัตถุมงคล/กระเป๋าเงิน/รถ/สัตว์มงคล/ทิศ (group auspicious_by_element)
+ *   บท 14: หมวด = สี/เสื้อผ้า/เครื่องประดับ/กระเป๋าเงิน/รถ/สัตว์มงคล/ทิศ (group auspicious_by_element)
  *   บท 15: หมวด = คุ้มครอง/การงาน/โชคลาภ (group deity_by_element)
  * คืน 1 ก้อนต่อธาตุที่ดวงต้องการ (1-2 ธาตุ) — ปลายทางว่างถ้า DB ยังไม่มี (รอซินแสเติม)
  */
