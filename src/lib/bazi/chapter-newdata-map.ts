@@ -101,6 +101,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   wealth_and_investment: [
     [
       { kind: "dithiTransfer", group: "dithi_transfer" },
+      { kind: "dithiTransfer", group: "dithi_transfer_invest" },
+      { kind: "dithiTransfer", group: "dithi_transfer_spend" },
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
     [{ kind: "phua" }],
@@ -181,7 +183,10 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "state", group: "study_style", pillar: "day" },
       { kind: "state", group: "edu_level", pillar: "day" },
     ],
-    [{ kind: "dithiTransfer", group: "dithi_transfer" }],
+    [
+      { kind: "dithiTransfer", group: "dithi_transfer" },
+      { kind: "dithiTransfer", group: "dithi_transfer_study" },
+    ],
     [
       { kind: "career", role: "do", order: 1, group: "study_by_element" },
       { kind: "career", role: "do", order: 2, group: "study_by_element" },

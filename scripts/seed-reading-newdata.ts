@@ -653,20 +653,41 @@ function parseDithiTransfer(file: string): SeedRow[] {
   return rows;
 }
 
+// ── seeder: ดิถีถ่ายเท เฉพาะด้าน (ลงทุน/ใช้จ่าย/เรียน) — คีย์เดียวกับ dithi_transfer แต่เนื้อว่าง ────
+// reuse คีย์ {ดิถี}|{ปลายทาง} จาก "ดิถีถ่ายเททุกแบบ.txt" → ซินแสมาเติมคำอ่านเฉพาะด้านในแอดมิน
+function dithiTransferTemplate(groupKey: string): SeedRow[] {
+  return parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt").map((r) => ({
+    groupKey,
+    itemKey: r.itemKey,
+    ordinal: r.ordinal,
+    value: { text: "", label: r.value.label },
+    sourceFile: "(กรอกในแอดมิน)",
+  }));
+}
+
 // ── seeder: บท 1 core (ย้ายตารางอิสระ 50/12/60 → NewData box) ────────────────
 function collectChartFoundationCore(): SeedRow[] {
   const rows: SeedRow[] = [];
 
-  // (1) ดิถี/กำลัง 50 ช่อง — ว่างทั้งหมด (ซินแสกรอกในแอดมิน) คีย์ "{ก้าน}|{band}"
+  // (1) ดิถี/กำลัง 50 ช่อง — คีย์ "{ก้าน}|{band}"
+  // ต้นฉบับ: บท1 "นิสัยราศีบน 50 แบบ" (10 ก้าน × 5 กำลังดิถี) → daymaster-strength-50.json
+  // ไฟล์ไม่มี → เว้นว่าง (ซินแสกรอกในแอดมิน)
+  const dmsFile = "daymaster-strength-50.json";
+  let dmsMap: Record<string, { text?: string }> = {};
+  if (existsSync(path.join(NEWDATA_DIR, dmsFile))) {
+    dmsMap = JSON.parse(read(dmsFile)) as Record<string, { text?: string }>;
+  }
   let ord = 0;
   for (const stem of STEM_ORDER) {
     for (const band of STRENGTH_BANDS) {
+      const key = `${stem}|${band.key}`;
+      const text = (dmsMap[key]?.text ?? "").trim();
       rows.push({
         groupKey: "daymaster_strength",
-        itemKey: `${stem}|${band.key}`,
+        itemKey: key,
         ordinal: ++ord,
-        value: { text: "", label: `${stem} × ${band.label}` },
-        sourceFile: "(กรอกในแอดมิน)",
+        value: { text, label: `${stem} × ${band.label}` },
+        sourceFile: text ? dmsFile : "(กรอกในแอดมิน)",
       });
     }
   }
@@ -730,6 +751,9 @@ function collectAll(): SeedRow[] {
     parseElementBullets("การเรียน 5 ธาตุ.txt", "study_by_element", (el) => `วิชา/คณะ ธาตุ${el}`),
   );
   push("dithi_transfer", () => parseDithiTransfer("ดิถีถ่ายเททุกแบบ.txt"));
+  push("dithi_transfer_invest", () => dithiTransferTemplate("dithi_transfer_invest"));
+  push("dithi_transfer_spend", () => dithiTransferTemplate("dithi_transfer_spend"));
+  push("dithi_transfer_study", () => dithiTransferTemplate("dithi_transfer_study"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   // บท 1 · นิสัยราศีบน 10 ก้าน (เพิ่มเติมกล่อง 60 กะจื่อ)
   push("stem_nisai", () => parseStemNisai("บท1 นิสัยราศีบน 10 ก้าน.txt"));

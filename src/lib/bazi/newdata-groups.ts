@@ -180,10 +180,31 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
   },
   {
     key: "dithi_transfer",
-    label: "ดิถีถ่ายเท (การกระทำ ตามปฏิกิริยาธาตุ)",
-    description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 1/3/5/12 (พูด/ทำงาน/ลงทุน ฯลฯ)",
+    label: "บทที่ 1 ดิถีถ่ายเท พูดและแสดงออก",
+    description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 1 (พูด)",
     keyKind: "stemTransfer",
     sourceFile: "ดิถีถ่ายเททุกแบบ.txt",
+  },
+  {
+    key: "dithi_transfer_invest",
+    label: "บทที่ 3 ดิถีถ่ายเทการลงทุน",
+    description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 3 (การลงทุน)",
+    keyKind: "stemTransfer",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "dithi_transfer_spend",
+    label: "บทที่ 3 ดิถีถ่ายเทการใช้จ่าย",
+    description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 3 (การใช้จ่าย)",
+    keyKind: "stemTransfer",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "dithi_transfer_study",
+    label: "บทที่ 11 ดิถีถ่ายเทการเรียนและการศึกษา",
+    description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 11 (การเรียนและการศึกษา)",
+    keyKind: "stemTransfer",
+    sourceFile: "(กรอกในแอดมิน)",
   },
   {
     key: "study_by_element",
