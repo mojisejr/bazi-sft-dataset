@@ -120,10 +120,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // ข้อ 3-4: หาเสาที่ธาตุถ่ายเท(食傷)/ธาตุโชคลาภ(財) นั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (reuse shengxiang)
   benefactor: [
     // ผู้อุปถัมภ์ (印) = หาเสาที่ธาตุส่งเสริมดิถีนั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (印 ไม่ได้อยู่เสาเดือนเสมอ)
-    [{ kind: "elementRoleState", group: "shengxiang", role: "resource" }],
+    // ใช้กลุ่มเฉพาะบท4 (benefactor_*) แยกจาก shengxiang กลาง — ซินแสแก้คำเฉพาะบทนี้ได้
+    [{ kind: "elementRoleState", group: "benefactor_resource", role: "resource" }],
     [{ kind: "branchPairs", group: "combine_branch" }],
-    [{ kind: "elementRoleState", group: "shengxiang", role: "output" }],
-    [{ kind: "elementRoleState", group: "shengxiang", role: "wealth" }],
+    [{ kind: "elementRoleState", group: "benefactor_output", role: "output" }],
+    [{ kind: "elementRoleState", group: "benefactor_wealth", role: "wealth" }],
   ],
   // 4 bullets: [พรสวรรค์: ถ่ายเทราศีบน] [พรแสวง: ถ่ายเทราศีล่าง] [พรในราศีแฝง] [ข้อเสนอแนะ]
   talent: [

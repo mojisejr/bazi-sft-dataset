@@ -810,6 +810,10 @@ function collectAll(): SeedRow[] {
   push("fortune_month", () => fortuneTransferTemplate("fortune_month", "โชคลาภหลักเดือน", 1));
   // บท 10 · ลักษณะบริวาร 60 กะจื่อ (เสายาม) — template 60 คีย์เปล่า รอซินแสเติม
   push("subordinate_60", () => ganzhiTemplate("subordinate_60", "ลักษณะบริวาร"));
+  // บท 4 · ผู้อุปถัมป์/บริวาร/ลูกค้า ตาม 12 เชี่ยงแซ — pre-fill จาก 12 เชี่ยงแซ.txt (แยกจาก shengxiang กลาง)
+  push("benefactor_resource", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_resource"));
+  push("benefactor_output", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_output"));
+  push("benefactor_wealth", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_wealth"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   // บท 1 · นิสัยราศีบน 10 ก้าน (เพิ่มเติมกล่อง 60 กะจื่อ)
   push("stem_nisai", () => parseStemNisai("บท1 นิสัยราศีบน 10 ก้าน.txt"));

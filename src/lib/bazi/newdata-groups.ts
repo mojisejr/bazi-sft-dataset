@@ -228,6 +228,27 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     sourceFile: "(กรอกในแอดมิน)",
   },
   {
+    key: "benefactor_resource",
+    label: "บท 4 · ผู้อุปถัมป์ (ธาตุส่งเสริม 印) ตาม 12 เชี่ยงแซ",
+    description: "คำอ่าน 'ผู้อุปถัมป์' ของเสาที่ธาตุส่งเสริม (印) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง (ซินแสแก้คำเฉพาะบทนี้ได้)",
+    keyKind: "state",
+    sourceFile: "12 เชี่ยงแซ.txt",
+  },
+  {
+    key: "benefactor_output",
+    label: "บท 4 · บริวาร (ธาตุถ่ายเท 食傷) ตาม 12 เชี่ยงแซ",
+    description: "คำอ่าน 'บริวาร/ลูกน้อง' ของเสาที่ธาตุถ่ายเท (食傷) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง",
+    keyKind: "state",
+    sourceFile: "12 เชี่ยงแซ.txt",
+  },
+  {
+    key: "benefactor_wealth",
+    label: "บท 4 · ลูกค้า (ธาตุโชคลาภ 財) ตาม 12 เชี่ยงแซ",
+    description: "คำอ่าน 'ลูกค้า/แหล่งทรัพย์' ของเสาที่ธาตุโชคลาภ (財) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง",
+    keyKind: "state",
+    sourceFile: "12 เชี่ยงแซ.txt",
+  },
+  {
     key: "study_by_element",
     label: "บท 11 · วิชา/คณะ ตามธาตุ (5 ธาตุ)",
     description: "รายชื่อวิชา/คณะของแต่ละธาตุ — บท 11 'เรียนวิชาตามอาชีพถูกดวง' หยิบตามธาตุที่ควรทำ (คลังความรู้ 5 ธาตุ)",
