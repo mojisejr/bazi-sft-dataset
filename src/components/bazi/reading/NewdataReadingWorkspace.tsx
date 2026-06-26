@@ -147,6 +147,18 @@ export function NewdataReadingWorkspace() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState("");
 
+  // ── Auto-save: ทายดวงเสร็จ → สร้าง record ใน DB ทันที แล้วบันทึกทุกครั้งที่แก้ (กันปิด tab แล้วงานหาย) ──
+  /** สแน็ปช็อตของสิ่งที่บันทึกลง DB ครั้งล่าสุด — กัน autosave ยิงซ้ำค่าเดิม */
+  const lastPersistedRef = useRef<string | null>(null);
+  /** ข้าม autosave หนึ่งครั้ง (ตอนเพิ่งโหลดดวงจาก DB — ไม่ต้องเขียนกลับทันที) */
+  const skipAutosaveOnceRef = useRef(false);
+  /** มีการบันทึกค้างอยู่ — กันสร้าง record ซ้ำซ้อนตอนยังไม่มี sessionId */
+  const savingRef = useRef(false);
+  const serializeReading = useCallback(
+    () => JSON.stringify({ clientName, gender, birthDate, birthTime, province, edits }),
+    [clientName, gender, birthDate, birthTime, province, edits],
+  );
+
   const persist = useCallback((key: string | null, next: Edits) => {
     if (!key) return;
     try {
@@ -202,6 +214,7 @@ export function NewdataReadingWorkspace() {
 
   const submit = useCallback(() => {
     setSessionId(null);
+    lastPersistedRef.current = null; // คำนวณใหม่ = ดวงใหม่ → ให้ autosave สร้าง record เสมอ
     return runReading({ birthDate, birthTime, gender, province });
   }, [runReading, birthDate, birthTime, gender, province]);
 
@@ -364,12 +377,13 @@ export function NewdataReadingWorkspace() {
         return;
       }
       setSessionId(body.id);
+      lastPersistedRef.current = serializeReading(); // จำสภาพที่เพิ่งบันทึก — กัน autosave ยิงซ้ำทันที
       setSaveStatus(`บันทึกแล้ว ✓ (${clientName || "ไม่ระบุชื่อ"})`);
       await reloadSavedList();
     } catch {
       setSaveStatus("บันทึกไม่สำเร็จ");
     }
-  }, [sessionId, clientName, birthDate, birthTime, gender, province, edits, reloadSavedList]);
+  }, [sessionId, clientName, birthDate, birthTime, gender, province, edits, reloadSavedList, serializeReading]);
 
   const loadSession = useCallback(
     async (id: string) => {
@@ -395,6 +409,7 @@ export function NewdataReadingWorkspace() {
           }),
         );
         setSessionId(id);
+        skipAutosaveOnceRef.current = true; // เพิ่งโหลดจาก DB — ไม่ต้องเขียนกลับทันที
         setSaveStatus(`เปิดดวง "${r.clientName || r.birthDate}" แล้ว`);
         await runReading(
           { birthDate: r.birthDate, birthTime: r.birthTime, gender: g, province: r.province ?? "" },
@@ -438,6 +453,7 @@ export function NewdataReadingWorkspace() {
           }),
         );
         setSessionId(body.readingId);
+        skipAutosaveOnceRef.current = true; // เพิ่งโหลดจุดบันทึก — ไม่ต้องเขียนกลับทันที
         setSaveStatus("เปิดจุดบันทึกจากประวัติแล้ว");
         await runReading(
           { birthDate: body.birthDate ?? "", birthTime: body.birthTime ?? "", gender: g, province: body.province ?? "" },
@@ -463,6 +479,69 @@ export function NewdataReadingWorkspace() {
     },
     [sessionId, reloadSavedList],
   );
+
+  // Auto-save: ทายดวงเสร็จ → สร้าง record ทันที, แก้กล่อง/ชื่อ → บันทึกต่อเองอัตโนมัติ (debounce) ไม่ต้องกดปุ่ม
+  // ส่ง createRevision:false → ลง DB ทุกครั้งแต่ไม่สร้างจุดประวัติรก (จุดประวัติ = กด "บันทึกดวงนี้" เองเท่านั้น)
+  useEffect(() => {
+    if (!data || !formComplete) return;
+    const snapshot = serializeReading();
+    // เพิ่งโหลดดวงจาก DB — จำค่าไว้เฉย ๆ ไม่เขียนกลับ
+    if (skipAutosaveOnceRef.current) {
+      skipAutosaveOnceRef.current = false;
+      lastPersistedRef.current = snapshot;
+      return;
+    }
+    if (snapshot === lastPersistedRef.current) return;
+    const timer = setTimeout(() => {
+      void (async () => {
+        if (savingRef.current) return; // มีบันทึกค้างอยู่ — รอบหน้าค่อยยิง
+        savingRef.current = true;
+        const creating = !sessionId;
+        try {
+          const res = await fetch("/api/reading/newdata-reading/sessions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              id: sessionId ?? undefined,
+              clientName,
+              birthDate,
+              birthTime,
+              gender,
+              province,
+              edits,
+              createRevision: false,
+            }),
+          });
+          const body = (await res.json()) as { id?: string; error?: string };
+          if (res.ok && body.id) {
+            lastPersistedRef.current = snapshot;
+            if (creating) {
+              setSessionId(body.id);
+              await reloadSavedList();
+            }
+            setSaveStatus("บันทึกอัตโนมัติแล้ว ✓");
+          }
+        } catch {
+          /* best-effort — ยังมี localStorage รองอยู่ */
+        } finally {
+          savingRef.current = false;
+        }
+      })();
+    }, sessionId ? 1200 : 400); // ครั้งแรกสร้างเร็วหน่อย, การแก้ต่อ ๆ ไป debounce
+    return () => clearTimeout(timer);
+  }, [
+    data,
+    formComplete,
+    serializeReading,
+    sessionId,
+    clientName,
+    birthDate,
+    birthTime,
+    gender,
+    province,
+    edits,
+    reloadSavedList,
+  ]);
 
   // เปิดจากหน้าประวัติดวง: ?session=<id> โหลดดวง · ?revision=<id> โหลดจุดบันทึกจากประวัติ (ครั้งเดียว)
   const autoLoadedRef = useRef(false);

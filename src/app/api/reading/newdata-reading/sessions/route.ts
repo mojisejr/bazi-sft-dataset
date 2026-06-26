@@ -24,6 +24,8 @@ type SaveBody = {
   gender?: string;
   province?: string;
   edits?: NewdataReadingEdits;
+  /** false = บันทึกแบบไม่สร้างจุดประวัติ (autosave). default true (กดบันทึกเอง) */
+  createRevision?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -45,6 +47,7 @@ export async function POST(request: Request) {
       gender: body.gender,
       province: body.province ?? null,
       edits: body.edits ?? {},
+      createRevision: body.createRevision,
     });
     return Response.json({ id: row.id, updatedAt: row.updatedAt });
   } catch (error) {

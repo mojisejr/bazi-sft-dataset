@@ -21,6 +21,8 @@ export type SaveNewdataReadingInput = {
   gender: string;
   province?: string | null;
   edits: NewdataReadingEdits;
+  /** สร้าง "จุดประวัติการบันทึก" (revision) ด้วยไหม — default true (กดบันทึกเอง). autosave ส่ง false กันประวัติรก */
+  createRevision?: boolean;
 };
 
 export type NewdataReadingRepository = {
@@ -79,7 +81,8 @@ export function createDbNewdataReadingRepository(db = createDbClient()): Newdata
 
       // เก็บ "ประวัติการบันทึก" หนึ่งสแน็ปช็อตทุกครั้งที่บันทึก (insert-only, เก็บ 30 ล่าสุด/ดวง)
       // best-effort: ถ้า revision ล้มเหลวไม่ทำให้การบันทึกหลักพัง
-      try {
+      // autosave (createRevision === false) จะข้ามขั้นนี้ — จุดประวัติเกิดเฉพาะกดบันทึกเอง
+      if (input.createRevision !== false) try {
         await recordNewdataReadingRevision({
           readingId: saved.id,
           clientName: saved.clientName,
