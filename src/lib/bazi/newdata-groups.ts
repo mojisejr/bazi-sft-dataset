@@ -21,6 +21,7 @@ export type NewdataKeyKind =
   | "stemTransfer" // ดิถีถ่ายเท เช่น "甲|丙" (ก้านดิถี|ปลายทาง)
   | "elementCategory" // หมวด × ธาตุ เช่น "สี|ไม้" (บท 14/15 ตามธาตุที่ดวงต้องการ)
   | "rasi" // อักษรราศี เช่น "甲"/"子"/"乾" (บท 15 องค์เทพราย 26 ราศี)
+  | "role" // บทบาทธาตุ "resource"/"output"/"wealth" (ประโยคนำบท4 — template มี {ดิถี}/{ธาตุ})
   | "pillar"; // เสา เช่น "ปี"
 
 export type NewdataGroup = {
@@ -225,6 +226,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     label: "บท 3 · โชคลาภหลักเดือน (ก้านเดือน|ปลายทาง)",
     description: "คำอ่านโชคลาภหลักเดือน = ก้านเดือน → 財 ของก้านเดือน (สูตรรอซินแสยืนยัน) · คีย์ '{ก้านเดือน}|{ปลายทาง}'",
     keyKind: "stemTransfer",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
+    key: "benefactor_lead",
+    label: "บท 4 · ประโยคนำ (ธาตุส่งเสริม/ถ่ายเท/โชคลาภ)",
+    description: "ประโยคนำบอกชื่อธาตุตามบทบาท คีย์ = resource/output/wealth · template ใช้ {ดิถี} {ธาตุ} (ซินแสเปลี่ยนคำได้)",
+    keyKind: "role",
     sourceFile: "(กรอกในแอดมิน)",
   },
   {

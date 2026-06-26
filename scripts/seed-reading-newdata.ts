@@ -810,6 +810,24 @@ function collectAll(): SeedRow[] {
   push("fortune_month", () => fortuneTransferTemplate("fortune_month", "โชคลาภหลักเดือน", 1));
   // บท 10 · ลักษณะบริวาร 60 กะจื่อ (เสายาม) — template 60 คีย์เปล่า รอซินแสเติม
   push("subordinate_60", () => ganzhiTemplate("subordinate_60", "ลักษณะบริวาร"));
+  // บท 4 · ประโยคนำ (template มี {ดิถี}/{ธาตุ} — ซินแสเปลี่ยนคำได้)
+  push("benefactor_lead", () => {
+    const LEAD: Array<[string, string, string]> = [
+      ["resource", "ผู้อุปถัมป์ (印 ธาตุส่งเสริม)", "ธาตุส่งเสริม (ผู้อุปถัมภ์)"],
+      ["output", "บริวาร (食傷 ธาตุถ่ายเท)", "ธาตุถ่ายเท (บริวาร)"],
+      ["wealth", "ลูกค้า (財 ธาตุโชคลาภ)", "ธาตุโชคลาภ (ลูกค้า)"],
+    ];
+    return LEAD.map(([role, label, roleTh], i) => ({
+      groupKey: "benefactor_lead",
+      itemKey: role,
+      ordinal: i + 1,
+      value: {
+        text: `ดิถีธาตุ{ดิถี} มีธาตุ{ธาตุ} เป็น${roleTh} — อ่านตามเชี่ยงแซดีของเสาที่ธาตุ{ธาตุ}ปรากฏ`,
+        label,
+      },
+      sourceFile: "(กรอกในแอดมิน)",
+    }));
+  });
   // บท 4 · ผู้อุปถัมป์/บริวาร/ลูกค้า ตาม 12 เชี่ยงแซ — pre-fill จาก 12 เชี่ยงแซ.txt (แยกจาก shengxiang กลาง)
   push("benefactor_resource", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_resource"));
   push("benefactor_output", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_output"));

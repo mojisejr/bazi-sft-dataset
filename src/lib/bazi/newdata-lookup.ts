@@ -897,14 +897,15 @@ export function matchElementRoleState(
   const sub = dedupByState(
     res.subconscious.map((h) => readPillar(h, 4)).filter((b): b is NewdataBlock => b !== null),
   );
-  // ประโยคนำ (computed) — บอกชื่อธาตุตามบทบาท เช่น "ดิถีธาตุดิน มีธาตุไฟ เป็นธาตุส่งเสริม (ผู้อุปถัมป์)"
+  // ประโยคนำ — template จาก DB (benefactor_lead) ให้ซินแสเปลี่ยนคำ, fallback computed ถ้ายังไม่กรอก
+  // template ใช้ {ดิถี} {ธาตุ} แทนชื่อธาตุดิถี/ธาตุเป้าหมาย
   const dmTh = EN_TO_TH_ELEMENT[dayEl] ?? dayEl;
   const targetTh = EN_TO_TH_ELEMENT[targetEl] ?? targetEl;
-  const lead: NewdataBlock = {
-    group,
-    itemKey: "__lead__",
-    text: `ดิถีธาตุ${dmTh} มีธาตุ${targetTh} เป็น${roleTh} — อ่านตามเชี่ยงแซดีของเสาที่ธาตุ${targetTh}ปรากฏ`,
-  };
+  const tmpl = map["benefactor_lead"]?.[role]?.text?.trim();
+  const leadText = (tmpl || `ดิถีธาตุ{ดิถี} มีธาตุ{ธาตุ} เป็น${roleTh} — อ่านตามเชี่ยงแซดีของเสาที่ธาตุ{ธาตุ}ปรากฏ`)
+    .replace(/\{ดิถี\}/g, dmTh)
+    .replace(/\{ธาตุ\}/g, targetTh);
+  const lead: NewdataBlock = { group, itemKey: "__lead__", text: leadText };
   return [lead, ...primary, ...sub];
 }
 
