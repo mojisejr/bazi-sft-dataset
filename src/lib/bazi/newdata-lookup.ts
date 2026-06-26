@@ -910,6 +910,55 @@ export function matchElementRoleState(
 }
 
 /**
+ * บท 4 · ลูกค้า/บริวาร 60 กะจื่อ — หาเสาที่ธาตุตามบทบาทนั่ง (กลไก priority) แล้วอ่าน "กะจื่อ" ของเสานั้น
+ * (ละเอียดกว่า 12 เชี่ยงแซ) · ใช้คู่ matchElementRoleState (เพิ่มต่อ ไม่แทน) · role=wealth → ลูกค้า 60 แบบ
+ */
+export function matchElementRoleGanzhi(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  role: "output" | "wealth" | "resource",
+): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl) return [];
+  const resourceEl = (Object.keys(GENERATES) as Array<keyof typeof GENERATES>).find(
+    (x) => GENERATES[x] === dayEl,
+  );
+  const targetEl =
+    role === "output"
+      ? GENERATES[dayEl as keyof typeof GENERATES]
+      : role === "wealth"
+        ? CONTROLS[dayEl as keyof typeof CONTROLS]
+        : resourceEl;
+  if (!targetEl) return [];
+  const roleTh =
+    role === "output" ? "บริวาร" : role === "wealth" ? "ลูกค้า" : "ผู้อุปถัมป์";
+  const res = findElementByMechanism(facts, targetEl);
+  const seen = new Set<string>();
+  const readGz = (hit: MechanismHit, mech: 1 | 2 | 3 | 4): NewdataBlock | null => {
+    const p = facts.pillars.find((x) => x.position === hit.position);
+    if (!p) return null;
+    const gz = `${p.stem}${p.branch}`;
+    if (seen.has(gz)) return null;
+    const value = map[group]?.[gz];
+    if (!value) return null;
+    seen.add(gz);
+    const suffix = mech === 1 ? "" : ` (${MECH_LABEL[mech]})`;
+    return toBlock(group, gz, value, `${roleTh} เสา${p.position} ${gz}${suffix}`, `${roleTh} ${pillarLabel(facts, p.position)}${suffix}`);
+  };
+  let primary: NewdataBlock[] = [];
+  for (let i = 0; i < 2; i++) {
+    const blocks = res.tiers[i].map((h) => readGz(h, (i + 1) as 1 | 2 | 3)).filter((b): b is NewdataBlock => b !== null);
+    if (blocks.length > 0) {
+      primary = blocks;
+      break;
+    }
+  }
+  const sub = res.subconscious.map((h) => readGz(h, 4)).filter((b): b is NewdataBlock => b !== null);
+  return [...primary, ...sub];
+}
+
+/**
  * บท 13 · สุขภาพ (ข้อ 2) — โรคจากธาตุที่มากเกินไป / น้อยเกินไป ในพื้นดวง
  * นับธาตุจากราศีบน+ล่าง 4 เสา → ธาตุมากสุด (มากเกินไป) และ น้อยสุด (น้อยเกินไป) → lookup คีย์ธาตุไทย
  */

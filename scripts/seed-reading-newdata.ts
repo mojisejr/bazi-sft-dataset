@@ -810,6 +810,8 @@ function collectAll(): SeedRow[] {
   push("fortune_month", () => fortuneTransferTemplate("fortune_month", "โชคลาภหลักเดือน", 1));
   // บท 10 · ลักษณะบริวาร 60 กะจื่อ (เสายาม) — template 60 คีย์เปล่า รอซินแสเติม
   push("subordinate_60", () => ganzhiTemplate("subordinate_60", "ลักษณะบริวาร"));
+  // บท 4 · ลูกค้า 60 กะจื่อ (ธาตุโชคลาภ 財) — template 60 คีย์เปล่า รอซินแสเติม
+  push("customer_60", () => ganzhiTemplate("customer_60", "ลักษณะลูกค้า"));
   // บท 4 · ประโยคนำ (template มี {ดิถี}/{ธาตุ} — ซินแสเปลี่ยนคำได้)
   push("benefactor_lead", () => {
     const LEAD: Array<[string, string, string]> = [

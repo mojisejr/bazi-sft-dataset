@@ -236,6 +236,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     sourceFile: "(กรอกในแอดมิน)",
   },
   {
+    key: "customer_60",
+    label: "บท 4 · ลูกค้า 60 กะจื่อ (ธาตุโชคลาภ 財)",
+    description: "คำอ่าน 'ลูกค้า' ของเสาที่ธาตุโชคลาภ (財) นั่ง ตาม 60 กะจื่อ (ละเอียดกว่า 12 เชี่ยงแซ) — เพิ่มต่อจาก benefactor_wealth",
+    keyKind: "ganzhi",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
     key: "benefactor_resource",
     label: "บท 4 · ผู้อุปถัมป์ (ธาตุส่งเสริม 印) ตาม 12 เชี่ยงแซ",
     description: "คำอ่าน 'ผู้อุปถัมป์' ของเสาที่ธาตุส่งเสริม (印) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง (ซินแสแก้คำเฉพาะบทนี้ได้)",
