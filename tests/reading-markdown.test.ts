@@ -81,11 +81,14 @@ describe("reading-markdown round-trip", () => {
     expect(norm("[[s=18]]ตัวใหญ่[[/s]]")).toBe("[[s=18]]ตัวใหญ่[[/s]]");
   });
 
-  it("กล่อง (box): [[box=หัวข้อ]] → node box + title + content ภายใน", () => {
+  it("กล่อง (box): [[box=หัวข้อ]] → node box + boxTitle (text node) + content ภายใน", () => {
     const doc = markdownToDoc("[[box=สิ่งพึงระวัง]]\nระวัง **สุขภาพ**\n- พักผ่อน\n[[/box]]");
     expect(doc.content[0].type).toBe("box");
-    expect(doc.content[0].attrs?.title).toBe("สิ่งพึงระวัง");
-    const inner = doc.content[0].content ?? [];
+    const children = doc.content[0].content ?? [];
+    // หัวข้อ = boxTitle (ลูกตัวแรก) เป็น text node จริง แก้/ลบได้เหมือนข้อความ
+    expect(children[0]?.type).toBe("boxTitle");
+    expect(children[0]?.content?.[0]?.text).toBe("สิ่งพึงระวัง");
+    const inner = children.slice(1);
     expect(inner[0]?.type).toBe("paragraph");
     expect(inner.some((n) => n.type === "bulletList")).toBe(true);
   });

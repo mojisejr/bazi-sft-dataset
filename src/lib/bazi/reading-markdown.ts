@@ -118,7 +118,15 @@ export function markdownToDoc(text: string): PMDoc {
         }
         inner.push(lines[i]);
       }
-      content.push({ type: "box", attrs: { title }, content: markdownToDoc(inner.join("\n")).content });
+      // หัวข้อกล่อง = node "boxTitle" (text node จริง = ลูกตัวแรก) เพื่อให้แก้/ลบใน editor ได้เหมือนข้อความ
+      // box content schema = "boxTitle block+" → ต้องมี body อย่างน้อย 1 block (กล่องว่างใส่ paragraph เปล่า)
+      const titleNode: PMNode = {
+        type: "boxTitle",
+        ...(title ? { content: [{ type: "text", text: title }] } : {}),
+      };
+      const innerContent = markdownToDoc(inner.join("\n")).content;
+      const body = innerContent.length > 0 ? innerContent : [{ type: "paragraph" }];
+      content.push({ type: "box", content: [titleNode, ...body] });
       continue;
     }
     if (!line) {
@@ -231,11 +239,21 @@ export function docToMarkdown(doc: PMDoc | { content?: PMNode[] }): string {
         blocks.push(PAGEBREAK_MARKER);
         break;
       case "box": {
-        const title = typeof node.attrs?.title === "string" ? node.attrs.title : "";
-        const inner = docToMarkdown({ content: node.content ?? [] });
+        // หัวข้อ = node "boxTitle" (ลูกตัวแรก) — ดึง text ล้วนไปใส่ marker, ที่เหลือ = เนื้อใน
+        const children = node.content ?? [];
+        let title = "";
+        let bodyNodes = children;
+        if (children[0]?.type === "boxTitle") {
+          title = (children[0].content ?? []).map((n) => n.text ?? "").join("");
+          bodyNodes = children.slice(1);
+        }
+        const inner = docToMarkdown({ content: bodyNodes });
         blocks.push(`[[box=${title}]]\n${inner}\n${BOX_CLOSE_MARKER}`);
         break;
       }
+      case "boxTitle":
+        // ปกติถูกจัดการใน case "box" แล้ว — ถ้าหลุดมาเดี่ยว ๆ ให้ข้าม (ไม่ render เป็น block)
+        break;
       default:
         break;
     }

@@ -42,34 +42,36 @@ const PageBreakNode = Node.create({
 });
 
 /**
+ * หัวข้อกล่อง (boxTitle) = ลูกตัวแรกของกล่อง เป็น "text node จริง" → ซินแสคลิกพิมพ์ทับ/ลบได้เหมือนข้อความ
+ * แก้แล้ว propagate ผ่าน onUpdate ปกติ (ไม่ต้อง sync attr เอง) และลบตัวอักษรไม่ทำให้ทั้งกล่องหาย
+ */
+const BoxTitle = Node.create({
+  name: "boxTitle",
+  content: "inline*",
+  defining: true,
+  selectable: false,
+  parseHTML() {
+    return [{ tag: "div.ylc-box__title" }];
+  },
+  renderHTML() {
+    return ["div", { class: "ylc-box__title" }, 0];
+  },
+});
+
+/**
  * กล่อง (box) แยกตามหัวข้อย่อย = [[box=หัวข้อ]]...[[/box]] — render เป็น <section class="ylc-box">
- * หัวข้อย่อย (title) มาจาก engine เป็น label คงที่ (contenteditable=false) ซินแสแก้เฉพาะ "เนื้อใน" กล่อง
+ * content = "boxTitle block+" : หัวข้อ (แก้ได้) ตามด้วยเนื้อในอย่างน้อย 1 ย่อหน้า
  */
 const BoxNode = Node.create({
   name: "box",
   group: "block",
-  content: "block+",
+  content: "boxTitle block+",
   defining: true,
-  addAttributes() {
-    return {
-      title: {
-        default: "",
-        parseHTML: (el) =>
-          el.getAttribute("data-box-title") ?? el.querySelector(".ylc-box__title")?.textContent ?? "",
-        renderHTML: (attrs) => ({ "data-box-title": (attrs.title as string) ?? "" }),
-      },
-    };
-  },
   parseHTML() {
     return [{ tag: "section[data-box]" }];
   },
-  renderHTML({ node, HTMLAttributes }) {
-    return [
-      "section",
-      mergeAttributes(HTMLAttributes, { "data-box": "true", class: "ylc-box" }),
-      ["div", { class: "ylc-box__title", contenteditable: "false" }, (node.attrs.title as string) || ""],
-      ["div", { class: "ylc-box__body" }, 0],
-    ];
+  renderHTML({ HTMLAttributes }) {
+    return ["section", mergeAttributes(HTMLAttributes, { "data-box": "true", class: "ylc-box" }), 0];
   },
 });
 
@@ -170,6 +172,7 @@ export function ChapterEditor({ value, onChange, disabled }: ChapterEditorProps)
       ParagraphWarn,
       ParagraphIndent,
       RedMark,
+      BoxTitle,
       BoxNode,
       PageBreakNode,
       TextStyle,
@@ -194,6 +197,12 @@ export function ChapterEditor({ value, onChange, disabled }: ChapterEditorProps)
   useEffect(() => {
     if (!editor) return;
     if (value === lastEmittedRef.current) return; // echo ของการพิมพ์เราเอง — อย่าทับ
+    // กำลังพิมพ์อยู่ (editor โฟกัส) → อย่า setContent ทับ ไม่งั้น cursor เด้งไปท้าย:
+    // value ที่ไหลกลับมาผ่าน roundtrip ฝั่ง parent (parse→serialize) อาจไม่ "เท่าเป๊ะ" กับที่เรา emit
+    // สลับบทใช้ key remount อยู่แล้ว ส่วน gen ภายนอกเกิดตอนไม่โฟกัส → ปลอดภัยที่จะข้ามตอนโฟกัส
+    // ครอบรวมช่องหัวข้อกล่อง (<input> ใน nodeView) ด้วย — โฟกัสอยู่ที่ input ตัว editor จะ isFocused=false
+    const active = typeof document !== "undefined" ? document.activeElement : null;
+    if (editor.isFocused || (active && editor.view.dom.contains(active))) return;
     const current = docToMarkdown(editor.getJSON() as unknown as PMDoc);
     if (current !== value) {
       editor.commands.setContent(markdownToDoc(value) as unknown as PMDoc, { emitUpdate: false });
@@ -386,7 +395,13 @@ export function ChapterEditor({ value, onChange, disabled }: ChapterEditorProps)
             editor
               .chain()
               .focus()
-              .insertContent({ type: "box", attrs: { title }, content: [{ type: "paragraph" }] })
+              .insertContent({
+                type: "box",
+                content: [
+                  { type: "boxTitle", ...(title ? { content: [{ type: "text", text: title }] } : {}) },
+                  { type: "paragraph" },
+                ],
+              })
               .run();
           }}
         >
@@ -401,7 +416,13 @@ export function ChapterEditor({ value, onChange, disabled }: ChapterEditorProps)
             editor
               .chain()
               .focus()
-              .insertContent({ type: "box", attrs: { title }, content: [{ type: "paragraph" }] })
+              .insertContent({
+                type: "box",
+                content: [
+                  { type: "boxTitle", ...(title ? { content: [{ type: "text", text: title }] } : {}) },
+                  { type: "paragraph" },
+                ],
+              })
               .run();
           }}
         >

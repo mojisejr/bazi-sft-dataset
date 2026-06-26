@@ -309,6 +309,17 @@
   text-indent: 0;
   break-after: avoid;
 }
+/* หัวข้อกล่อง (boxTitle) ในตัวแก้ ChapterEditor = ข้อความจริง แก้/ลบได้ — เน้นสถานะแก้ได้/โฟกัส */
+.ylc-editor .ylc-box__title {
+  cursor: text;
+  border-radius: 3px;
+}
+.ylc-editor .ylc-box__title:hover {
+  background: var(--ylc-teal-faint, rgba(0, 128, 128, 0.06));
+}
+.ylc-editor .ylc-box:focus-within .ylc-box__title {
+  box-shadow: 0 0 0 2px var(--ylc-teal-soft);
+}
 .ylc-prose .ylc-box__body > :first-child {
   margin-top: 0;
 }

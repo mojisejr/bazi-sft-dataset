@@ -1,5 +1,4 @@
-import { Fragment } from "react";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 
 import { buildChapterAnnotation, ChapterChartStrip } from "@/components/bazi/reading/ChapterChartStrip";
 import {
@@ -187,12 +186,15 @@ function renderMarkdown(text: string): ReactNode[] {
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const line = raw.trim();
-    // กล่อง (box): เป็นเครื่องมือช่วย "ซินแสแก้" เท่านั้น — ใน PDF/เอกสารจริงให้แสดง "ข้อความล้วน"
-    // (ตัดกรอบ + หัวข้อย่อยทิ้ง) โดยแบนเนื้อในเข้าสายบทตรง ๆ. เก็บบรรทัดในจนถึง [[/box]] ที่จับคู่ (รองรับซ้อน)
+    // กล่อง (box): ตัดกรอบทิ้ง แบนเนื้อในเข้าสายบทตรง ๆ แต่ "คงหัวข้อย่อยไว้เป็นบรรทัดตัวหนา" (ไม่ใช่กรอบ)
+    // ให้พรีวิว ([[box=]]) ตรงกับหน้าจริงที่ใช้ boxesToBoldMarkdown (**หัวข้อ**) — รวมถึงกล่องว่างที่โชว์แต่หัวข้อ
+    // ดิดูป: ถ้าบรรทัดแรกข้างในเป็นหัวข้อเดียวกันอยู่แล้ว (เช่น 15 บทฝัง `## **title**` มาด้วย) ไม่เติมซ้ำ
+    // เก็บบรรทัดในจนถึง [[/box]] ที่จับคู่ (รองรับซ้อน)
     const boxOpen = line.match(BOX_OPEN_RE);
     if (boxOpen) {
       flushPara();
       flushList();
+      const boxTitle = boxOpen[1].trim();
       const inner: string[] = [];
       let depth = 1;
       i++;
@@ -206,9 +208,18 @@ function renderMarkdown(text: string): ReactNode[] {
         }
         inner.push(lines[i]);
       }
-      blocks.push(<Fragment key={key++}>{renderMarkdown(inner.join("\n"))}</Fragment>);
+      const firstIdx = inner.findIndex((l) => l.trim().length > 0);
+      const innerHasTitle =
+        !!boxTitle &&
+        firstIdx >= 0 &&
+        inner[firstIdx].replace(/^#+\s*/, "").replace(/\*/g, "").trim() === boxTitle;
+      const innerMd = (boxTitle && !innerHasTitle ? `**${boxTitle}**\n\n` : "") + inner.join("\n");
+      blocks.push(<Fragment key={key++}>{renderMarkdown(innerMd)}</Fragment>);
       continue;
     }
+    // [[/box]] ที่ลอยมาเดี่ยว (เช่นถูก [[pagebreak]] ผ่ากล่องครึ่ง — ส่วนแรกมี [[box=]] ส่วนหลังเหลือปิด)
+    // → ข้าม ไม่ render เป็นข้อความดิบ
+    if (line === BOX_CLOSE_MARKER) continue;
     if (!line) {
       flushPara();
       flushList();

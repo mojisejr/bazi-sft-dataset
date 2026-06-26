@@ -125,6 +125,8 @@ function markdownParagraphs(text: string): (Paragraph | Table)[] {
       }
       continue;
     }
+    // [[/box]] ที่ลอยมาเดี่ยว (input แปลก/ถูกผ่า) — ข้าม ไม่ render เป็นข้อความดิบ
+    if (line === BOX_CLOSE_MARKER) continue;
     if (!line) {
       flushPara();
       continue;

@@ -28,6 +28,22 @@ const PageBreakNode = Node.create({
   parseHTML: () => [{ tag: "div[data-pagebreak]" }],
   renderHTML: () => ["div", { "data-pagebreak": "true" }, "— แบ่งหน้า —"],
 });
+const BoxTitle = Node.create({
+  name: "boxTitle",
+  content: "inline*",
+  defining: true,
+  selectable: false,
+  parseHTML: () => [{ tag: "div.ylc-box__title" }],
+  renderHTML: () => ["div", { class: "ylc-box__title" }, 0],
+});
+const BoxNode = Node.create({
+  name: "box",
+  group: "block",
+  content: "boxTitle block+",
+  defining: true,
+  parseHTML: () => [{ tag: "section[data-box]" }],
+  renderHTML: () => ["section", { "data-box": "true", class: "ylc-box" }, 0],
+});
 const ParagraphWarn = Extension.create({
   name: "paragraphWarn",
   addGlobalAttributes() {
@@ -59,6 +75,8 @@ function roundTripThroughEditor(md: string): string {
       }),
       ParagraphWarn,
       RedMark,
+      BoxTitle,
+      BoxNode,
       PageBreakNode,
       TextStyle,
       Color,
@@ -82,6 +100,10 @@ describe("ChapterEditor TipTap schema round-trip", () => {
     "## การเงิน\n\nรายได้จะ **เพิ่มขึ้น**\n\n- ลงทุน\n- ระวังหนี้\n\n*** อย่าค้ำประกัน\n\n[[pagebreak]]\n\nสรุป ***ดวงดี*** มาก",
     "ธาตุ [[c=fire]]ไฟ[[/c]] และ [[c=water]]น้ำ[[/c]]",
     "เน้น [[c=teal]]**สำคัญ**[[/c]] มาก",
+    // กล่อง: หัวข้อ (boxTitle) ต้องรอด TipTap จริง — แก้หัวข้อในตัวแก้แล้ว propagate ได้
+    "[[box=ภาพรวม]]\nเนื้อหาในกล่อง\n[[/box]]",
+    "[[box=อาชีพ อันดับ 2]]\n\n[[/box]]",
+    "[[box=สิ่งพึงระวัง]]\nระวัง **สุขภาพ**\n\n- พักผ่อน\n- ออกกำลัง\n[[/box]]",
   ];
 
   it.each(samples)("schema คงเนื้อหา: %s", (md) => {
