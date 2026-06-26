@@ -16,8 +16,10 @@ import {
   matchDeityByRasi,
   matchDayMasterStrength,
   matchDithiTransfer,
+  matchDithiTransferPrioritized,
   matchElementCategory,
   matchElementRoleState,
+  matchFortune,
   matchHealthElement,
   matchHiddenTransfer,
   matchLoveBase,
@@ -57,6 +59,8 @@ type Resolver =
   | { kind: "stemOf"; group: string; pillar: PillarPosition }
   | { kind: "ganzhiOf"; group: string; pillar: PillarPosition }
   | { kind: "dithiTransfer"; group: string; scope?: "all" | "stems" | "branches" }
+  | { kind: "dithiTransferPrioritized"; group: string }
+  | { kind: "fortune"; group: string; role: "dithi" | "business" | "month" }
   | { kind: "hiddenTransfer"; group: string }
   | { kind: "merit"; group: string }
   | { kind: "loveBase"; group: string }
@@ -82,7 +86,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "branchPairs", group: "combine_branch" },
     ],
     [
-      { kind: "dithiTransfer", group: "dithi_transfer" },
+      { kind: "dithiTransferPrioritized", group: "dithi_transfer" },
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
     [{ kind: "dayElement", group: "dark_side_by_element" }],
@@ -98,11 +102,15 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "career", role: "avoid", order: 2 }],
   ],
   // 3 bullets: [โชคลาภ ดิถี→ถ่ายเท→ผลลัพธ์] [ผั่วไฉ่โข่ว] [ข้อเสนอแนะ]
+  // ถ่ายเท = อ้างทุกรูปแบบ+จัดลำดับ (prioritized) · โชคลาภ = กลุ่มใหม่ fortune_* (ดิถี/ธุรกิจ/หลักเดือน)
   wealth_and_investment: [
     [
-      { kind: "dithiTransfer", group: "dithi_transfer" },
-      { kind: "dithiTransfer", group: "dithi_transfer_invest" },
-      { kind: "dithiTransfer", group: "dithi_transfer_spend" },
+      { kind: "dithiTransferPrioritized", group: "dithi_transfer" },
+      { kind: "dithiTransferPrioritized", group: "dithi_transfer_invest" },
+      { kind: "dithiTransferPrioritized", group: "dithi_transfer_spend" },
+      { kind: "fortune", group: "fortune_dithi", role: "dithi" },
+      { kind: "fortune", group: "fortune_business", role: "business" },
+      { kind: "fortune", group: "fortune_month", role: "month" },
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
     [{ kind: "phua" }],
@@ -265,6 +273,10 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchPillarGanzhi(map, r.group, facts, r.pillar);
     case "dithiTransfer":
       return matchDithiTransfer(map, r.group, facts, r.scope ?? "all");
+    case "dithiTransferPrioritized":
+      return matchDithiTransferPrioritized(map, r.group, facts);
+    case "fortune":
+      return matchFortune(map, r.group, facts, r.role);
     case "hiddenTransfer":
       return matchHiddenTransfer(map, r.group, facts);
     case "merit":

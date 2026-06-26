@@ -21,10 +21,14 @@ import {
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { meritBandFromScore, meritFavorElements } from "@/lib/bazi/constants/merit-table";
 import {
+  BRANCH_COMBINATION_TRANSFORMS,
   BRANCH_HIDDEN_STEMS,
   BRANCH_TO_ELEMENT,
   CONTROLS,
   GENERATES,
+  normalizeBranchPairKey,
+  SAN_HE_GROUPS,
+  STEM_COMBINATION_TRANSFORMS,
   STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
 
@@ -445,6 +449,183 @@ export function matchDithiTransfer(
   return out;
 }
 
+// ── ดิถีถ่ายเท "ทุกรูปแบบ" + จัดลำดับกลไก (กติกาซินแส) ───────────────────────
+// ธาตุเป้าหมายปรากฏในดวงได้ 4 กลไก จัดลำดับ fallback:
+//   1 ธาตุแท้  → ราศีบน/ล่างเป็นธาตุเป้าหมายตรง ๆ
+//   2 ภาคี/ไตรภาคี → กิ่ง/ก้านรวมกันเป็นธาตุเป้าหมาย (6合/三合/天干合)
+//   3 เชี่ยงแซ → คีย์มีในตำราซินแส แต่ไม่ใช่ธาตุแท้/ไม่มีคู่ภาคีในดวง (residual)
+//   4 จิตใต้สำนึก → ธาตุเป้าหมายเป็นราศีแฝง (藏干) ในกิ่ง (คืนแยกเสมอ)
+// กติกา: "ใช้ข้อ1 ก่อน ถ้ามี1 ไม่ดูตัวอื่น · ไม่มี1→2 · ไม่มี2→3 · 4 ใช้เฉพาะจิตใต้สำนึก"
+// หมายเหตุ: กลไก 3 ไม่คำนวณ 12-qi ตรง ๆ — อาศัย "คีย์มีในข้อมูลซินแส" กรองตอน lookup
+// (ซินแสเขียนคีย์เฉพาะปลายทางที่ถ่ายเทได้จริง) → residual ที่ไม่ใช่ 1/2 = กลไก 3
+const CN_ELEMENT_TO_EN: Record<string, string> = {
+  "木": "wood",
+  "火": "fire",
+  "土": "earth",
+  "金": "metal",
+  "水": "water",
+};
+
+function elementOfChar(ch: string): string | undefined {
+  return (
+    STEM_TO_ELEMENT[ch as keyof typeof STEM_TO_ELEMENT] ??
+    BRANCH_TO_ELEMENT[ch as keyof typeof BRANCH_TO_ELEMENT]
+  );
+}
+
+/** ก้าน/กิ่ง ch รวมกับตัวอื่นในดวงเป็น targetEl ไหม (6合 + 三合 + 天干合) */
+function combinesToElement(
+  ch: string,
+  targetEl: string,
+  branchSet: Set<string>,
+  stemSet: Set<string>,
+): boolean {
+  // กิ่ง: 6合 คู่
+  for (const other of branchSet) {
+    if (other === ch) continue;
+    if (BRANCH_COMBINATION_TRANSFORMS.get(normalizeBranchPairKey(ch, other)) === targetEl) return true;
+  }
+  // กิ่ง: 三合 (มีอย่างน้อยอีก 1 ตัวในกลุ่ม = ครึ่งไตรภาคี)
+  for (const g of SAN_HE_GROUPS) {
+    const branches = g.branches as readonly string[];
+    if (g.element !== targetEl || !branches.includes(ch)) continue;
+    if (branches.some((b) => b !== ch && branchSet.has(b))) return true;
+  }
+  // ก้าน: 天干合 คู่
+  for (const [pairKey, cn] of STEM_COMBINATION_TRANSFORMS) {
+    if (CN_ELEMENT_TO_EN[cn] !== targetEl) continue;
+    const [a, b] = pairKey.split("|");
+    if (ch === a && stemSet.has(b)) return true;
+    if (ch === b && stemSet.has(a)) return true;
+  }
+  return false;
+}
+
+export type MechanismHit = {
+  position: PillarPosition;
+  /** อักษรปลายทางที่ทำให้ match (ไป lookup "{ดิถี}|{targetChar}") */
+  targetChar: string;
+  /** "ราศีบน" | "ราศีล่าง" | "ราศีแฝง" */
+  kind: string;
+};
+
+export type MechanismResult = {
+  /** กลไก 1/2/3 — index 0=ธาตุแท้, 1=ภาคี, 2=เชี่ยงแซ (residual) */
+  tiers: [MechanismHit[], MechanismHit[], MechanismHit[]];
+  /** กลไก 4 จิตใต้สำนึก (ราศีแฝง) — คืนแยกเสมอ */
+  subconscious: MechanismHit[];
+};
+
+/** หา "ธาตุเป้าหมาย" ในดวงแยกตามกลไก (pure) — ใช้ทั้งบท1 ถ่ายเท, บท3 โชคลาภ, บท4 ผู้อุปถัมป์ */
+export function findElementByMechanism(facts: ChartFacts, targetEl: string): MechanismResult {
+  const { branchSet, stemSet } = chartSets(facts);
+  const tiers: [MechanismHit[], MechanismHit[], MechanismHit[]] = [[], [], []];
+  const subconscious: MechanismHit[] = [];
+  for (const p of facts.pillars) {
+    for (const [ch, kind] of [
+      [p.stem, "ราศีบน"],
+      [p.branch, "ราศีล่าง"],
+    ] as const) {
+      const hit: MechanismHit = { position: p.position, targetChar: ch, kind };
+      if (elementOfChar(ch) === targetEl) tiers[0].push(hit);
+      else if (combinesToElement(ch, targetEl, branchSet, stemSet)) tiers[1].push(hit);
+      else tiers[2].push(hit);
+    }
+    // กลไก 4: ราศีแฝงของกิ่งเสานี้ที่เป็นธาตุเป้าหมาย
+    const hidden = BRANCH_HIDDEN_STEMS[p.branch as keyof typeof BRANCH_HIDDEN_STEMS] ?? [];
+    for (const h of hidden) {
+      if (STEM_TO_ELEMENT[h as keyof typeof STEM_TO_ELEMENT] === targetEl) {
+        subconscious.push({ position: p.position, targetChar: h, kind: "ราศีแฝง" });
+      }
+    }
+  }
+  return { tiers, subconscious };
+}
+
+/**
+ * เลือก tier สูงสุดที่ "lookup แล้วเจอจริง" (มี1→ใช้1, ไม่เจอ→2, ไม่เจอ→3) + กลไก4 เสมอ
+ * lookupFn(hit) คืน block หรือ null — caller กำหนดว่าจะ lookup ด้วยคีย์อะไร (ดิถี|ปลายทาง หรือ เชี่ยงแซเสา)
+ */
+function applyMechanismPriority(
+  res: MechanismResult,
+  lookupFn: (hit: MechanismHit, mechanism: 1 | 2 | 3 | 4) => NewdataBlock | null,
+): NewdataBlock[] {
+  let primary: NewdataBlock[] = [];
+  for (let i = 0; i < 3; i++) {
+    const mech = (i + 1) as 1 | 2 | 3;
+    const blocks: NewdataBlock[] = [];
+    const seen = new Set<string>();
+    for (const hit of res.tiers[i]) {
+      if (seen.has(hit.targetChar)) continue;
+      const b = lookupFn(hit, mech);
+      if (!b) continue;
+      seen.add(hit.targetChar);
+      blocks.push(b);
+    }
+    if (blocks.length > 0) {
+      primary = blocks;
+      break;
+    }
+  }
+  const subSeen = new Set<string>();
+  const sub: NewdataBlock[] = [];
+  for (const hit of res.subconscious) {
+    if (subSeen.has(hit.targetChar)) continue;
+    const b = lookupFn(hit, 4);
+    if (!b) continue;
+    subSeen.add(hit.targetChar);
+    sub.push(b);
+  }
+  return [...primary, ...sub];
+}
+
+const MECH_LABEL: Record<1 | 2 | 3 | 4, string> = {
+  1: "ธาตุแท้",
+  2: "ภาคี",
+  3: "เชี่ยงแซ",
+  4: "จิตใต้สำนึก",
+};
+
+/**
+ * lookup ธาตุเป้าหมายแบบ "ทุกรูปแบบ + จัดลำดับกลไก" → คีย์ "{ก้านอ้างอิง}|{ปลายทาง}"
+ * refStem = ก้านที่ขึ้นต้นคีย์ (ดิถีถ่ายเท/โชคลาภดิถี = ก้านดิถี · โชคลาภหลักเดือน = ก้านเดือน)
+ */
+function lookupTransferByMechanism(
+  map: NewdataMap,
+  group: string,
+  refStem: string,
+  targetEl: string,
+  facts: ChartFacts,
+): NewdataBlock[] {
+  const res = findElementByMechanism(facts, targetEl);
+  return applyMechanismPriority(res, (hit, mech) => {
+    const key = `${refStem}|${hit.targetChar}`;
+    const value = map[group]?.[key];
+    if (!value) return null;
+    const ctx =
+      mech === 4
+        ? `จิตใต้สำนึก · ราศีแฝง ${hit.targetChar}`
+        : `เสา${hit.position} ${hit.kind} (${MECH_LABEL[mech]})`;
+    return toBlock(group, key, value, ctx);
+  });
+}
+
+/**
+ * ดิถีถ่ายเท "ทุกรูปแบบ" + จัดลำดับกลไก — ธาตุถ่ายเท (食傷 = GENERATES[ดิถี])
+ * lookup คีย์ "{ดิถี}|{ปลายทาง}" ในกลุ่ม 118 คีย์เดิม · เลือก tier สูงสุดที่เจอ + จิตใต้สำนึกแยก
+ */
+export function matchDithiTransferPrioritized(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl) return [];
+  const outputEl = GENERATES[dayEl as keyof typeof GENERATES];
+  if (!outputEl) return [];
+  return lookupTransferByMechanism(map, group, facts.dayMaster, outputEl, facts);
+}
+
 /**
  * บท 5 · พรในราศีแฝง — ก้านดิถี (D) ถ่ายเทไปยัง "ราศีแฝง" (藏干) ของราศีล่างหลักยาม
  * → lookup คีย์ "{D}|{ราศีแฝง}" ในกลุ่ม dithi_transfer (reuse) · คืนหลายก้อน (ดีดุปตามคีย์)
@@ -685,20 +866,38 @@ export function matchElementRoleState(
       : role === "wealth"
         ? "ธาตุโชคลาภ (ลูกค้า)"
         : "ธาตุส่งเสริม (ผู้อุปถัมภ์)";
-  const out: NewdataBlock[] = [];
-  const seen = new Set<string>();
-  for (const p of facts.pillars) {
-    const onStem = STEM_TO_ELEMENT[p.stem as keyof typeof STEM_TO_ELEMENT] === targetEl;
-    const onBranch = BRANCH_TO_ELEMENT[p.branch as keyof typeof BRANCH_TO_ELEMENT] === targetEl;
-    if (!onStem && !onBranch) continue;
-    if (!p.state || seen.has(p.state)) continue;
+  // อ้าง "ถ่ายเททุกรูปแบบ" + จัดลำดับกลไก: หาเสาที่ธาตุเป้าหมายปรากฏ (แท้→ภาคี→เชี่ยงแซ) + จิตใต้สำนึก
+  // อ่านเชี่ยงแซ (12 เชี่ยงแซ) ของเสานั้นจาก shengxiang (ดีดุปตามเชี่ยงแซ คงพฤติกรรมเดิมของกลไก 1)
+  const res = findElementByMechanism(facts, targetEl);
+  const readPillar = (hit: MechanismHit, mech: 1 | 2 | 3 | 4): NewdataBlock | null => {
+    const p = facts.pillars.find((x) => x.position === hit.position);
+    if (!p?.state) return null;
     const value = map[group]?.[p.state];
-    if (!value) continue;
-    seen.add(p.state);
-    const label = `${roleTh} ${pillarLabel(facts, p.position, p.state)}`;
-    out.push(toBlock(group, p.state, value, `${roleTh} เสา${p.position} · เชี่ยงแซ${p.state}`, label));
+    if (!value) return null;
+    const mechSuffix = mech === 1 ? "" : ` (${MECH_LABEL[mech]})`;
+    const label = `${roleTh} ${pillarLabel(facts, p.position, p.state)}${mechSuffix}`;
+    return toBlock(group, p.state, value, `${roleTh} เสา${p.position} · เชี่ยงแซ${p.state}${mechSuffix}`, label);
+  };
+  // ดีดุปตามเชี่ยงแซ (state) ข้ามทุกกลไก — กันคำอ่านเชี่ยงแซซ้ำ
+  const seenState = new Set<string>();
+  const dedupByState = (blocks: NewdataBlock[]) =>
+    blocks.filter((b) => (seenState.has(b.itemKey) ? false : (seenState.add(b.itemKey), true)));
+  // ใช้แค่ tier1(ธาตุแท้)+tier2(ภาคี) — ข้าม tier3(residual) เพราะ lookup ด้วยเชี่ยงแซเสา
+  // ไม่มีคีย์กรอง (จะ match ทุกเสามั่ว) · tier เชี่ยงแซจริงต้องใช้กฎ 12-qi (รอซินแสยืนยัน)
+  let primary: NewdataBlock[] = [];
+  for (let i = 0; i < 2; i++) {
+    const blocks = dedupByState(
+      res.tiers[i].map((h) => readPillar(h, (i + 1) as 1 | 2 | 3)).filter((b): b is NewdataBlock => b !== null),
+    );
+    if (blocks.length > 0) {
+      primary = blocks;
+      break;
+    }
   }
-  return out;
+  const sub = dedupByState(
+    res.subconscious.map((h) => readPillar(h, 4)).filter((b): b is NewdataBlock => b !== null),
+  );
+  return [...primary, ...sub];
 }
 
 /**
@@ -736,6 +935,39 @@ export function matchDayElement(map: NewdataMap, group: string, facts: ChartFact
   if (!el) return [];
   const value = map[group]?.[el];
   return value ? [toBlock(group, el, value, `ธาตุ${el} (ดิถี)`)] : [];
+}
+
+/**
+ * บท 3 · โชคลาภ (กลุ่มใหม่ keyKind=stemTransfer "{ก้านอ้างอิง}|{ปลายทาง}") — ทุกรูปแบบ+จัดลำดับกลไก
+ *   "dithi"    → โชคลาภดิถี = หาธาตุที่ดิถีพิฆาต (財 = CONTROLS[ดิถี]) · อ้างอิง=ก้านดิถี
+ *   "business" → โชคลาภธุรกิจ = ลาภของลาภ (財 ของ 財 = CONTROLS²[ดิถี]) · อ้างอิง=ก้านดิถี
+ *   "month"    → โชคลาภหลักเดือน = 財 ของก้านเดือน · อ้างอิง=ก้านเดือน (⚠️ สูตรรอซินแสยืนยัน)
+ * lookup คีย์ "{ก้านอ้างอิง}|{ปลายทาง}" (ซินแสกรอกครบทุกคีย์ในแอดมิน)
+ */
+export function matchFortune(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  role: "dithi" | "business" | "month",
+): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl) return [];
+  let refStem = facts.dayMaster;
+  let targetEn: string | undefined;
+  if (role === "dithi") {
+    targetEn = CONTROLS[dayEl as keyof typeof CONTROLS];
+  } else if (role === "business") {
+    const wealth = CONTROLS[dayEl as keyof typeof CONTROLS];
+    targetEn = wealth ? CONTROLS[wealth as keyof typeof CONTROLS] : undefined;
+  } else {
+    const month = facts.pillars.find((p) => p.position === "month");
+    if (!month) return [];
+    refStem = month.stem;
+    const monthEl = STEM_TO_ELEMENT[month.stem as keyof typeof STEM_TO_ELEMENT];
+    targetEn = monthEl ? CONTROLS[monthEl as keyof typeof CONTROLS] : undefined;
+  }
+  if (!targetEn) return [];
+  return lookupTransferByMechanism(map, group, refStem, targetEn, facts);
 }
 
 /** เชี่ยงแซ "ดี" (ใช้ได้) ตามตำราองค์เทพ — กวงตั่ว/ลิ่มกัว/ตี้อ๋วง/หมอ/ทอ/เอี้ยง/เชี่ยงแซ */

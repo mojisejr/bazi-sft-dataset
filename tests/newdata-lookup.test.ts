@@ -2,7 +2,10 @@ import { describe, expect, test } from "vitest";
 
 import type { NewdataMap } from "@/lib/bazi/newdata-repository";
 import {
+  findElementByMechanism,
   matchBranchPairs,
+  matchDithiTransferPrioritized,
+  matchFortune,
   matchSelfPunish,
   matchStemPairs,
   type ChartFacts,
@@ -249,11 +252,13 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r2.boxes[0].body).toContain("สีเหลือง น้ำตาล");
   });
 
-  test("benefactor box2/3 → ธาตุถ่ายเท(น้ำ=癸เสายาม) ติด · ธาตุโชคลาภ(ไม้) ไม่มี = ว่าง", () => {
-    // 庚(ทอง): ถ่ายเท(食傷)=น้ำ → 癸เสายาม เชี่ยงแซกวงตั่ว · โชคลาภ(財)=ไม้ → ดวงนี้ไม่มี
+  test("benefactor box2/3 → ถ่ายเท(น้ำ=癸เสายาม ธาตุแท้) · โชคลาภ(ไม้) มาทางจิตใต้สำนึก (乙แฝงใน辰/未)", () => {
+    // 庚(ทอง): ถ่ายเท(食傷)=น้ำ → 癸เสายาม (ธาตุแท้) เชี่ยงแซกวงตั่ว
+    // โชคลาภ(財)=ไม้ → ไม่มีธาตุแท้/ภาคี แต่ 乙(ไม้) แฝงใน 辰(เสาปี เอี้ยง) + 未(เสายาม กวงตั่ว) = จิตใต้สำนึก
     const r = resolveChapterBoxes("benefactor", FACTS, MAP);
-    expect(r.boxes[2].body).toContain("เรียนรู้สำเร็จการศึกษา"); // กวงตั่ว (เสายาม ธาตุน้ำ)
-    expect(r.boxes[3].body).toBe(""); // ธาตุโชคลาภ ไม้ — ไม่มีในดวง
+    expect(r.boxes[2].body).toContain("เรียนรู้สำเร็จการศึกษา"); // กวงตั่ว (เสายาม ธาตุน้ำ แท้)
+    expect(r.boxes[3].body).toContain("การเลี้ยงให้เจริญเติบโต"); // เอี้ยง (เสาปี 辰 แฝงไม้ จิตใต้สำนึก)
+    expect(r.boxes[3].body).toContain("จิตใต้สำนึก"); // ป้ายบอกกลไก
   });
 
   test("health box1 → ธาตุไฟมากเกินไป + ธาตุไม้น้อยเกินไป (นับจาก 4 เสา)", () => {
@@ -275,5 +280,98 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
       const bullets = CHAPTER_OUTLINE[id]?.bullets.length ?? -1;
       expect(resolvers.length, id).toBe(bullets);
     }
+  });
+});
+
+describe("ดิถีถ่ายเท ทุกรูปแบบ + จัดลำดับกลไก (matchDithiTransferPrioritized)", () => {
+  /** สร้างดวงสั้น (state ไม่ใช้ใน prioritized) */
+  const chart = (dayMaster: string, p: Array<[string, string]>): ChartFacts => ({
+    dayMaster,
+    strengthScore: 3,
+    pillars: (["year", "month", "day", "hour"] as const).map((position, i) => ({
+      position,
+      stem: p[i][0],
+      branch: p[i][1],
+      state: null,
+      upperState: null,
+    })),
+    daYun: [],
+  });
+
+  test("กลไก1 (ธาตุแท้) มี → ใช้แค่กลไก1 ไม่ดู residual + คืนจิตใต้สำนึกแยกเสมอ", () => {
+    // 甲(ไม้) → ถ่ายเท=ไฟ · เสาวัน 甲午 (午=ไฟ ธาตุแท้) · เสาปี 戊子 (residual)
+    // จิตใต้สำนึก: 午 แฝง 丁(ไฟ) → 甲|丁
+    const facts = chart("甲", [["戊", "子"], ["庚", "申"], ["甲", "午"], ["庚", "申"]]);
+    const map: NewdataMap = {
+      dithi_transfer: {
+        "甲|午": { text: "ถ่ายเทธาตุแท้ไฟ", label: "甲 ถ่ายเท 午" },
+        "甲|戊": { text: "residual ไม่ควรโผล่", label: "甲 ถ่ายเท 戊" },
+        "甲|丁": { text: "ถ่ายเทจิตใต้สำนึก", label: "甲 ถ่ายเท 丁" },
+      },
+    };
+    const blocks = matchDithiTransferPrioritized(map, "dithi_transfer", facts);
+    const keys = blocks.map((b) => b.itemKey);
+    expect(keys).toContain("甲|午"); // กลไก1
+    expect(keys).toContain("甲|丁"); // จิตใต้สำนึก (แยกเสมอ)
+    expect(keys).not.toContain("甲|戊"); // residual ถูกข้าม เพราะมีกลไก1
+  });
+
+  test("ไม่มีกลไก1 → ตกไปกลไก2 (ภาคี/ไตรภาคี)", () => {
+    // 甲(ไม้) → ถ่ายเท=ไฟ · ไม่มีไฟแท้ · 卯+戌=ไฟ (6合) → 卯,戌 เป็นกลไก2
+    const facts = chart("甲", [["庚", "戌"], ["辛", "卯"], ["甲", "申"], ["庚", "申"]]);
+    const map: NewdataMap = {
+      dithi_transfer: {
+        "甲|卯": { text: "ภาคีไฟ 卯", label: "甲 ถ่ายเท 卯" },
+        "甲|戌": { text: "ภาคีไฟ 戌", label: "甲 ถ่ายเท 戌" },
+        "甲|丁": { text: "จิตใต้สำนึก (戌แฝง丁)", label: "甲 ถ่ายเท 丁" },
+      },
+    };
+    const keys = matchDithiTransferPrioritized(map, "dithi_transfer", facts).map((b) => b.itemKey);
+    expect(keys).toEqual(expect.arrayContaining(["甲|卯", "甲|戌"])); // กลไก2
+    expect(keys).toContain("甲|丁"); // จิตใต้สำนึก (戌 แฝง 丁)
+  });
+
+  test("findElementByMechanism จัด tier ถูก (ไฟ สำหรับดวง 甲)", () => {
+    const facts = chart("甲", [["戊", "子"], ["庚", "申"], ["甲", "午"], ["庚", "申"]]);
+    const res = findElementByMechanism(facts, "fire");
+    expect(res.tiers[0].map((h) => h.targetChar)).toContain("午"); // ธาตุแท้
+    expect(res.subconscious.map((h) => h.targetChar)).toContain("丁"); // 午 แฝง 丁
+  });
+});
+
+describe("บท3 โชคลาภ (matchFortune — คีย์ {ก้านอ้างอิง}|{ปลายทาง})", () => {
+  const chart = (dayMaster: string, p: Array<[string, string]>): ChartFacts => ({
+    dayMaster,
+    strengthScore: 3,
+    pillars: (["year", "month", "day", "hour"] as const).map((position, i) => ({
+      position,
+      stem: p[i][0],
+      branch: p[i][1],
+      state: null,
+      upperState: null,
+    })),
+    daYun: [],
+  });
+
+  test("โชคลาภดิถี: 甲 → ธาตุโชคลาภ=ดิน · 戊(ธาตุแท้) ในดวง → คีย์ 甲|戊", () => {
+    // 甲(ไม้) → 財=ดิน · เสาปี 戊辰 (戊=ดินแท้)
+    const facts = chart("甲", [["戊", "辰"], ["庚", "申"], ["甲", "午"], ["庚", "申"]]);
+    const map: NewdataMap = {
+      fortune_dithi: {
+        "甲|戊": { text: "โชคลาภจากอสังหา/ที่ดิน", label: "โชคลาภดิถี 甲 → 戊" },
+      },
+    };
+    const keys = matchFortune(map, "fortune_dithi", facts, "dithi").map((b) => b.itemKey);
+    expect(keys).toContain("甲|戊");
+  });
+
+  test("โชคลาภหลักเดือน: อ้างอิงก้านเดือน (丙เดือน → 財=ทอง) → คีย์ 丙|庚", () => {
+    // ก้านเดือน 丙(ไฟ) → 財ของไฟ=ทอง · 庚(ทองแท้) ในดวง → คีย์ 丙|庚
+    const facts = chart("甲", [["庚", "申"], ["丙", "申"], ["甲", "午"], ["庚", "申"]]);
+    const map: NewdataMap = {
+      fortune_month: { "丙|庚": { text: "โชคลาภจากหน้าที่การงาน", label: "โชคลาภหลักเดือน 丙 → 庚" } },
+    };
+    const keys = matchFortune(map, "fortune_month", facts, "month").map((b) => b.itemKey);
+    expect(keys).toContain("丙|庚");
   });
 });

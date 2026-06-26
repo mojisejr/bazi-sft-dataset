@@ -23,7 +23,11 @@ import {
   STEM_ORDER,
   STRENGTH_BANDS,
 } from "../src/lib/bazi/knowledge/standalone-tables";
-import { BRANCH_LABELS_TH } from "../src/lib/bazi/symbolic-engine.constants";
+import {
+  BRANCH_LABELS_TH,
+  CONTROLS,
+  STEM_TO_ELEMENT,
+} from "../src/lib/bazi/symbolic-engine.constants";
 
 const NEWDATA_DIR = path.resolve(process.cwd(), "knownlage/NewData");
 
@@ -498,6 +502,52 @@ function parseElementKeyedFile(file: string, group: string, labelPrefix: string)
   );
 }
 
+/** ก้านบน/ราศีล่างของแต่ละธาตุ (ปลายทางที่เป็นธาตุนั้น) */
+const ELEMENT_CHARS: Record<string, string[]> = {
+  wood: ["甲", "乙", "寅", "卯"],
+  fire: ["丙", "丁", "巳", "午"],
+  earth: ["戊", "己", "辰", "戌", "丑", "未"],
+  metal: ["庚", "辛", "申", "酉"],
+  water: ["壬", "癸", "亥", "子"],
+};
+const TEN_STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
+
+/** template ว่างคีย์ 60 กะจื่อ (subordinate_60 บท10 — ซินแสกรอกในแอดมิน) */
+function ganzhiTemplate(group: string, labelPrefix: string): SeedRow[] {
+  return SIXTY_JIAZI.map(({ ganzhi, ordinal }) => ({
+    groupKey: group,
+    itemKey: ganzhi.normalize("NFC"),
+    ordinal,
+    value: { text: "", label: `${labelPrefix} #${ordinal} ${ganzhi.normalize("NFC")}` },
+    sourceFile: "(กรอกในแอดมิน)",
+  }));
+}
+
+/**
+ * template ว่างคีย์ "{ก้านอ้างอิง}|{ปลายทาง}" ครบทุกก้าน × ปลายทางธาตุเป้าหมาย (บท3 โชคลาภ)
+ * ทุกก้าน 10 ตัวเป็นได้ทั้งดิถี (dithi/business) และก้านเดือน (month) → seed ครบให้ซินแสกรอกทีละช่อง
+ * degree=1 → 財 (CONTROLS) · degree=2 → 財 ของ 財 (CONTROLS²)
+ */
+function fortuneTransferTemplate(group: string, labelPrefix: string, degree: 1 | 2): SeedRow[] {
+  const rows: SeedRow[] = [];
+  let order = 0;
+  for (const stem of TEN_STEMS) {
+    const el = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
+    let target = CONTROLS[el as keyof typeof CONTROLS];
+    if (degree === 2 && target) target = CONTROLS[target as keyof typeof CONTROLS];
+    for (const ch of ELEMENT_CHARS[target] ?? []) {
+      rows.push({
+        groupKey: group,
+        itemKey: `${stem}|${ch}`,
+        ordinal: ++order,
+        value: { text: "", label: `${labelPrefix} ${stem} → ${ch}` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+  return rows;
+}
+
 // ── parser: บท 7 ลักษณะชีวิตคู่ (ปฏิกิริยาธาตุหลักวัน → 5 แบบ) ────────────────────
 function parseLoveBase(file: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -754,6 +804,12 @@ function collectAll(): SeedRow[] {
   push("dithi_transfer_invest", () => dithiTransferTemplate("dithi_transfer_invest"));
   push("dithi_transfer_spend", () => dithiTransferTemplate("dithi_transfer_spend"));
   push("dithi_transfer_study", () => dithiTransferTemplate("dithi_transfer_study"));
+  // บท 3 · โชคลาภ (กลุ่มใหม่ คีย์ "{ก้านอ้างอิง}|{ปลายทาง}" ครบทุกช่อง — ว่างรอซินแสเติม)
+  push("fortune_dithi", () => fortuneTransferTemplate("fortune_dithi", "โชคลาภดิถี", 1));
+  push("fortune_business", () => fortuneTransferTemplate("fortune_business", "โชคลาภธุรกิจ", 2));
+  push("fortune_month", () => fortuneTransferTemplate("fortune_month", "โชคลาภหลักเดือน", 1));
+  // บท 10 · ลักษณะบริวาร 60 กะจื่อ (เสายาม) — template 60 คีย์เปล่า รอซินแสเติม
+  push("subordinate_60", () => ganzhiTemplate("subordinate_60", "ลักษณะบริวาร"));
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   // บท 1 · นิสัยราศีบน 10 ก้าน (เพิ่มเติมกล่อง 60 กะจื่อ)
   push("stem_nisai", () => parseStemNisai("บท1 นิสัยราศีบน 10 ก้าน.txt"));
@@ -835,9 +891,16 @@ async function main() {
     return;
   }
 
+  // --only=group1,group2 → เขียนเฉพาะกลุ่มที่ระบุ (ใช้คู่ --force เพื่อ re-seed กลุ่มเดียว
+  // โดยไม่แตะกลุ่มอื่นที่ซินแสอาจแก้มือไว้ เช่น --force --only=dithi_transfer)
+  const onlyFlag = process.argv.find((a) => a.startsWith("--only="));
+  const only = onlyFlag ? new Set(onlyFlag.slice("--only=".length).split(",").map((s) => s.trim())) : null;
+  const toWrite = only ? materialized.filter((r) => only.has(r.groupKey)) : materialized;
+  if (only) console.log(`--only=${[...only].join(",")} → เขียน ${toWrite.length} rows (จาก ${materialized.length})`);
+
   const db = createDbClient();
   let written = 0;
-  for (const r of materialized) {
+  for (const r of toWrite) {
     const insert = db
       .insert(baziNewdata)
       .values({ groupKey: r.groupKey, itemKey: r.itemKey, ordinal: r.ordinal, value: r.value, sourceFile: r.sourceFile });
