@@ -10,6 +10,7 @@ import {
   type OpenWebUiIntentClassification,
   type OpenWebUiTriageResult,
   type TriageRoute,
+  type TriageTimeframe,
   OpenWebUiTriageError,
   runOpenWebUiTriage,
 } from "@/features/open-webui/triage";
@@ -70,6 +71,7 @@ export async function buildOpenWebUiExecutionContext(
       origin,
       classification,
       topicId,
+      timeframe,
       topicHint: result.baziTopicHint,
       rawInput: extraction.rawInput,
       calculatedState,
@@ -101,6 +103,7 @@ export async function buildOpenWebUiExecutionContext(
       origin,
       classification,
       topicId,
+      timeframe,
       topicHint: result.baziTopicHint,
       rawInput: result.baziConsult.rawInput,
       calculatedState: result.baziConsult.calculatedState,
@@ -126,11 +129,12 @@ async function groundOrFallback(args: {
   origin?: string | null;
   classification: OpenWebUiIntentClassification;
   topicId: TriageRoute;
+  timeframe?: TriageTimeframe | null;
   topicHint?: string | null;
   rawInput: RawInputValue;
   calculatedState: BaziStatePayload;
 }): Promise<string | null> {
-  const { origin, classification, topicId, topicHint, rawInput, calculatedState } = args;
+  const { origin, classification, topicId, timeframe, topicHint, rawInput, calculatedState } = args;
   const resolvedTopicId = resolveGroundingTopicId(topicId, topicHint);
   const fallback = stringifyOpenWebUiTruthPacket(classification, calculatedState);
 
@@ -138,7 +142,12 @@ async function groundOrFallback(args: {
     return fallback;
   }
 
-  const grounded = await fetchGroundedReading(origin, { topicId: resolvedTopicId, rawInput, calculatedState });
+  const grounded = await fetchGroundedReading(origin, {
+    topicId: resolvedTopicId,
+    timeframe,
+    rawInput,
+    calculatedState,
+  });
   return grounded ?? fallback;
 }
 
