@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { type BaziStatePayload } from "@/features/bazi-math/bazi-engine-adapter";
-import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
+import { type OpenWebUiIntentClassification } from "@/features/open-webui/triage";
 import { type DaYunPillarValue, PillarValueSchema } from "@/lib/bazi/schema-types";
 
 const OpenWebUiTruthPacketIntentSchema = z.enum([

@@ -4,7 +4,7 @@
 //
 // Flow: intent (or explicit topic hint) -> topicId -> /api/reading/topic (mode llm, then consumer)
 // -> humanReading (ซินแสฟันธง prose, already substitution + doctrine + iron-rules applied).
-import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
+import { type OpenWebUiIntentClassification } from "@/features/open-webui/triage";
 import { type CalculatedStateValue, type RawInputValue } from "@/lib/bazi/schema-types";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { getGeminiApiKey } from "@/lib/env";
@@ -33,6 +33,22 @@ export function resolveTopicId(intent: Intent, topicHint?: string | null): strin
     return topicHint;
   }
   return INTENT_TO_TOPIC[intent] ?? null;
+}
+
+// Phase 1 routing: the triage already produced a precise reading topicId (one of the 15 chapters,
+// or off_topic/chit_chat). Prefer an explicit chip hint, then the routed topic; off_topic/chit_chat
+// (and any non-reading value) resolve to null so no consult is attempted.
+export function resolveGroundingTopicId(
+  routedTopicId: string | null | undefined,
+  topicHint?: string | null,
+): string | null {
+  if (isValidTopicId(topicHint)) {
+    return topicHint;
+  }
+  if (isValidTopicId(routedTopicId)) {
+    return routedTopicId;
+  }
+  return null;
 }
 
 type GroundArgs = {

@@ -1,8 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
 
-import { type BaziExtractionFieldKey } from "@/features/open-webui/bazi-extractor";
 import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/open-webui/chat-runner";
-import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
+import {
+  type BaziExtractionFieldKey,
+  type OpenWebUiIntentClassification,
+  type TriageRoute,
+  type TriageTimeframe,
+} from "@/features/open-webui/triage";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 
@@ -60,6 +64,10 @@ export type OpenWebUiGeminiPromptPayload = {
 
 export type OpenWebUiGeminiExecutionContext = {
   intentClassification?: OpenWebUiIntentClassification;
+  /** Precise reading topic the triage routed to (or off_topic/chit_chat). Phase 3 consumes this. */
+  topicId?: TriageRoute;
+  /** Asked timeframe (today..in_n_years..period..none). Phase 3 consumes this. */
+  timeframe?: TriageTimeframe;
   baziConsult?: {
     rawInput: RawInputValue | null;
     truthPacket: string | null;
