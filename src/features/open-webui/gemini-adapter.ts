@@ -16,6 +16,31 @@ const DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION = [
   "Reply helpfully and directly to the user's latest message.",
 ].join(" ");
 
+// Token discipline (Phase 3): a ซินแส verdict is a few sentences, not a report. Cap the answer,
+// cap how much chat history we replay into the compose call, and truncate the grounded reading we
+// inject so the model answers from it instead of re-summarizing the whole chapter (double-injection).
+export const OPEN_WEBUI_MAX_OUTPUT_TOKENS = 512;
+export const OPEN_WEBUI_MAX_COMPOSE_MESSAGES = 8;
+const MAX_GROUNDED_READING_CHARS = 2200;
+
+// Timeframes finer than the engine's real resolution (year / da-yun). Same-day & monthly questions
+// must be answered as an honest disposition-plus-period trend, never as literal daily precision.
+const SUB_YEAR_TIMEFRAMES = new Set(["today", "tomorrow", "this_month"]);
+
+function truncateGroundedReading(reading: string): string {
+  if (reading.length <= MAX_GROUNDED_READING_CHARS) {
+    return reading;
+  }
+  return `${reading.slice(0, MAX_GROUNDED_READING_CHARS).trimEnd()}\n…(ตัดเพื่อความกระชับ — ตอบจากแก่นที่เกี่ยวกับคำถามพอ)`;
+}
+
+// Keep only the last N conversational turns for the compose call instead of replaying the whole
+// transcript (unbounded history was a real token sink on long chats).
+function selectRecentConversation(messages: readonly NormalizedChatMessage[]): NormalizedChatMessage[] {
+  const conversational = messages.filter((message) => message.role !== "system");
+  return conversational.slice(-OPEN_WEBUI_MAX_COMPOSE_MESSAGES);
+}
+
 export const MUMATE_PERSONA_INSTRUCTION = [
   "คุณคือ \"มูเมท\" ซินแซปาจื่อที่คุยแชทกับผู้ใช้แบบธรรมชาติ ไม่ใช่หุ่นยนต์ส่งรายงาน",
   "",
@@ -46,6 +71,7 @@ type GeminiGenerateContentRequest = {
   config: {
     systemInstruction: string;
     temperature: number;
+    maxOutputTokens: number;
   };
 };
 
@@ -163,20 +189,28 @@ export function buildOpenWebUiGeminiPromptPayload(
   const systemMessages = input.normalizedMessages
     .filter((message) => message.role === "system")
     .map((message) => message.content);
-  const conversationTranscript = input.normalizedMessages
-    .filter((message) => message.role !== "system")
+  const conversationTranscript = selectRecentConversation(input.normalizedMessages)
     .map(formatConversationLine)
     .join("\n\n");
   const intentClassification = input.executionContext?.intentClassification;
+  const topicId = input.executionContext?.topicId;
+  const timeframe = input.executionContext?.timeframe;
   const baziConsult = input.executionContext?.baziConsult;
   const baziMissingFields = input.executionContext?.baziMissingFields ?? [];
+  const isOffTopic = topicId === "off_topic";
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
       : "bazi_consult_pending_context"
     : intentClassification
-      ? "non_bazi_bypass"
+      ? isOffTopic
+        ? "off_topic_refusal"
+        : "non_bazi_bypass"
       : null;
+  // Same-day / monthly questions: the engine has no 流日/流月; answer as an honest trend.
+  const honestPrecisionReframe = Boolean(intentClassification?.requiresBaziConsult)
+    && typeof timeframe === "string"
+    && SUB_YEAR_TIMEFRAMES.has(timeframe);
 
   return {
     systemInstruction: [
@@ -191,31 +225,36 @@ export function buildOpenWebUiGeminiPromptPayload(
       "Continue the conversation from this transcript.",
       conversationTranscript,
       intentClassification
-        ? `Intent routing: intent=${intentClassification.intent}; requiresBaziConsult=${String(intentClassification.requiresBaziConsult)}; confidence=${intentClassification.confidence.toFixed(2)}.`
+        ? `Routing: topic=${topicId ?? intentClassification.intent}; timeframe=${timeframe ?? "none"}; requiresBaziConsult=${String(intentClassification.requiresBaziConsult)}; confidence=${intentClassification.confidence.toFixed(2)}.`
         : null,
       consultMode ? `Consult mode: ${consultMode}.` : null,
       intentClassification?.requiresBaziConsult && baziConsult?.truthPacket && baziConsult.rawInput
         ? [
           "ข้อมูลวันเกิดที่ยืนยันแล้ว:",
           formatConsultBirthContext(baziConsult.rawInput),
-          "ผลอ่านจากซินแส (วัตถุดิบดิบจาก engine — เป็นแหล่งข้อมูลให้คุณวิเคราะห์ ไม่ใช่คำตอบที่จะคัดลอกไปแปะ):",
-          baziConsult.truthPacket,
+          "ผลอ่านจากซินแส (วัตถุดิบจาก engine สำหรับใช้ฟันธง — ไม่ใช่ข้อความที่จะคัดลอกไปแปะ):",
+          truncateGroundedReading(baziConsult.truthPacket),
           [
-            "วิธีตอบ (ห้ามฝ่าฝืน):",
-            "- วิเคราะห์ผลอ่านข้างบนเทียบกับคำถามของผู้ใช้ แล้วดึงเฉพาะส่วนที่ตอบคำถามนั้นมาตอบ",
-            "- ตอบสั้น กระชับ ตรงประเด็น สรุปเป็นแก่นไม่กี่ประโยค — ห้ามคัดลอกหรือเล่าผลอ่านทั้งบท (ไม่ดั้มลงมาหมด)",
-            "- ฟันธงตรงไปตรงมา ตามหลักสำนัก ไม่อ้อมค้อม ไม่ตอบเชิงปลอบใจ/จิตวิทยา ไม่ใช่คำให้กำลังใจลอยๆ",
-            "- ห้ามเพิ่มคำทำนายที่ไม่มีในผลอ่าน และห้ามเปลี่ยน/ตัดสัญลักษณ์ ธาตุ ยาม หรืออักษรจีนในผลอ่าน",
+            "วิธีตอบแบบซินแส (ห้ามฝ่าฝืน):",
+            "- ฟันธงตอบคำถามตรงๆ เป็นข้อสรุปจากดวง ไม่ใช่ \"สรุปผลอ่าน\" และไม่เล่าผลอ่านทั้งบท",
+            "- สั้น กระชับ ไม่กี่ประโยค ตรงประเด็นที่ถาม — ห้ามใส่หัวข้อรายงาน ห้ามดั้มผลอ่านลงมาหมด",
+            "- อิงหลักสำนักตรงไปตรงมา ไม่อ้อมค้อม ไม่ปลอบใจลอยๆ ไม่ใช่คำตอบเชิงจิตวิทยา",
+            "- ห้ามเพิ่มคำทำนายที่ไม่มีในผลอ่าน และห้ามเปลี่ยน/ตัดสัญลักษณ์ ธาตุ ยาม หรืออักษรจีน",
             "- ถ้าผลอ่านไม่ครอบคลุมสิ่งที่ถาม ให้บอกตรงๆ ว่าข้อมูลไม่พอ ห้ามแต่งเพิ่ม",
           ].join("\n"),
         ].join("\n")
         : null,
+      honestPrecisionReframe
+        ? "ความแม่นเรื่องเวลา: ผู้ใช้ถามเจาะจงระดับวัน/เดือน แต่ปาจื่อดูแม่นที่สุดได้แค่ระดับปี (ปีจร) และช่วงวัย (วัยจร) เท่านั้น. ให้ตอบเป็นแนวโน้มจากดวง + ช่วงเวลาปัจจุบันอย่างซื่อสัตย์ ห้ามรับปากความแม่นระดับวัน และห้ามแต่งดวงรายวันขึ้นมา."
+        : null,
       intentClassification?.requiresBaziConsult && !baziConsult?.truthPacket
         ? "No verified Bazi chart context is attached. Do not invent chart details; ask for the missing birth data or chart payload first."
         : null,
-      intentClassification && !intentClassification.requiresBaziConsult
-        ? "This request does not require Bazi chart analysis. Reply normally without claiming chart-specific insights."
-        : null,
+      isOffTopic
+        ? "คำถามนี้ไม่เกี่ยวกับการดูดวงปาจื่อ. ให้ปฏิเสธสั้นๆ อย่างสุภาพว่าช่วยเรื่องนี้ไม่ได้เพราะไม่เกี่ยวกับการดูดวง แล้วชวนให้ถามเรื่องดวงแทน. ห้ามตอบเนื้อหานอกลู่นั้น."
+        : intentClassification && !intentClassification.requiresBaziConsult
+          ? "This request does not require Bazi chart analysis. Reply normally without claiming chart-specific insights."
+          : null,
       `Latest user message: ${input.latestUserMessage.content}`,
       "Respond as the assistant.",
     ].filter((section): section is string => section !== null).join("\n\n"),
@@ -252,6 +291,7 @@ export async function generateGeminiAssistantReply(
       config: {
         systemInstruction: promptPayload.systemInstruction,
         temperature: 0.4,
+        maxOutputTokens: OPEN_WEBUI_MAX_OUTPUT_TOKENS,
       },
     });
     const text = response.text?.trim();

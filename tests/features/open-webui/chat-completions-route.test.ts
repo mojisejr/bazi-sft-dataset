@@ -227,7 +227,7 @@ describe("buildOpenWebUiExecutionContext", () => {
     expect(executionContext.intentClassification?.intent).toBe("wealth");
     expect(executionContext.topicId).toBe("wealth_and_investment");
     expect(executionContext.baziConsult?.rawInput?.birthDate).toBe(SAMPLE_RAW_INPUT.birthDate);
-    expect(executionContext.baziConsult?.truthPacket).toContain('"intent": "wealth"');
+    expect(executionContext.baziConsult?.truthPacket).toContain('"intent":"wealth"');
     expect(executionContext.baziMissingFields).toBeUndefined();
   });
 
