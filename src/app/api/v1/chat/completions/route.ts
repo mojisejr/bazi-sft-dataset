@@ -1,10 +1,5 @@
 import { calculateBaziStateFromRawInput, type BaziStatePayload, BaziEngineAdapterError } from "@/features/bazi-math/bazi-engine-adapter";
 import { validateApiToken } from "@/features/open-webui/api-guard";
-import {
-  extractOpenWebUiBaziContext,
-  type OpenWebUiBaziExtraction,
-  OpenWebUiBaziExtractorError,
-} from "@/features/open-webui/bazi-extractor";
 import { type ChatRunnerSuccess, runChatPipeline } from "@/features/open-webui/chat-runner";
 import {
   generateGeminiAssistantReply,
@@ -13,11 +8,14 @@ import {
 } from "@/features/open-webui/gemini-adapter";
 import {
   type OpenWebUiIntentClassification,
-  OpenWebUiIntentRouterError,
-  routeOpenWebUiIntent,
-} from "@/features/open-webui/intent-router";
+  type OpenWebUiTriageResult,
+  type TriageRoute,
+  type TriageTimeframe,
+  OpenWebUiTriageError,
+  runOpenWebUiTriage,
+} from "@/features/open-webui/triage";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
-import { fetchGroundedReading, resolveTopicId } from "@/features/open-webui/reading-bridge";
+import { fetchGroundedReading, resolveGroundingTopicId } from "@/features/open-webui/reading-bridge";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import {
   createGuardedOpenAiSseStream,
@@ -43,8 +41,7 @@ function getForwardedUserId(req: Request) {
 
 export type BuildOpenWebUiExecutionContextInput = {
   result: Pick<ChatRunnerSuccess, "baziConsult"> & { baziTopicHint?: string | null };
-  intentClassification: OpenWebUiIntentClassification;
-  extraction?: OpenWebUiBaziExtraction | null;
+  triage: OpenWebUiTriageResult;
   calculatedState?: BaziStatePayload | null;
   /** same-server origin used to call the reading engine internally (Path A grounding) */
   origin?: string | null;
@@ -53,11 +50,13 @@ export type BuildOpenWebUiExecutionContextInput = {
 export async function buildOpenWebUiExecutionContext(
   input: BuildOpenWebUiExecutionContextInput,
 ): Promise<OpenWebUiGeminiExecutionContext> {
-  const { result, intentClassification, extraction, calculatedState, origin } = input;
+  const { result, triage, calculatedState, origin } = input;
+  const { classification, extraction, topicId, timeframe } = triage;
+  const base = { intentClassification: classification, topicId, timeframe };
 
-  if (!intentClassification.requiresBaziConsult) {
+  if (!classification.requiresBaziConsult) {
     return {
-      intentClassification,
+      ...base,
       baziConsult: result.baziConsult
         ? {
           rawInput: result.baziConsult.rawInput,
@@ -67,16 +66,18 @@ export async function buildOpenWebUiExecutionContext(
     };
   }
 
-  if (extraction && extraction.isComplete && extraction.rawInput && calculatedState) {
+  if (extraction.isComplete && extraction.rawInput && calculatedState) {
     const truthPacket = await groundOrFallback({
       origin,
-      intentClassification,
+      classification,
+      topicId,
+      timeframe,
       topicHint: result.baziTopicHint,
       rawInput: extraction.rawInput,
       calculatedState,
     });
     return {
-      intentClassification,
+      ...base,
       baziConsult: {
         rawInput: extraction.rawInput,
         truthPacket,
@@ -84,9 +85,9 @@ export async function buildOpenWebUiExecutionContext(
     };
   }
 
-  if (extraction && !extraction.isComplete) {
+  if (!extraction.isComplete) {
     return {
-      intentClassification,
+      ...base,
       baziConsult: {
         rawInput: null,
         truthPacket: null,
@@ -95,18 +96,20 @@ export async function buildOpenWebUiExecutionContext(
     };
   }
 
-  // Fallback: requiresBaziConsult but no extraction was performed —
+  // Fallback: requiresBaziConsult + complete extraction but no fresh calculation —
   // honor any pre-attached consult payload from the chat runner.
   if (result.baziConsult) {
     const truthPacket = await groundOrFallback({
       origin,
-      intentClassification,
+      classification,
+      topicId,
+      timeframe,
       topicHint: result.baziTopicHint,
       rawInput: result.baziConsult.rawInput,
       calculatedState: result.baziConsult.calculatedState,
     });
     return {
-      intentClassification,
+      ...base,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
         truthPacket,
@@ -115,7 +118,7 @@ export async function buildOpenWebUiExecutionContext(
   }
 
   return {
-    intentClassification,
+    ...base,
     baziConsult: null,
   };
 }
@@ -124,20 +127,27 @@ export async function buildOpenWebUiExecutionContext(
 // is unreachable or returns nothing, fall back to the legacy truth packet so chat never breaks.
 async function groundOrFallback(args: {
   origin?: string | null;
-  intentClassification: OpenWebUiIntentClassification;
+  classification: OpenWebUiIntentClassification;
+  topicId: TriageRoute;
+  timeframe?: TriageTimeframe | null;
   topicHint?: string | null;
   rawInput: RawInputValue;
   calculatedState: BaziStatePayload;
 }): Promise<string | null> {
-  const { origin, intentClassification, topicHint, rawInput, calculatedState } = args;
-  const topicId = resolveTopicId(intentClassification.intent, topicHint);
-  const fallback = stringifyOpenWebUiTruthPacket(intentClassification, calculatedState);
+  const { origin, classification, topicId, timeframe, topicHint, rawInput, calculatedState } = args;
+  const resolvedTopicId = resolveGroundingTopicId(topicId, topicHint);
+  const fallback = stringifyOpenWebUiTruthPacket(classification, calculatedState);
 
-  if (!origin || !topicId) {
+  if (!origin || !resolvedTopicId) {
     return fallback;
   }
 
-  const grounded = await fetchGroundedReading(origin, { topicId, rawInput, calculatedState });
+  const grounded = await fetchGroundedReading(origin, {
+    topicId: resolvedTopicId,
+    timeframe,
+    rawInput,
+    calculatedState,
+  });
   return grounded ?? fallback;
 }
 
@@ -175,32 +185,29 @@ export async function POST(req: Request) {
   })();
 
   const assistantReply = (async () => {
-    const intentClassification = await routeOpenWebUiIntent(result);
+    // Pre-attached consult birth (from the chat runner) seeds the merge so the single triage
+    // call can fill any field the user did not restate this turn.
+    const existing = result.baziConsult?.rawInput
+      ? {
+        birthDate: result.baziConsult.rawInput.birthDate,
+        birthTime: result.baziConsult.rawInput.birthTime,
+        gender: result.baziConsult.rawInput.gender,
+        province: result.baziConsult.rawInput.province,
+      }
+      : undefined;
 
-    let extraction: OpenWebUiBaziExtraction | null = null;
+    // ONE Gemini call: route topic (16) + timeframe + off-topic + extract birth context.
+    const triage = await runOpenWebUiTriage(result, { existing });
+
     let calculatedState: BaziStatePayload | null = null;
 
-    if (intentClassification.requiresBaziConsult) {
-      const existing = result.baziConsult?.rawInput
-        ? {
-          birthDate: result.baziConsult.rawInput.birthDate,
-          birthTime: result.baziConsult.rawInput.birthTime,
-          gender: result.baziConsult.rawInput.gender,
-          province: result.baziConsult.rawInput.province,
-        }
-        : undefined;
-
-      extraction = await extractOpenWebUiBaziContext(result, { existing });
-
-      if (extraction.isComplete && extraction.rawInput) {
-        calculatedState = await calculateBaziStateFromRawInput(extraction.rawInput);
-      }
+    if (triage.requiresBaziConsult && triage.extraction.isComplete && triage.extraction.rawInput) {
+      calculatedState = await calculateBaziStateFromRawInput(triage.extraction.rawInput);
     }
 
     const executionContext = await buildOpenWebUiExecutionContext({
       result,
-      intentClassification,
-      extraction,
+      triage,
       calculatedState,
       origin,
     });
@@ -212,8 +219,7 @@ export async function POST(req: Request) {
     }
 
     if (
-      error instanceof OpenWebUiIntentRouterError
-      || error instanceof OpenWebUiBaziExtractorError
+      error instanceof OpenWebUiTriageError
       || error instanceof BaziEngineAdapterError
     ) {
       throw new OpenWebUiGeminiError("gemini_upstream_error", error.message);

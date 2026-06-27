@@ -98,11 +98,12 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
       executionContext: sampleExecutionContext,
     });
 
-    expect(payload.userPrompt).toContain("Intent routing: intent=career; requiresBaziConsult=true; confidence=0.91.");
+    expect(payload.userPrompt).toContain("Routing: topic=career; timeframe=none; requiresBaziConsult=true; confidence=0.91.");
     expect(payload.userPrompt).toContain("Consult mode: bazi_consult.");
     expect(payload.userPrompt).toContain("ข้อมูลวันเกิดที่ยืนยันแล้ว:");
     expect(payload.userPrompt).toContain("ผลอ่านจากซินแส");
-    expect(payload.userPrompt).toContain("วิเคราะห์ผลอ่านข้างบนเทียบกับคำถาม");
+    expect(payload.userPrompt).toContain("วิธีตอบแบบซินแส");
+    expect(payload.userPrompt).toContain("ฟันธงตอบคำถามตรงๆ");
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
   });
 
@@ -157,6 +158,95 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
   });
 });
 
+describe("buildOpenWebUiGeminiPromptPayload — Phase 3 verdict + token discipline", () => {
+  test("off_topic routes a polite refusal, not a normal answer", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        intentClassification: { intent: "chit_chat", requiresBaziConsult: false, confidence: 0.3 },
+        topicId: "off_topic",
+        timeframe: "none",
+        baziConsult: null,
+      },
+    });
+
+    expect(payload.userPrompt).toContain("Consult mode: off_topic_refusal.");
+    expect(payload.userPrompt).toContain("ไม่เกี่ยวกับการดูดวง");
+    expect(payload.userPrompt).not.toContain("This request does not require Bazi chart analysis.");
+  });
+
+  test("same-day questions get the honest period-reframe instruction (no 流日 fabrication)", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.8 },
+        topicId: "wealth_and_investment",
+        timeframe: "today",
+        baziConsult: {
+          rawInput: sampleExecutionContext.baziConsult!.rawInput,
+          truthPacket: sampleExecutionContext.baziConsult!.truthPacket,
+        },
+      },
+    });
+
+    expect(payload.userPrompt).toContain("ความแม่นเรื่องเวลา");
+    expect(payload.userPrompt).toContain("ห้ามรับปากความแม่นระดับวัน");
+  });
+
+  test("a year-level question does NOT trigger the same-day reframe", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.8 },
+        topicId: "wealth_and_investment",
+        timeframe: "next_year",
+        baziConsult: {
+          rawInput: sampleExecutionContext.baziConsult!.rawInput,
+          truthPacket: sampleExecutionContext.baziConsult!.truthPacket,
+        },
+      },
+    });
+
+    expect(payload.userPrompt).not.toContain("ความแม่นเรื่องเวลา");
+  });
+
+  test("caps replayed history to the most recent turns", () => {
+    const many = Array.from({ length: 14 }, (_, index) => ({
+      role: (index % 2 === 0 ? "user" : "assistant") as "user" | "assistant",
+      content: `msg-${index}`,
+    }));
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [{ role: "system", content: "guide" }, ...many],
+      triageMessages: many.slice(-3),
+      latestUserMessage: { role: "user", content: "msg-12" },
+    });
+
+    // last 8 kept (msg-6..msg-13); older dropped.
+    expect(payload.userPrompt).toContain("msg-13");
+    expect(payload.userPrompt).toContain("msg-6");
+    expect(payload.userPrompt).not.toContain("msg-0");
+    expect(payload.userPrompt).not.toContain("msg-5");
+  });
+
+  test("truncates an over-long grounded reading before injecting it", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.9 },
+        topicId: "wealth_and_investment",
+        timeframe: "none",
+        baziConsult: {
+          rawInput: sampleExecutionContext.baziConsult!.rawInput,
+          truthPacket: "ก".repeat(5000),
+        },
+      },
+    });
+
+    expect(payload.userPrompt).toContain("ตัดเพื่อความกระชับ");
+    expect(payload.userPrompt.length).toBeLessThan(5000);
+  });
+});
+
 describe("generateGeminiAssistantReply", () => {
   test("returns a non-empty assistant payload from the Gemini adapter", async () => {
     const generateContent = vi.fn().mockResolvedValue({
@@ -177,10 +267,11 @@ describe("generateGeminiAssistantReply", () => {
 
     expect(generateContent).toHaveBeenCalledWith({
       model: "gemini-2.5-flash-lite",
-      contents: expect.stringContaining("Intent routing: intent=career; requiresBaziConsult=true; confidence=0.91."),
+      contents: expect.stringContaining("Routing: topic=career; timeframe=none; requiresBaziConsult=true; confidence=0.91."),
       config: expect.objectContaining({
         systemInstruction: expect.stringContaining("You are a practical Bazi guide."),
         temperature: 0.4,
+        maxOutputTokens: 512,
       }),
     });
     expect(generateContent).toHaveBeenCalledWith(expect.objectContaining({

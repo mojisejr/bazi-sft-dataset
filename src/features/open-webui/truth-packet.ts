@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { type BaziStatePayload } from "@/features/bazi-math/bazi-engine-adapter";
-import { type OpenWebUiIntentClassification } from "@/features/open-webui/intent-router";
+import { type OpenWebUiIntentClassification } from "@/features/open-webui/triage";
 import { type DaYunPillarValue, PillarValueSchema } from "@/lib/bazi/schema-types";
 
 const OpenWebUiTruthPacketIntentSchema = z.enum([
@@ -287,5 +287,7 @@ export function stringifyOpenWebUiTruthPacket(
 ): string | null {
   const truthPacket = selectOpenWebUiTruthPacket(classification, payload);
 
-  return truthPacket ? JSON.stringify(truthPacket, null, 2) : null;
+  // Compact (no pretty-print): this is the fallback material injected into the compose prompt;
+  // indentation is pure token waste there.
+  return truthPacket ? JSON.stringify(truthPacket) : null;
 }
