@@ -1,8 +1,8 @@
 import { ZodError } from "zod";
 
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
-import { buildLoveFacets, buildPairComparison } from "@/lib/bazi/pair-matching";
-import type { DayPillar, PillarPos } from "@/lib/bazi/pair-types";
+import { buildFacets, buildPairComparison, mainFacetOf, RELATIONSHIP_SPECS } from "@/lib/bazi/pair-matching";
+import type { DayPillar, PillarPos, RelationshipType } from "@/lib/bazi/pair-types";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
@@ -33,6 +33,8 @@ export function createPairBaziHandler(options: HandlerOptions = {}) {
     try {
       const body = await request.json();
       const { personA, personB } = body ?? {};
+      const relationship: RelationshipType =
+        body?.relationship in RELATIONSHIP_SPECS ? body.relationship : "love";
 
       if (!personA || !personB) {
         return Response.json(
@@ -48,10 +50,20 @@ export function createPairBaziHandler(options: HandlerOptions = {}) {
       ]);
 
       const comparison = buildPairComparison(dayPillarOf(stateA), dayPillarOf(stateB));
-      const loveFacets = buildLoveFacets(facetPillarsOf(stateA), facetPillarsOf(stateB));
+      const facets = buildFacets(relationship, facetPillarsOf(stateA), facetPillarsOf(stateB));
+      const mainFacet = mainFacetOf(facets);
 
       return Response.json(
-        { personA: stateA, personB: stateB, comparison, loveFacets },
+        {
+          personA: stateA,
+          personB: stateB,
+          comparison,
+          relationship,
+          facets,
+          mainFacet,
+          // alias เดิม (เผื่อ caller เก่ายังอ่าน loveFacets)
+          loveFacets: facets,
+        },
         { status: 200 },
       );
     } catch (error) {

@@ -25,7 +25,8 @@ import type {
   ElementInteractionAB,
   ElementRelation,
   ElementRelationKey,
-  LoveFacet,
+  FacetLine,
+  MatchFacet,
   PairComparisonResult,
   PairDomain,
   PairMatchPair,
@@ -34,6 +35,7 @@ import type {
   PillarPos,
   RatingScale,
   ReferenceData,
+  RelationshipType,
   RoleReading,
   ShengxiaStage,
   SisingStar,
@@ -129,6 +131,8 @@ export function computePairMatch(
     percent,
     grade: gradeForPercent(percent),
     components: cell?.components ?? [],
+    stemCode: cell?.stemCode ?? null,
+    branchCode: cell?.branchCode ?? null,
     emoji: bucket?.emoji ?? null,
     ratingText: bucket?.text ?? "ไม่พบข้อมูลสมพงษ์สำหรับคู่นี้",
     sising,
@@ -252,47 +256,171 @@ export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonR
   };
 }
 
-/**
- * 5 มิติความเข้ากันด้านความรัก (กราฟแท่ง) — ใช้ตารางความรัก 60×60 ที่มีอยู่
- * โดยจับคู่ "เสาของเรา × เสาของเขา" ต่างกันต่อมิติ (ทิศทางเดียวตามที่ซินแสกำหนด):
- *   วันเรา×วันเขา = มิตรภาพ/ความเข้าใจ · ยามเรา×วันเขา = ความใกล้ชิด/เสน่หาทางกาย
- *   วันเรา×ปีเขา = วาสนาคู่ชีวิต · ปีเรา×ปีเขา = คู่บุญ/คู่กรรม
- *   เดือนเรา×วันเขา = ความเข้ากันของครอบครัว (เสาเดือน = ครอบครัว/พ่อแม่)
- */
-const LOVE_FACET_SPECS: ReadonlyArray<{
-  key: LoveFacet["key"];
+/** สเปกหนึ่งมิติความเข้ากัน: จับเสาของเรา (ourPos) × เสาของเขา (partnerPos). */
+export type FacetSpec = {
+  key: string;
   label: string;
   pairingLabel: string;
   ourPos: PillarPos;
   partnerPos: PillarPos;
-}> = [
-  { key: "intimacy", label: "❤️ ความใกล้ชิด / เสน่หาทางกาย", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
-  { key: "kalyanamitra", label: "🤝 มิตรภาพ / ความเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
-  { key: "family", label: "🏡 ความเข้ากันของครอบครัว", pairingLabel: "เดือนเรา × วันเขา", ourPos: "month", partnerPos: "day" },
-  { key: "lifePartner", label: "💍 วาสนาการเป็นคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year" },
-  { key: "karmic", label: "☯️ คู่บุญ / คู่กรรม", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
-];
+  /** มิติ "คำทำนายหลัก" (ใช้เป็นหัวข้อ/คะแนนรวม). */
+  isMain?: boolean;
+};
 
-/** คำนวณ 4 มิติความเข้ากันจากสี่เสาของสองคน (a = เรา, b = เขา). */
-export function buildLoveFacets(
+export type RelationshipSpec = {
+  /** ป้ายความสัมพันธ์ (เช่น "คู่รัก"). */
+  label: string;
+  ourLabel: string;
+  partnerLabel: string;
+  /** ตาราง 60×60 ที่ใช้ (love/work). */
+  domain: PairDomain;
+  facets: FacetSpec[];
+};
+
+/**
+ * สเปกความเข้ากันต่อความสัมพันธ์ (จาก Matching.xlsx) — ใช้ตาราง 60×60 เดิม
+ * โดยจับ "เสาของเรา(M) × เสาของเขา(W)" ต่างกันต่อมิติ (ทิศทางเดียวตามที่ซินแสกำหนด).
+ * ⭐ = มิติคำทำนายหลัก (isMain) ที่ใช้เป็นหัวข้อ.
+ */
+export const RELATIONSHIP_SPECS: Record<RelationshipType, RelationshipSpec> = {
+  love: {
+    label: "คู่รัก",
+    ourLabel: "ตัวเรา",
+    partnerLabel: "เขา",
+    domain: "love",
+    facets: [
+      { key: "intimacy", label: "❤️ ความใกล้ชิด / เสน่หาทางกาย", pairingLabel: "ยามเรา × วันเขา", ourPos: "hour", partnerPos: "day" },
+      { key: "kalyanamitra", label: "🤝 มิตรภาพ / ความเข้าใจ", pairingLabel: "วันเรา × วันเขา", ourPos: "day", partnerPos: "day" },
+      { key: "family", label: "🏡 ความเข้ากันของครอบครัว", pairingLabel: "เดือนเรา × วันเขา", ourPos: "month", partnerPos: "day" },
+      { key: "lifePartner", label: "💍 วาสนาการเป็นคู่ชีวิต", pairingLabel: "วันเรา × ปีเขา", ourPos: "day", partnerPos: "year", isMain: true },
+      { key: "karmic", label: "☯️ คู่บุญ / คู่กรรม", pairingLabel: "ปีเรา × ปีเขา", ourPos: "year", partnerPos: "year" },
+    ],
+  },
+  partner: {
+    label: "หุ้นส่วน",
+    ourLabel: "เรา",
+    partnerLabel: "หุ้นส่วน",
+    domain: "work",
+    facets: [
+      { key: "entourage", label: "👥 เข้ากับบริวารเรา", pairingLabel: "ยามเรา × เดือนหุ้นส่วน", ourPos: "hour", partnerPos: "month" },
+      { key: "partner", label: "🤝 เป็นหุ้นส่วนเรา", pairingLabel: "วันเรา × วันหุ้นส่วน", ourPos: "day", partnerPos: "day", isMain: true },
+      { key: "business", label: "🏢 ส่งเสริมธุรกิจเรา", pairingLabel: "เดือนเรา × เดือนหุ้นส่วน", ourPos: "month", partnerPos: "month" },
+      { key: "customer", label: "🛍️ ส่งเสริมลูกค้าเรา", pairingLabel: "ปีเรา × เดือนหุ้นส่วน", ourPos: "year", partnerPos: "month" },
+    ],
+  },
+  boss: {
+    label: "เจ้านาย",
+    ourLabel: "เรา (ลูกน้อง)",
+    partnerLabel: "เจ้านาย",
+    domain: "work",
+    facets: [
+      { key: "entourage", label: "👥 ทำงานกับบริวารเจ้านาย", pairingLabel: "เดือนเรา × ยามเจ้านาย", ourPos: "month", partnerPos: "hour" },
+      { key: "boss", label: "🧑‍💼 ทำงานร่วมกับเจ้านาย", pairingLabel: "วันเรา × เดือนเจ้านาย", ourPos: "day", partnerPos: "month", isMain: true },
+      { key: "business", label: "🏢 ส่งเสริมธุรกิจเจ้านาย", pairingLabel: "เดือนเรา × เดือนเจ้านาย", ourPos: "month", partnerPos: "month" },
+      { key: "customer", label: "🛍️ ส่งเสริมลูกค้าเจ้านาย", pairingLabel: "เดือนเรา × ปีเจ้านาย", ourPos: "month", partnerPos: "year" },
+    ],
+  },
+  subordinate: {
+    label: "ลูกน้อง",
+    ourLabel: "เรา",
+    partnerLabel: "ลูกน้อง",
+    domain: "work",
+    facets: [
+      { key: "entourage", label: "👥 เข้ากับบริวารเรา", pairingLabel: "ยามเรา × เดือนลูกน้อง", ourPos: "hour", partnerPos: "month" },
+      { key: "org", label: "🏛️ เข้ากับองค์กรเรา", pairingLabel: "เดือนเรา × วันลูกน้อง", ourPos: "month", partnerPos: "day", isMain: true },
+      { key: "business", label: "🏢 ส่งเสริมธุรกิจเรา", pairingLabel: "เดือนเรา × เดือนลูกน้อง", ourPos: "month", partnerPos: "month" },
+      { key: "customer", label: "🛍️ ส่งเสริมลูกค้าเรา", pairingLabel: "ปีเรา × เดือนลูกน้อง", ourPos: "year", partnerPos: "month" },
+    ],
+  },
+};
+
+/**
+ * คลังคำทำนายต่อโค้ด (A1..A12 / B1..B12) แยกตามมุมความสัมพันธ์ —
+ * แต่ละ list มาจาก reference.json (12 เชี่ยงแซ + สี่ซิ้ง) ที่ distill ไว้แล้ว.
+ */
+const ROLE_LIST_BY_RELATIONSHIP: Record<RelationshipType, ShengxiaStage[]> = {
+  love: REFERENCE.loveShengxia,
+  partner: REFERENCE.rolePartner,
+  boss: REFERENCE.roleBoss,
+  subordinate: REFERENCE.roleSubordinate,
+};
+
+/** Map โค้ด→stage (เก็บ occurrence แรก กันโค้ดซ้ำในชีตความรัก). */
+const ROLE_MAP_BY_RELATIONSHIP: Record<RelationshipType, Map<string, ShengxiaStage>> =
+  Object.fromEntries(
+    (Object.keys(ROLE_LIST_BY_RELATIONSHIP) as RelationshipType[]).map((rel) => {
+      const map = new Map<string, ShengxiaStage>();
+      for (const st of ROLE_LIST_BY_RELATIONSHIP[rel]) {
+        if (st.code && !map.has(st.code)) map.set(st.code, st);
+      }
+      return [rel, map];
+    }),
+  ) as Record<RelationshipType, Map<string, ShengxiaStage>>;
+
+/** คำทำนายรายแท่ง 3 บรรทัด (ก้าน/กิ่ง/สี่ซิ้ง) ตามโค้ดในเซลล์ matrix. */
+function facetLines(relationship: RelationshipType, m: PairMatchResult): FacetLine[] {
+  const map = ROLE_MAP_BY_RELATIONSHIP[relationship];
+  const slots: { slot: string; code: string | null }[] = [
+    { slot: "ก้าน", code: m.stemCode },
+    { slot: "กิ่ง", code: m.branchCode },
+    { slot: "สี่ซิ้ง", code: m.sising?.code ?? null },
+  ];
+  const lines: FacetLine[] = [];
+  for (const { slot, code } of slots) {
+    if (!code) continue;
+    const st = map.get(code);
+    lines.push({
+      slot,
+      code,
+      name: st?.name ?? m.sising?.nameTh ?? "",
+      score: st?.score ?? null,
+      text: st?.narrative ?? "",
+    });
+  }
+  return lines;
+}
+
+/** คำนวณมิติความเข้ากันตามความสัมพันธ์ จากสี่เสาของสองคน (a = เรา, b = เขา). */
+export function buildFacets(
+  relationship: RelationshipType,
   a: Record<PillarPos, DayPillar>,
   b: Record<PillarPos, DayPillar>,
-): LoveFacet[] {
-  return LOVE_FACET_SPECS.map((spec) => {
-    const m = computePairMatch(a[spec.ourPos], b[spec.partnerPos], "love");
+): MatchFacet[] {
+  const spec = RELATIONSHIP_SPECS[relationship];
+  return spec.facets.map((f) => {
+    const m = computePairMatch(a[f.ourPos], b[f.partnerPos], spec.domain);
     return {
-      key: spec.key,
-      label: spec.label,
-      pairingLabel: spec.pairingLabel,
-      ourPos: spec.ourPos,
-      partnerPos: spec.partnerPos,
+      key: f.key,
+      label: f.label,
+      pairingLabel: f.pairingLabel,
+      ourPos: f.ourPos,
+      partnerPos: f.partnerPos,
       ourGanzhi: m.ourPillar,
       partnerGanzhi: m.partnerPillar,
       percent: m.percent,
       grade: m.grade,
       found: m.found,
+      isMain: f.isMain === true,
+      domain: spec.domain,
+      emoji: m.emoji,
+      ratingText: m.ratingText,
+      sising: m.sising,
+      lines: facetLines(relationship, m),
     };
   });
+}
+
+/** มิติคำทำนายหลัก (isMain) — fallback เป็นมิติแรกถ้าไม่ได้ระบุ. */
+export function mainFacetOf(facets: MatchFacet[]): MatchFacet | null {
+  return facets.find((f) => f.isMain) ?? facets[0] ?? null;
+}
+
+/** @deprecated ใช้ buildFacets("love", a, b) — คง wrapper ไว้กัน caller เดิมพัง. */
+export function buildLoveFacets(
+  a: Record<PillarPos, DayPillar>,
+  b: Record<PillarPos, DayPillar>,
+): MatchFacet[] {
+  return buildFacets("love", a, b);
 }
 
 /**

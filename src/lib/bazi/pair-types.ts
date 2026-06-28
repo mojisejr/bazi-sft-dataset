@@ -6,6 +6,13 @@
 
 export type PairDomain = "work" | "love";
 
+/**
+ * ประเภทความสัมพันธ์ที่เทียบดวงได้ (ตาม Matching.xlsx).
+ * แต่ละแบบใช้ตาราง 60×60 เดิม (domain love/work) ต่างกันแค่จับคู่เสาไหน×เสาไหน.
+ * ("daymate" — เรา vs วันที่เลือก — เป็น Phase 2 ยังไม่รวมที่นี่)
+ */
+export type RelationshipType = "love" | "partner" | "boss" | "subordinate";
+
 /** One combo cell from pair-matrix.json. */
 export type PairMatrixCell = {
   domain: PairDomain;
@@ -13,6 +20,10 @@ export type PairMatrixCell = {
   components: number[];
   points: number | null;
   ratio: number | null;
+  /** โค้ดความสัมพันธ์ของก้านเรา×ก้านเขา (A1..A12). */
+  stemCode: string | null;
+  /** โค้ดความสัมพันธ์ของกิ่งเรา×กิ่งเขา (A1..A12). */
+  branchCode: string | null;
   sisingCode: string | null;
   sisingName: string | null;
 };
@@ -105,6 +116,8 @@ export type PairMatchResult = {
   percent: number | null;
   grade: string;
   components: number[];
+  stemCode: string | null;
+  branchCode: string | null;
   emoji: string | null;
   ratingText: string;
   sising: SisingStar | null;
@@ -117,11 +130,25 @@ export type RoleReading = { perspective: string; stageName: string; narrative: s
 export type PillarPos = "hour" | "day" | "month" | "year";
 
 /**
- * หนึ่งมิติความเข้ากัน (กราฟแท่ง 5 แท่ง) — คะแนนจากตารางความรัก 60×60
+ * หนึ่งมิติความเข้ากัน (กราฟแท่ง) — คะแนนจากตาราง 60×60 (domain ตามความสัมพันธ์)
  * โดยจับคู่เสาของเรา (ourPos) กับเสาของเขา (partnerPos) ที่ต่างกันต่อมิติ.
+ * มิติที่ `isMain` = "คำทำนายหลัก" ที่ใช้เป็นหัวข้อ/คะแนนรวมตามที่ซินแสกำหนด.
  */
-export type LoveFacet = {
-  key: "intimacy" | "kalyanamitra" | "lifePartner" | "karmic" | "family";
+/** คำทำนายย่อย 1 บรรทัดของแท่ง (ก้าน / กิ่ง / สี่ซิ้ง). */
+export type FacetLine = {
+  /** ช่อง: "ก้าน" | "กิ่ง" | "สี่ซิ้ง". */
+  slot: string;
+  /** โค้ด A1..A12 / B1..B12. */
+  code: string;
+  /** ชื่อ (เช่น เชี่ยงแซ / มังกรเขียว). */
+  name: string;
+  score: number | null;
+  /** คำทำนายของโค้ดนี้ตามมุมความสัมพันธ์. */
+  text: string;
+};
+
+export type MatchFacet = {
+  key: string;
   /** ชื่อมิติ (ไทย). */
   label: string;
   /** คู่เสาแบบอ่านง่าย เช่น "ยามเรา × วันเขา". */
@@ -133,7 +160,18 @@ export type LoveFacet = {
   percent: number | null;
   grade: string;
   found: boolean;
+  /** เป็นมิติ "คำทำนายหลัก" หรือไม่. */
+  isMain: boolean;
+  domain: PairDomain;
+  emoji: string | null;
+  ratingText: string;
+  sising: SisingStar | null;
+  /** คำทำนายรายแท่ง 3 บรรทัด (ก้าน/กิ่ง/สี่ซิ้ง). */
+  lines: FacetLine[];
 };
+
+/** @deprecated ใช้ MatchFacet แทน — คง alias ไว้กัน import เดิมพัง. */
+export type LoveFacet = MatchFacet;
 
 /** Both directional readings for a domain + an order-independent overall. */
 export type PairMatchPair = {

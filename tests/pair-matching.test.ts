@@ -2,12 +2,15 @@ import { describe, expect, test } from "vitest";
 
 import {
   buildElementInteractionAB,
+  buildFacets,
   buildPairComparison,
   buildWorkComparison,
   computePairMatch,
   computePairMatchPair,
+  mainFacetOf,
   relationOf,
 } from "@/lib/bazi/pair-matching";
+import type { DayPillar, PillarPos } from "@/lib/bazi/pair-types";
 
 describe("pair-matching engine (spreadsheet-exact)", () => {
   test("甲子 × 甲子 → 60% grade B, สี่ซิ้ง กิมกุ่ย (ตู้ทอง)", () => {
@@ -92,6 +95,69 @@ describe("full comparison", () => {
     expect(r.match.love.overallPercent).not.toBeNull();
     expect(r.personA.nisai.length).toBeGreaterThan(0);
     expect(r.sisingReference.length).toBe(12);
+  });
+});
+
+describe("relationship facets (Matching.xlsx — spreadsheet-exact)", () => {
+  // คู่ตัวอย่างจาก Matching.xlsx
+  const sp = (stem: string, branch: string): DayPillar => ({ stem, branch });
+  const M: Record<PillarPos, DayPillar> = {
+    hour: sp("壬", "申"), day: sp("己", "酉"), month: sp("癸", "亥"), year: sp("癸", "酉"),
+  };
+  const W: Record<PillarPos, DayPillar> = {
+    hour: sp("丙", "子"), day: sp("甲", "寅"), month: sp("壬", "辰"), year: sp("辛", "酉"),
+  };
+
+  test("love: 5 มิติตรงชีต + คำทำนายหลัก = วาสนาคู่ชีวิต 88.33%", () => {
+    const facets = buildFacets("love", M, W);
+    expect(facets.map((f) => f.percent)).toEqual([11.67, 45, 55, 88.33, 70]);
+    const main = mainFacetOf(facets);
+    expect(main?.key).toBe("lifePartner");
+    expect(main?.percent).toBe(88.33);
+    expect(main?.domain).toBe("love");
+  });
+
+  test("partner (work): main = เป็นหุ้นส่วนเรา (วัน×วัน) 45%", () => {
+    const facets = buildFacets("partner", M, W);
+    expect(facets.map((f) => f.percent)).toEqual([75, 45, 71.67, 38.33]);
+    expect(mainFacetOf(facets)?.percent).toBe(45);
+    expect(facets[0].domain).toBe("work");
+  });
+
+  test("boss (work): main = ทำงานร่วมกับเจ้านาย (วัน×เดือน) 30%", () => {
+    const facets = buildFacets("boss", M, W);
+    expect(facets.map((f) => f.percent)).toEqual([33.33, 30, 71.67, 28.33]);
+    expect(mainFacetOf(facets)?.percent).toBe(30);
+  });
+
+  test("subordinate (work): main = เข้ากับองค์กรเรา (เดือน×วัน) 55%", () => {
+    const facets = buildFacets("subordinate", M, W);
+    expect(facets.map((f) => f.percent)).toEqual([75, 55, 71.67, 38.33]);
+    expect(mainFacetOf(facets)?.percent).toBe(55);
+  });
+
+  test("แต่ละแท่งมีคำทำนาย 3 บรรทัด (ก้าน/กิ่ง/สี่ซิ้ง) พร้อมโค้ด + ข้อความ", () => {
+    const intimacy = buildFacets("love", M, W)[0];
+    expect(intimacy.lines.map((l) => l.slot)).toEqual(["ก้าน", "กิ่ง", "สี่ซิ้ง"]);
+    expect(intimacy.lines.map((l) => l.code)).toEqual(["A10", "A7", "B3"]);
+    for (const ln of intimacy.lines) {
+      expect(ln.text.length).toBeGreaterThan(0);
+      expect(ln.name.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("คำทำนายรายแท่งเปลี่ยนตามมุมความสัมพันธ์ (work ≠ love)", () => {
+    const loveStem = buildFacets("love", M, W)[1].lines[0]; // วัน×วัน
+    const bossStem = buildFacets("boss", M, W)[1].lines[0];
+    // โค้ดมาจากตารางคนละ domain จึงอาจต่างกัน — แต่ที่ต่างแน่คือข้อความ (มุมมอง)
+    expect(loveStem.text).not.toBe(bossStem.text);
+  });
+
+  test("มีมิติหลักเพียงหนึ่งต่อความสัมพันธ์", () => {
+    for (const rel of ["love", "partner", "boss", "subordinate"] as const) {
+      const mains = buildFacets(rel, M, W).filter((f) => f.isMain);
+      expect(mains.length).toBe(1);
+    }
   });
 });
 

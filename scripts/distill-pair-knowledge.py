@@ -53,9 +53,11 @@ def load(fname):
 # ---------------------------------------------------------------------------
 def parse_pair_sheets(wb, domain):
     """Each pair sheet = one of-our-pillars x ~60 partner-pillars, in 2-row blocks.
-    Top row:    B=ourStem D=partnerStem E/F=code G=sisingCode H=ratio I=points J,K,L=components
+    Top row:    B=ourStem D=partnerStem E=stemCode F=branchCode G=sisingCode H=ratio I=points J,K,L=components
     Bottom row: B=ourBranch D=partnerBranch  G=sisingName
     percent = mean(J,K,L). grade derived later from rating buckets.
+    stemCode (E) = relation ของก้านเรา×ก้านเขา · branchCode (F) = ของกิ่งเรา×กิ่งเขา
+    (โค้ด A1..A12 = 12 เชี่ยงแซ; ใช้คู่กับ reference role lists เพื่อหาคำทำนายรายแท่ง).
     """
     out = {}
     count = 0
@@ -84,6 +86,8 @@ def parse_pair_sheets(wb, domain):
                     comps = [num(row[9]), num(row[10]), num(row[11])]  # J,K,L
                     comps = [c for c in comps if c is not None]
                     percent = round(sum(comps) / len(comps), 2) if comps else None
+                    stem_code = cell(i, 4)         # E (โค้ดก้านเรา×ก้านเขา)
+                    branch_code = cell(i, 5)       # F (โค้ดกิ่งเรา×กิ่งเขา)
                     sising_code = cell(i, 6)        # G top
                     sising_name = cell(i + 1, 6)    # G bottom
                     key = f"{our_stem}{our_branch}|{partner_stem}{partner_branch}"
@@ -93,6 +97,8 @@ def parse_pair_sheets(wb, domain):
                         "components": comps,
                         "points": num(row[8]),       # I
                         "ratio": num(row[7]),        # H
+                        "stemCode": stem_code or None,
+                        "branchCode": branch_code or None,
                         "sisingCode": sising_code or None,
                         "sisingName": sising_name or None,
                     }

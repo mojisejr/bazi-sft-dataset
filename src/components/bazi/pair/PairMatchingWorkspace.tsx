@@ -10,10 +10,12 @@ import { PairDetailModal } from "@/components/bazi/pair/PairDetailModal";
 import { PairPrintReport } from "@/components/bazi/pair/PairPrintReport";
 import { PairPillarsCompare } from "@/components/bazi/pair/PairPillarsCompare";
 import { PairCompatBars } from "@/components/bazi/pair/PairCompatBars";
+import { PairFacetReadings } from "@/components/bazi/pair/PairFacetReadings";
 import { PersonInputs } from "@/components/bazi/pair/PersonInputs";
 import {
-  buildEngineText,
+  buildFacetEngineText,
   DOMAIN_LABEL,
+  RELATIONSHIP_META,
   sisingDomainAspects,
   verdictLabel,
 } from "@/components/bazi/pair/pair-presentation";
@@ -25,16 +27,18 @@ import {
   type FormState,
 } from "@/lib/bazi/trainer-workspace";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
-import type { LoveFacet, PairComparisonResult } from "@/lib/bazi/pair-types";
+import type { MatchFacet, PairComparisonResult, RelationshipType } from "@/lib/bazi/pair-types";
 import type { ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 
-const DOMAIN = "love" as const;
+const RELATIONSHIP_OPTIONS: RelationshipType[] = ["love", "partner", "boss", "subordinate"];
 
 type PairResponse = {
   personA: CalculatedStateValue;
   personB: CalculatedStateValue;
   comparison: PairComparisonResult;
-  loveFacets: LoveFacet[];
+  relationship: RelationshipType;
+  facets: MatchFacet[];
+  mainFacet: MatchFacet | null;
 };
 
 type ModalKind = "chart" | "sising" | null;
@@ -42,6 +46,7 @@ type ModalKind = "chart" | "sising" | null;
 export function PairMatchingWorkspace() {
   const [formA, setFormA] = useState<FormState>(createDefaultFormState);
   const [formB, setFormB] = useState<FormState>(() => ({ ...createDefaultFormState(), gender: "male" }));
+  const [relationship, setRelationship] = useState<RelationshipType>("love");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<PairResponse | null>(null);
@@ -63,7 +68,7 @@ export function PairMatchingWorkspace() {
     setFormB((cur) => applyFormFieldChange(cur, e.target.name, e.target.value));
   }, []);
 
-  const onCompare = useCallback(async () => {
+  const runCompare = useCallback(async (rel: RelationshipType) => {
     setSubmitting(true);
     setError(null);
     setLlmText(null);
@@ -73,7 +78,7 @@ export function PairMatchingWorkspace() {
       const response = await fetch("/api/bazi/pair", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ personA: payloadA, personB: payloadB }),
+        body: JSON.stringify({ personA: payloadA, personB: payloadB, relationship: rel }),
       });
       const data = await response.json();
       if (!response.ok) {
@@ -94,10 +99,26 @@ export function PairMatchingWorkspace() {
 
   const canCompare = isFormComplete(formA) && isFormComplete(formB);
 
-  const pair = result ? result.comparison.match[DOMAIN] : null;
+  const onCompare = useCallback(() => runCompare(relationship), [runCompare, relationship]);
+
+  /** เปลี่ยนความสัมพันธ์: อัปเดต state แล้วคำนวณใหม่ทันทีถ้ากรอกครบ. */
+  const onChangeRelationship = useCallback(
+    (rel: RelationshipType) => {
+      setRelationship(rel);
+      setLlmText(null);
+      if (canCompare) void runCompare(rel);
+    },
+    [canCompare, runCompare],
+  );
+
+  const meta = RELATIONSHIP_META[relationship];
+  const domain = meta.domain;
+  const facets = result?.facets ?? [];
+  const main = result?.mainFacet ?? null;
+  const matchFound = facets.some((f) => f.found);
 
   const onRephrase = useCallback(async () => {
-    if (!result || !pair) return;
+    if (!result) return;
     if (provider !== "anthropic" && apiKey.trim().length === 0) {
       setError("กรุณาใส่ API key ก่อนเรียบเรียงด้วย LLM");
       return;
@@ -109,8 +130,8 @@ export function PairMatchingWorkspace() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          engineText: buildEngineText(pair, DOMAIN, result.comparison),
-          domainLabel: `ความเข้ากันด้าน${DOMAIN_LABEL[DOMAIN]}`,
+          engineText: buildFacetEngineText(result.relationship, result.facets, result.mainFacet, result.comparison),
+          domainLabel: `ความเข้ากันแบบ${RELATIONSHIP_META[result.relationship].label}`,
           provider,
           ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         }),
@@ -125,9 +146,9 @@ export function PairMatchingWorkspace() {
     } finally {
       setLlmLoading(false);
     }
-  }, [result, pair, provider, apiKey]);
+  }, [result, provider, apiKey]);
 
-  const sisingActiveCode = pair?.forward.sising?.code ?? null;
+  const sisingActiveCode = main?.sising?.code ?? null;
   const sisingRef = result?.comparison.sisingReference ?? [];
 
   const modalTitle = useMemo(() => {
@@ -138,7 +159,7 @@ export function PairMatchingWorkspace() {
     }
   }, [modal]);
 
-  const roles = result ? result.comparison.loveRoles : [];
+  const roles = result ? (result.relationship === "love" ? result.comparison.loveRoles : result.comparison.workRoles) : [];
 
   return (
     <div className="pair-shell">
@@ -148,9 +169,23 @@ export function PairMatchingWorkspace() {
           title="ตั้งวันเกิดของทั้งสองฝ่าย"
           note="ระบบใช้เวลาประเทศไทย + ปฏิทินสุริยคติ และจับคู่จากหลักวัน (วันเกิด) ของทั้งคู่"
         />
+        <div className="pair-actions" style={{ marginBottom: "0.75rem" }}>
+          <label className="field field--compact">
+            <span>ความสัมพันธ์</span>
+            <select
+              value={relationship}
+              onChange={(e) => onChangeRelationship(e.target.value as RelationshipType)}
+            >
+              {RELATIONSHIP_OPTIONS.map((rel) => (
+                <option key={rel} value={rel}>{RELATIONSHIP_META[rel].label}</option>
+              ))}
+            </select>
+          </label>
+          <span className="pair-hint">{meta.ourLabel} ↔ {meta.partnerLabel} · ใช้ตาราง{DOMAIN_LABEL[domain]}</span>
+        </div>
         <div className="pair-forms">
-          <PersonInputs label="ตัวเรา" form={formA} onChange={onChangeA} />
-          <PersonInputs label="เขา" form={formB} onChange={onChangeB} />
+          <PersonInputs label={meta.ourLabel} form={formA} onChange={onChangeA} />
+          <PersonInputs label={meta.partnerLabel} form={formB} onChange={onChangeB} />
         </div>
         <div className="pair-actions" style={{ marginTop: "1rem" }}>
           <ActionButton tone="primary" type="button" disabled={submitting || !canCompare} onClick={onCompare}>
@@ -163,14 +198,14 @@ export function PairMatchingWorkspace() {
         </div>
       </Surface>
 
-      {result && pair ? (
+      {result ? (
         <Surface as="section" inset className="pair-result">
           {/* ── คำทำนายพื้นฐานรายคน ── */}
           <SectionHeading kicker="คำทำนายพื้นฐาน" title="หลักวัน & นิสัยของแต่ละคน" compact />
           <div className="pair-person-grid">
             {([
-              { who: "ตัวเรา", p: result.comparison.personA },
-              { who: "เขา", p: result.comparison.personB },
+              { who: RELATIONSHIP_META[result.relationship].ourLabel, p: result.comparison.personA },
+              { who: RELATIONSHIP_META[result.relationship].partnerLabel, p: result.comparison.personB },
             ]).map(({ who, p }) => (
               <div key={who} className="pair-person-card">
                 <div className="pair-person-card__head">
@@ -193,56 +228,52 @@ export function PairMatchingWorkspace() {
           <PairPillarsCompare personA={result.personA} personB={result.personB} />
 
           {/* ── ความเข้ากัน ── */}
-          <SectionHeading kicker="ความเข้ากัน" title={`ดวงสมพงษ์ด้าน${DOMAIN_LABEL[DOMAIN]}`} compact />
+          <SectionHeading
+            kicker="ความเข้ากัน"
+            title={`ดวงสมพงษ์แบบ${RELATIONSHIP_META[result.relationship].label}`}
+            compact
+          />
 
-          {pair.forward.found || pair.reverse.found ? (
+          {matchFound && main ? (
             <>
+              {/* คำทำนายหลัก (มิติ ⭐ ตามที่ซินแสกำหนด) */}
               <div className="pair-verdict">
-                <div className="pair-verdict__grade">{pair.overallGrade}</div>
+                <div className="pair-verdict__grade">{main.grade}</div>
                 <div className="pair-verdict__main">
-                  <div className="pair-verdict__label">{verdictLabel(pair.overallPercent)}</div>
-                  <div className="pair-verdict__pct">คะแนนรวม {pair.overallPercent}%</div>
+                  <div className="pair-verdict__label">{verdictLabel(main.percent)}</div>
+                  <div className="pair-verdict__pct">
+                    {main.label} {main.percent ?? "-"}%
+                    {main.emoji ? <span className="pair-direction__emoji"> {main.emoji}</span> : null}
+                  </div>
+                  <div className="pair-hint">คำทำนายหลัก · {main.pairingLabel}</div>
                 </div>
               </div>
 
-              {result.loveFacets?.length ? (
-                <PairCompatBars facets={result.loveFacets} />
-              ) : null}
+              {facets.length ? <PairCompatBars facets={facets} /> : null}
 
-              <div className="pair-direction-grid">
-                {([
-                  { dir: pair.forward, label: "ตัวเรา ได้รับจากเขา" },
-                  { dir: pair.reverse, label: "เขา ได้รับจากตัวเรา" },
-                ]).map(({ dir, label }) => (
-                  <div key={label} className="pair-direction">
-                    <div className="pair-direction__head">
-                      <span className="pair-direction__label">{label}</span>
-                      <span className="pair-direction__grade">{dir.grade}</span>
-                    </div>
-                    <div className="pair-direction__meta">
-                      <span>{dir.percent ?? "-"}%</span>
-                      {dir.emoji ? <span className="pair-direction__emoji">{dir.emoji}</span> : null}
-                      {dir.sising ? <span>สี่ซิ้ง: {dir.sising.nameTh}</span> : null}
-                    </div>
-                    <p className="pair-rating-text">{dir.ratingText}</p>
-                  </div>
-                ))}
+              {/* รายละเอียดคำทำนายหลัก */}
+              <div className="pair-direction">
+                <p className="pair-rating-text">{main.ratingText}</p>
               </div>
 
+              {/* คำทำนายรายมิติ (3 บรรทัดต่อแท่ง: ก้าน/กิ่ง/สี่ซิ้ง) */}
+              <SectionHeading kicker="คำทำนายรายมิติ" title="รายละเอียดแต่ละแท่ง" compact />
+              <PairFacetReadings facets={facets} />
+
               <div className="pair-elem">
-                <strong>ปฏิกิริยาธาตุ ตัวเรา ({result.comparison.elementInteraction.aElementTh}) ↔ เขา ({result.comparison.elementInteraction.bElementTh})</strong>
+                <strong>ปฏิกิริยาธาตุ {RELATIONSHIP_META[result.relationship].ourLabel} ({result.comparison.elementInteraction.aElementTh}) ↔ {RELATIONSHIP_META[result.relationship].partnerLabel} ({result.comparison.elementInteraction.bElementTh})</strong>
                 <span>{result.comparison.elementInteraction.summaryTh}</span>
               </div>
 
-              {/* สี่ซิ้งประจำคู่ + คำทำนายพื้นฐานตามด้าน */}
-              {pair.forward.sising ? (
+              {/* สี่ซิ้งของมิติหลัก + คำทำนายพื้นฐานตามด้าน */}
+              {main.sising ? (
                 <div className="pair-sising-feature">
                   <div className="pair-sising-feature__title">
-                    สี่ซิ้งประจำคู่: {pair.forward.sising.nameTh}
-                    <span className="pair-sising-card__score"> ({pair.forward.sising.nameCn} · พลัง {pair.forward.sising.score})</span>
+                    สี่ซิ้งมิติหลัก: {main.sising.nameTh}
+                    <span className="pair-sising-card__score"> ({main.sising.nameCn} · พลัง {main.sising.score})</span>
                   </div>
-                  <p className="pair-rating-text">{pair.forward.sising.long || pair.forward.sising.short}</p>
-                  {sisingDomainAspects(pair.forward.sising, DOMAIN).map((a) => (
+                  <p className="pair-rating-text">{main.sising.long || main.sising.short}</p>
+                  {sisingDomainAspects(main.sising, domain).map((a) => (
                     <p key={a.label} className="pair-rating-text"><strong>{a.label}:</strong> {a.text}</p>
                   ))}
                 </div>
@@ -251,7 +282,7 @@ export function PairMatchingWorkspace() {
               {/* บทบาทตามด้าน (inline) */}
               {roles.length ? (
                 <div className="pair-roles">
-                  <strong>บทบาทด้าน{DOMAIN_LABEL[DOMAIN]}</strong>
+                  <strong>บทบาทด้าน{DOMAIN_LABEL[domain]}</strong>
                   {roles.map((r, i) => (
                     <div key={i} className="pair-role">
                       <span className="pair-role__perspective">{r.perspective} · {r.stageName}</span>
@@ -262,7 +293,7 @@ export function PairMatchingWorkspace() {
               ) : null}
             </>
           ) : (
-            <p className="pair-error">ไม่พบข้อมูลสมพงษ์สำหรับคู่หลักวันนี้ ({pair.forward.ourPillar} × {pair.forward.partnerPillar})</p>
+            <p className="pair-error">ไม่พบข้อมูลสมพงษ์สำหรับมิติหลักนี้ ({main?.ourGanzhi ?? "-"} × {main?.partnerGanzhi ?? "-"})</p>
           )}
 
           <div className="pair-popup-buttons">
@@ -300,7 +331,7 @@ export function PairMatchingWorkspace() {
 
           {llmText ? (
             <Surface as="div" inset>
-              <SectionHeading kicker="ฉบับเรียบเรียง" title={`คำทำนายด้าน${DOMAIN_LABEL[DOMAIN]}`} compact />
+              <SectionHeading kicker="ฉบับเรียบเรียง" title={`คำทำนายแบบ${RELATIONSHIP_META[result.relationship].label}`} compact />
               <p className="pair-rating-text" style={{ whiteSpace: "pre-wrap" }}>{llmText}</p>
             </Surface>
           ) : null}
@@ -312,11 +343,11 @@ export function PairMatchingWorkspace() {
           {modal === "chart" ? (
             <div className="pair-charts">
               <div>
-                <SectionHeading kicker="ตัวเรา" title="พื้นดวง" compact />
+                <SectionHeading kicker={RELATIONSHIP_META[result.relationship].ourLabel} title="พื้นดวง" compact />
                 <ReadingChartFoundation calculatedState={result.personA} />
               </div>
               <div>
-                <SectionHeading kicker="เขา" title="พื้นดวง" compact />
+                <SectionHeading kicker={RELATIONSHIP_META[result.relationship].partnerLabel} title="พื้นดวง" compact />
                 <ReadingChartFoundation calculatedState={result.personB} />
               </div>
             </div>
@@ -325,7 +356,7 @@ export function PairMatchingWorkspace() {
           {modal === "sising" ? (
             <>
               <p className="pair-score-card__score">
-                สี่ซิ้งประจำคู่นี้คือ <strong>{pair?.forward.sising?.nameTh ?? "-"}</strong> (เน้นกรอบ) — ตารางด้านล่างคือความหมายของทั้ง 12 ดาว
+                สี่ซิ้งของมิติหลักคือ <strong>{main?.sising?.nameTh ?? "-"}</strong> (เน้นกรอบ) — ตารางด้านล่างคือความหมายของทั้ง 12 ดาว
               </p>
               <div className="pair-sising-grid">
                 {sisingRef.map((s) => (
