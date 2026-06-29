@@ -85,12 +85,17 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.systemInstruction.startsWith(MUMATE_PERSONA_INSTRUCTION)).toBe(true);
   });
 
-  test("L1 anti-drift: persona casts the model as the engine's mouthpiece, not its own Bazi analyst", () => {
-    // The model must relay the engine's verdict, never run its own Bazi analysis (which would
-    // pull from its training priors). Closed-book contract present; self-analysis steps gone.
-    expect(MUMATE_PERSONA_INSTRUCTION).toContain("ปากเสียงของซินแส");
-    expect(MUMATE_PERSONA_INSTRUCTION).toContain("ไม่มีความรู้ปาจื่อเป็นของตัวเอง");
+  test("v2 anchored-expert: persona locks chart facts to the engine but frees the ซินแส voice", () => {
+    // Drift is fenced by STRUCTURE (engine = the only source of chart facts), not by fear-framing.
+    // v1's closed-book "no Bazi knowledge of my own" + temp 0.2 made answers แข็งกระด้าง; v2 restores
+    // identity-first warmth while keeping the fact-lock and the self-analysis ban.
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("อบอุ่น");
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("วิธีพูด");
     expect(MUMATE_PERSONA_INSTRUCTION).toContain("ผลวินิจฉัยจาก engine");
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("แหล่งความจริงเดียว");
+    // fear-framing removed — this was the root of the stiffness
+    expect(MUMATE_PERSONA_INSTRUCTION).not.toContain("ไม่มีความรู้ปาจื่อเป็นของตัวเอง");
+    // self-analysis steps still gone (no regress to the original drift bug)
     expect(MUMATE_PERSONA_INSTRUCTION).not.toContain("กระบวนการวิเคราะห์");
     expect(MUMATE_PERSONA_INSTRUCTION).not.toContain("วินิจฉัยด้วย 12 เซิงแซ");
     // verdict voice preserved (no regress to "summarize the reading")
@@ -116,8 +121,9 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("ผลวินิจฉัยจาก engine");
     expect(payload.userPrompt).toContain("วิธีตอบแบบซินแส");
     expect(payload.userPrompt).toContain("ฟันธงตอบคำถามตรงๆ");
-    // anti-drift L2: every Bazi fact must trace back to the engine verdict block
-    expect(payload.userPrompt).toContain("ต้องสืบกลับไปยังผลวินิจฉัยด้านบนได้ทุกคำ");
+    // anti-drift v2: chart facts must come from the engine block, but the explaining voice stays free
+    expect(payload.userPrompt).toContain("ต้องมาจากผลวินิจฉัยด้านบน ห้ามแต่งใหม่");
+    expect(payload.userPrompt).toContain("ส่วนวิธีอธิบาย ความอบอุ่น อุปมา พูดได้เต็มที่");
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
   });
 
@@ -284,8 +290,8 @@ describe("generateGeminiAssistantReply", () => {
       contents: expect.stringContaining("Routing: topic=career; timeframe=none; requiresBaziConsult=true; confidence=0.91."),
       config: expect.objectContaining({
         systemInstruction: expect.stringContaining("You are a practical Bazi guide."),
-        temperature: 0.2,
-        topP: 0.9,
+        temperature: 0.6,
+        topP: 0.95,
         maxOutputTokens: 512,
       }),
     });

@@ -3,6 +3,7 @@ import { validateApiToken } from "@/features/open-webui/api-guard";
 import { type ChatRunnerSuccess, runChatPipeline } from "@/features/open-webui/chat-runner";
 import {
   generateGeminiAssistantReply,
+  isHonestPrecisionReframe,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
@@ -19,6 +20,7 @@ import { fetchGroundedReading, resolveGroundingTopicId } from "@/features/open-w
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import {
   createGuardedOpenAiSseStream,
+  type GlassBoxTrace,
 } from "@/features/open-webui/sse-streamer";
 
 export const runtime = "nodejs";
@@ -151,6 +153,38 @@ async function groundOrFallback(args: {
   return grounded ?? fallback;
 }
 
+// Glass Box (Track B1): assemble the observability trace from data the pipeline already produced —
+// what the triage heard, the engine text that was injected into compose, and which filters fired.
+// Read-only over the pipeline; building it never changes routing, grounding, or the answer.
+export function buildGlassBoxTrace(input: {
+  triage: OpenWebUiTriageResult;
+  executionContext: OpenWebUiGeminiExecutionContext;
+  topicHint?: string | null;
+}): GlassBoxTrace {
+  const { triage, executionContext, topicHint } = input;
+  const { classification, topicId, timeframe } = triage;
+  const injectedReadingText = executionContext.baziConsult?.truthPacket ?? null;
+
+  return {
+    heard: {
+      topicId: topicId ?? classification.intent ?? null,
+      timeframe: timeframe ?? null,
+      requiresBaziConsult: classification.requiresBaziConsult,
+      confidence: classification.confidence,
+      birthResolved: triage.extraction.isComplete,
+    },
+    truthUsed: {
+      seam: injectedReadingText
+        ? resolveGroundingTopicId(topicId, topicHint ?? null) ?? topicId ?? null
+        : null,
+      injectedReadingText,
+    },
+    filters: {
+      honestPrecisionApplied: isHonestPrecisionReframe(classification.requiresBaziConsult, timeframe),
+    },
+  };
+}
+
 export async function POST(req: Request) {
   const unauthorizedResponse = validateApiToken(req);
 
@@ -175,6 +209,10 @@ export async function POST(req: Request) {
   const effectiveUserId = result.userId ?? getForwardedUserId(req);
 
   console.log("[open-webui] chat completions userId", effectiveUserId);
+
+  // Glass Box flag: opt-in via request header, default OFF. ON only adds the trace frame to the
+  // stream — persona/temperature/grounding are identical, so the answer itself never changes.
+  const glassBoxTraceEnabled = req.headers.get("x-glass-box") === "1";
 
   const origin = (() => {
     try {
@@ -212,7 +250,20 @@ export async function POST(req: Request) {
       origin,
     });
 
-    return generateGeminiAssistantReply(result, { executionContext });
+    const reply = await generateGeminiAssistantReply(result, { executionContext });
+
+    if (!glassBoxTraceEnabled) {
+      return reply;
+    }
+
+    return {
+      ...reply,
+      trace: buildGlassBoxTrace({
+        triage,
+        executionContext,
+        topicHint: result.baziTopicHint ?? null,
+      }),
+    };
   })().catch((error) => {
     if (error instanceof OpenWebUiGeminiError) {
       throw error;

@@ -45,7 +45,7 @@ vi.mock("@/features/open-webui/gemini-adapter", async () => {
   };
 });
 
-const { buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
+const { buildGlassBoxTrace, buildOpenWebUiExecutionContext, POST } = await import("@/app/api/v1/chat/completions/route");
 
 const SAMPLE_CALCULATED_STATE = CalculatedStateSchema.parse({
   fourPillars: {
@@ -195,12 +195,22 @@ function triage(overrides: {
   };
 }
 
-function buildJsonRequest(body: unknown) {
+function buildJsonRequest(body: unknown, extraHeaders: Record<string, string> = {}) {
   return new Request("http://localhost/api/v1/chat/completions", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...extraHeaders },
     body: JSON.stringify(body),
   });
+}
+
+function reconstructAnswer(streamBody: string) {
+  return streamBody
+    .trim()
+    .split("\n\n")
+    .map((event) => event.replace("data: ", ""))
+    .filter((event) => event.includes('"content"'))
+    .map((event) => JSON.parse(event).choices[0].delta.content)
+    .join("");
 }
 
 async function consumeStream(response: Response) {
@@ -374,5 +384,119 @@ describe("POST /api/v1/chat/completions (Action Loop)", () => {
     expect(generateGeminiAssistantReplyMock).not.toHaveBeenCalled();
     expect(calculateBaziStateFromRawInputMock).not.toHaveBeenCalled();
     expect(body).toContain("[DONE]");
+  });
+});
+
+describe("Glass Box trace flag (Track B1)", () => {
+  beforeEach(() => {
+    runOpenWebUiTriageMock.mockReset();
+    calculateBaziStateFromRawInputMock.mockReset();
+    generateGeminiAssistantReplyMock.mockReset();
+    runOpenWebUiTriageMock.mockResolvedValue(
+      triage({ topicId: "wealth_and_investment", intent: "wealth", confidence: 0.97 }),
+    );
+    calculateBaziStateFromRawInputMock.mockResolvedValue(SAMPLE_CALCULATED_STATE);
+    generateGeminiAssistantReplyMock.mockResolvedValue({ model: "gemini-2.5-flash", text: "พยากรณ์การเงินปีนี้ดีค่ะ" });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test("default (no header): the stream carries no trace frame", async () => {
+    const response = await POST(buildJsonRequest({
+      messages: [{ role: "user", content: "เกิด 3 ม.ค. 2532 8:45 จันทบุรี ชาย ดูเรื่องเงิน" }],
+    }));
+
+    const body = await consumeStream(response);
+
+    expect(body).not.toContain("glass-box.trace");
+    expect(reconstructAnswer(body)).toBe("พยากรณ์การเงินปีนี้ดีค่ะ");
+    expect(body).toContain("[DONE]");
+  });
+
+  test("x-glass-box: 1 emits a trace frame (heard + truthUsed) before the answer, without changing it", async () => {
+    const response = await POST(buildJsonRequest(
+      { messages: [{ role: "user", content: "เกิด 3 ม.ค. 2532 8:45 จันทบุรี ชาย ดูเรื่องเงิน" }] },
+      { "x-glass-box": "1" },
+    ));
+
+    const body = await consumeStream(response);
+    const events = body.trim().split("\n\n").map((event) => event.replace("data: ", ""));
+    const traceIndex = events.findIndex((event) => event.includes('"object":"glass-box.trace"'));
+    const firstContentIndex = events.findIndex((event) => event.includes('"content"'));
+
+    // trace frame present and strictly before the first answer token
+    expect(traceIndex).toBeGreaterThan(-1);
+    expect(firstContentIndex).toBeGreaterThan(traceIndex);
+
+    const trace = JSON.parse(events[traceIndex]).trace;
+    expect(trace.heard.topicId).toBe("wealth_and_investment");
+    expect(trace.heard.requiresBaziConsult).toBe(true);
+    expect(trace.heard.birthResolved).toBe(true);
+    expect(typeof trace.truthUsed.injectedReadingText).toBe("string");
+    expect(trace.truthUsed.injectedReadingText.length).toBeGreaterThan(0);
+
+    // the answer itself is identical to the no-flag case
+    expect(reconstructAnswer(body)).toBe("พยากรณ์การเงินปีนี้ดีค่ะ");
+  });
+
+  test("same-day question flags honestPrecisionApplied in the trace", async () => {
+    runOpenWebUiTriageMock.mockResolvedValue(
+      triage({ topicId: "wealth_and_investment", intent: "wealth", timeframe: "today", confidence: 0.9 }),
+    );
+
+    const response = await POST(buildJsonRequest(
+      { messages: [{ role: "user", content: "วันนี้ดวงการเงินเป็นไง เกิด 3 ม.ค. 2532 8:45 จันทบุรี ชาย" }] },
+      { "x-glass-box": "1" },
+    ));
+
+    const body = await consumeStream(response);
+    const events = body.trim().split("\n\n").map((event) => event.replace("data: ", ""));
+    const trace = JSON.parse(events.find((event) => event.includes('"object":"glass-box.trace"'))!).trace;
+
+    expect(trace.heard.timeframe).toBe("today");
+    expect(trace.filters.honestPrecisionApplied).toBe(true);
+  });
+});
+
+describe("buildGlassBoxTrace", () => {
+  test("reports heard, the injected engine text, and the resolved seam", () => {
+    const trace = buildGlassBoxTrace({
+      triage: triage({ topicId: "wealth_and_investment", intent: "wealth", confidence: 0.91 }),
+      executionContext: {
+        intentClassification: { intent: "wealth", requiresBaziConsult: true, confidence: 0.91 },
+        topicId: "wealth_and_investment",
+        timeframe: "none",
+        baziConsult: { rawInput: SAMPLE_RAW_INPUT, truthPacket: '{"intent":"wealth"}' },
+      },
+    });
+
+    expect(trace.heard).toEqual({
+      topicId: "wealth_and_investment",
+      timeframe: "none",
+      requiresBaziConsult: true,
+      confidence: 0.91,
+      birthResolved: true,
+    });
+    expect(trace.truthUsed.injectedReadingText).toBe('{"intent":"wealth"}');
+    expect(trace.truthUsed.seam).toBeTruthy();
+    expect(trace.filters.honestPrecisionApplied).toBe(false);
+  });
+
+  test("seam is null when no engine reading was injected", () => {
+    const trace = buildGlassBoxTrace({
+      triage: triage({ topicId: "chit_chat", intent: "chit_chat", requiresBaziConsult: false, confidence: 0.2 }),
+      executionContext: {
+        intentClassification: { intent: "chit_chat", requiresBaziConsult: false, confidence: 0.2 },
+        topicId: "chit_chat",
+        timeframe: "none",
+        baziConsult: null,
+      },
+    });
+
+    expect(trace.truthUsed.seam).toBeNull();
+    expect(trace.truthUsed.injectedReadingText).toBeNull();
+    expect(trace.heard.requiresBaziConsult).toBe(false);
   });
 });
