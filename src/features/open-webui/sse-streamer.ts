@@ -27,9 +27,36 @@ type OpenAiSseStreamOptions = {
   chunkDelayMs?: number;
 };
 
+// Glass Box (v2, Track B1): an observability frame the chat emits BEFORE the answer tokens when the
+// caller opted in (header flag). It only EXPOSES what the pipeline already heard/used — it never
+// changes the answer. Default off in prod (no flag = no trace = PDPA-clean). Realtime, never stored.
+export const GLASS_BOX_TRACE_OBJECT = "glass-box.trace";
+
+export type GlassBoxTrace = {
+  /** what the triage understood from the user's turn */
+  heard: {
+    topicId: string | null;
+    timeframe: string | null;
+    requiresBaziConsult: boolean;
+    confidence: number;
+    birthResolved: boolean;
+  };
+  /** the engine truth that was actually injected into the compose call */
+  truthUsed: {
+    seam: string | null;
+    injectedReadingText: string | null;
+  };
+  /** disposition filters the pipeline applied before composing */
+  filters: {
+    honestPrecisionApplied: boolean;
+  };
+};
+
 type GuardedAssistantReply = {
   model: string;
   text: string;
+  /** present only when the Glass Box flag was on for this request */
+  trace?: GlassBoxTrace;
 };
 
 type GuardedOpenAiSseStreamOptions = {
@@ -54,6 +81,10 @@ function waitForChunkDelay(delayMs: number) {
 
 function encodeSseEvent(data: string) {
   return SSE_ENCODER.encode(`data: ${data}\n\n`);
+}
+
+function encodeTraceEvent(trace: GlassBoxTrace) {
+  return encodeSseEvent(JSON.stringify({ object: GLASS_BOX_TRACE_OBJECT, trace }));
 }
 
 function createTimeoutError(timeoutMs: number) {
@@ -252,6 +283,12 @@ export function createGuardedOpenAiSseStream({
 
       const effectiveModel = resolvedReply.model || model;
       const contentChunks = splitAssistantReplyIntoChunks(resolvedReply.text);
+
+      // Glass Box: surface the trace frame before any answer token when the caller opted in.
+      // Absent on the fallback path and whenever the flag was off, so prod streams are untouched.
+      if (resolvedReply.trace) {
+        controller.enqueue(encodeTraceEvent(resolvedReply.trace));
+      }
 
       await streamAssistantChunks({
         controller,

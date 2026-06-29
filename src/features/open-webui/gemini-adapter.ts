@@ -22,14 +22,27 @@ const DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION = [
 export const OPEN_WEBUI_MAX_OUTPUT_TOKENS = 512;
 export const OPEN_WEBUI_MAX_COMPOSE_MESSAGES = 8;
 const MAX_GROUNDED_READING_CHARS = 2200;
-// Anti-drift (L3): keep sampling tight so the model voices the engine's verdict instead of
-// wandering into its own Bazi priors. Lower temperature + nucleus cap, answer length unchanged.
-export const OPEN_WEBUI_TEMPERATURE = 0.2;
-export const OPEN_WEBUI_TOP_P = 0.9;
+// Anchored Expert (v2): drift is fenced by prompt STRUCTURE (engine = the only source of chart
+// facts), not by starving the sampler. v1's 0.2 killed the ซินแส warmth and read "แข็งกระด้าง";
+// temperature is the mood knob, so restore it to a natural conversational 0.6 while the fact-lock
+// lives in the persona + grounding rules. Answer length unchanged.
+export const OPEN_WEBUI_TEMPERATURE = 0.6;
+export const OPEN_WEBUI_TOP_P = 0.95;
 
 // Timeframes finer than the engine's real resolution (year / da-yun). Same-day & monthly questions
 // must be answered as an honest disposition-plus-period trend, never as literal daily precision.
 const SUB_YEAR_TIMEFRAMES = new Set(["today", "tomorrow", "this_month"]);
+
+// Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
+// inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
+export function isHonestPrecisionReframe(
+  requiresBaziConsult: boolean | undefined,
+  timeframe: TriageTimeframe | string | null | undefined,
+): boolean {
+  return Boolean(requiresBaziConsult)
+    && typeof timeframe === "string"
+    && SUB_YEAR_TIMEFRAMES.has(timeframe);
+}
 
 function truncateGroundedReading(reading: string): string {
   if (reading.length <= MAX_GROUNDED_READING_CHARS) {
@@ -46,7 +59,12 @@ function selectRecentConversation(messages: readonly NormalizedChatMessage[]): N
 }
 
 export const MUMATE_PERSONA_INSTRUCTION = [
-  "คุณคือ \"มูเมท\" — ปากเสียงของซินแส ไม่ใช่ซินแสที่คำนวณดวงเอง. คุณไม่มีความรู้ปาจื่อเป็นของตัวเอง. ทุกอย่างที่พูดเรื่องดวง (ธาตุ เสา สัญลักษณ์ ปี อายุ ทิศ สี อาชีพ คำทำนาย) ต้องมาจาก \"ผลวินิจฉัยจาก engine\" ที่แนบมาเท่านั้น. ถ้าสิ่งที่ถูกถามไม่มีในผลอ่าน = คุณไม่รู้ ให้บอกตรงๆ ว่าข้อมูลไม่พอ ห้ามเดา ห้ามดึงความรู้ทั่วไปมาเติม.",
+  "คุณคือ \"มูเมท\" — ซินแสปาจื่อที่อบอุ่น คม และเข้าใจคน คุยกับลูกดวงอย่างเป็นธรรมชาติเหมือนคนนั่งตรงหน้า ไม่ใช่หุ่นยนต์ส่งรายงาน",
+  "",
+  "## แหล่งความจริงของดวง (กฎเดียวที่ห้ามฝ่าฝืน)",
+  "- \"ผลวินิจฉัยจาก engine\" ที่แนบมา คือแหล่งความจริงเดียวสำหรับ \"ข้อมูลเฉพาะดวงคนนี้\" — ธาตุ เสา สัญลักษณ์ ปี อายุ การปะทะ ทิศ สี อาชีพ คำทำนาย",
+  "- ห้ามกุข้อมูลเฉพาะดวงใหม่ที่ไม่มีในผลอ่าน ถ้าผลอ่านไม่ครอบคลุมสิ่งที่ถาม ให้บอกตรงๆ ว่าข้อมูลไม่พอ ไม่ต้องเดา",
+  "- แต่ \"วิธีพูด\" เป็นของคุณเต็มที่ — ความเข้าใจคน ภาษาอบอุ่น อุปมา การอธิบายให้เข้าใจง่าย ใช้ได้เต็มที่ ตราบใดที่มันรับใช้การสื่อผลอ่าน ไม่ใช่แทนที่ด้วย fact ใหม่",
   "",
   "## รูปแบบคำตอบ: สนทนาแบบคน ไม่ใช่โครงสร้างรายงาน",
   "- ห้ามใช้หัวข้อรายงาน (เช่น \"สรุป:\", \"วิเคราะห์:\", \"จากข้อมูลที่ให้มา\")",
@@ -63,7 +81,7 @@ export const MUMATE_PERSONA_INSTRUCTION = [
   "- หลีกเลี่ยงการใช้อุปมาซ้ำซากหรือไม่จำเป็น",
   "",
   "## น้ำเสียง",
-  "ใช้คำลงท้ายผู้หญิง (ค่ะ/นะคะ) เป็นค่าเริ่มต้น",
+  "ใช้คำลงท้ายผู้หญิง (ค่ะ/นะคะ) เป็นค่าเริ่มต้น อบอุ่นแต่มั่นใจ ฟันธงได้",
 ].join("\n");
 
 type GeminiGenerateContentRequest = {
@@ -210,9 +228,10 @@ export function buildOpenWebUiGeminiPromptPayload(
         : "non_bazi_bypass"
       : null;
   // Same-day / monthly questions: the engine has no 流日/流月; answer as an honest trend.
-  const honestPrecisionReframe = Boolean(intentClassification?.requiresBaziConsult)
-    && typeof timeframe === "string"
-    && SUB_YEAR_TIMEFRAMES.has(timeframe);
+  const honestPrecisionReframe = isHonestPrecisionReframe(
+    intentClassification?.requiresBaziConsult,
+    timeframe,
+  );
 
   return {
     systemInstruction: [
@@ -237,8 +256,8 @@ export function buildOpenWebUiGeminiPromptPayload(
           "ผลวินิจฉัยจาก engine (นี่คือแหล่งความจริงเดียวเรื่องดวงของคุณ — เรียบเรียงเป็นภาษาคนแบบฟันธงได้ แต่ห้ามเพิ่ม/เปลี่ยน/ตัด fact):",
           truncateGroundedReading(baziConsult.truthPacket),
           [
-            "วิธีตอบแบบซินแส (ห้ามฝ่าฝืน):",
-            "- ทุกข้อเท็จจริงเรื่องดวง (ธาตุ ปี อายุ สัญลักษณ์ อักษรจีน ทิศ สี อาชีพ คำทำนาย) ต้องสืบกลับไปยังผลวินิจฉัยด้านบนได้ทุกคำ — ถ้าอยากพูดอะไรที่ไม่มีในนั้น ห้ามพูด.",
+            "วิธีตอบแบบซินแส:",
+            "- ข้อเท็จจริงเฉพาะดวง (ธาตุ/ปี/อายุ/สัญลักษณ์/อักษรจีน/ทิศ/สี/อาชีพ/คำทำนาย) ต้องมาจากผลวินิจฉัยด้านบน ห้ามแต่งใหม่. ส่วนวิธีอธิบาย ความอบอุ่น อุปมา พูดได้เต็มที่.",
             "- ฟันธงตอบคำถามตรงๆ เป็นข้อสรุปจากดวง ไม่ใช่ \"สรุปผลอ่าน\" และไม่เล่าผลอ่านทั้งบท",
             "- สั้น กระชับ ไม่กี่ประโยค ตรงประเด็นที่ถาม — ห้ามใส่หัวข้อรายงาน ห้ามดั้มผลอ่านลงมาหมด",
             "- อิงหลักสำนักตรงไปตรงมา ไม่อ้อมค้อม ไม่ปลอบใจลอยๆ ไม่ใช่คำตอบเชิงจิตวิทยา",
