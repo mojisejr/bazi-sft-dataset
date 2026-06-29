@@ -85,6 +85,18 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.systemInstruction.startsWith(MUMATE_PERSONA_INSTRUCTION)).toBe(true);
   });
 
+  test("L1 anti-drift: persona casts the model as the engine's mouthpiece, not its own Bazi analyst", () => {
+    // The model must relay the engine's verdict, never run its own Bazi analysis (which would
+    // pull from its training priors). Closed-book contract present; self-analysis steps gone.
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("ปากเสียงของซินแส");
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("ไม่มีความรู้ปาจื่อเป็นของตัวเอง");
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("ผลวินิจฉัยจาก engine");
+    expect(MUMATE_PERSONA_INSTRUCTION).not.toContain("กระบวนการวิเคราะห์");
+    expect(MUMATE_PERSONA_INSTRUCTION).not.toContain("วินิจฉัยด้วย 12 เซิงแซ");
+    // verdict voice preserved (no regress to "summarize the reading")
+    expect(MUMATE_PERSONA_INSTRUCTION).toContain("ฟันธงตรงประเด็น");
+  });
+
   test("injects the fixed system clock line so time grounding is deterministic", () => {
     const payload = buildOpenWebUiGeminiPromptPayload({ ...readyChatInput, now: FIXED_NOW });
 
@@ -101,9 +113,11 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
     expect(payload.userPrompt).toContain("Routing: topic=career; timeframe=none; requiresBaziConsult=true; confidence=0.91.");
     expect(payload.userPrompt).toContain("Consult mode: bazi_consult.");
     expect(payload.userPrompt).toContain("ข้อมูลวันเกิดที่ยืนยันแล้ว:");
-    expect(payload.userPrompt).toContain("ผลอ่านจากซินแส");
+    expect(payload.userPrompt).toContain("ผลวินิจฉัยจาก engine");
     expect(payload.userPrompt).toContain("วิธีตอบแบบซินแส");
     expect(payload.userPrompt).toContain("ฟันธงตอบคำถามตรงๆ");
+    // anti-drift L2: every Bazi fact must trace back to the engine verdict block
+    expect(payload.userPrompt).toContain("ต้องสืบกลับไปยังผลวินิจฉัยด้านบนได้ทุกคำ");
     expect(payload.userPrompt).toContain('"careerTenGodHighlights"');
   });
 
@@ -270,7 +284,8 @@ describe("generateGeminiAssistantReply", () => {
       contents: expect.stringContaining("Routing: topic=career; timeframe=none; requiresBaziConsult=true; confidence=0.91."),
       config: expect.objectContaining({
         systemInstruction: expect.stringContaining("You are a practical Bazi guide."),
-        temperature: 0.4,
+        temperature: 0.2,
+        topP: 0.9,
         maxOutputTokens: 512,
       }),
     });

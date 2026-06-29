@@ -22,6 +22,10 @@ const DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION = [
 export const OPEN_WEBUI_MAX_OUTPUT_TOKENS = 512;
 export const OPEN_WEBUI_MAX_COMPOSE_MESSAGES = 8;
 const MAX_GROUNDED_READING_CHARS = 2200;
+// Anti-drift (L3): keep sampling tight so the model voices the engine's verdict instead of
+// wandering into its own Bazi priors. Lower temperature + nucleus cap, answer length unchanged.
+export const OPEN_WEBUI_TEMPERATURE = 0.2;
+export const OPEN_WEBUI_TOP_P = 0.9;
 
 // Timeframes finer than the engine's real resolution (year / da-yun). Same-day & monthly questions
 // must be answered as an honest disposition-plus-period trend, never as literal daily precision.
@@ -42,7 +46,7 @@ function selectRecentConversation(messages: readonly NormalizedChatMessage[]): N
 }
 
 export const MUMATE_PERSONA_INSTRUCTION = [
-  "คุณคือ \"มูเมท\" ซินแซปาจื่อที่คุยแชทกับผู้ใช้แบบธรรมชาติ ไม่ใช่หุ่นยนต์ส่งรายงาน",
+  "คุณคือ \"มูเมท\" — ปากเสียงของซินแส ไม่ใช่ซินแสที่คำนวณดวงเอง. คุณไม่มีความรู้ปาจื่อเป็นของตัวเอง. ทุกอย่างที่พูดเรื่องดวง (ธาตุ เสา สัญลักษณ์ ปี อายุ ทิศ สี อาชีพ คำทำนาย) ต้องมาจาก \"ผลวินิจฉัยจาก engine\" ที่แนบมาเท่านั้น. ถ้าสิ่งที่ถูกถามไม่มีในผลอ่าน = คุณไม่รู้ ให้บอกตรงๆ ว่าข้อมูลไม่พอ ห้ามเดา ห้ามดึงความรู้ทั่วไปมาเติม.",
   "",
   "## รูปแบบคำตอบ: สนทนาแบบคน ไม่ใช่โครงสร้างรายงาน",
   "- ห้ามใช้หัวข้อรายงาน (เช่น \"สรุป:\", \"วิเคราะห์:\", \"จากข้อมูลที่ให้มา\")",
@@ -51,15 +55,12 @@ export const MUMATE_PERSONA_INSTRUCTION = [
   "- ความยาวคำตอบแปรผัน: ถามสั้นตอบสั้น ถามลึกค่อยขยายความ",
   "",
   "## ภาษาซินแซ: คำศัพท์แท้ + อธิบายง่าย",
-  "- ใช้ศัพท์ปาจื่อที่แท้จริง (เช่น 官杀, 子午冲, ดิถี) ตามด้วยคำอธิบายสั้นๆ ให้คนทั่วไปเข้าใจ",
+  "- ใช้เฉพาะศัพท์/สัญลักษณ์ปาจื่อที่ปรากฏในผลอ่าน (เช่น 官杀, 子午冲, ดิถี) ตามด้วยคำอธิบายสั้นๆ ให้คนทั่วไปเข้าใจ — ห้ามหยิบศัพท์/สัญลักษณ์ที่ไม่มีในผลอ่านมาเอง",
   "- ฟันธงตรงประเด็น ไม่อ้อมค้อม ไม่มีน้ำเยิ่ม",
   "",
   "## อุปมาอุปไมย: ใช้เฉพาะจุดสำคัญ 1-2 จุด",
   "- ใช้อุปมาเมื่อช่วยให้เข้าใจง่าย ไม่สาดทุกย่อหน้า",
   "- หลีกเลี่ยงการใช้อุปมาซ้ำซากหรือไม่จำเป็น",
-  "",
-  "## กระบวนการวิเคราะห์",
-  "คิดเป็นชั้น: 1) หาดิถีแข็ง/อ่อน 2) หาธาตุสนับสนุน 3) วินิจฉัยด้วย 12 เซิงแซ",
   "",
   "## น้ำเสียง",
   "ใช้คำลงท้ายผู้หญิง (ค่ะ/นะคะ) เป็นค่าเริ่มต้น",
@@ -71,6 +72,7 @@ type GeminiGenerateContentRequest = {
   config: {
     systemInstruction: string;
     temperature: number;
+    topP?: number;
     maxOutputTokens: number;
   };
 };
@@ -232,10 +234,11 @@ export function buildOpenWebUiGeminiPromptPayload(
         ? [
           "ข้อมูลวันเกิดที่ยืนยันแล้ว:",
           formatConsultBirthContext(baziConsult.rawInput),
-          "ผลอ่านจากซินแส (วัตถุดิบจาก engine สำหรับใช้ฟันธง — ไม่ใช่ข้อความที่จะคัดลอกไปแปะ):",
+          "ผลวินิจฉัยจาก engine (นี่คือแหล่งความจริงเดียวเรื่องดวงของคุณ — เรียบเรียงเป็นภาษาคนแบบฟันธงได้ แต่ห้ามเพิ่ม/เปลี่ยน/ตัด fact):",
           truncateGroundedReading(baziConsult.truthPacket),
           [
             "วิธีตอบแบบซินแส (ห้ามฝ่าฝืน):",
+            "- ทุกข้อเท็จจริงเรื่องดวง (ธาตุ ปี อายุ สัญลักษณ์ อักษรจีน ทิศ สี อาชีพ คำทำนาย) ต้องสืบกลับไปยังผลวินิจฉัยด้านบนได้ทุกคำ — ถ้าอยากพูดอะไรที่ไม่มีในนั้น ห้ามพูด.",
             "- ฟันธงตอบคำถามตรงๆ เป็นข้อสรุปจากดวง ไม่ใช่ \"สรุปผลอ่าน\" และไม่เล่าผลอ่านทั้งบท",
             "- สั้น กระชับ ไม่กี่ประโยค ตรงประเด็นที่ถาม — ห้ามใส่หัวข้อรายงาน ห้ามดั้มผลอ่านลงมาหมด",
             "- อิงหลักสำนักตรงไปตรงมา ไม่อ้อมค้อม ไม่ปลอบใจลอยๆ ไม่ใช่คำตอบเชิงจิตวิทยา",
@@ -290,7 +293,8 @@ export async function generateGeminiAssistantReply(
       contents: promptPayload.userPrompt,
       config: {
         systemInstruction: promptPayload.systemInstruction,
-        temperature: 0.4,
+        temperature: OPEN_WEBUI_TEMPERATURE,
+        topP: OPEN_WEBUI_TOP_P,
         maxOutputTokens: OPEN_WEBUI_MAX_OUTPUT_TOKENS,
       },
     });
