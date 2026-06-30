@@ -812,6 +812,8 @@ function collectAll(): SeedRow[] {
   push("subordinate_60", () => ganzhiTemplate("subordinate_60", "ลักษณะบริวาร"));
   // บท 4 · ลูกค้า 60 กะจื่อ (ธาตุโชคลาภ 財) — template 60 คีย์เปล่า รอซินแสเติม
   push("customer_60", () => ganzhiTemplate("customer_60", "ลักษณะลูกค้า"));
+  // บท 4 · หุ้นส่วน 60 กะจื่อ (ธาตุเดียวกับดิถี 比) — template 60 คีย์เปล่า รอซินแสเติม
+  push("partner_60", () => ganzhiTemplate("partner_60", "ลักษณะหุ้นส่วน"));
   // บท 4 · ประโยคนำ (template มี {ดิถี}/{ธาตุ} — ซินแสเปลี่ยนคำได้)
   push("benefactor_lead", () => {
     const LEAD: Array<[string, string, string]> = [

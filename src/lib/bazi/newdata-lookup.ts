@@ -917,7 +917,7 @@ export function matchElementRoleGanzhi(
   map: NewdataMap,
   group: string,
   facts: ChartFacts,
-  role: "output" | "wealth" | "resource",
+  role: "output" | "wealth" | "resource" | "peer",
 ): NewdataBlock[] {
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   if (!dayEl) return [];
@@ -929,10 +929,18 @@ export function matchElementRoleGanzhi(
       ? GENERATES[dayEl as keyof typeof GENERATES]
       : role === "wealth"
         ? CONTROLS[dayEl as keyof typeof CONTROLS]
-        : resourceEl;
+        : role === "peer"
+          ? dayEl // หุ้นส่วน (比) = ธาตุเดียวกับดิถี
+          : resourceEl;
   if (!targetEl) return [];
   const roleTh =
-    role === "output" ? "บริวาร" : role === "wealth" ? "ลูกค้า" : "ผู้อุปถัมป์";
+    role === "output"
+      ? "บริวาร"
+      : role === "wealth"
+        ? "ลูกค้า"
+        : role === "peer"
+          ? "หุ้นส่วน"
+          : "ผู้อุปถัมป์";
   const res = findElementByMechanism(facts, targetEl);
   const seen = new Set<string>();
   const readGz = (hit: MechanismHit, mech: 1 | 2 | 3 | 4): NewdataBlock | null => {

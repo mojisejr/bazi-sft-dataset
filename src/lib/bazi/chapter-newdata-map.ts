@@ -68,7 +68,7 @@ type Resolver =
   | { kind: "loveChance"; group: string }
   | { kind: "spouseStar"; group: string }
   | { kind: "elementRoleState"; group: string; role: "output" | "wealth" | "resource" }
-  | { kind: "elementRoleGanzhi"; group: string; role: "output" | "wealth" | "resource" }
+  | { kind: "elementRoleGanzhi"; group: string; role: "output" | "wealth" | "resource" | "peer" }
   | { kind: "healthElement"; group: string }
   | { kind: "elementCategory"; group: string; category: string };
 
@@ -131,6 +131,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "elementRoleState", group: "benefactor_wealth", role: "wealth" },
       { kind: "elementRoleGanzhi", group: "customer_60", role: "wealth" },
     ],
+    // หุ้นส่วน (比 = ธาตุเดียวกับดิถี): หุ้นส่วน 60 กะจื่อ (partner_60)
+    [{ kind: "elementRoleGanzhi", group: "partner_60", role: "peer" }],
   ],
   // 4 bullets: [พรสวรรค์: ถ่ายเทราศีบน] [พรแสวง: ถ่ายเทราศีล่าง] [พรในราศีแฝง] [ข้อเสนอแนะ]
   talent: [

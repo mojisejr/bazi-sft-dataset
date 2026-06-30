@@ -243,6 +243,13 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     sourceFile: "(กรอกในแอดมิน)",
   },
   {
+    key: "partner_60",
+    label: "บท 4 · หุ้นส่วน 60 กะจื่อ (ธาตุเดียวกับดิถี 比)",
+    description: "คำอ่าน 'หุ้นส่วน' ของเสาที่ธาตุเดียวกับดิถี (比) นั่ง ตาม 60 กะจื่อ",
+    keyKind: "ganzhi",
+    sourceFile: "(กรอกในแอดมิน)",
+  },
+  {
     key: "benefactor_resource",
     label: "บท 4 · ผู้อุปถัมป์ (ธาตุส่งเสริม 印) ตาม 12 เชี่ยงแซ",
     description: "คำอ่าน 'ผู้อุปถัมป์' ของเสาที่ธาตุส่งเสริม (印) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง (ซินแสแก้คำเฉพาะบทนี้ได้)",
