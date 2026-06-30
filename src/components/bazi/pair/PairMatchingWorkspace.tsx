@@ -6,6 +6,7 @@ import { ActionButton } from "@/components/bazi/primitives/Action";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
+import { MascotBadge } from "@/components/bazi/reading/MascotBadge";
 import { PairDetailModal } from "@/components/bazi/pair/PairDetailModal";
 import { PairPrintReport } from "@/components/bazi/pair/PairPrintReport";
 import { PairPillarsCompare } from "@/components/bazi/pair/PairPillarsCompare";
@@ -214,6 +215,7 @@ export function PairMatchingWorkspace() {
                     {p.dayPillar.stem}{p.dayPillar.branch} · ดิถี{p.elementTh}{p.stageTh ? ` · ${p.stageTh}` : ""}
                   </span>
                 </div>
+                <MascotBadge dayStem={p.dayPillar.stem} dayBranch={p.dayPillar.branch} />
                 <ul className="pair-nisai-list">
                   {p.nisai.map((line, i) => (
                     <li key={i}>{line}</li>
