@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
+import { MascotBadge } from "@/components/bazi/reading/MascotBadge";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
   DEFAULT_REFERRAL_CODE,
@@ -749,6 +750,12 @@ export function NewdataReadingWorkspace() {
               เกิด {data.rawInput?.birthDate} {data.rawInput?.birthTime} · {gender === "male" ? "ชาย" : "หญิง"}
               {data.calculatedState?.dayMaster ? ` · ดิถี ${data.calculatedState.dayMaster}` : ""}
             </p>
+            {data.calculatedState && (
+              <MascotBadge
+                dayStem={data.calculatedState.fourPillars?.day?.stem}
+                dayBranch={data.calculatedState.fourPillars?.day?.branch}
+              />
+            )}
             {data.calculatedState && (
               <ReadingChartFoundation calculatedState={data.calculatedState} />
             )}

@@ -392,3 +392,29 @@
 
 /* PDF ออกผ่าน ReadingPrintDocument + paged.js (.ylc-print-portal + body.ylc-printing)
    — กฎพิมพ์อยู่ใน ylc-pdf.css แล้ว ที่นี่จึงไม่ต้องมี @media print ของตัวเอง */
+
+/* ── mascot ตามดิถี (เสาวัน) — แสดงบนหน้าจอเท่านั้น (ทั้งหน้า NewData และหน้าเดิม) ── */
+.mascot-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.6rem auto 1rem;
+}
+.mascot-badge__img {
+  width: clamp(140px, 30vw, 200px);
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.12));
+}
+.mascot-badge__caption {
+  font-weight: 600;
+  color: var(--accent, #2f8f9d);
+  font-size: 0.95rem;
+}
+/* กันติดไฟล์ PDF (window.print) — PDF มาจาก ReadingPrintDocument แยกอยู่แล้ว */
+@media print {
+  .mascot-badge {
+    display: none !important;
+  }
+}

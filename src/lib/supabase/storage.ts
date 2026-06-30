@@ -119,3 +119,52 @@ export async function uploadFortuneStickImage(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+/* ───────────── mascot 60 ดิถี — แยก bucket ───────────── */
+
+export const DEFAULT_MASCOT_BUCKET = "mascot-60";
+
+export function getMascotBucket(): string {
+  return process.env.SUPABASE_MASCOT_BUCKET?.trim() || DEFAULT_MASCOT_BUCKET;
+}
+
+/** สร้าง bucket (public) ถ้ายังไม่มี — idempotent */
+export async function ensureMascotBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getMascotBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/**
+ * อัปโหลดรูป mascot ขึ้น storage (upsert ทับของเดิม) แล้วคืน public URL
+ * objectKey = สลัก path-safe (ascii) เช่น "mascot_metal_above_1_below_7"
+ * path = mascots/<objectKey>.<ext>
+ */
+export async function uploadMascotImage(
+  objectKey: string,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getMascotBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `mascots/${objectKey}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูป mascot "${objectKey}" ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}

@@ -698,6 +698,28 @@ export const baziDivineCardImage = pgTable("bazi_divine_card_image", {
 export type InsertBaziDivineCardImage = typeof baziDivineCardImage.$inferInsert;
 export type SelectBaziDivineCardImage = typeof baziDivineCardImage.$inferSelect;
 
+/**
+ * รูป mascot 60 ดิถี — เลือกตามเสาวัน (60 กะจื่อ) แสดงหน้าอ่านดวง
+ * ganzhi = เสาวัน เช่น "庚午" (PK) ตรงกับ MASCOT_60 ใน src/lib/bazi/mascot/mascot-60.ts
+ * รูปจริงอยู่บน Supabase Storage — ตารางนี้เก็บ "ลิงก์" + ชื่อ
+ */
+export const baziMascotImage = pgTable("bazi_mascot_image", {
+  ganzhi: text("ganzhi").primaryKey(),
+  nameTh: text("name_th").notNull(),
+  nameEn: text("name_en").notNull(),
+  /** URL รูปบน Supabase Storage (แหล่งหลัก) */
+  imageUrl: text("image_url"),
+  mime: text("mime").notNull().default("image/png"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertBaziMascotImage = typeof baziMascotImage.$inferInsert;
+export type SelectBaziMascotImage = typeof baziMascotImage.$inferSelect;
+
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;
 export type InsertBaziCanonicalSource = typeof baziCanonicalSources.$inferInsert;

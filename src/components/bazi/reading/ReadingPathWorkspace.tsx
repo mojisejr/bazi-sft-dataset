@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { BirthForm } from "@/components/bazi/BirthForm";
 import { ActionButton, ActionLink } from "@/components/bazi/primitives/Action";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
+import { MascotBadge } from "@/components/bazi/reading/MascotBadge";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
@@ -1042,6 +1043,13 @@ export function ReadingPathWorkspace({
         )}
         {calcError && <p className="topic-card__error" role="alert">{calcError}</p>}
       </section>
+
+      {isReady && calculatedState && (
+        <MascotBadge
+          dayStem={calculatedState.fourPillars?.day?.stem}
+          dayBranch={calculatedState.fourPillars?.day?.branch}
+        />
+      )}
 
       {isReady && calculatedState && (
         <ReadingChartFoundation calculatedState={calculatedState} />
