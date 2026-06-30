@@ -840,6 +840,9 @@ function collectAll(): SeedRow[] {
   // บท 1 · นิสัยราศีบน 10 ก้าน (เพิ่มเติมกล่อง 60 กะจื่อ)
   push("stem_nisai", () => parseStemNisai("บท1 นิสัยราศีบน 10 ก้าน.txt"));
   // บท 1 · นิสัยด้านมืด 5 ธาตุ (group ใหม่ คีย์รายธาตุ)
+  push("develop_by_element", () =>
+    parseElementKeyedFile("บท1 พัฒนานิสัย 5 ธาตุ.txt", "develop_by_element", "ข้อเสนอแนะ พัฒนานิสัย"),
+  );
   push("dark_side_by_element", () =>
     parseElementKeyedFile("บท1 นิสัยด้านมืด 5 ธาตุ.txt", "dark_side_by_element", "นิสัยด้านมืด"),
   );

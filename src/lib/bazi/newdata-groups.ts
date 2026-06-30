@@ -180,6 +180,14 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     sourceFile: "บท1 นิสัยด้านมืด 5 ธาตุ.txt",
   },
   {
+    key: "develop_by_element",
+    label: "บท 1 · ข้อเสนอแนะ พัฒนานิสัย 5 ธาตุ (ตามธาตุดิถี)",
+    description:
+      "ข้อเสนอแนะการพัฒนานิสัย/ปรับดวง รายธาตุดิถี (ราศีบนหลักวัน) — บท 1 กล่อง 'ข้อเสนอแนะ'",
+    keyKind: "element",
+    sourceFile: "บท1 พัฒนานิสัย 5 ธาตุ.txt",
+  },
+  {
     key: "dithi_transfer",
     label: "บทที่ 1 ดิถีถ่ายเท พูดและแสดงออก",
     description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 1 (พูด)",

@@ -93,7 +93,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     ],
     [{ kind: "dayElement", group: "dark_side_by_element" }],
     [{ kind: "selfPunish" }],
-    [],
+    [{ kind: "dayElement", group: "develop_by_element" }],
   ],
   // 5 bullets: [ควรทำ1] [ควรทำ2] [ควรทำ3 (บางคนมี)] [ไม่ควรทำ1] [ไม่ควรทำ2 (บางคนมี)]
   career_potential: [
