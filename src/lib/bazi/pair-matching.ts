@@ -329,8 +329,8 @@ export const RELATIONSHIP_SPECS: Record<RelationshipType, RelationshipSpec> = {
     domain: "work",
     facets: [
       { key: "entourage", label: "👥 ทำงานกับบริวารเจ้านาย", pairingLabel: "เดือนเรา × ยามเจ้านาย", ourPos: "month", partnerPos: "hour" },
-      { key: "boss", label: "🧑‍💼 ทำงานร่วมกับเจ้านาย", pairingLabel: "วันเรา × เดือนเจ้านาย", ourPos: "day", partnerPos: "month", isMain: true },
-      { key: "business", label: "🏢 ส่งเสริมธุรกิจเจ้านาย", pairingLabel: "เดือนเรา × เดือนเจ้านาย", ourPos: "month", partnerPos: "month" },
+      { key: "boss", label: "🧑‍💼 ทำงานร่วมกับเจ้านาย", pairingLabel: "วันเรา × เดือนเจ้านาย", ourPos: "day", partnerPos: "month" },
+      { key: "business", label: "🏢 ส่งเสริมธุรกิจเจ้านาย", pairingLabel: "เดือนเรา × เดือนเจ้านาย", ourPos: "month", partnerPos: "month", isMain: true },
       { key: "customer", label: "🛍️ ส่งเสริมลูกค้าเจ้านาย", pairingLabel: "เดือนเรา × ปีเจ้านาย", ourPos: "month", partnerPos: "year" },
     ],
   },
@@ -341,9 +341,22 @@ export const RELATIONSHIP_SPECS: Record<RelationshipType, RelationshipSpec> = {
     domain: "work",
     facets: [
       { key: "entourage", label: "👥 เข้ากับบริวารเรา", pairingLabel: "ยามเรา × เดือนลูกน้อง", ourPos: "hour", partnerPos: "month" },
-      { key: "org", label: "🏛️ เข้ากับองค์กรเรา", pairingLabel: "เดือนเรา × วันลูกน้อง", ourPos: "month", partnerPos: "day", isMain: true },
-      { key: "business", label: "🏢 ส่งเสริมธุรกิจเรา", pairingLabel: "เดือนเรา × เดือนลูกน้อง", ourPos: "month", partnerPos: "month" },
+      { key: "org", label: "🏛️ เข้ากับองค์กรเรา", pairingLabel: "เดือนเรา × วันลูกน้อง", ourPos: "month", partnerPos: "day" },
+      { key: "business", label: "🏢 ส่งเสริมธุรกิจเรา", pairingLabel: "เดือนเรา × เดือนลูกน้อง", ourPos: "month", partnerPos: "month", isMain: true },
       { key: "customer", label: "🛍️ ส่งเสริมลูกค้าเรา", pairingLabel: "ปีเรา × เดือนลูกน้อง", ourPos: "year", partnerPos: "month" },
+    ],
+  },
+  // ชีต DAYMATE — จับ 4 เสาของเจ้าของ × "เสาวัน" ของวันที่เลือกจากปฏิทิน (partnerPos=day ทุกมิติ).
+  day: {
+    label: "ดวงกับวัน",
+    ourLabel: "เรา",
+    partnerLabel: "วันนี้",
+    domain: "love",
+    facets: [
+      { key: "home", label: "🏠 อยู่บ้าน / คุมลูกน้อง / อยู่ในห้อง", pairingLabel: "ยามเรา × วัน", ourPos: "hour", partnerPos: "day" },
+      { key: "companions", label: "🤝 อยู่กับเพื่อน / พี่น้อง / คู่ครอง", pairingLabel: "วันเรา × วัน", ourPos: "day", partnerPos: "day", isMain: true },
+      { key: "workplace", label: "🏢 ไปที่ทำงาน / สถานศึกษา / พ่อแม่", pairingLabel: "เดือนเรา × วัน", ourPos: "month", partnerPos: "day" },
+      { key: "outside", label: "🌏 ไปลูกค้า / งานสังคม / สื่อ / ต่างถิ่น", pairingLabel: "ปีเรา × วัน", ourPos: "year", partnerPos: "day" },
     ],
   },
 };
@@ -359,6 +372,8 @@ function roleListFor(reference: ReferenceData, relationship: RelationshipType): 
       return reference.roleBoss;
     case "subordinate":
       return reference.roleSubordinate;
+    case "day":
+      return reference.loveShengxia; // DAYMATE reuse ชุดคำทำนายเชี่ยงแซความรัก
   }
 }
 

@@ -22,6 +22,7 @@ export const RELATIONSHIP_META: Record<
   partner: { label: "หุ้นส่วน", ourLabel: "เรา", partnerLabel: "หุ้นส่วน", domain: "work" },
   boss: { label: "เจ้านาย", ourLabel: "เรา (ลูกน้อง)", partnerLabel: "เจ้านาย", domain: "work" },
   subordinate: { label: "ลูกน้อง", ourLabel: "เรา", partnerLabel: "ลูกน้อง", domain: "work" },
+  day: { label: "ดวงกับวัน", ourLabel: "เรา", partnerLabel: "วันนี้", domain: "love" },
 };
 
 export function verdictLabel(percent: number | null): string {

@@ -1,0 +1,354 @@
+/* ปฏิทินส่วนตัว Man Vs Day (ดวงกับวัน) */
+.mvd-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mvd-calendar__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mvd-calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.mvd-calendar__grid--head {
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
+.mvd-calendar__wd {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748b);
+  padding: 2px 0;
+}
+
+.mvd-calendar__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  min-height: 58px;
+  padding: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  color: #1f2937;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+}
+
+.mvd-calendar__cell:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.mvd-calendar__cell[data-selected="true"] {
+  outline: 2px solid #2563eb;
+  outline-offset: 1px;
+}
+
+.mvd-calendar__cell--empty {
+  background: transparent !important;
+  border-color: transparent;
+  cursor: default;
+  min-height: 0;
+}
+
+.mvd-calendar__num {
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.mvd-calendar__gz {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+.mvd-calendar__pct {
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.mvd-calendar__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748b);
+}
+
+.mvd-calendar__legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+
+/* ── ตารางสี่เสา (reuse ChartPillarTable): 2 บล็อก MAN | DAY ในกรอบ ── */
+.mvd-charts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin: 0.25rem 0 1.25rem;
+}
+.mvd-chart {
+  flex: 1 1 300px;
+  padding: 0.85rem 1rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+.mvd-chart__title {
+  text-align: center;
+  font-weight: 700;
+  color: #334155;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid #f1f5f9;
+}
+
+/* ── หัวการ์ด (hero) ดวงกับวัน — รูปใหญ่กลางบน แล้วกล่องข้อมูลด้านล่าง ── */
+.mvd-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 1.25rem;
+}
+
+/* รูป mascot ใหญ่ อยู่กึ่งกลางด้านบน */
+.mvd-hero__mascot {
+  display: flex;
+  justify-content: center;
+}
+.mvd-hero__mascot .mascot-badge {
+  margin: 0;
+  text-align: center;
+}
+.mvd-hero__mascot .mascot-badge__img {
+  width: 220px;
+  height: 220px;
+  object-fit: cover;
+  border-radius: 16px;
+}
+.mvd-hero__mascot .mascot-badge__caption {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* กล่องข้อมูลบรรทัดถัดไป — เต็มความกว้าง อ่านชัด แถบสีตาม verdict */
+.mvd-hero__box {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 0.9rem 1.15rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  border-left: 6px solid #94a3b8;
+  background: #ffffff;
+  color: #1f2937;
+}
+.mvd-hero--good .mvd-hero__box { border-left-color: #22c55e; background: #f6fef9; }
+.mvd-hero--neutral .mvd-hero__box { border-left-color: #f59e0b; background: #fffdf5; }
+.mvd-hero--caution .mvd-hero__box { border-left-color: #ef4444; background: #fff7f7; }
+
+.mvd-hero__grade {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #0f172a;
+  min-width: 2.2ch;
+  text-align: center;
+}
+.mvd-hero__body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.mvd-hero__verdict {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+.mvd-hero__pct {
+  font-size: 0.95rem;
+  color: #334155;
+}
+.mvd-hero__pct b { font-size: 1.05rem; color: #0f172a; }
+.mvd-hero__elem {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+/* ── กล่องสรุปคำทำนายของวัน (แยกบรรทัด) ── */
+.mvd-summary {
+  padding: 1rem 1.15rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-left: 6px solid #94a3b8;
+  background: #f8fafc;
+  margin: 0.5rem 0 1rem;
+}
+.mvd-summary--good { background: #f0fdf4; border-left-color: #22c55e; }
+.mvd-summary--neutral { background: #fffbeb; border-left-color: #f59e0b; }
+.mvd-summary--caution { background: #fef2f2; border-left-color: #ef4444; }
+
+.mvd-summary__head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px dashed #cbd5e1;
+}
+.mvd-summary__icon { font-size: 1.4rem; line-height: 1; }
+.mvd-summary__headline {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.mvd-summary__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.mvd-summary__item {
+  display: grid;
+  grid-template-columns: 1.4rem minmax(9rem, auto) 1fr;
+  align-items: baseline;
+  gap: 0.5rem;
+  line-height: 1.5;
+}
+.mvd-summary__item-icon { text-align: center; }
+.mvd-summary__item-label {
+  font-weight: 600;
+  color: #475569;
+}
+.mvd-summary__item-text { color: #0f172a; }
+.mvd-summary__item--best .mvd-summary__item-text { color: #15803d; font-weight: 600; }
+.mvd-summary__item--worst .mvd-summary__item-text { color: #b91c1c; font-weight: 600; }
+
+@media (max-width: 560px) {
+  .mvd-summary__item {
+    grid-template-columns: 1.4rem 1fr;
+  }
+  .mvd-summary__item-text { grid-column: 2; }
+}
+
+/* ── ป้าย ⭐ วันดี / ⚠️ ควรระวัง บนกราฟแท่ง (emphasis=extremes) ── */
+.pair-compat-bar__badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+.pair-compat-bar__badge--best {
+  background: #dcfce7;
+  color: #15803d;
+}
+.pair-compat-bar__badge--warn {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+/* แท่งแย่สุด — ไล่สีแดงให้เด่นเป็นสัญญาณเตือน */
+.pair-compat-bar[data-worst] .pair-compat-bar__fill {
+  background: linear-gradient(180deg, #fca5a5, #ef4444);
+}
+.pair-compat-bar[data-worst] .pair-compat-bar__label {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* ── รายงานปฏิทินรายปี (print → PDF) ── */
+.mvd-print__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 9pt;
+  margin: 8px 0 12px;
+}
+.mvd-print__legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-right: 3px;
+  vertical-align: middle;
+}
+.mvd-print__year {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.mvd-print__month {
+  break-inside: avoid;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px;
+}
+.mvd-print__month h3 {
+  margin: 0 0 4px;
+  font-size: 10.5pt;
+  text-align: center;
+}
+.mvd-print__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+.mvd-print__grid--head {
+  margin-bottom: 2px;
+  font-size: 7.5pt;
+  text-align: center;
+  color: #64748b;
+}
+.mvd-print__day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 26px;
+  border-radius: 3px;
+  line-height: 1.05;
+  padding: 1px 0;
+}
+.mvd-print__day b { font-size: 8pt; }
+.mvd-print__day em { font-size: 6.5pt; font-style: normal; opacity: 0.8; }
+.mvd-print__day i { font-size: 6.5pt; font-style: normal; font-weight: 600; }
+.mvd-print__empty { min-height: 26px; }
+
+@media print {
+  .mvd-print__day,
+  .mvd-print__month {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

@@ -124,16 +124,20 @@ describe("relationship facets (Matching.xlsx — spreadsheet-exact)", () => {
     expect(facets[0].domain).toBe("work");
   });
 
-  test("boss (work): main = ทำงานร่วมกับเจ้านาย (วัน×เดือน) 30%", () => {
+  test("boss (work): main = ส่งเสริมธุรกิจเจ้านาย (เดือน×เดือน) 71.67%", () => {
     const facets = buildFacets("boss", M, W);
     expect(facets.map((f) => f.percent)).toEqual([33.33, 30, 71.67, 28.33]);
-    expect(mainFacetOf(facets)?.percent).toBe(30);
+    const main = mainFacetOf(facets);
+    expect(main?.key).toBe("business");
+    expect(main?.percent).toBe(71.67);
   });
 
-  test("subordinate (work): main = เข้ากับองค์กรเรา (เดือน×วัน) 55%", () => {
+  test("subordinate (work): main = ส่งเสริมธุรกิจเรา (เดือน×เดือน) 71.67%", () => {
     const facets = buildFacets("subordinate", M, W);
     expect(facets.map((f) => f.percent)).toEqual([75, 55, 71.67, 38.33]);
-    expect(mainFacetOf(facets)?.percent).toBe(55);
+    const main = mainFacetOf(facets);
+    expect(main?.key).toBe("business");
+    expect(main?.percent).toBe(71.67);
   });
 
   test("แต่ละแท่งมีคำทำนาย 3 บรรทัด (ก้าน/กิ่ง/สี่ซิ้ง) พร้อมโค้ด + ข้อความ", () => {

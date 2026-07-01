@@ -9,9 +9,9 @@ export type PairDomain = "work" | "love";
 /**
  * ประเภทความสัมพันธ์ที่เทียบดวงได้ (ตาม Matching.xlsx).
  * แต่ละแบบใช้ตาราง 60×60 เดิม (domain love/work) ต่างกันแค่จับคู่เสาไหน×เสาไหน.
- * ("daymate" — เรา vs วันที่เลือก — เป็น Phase 2 ยังไม่รวมที่นี่)
+ * "day" (ชีต DAYMATE) — เรา vs เสาวันของวันที่เลือกจากปฏิทิน — ใช้ domain love.
  */
-export type RelationshipType = "love" | "partner" | "boss" | "subordinate";
+export type RelationshipType = "love" | "partner" | "boss" | "subordinate" | "day";
 
 /** One combo cell from pair-matrix.json. */
 export type PairMatrixCell = {

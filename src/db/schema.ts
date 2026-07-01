@@ -768,4 +768,25 @@ export type InsertBaziDomainMatrix = typeof baziDomainMatrices.$inferInsert;
 export type InsertUserLineMapping = typeof userLineMappings.$inferInsert;
 export type SelectUserLineMapping = typeof userLineMappings.$inferSelect;
 export type InsertBaziChatHistory = typeof baziChatHistories.$inferInsert;
+
+/**
+ * ดวงลูกค้าที่บันทึกไว้ (Man Vs Day / ดวงกับวัน) — เก็บ birth input เพื่อเรียกกลับมาดู
+ * ปฏิทินส่วนตัว/สั่ง PDF ซ้ำได้ โดยไม่ต้องป้อนวันเกิดใหม่ทุกครั้ง.
+ */
+export const baziSavedChart = pgTable("bazi_saved_chart", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  label: text("label").notNull(),
+  rawInput: jsonb("raw_input").$type<RawInputValue>().notNull(),
+  /** หลักวัน (เช่น 己酉) เก็บไว้โชว์ในรายการ — optional */
+  dayMaster: text("day_master"),
+  ownerId: text("owner_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertBaziSavedChart = typeof baziSavedChart.$inferInsert;
+export type SelectBaziSavedChart = typeof baziSavedChart.$inferSelect;
 export type SelectBaziChatHistory = typeof baziChatHistories.$inferSelect;
