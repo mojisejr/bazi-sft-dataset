@@ -120,6 +120,54 @@ export async function uploadFortuneStickImage(
   return pub.publicUrl;
 }
 
+/* ───────────── ไพ่ออราเคิลเคี้ยงคุง (oracle-cards) — แยก bucket จากโหมดเซียน ───────────── */
+
+export const DEFAULT_ORACLE_BUCKET = "oracle-cards";
+
+export function getOracleBucket(): string {
+  return process.env.SUPABASE_ORACLE_BUCKET?.trim() || DEFAULT_ORACLE_BUCKET;
+}
+
+/** สร้าง bucket รูปไพ่ออราเคิล (public) ถ้ายังไม่มี — idempotent */
+export async function ensureOracleBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getOracleBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/**
+ * อัปโหลดรูปไพ่ออราเคิลขึ้น storage (upsert ทับของเดิม) แล้วคืน public URL
+ * path = cards/<no>.<ext>
+ */
+export async function uploadOracleCardImage(
+  cardNo: number,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getOracleBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `cards/${cardNo}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปไพ่ออราเคิล #${cardNo} ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
+
 /* ───────────── mascot 60 ดิถี — แยก bucket ───────────── */
 
 export const DEFAULT_MASCOT_BUCKET = "mascot-60";

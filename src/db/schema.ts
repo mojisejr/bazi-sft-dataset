@@ -699,6 +699,29 @@ export type InsertBaziDivineCardImage = typeof baziDivineCardImage.$inferInsert;
 export type SelectBaziDivineCardImage = typeof baziDivineCardImage.$inferSelect;
 
 /**
+ * รูปไพ่ "ไพ่ออราเคิลเคี้ยงคุง" — นำเข้าจากไฟล์จริง (JPEG ย่อ) เก็บ URL บน Supabase
+ * cardNo = เลขไพ่ (PK) ตรงกับ oracle-cards.json
+ */
+export const baziOracleCardImage = pgTable("bazi_oracle_card_image", {
+  cardNo: integer("card_no").primaryKey(),
+  prompt: text("prompt").notNull(),
+  /** URL รูปบน Supabase Storage (แหล่งหลัก) */
+  imageUrl: text("image_url"),
+  /** base64 (legacy / fallback) — nullable */
+  imageBase64: text("image_base64"),
+  mime: text("mime").notNull().default("image/jpeg"),
+  model: text("model").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull()
+    .$onUpdate(() => new Date()),
+});
+
+export type InsertBaziOracleCardImage = typeof baziOracleCardImage.$inferInsert;
+export type SelectBaziOracleCardImage = typeof baziOracleCardImage.$inferSelect;
+
+/**
  * รูป mascot 60 ดิถี — เลือกตามเสาวัน (60 กะจื่อ) แสดงหน้าอ่านดวง
  * ganzhi = เสาวัน เช่น "庚午" (PK) ตรงกับ MASCOT_60 ใน src/lib/bazi/mascot/mascot-60.ts
  * รูปจริงอยู่บน Supabase Storage — ตารางนี้เก็บ "ลิงก์" + ชื่อ

@@ -27,6 +27,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/work-matching", icon: "🤝", label: "การงาน" },
   { href: "/phone-reading", icon: "📱", label: "เบอร์มือถือ" },
   { href: "/divine-cards", icon: "🎴", label: "โหมดเซียน" },
+  { href: "/oracle-cards", icon: "🔮", label: "ไพ่ออราเคิล" },
   { href: "/fortune-sage", icon: "🎋", label: "เซียนเสี่ยงทาย" },
   { href: "/honeycomb", icon: "🐝", label: "เบอร์รังผึ้ง" },
   { href: "/almanac", icon: "📅", label: "ปฏิทินโหรา" },
