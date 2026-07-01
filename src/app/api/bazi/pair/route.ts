@@ -2,9 +2,13 @@ import { ZodError } from "zod";
 
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { buildFacets, buildPairComparison, mainFacetOf, RELATIONSHIP_SPECS } from "@/lib/bazi/pair-matching";
+import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
+import { getMatchingMap } from "@/lib/bazi/matching.server";
 import type { DayPillar, PillarPos, RelationshipType } from "@/lib/bazi/pair-types";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
+
+export const runtime = "nodejs";
 
 type HandlerOptions = {
   repository?: BaziKnowledgeRepository;
@@ -49,8 +53,10 @@ export function createPairBaziHandler(options: HandlerOptions = {}) {
         calculateBaziStateFromRawInput(personB, { repository }),
       ]);
 
-      const comparison = buildPairComparison(dayPillarOf(stateA), dayPillarOf(stateB));
-      const facets = buildFacets(relationship, facetPillarsOf(stateA), facetPillarsOf(stateB));
+      // overlay คำทำนายที่ซินแสแก้จาก DB (ช่องว่าง = ใช้ค่า JSON เดิม)
+      const text = applyMatchingOverrides(await getMatchingMap());
+      const comparison = buildPairComparison(dayPillarOf(stateA), dayPillarOf(stateB), text);
+      const facets = buildFacets(relationship, facetPillarsOf(stateA), facetPillarsOf(stateB), text);
       const mainFacet = mainFacetOf(facets);
 
       return Response.json(

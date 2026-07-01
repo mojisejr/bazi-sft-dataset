@@ -720,6 +720,38 @@ export const baziMascotImage = pgTable("bazi_mascot_image", {
 export type InsertBaziMascotImage = typeof baziMascotImage.$inferInsert;
 export type SelectBaziMascotImage = typeof baziMascotImage.$inferSelect;
 
+/** ค่าคำทำนาย Matching (จับคู่/สมพงษ์) — text หลัก + label ไม่บังคับ */
+export type MatchingValue = {
+  text: string;
+  label?: string;
+};
+
+/**
+ * คำทำนายหน้าจับคู่ (Matching) — ซินแสแก้ได้ live เหมือน bazi_newdata
+ * group_key = ชุด (nisai_stem / role_partner / sising_work ...) · item_key = คีย์ในชุด (ก้าน/ราศี/เชี่ยงแซ/โค้ด A?/B?)
+ * overlay ทับ reference.json + sising.json ตอน engine อ่าน (ช่องว่าง = ใช้ค่า JSON เดิม)
+ */
+export const baziMatching = pgTable(
+  "bazi_matching",
+  {
+    groupKey: text("group_key").notNull(),
+    itemKey: text("item_key").notNull(),
+    ordinal: integer("ordinal").notNull().default(0),
+    value: jsonb("value").$type<MatchingValue>().notNull(),
+    sourceFile: text("source_file"),
+    updatedBy: text("updated_by"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [primaryKey({ columns: [table.groupKey, table.itemKey] })],
+);
+
+export type InsertBaziMatching = typeof baziMatching.$inferInsert;
+export type SelectBaziMatching = typeof baziMatching.$inferSelect;
+
 export type InsertBaziDatasetRecord = typeof baziDatasetRecords.$inferInsert;
 export type SelectBaziDatasetRecord = typeof baziDatasetRecords.$inferSelect;
 export type InsertBaziCanonicalSource = typeof baziCanonicalSources.$inferInsert;

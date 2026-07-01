@@ -17,8 +17,7 @@ import { resolveDisplayTwelveQiStage } from "@/lib/bazi/pillar-display";
 
 import matrixJson from "@/lib/bazi/data/pair/pair-matrix.json";
 import ratingJson from "@/lib/bazi/data/pair/rating-scale.json";
-import sisingJson from "@/lib/bazi/data/pair/sising.json";
-import referenceJson from "@/lib/bazi/data/pair/reference.json";
+import { DEFAULT_MATCHING_TEXT, type MatchingText } from "@/lib/bazi/matching-overlay";
 
 import type {
   DayPillar,
@@ -44,10 +43,11 @@ import type {
 
 const MATRIX = matrixJson as Record<PairDomain, Record<string, PairMatrixCell>>;
 const RATING = ratingJson as RatingScale;
-const SISING = sisingJson as SisingStar[];
-const REFERENCE = referenceJson as ReferenceData;
 
-const SISING_BY_CODE = new Map(SISING.map((s) => [s.code, s]));
+/** map โค้ดสี่ซิ้ง → ดาว จากชุดข้อความที่ใช้ (DB overlay หรือ JSON เดิม) */
+function sisingByCode(text: MatchingText): Map<string, SisingStar> {
+  return new Map(text.sising.map((s) => [s.code, s]));
+}
 
 type Element = keyof typeof GENERATES;
 
@@ -115,6 +115,7 @@ export function computePairMatch(
   our: DayPillar,
   partner: DayPillar,
   domain: PairDomain,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
 ): PairMatchResult {
   const ourKey = pillarKey(our);
   const partnerKey = pillarKey(partner);
@@ -122,7 +123,7 @@ export function computePairMatch(
   const percent = cell?.percent ?? null;
   const bucket = ratingBucket(domain, percent);
   const sisingCode = cell?.sisingCode ?? null;
-  const sising = sisingCode ? SISING_BY_CODE.get(sisingCode) ?? null : null;
+  const sising = sisingCode ? sisingByCode(text).get(sisingCode) ?? null : null;
 
   return {
     domain,
@@ -182,41 +183,49 @@ function roleReading(
 }
 
 /** Work-domain role readings keyed by person A's day stem × person B's day branch. */
-export function buildWorkRoleReadings(a: DayPillar, b: DayPillar): RoleReading[] {
+export function buildWorkRoleReadings(
+  a: DayPillar,
+  b: DayPillar,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
+): RoleReading[] {
   const readings: RoleReading[] = [];
-  const boss = roleReading("ตัวเรา → เจ้านาย", REFERENCE.roleBoss, a.stem, b.branch);
-  const sub = roleReading("ลูกน้อง → ตัวเรา", REFERENCE.roleSubordinate, a.stem, b.branch);
-  const partner = roleReading("หุ้นส่วน/เพื่อนร่วมงาน", REFERENCE.rolePartner, a.stem, b.branch);
+  const boss = roleReading("ตัวเรา → เจ้านาย", text.reference.roleBoss, a.stem, b.branch);
+  const sub = roleReading("ลูกน้อง → ตัวเรา", text.reference.roleSubordinate, a.stem, b.branch);
+  const partner = roleReading("หุ้นส่วน/เพื่อนร่วมงาน", text.reference.rolePartner, a.stem, b.branch);
   for (const r of [boss, sub, partner]) if (r) readings.push(r);
   return readings;
 }
 
 /** Love-domain shengxia readings keyed by person A's day stem × person B's day branch. */
-export function buildLoveRoleReadings(a: DayPillar, b: DayPillar): RoleReading[] {
-  const r = roleReading("คนรัก (เชี่ยงแซ)", REFERENCE.loveShengxia, a.stem, b.branch);
+export function buildLoveRoleReadings(
+  a: DayPillar,
+  b: DayPillar,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
+): RoleReading[] {
+  const r = roleReading("คนรัก (เชี่ยงแซ)", text.reference.loveShengxia, a.stem, b.branch);
   return r ? [r] : [];
 }
 
 /** Day-pillar personality lines (นิสัยหลักวัน: ก้าน / ราศี / เชี่ยงแซ). */
-export function buildNisai(pillar: DayPillar): string[] {
+export function buildNisai(pillar: DayPillar, text: MatchingText = DEFAULT_MATCHING_TEXT): string[] {
   const lines: string[] = [];
-  const stemLine = REFERENCE.nisai.byStem[nfkc(pillar.stem)];
-  const branchLine = REFERENCE.nisai.byBranch[nfkc(pillar.branch)];
+  const stemLine = text.reference.nisai.byStem[nfkc(pillar.stem)];
+  const branchLine = text.reference.nisai.byBranch[nfkc(pillar.branch)];
   const stageTh = resolveDisplayTwelveQiStage(nfkc(pillar.stem), nfkc(pillar.branch));
-  const stageLine = stageTh ? REFERENCE.nisai.byStage[stageTh] : undefined;
+  const stageLine = stageTh ? text.reference.nisai.byStage[stageTh] : undefined;
   if (stemLine) lines.push(stemLine);
   if (branchLine) lines.push(branchLine);
   if (stageLine) lines.push(stageLine);
   return lines;
 }
 
-function buildPersonProfile(pillar: DayPillar) {
+function buildPersonProfile(pillar: DayPillar, text: MatchingText = DEFAULT_MATCHING_TEXT) {
   const el = stemElement(pillar.stem);
   return {
     dayPillar: pillar,
     elementTh: el ? ELEMENT_LABELS_TH[el] : "-",
     stageTh: resolveDisplayTwelveQiStage(pillar.stem, pillar.branch),
-    nisai: buildNisai(pillar),
+    nisai: buildNisai(pillar, text),
   };
 }
 
@@ -225,9 +234,10 @@ export function computePairMatchPair(
   a: DayPillar,
   b: DayPillar,
   domain: PairDomain,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
 ): PairMatchPair {
-  const forward = computePairMatch(a, b, domain);
-  const reverse = computePairMatch(b, a, domain);
+  const forward = computePairMatch(a, b, domain, text);
+  const reverse = computePairMatch(b, a, domain, text);
   const pcts = [forward.percent, reverse.percent].filter((p): p is number => p != null);
   const overallPercent = pcts.length ? Math.round((pcts.reduce((s, p) => s + p, 0) / pcts.length) * 100) / 100 : null;
   return { forward, reverse, overallPercent, overallGrade: gradeForPercent(overallPercent) };
@@ -238,21 +248,25 @@ function normPillar(p: DayPillar): DayPillar {
 }
 
 /** Full comparison for both domains given two day pillars. */
-export function buildPairComparison(a: DayPillar, b: DayPillar): PairComparisonResult {
+export function buildPairComparison(
+  a: DayPillar,
+  b: DayPillar,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
+): PairComparisonResult {
   const aPillar = normPillar(a);
   const bPillar = normPillar(b);
 
   return {
-    personA: buildPersonProfile(aPillar),
-    personB: buildPersonProfile(bPillar),
+    personA: buildPersonProfile(aPillar, text),
+    personB: buildPersonProfile(bPillar, text),
     match: {
-      work: computePairMatchPair(aPillar, bPillar, "work"),
-      love: computePairMatchPair(aPillar, bPillar, "love"),
+      work: computePairMatchPair(aPillar, bPillar, "work", text),
+      love: computePairMatchPair(aPillar, bPillar, "love", text),
     },
     elementInteraction: buildElementInteractionAB(aPillar.stem, bPillar.stem),
-    workRoles: buildWorkRoleReadings(aPillar, bPillar),
-    loveRoles: buildLoveRoleReadings(aPillar, bPillar),
-    sisingReference: SISING,
+    workRoles: buildWorkRoleReadings(aPillar, bPillar, text),
+    loveRoles: buildLoveRoleReadings(aPillar, bPillar, text),
+    sisingReference: text.sising,
   };
 }
 
@@ -334,32 +348,36 @@ export const RELATIONSHIP_SPECS: Record<RelationshipType, RelationshipSpec> = {
   },
 };
 
-/**
- * คลังคำทำนายต่อโค้ด (A1..A12 / B1..B12) แยกตามมุมความสัมพันธ์ —
- * แต่ละ list มาจาก reference.json (12 เชี่ยงแซ + สี่ซิ้ง) ที่ distill ไว้แล้ว.
- */
-const ROLE_LIST_BY_RELATIONSHIP: Record<RelationshipType, ShengxiaStage[]> = {
-  love: REFERENCE.loveShengxia,
-  partner: REFERENCE.rolePartner,
-  boss: REFERENCE.roleBoss,
-  subordinate: REFERENCE.roleSubordinate,
-};
+/** list คำทำนายต่อมุมความสัมพันธ์ จากชุดข้อความที่ใช้ (DB overlay หรือ JSON เดิม). */
+function roleListFor(reference: ReferenceData, relationship: RelationshipType): ShengxiaStage[] {
+  switch (relationship) {
+    case "love":
+      return reference.loveShengxia;
+    case "partner":
+      return reference.rolePartner;
+    case "boss":
+      return reference.roleBoss;
+    case "subordinate":
+      return reference.roleSubordinate;
+  }
+}
 
 /** Map โค้ด→stage (เก็บ occurrence แรก กันโค้ดซ้ำในชีตความรัก). */
-const ROLE_MAP_BY_RELATIONSHIP: Record<RelationshipType, Map<string, ShengxiaStage>> =
-  Object.fromEntries(
-    (Object.keys(ROLE_LIST_BY_RELATIONSHIP) as RelationshipType[]).map((rel) => {
-      const map = new Map<string, ShengxiaStage>();
-      for (const st of ROLE_LIST_BY_RELATIONSHIP[rel]) {
-        if (st.code && !map.has(st.code)) map.set(st.code, st);
-      }
-      return [rel, map];
-    }),
-  ) as Record<RelationshipType, Map<string, ShengxiaStage>>;
+function roleMapFor(reference: ReferenceData, relationship: RelationshipType): Map<string, ShengxiaStage> {
+  const map = new Map<string, ShengxiaStage>();
+  for (const st of roleListFor(reference, relationship)) {
+    if (st.code && !map.has(st.code)) map.set(st.code, st);
+  }
+  return map;
+}
 
 /** คำทำนายรายแท่ง 3 บรรทัด (ก้าน/กิ่ง/สี่ซิ้ง) ตามโค้ดในเซลล์ matrix. */
-function facetLines(relationship: RelationshipType, m: PairMatchResult): FacetLine[] {
-  const map = ROLE_MAP_BY_RELATIONSHIP[relationship];
+function facetLines(
+  relationship: RelationshipType,
+  m: PairMatchResult,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
+): FacetLine[] {
+  const map = roleMapFor(text.reference, relationship);
   const slots: { slot: string; code: string | null }[] = [
     { slot: "ก้าน", code: m.stemCode },
     { slot: "กิ่ง", code: m.branchCode },
@@ -385,10 +403,11 @@ export function buildFacets(
   relationship: RelationshipType,
   a: Record<PillarPos, DayPillar>,
   b: Record<PillarPos, DayPillar>,
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
 ): MatchFacet[] {
   const spec = RELATIONSHIP_SPECS[relationship];
   return spec.facets.map((f) => {
-    const m = computePairMatch(a[f.ourPos], b[f.partnerPos], spec.domain);
+    const m = computePairMatch(a[f.ourPos], b[f.partnerPos], spec.domain, text);
     return {
       key: f.key,
       label: f.label,
@@ -405,7 +424,7 @@ export function buildFacets(
       emoji: m.emoji,
       ratingText: m.ratingText,
       sising: m.sising,
-      lines: facetLines(relationship, m),
+      lines: facetLines(relationship, m, text),
     };
   });
 }
@@ -427,17 +446,21 @@ export function buildLoveFacets(
  * Work-domain comparison of "เรา" against up to several candidates
  * (หุ้นส่วน/ลูกน้อง). Ranked best→worst by the forward score (เรา→เขา).
  */
-export function buildWorkComparison(self: DayPillar, others: DayPillar[]): WorkComparisonResult {
+export function buildWorkComparison(
+  self: DayPillar,
+  others: DayPillar[],
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
+): WorkComparisonResult {
   const selfPillar = normPillar(self);
   const candidates = others.map((o, index) => {
     const p = normPillar(o);
-    const match = computePairMatchPair(selfPillar, p, "work");
+    const match = computePairMatchPair(selfPillar, p, "work", text);
     return {
       index,
-      profile: buildPersonProfile(p),
+      profile: buildPersonProfile(p, text),
       match,
       elementInteraction: buildElementInteractionAB(selfPillar.stem, p.stem),
-      roles: buildWorkRoleReadings(selfPillar, p),
+      roles: buildWorkRoleReadings(selfPillar, p, text),
       rankScore: match.forward.percent,
     };
   });
@@ -445,9 +468,9 @@ export function buildWorkComparison(self: DayPillar, others: DayPillar[]): WorkC
     .sort((a, b) => (b.rankScore ?? -1) - (a.rankScore ?? -1))
     .map((c) => c.index);
   return {
-    self: buildPersonProfile(selfPillar),
+    self: buildPersonProfile(selfPillar, text),
     candidates,
     ranking,
-    sisingReference: SISING,
+    sisingReference: text.sising,
   };
 }
