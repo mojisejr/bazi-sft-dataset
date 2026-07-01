@@ -244,7 +244,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "deityRasi", group: "deity_by_rasi", role: "career" }],
     [{ kind: "deityRasi", group: "deity_by_rasi", role: "wealth" }],
     [{ kind: "merit", group: "merit_by_element" }],
-    [],
+    [{ kind: "dayElement", group: "sila_by_element" }],
   ],
 };
 

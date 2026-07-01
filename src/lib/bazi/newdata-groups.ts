@@ -188,6 +188,14 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     sourceFile: "บท1 พัฒนานิสัย 5 ธาตุ.txt",
   },
   {
+    key: "sila_by_element",
+    label: "บท 15 · ข้อเสนอแนะ ศีล 5 ธาตุ (ตามธาตุดิถี)",
+    description:
+      "ศีล 5 ผูกตามธาตุ (ข้อ1 ดิน/ข้อ2 ทอง/ข้อ3 น้ำ/ข้อ4 ไม้/ข้อ5 ไฟ) + อานิสงส์ — บท 15 กล่อง 'ข้อเสนอแนะ' ตามธาตุดิถี",
+    keyKind: "element",
+    sourceFile: "บท15 ศีล 5 ธาตุ.txt",
+  },
+  {
     key: "dithi_transfer",
     label: "บทที่ 1 ดิถีถ่ายเท พูดและแสดงออก",
     description: "คำอ่าน 'ดิถี → ถ่ายเท → ผลลัพธ์' รายก้านดิถี×ปลายทาง — บท 1 (พูด)",

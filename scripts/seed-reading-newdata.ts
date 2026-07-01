@@ -843,6 +843,9 @@ function collectAll(): SeedRow[] {
   push("develop_by_element", () =>
     parseElementKeyedFile("บท1 พัฒนานิสัย 5 ธาตุ.txt", "develop_by_element", "ข้อเสนอแนะ พัฒนานิสัย"),
   );
+  push("sila_by_element", () =>
+    parseElementKeyedFile("บท15 ศีล 5 ธาตุ.txt", "sila_by_element", "ข้อเสนอแนะ ศีล"),
+  );
   push("dark_side_by_element", () =>
     parseElementKeyedFile("บท1 นิสัยด้านมืด 5 ธาตุ.txt", "dark_side_by_element", "นิสัยด้านมืด"),
   );
