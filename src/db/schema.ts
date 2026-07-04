@@ -1,6 +1,8 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -813,3 +815,90 @@ export const baziSavedChart = pgTable("bazi_saved_chart", {
 export type InsertBaziSavedChart = typeof baziSavedChart.$inferInsert;
 export type SelectBaziSavedChart = typeof baziSavedChart.$inferSelect;
 export type SelectBaziChatHistory = typeof baziChatHistories.$inferSelect;
+
+/**
+ * บันทึกการใช้งาน + โทเคน API ต่อ 1 คำถาม–คำตอบ ของแชท "โค้ชฮีลใจ" (Louise Hay)
+ * เก็บ breakdown โทเคนแยกตามการเรียก API 3 จุด (classify / embed / generate) เพื่อคำนวณ
+ * ต้นทุน (USD/THB) ในหน้าแดชบอร์ด และทำสถิติรายผู้ใช้ (anon id / วันเกิดที่ผูก).
+ * ต้นทุนไม่เก็บเป็นคอลัมน์ — คำนวณจาก token + model ตอนแสดงผล (แก้ราคาย้อนหลังได้).
+ */
+export const louiseHayUsage = pgTable(
+  "louise_hay_usage",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** id นิรนามจาก localStorage ของเบราว์เซอร์ (นับ "คน") */
+    anonId: text("anon_id").notNull(),
+    /** คีย์ดวงที่ผูก (เช่น "1988-05-20|กรุงเทพมหานคร") — null ถ้าไม่ผูกดวง */
+    birthKey: text("birth_key"),
+    question: text("question").notNull(),
+    /** ตัวอย่างคำตอบ (ตัดสั้น) ไว้ดูย้อนหลัง */
+    answerPreview: text("answer_preview"),
+    /** ศาสตร์ที่ระบบเลือกตอบ: chart / day / card / chat */
+    route: text("route").notNull(),
+    /** โมเดลหลักที่ใช้เขียนคำตอบ */
+    model: text("model").notNull(),
+    /** ผู้ใช้กรอกคีย์ Gemini ของตัวเอง → ต้นทุนไม่ตกที่ระบบ */
+    usedOwnKey: boolean("used_own_key").notNull().default(false),
+    // ── token breakdown ต่อการเรียก API แต่ละจุด ──
+    classifyInTokens: integer("classify_in_tokens").notNull().default(0),
+    classifyOutTokens: integer("classify_out_tokens").notNull().default(0),
+    embedTokens: integer("embed_tokens").notNull().default(0),
+    genInTokens: integer("gen_in_tokens").notNull().default(0),
+    genOutTokens: integer("gen_out_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("louise_hay_usage_anon_idx").on(table.anonId),
+    index("louise_hay_usage_created_idx").on(table.createdAt),
+  ],
+);
+
+export type InsertLouiseHayUsage = typeof louiseHayUsage.$inferInsert;
+export type SelectLouiseHayUsage = typeof louiseHayUsage.$inferSelect;
+
+/**
+ * บันทึกโทเคน/ต้นทุน LLM ต่อ 1 การเรียก สำหรับฟีเจอร์อื่น ๆ ที่ใช้ LLM (แยกตารางตามฟีเจอร์
+ * ตามที่เลือกไว้) — แต่ทุกตารางใช้ "โครงคอลัมน์เดียวกัน" ผ่าน factory ด้านล่าง เพื่อให้แดชบอร์ด
+ * /stats รวมข้อมูลข้ามตารางได้ง่าย. ต้นทุนไม่เก็บเป็นคอลัมน์ — คำนวณจาก provider+model+token
+ * ตอนแสดงผล (แก้ราคาย้อนหลังได้).
+ */
+function llmUsageColumns() {
+  return {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** ผู้ให้บริการ: gemini / anthropic / opencode */
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    inTokens: integer("in_tokens").notNull().default(0),
+    outTokens: integer("out_tokens").notNull().default(0),
+    totalTokens: integer("total_tokens").notNull().default(0),
+    /** บริบทของงาน เช่น topicId / ชื่อไพ่ / คำถาม — ไว้ดูว่า "ทำอะไร" */
+    label: text("label"),
+    /** ผู้ใช้/ดวงที่เกี่ยวข้อง (ถ้ามี) — งานฝั่งแอดมินมักเป็น null */
+    anonId: text("anon_id"),
+    /** ใช้คีย์ของผู้ใช้เอง → ต้นทุนไม่ตกที่ระบบ */
+    usedOwnKey: boolean("used_own_key").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  };
+}
+
+export const readingTopicUsage = pgTable("reading_topic_usage", llmUsageColumns());
+export const divineCardsUsage = pgTable("divine_cards_usage", llmUsageColumns());
+export const oracleCardsUsage = pgTable("oracle_cards_usage", llmUsageColumns());
+export const honeycombUsage = pgTable("honeycomb_usage", llmUsageColumns());
+export const pairRephraseUsage = pgTable("pair_rephrase_usage", llmUsageColumns());
+export const readingDraftUsage = pgTable("reading_draft_usage", llmUsageColumns());
+
+/** ตารางฟีเจอร์ LLM ทั้งหมด (นอกจาก louise_hay ที่มีโครงเฉพาะ) — dashboard วนอ่านทีละตัว */
+export const LLM_USAGE_TABLES = {
+  reading_topic: readingTopicUsage,
+  divine_cards: divineCardsUsage,
+  oracle_cards: oracleCardsUsage,
+  honeycomb: honeycombUsage,
+  pair_rephrase: pairRephraseUsage,
+  reading_draft: readingDraftUsage,
+} as const;
+
+export type LlmUsageFeature = keyof typeof LLM_USAGE_TABLES;
+export type InsertLlmUsage = typeof readingTopicUsage.$inferInsert;
+export type SelectLlmUsage = typeof readingTopicUsage.$inferSelect;

@@ -66,6 +66,7 @@ export async function POST(req: Request) {
       apiKey: provider === "anthropic" ? apiKey ?? "local" : apiKey,
       model,
       provider,
+      usageFeature: "pair_rephrase",
     });
     return Response.json({ text: result.text, model: result.model });
   } catch (error) {

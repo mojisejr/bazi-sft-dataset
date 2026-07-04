@@ -4,6 +4,7 @@ import { GoogleGenAI } from "@google/genai";
 import { z } from "zod";
 
 import { getGeminiApiKey } from "@/lib/env";
+import { logLlmUsage } from "@/lib/llm-usage/logger";
 import {
   BAZI_ORCHESTRATOR_CHUNK_IDS,
   FullTopicDraftSchema,
@@ -185,6 +186,15 @@ async function executeChunkWithGemini(
   if (!responseText) {
     throw new Error(`Gemini returned an empty response body for chunk ${request.chunkId}.`);
   }
+
+  // บันทึกโทเคน/ต้นทุนของแต่ละ chunk (ร่างบทใหม่) — fire-and-forget
+  logLlmUsage("reading_draft", {
+    provider: "gemini",
+    model: request.model,
+    inTokens: response.usageMetadata?.promptTokenCount ?? 0,
+    outTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    label: request.chunkId,
+  });
 
   return responseText;
 }

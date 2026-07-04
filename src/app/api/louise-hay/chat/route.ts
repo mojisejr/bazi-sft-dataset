@@ -11,6 +11,7 @@ import { getGeminiApiKey } from "@/lib/env";
 import { resolveLouiseHayGrounding } from "@/lib/louise-hay/grounding-router";
 import { buildLouiseHayPrompt, type LouiseHayChatMessage } from "@/lib/louise-hay/persona";
 import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
+import { logUsage } from "@/lib/louise-hay/usage-repository";
 
 export const runtime = "nodejs";
 
@@ -38,7 +39,13 @@ const BodySchema = z.object({
   birth: BirthSchema.optional(),
   /** คีย์ Gemini ของผู้ใช้เอง (ไม่บังคับ) — ถ้าไม่ส่ง ใช้ GEMINI_API_KEY ของเซิร์ฟเวอร์ */
   apiKey: z.string().trim().min(1).max(200).optional(),
+  /** id นิรนามจาก localStorage ของผู้ใช้ (ไว้นับสถิติ "คน") — ไม่บังคับ */
+  anonId: z.string().trim().min(1).max(100).optional(),
 });
+
+const ANSWER_PREVIEW_CHARS = 400;
+
+type GenUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
 
 function badRequest(message: string, status = 400) {
   return Response.json({ error: { message } }, { status });
@@ -61,17 +68,33 @@ function encodeSources(sources: SourceCitation[]): string {
   return Buffer.from(JSON.stringify(sources), "utf-8").toString("base64");
 }
 
-/** แปลง SSE stream ของ Gemini (:streamGenerateContent?alt=sse) เป็น text delta ล้วน */
-function geminiSseToText(upstream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+/**
+ * แปลง SSE stream ของ Gemini (:streamGenerateContent?alt=sse) เป็น text delta ล้วน
+ * พร้อมสะสมข้อความเต็ม + usageMetadata (โทเคน gen) แล้วเรียก onComplete ตอนสตรีมจบ/ถูกยกเลิก
+ * เพื่อบันทึกสถิติ (fire-and-forget).
+ */
+function geminiSseToText(
+  upstream: ReadableStream<Uint8Array>,
+  onComplete: (result: { text: string; usage: GenUsage }) => void,
+): ReadableStream<Uint8Array> {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
   const reader = upstream.getReader();
   let buffer = "";
+  let fullText = "";
+  let usage: GenUsage = {};
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    onComplete({ text: fullText, usage });
+  };
 
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
-      const { done, value } = await reader.read();
-      if (done) {
+      const { done: streamDone, value } = await reader.read();
+      if (streamDone) {
+        finish();
         controller.close();
         return;
       }
@@ -86,11 +109,14 @@ function geminiSseToText(upstream: ReadableStream<Uint8Array>): ReadableStream<U
         try {
           const parsed = JSON.parse(json) as {
             candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            usageMetadata?: GenUsage;
           };
+          if (parsed.usageMetadata) usage = parsed.usageMetadata;
           const text = parsed.candidates?.[0]?.content?.parts
             ?.map((p) => p.text ?? "")
             .join("");
           if (text) {
+            fullText += text;
             controller.enqueue(encoder.encode(text));
           }
         } catch {
@@ -99,6 +125,7 @@ function geminiSseToText(upstream: ReadableStream<Uint8Array>): ReadableStream<U
       }
     },
     cancel() {
+      finish();
       void reader.cancel();
     },
   });
@@ -137,7 +164,7 @@ export async function POST(req: Request) {
     resolveLouiseHayGrounding(latestUser.content, parsed.data.birth ?? null, new Date(), apiKey),
   ]);
 
-  const sources: SourceCitation[] = retrieved.map((p, i) => ({
+  const sources: SourceCitation[] = retrieved.passages.map((p, i) => ({
     n: i + 1,
     title: p.title,
     page: pageLabel(p.startPage, p.endPage),
@@ -150,10 +177,16 @@ export async function POST(req: Request) {
 
   const prompt = buildLouiseHayPrompt({
     messages,
-    passages: retrieved,
+    passages: retrieved.passages,
     latestUserMessage: latestUser.content,
     groundingContext,
   });
+
+  const usedOwnKey = Boolean(parsed.data.apiKey?.trim());
+  const anonId = parsed.data.anonId?.trim() || "anon";
+  const birthKey = parsed.data.birth
+    ? `${parsed.data.birth.birthDate}|${parsed.data.birth.province}`
+    : null;
 
   const model = process.env.LOUISE_HAY_MODEL?.trim() || DEFAULT_MODEL;
   const url =
@@ -187,12 +220,39 @@ export async function POST(req: Request) {
     return badRequest(`Gemini ตอบผิดพลาด (${upstream.status}) ${detail.slice(0, 200)}`, 502);
   }
 
-  return new Response(geminiSseToText(upstream.body), {
+  const onComplete = ({ text, usage }: { text: string; usage: GenUsage }) => {
+    const genInTokens = usage.promptTokenCount ?? 0;
+    const genOutTokens = (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
+    const totalTokens =
+      grounding.classifyInTokens +
+      grounding.classifyOutTokens +
+      retrieved.embedTokens +
+      genInTokens +
+      genOutTokens;
+    // fire-and-forget: บันทึกสถิติ ไม่ให้กระทบผู้ใช้ ถ้า DB ล่มก็ปล่อยผ่าน
+    void logUsage({
+      anonId,
+      birthKey,
+      question: latestUser.content.slice(0, 2000),
+      answerPreview: text.slice(0, ANSWER_PREVIEW_CHARS),
+      route: grounding.route,
+      model,
+      usedOwnKey,
+      classifyInTokens: grounding.classifyInTokens,
+      classifyOutTokens: grounding.classifyOutTokens,
+      embedTokens: retrieved.embedTokens,
+      genInTokens,
+      genOutTokens,
+      totalTokens,
+    });
+  };
+
+  return new Response(geminiSseToText(upstream.body, onComplete), {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache, no-transform",
       "X-LH-Sources": encodeSources(sources),
-      "X-LH-Grounded": retrieved.length > 0 ? "1" : "0",
+      "X-LH-Grounded": retrieved.passages.length > 0 ? "1" : "0",
       "X-LH-Route": grounding.route,
       "X-LH-Source": Buffer.from(
         JSON.stringify({ label: grounding.sourceLabel, note: grounding.note ?? null }),

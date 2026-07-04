@@ -124,6 +124,8 @@ export async function polishOracleReading(
       model: input.model,
       provider: input.provider ?? "gemini",
       temperature: 0.3,
+      usageFeature: "oracle_cards",
+      usageLabel: input.question?.slice(0, 200) ?? null,
     },
     deps,
   );

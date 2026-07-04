@@ -39,6 +39,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/reading/newdata", icon: "🗃️", label: "ข้อมูลใหม่" },
   { href: "/reading/matching", icon: "💞", label: "ข้อมูล Matching" },
   { href: "/louise-hay", icon: "💗", label: "โค้ชฮีลใจ" },
+  { href: "/stats", icon: "📊", label: "สถิติ & ต้นทุน" },
 ];
 
 function isActiveLink(pathname: string | null, href: string) {

@@ -4,14 +4,11 @@ import { useEffect, useRef, useState } from "react";
 
 import { LOUISE_HAY_AFFIRMATIONS } from "@/lib/louise-hay/affirmations";
 
-type Source = { n: number; title: string; page: string; snippet: string };
 type ScienceMeta = { route: string; label: string; note?: string | null };
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
-  sources?: Source[];
-  grounded?: boolean;
   science?: ScienceMeta;
 };
 type Birth = { birthDate: string; birthTime: string; gender: "female" | "male"; province: string };
@@ -53,14 +50,23 @@ const SUGGESTIONS = [
 let idSeq = 0;
 const nextId = () => `m${(idSeq += 1)}`;
 
-function decodeSources(header: string | null): Source[] {
-  if (!header) return [];
+const ANON_KEY = "lh_anon_id";
+
+/** id นิรนามถาวรต่อเบราว์เซอร์ (ไว้นับสถิติ "คน") — สร้างครั้งแรกแล้วเก็บใน localStorage */
+function getAnonId(): string {
+  if (typeof window === "undefined") return "anon";
   try {
-    const json = typeof atob === "function" ? atob(header) : "";
-    const bytes = Uint8Array.from(json, (c) => c.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as Source[];
+    let id = window.localStorage.getItem(ANON_KEY);
+    if (!id) {
+      id =
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+          ? crypto.randomUUID()
+          : `a${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+      window.localStorage.setItem(ANON_KEY, id);
+    }
+    return id;
   } catch {
-    return [];
+    return "anon";
   }
 }
 
@@ -81,7 +87,12 @@ export function LouiseHayChat() {
   const [birthLinked, setBirthLinked] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [showKey, setShowKey] = useState(false);
+  const anonIdRef = useRef<string>("anon");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    anonIdRef.current = getAnonId();
+  }, []);
 
   const birthComplete = Boolean(birth.birthDate && birth.birthTime && birth.province.trim());
 
@@ -109,6 +120,7 @@ export function LouiseHayChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: history.map((m) => ({ role: m.role, content: m.content })),
+          anonId: anonIdRef.current,
           ...(birthLinked && birthComplete ? { birth } : {}),
           ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         }),
@@ -119,8 +131,6 @@ export function LouiseHayChat() {
         throw new Error(detail?.error?.message ?? `ขออภัยค่ะ ระบบขัดข้อง (${res.status})`);
       }
 
-      const sources = decodeSources(res.headers.get("X-LH-Sources"));
-      const grounded = res.headers.get("X-LH-Grounded") === "1";
       const science = decodeScience(res.headers.get("X-LH-Route"), res.headers.get("X-LH-Source"));
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -135,11 +145,7 @@ export function LouiseHayChat() {
       }
 
       setMessages((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, sources: sources.length ? sources : undefined, grounded, science }
-            : m,
-        ),
+        prev.map((m) => (m.id === assistantId ? { ...m, science } : m)),
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
@@ -182,20 +188,6 @@ export function LouiseHayChat() {
                 <div className={`lh-chart-tag lh-chart-tag--${m.science.route}`}>
                   {ROUTE_ICON[m.science.route] ?? "✨"} {m.science.label}
                 </div>
-              )}
-              {m.sources && m.sources.length > 0 && (
-                <details className="lh-sources">
-                  <summary>อ้างอิงจากหนังสือ ({m.sources.length})</summary>
-                  <ul>
-                    {m.sources.map((s) => (
-                      <li key={s.n}>
-                        <span className="lh-sources__book">{s.title}</span>{" "}
-                        {s.page && <span className="lh-sources__page">{s.page}</span>}
-                        <span className="lh-sources__snippet">“{s.snippet}…”</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
               )}
             </div>
           </div>

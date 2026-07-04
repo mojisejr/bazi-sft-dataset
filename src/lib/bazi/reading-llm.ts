@@ -1,6 +1,8 @@
 import { GoogleGenAI } from "@google/genai";
 
 import { getChapterOutline } from "@/lib/bazi/chapter-outline";
+import { logLlmUsage, type LlmUsageProvider } from "@/lib/llm-usage/logger";
+import type { LlmUsageFeature } from "@/db/schema";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
 
 /**
@@ -191,14 +193,47 @@ type GenerateRequest = {
   config: { systemInstruction: string; temperature: number };
 };
 
-type GeminiGenerate = (request: GenerateRequest) => Promise<{ text?: string | null }>;
+/** โทเคนที่ใช้ในการเรียก 1 ครั้ง (ถ้า provider คืนมา) */
+export type LlmCallUsage = { inTokens: number; outTokens: number };
+
+type GeminiGenerate = (
+  request: GenerateRequest,
+) => Promise<{ text?: string | null; usage?: LlmCallUsage }>;
+
+/** ตัวเลือกบันทึกสถิติ — ถ้ามี usageFeature จะ log โทเคนลงตารางของฟีเจอร์นั้น (fire-and-forget) */
+type UsageLogOptions = {
+  usageFeature?: LlmUsageFeature;
+  usageLabel?: string | null;
+  usageAnonId?: string | null;
+};
+
+function providerToUsage(provider: ReadingLlmProvider): LlmUsageProvider {
+  return provider;
+}
+
+function maybeLogReadingUsage(
+  opts: UsageLogOptions,
+  provider: ReadingLlmProvider,
+  model: string,
+  usage: LlmCallUsage,
+): void {
+  if (!opts.usageFeature) return;
+  logLlmUsage(opts.usageFeature, {
+    provider: providerToUsage(provider),
+    model,
+    inTokens: usage.inTokens,
+    outTokens: usage.outTokens,
+    label: opts.usageLabel ?? null,
+    anonId: opts.usageAnonId ?? null,
+  });
+}
 
 /** เรียก OpenCode Zen (OpenAI-compatible /chat/completions) แล้ว map กลับเป็น { text } */
 async function generateViaOpenCode(
   request: GenerateRequest,
   apiKey: string | undefined,
   fetchImpl: typeof fetch = fetch,
-): Promise<{ text?: string | null }> {
+): Promise<{ text?: string | null; usage?: LlmCallUsage }> {
   if (!apiKey) {
     throw new Error("OpenCode Zen ต้องมี API key");
   }
@@ -225,8 +260,15 @@ async function generateViaOpenCode(
 
   const data = (await response.json()) as {
     choices?: Array<{ message?: { content?: string | null } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
-  return { text: data.choices?.[0]?.message?.content ?? null };
+  return {
+    text: data.choices?.[0]?.message?.content ?? null,
+    usage: {
+      inTokens: data.usage?.prompt_tokens ?? 0,
+      outTokens: data.usage?.completion_tokens ?? 0,
+    },
+  };
 }
 
 /** เรียก Anthropic Messages API (/v1/messages) แล้ว map กลับเป็น { text }
@@ -237,7 +279,7 @@ async function generateViaAnthropic(
   request: GenerateRequest,
   apiKey: string | undefined,
   fetchImpl: typeof fetch = fetch,
-): Promise<{ text?: string | null }> {
+): Promise<{ text?: string | null; usage?: LlmCallUsage }> {
   if (!apiKey) {
     throw new Error("Anthropic ต้องมี API key");
   }
@@ -265,12 +307,19 @@ async function generateViaAnthropic(
 
   const data = (await response.json()) as {
     content?: Array<{ type?: string; text?: string | null }>;
+    usage?: { input_tokens?: number; output_tokens?: number };
   };
   const text = (data.content ?? [])
     .filter((block) => block.type === "text")
     .map((block) => block.text ?? "")
     .join("");
-  return { text: text || null };
+  return {
+    text: text || null,
+    usage: {
+      inTokens: data.usage?.input_tokens ?? 0,
+      outTokens: data.usage?.output_tokens ?? 0,
+    },
+  };
 }
 
 /** เลือกโมเดล default ตาม provider (ถ้าไม่ override ด้วย input.model) */
@@ -295,7 +344,16 @@ function resolveLlmGenerator(provider: ReadingLlmProvider, apiKey: string | unde
   if (provider === "anthropic") {
     return (request) => generateViaAnthropic(request, apiKey);
   }
-  return (request) => new GoogleGenAI({ apiKey }).models.generateContent(request);
+  return async (request) => {
+    const r = await new GoogleGenAI({ apiKey }).models.generateContent(request);
+    return {
+      text: r.text,
+      usage: {
+        inTokens: r.usageMetadata?.promptTokenCount ?? 0,
+        outTokens: r.usageMetadata?.candidatesTokenCount ?? 0,
+      },
+    };
+  };
 }
 
 /** บทแรก (พื้นฐานดวง) เท่านั้นที่เปิดด้วยภาพเปรียบธรรมชาติของดิถีได้ บทอื่นห้ามเปิดซ้ำ */
@@ -463,7 +521,7 @@ export async function generateProseLlm(
     model?: string;
     provider?: ReadingLlmProvider;
     temperature?: number;
-  },
+  } & UsageLogOptions,
   deps: { generateContent?: GeminiGenerate } = {},
 ): Promise<{ text: string; model: string }> {
   const provider: ReadingLlmProvider = input.provider ?? "gemini";
@@ -480,12 +538,13 @@ export async function generateProseLlm(
   if (!text) {
     throw new Error("LLM คืนค่าว่างสำหรับการเรียบเรียงคำทำนาย");
   }
+  maybeLogReadingUsage(input, provider, model, response.usage ?? { inTokens: 0, outTokens: 0 });
   return { text, model };
 }
 
 /** สร้างคำอ่านสไตล์ Your Life Code ของหัวข้อเดียว + ด่านตรวจความซื่อสัตย์ (retry → fallback engine) */
 export async function generateReadingTopicLlm(
-  input: ReadingTopicLlmInput,
+  input: ReadingTopicLlmInput & UsageLogOptions,
   deps: { generateContent?: GeminiGenerate } = {},
 ): Promise<{ text: string; model: string }> {
   const prompt = READING_TOPIC_PROMPTS[input.topicId];
@@ -503,6 +562,16 @@ export async function generateReadingTopicLlm(
   const userPrompt = profile.buildUserPrompt(input, prompt);
   const engineText = input.humanKnowledge?.trim() ?? "";
 
+  // รวมโทเคนทุก attempt (แต่ละครั้งมีค่าใช้จ่ายจริง) แล้ว log ครั้งเดียวตอน return
+  const totalUsage: LlmCallUsage = { inTokens: 0, outTokens: 0 };
+  const logUsage = () =>
+    maybeLogReadingUsage(
+      { ...input, usageLabel: input.usageLabel ?? input.topicId },
+      provider,
+      model,
+      totalUsage,
+    );
+
   // พยายามสูงสุด 2 ครั้ง: ถ้ารอบแรกตัด/เปลี่ยนข้อเท็จจริง ย้ำกฎแล้วลองใหม่
   let lastText = "";
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -515,6 +584,10 @@ export async function generateReadingTopicLlm(
       contents: userPrompt + strictNote,
       config: { systemInstruction, temperature: attempt === 0 ? 0.55 : 0.3 },
     });
+    if (response.usage) {
+      totalUsage.inTokens += response.usage.inTokens;
+      totalUsage.outTokens += response.usage.outTokens;
+    }
     const text = response.text?.trim();
     if (!text) {
       throw new Error("LLM คืนค่าว่างสำหรับการเรียบเรียงคำทำนาย");
@@ -529,11 +602,13 @@ export async function generateReadingTopicLlm(
       invented.length === 0 &&
       dropped.length === 0
     ) {
+      logUsage();
       return { text, model };
     }
   }
 
   // ยังไม่ผ่านหลัง retry (ตัดข้อมูล หรือหลอนเพิ่มคำนอก excerpt) → ถอยมาใช้ผล engine (การันตีไม่แย่กว่า engine)
+  logUsage();
   return { text: engineText || lastText, model: `${model} (fallback-engine)` };
 }
 

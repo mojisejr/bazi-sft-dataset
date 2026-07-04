@@ -212,6 +212,7 @@ export async function POST(req: Request) {
       apiKey,
       model,
       provider,
+      usageFeature: "reading_topic",
       profile: provider === "gemini" ? GPTCASE_TUNED_PROFILE : undefined,
       ...(masterExamples && masterExamples.length > 0
         ? { masterCorrections: masterExamples }

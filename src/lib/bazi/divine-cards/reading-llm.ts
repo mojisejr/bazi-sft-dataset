@@ -90,6 +90,8 @@ export async function polishDivineReading(
       model: input.model,
       provider: input.provider ?? "gemini",
       temperature: 0.3,
+      usageFeature: "divine_cards",
+      usageLabel: input.question?.slice(0, 200) ?? null,
     },
     deps,
   );

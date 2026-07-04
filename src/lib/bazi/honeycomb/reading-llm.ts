@@ -82,6 +82,7 @@ export async function narrateHoneycombReading(
       model: input.model,
       provider: input.provider ?? "gemini",
       temperature: 0.4,
+      usageFeature: "honeycomb",
     },
     deps,
   );

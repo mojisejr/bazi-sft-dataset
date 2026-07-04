@@ -63,13 +63,15 @@ export async function isIndexReady(): Promise<boolean> {
 const EMBED_ENDPOINT = (model: string, key: string) =>
   `https://generativelanguage.googleapis.com/v1beta/${model}:embedContent?key=${key}`;
 
+type EmbedResult = { vec: number[]; tokens: number };
+
 async function embedQuery(
   text: string,
   model: string,
   dim: number,
   taskType: string,
   apiKey?: string,
-): Promise<number[] | null> {
+): Promise<EmbedResult | null> {
   const key = apiKey?.trim() || getGeminiApiKey();
   const res = await fetch(EMBED_ENDPOINT(model, key), {
     method: "POST",
@@ -84,13 +86,18 @@ async function embedQuery(
   if (!res.ok) {
     return null;
   }
-  const data = (await res.json()) as { embedding?: { values?: number[] } };
+  const data = (await res.json()) as {
+    embedding?: { values?: number[] };
+    usageMetadata?: { totalTokenCount?: number };
+  };
   const values = data.embedding?.values;
   if (!values || values.length === 0) {
     return null;
   }
   const norm = Math.sqrt(values.reduce((sum, x) => sum + x * x, 0)) || 1;
-  return values.map((x) => x / norm);
+  // บาง endpoint ไม่คืน usageMetadata ของ embedding → ประมาณจากความยาว (~4 ตัวอักษร/โทเคน)
+  const tokens = data.usageMetadata?.totalTokenCount ?? Math.max(1, Math.ceil(text.length / 4));
+  return { vec: values.map((x) => x / norm), tokens };
 }
 
 function dot(a: readonly number[], b: readonly number[]): number {
@@ -104,24 +111,26 @@ function dot(a: readonly number[], b: readonly number[]): number {
 
 export type RetrievedPassage = LouiseHayPassage & { id: string; book: string; score: number };
 
+export type RetrievalResult = { passages: RetrievedPassage[]; embedTokens: number };
+
 /**
- * ค้นคำสอนที่เกี่ยวข้องที่สุด top-K. คืน [] อย่างเงียบ ๆ ถ้า index ยังไม่มีหรือ embed ล้มเหลว
- * (แชทยังตอบได้จากหลักคิดหลัก).
+ * ค้นคำสอนที่เกี่ยวข้องที่สุด top-K. คืน passages [] อย่างเงียบ ๆ ถ้า index ยังไม่มีหรือ embed ล้มเหลว
+ * (แชทยังตอบได้จากหลักคิดหลัก). embedTokens = โทเคนที่ใช้เรียก embedding (0 ถ้าไม่ได้เรียก).
  */
 export async function retrieveLouiseHayPassages(
   query: string,
   k = 5,
   apiKey?: string,
-): Promise<RetrievedPassage[]> {
+): Promise<RetrievalResult> {
   const index = await loadIndex();
   if (!index || index.chunks.length === 0) {
-    return [];
+    return { passages: [], embedTokens: 0 };
   }
-  const queryVec = await embedQuery(query, index.model, index.dim, index.queryTaskType, apiKey);
-  if (!queryVec) {
-    return [];
+  const embedded = await embedQuery(query, index.model, index.dim, index.queryTaskType, apiKey);
+  if (!embedded) {
+    return { passages: [], embedTokens: 0 };
   }
-  return index.chunks
+  const passages = index.chunks
     .map((chunk) => ({
       id: chunk.id,
       book: chunk.book,
@@ -129,8 +138,9 @@ export async function retrieveLouiseHayPassages(
       startPage: chunk.startPage,
       endPage: chunk.endPage,
       text: chunk.text,
-      score: dot(queryVec, chunk.embedding),
+      score: dot(embedded.vec, chunk.embedding),
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, k);
+  return { passages, embedTokens: embedded.tokens };
 }

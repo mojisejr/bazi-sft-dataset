@@ -40,7 +40,13 @@ export type LouiseHayGrounding = {
   text: string;
   /** ข้อความชวน (เช่น ให้ผูกดวง) เมื่อ fallback */
   note?: string;
+  /** โทเคนที่ใช้ในขั้นจัดหมวดคำถาม (classify) — ไว้คิดต้นทุน */
+  classifyInTokens: number;
+  classifyOutTokens: number;
 };
+
+/** เนื้อ grounding ก่อนแนบโทเคน classify (fetcher แต่ละตัวคืนแบบนี้; resolve จะเติม classify tokens ทีเดียว) */
+type GroundingCore = Omit<LouiseHayGrounding, "classifyInTokens" | "classifyOutTokens">;
 
 const PREDICT_TOPICS = TOPIC_PATH.filter((t) => t.kind === "predict");
 const TOPIC_IDS = PREDICT_TOPICS.map((t) => t.id);
@@ -50,7 +56,13 @@ const CLASSIFY_MODEL = "gemini-2.5-flash-lite";
 
 // ───────────────────────────── classify (chart / day / card) ─────────────────────────────
 
-type RouteClassification = { route: LouiseHayRoute; topicId: string | null; date: string | null };
+type RouteClassification = {
+  route: LouiseHayRoute;
+  topicId: string | null;
+  date: string | null;
+  inTokens: number;
+  outTokens: number;
+};
 
 function todayIsoBangkok(now: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -98,21 +110,24 @@ async function classifyRoute(question: string, now: Date, apiKey?: string): Prom
     }),
   });
   if (!res.ok) {
-    return { route: "card", topicId: null, date: null };
+    return { route: "card", topicId: null, date: null, inTokens: 0, outTokens: 0 };
   }
   const data = (await res.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
   };
+  const inTokens = data.usageMetadata?.promptTokenCount ?? 0;
+  const outTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
   const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   try {
-    const parsed = JSON.parse(raw) as RouteClassification;
+    const parsed = JSON.parse(raw) as { route: LouiseHayRoute; topicId: string | null; date: string | null };
     const valid: LouiseHayRoute[] = ["chart", "day", "card", "chat"];
     const route: LouiseHayRoute = valid.includes(parsed.route) ? parsed.route : "card";
     const topicId = parsed.topicId && TOPIC_IDS.includes(parsed.topicId) ? parsed.topicId : "chart_foundation";
     const date = typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null;
-    return { route, topicId, date };
+    return { route, topicId, date, inTokens, outTokens };
   } catch {
-    return { route: "card", topicId: null, date: null };
+    return { route: "card", topicId: null, date: null, inTokens, outTokens };
   }
 }
 
@@ -129,7 +144,7 @@ function toRawInput(birth: LouiseHayBirthInput) {
   };
 }
 
-async function groundChart(topicId: string, birth: LouiseHayBirthInput): Promise<LouiseHayGrounding | null> {
+async function groundChart(topicId: string, birth: LouiseHayBirthInput): Promise<GroundingCore | null> {
   const repository = createDbKnowledgeRepository();
   const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
   const facts = extractChartFacts(state, birth.gender);
@@ -169,7 +184,7 @@ async function groundDay(
   dateIso: string | null,
   birth: LouiseHayBirthInput,
   now: Date,
-): Promise<LouiseHayGrounding | null> {
+): Promise<GroundingCore | null> {
   const repository = createDbKnowledgeRepository();
   const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
   const text = applyMatchingOverrides(await getMatchingMap());
@@ -184,7 +199,7 @@ async function groundDay(
   };
 }
 
-function groundCard(question: string): LouiseHayGrounding {
+function groundCard(question: string): GroundingCore {
   const drawn = drawRandom(3);
   const reading = buildOracleReading([drawn[0], drawn[1], drawn[2]] as const, question);
   const names = drawn.map((c) => `#${c.no} ${c.name}`).join(", ");
@@ -211,30 +226,46 @@ export async function resolveLouiseHayGrounding(
   try {
     classification = await classifyRoute(question, now, apiKey);
   } catch {
-    classification = { route: "card", topicId: null, date: null };
+    classification = { route: "card", topicId: null, date: null, inTokens: 0, outTokens: 0 };
   }
+
+  // แนบโทเคน classify ให้ผลลัพธ์ทุกทาง (คิดต้นทุนครบ)
+  const withClassify = (core: GroundingCore): LouiseHayGrounding => ({
+    ...core,
+    classifyInTokens: classification.inTokens,
+    classifyOutTokens: classification.outTokens,
+  });
 
   // ทักทาย/คุยเล่น — ไม่ต้องใช้ศาสตร์ ตอบจากใจได้เลย
   if (classification.route === "chat") {
-    return { route: "chat", sourceLabel: "", text: "" };
+    return withClassify({ route: "chat", sourceLabel: "", text: "" });
   }
 
   try {
     if (classification.route === "chart") {
       if (!birth) {
-        return { ...groundCard(question), note: "ถ้าอยากให้อ่านจากดวงเกิดจริง ลองผูกวันเกิดที่ปุ่ม 🔮 นะคะ" };
+        return withClassify({ ...groundCard(question), note: "ถ้าอยากให้อ่านจากดวงเกิดจริง ลองผูกวันเกิดที่ปุ่ม 🔮 นะคะ" });
       }
       const grounded = await groundChart(classification.topicId ?? "chart_foundation", birth);
-      if (grounded) return grounded;
+      if (grounded) return withClassify(grounded);
     } else if (classification.route === "day") {
       if (!birth) {
-        return { ...groundCard(question), note: "ถ้าอยากดูดวงกับวันจริง ๆ ลองผูกวันเกิดที่ปุ่ม 🔮 นะคะ" };
+        return withClassify({ ...groundCard(question), note: "ถ้าอยากดูดวงกับวันจริง ๆ ลองผูกวันเกิดที่ปุ่ม 🔮 นะคะ" });
       }
       const grounded = await groundDay(classification.date, birth, now);
-      if (grounded) return grounded;
+      if (grounded) return withClassify(grounded);
     }
   } catch {
     // engine ล้ม → ตกไปจั่วไพ่
   }
-  return groundCard(question);
+
+  // ไม่ได้ผูกดวง → จั่วไพ่ตอบได้ แต่ชวนกรอกวันเกิดอย่างนุ่มนวล เพื่อให้อ่านได้แม่นและตรงกับเจ้าตัวมากขึ้น
+  const card = groundCard(question);
+  if (!birth) {
+    return withClassify({
+      ...card,
+      note: "ผู้ใช้ยังไม่ได้กรอกวันเกิด — ให้ตอบคำถามให้เต็มที่ก่อน แล้วค่อยชวนแบบอบอุ่นสั้น ๆ ว่า ถ้ากรอกวัน–เดือน–ปี–เวลาเกิดที่ปุ่ม 🔮 ผูกดวง จะช่วยให้อ่านได้ลึกและตรงกับคุณมากขึ้น",
+    });
+  }
+  return withClassify(card);
 }
