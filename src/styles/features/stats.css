@@ -39,10 +39,57 @@
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+.stats-toolbar--rate {
+  margin-top: -6px;
+  margin-bottom: 16px;
 }
 .stats-rate {
   font-size: 12px;
   color: var(--st-muted);
+}
+
+/* ตัวเลือกช่วงวัน */
+.stats-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.stats-range__btn {
+  border: 1px solid var(--st-border);
+  background: #fff;
+  color: var(--st-muted);
+  border-radius: 99px;
+  padding: 5px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.stats-range__btn:hover {
+  background: #faf8fd;
+}
+.stats-range__btn.is-active {
+  background: var(--st-pink);
+  border-color: var(--st-pink);
+  color: #fff;
+}
+.stats-range__custom {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+  color: var(--st-muted);
+  font-size: 13px;
+}
+.stats-range__custom input {
+  border: 1px solid var(--st-border);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--st-ink);
+  background: #fff;
 }
 .stats-refresh {
   border: 1px solid var(--st-border);
@@ -167,6 +214,84 @@
   margin-top: 4px;
 }
 
+/* การ์ดเทียบโมเดลแชท */
+.stats-compare__n {
+  font-size: 12px;
+  color: var(--st-muted);
+  font-weight: 400;
+}
+.stats-compare__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stats-compare__row {
+  display: grid;
+  grid-template-columns: 220px 1fr auto;
+  align-items: center;
+  gap: 12px;
+}
+@media (max-width: 620px) {
+  .stats-compare__row {
+    grid-template-columns: 150px 1fr auto;
+  }
+}
+.stats-compare__lbl {
+  font-size: 13px;
+}
+.stats-compare__badge {
+  font-size: 10px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.stats-compare__badge.is-now {
+  background: rgba(99, 192, 138, 0.16);
+  color: #2e9d63;
+  border: 1px solid rgba(99, 192, 138, 0.4);
+}
+.stats-compare__badge.is-old {
+  background: #f3eef8;
+  color: var(--st-muted);
+  border: 1px solid var(--st-border);
+}
+.stats-compare__track {
+  height: 20px;
+  background: #f1ecf8;
+  border-radius: 7px;
+  overflow: hidden;
+}
+.stats-compare__fill {
+  height: 100%;
+  border-radius: 7px;
+}
+.stats-compare__fill.is-lite {
+  background: linear-gradient(90deg, #7fd0a3, #63c08a);
+}
+.stats-compare__fill.is-flash {
+  background: linear-gradient(90deg, #e6a54f, #e0862f);
+}
+.stats-compare__val {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  min-width: 76px;
+  text-align: right;
+}
+.stats-compare__save {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  color: var(--st-ink);
+}
+.stats-compare__save b {
+  color: #2e9d63;
+}
+.stats-compare__muted {
+  color: var(--st-muted);
+  font-size: 12px;
+}
+
 .stats-tabs {
   display: flex;
   gap: 8px;
@@ -228,6 +353,10 @@
 }
 .stats-table .muted {
   color: #c4bdd4;
+}
+.stats-table .stats-usd-sub {
+  color: var(--st-muted);
+  font-size: 12px;
 }
 .stats-lbl {
   max-width: 300px;

@@ -24,6 +24,9 @@ type RecentRow = {
   costUsd: number;
 };
 type ChatUser = { anonId: string; questions: number; costUsd: number; lastAt: string };
+type ChatCompare = {
+  calls: number; flashThb: number; flashLiteThb: number; savedThb: number; savedPct: number; currentModel: string;
+};
 type Stats = {
   usdToThb: number;
   totals: { calls: number; tokens: number; costUsd: number; costThb: number; features: number; chatUsers: number };
@@ -31,11 +34,14 @@ type Stats = {
   daily: DailyStat[];
   recent: RecentRow[];
   chatUsers: ChatUser[];
+  chatCompare: ChatCompare | null;
 };
 
 const fmtInt = (n: number) => n.toLocaleString("th-TH");
 const fmtUsd = (n: number) => `$${n < 0.01 && n > 0 ? n.toFixed(6) : n.toFixed(4)}`;
 const fmtThb = (n: number) => `฿${n.toLocaleString("th-TH", { maximumFractionDigits: 2 })}`;
+/** บาทแบบละเอียดสำหรับต้นทุนต่อแถวที่มีค่าน้อยมาก */
+const fmtThbSmall = (n: number) => `฿${n > 0 && n < 1 ? n.toFixed(4) : n.toLocaleString("th-TH", { maximumFractionDigits: 2 })}`;
 const shortId = (id: string) => (id.length > 10 ? `${id.slice(0, 8)}…` : id);
 const fmtTime = (iso: string) => {
   try {
@@ -118,18 +124,43 @@ function DailyCostChart({ data }: { data: DailyStat[] }) {
 }
 
 type Tab = "recent" | "chatUsers";
+type Preset = "today" | "7d" | "30d" | "custom";
+
+const PRESET_LABEL: Record<Preset, string> = {
+  today: "24 ชม.",
+  "7d": "7 วัน",
+  "30d": "30 วัน",
+  custom: "กำหนดเอง",
+};
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const daysAgoStr = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString().slice(0, 10);
 
 export function StatsDashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("recent");
+  const [preset, setPreset] = useState<Preset>("30d");
+  const [customFrom, setCustomFrom] = useState(daysAgoStr(7));
+  const [customTo, setCustomTo] = useState(todayStr());
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/stats", { cache: "no-store" });
+      let from: string, to: string;
+      if (preset === "custom") {
+        from = new Date(`${customFrom}T00:00:00`).toISOString();
+        const t = new Date(`${customTo}T00:00:00`);
+        t.setDate(t.getDate() + 1); // ให้ครอบทั้งวันสุดท้าย
+        to = t.toISOString();
+      } else {
+        const days = preset === "today" ? 1 : preset === "7d" ? 7 : 30;
+        to = new Date().toISOString();
+        from = new Date(Date.now() - days * 86_400_000).toISOString();
+      }
+      const res = await fetch(`/api/stats?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`, { cache: "no-store" });
       if (!res.ok) throw new Error(`โหลดสถิติไม่สำเร็จ (${res.status})`);
       setStats((await res.json()) as Stats);
     } catch (err) {
@@ -137,7 +168,7 @@ export function StatsDashboard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [preset, customFrom, customTo]);
 
   useEffect(() => {
     void load();
@@ -147,15 +178,42 @@ export function StatsDashboard() {
   if (error && !stats) return <p className="stats-msg stats-msg--err">{error}</p>;
   if (!stats) return null;
 
-  const { totals, byFeature, daily, recent, chatUsers, usdToThb } = stats;
+  const { totals, byFeature, daily, recent, chatUsers, usdToThb, chatCompare } = stats;
+  const chartTitle =
+    preset === "custom"
+      ? `ต้นทุน ${customFrom} → ${customTo}`
+      : preset === "today"
+        ? "ต้นทุนราย 24 ชั่วโมง (รายชั่วโมง)"
+        : `ต้นทุนรายวัน (${preset === "7d" ? 7 : 30} วันล่าสุด)`;
 
   return (
     <section className="stats">
       <div className="stats-toolbar">
-        <span className="stats-rate">เรต 1 USD ≈ {usdToThb} THB · ราคาเป็นค่าประมาณ</span>
+        <div className="stats-range">
+          {(["today", "7d", "30d", "custom"] as Preset[]).map((r) => (
+            <button
+              key={r}
+              type="button"
+              className={`stats-range__btn${preset === r ? " is-active" : ""}`}
+              onClick={() => setPreset(r)}
+            >
+              {PRESET_LABEL[r]}
+            </button>
+          ))}
+          {preset === "custom" && (
+            <span className="stats-range__custom">
+              <input type="date" value={customFrom} max={customTo} onChange={(e) => setCustomFrom(e.target.value)} />
+              <span>–</span>
+              <input type="date" value={customTo} min={customFrom} max={todayStr()} onChange={(e) => setCustomTo(e.target.value)} />
+            </span>
+          )}
+        </div>
         <button type="button" className="stats-refresh" onClick={() => void load()} disabled={loading}>
           {loading ? "…" : "↻ รีเฟรช"}
         </button>
+      </div>
+      <div className="stats-toolbar stats-toolbar--rate">
+        <span className="stats-rate">เรต 1 USD ≈ {usdToThb} THB · ราคาเป็นค่าประมาณ</span>
       </div>
 
       <div className="stats-kpis">
@@ -185,10 +243,45 @@ export function StatsDashboard() {
           <CostByFeatureChart data={byFeature} />
         </div>
         <div className="stats-card">
-          <h3 className="stats-card__title">ต้นทุนรายวัน (30 วันล่าสุด)</h3>
+          <h3 className="stats-card__title">{chartTitle}</h3>
           <DailyCostChart data={daily} />
         </div>
       </div>
+
+      {chatCompare && chatCompare.calls > 0 && (
+        <div className="stats-card stats-compare">
+          <h3 className="stats-card__title">
+            เทียบต้นทุนแชท: flash-lite vs flash <span className="stats-compare__n">({fmtInt(chatCompare.calls)} ข้อความในช่วงนี้)</span>
+          </h3>
+          <div className="stats-compare__bars">
+            <div className="stats-compare__row">
+              <span className="stats-compare__lbl">
+                gemini-2.5-flash-lite <span className="stats-compare__badge is-now">ใช้อยู่</span>
+              </span>
+              <div className="stats-compare__track">
+                <div
+                  className="stats-compare__fill is-lite"
+                  style={{ width: `${chatCompare.flashThb > 0 ? (chatCompare.flashLiteThb / chatCompare.flashThb) * 100 : 0}%` }}
+                />
+              </div>
+              <span className="stats-compare__val">{fmtThb(chatCompare.flashLiteThb)}</span>
+            </div>
+            <div className="stats-compare__row">
+              <span className="stats-compare__lbl">
+                gemini-2.5-flash <span className="stats-compare__badge is-old">เดิม</span>
+              </span>
+              <div className="stats-compare__track">
+                <div className="stats-compare__fill is-flash" style={{ width: "100%" }} />
+              </div>
+              <span className="stats-compare__val">{fmtThb(chatCompare.flashThb)}</span>
+            </div>
+          </div>
+          <p className="stats-compare__save">
+            ประหยัด <b>{fmtThb(chatCompare.savedThb)}</b> ({chatCompare.savedPct.toFixed(0)}%) จากการสลับเป็น flash-lite
+            <span className="stats-compare__muted"> · คิดจากโทเคนแชทจริงในช่วงที่เลือก</span>
+          </p>
+        </div>
+      )}
 
       <div className="stats-card">
         <h3 className="stats-card__title">สรุปต่อฟีเจอร์</h3>
@@ -242,7 +335,8 @@ export function StatsDashboard() {
                 <th>รายละเอียด</th>
                 <th>โมเดล</th>
                 <th className="num">โทเคน (in/out)</th>
-                <th className="num">ต้นทุน</th>
+                <th className="num">ต้นทุน (฿)</th>
+                <th className="num">ต้นทุน ($)</th>
               </tr>
             </thead>
             <tbody>
@@ -255,11 +349,12 @@ export function StatsDashboard() {
                   <td className="stats-lbl" title={r.label ?? undefined}>{r.label ?? <span className="muted">—</span>}</td>
                   <td className="nowrap"><code>{r.model}</code></td>
                   <td className="num">{fmtInt(r.inTokens)}/{fmtInt(r.outTokens)}</td>
-                  <td className="num">{fmtUsd(r.costUsd)}</td>
+                  <td className="num">{fmtThbSmall(r.costUsd * usdToThb)}</td>
+                  <td className="num stats-usd-sub">{fmtUsd(r.costUsd)}</td>
                 </tr>
               ))}
               {recent.length === 0 && (
-                <tr><td colSpan={6} className="stats-msg">ยังไม่มีข้อมูล</td></tr>
+                <tr><td colSpan={7} className="stats-msg">ยังไม่มีข้อมูล</td></tr>
               )}
             </tbody>
           </table>
@@ -273,7 +368,8 @@ export function StatsDashboard() {
               <tr>
                 <th>ผู้ใช้ (anon)</th>
                 <th className="num">คำถาม</th>
-                <th className="num">ต้นทุน</th>
+                <th className="num">ต้นทุน (฿)</th>
+                <th className="num">ต้นทุน ($)</th>
                 <th>ล่าสุด</th>
               </tr>
             </thead>
@@ -282,12 +378,13 @@ export function StatsDashboard() {
                 <tr key={u.anonId}>
                   <td title={u.anonId}><code>{shortId(u.anonId)}</code></td>
                   <td className="num">{fmtInt(u.questions)}</td>
-                  <td className="num">{fmtUsd(u.costUsd)}</td>
+                  <td className="num">{fmtThbSmall(u.costUsd * usdToThb)}</td>
+                  <td className="num stats-usd-sub">{fmtUsd(u.costUsd)}</td>
                   <td>{fmtTime(u.lastAt)}</td>
                 </tr>
               ))}
               {chatUsers.length === 0 && (
-                <tr><td colSpan={4} className="stats-msg">ยังไม่มีผู้ใช้แชท</td></tr>
+                <tr><td colSpan={5} className="stats-msg">ยังไม่มีผู้ใช้แชท</td></tr>
               )}
             </tbody>
           </table>

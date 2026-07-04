@@ -15,7 +15,9 @@ import { logUsage } from "@/lib/louise-hay/usage-repository";
 
 export const runtime = "nodejs";
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+// ใช้ flash-lite เพื่อลดต้นทุน/คำถาม ~4 เท่า (฿0.09 → ฿0.02) โดยคุณภาพแชทให้กำลังใจยังพอ
+// override ได้ด้วย env LOUISE_HAY_MODEL
+const DEFAULT_MODEL = "gemini-2.5-flash-lite";
 const MAX_OUTPUT_TOKENS = 1024;
 const TEMPERATURE = 0.85;
 const TOP_P = 0.95;
