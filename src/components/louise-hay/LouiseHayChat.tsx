@@ -108,8 +108,6 @@ export function LouiseHayChat() {
   });
   const [showBirth, setShowBirth] = useState(false);
   const [birthLinked, setBirthLinked] = useState(false);
-  const [apiKey, setApiKey] = useState("");
-  const [showKey, setShowKey] = useState(false);
   const anonIdRef = useRef<string>("anon");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -145,7 +143,6 @@ export function LouiseHayChat() {
           messages: history.map((m) => ({ role: m.role, content: m.content })),
           anonId: anonIdRef.current,
           ...(birthLinked && birthComplete ? { birth } : {}),
-          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
         }),
       });
 
@@ -228,38 +225,6 @@ export function LouiseHayChat() {
       )}
 
       {error && <p className="lh-error">{error}</p>}
-
-      <div className="lh-birthbar">
-        <button
-          type="button"
-          className={`lh-birthbar__toggle${apiKey.trim() ? " is-linked" : ""}`}
-          onClick={() => setShowKey((v) => !v)}
-        >
-          {apiKey.trim() ? "🔑 ใช้ API key ของคุณ — แก้ไข" : "🔑 API key ของคุณ (ไม่บังคับ)"}
-        </button>
-        {apiKey.trim() && (
-          <button type="button" className="lh-birthbar__clear" onClick={() => setApiKey("")}>
-            ลบคีย์
-          </button>
-        )}
-      </div>
-
-      {showKey && (
-        <div className="lh-birth">
-          <p className="lh-birth__hint">
-            ใส่ Gemini API key ของคุณเอง (เก็บในเบราว์เซอร์นี้เท่านั้น ไม่บันทึกที่เซิร์ฟเวอร์) —
-            ถ้าเว้นว่างจะใช้คีย์กลางของระบบ
-          </p>
-          <input
-            type="password"
-            className="lh-key__input"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="AIza… (Gemini API key)"
-            autoComplete="off"
-          />
-        </div>
-      )}
 
       <div className="lh-birthbar">
         <button
