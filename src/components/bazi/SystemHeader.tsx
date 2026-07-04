@@ -38,6 +38,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/reading/newdata-reading", icon: "📖", label: "อ่าน 15 บท" },
   { href: "/reading/newdata", icon: "🗃️", label: "ข้อมูลใหม่" },
   { href: "/reading/matching", icon: "💞", label: "ข้อมูล Matching" },
+  { href: "/louise-hay", icon: "💗", label: "โค้ชฮีลใจ" },
 ];
 
 function isActiveLink(pathname: string | null, href: string) {

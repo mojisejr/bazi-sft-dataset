@@ -45,6 +45,11 @@ yarn-error.log*
 /templat/
 /example/
 
+# Louise Hay source books (large scanned PDFs + 700MB zip) & OCR intermediate — not tracked.
+# คลัง RAG ที่แอปใช้จริง = src/lib/louise-hay/data/louise-hay-index.json (track ไว้)
+/Louise Hay/
+/scripts/louise-hay/ocr-out/
+
 # editor/runtime junk
 # Word temp lock files (~$Document.docx)
 ~$*
