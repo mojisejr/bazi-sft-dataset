@@ -10,8 +10,11 @@ import { z } from "zod";
 import { getGeminiApiKey } from "@/lib/env";
 import { resolveLouiseHayGrounding } from "@/lib/louise-hay/grounding-router";
 import { buildLouiseHayPrompt, type LouiseHayChatMessage } from "@/lib/louise-hay/persona";
+import { getPersonaCacheName } from "@/lib/louise-hay/persona-cache";
 import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
 import { logUsage } from "@/lib/louise-hay/usage-repository";
+import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
+import { checkRateLimit, clientIp, tryChargeDailyBudget, reconcileDailyBudget } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -47,7 +50,12 @@ const BodySchema = z.object({
 
 const ANSWER_PREVIEW_CHARS = 400;
 
-type GenUsage = { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
+type GenUsage = {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  thoughtsTokenCount?: number;
+  cachedContentTokenCount?: number;
+};
 
 function badRequest(message: string, status = 400) {
   return Response.json({ error: { message } }, { status });
@@ -153,11 +161,32 @@ export async function POST(req: Request) {
   }
 
   // คีย์ของผู้ใช้ก่อน (จากช่องกรอกในหน้า) ไม่งั้นใช้คีย์กลางของเซิร์ฟเวอร์
+  const isOwnKey = Boolean(parsed.data.apiKey?.trim());
   let apiKey: string;
   try {
     apiKey = parsed.data.apiKey?.trim() || getGeminiApiKey();
   } catch {
     return badRequest("กรุณาใส่ API key ของ Gemini (หรือให้เซิร์ฟเวอร์ตั้งค่า GEMINI_API_KEY)", 400);
+  }
+
+  // กันยิงรัว (ต่อ IP) + โควตารายวัน (เฉพาะคีย์เซิร์ฟเวอร์ = free tier) — เช็คก่อนเรียก Gemini เพื่อกันค่าใช้จ่าย
+  const limited = checkRateLimit("louise_hay", clientIp(req), !isOwnKey);
+  if (limited) {
+    return Response.json(
+      { error: { message: limited.message } },
+      { status: limited.status, headers: { "Retry-After": String(limited.retryAfterSec) } },
+    );
+  }
+
+  // เพดานค่าใช้จ่ายรวมต่อวัน (เฉพาะคีย์เซิร์ฟเวอร์) — กันกรณีเลวร้ายสุด
+  if (!isOwnKey) {
+    const budget = tryChargeDailyBudget();
+    if (!budget.ok) {
+      return Response.json(
+        { error: { message: "ระบบพักรับข้อความชั่วคราวสำหรับวันนี้ 🌙 ขออภัยค่ะ พรุ่งนี้กลับมาคุยกันใหม่ หรือใส่ Gemini API key ของคุณเองเพื่อคุยต่อได้" } },
+        { status: 503, headers: { "Retry-After": String(budget.retryAfterSec) } },
+      );
+    }
   }
 
   // RAG คำสอน (น้ำเสียง) + เลือกศาสตร์ตอบตามชนิดคำถาม (ดวง NewData / ปฏิทิน / ไพ่) — ทำขนานกัน
@@ -184,7 +213,7 @@ export async function POST(req: Request) {
     groundingContext,
   });
 
-  const usedOwnKey = Boolean(parsed.data.apiKey?.trim());
+  const usedOwnKey = isOwnKey;
   const anonId = parsed.data.anonId?.trim() || "anon";
   const birthKey = parsed.data.birth
     ? `${parsed.data.birth.birthDate}|${parsed.data.birth.province}`
@@ -194,23 +223,36 @@ export async function POST(req: Request) {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${apiKey}`;
 
+  // explicit caching ของ persona — เฉพาะคีย์เซิร์ฟเวอร์ (cache ผูกกับ project). คีย์ผู้ใช้เอง → ไม่แคช
+  const cacheName = usedOwnKey ? null : await getPersonaCacheName(apiKey, model, prompt.systemInstruction);
+
+  const generationConfig = {
+    temperature: TEMPERATURE,
+    topP: TOP_P,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
+    // ปิด "การคิด" ของโมเดล 2.5 — คำโค้ชอบอุ่นไม่ต้องใช้ reasoning และโทเคนคิด
+    // ถูกนับรวมใน maxOutputTokens ทำให้คำตอบจริงถูกตัดกลางประโยค
+    thinkingConfig: { thinkingBudget: 0 },
+  };
+  // ถ้ามี cache → อ้าง persona จาก cache (ไม่ส่ง systemInstruction ซ้ำ); ไม่งั้นส่ง persona แบบ inline
+  const requestBody = cacheName
+    ? {
+        cachedContent: cacheName,
+        contents: [{ role: "user", parts: [{ text: prompt.userPrompt }] }],
+        generationConfig,
+      }
+    : {
+        systemInstruction: { parts: [{ text: prompt.systemInstruction }] },
+        contents: [{ role: "user", parts: [{ text: prompt.userPrompt }] }],
+        generationConfig,
+      };
+
   let upstream: Response;
   try {
     upstream = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: prompt.systemInstruction }] },
-        contents: [{ role: "user", parts: [{ text: prompt.userPrompt }] }],
-        generationConfig: {
-          temperature: TEMPERATURE,
-          topP: TOP_P,
-          maxOutputTokens: MAX_OUTPUT_TOKENS,
-          // ปิด "การคิด" ของโมเดล 2.5 — คำโค้ชอบอุ่นไม่ต้องใช้ reasoning และโทเคนคิด
-          // ถูกนับรวมใน maxOutputTokens ทำให้คำตอบจริงถูกตัดกลางประโยค
-          thinkingConfig: { thinkingBudget: 0 },
-        },
-      }),
+      body: JSON.stringify(requestBody),
       signal: req.signal,
     });
   } catch (error) {
@@ -223,7 +265,10 @@ export async function POST(req: Request) {
   }
 
   const onComplete = ({ text, usage }: { text: string; usage: GenUsage }) => {
-    const genInTokens = usage.promptTokenCount ?? 0;
+    // โทเคนที่ cache (จาก explicit + implicit) คิดเงินแค่ ~25% → เก็บเป็น "input ที่คิดเงินจริง"
+    // เพื่อให้ต้นทุนบนแดชบอร์ดสะท้อนส่วนลด (billable = prompt - cached*0.75)
+    const cached = usage.cachedContentTokenCount ?? 0;
+    const genInTokens = Math.max(0, Math.round((usage.promptTokenCount ?? 0) - cached * 0.75));
     const genOutTokens = (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0);
     const totalTokens =
       grounding.classifyInTokens +
@@ -231,6 +276,18 @@ export async function POST(req: Request) {
       retrieved.embedTokens +
       genInTokens +
       genOutTokens;
+    // แทนค่าประมาณ budget ด้วยต้นทุนจริง (เฉพาะคีย์เซิร์ฟเวอร์)
+    if (!isOwnKey) {
+      const actualUsd = costUsdOf({
+        model,
+        classifyInTokens: grounding.classifyInTokens,
+        classifyOutTokens: grounding.classifyOutTokens,
+        embedTokens: retrieved.embedTokens,
+        genInTokens,
+        genOutTokens,
+      });
+      reconcileDailyBudget(usdToThb(actualUsd));
+    }
     // fire-and-forget: บันทึกสถิติ ไม่ให้กระทบผู้ใช้ ถ้า DB ล่มก็ปล่อยผ่าน
     void logUsage({
       anonId,

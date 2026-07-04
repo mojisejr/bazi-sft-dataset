@@ -16,7 +16,13 @@ type Birth = { birthDate: string; birthTime: string; gender: "female" | "male"; 
 const ROUTE_ICON: Record<string, string> = {
   chart: "🔮",
   day: "📅",
+  timing: "⏳",
+  almanac: "🗓️",
   card: "🃏",
+  divine: "🎴",
+  fortune: "🎋",
+  phone: "📱",
+  offscope: "🎲",
 };
 
 function decodeScience(route: string | null, header: string | null): ScienceMeta | undefined {
@@ -49,6 +55,20 @@ const SUGGESTIONS = [
 
 let idSeq = 0;
 const nextId = () => `m${(idSeq += 1)}`;
+
+/** แปลง **คำ** เป็นตัวหนาจริง (เน้นคำ) — ที่เหลือปล่อยเป็น text (pre-wrap คุมขึ้นบรรทัดให้เอง) */
+function renderRich(text: string) {
+  return text.split(/(\*\*[^*\n]+\*\*)/g).map((part, i) => {
+    const m = /^\*\*([^*\n]+)\*\*$/.exec(part);
+    return m ? (
+      <strong key={i} className="lh-b">
+        {m[1]}
+      </strong>
+    ) : (
+      part
+    );
+  });
+}
 
 const ANON_KEY = "lh_anon_id";
 
@@ -182,7 +202,7 @@ export function LouiseHayChat() {
             {m.role === "assistant" && <div className="lh-msg__avatar" aria-hidden>💗</div>}
             <div className="lh-msg__bubble">
               <div className="lh-msg__text">
-                {m.content || (isStreaming ? <span className="lh-typing"><i /><i /><i /></span> : "")}
+                {m.content ? renderRich(m.content) : isStreaming ? <span className="lh-typing"><i /><i /><i /></span> : ""}
               </div>
               {m.science && (
                 <div className={`lh-chart-tag lh-chart-tag--${m.science.route}`}>

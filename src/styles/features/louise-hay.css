@@ -113,6 +113,14 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+/* เน้นคำ (ตัวหนา) จาก **...** — โทนชมพูอบอุ่นในฟองของโค้ช, ฟองผู้ใช้ใช้สีตัวอักษรเดิม */
+.lh-b {
+  font-weight: 700;
+  color: var(--lh-pink);
+}
+.lh-msg--user .lh-b {
+  color: inherit;
+}
 
 .lh-typing {
   display: inline-flex;
