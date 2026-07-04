@@ -186,6 +186,18 @@ function jianchuInfo(monthBranch: string, dayBranch: string): { name: string; me
   return { name: rec.name, meaning: rec.meaning ?? "" };
 }
 
+/** 建除 เต็มของวัน (ชื่อ/ความหมาย/กิจกรรมที่เหมาะ-ห้าม/คะแนน) — ใช้จัดอันดับ "วันฤกษ์ดี" */
+export function jianchuFor(
+  year: number,
+  month: number,
+  day: number,
+): { name: string; meaning: string; activity: string; score: number } | null {
+  const { dayPillar, monthPillar } = pillarsForDate(year, month, day);
+  const rec = JIANCHU_LEGEND[`C${jianchuIndex(monthPillar.branch, dayPillar.branch) + 1}`];
+  if (!rec) return null;
+  return { name: rec.name, meaning: rec.meaning ?? "", activity: rec.activity ?? "", score: resolveScore(rec.score) };
+}
+
 /**
  * ดาวประจำวัน (ชุดใหม่ day-stars) ที่เข้าเกณฑ์ของวัน
  * คีย์ตามกิ่งเดือน → ตัวกระตุ้นซึ่งจับได้ 3 แบบ: ก้านวัน / กิ่งวัน / เสาวันเต็ม (กิ่ง+ก้าน เช่น 戊寅)

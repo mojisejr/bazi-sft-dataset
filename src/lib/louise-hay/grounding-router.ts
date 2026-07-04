@@ -10,7 +10,7 @@
  * server-only.
  */
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
-import { buildAlmanacDay, pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
+import { buildAlmanacDay, checkHour, jianchuFor, pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
 import { buildElementInteractionAB, buildFacets } from "@/lib/bazi/pair-matching";
 import { drawRandom as drawDivine } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
@@ -104,7 +104,7 @@ async function classifyRoute(question: string, now: Date, apiKey?: string): Prom
     "- \"card\" = ขอคำแนะนำ/ทางเลือก/กำลังใจ หรือขอ 'จั่วไพ่/ดูไพ่' ทั่วไป ที่ไม่เข้าหมวดอื่น (จั่วไพ่ออราเคิล) — ค่าเริ่มต้น",
     "- \"chat\" = แค่ทักทาย ขอบคุณ ระบายความรู้สึก คุยเล่น ไม่ได้ขอคำทำนาย/คำแนะนำเจาะจง",
     `ถ้า route=chart ให้เลือก topicId ที่ใกล้ที่สุดจาก: ${TOPIC_IDS.join(", ")} (ค่าเริ่มต้น chart_foundation).`,
-    "ถ้า route=timing หรือ almanac และระบุวันได้ ให้ date เป็น YYYY-MM-DD (แปลง 'พรุ่งนี้' ฯลฯ เทียบวันนี้) ไม่งั้น null.",
+    "ถ้า route=timing / almanac / offscope และระบุวันได้ ให้ date เป็น YYYY-MM-DD (แปลง 'พรุ่งนี้' ฯลฯ เทียบวันนี้) ไม่งั้น null.",
     `คำถามล่าสุด: "${question}"`,
   ].join("\n");
 
@@ -357,8 +357,117 @@ function groundAlmanac(dateIso: string | null, now: Date): GroundingCore {
   return { route: "almanac", sourceLabel: `ปฏิทินโหรา · ${iso}`, text: parts.join("\n") };
 }
 
+/**
+ * วันฤกษ์ดีในเดือน — สแกนตั้งแต่วันนี้ถึงสิ้นเดือน.
+ * ผูกดวง → จัดอันดับด้วย "ฤกษ์วัน (建除) + ความเข้ากับดวงเกิด (ManVsDay person×วัน)" ผสมกัน (วันดีเฉพาะคน).
+ * ไม่ผูกดวง → จัดอันดับด้วยฤกษ์วัน (建除) ทั่วไป. โชว์ activity ให้โค้ชเลือกวันที่ตรงสิ่งที่จะทำ.
+ */
+async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInput | null, now: Date): Promise<GroundingCore> {
+  const iso = todayIsoBangkok(now);
+  const [y, m, dToday] = iso.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+  // ผูกดวง → เตรียม state + matching เพื่อคิด "ความเข้ากับดวง" ต่อวัน
+  let person: { pillars: ManPillars; dayMaster: DayPillar; matching: ReturnType<typeof applyMatchingOverrides> } | null = null;
+  if (birth) {
+    try {
+      const repository = createDbKnowledgeRepository();
+      const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
+      person = { pillars: facetPillarsOf(state), dayMaster: dayPillarOf(state), matching: applyMatchingOverrides(await getMatchingMap()) };
+    } catch {
+      person = null;
+    }
+  }
+
+  const scored: { dd: number; fit: number | null; combined: number }[] = [];
+  for (let dd = dToday; dd <= lastDay; dd += 1) {
+    const jScore = jianchuFor(y, m, dd)?.score ?? 0;
+    let fit: number | null = null;
+    if (person) {
+      try {
+        fit = buildManVsDay(person.pillars, person.dayMaster, y, m, dd, person.matching).overallPercent;
+      } catch {
+        fit = null;
+      }
+    }
+    const combined = person && fit != null ? (jScore + fit) / 2 : jScore;
+    scored.push({ dd, fit, combined });
+  }
+  const top = scored
+    .sort((a, b) => b.combined - a.combined)
+    .slice(0, person ? 6 : 8)
+    .sort((a, b) => a.dd - b.dd);
+  const lines = top
+    .map(({ dd, fit }) => {
+      const j = jianchuFor(y, m, dd);
+      const a = buildAlmanacDay(y, m, dd);
+      const hours = a.luckyHours.slice(0, 3).map((h) => `${h.range}(${h.god})`).join(", ");
+      const fitStr = fit != null ? ` · เข้ากับดวงคุณ ${fit}%` : "";
+      return `- วันที่ ${dd} (เสาวัน ${a.dayPillar.ganzhi} · ฤกษ์ ${j?.name ?? "-"} = ${j?.meaning ?? ""})${fitStr} → เหมาะ/ห้าม: ${j?.activity || "-"}${hours ? ` · ยามมงคล ${hours}` : ""}`;
+    })
+    .join("\n");
+  const basis = person ? "ผสม ฤกษ์วัน(建除) + ความเข้ากับดวงเกิดของผู้ใช้" : "ฤกษ์วัน(建除) ทั่วไป (ผู้ใช้ยังไม่ผูกดวง)";
+  return {
+    route: "almanac",
+    sourceLabel: person ? `เลือกวันดี (อิงดวง) · ${iso.slice(0, 7)}` : `เลือกวันดี · ${iso.slice(0, 7)}`,
+    text:
+      `ผู้ใช้ขอเลือกวันฤกษ์ดีในเดือนนี้ (จะทำ: "${question}") — คัดจาก ${basis} ตั้งแต่วันที่ ${dToday} ถึงสิ้นเดือน ${iso.slice(0, 7)}:\n${lines}\n\n` +
+      `ให้เลือก 2-3 วันที่ช่อง "เหมาะ/ห้าม" ตรงกับสิ่งที่จะทำ${person ? " และ 'เข้ากับดวง' สูง" : ""} เลี่ยงวันที่ระบุห้าม บอกเหตุผลสั้น ๆ + ยามมงคล อย่าตอบวันเดียว.` +
+      (person ? "" : " (ถ้าผูกวันเกิดที่ปุ่ม 🔮 จะเลือกวันที่ตรงกับดวงคุณได้แม่นขึ้น — ชวนอย่างนุ่มนวล)"),
+  };
+}
+
+/** ผู้ใช้ขอ "เลือกวัน/หาวันดี" ในช่วงเวลา (ไม่ใช่ถามว่าวันนี้เป็นไง) → สแกนทั้งเดือน */
+export function wantsDayPicker(question: string): boolean {
+  return /เลือกวัน|วันไหน|วันดี|หาวัน|หาฤกษ์|ฤกษ์.*(เดือน|ขึ้นบ้าน|แต่งงาน|ย้าย|เปิดร้าน|ออกรถ)|วัน.*(เหมาะ|มงคล).*เดือน/.test(question);
+}
+
+/** ดึงชั่วโมง (0-23) จากข้อความ เช่น "04:00" / "20.30" — คืน null ถ้าไม่พบ */
+export function extractHour(text: string): number | null {
+  const m = text.match(/(\d{1,2})[:.](\d{2})/);
+  if (!m) return null;
+  const h = Number(m[1]);
+  return h >= 0 && h <= 23 ? h : null;
+}
+
+/**
+ * นอกขอบเขต (บอล/หวย/ทำนายผลภายนอก) — จั่วไพ่ให้ "ฟันธงสนุก" + ถ้ามีวัน/เวลา เสริมฤกษ์ยามของเวลานั้น.
+ * note สั่งโค้ชให้ตอบแบบเลือกฝั่งไปเลย (จากไพ่) แต่เตือนชัดว่าเป็นการคาดเดาสนุก.
+ */
+function groundOffscope(question: string, dateIso: string | null, now: Date): GroundingCore {
+  const card = groundCard(question);
+  const parts = [`ไพ่เสี่ยงทายที่จั่วได้:\n${card.text}`];
+  let timeLabel = "";
+  let hasTiming = false;
+  if (dateIso) {
+    hasTiming = true;
+    const [y, m, d] = dateIso.split("-").map(Number);
+    const alm = groundAlmanac(dateIso, now);
+    const hour = extractHour(question);
+    let hourInfo = "";
+    if (hour != null) {
+      const hq = checkHour(y, m, d, hour);
+      timeLabel = ` ${dateIso} ${String(hour).padStart(2, "0")}:00`;
+      hourInfo = `\nยาม ${String(hour).padStart(2, "0")}:00 (${hq.range}) เทพยาม ${hq.god}: ${hq.meaning} — ${hq.good ? "ยามดี (黃道)" : "ยามระวัง (黑道)"}`;
+    } else {
+      timeLabel = ` ${dateIso}`;
+    }
+    parts.push(`ฤกษ์ยามของ${timeLabel}:\n${alm.text}${hourInfo}`);
+  }
+  return {
+    route: "offscope",
+    sourceLabel: `เสี่ยงทายสนุก${hasTiming ? " + ฤกษ์ยาม" : ""}`,
+    text: parts.join("\n———\n"),
+    note:
+      "คำถามนี้เป็นการทำนายผลภายนอก/พนัน — ตอบแบบ 'ฟันธงสนุก ๆ' ได้เลย: จากไพ่ให้ 'เลือกฝั่ง/คาดผล' ไปเลยแบบเด็ดขาด (ไพ่เอียงไปทางไหน ฝั่งไหนได้เปรียบ) ไม่ต้องพูดกลาง ๆ ว่าคาดเดายาก. " +
+      "แต่ต้องเตือนสั้น ๆ ชัดเจนว่า 'นี่เป็นการเสี่ยงทายสนุก ๆ ไม่ใช่คำทำนายผลจริง'. " +
+      (hasTiming ? "มีฤกษ์ยามของวัน/เวลาแนบมา ให้เสริมว่าเวลานั้นเป็นยามดีหรือยามระวัง ประกอบการเชียร์. " : "") +
+      "กระชับ มีสีสัน ไม่บ่ายเบี่ยงยาว ๆ",
+  };
+}
+
 /** ดึงเบอร์มือถือไทยจากข้อความ (0 + 8-9 หลัก อาจมีขีด/เว้นวรรค) — คืน null ถ้าไม่พบ */
-function extractPhone(text: string): string | null {
+export function extractPhone(text: string): string | null {
   const match = text.match(/0[\d\-\s]{8,13}/);
   if (!match) return null;
   const digits = match[0].replace(/\D/g, "");
@@ -370,7 +479,7 @@ function extractPhone(text: string): string | null {
  * (ประหยัดโทเคน + ตอบไวขึ้น โดยไม่กระทบการเขียนคำตอบ). คืน null ถ้าไม่ชัด → ให้ LLM จัดต่อ.
  * ครอบเฉพาะ route ที่ไม่ต้องให้ LLM แกะ topicId/date: phone / fortune / divine / card / ทักทายล้วน.
  */
-function preClassify(question: string, phone: string | null): RouteClassification | null {
+export function preClassify(question: string, phone: string | null): RouteClassification | null {
   const q = question.trim();
   const zero = { topicId: null as string | null, date: null as string | null, inTokens: 0, outTokens: 0 };
   if (phone) return { route: "phone", ...zero };
@@ -436,14 +545,17 @@ export async function resolveLouiseHayGrounding(
     }
     if (route === "fortune") return withClassify(groundFortune());
     if (route === "divine") return withClassify(groundDivine(question));
-    if (route === "almanac") return withClassify(groundAlmanac(classification.date, now));
+    if (route === "almanac") {
+      // ขอ "เลือกวัน/หาวันดี" → สแกนทั้งเดือน (อิงดวงถ้าผูก); ถามว่าวันนี้/วันเดียวเป็นไง → ตอบวันเดียว
+      if (wantsDayPicker(question)) {
+        return withClassify(await groundAlmanacMonthPick(question, birth, now));
+      }
+      return withClassify(groundAlmanac(classification.date, now));
+    }
 
-    // นอกขอบเขต (บอล/หวย/ทำนายคนอื่น) — จั่วไพ่แบบสนุก ๆ แต่บอกชัดว่าไม่ใช่คำทำนายจริง
+    // นอกขอบเขต (บอล/หวย/ทำนายคนอื่น) — จั่วไพ่ "ฟันธงสนุก" + ถ้ามีวัน/เวลา เสริมฤกษ์ยาม
     if (route === "offscope") {
-      return withClassify({
-        ...groundCard(question),
-        note: "คำถามนี้เป็นการทำนายผลภายนอก/ของคนอื่น/การพนัน ซึ่งดวงบอกตรง ๆ ไม่ได้ — ให้จั่วไพ่เล่าเป็น 'ความสนุกเสี่ยงทายเบา ๆ' และต้องพูดชัดสั้น ๆ ว่านี่ไม่ใช่คำทำนายผลจริง (ห้ามฟันธงแพ้/ชนะ/ตัวเลข) แล้วชวนกลับมาโฟกัสที่ตัวเขาเองอย่างอบอุ่น ห้ามบ่ายเบี่ยงยาว ๆ",
-      });
+      return withClassify(groundOffscope(question, classification.date, now));
     }
 
     // ── ศาสตร์ที่ต้องผูกดวง ──

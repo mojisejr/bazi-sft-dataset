@@ -46,11 +46,14 @@ function decodeScience(route: string | null, header: string | null): ScienceMeta
 const GREETING =
   "สวัสดีค่ะ เราคือโค้ชฮีลใจ 🌷 พื้นที่ตรงนี้ปลอดภัยสำหรับคุณเสมอ วันนี้มีอะไรในใจ อยากเล่าให้เราฟังไหมคะ";
 
-const SUGGESTIONS = [
-  "วันนี้รู้สึกไม่มีค่าเลย",
-  "ฉันกลัวความเปลี่ยนแปลง",
-  "ให้อภัยตัวเองยังไงดี",
-  "อยากรักตัวเองให้เป็น",
+// ป้าย (มี emoji) + ข้อความจริงที่ส่ง — โชว์ความสามารถทั้งฮีลใจ + เสี่ยงทาย ให้ผู้ใช้รู้ว่าถามอะไรได้บ้าง
+const SUGGESTIONS: { label: string; prompt: string }[] = [
+  { label: "💗 วันนี้รู้สึกไม่มีค่า", prompt: "วันนี้รู้สึกไม่มีค่าเลย" },
+  { label: "💗 ให้อภัยตัวเองยังไง", prompt: "ให้อภัยตัวเองยังไงดี" },
+  { label: "🎋 ขอเซียมซี", prompt: "ขอเสี่ยงเซียมซีหน่อย" },
+  { label: "🃏 จั่วไพ่แนะนำ", prompt: "ขอจั่วไพ่แนะนำหน่อย" },
+  { label: "🗓️ เลือกวันมงคลเดือนนี้", prompt: "ช่วยเลือกวันมงคลในเดือนนี้ให้หน่อย" },
+  { label: "📱 ดูเบอร์มือถือ", prompt: "อยากให้ดูเบอร์มือถือ" },
 ];
 
 let idSeq = 0;
@@ -217,8 +220,8 @@ export function LouiseHayChat() {
       {messages.length <= 1 && (
         <div className="lh-suggest">
           {SUGGESTIONS.map((s) => (
-            <button key={s} type="button" className="lh-suggest__chip" onClick={() => sendMessage(s)}>
-              {s}
+            <button key={s.label} type="button" className="lh-suggest__chip" onClick={() => sendMessage(s.prompt)}>
+              {s.label}
             </button>
           ))}
         </div>
