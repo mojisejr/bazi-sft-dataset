@@ -5,9 +5,13 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ageFromBirthDate,
   extractHour,
   extractPhone,
+  parseRelativeDate,
   preClassify,
+  recentContext,
+  wantsDailyLifestyle,
   wantsDayPicker,
 } from "@/lib/louise-hay/grounding-router";
 
@@ -38,6 +42,50 @@ describe("wantsDayPicker", () => {
   it("'วันไหนดี' → true", () => expect(wantsDayPicker("แต่งงานวันไหนดี")).toBe(true));
   it("'หาฤกษ์' → true", () => expect(wantsDayPicker("หาฤกษ์เปิดร้าน")).toBe(true));
   it("ถามวันเดียว 'วันนี้ฤกษ์ดีไหม' → false", () => expect(wantsDayPicker("วันนี้ฤกษ์ดีไหม")).toBe(false));
+});
+
+describe("ageFromBirthDate (อายุจริง ณ วันนี้)", () => {
+  const now = new Date("2026-07-05T03:00:00Z"); // 2026-07-05 Asia/Bangkok
+  it("ยังไม่ถึงวันเกิดปีนี้ → ยังไม่บวกปี", () =>
+    expect(ageFromBirthDate("1990-08-10", now)).toBe(35));
+  it("ผ่านวันเกิดปีนี้แล้ว → บวกครบปี", () =>
+    expect(ageFromBirthDate("1990-06-01", now)).toBe(36));
+  it("วันเกิดตรงวันนี้พอดี → นับเต็มปี", () =>
+    expect(ageFromBirthDate("2000-07-05", now)).toBe(26));
+  it("วันเกิดผิดรูปแบบ → null", () => expect(ageFromBirthDate("bad", now)).toBeNull());
+});
+
+describe("recentContext (บริบทให้ตัวจัดหมวดเข้าใจคำถามต่อเนื่อง)", () => {
+  it("ไม่มีประวัติ/ข้อความเดียว → ''", () => {
+    expect(recentContext(undefined)).toBe("");
+    expect(recentContext([{ role: "user", content: "hi" }])).toBe("");
+  });
+  it("ตัดข้อความล่าสุดออก + ติดป้ายบทบาท 'ผู้ใช้/โค้ช'", () => {
+    const h: { role: "user" | "assistant"; content: string }[] = [
+      { role: "user", content: "ช่วยเลือกวันมงคลในเดือนนี้" },
+      { role: "assistant", content: "วันที่ 5 กับ 16 ดีค่ะ" },
+      { role: "user", content: "วันที่ 11 ไม่ดีหรอ" },
+    ];
+    const ctx = recentContext(h);
+    expect(ctx).toContain("ผู้ใช้: ช่วยเลือกวันมงคลในเดือนนี้");
+    expect(ctx).toContain("โค้ช: วันที่ 5 กับ 16 ดีค่ะ");
+    expect(ctx).not.toContain("วันที่ 11 ไม่ดีหรอ"); // ข้อความล่าสุดไม่ถูกรวมในบริบท
+  });
+});
+
+describe("wantsDailyLifestyle (คำถามใช้ชีวิตประจำวัน → ฟันธง)", () => {
+  it("'กินอะไรดี' → true", () => expect(wantsDailyLifestyle("วันนี้กินอะไรดี")).toBe(true));
+  it("'ใส่เสื้อสีอะไร' → true", () => expect(wantsDailyLifestyle("วันนี้ใส่เสื้อสีอะไรดี")).toBe(true));
+  it("'ออกจากบ้านทิศไหน' → true", () => expect(wantsDailyLifestyle("ออกจากบ้านทิศไหนดี")).toBe(true));
+  it("'ก้าวเท้าไหน' → true", () => expect(wantsDailyLifestyle("ก้าวเท้าไหนออกจากบ้านดี")).toBe(true));
+  it("คำถามอารมณ์ทั่วไป → false", () => expect(wantsDailyLifestyle("วันนี้รู้สึกเหนื่อย")).toBe(false));
+});
+
+describe("parseRelativeDate", () => {
+  const now = new Date("2026-07-05T03:00:00Z"); // 10:00 Asia/Bangkok = 2026-07-05
+  it("'พรุ่งนี้' → +1 วัน", () => expect(parseRelativeDate("พรุ่งนี้กินอะไรดี", now)).toBe("2026-07-06"));
+  it("'มะรืน' → +2 วัน", () => expect(parseRelativeDate("มะรืนใส่สีอะไร", now)).toBe("2026-07-07"));
+  it("ไม่ระบุวัน → null (ใช้วันนี้)", () => expect(parseRelativeDate("กินอะไรดี", now)).toBeNull());
 });
 
 describe("preClassify (ข้าม classify LLM สำหรับเคสชัดเจน)", () => {

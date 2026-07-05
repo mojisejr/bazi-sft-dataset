@@ -49,12 +49,45 @@ const GREETING =
 // ป้าย (มี emoji) + ข้อความจริงที่ส่ง — โชว์ความสามารถทั้งฮีลใจ + เสี่ยงทาย ให้ผู้ใช้รู้ว่าถามอะไรได้บ้าง
 const SUGGESTIONS: { label: string; prompt: string }[] = [
   { label: "💗 วันนี้รู้สึกไม่มีค่า", prompt: "วันนี้รู้สึกไม่มีค่าเลย" },
-  { label: "💗 ให้อภัยตัวเองยังไง", prompt: "ให้อภัยตัวเองยังไงดี" },
+  { label: "🍽️ วันนี้กินอะไรดี", prompt: "วันนี้กินอะไรดีให้เสริมดวง" },
   { label: "🎋 ขอเซียมซี", prompt: "ขอเสี่ยงเซียมซีหน่อย" },
   { label: "🃏 จั่วไพ่แนะนำ", prompt: "ขอจั่วไพ่แนะนำหน่อย" },
   { label: "🗓️ เลือกวันมงคลเดือนนี้", prompt: "ช่วยเลือกวันมงคลในเดือนนี้ให้หน่อย" },
   { label: "📱 ดูเบอร์มือถือ", prompt: "อยากให้ดูเบอร์มือถือ" },
 ];
+
+// กล่องแนะนำ "คำถามถัดไป" หลังโค้ชตอบเสร็จ — เลือกชุดตามศาสตร์ที่เพิ่งใช้ตอบ
+const LIFESTYLE_FOLLOWUPS: { label: string; prompt: string }[] = [
+  { label: "🍽️ วันนี้กินอะไรดี", prompt: "วันนี้กินอะไรดีให้เสริมดวง" },
+  { label: "👗 ใส่เสื้อสีอะไรดี", prompt: "วันนี้ใส่เสื้อสีอะไรดี" },
+  { label: "🚶 ออกบ้านทิศไหน", prompt: "วันนี้ออกจากบ้านทิศไหนดี ก้าวเท้าไหนก่อน" },
+  { label: "⏰ ช่วงไหนของวันดี", prompt: "วันนี้ช่วงเวลาไหนทำอะไรดี" },
+];
+const CHART_FOLLOWUPS: { label: string; prompt: string }[] = [
+  { label: "💼 การงานฉันเป็นไง", prompt: "ดูเรื่องการงานของฉันหน่อย" },
+  { label: "💰 การเงินฉันเป็นไง", prompt: "ดูเรื่องการเงินของฉันหน่อย" },
+  { label: "❤️ ความรักฉันเป็นไง", prompt: "ดูเรื่องความรักของฉันหน่อย" },
+  { label: "🍽️ วันนี้กินอะไรดี", prompt: "วันนี้กินอะไรดีให้เสริมดวง" },
+];
+const DEFAULT_FOLLOWUPS: { label: string; prompt: string }[] = [
+  { label: "🍽️ วันนี้กินอะไรดี", prompt: "วันนี้กินอะไรดีให้เสริมดวง" },
+  { label: "🌙 ช่วงนี้ควรทำอะไร", prompt: "ช่วงนี้ควรโฟกัสทำอะไรดี" },
+  { label: "💗 ขอกำลังใจหน่อย", prompt: "วันนี้รู้สึกเหนื่อย ขอกำลังใจหน่อย" },
+  { label: "🎋 ขอเซียมซี", prompt: "ขอเสี่ยงเซียมซีหน่อย" },
+];
+
+function followupsFor(route?: string): { label: string; prompt: string }[] {
+  switch (route) {
+    case "almanac":
+    case "day":
+    case "timing":
+      return LIFESTYLE_FOLLOWUPS;
+    case "chart":
+      return CHART_FOLLOWUPS;
+    default:
+      return DEFAULT_FOLLOWUPS;
+  }
+}
 
 let idSeq = 0;
 const nextId = () => `m${(idSeq += 1)}`;
@@ -126,6 +159,10 @@ export function LouiseHayChat() {
     if (!trimmed || isStreaming) return;
     setError(null);
 
+    // หมวดของคำตอบโค้ชล่าสุด — ส่งไปช่วยจัดหมวดคำถามต่อเนื่อง (ไม่จั่วไพ่/เปิดศาสตร์ใหม่ทุกครั้ง)
+    const prevRoute = [...messages].reverse().find((m) => m.role === "assistant" && m.science)?.science
+      ?.route;
+
     const userMsg: ChatMessage = { id: nextId(), role: "user", content: trimmed };
     const history = [...messages, userMsg];
     setMessages(history);
@@ -143,6 +180,7 @@ export function LouiseHayChat() {
           messages: history.map((m) => ({ role: m.role, content: m.content })),
           anonId: anonIdRef.current,
           ...(birthLinked && birthComplete ? { birth } : {}),
+          ...(prevRoute ? { prevRoute } : {}),
         }),
       });
 
@@ -223,6 +261,28 @@ export function LouiseHayChat() {
           ))}
         </div>
       )}
+
+      {(() => {
+        const last = messages[messages.length - 1];
+        const show =
+          !isStreaming && messages.length > 1 && last?.role === "assistant" && Boolean(last.content);
+        if (!show) return null;
+        return (
+          <div className="lh-suggest lh-suggest--followup">
+            <span className="lh-suggest__hint">ถามต่อได้เลย</span>
+            {followupsFor(last.science?.route).map((s) => (
+              <button
+                key={s.label}
+                type="button"
+                className="lh-suggest__chip"
+                onClick={() => sendMessage(s.prompt)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {error && <p className="lh-error">{error}</p>}
 

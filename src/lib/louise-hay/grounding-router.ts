@@ -11,6 +11,7 @@
  */
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { buildAlmanacDay, checkHour, jianchuFor, pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
+import { elementThOfStem, type ElementTh } from "@/lib/bazi/constants/career-finance-table";
 import { buildElementInteractionAB, buildFacets } from "@/lib/bazi/pair-matching";
 import { drawRandom as drawDivine } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
@@ -35,6 +36,9 @@ export type LouiseHayBirthInput = {
   gender: string;
   province: string;
 };
+
+/** ข้อความในบทสนทนา (ไว้ให้ตัวจัดหมวดเห็นบริบทว่าคำถามล่าสุดถามต่อเรื่องอะไร) */
+export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export type LouiseHayRoute =
   | "chart"
@@ -89,8 +93,35 @@ function todayIsoBangkok(now: Date): string {
   }).format(now);
 }
 
-async function classifyRoute(question: string, now: Date, apiKey?: string): Promise<RouteClassification> {
+/** อายุจริง ณ วันนี้ (เต็มปี) จากวันเกิด — คืน null ถ้าวันเกิดผิดรูปแบบ/นอกช่วงสมเหตุผล */
+export function ageFromBirthDate(birthDate: string, now: Date): number | null {
+  const m = birthDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return null;
+  const [by, bm, bd] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const [ty, tm, td] = todayIsoBangkok(now).split("-").map(Number);
+  let age = ty - by;
+  if (tm < bm || (tm === bm && td < bd)) age -= 1;
+  return age >= 0 && age < 130 ? age : null;
+}
+
+/** ย่อบริบทบทสนทนาก่อนหน้า (ไม่รวมข้อความล่าสุด) ให้ตัวจัดหมวดเข้าใจว่าคำถามกำลังถามต่อเรื่องอะไร */
+export function recentContext(history: readonly ChatTurn[] | undefined): string {
+  if (!history || history.length <= 1) return "";
+  const prior = history.slice(0, -1).slice(-4);
+  return prior
+    .map((m) => `${m.role === "assistant" ? "โค้ช" : "ผู้ใช้"}: ${m.content.slice(0, 220)}`)
+    .join("\n");
+}
+
+async function classifyRoute(
+  question: string,
+  now: Date,
+  apiKey?: string,
+  history?: readonly ChatTurn[],
+  prevRoute?: string,
+): Promise<RouteClassification> {
   const today = todayIsoBangkok(now);
+  const ctx = recentContext(history);
   const prompt = [
     `วันนี้คือ ${today} (Asia/Bangkok).`,
     "จัดหมวดคำถามล่าสุดของผู้ใช้ให้เลือกศาสตร์ที่เหมาะจะตอบ (อ่านให้ดีว่ามี 'มิติเวลา' หรือเป็นการทำนายสิ่งภายนอกไหม):",
@@ -105,8 +136,17 @@ async function classifyRoute(question: string, now: Date, apiKey?: string): Prom
     "- \"chat\" = แค่ทักทาย ขอบคุณ ระบายความรู้สึก คุยเล่น ไม่ได้ขอคำทำนาย/คำแนะนำเจาะจง",
     `ถ้า route=chart ให้เลือก topicId ที่ใกล้ที่สุดจาก: ${TOPIC_IDS.join(", ")} (ค่าเริ่มต้น chart_foundation).`,
     "ถ้า route=timing / almanac / offscope และระบุวันได้ ให้ date เป็น YYYY-MM-DD (แปลง 'พรุ่งนี้' ฯลฯ เทียบวันนี้) ไม่งั้น null.",
+    ctx ? `บริบทบทสนทนาก่อนหน้า (ใช้เข้าใจว่าคำถามล่าสุดกำลังถามต่อเรื่องอะไร):\n${ctx}` : "",
+    prevRoute ? `หมวด(ศาสตร์)ของคำตอบก่อนหน้า: ${prevRoute}` : "",
+    ctx || prevRoute
+      ? "**การคุยต่อเนื่อง (สำคัญมาก)**: อ่านบริบท+หมวดก่อนหน้าให้ดีก่อนตัดสินใจ — " +
+        "(ก) ถ้าผู้ใช้แค่ถามต่อ/ตอบโต้เกี่ยวกับ 'คำตอบเดิม' (ขออธิบายเพิ่ม, ถามความหมายไพ่/สิ่งที่เพิ่งบอกไป, เห็นด้วย/แย้ง/สงสัย เช่น 'ใบนี้แปลว่าไง' 'ทำไมล่ะ' 'แล้วไง' 'ไม่เข้าใจ') และ 'ไม่ได้ขอดู/จั่ว/เสี่ยงใหม่' → ตอบ route=chat เพื่อคุยต่อจากคำตอบเดิม **ห้ามจั่วไพ่หรือเปิดศาสตร์ชุดใหม่**. " +
+        "(ข) ถ้าผู้ใช้ถามข้อมูลใหม่ที่ยังอยู่ในเรื่องเดิมและต้องเปิดศาสตร์ (เช่น 'วันที่ 11 ไม่ดีหรอ' หลังเพิ่งเลือกวันมงคล) → คงหมวดศาสตร์เดิมพร้อม date/topicId ใหม่ให้สอดคล้อง อย่าสลับไป card เอง"
+      : "",
     `คำถามล่าสุด: "${question}"`,
-  ].join("\n");
+  ]
+    .filter((line) => line.length > 0)
+    .join("\n");
 
   const key = apiKey?.trim() || getGeminiApiKey();
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${CLASSIFY_MODEL}:generateContent?key=${key}`;
@@ -275,10 +315,18 @@ async function groundTiming(
   if (luck) parts.push(`[ช่วงวัยจร — จังหวะชีวิตช่วงนี้ตามอายุ]\n${luck.text}`);
   if (month) parts.push(`[เสาเดือนจร — พลังเดือนนี้กับดวง]\n${month.text}`);
   if (parts.length === 0) return null;
+  const age = ageFromBirthDate(birth.birthDate, now);
+  const ageLine = age != null ? `อายุปัจจุบันของเจ้าชะตา: ${age} ปี\n\n` : "";
+  const focusNote =
+    "โฟกัสเฉพาะจังหวะ 'ตอนนี้' กับเดือนนี้ ไม่ต้องไล่เล่าทุกช่วงวัยตั้งแต่เด็ก ตอบให้กระชับได้ใจความ (2-3 ย่อหน้าสั้น ๆ)";
   return {
     route: "timing",
     sourceLabel: "ดวงกับเวลา · วัยจร + เสาเดือนจร",
-    text: `คำถามนี้อิงจังหวะเวลา ใช้ "วัยจร + เสาเดือนจร" เป็นฐาน (ดวงพื้นฐานเป็นแค่ฉากหลัง):\n\n${parts.join("\n\n———\n\n")}`,
+    text: `${ageLine}คำถามนี้อิงจังหวะเวลา ใช้ "วัยจร + เสาเดือนจร" เป็นฐาน (ดวงพื้นฐานเป็นแค่ฉากหลัง):\n\n${parts.join("\n\n———\n\n")}`,
+    note:
+      age != null
+        ? `เวลาพูดถึงจังหวะชีวิตช่วงนี้ ให้อ้าง "อายุ ${age} ปี" (อายุจริงตอนนี้) ไม่ต้องบอกเป็นช่วงอายุ เช่น 30-34 ปี. ${focusNote}`
+        : focusNote,
   };
 }
 
@@ -355,6 +403,100 @@ function groundAlmanac(dateIso: string | null, now: Date): GroundingCore {
     hours ? `ยามมงคล (黃道): ${hours}` : "",
   ].filter((line) => line.length > 0);
   return { route: "almanac", sourceLabel: `ปฏิทินโหรา · ${iso}`, text: parts.join("\n") };
+}
+
+/** อาหาร/รส/สีเสริมพลังตาม "ธาตุประจำวัน" (五行) — ใช้ให้โค้ชฟันธงแนะนำการกิน/แต่งตัวได้เป็นรูปธรรม */
+const FOOD_BY_ELEMENT: Record<ElementTh, { taste: string; foods: string; color: string }> = {
+  ไม้: { taste: "รสเปรี้ยวสดชื่น", foods: "ผักใบเขียว สลัด ผลไม้รสเปรี้ยว (ส้ม มะนาว กีวี)", color: "เขียว" },
+  ไฟ: { taste: "รสขมนิด ๆ/เผ็ดอุ่น", foods: "อาหารสีแดง มะเขือเทศ พริกหวาน กาแฟหรือโกโก้เข้ม", color: "แดง-ส้ม" },
+  ดิน: { taste: "รสหวานธรรมชาติ", foods: "ข้าว ธัญพืช ฟักทอง มันหวาน กล้วย ของสีเหลือง", color: "เหลือง-น้ำตาล" },
+  ทอง: { taste: "รสเผ็ดฉุนอ่อน ๆ", foods: "อาหารสีขาว ขิง หัวไชเท้า กระเทียม เต้าหู้ขาว", color: "ขาว-ทอง" },
+  น้ำ: { taste: "รสเค็มกลมกล่อม", foods: "อาหารทะเล สาหร่าย งาดำ เต้าหู้ ซุปใส ของสีเข้ม", color: "ดำ-น้ำเงิน" },
+};
+
+/** เลื่อนวัน ISO (YYYY-MM-DD) ไปข้างหน้า n วัน */
+function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(dt.getUTCDate()).padStart(2, "0");
+  return `${dt.getUTCFullYear()}-${mm}-${dd}`;
+}
+
+/** แปลง "วันนี้/พรุ่งนี้/มะรืน" เป็นวัน ISO (deterministic ไม่ต้องเรียก LLM) — ไม่พบ → null (ใช้วันนี้) */
+export function parseRelativeDate(question: string, now: Date): string | null {
+  const today = todayIsoBangkok(now);
+  if (/มะรืน/.test(question)) return addDaysIso(today, 2);
+  if (/พรุ่งนี้/.test(question)) return addDaysIso(today, 1);
+  return null;
+}
+
+/**
+ * คำถาม "การใช้ชีวิตประจำวัน" ที่ควรฟันธงแนะนำเป็นรูปธรรม:
+ * กินอะไร / ใส่สีอะไร-แต่งตัว / ออกจากบ้านทิศไหน-ก้าวเท้าไหน / พกอะไร / ทำอะไรเสริมดวงวันนี้.
+ */
+export function wantsDailyLifestyle(question: string): boolean {
+  return (
+    /กินอะไร|ทานอะไร|เมนู|อาหาร/.test(question) ||
+    /(ใส่|แต่ง|สวม).*(เสื้อ|ผ้า|สี|ชุด)|สีอะไร|สีมงคล|สีเสื้อ/.test(question) ||
+    /ก้าวเท้า|ก้าวขา|ออกจากบ้าน|ออกบ้าน|ทิศไหน|ทิศมงคล|หันหน้า/.test(question) ||
+    /พก(อะไร|.*มงคล)|เสริมดวงวันนี้/.test(question)
+  );
+}
+
+/**
+ * ใช้ชีวิตวันนี้ให้ปัง — ฤกษ์ยาม + "ธาตุประจำวัน" → อาหาร/รส, สีเสื้อผ้า, ทิศ+ก้าวเท้า, ช่วงเวลาดี.
+ * ผูกดวง → เสริม % ความเข้ากับดวงเจ้าตัว. note สั่งโค้ชให้ฟันธงเลือกมาให้ชัด ไม่ตอบกว้าง ๆ.
+ */
+async function groundDailyLifestyle(
+  question: string,
+  birth: LouiseHayBirthInput | null,
+  dateIso: string | null,
+  now: Date,
+): Promise<GroundingCore> {
+  const iso = dateIso ?? todayIsoBangkok(now);
+  const [y, m, d] = iso.split("-").map(Number);
+  const a = buildAlmanacDay(y, m, d);
+  const el = elementThOfStem(a.dayPillar.stem);
+  const food = el ? FOOD_BY_ELEMENT[el] : null;
+  const colors = a.colors.map((c) => `${c.element}=${c.colors}`).join(", ");
+  const hours = a.luckyHours.slice(0, 4).map((h) => `${h.range} (${h.god})`).join(", ");
+
+  let fitLine = "";
+  if (birth) {
+    try {
+      const repository = createDbKnowledgeRepository();
+      const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
+      const matching = applyMatchingOverrides(await getMatchingMap());
+      const fit = buildManVsDay(facetPillarsOf(state), dayPillarOf(state), y, m, d, matching).overallPercent;
+      const mineEl = elementThOfStem(state.fourPillars.day.stem);
+      fitLine = `วันนี้เข้ากับดวงคุณ ${fit}%${mineEl ? ` (ธาตุประจำตัวคุณคือธาตุ${mineEl})` : ""}`;
+    } catch {
+      /* ดึงดวงไม่ได้ก็ข้าม ใช้ฤกษ์วันทั่วไป */
+    }
+  }
+
+  const parts = [
+    `วันที่ ${iso} — เสาวัน ${a.dayPillar.ganzhi} ธาตุประจำวันคือ "ธาตุ${el ?? "-"}"`,
+    fitLine,
+    food ? `อาหารเสริมพลังวันนี้ (ธาตุ${el}): เน้น${food.taste} เช่น ${food.foods}` : "",
+    a.luckyDirection
+      ? `ทิศมงคลวันนี้: ${a.luckyDirection} — เริ่มวันดี ๆ ด้วยการก้าวเท้าขวาออกจากบ้านก่อน แล้วมุ่งไปทางทิศนี้`
+      : "",
+    colors ? `สีเสื้อผ้ามงคล: ${colors}${food ? ` (โทน${food.color}ก็เสริมธาตุวัน)` : ""}` : "",
+    a.officer ? `ฤกษ์วัน: ${a.officer}${a.officerDesc ? ` — ${a.officerDesc}` : ""}` : "",
+    hours ? `ช่วงเวลาดี (ยามมงคล): ${hours}` : "",
+  ].filter((line) => line.length > 0);
+
+  return {
+    route: "almanac",
+    sourceLabel: `ใช้ชีวิตวันนี้ · ${iso}`,
+    text: parts.join("\n"),
+    note:
+      "คำถามนี้เป็นเรื่องการใช้ชีวิตประจำวัน (กิน/แต่งตัว/สี/ทิศ/ก้าวเท้า/เวลา) — ให้ 'ฟันธงแนะนำเป็นรูปธรรม' ไปเลย: " +
+      "เลือกมาให้ชัดว่าควรกินอะไร-รสไหน ใส่สีอะไร ออกจากบ้านทิศไหน-ก้าวเท้าไหน ช่วงเวลาไหนดี อิงจากธาตุวัน+ฤกษ์ยามด้านบน. " +
+      "อย่าตอบกว้าง ๆ ให้ผู้ใช้ไปคิดเอง แต่ยังคงน้ำเสียงอบอุ่นและปิดท้ายด้วยคำยืนยัน",
+  };
 }
 
 /**
@@ -504,14 +646,26 @@ export async function resolveLouiseHayGrounding(
   birth: LouiseHayBirthInput | null,
   now: Date = new Date(),
   apiKey?: string,
+  history?: readonly ChatTurn[],
+  prevRoute?: string,
 ): Promise<LouiseHayGrounding> {
   const phone = extractPhone(question);
+
+  // เคสการใช้ชีวิตประจำวัน (กิน/แต่งตัว/ทิศ/ก้าวเท้า) → ฤกษ์+ธาตุวัน ฟันธงได้ ข้าม classify LLM
+  if (!phone && wantsDailyLifestyle(question)) {
+    try {
+      const g = await groundDailyLifestyle(question, birth, parseRelativeDate(question, now), now);
+      return { ...g, classifyInTokens: 0, classifyOutTokens: 0 };
+    } catch {
+      /* engine พัง → ตกไปเส้นทางปกติด้านล่าง */
+    }
+  }
 
   // pre-router: เคสชัดเจน (เบอร์/เซียมซี/ไพ่/ทักทาย) ข้ามการเรียก classify LLM ไปเลย
   let classification: RouteClassification | null = preClassify(question, phone);
   if (!classification) {
     try {
-      classification = await classifyRoute(question, now, apiKey);
+      classification = await classifyRoute(question, now, apiKey, history, prevRoute);
     } catch {
       classification = { route: "card", topicId: null, date: null, inTokens: 0, outTokens: 0 };
     }

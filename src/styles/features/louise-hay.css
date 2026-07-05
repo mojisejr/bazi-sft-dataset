@@ -180,6 +180,18 @@
 }
 .lh-suggest__chip:hover { background: #ffe4ef; transform: translateY(-1px); }
 
+.lh-suggest--followup {
+  align-items: center;
+  border-top: 1px dashed #ffd7e6;
+  padding-top: 10px;
+}
+.lh-suggest__hint {
+  flex-basis: 100%;
+  color: #c77;
+  font-size: 12px;
+  margin: 0 0 2px 2px;
+}
+
 .lh-error {
   margin: 0 4px;
   color: #b3255f;
@@ -345,4 +357,14 @@
   .lh-composer__affirm { padding: 10px 12px; font-size: 12px; }
   .lh-msg { max-width: 94%; }
   .lh-birth__grid { grid-template-columns: 1fr; }
+  /* ปุ่มแนะนำคำถาม: กริด 2 คอลัมน์เท่ากัน อ่านง่ายบนมือถือ (ไม่เหลื่อมแบบ flex-wrap) */
+  .lh-suggest { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .lh-suggest__hint { grid-column: 1 / -1; }
+  .lh-suggest__chip {
+    width: 100%;
+    text-align: center;
+    padding: 9px 8px;
+    font-size: 12.5px;
+    line-height: 1.3;
+  }
 }

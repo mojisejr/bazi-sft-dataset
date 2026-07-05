@@ -46,6 +46,8 @@ const BodySchema = z.object({
   apiKey: z.string().trim().min(1).max(200).optional(),
   /** id นิรนามจาก localStorage ของผู้ใช้ (ไว้นับสถิติ "คน") — ไม่บังคับ */
   anonId: z.string().trim().min(1).max(100).optional(),
+  /** หมวด(ศาสตร์)ของคำตอบก่อนหน้า — ช่วยให้จัดหมวดคำถามต่อเนื่องได้ต่อเรื่อง (ไม่จั่วไพ่ใหม่ทุกที) */
+  prevRoute: z.string().trim().max(20).optional(),
 });
 
 const ANSWER_PREVIEW_CHARS = 400;
@@ -192,7 +194,14 @@ export async function POST(req: Request) {
   // RAG คำสอน (น้ำเสียง) + เลือกศาสตร์ตอบตามชนิดคำถาม (ดวง NewData / ปฏิทิน / ไพ่) — ทำขนานกัน
   const [retrieved, grounding] = await Promise.all([
     retrieveLouiseHayPassages(latestUser.content, TOP_K_PASSAGES, apiKey),
-    resolveLouiseHayGrounding(latestUser.content, parsed.data.birth ?? null, new Date(), apiKey),
+    resolveLouiseHayGrounding(
+      latestUser.content,
+      parsed.data.birth ?? null,
+      new Date(),
+      apiKey,
+      messages,
+      parsed.data.prevRoute,
+    ),
   ]);
 
   const sources: SourceCitation[] = retrieved.passages.map((p, i) => ({
