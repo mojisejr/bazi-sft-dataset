@@ -614,13 +614,13 @@ export function TopicCard({
           <ActionButton
             tone="primary"
             type="button"
-            disabled={disabled || status === "loading" || (mode === "llm" && apiKey.trim().length === 0)}
+            disabled={disabled || status === "loading"}
             onClick={() => onPredict(topic.id, mode, mode === "llm" ? apiKey.trim() : null)}
           >
             {status === "loading" ? "กำลังทำนาย..." : status === "done" ? "ทำนายซ้ำ" : "ทำนายหัวข้อนี้"}
           </ActionButton>
           {mode === "llm" && apiKey.trim().length === 0 && (
-            <span className="topic-card__hint">ใส่ API key ในช่องด้านบนก่อน</span>
+            <span className="topic-card__hint">ไม่ใส่คีย์ = ใช้คีย์เซิร์ฟเวอร์ (Gemini)</span>
           )}
         </div>
       )}

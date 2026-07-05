@@ -23,6 +23,7 @@ import {
   getTopicKnowledgeSourceLabel,
 } from "@/lib/bazi/topic-knowledge";
 import { generateReadingTopicLlm, polishRelationshipLinesLlm } from "@/lib/bazi/reading-llm";
+import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { GPTCASE_TUNED_PROFILE } from "@/lib/bazi/reading-prompt-profiles";
 import { getMergedTopicDefinition } from "@/lib/bazi/reading-doctrine.server";
 import { mergeTopicDefinition } from "@/lib/bazi/reading-doctrine-override";
@@ -99,7 +100,13 @@ export async function POST(req: Request) {
   const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model, provider, masterExamples } =
     parsed.data;
 
-  if (mode === "llm" && !apiKey) {
+  // โหมด AI (gemini) ใช้คีย์เซิร์ฟเวอร์ได้เลย — guard กันยิงรัว/โควตา/เพดานต้นทุน
+  // provider อื่น (anthropic/opencode) ยังต้องมีคีย์ของผู้ใช้เอง
+  const usedOwnKey = Boolean(apiKey);
+  if (mode === "llm" && provider === "gemini") {
+    const blocked = guardServerLlm(req, "reading_topic_llm", usedOwnKey);
+    if (blocked) return blocked;
+  } else if (mode === "llm" && !apiKey) {
     return badRequest("โหมด LLM ต้องมี API key", "missing_api_key");
   }
 

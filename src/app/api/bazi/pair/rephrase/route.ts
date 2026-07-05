@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { generateProseLlm } from "@/lib/bazi/reading-llm";
+import { guardServerLlm } from "@/lib/bazi/llm-guard";
 
 export const runtime = "nodejs";
 
@@ -46,8 +47,11 @@ export async function POST(req: Request) {
 
   const { engineText, domainLabel, apiKey, model, provider } = parsed.data;
 
-  if (provider !== "anthropic" && !apiKey) {
-    return Response.json({ error: { message: "โหมด LLM ต้องมี API key" } }, { status: 400 });
+  // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับกรอกคีย์) — guard กันยิงรัว/โควตา/เพดานต้นทุน
+  const usedOwnKey = Boolean(apiKey);
+  if (provider === "gemini") {
+    const blocked = guardServerLlm(req, "pair_llm", usedOwnKey);
+    if (blocked) return blocked;
   }
 
   const userPrompt = [

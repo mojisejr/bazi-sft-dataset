@@ -123,7 +123,8 @@ export function WorkMatchingWorkspace() {
     if (!result) return;
     const candidate = result.comparison.candidates[index];
     if (!candidate) return;
-    if (provider !== "anthropic" && apiKey.trim().length === 0) {
+    // gemini ใช้คีย์เซิร์ฟเวอร์, anthropic ใช้ local — บังคับคีย์เฉพาะ opencode
+    if (provider === "opencode" && apiKey.trim().length === 0) {
       setError("กรุณาใส่ API key ก่อนเรียบเรียงด้วย LLM");
       return;
     }

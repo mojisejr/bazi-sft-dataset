@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { readHoneycomb, HoneycombNumberError } from "@/lib/bazi/honeycomb/pyramid";
 import { narrateHoneycombReading } from "@/lib/bazi/honeycomb/reading-llm";
+import { guardServerLlm } from "@/lib/bazi/llm-guard";
 
 export const runtime = "nodejs";
 
@@ -31,8 +32,11 @@ export async function POST(req: Request) {
   }
   const { phoneNumber, apiKey, model, provider } = parsed.data;
 
-  if (!apiKey && provider === "gemini") {
-    return badRequest("โหมด LLM ต้องกรอก API key");
+  // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับกรอกคีย์) — guard กันยิงรัว/โควตา/เพดานต้นทุน
+  const usedOwnKey = Boolean(apiKey);
+  if (provider === "gemini") {
+    const blocked = guardServerLlm(req, "honeycomb_llm", usedOwnKey);
+    if (blocked) return blocked;
   }
 
   let reading;

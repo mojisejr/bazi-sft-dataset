@@ -10,6 +10,7 @@ import {
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { polishOracleReading } from "@/lib/bazi/oracle-cards/reading-llm";
 import { createDbOracleCardImageRepository } from "@/lib/bazi/oracle-cards/image-repository";
+import { guardServerLlm } from "@/lib/bazi/llm-guard";
 
 export const runtime = "nodejs";
 
@@ -47,8 +48,11 @@ export async function POST(req: Request) {
   }
   const { mode, question, cardNos, random, apiKey, model, provider } = parsed.data;
 
-  if (mode === "llm" && !apiKey && provider === "gemini") {
-    return badRequest("โหมด LLM ต้องกรอก API key");
+  // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับกรอกคีย์) — guard กันยิงรัว/โควตา/เพดานต้นทุน
+  const usedOwnKey = Boolean(apiKey);
+  if (mode === "llm" && provider === "gemini") {
+    const blocked = guardServerLlm(req, "oracle_llm", usedOwnKey);
+    if (blocked) return blocked;
   }
 
   // เลือกไพ่: random หรือเลือกเอง

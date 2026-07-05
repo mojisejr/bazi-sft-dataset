@@ -86,17 +86,14 @@ export function HoneycombWorkspace() {
 
   async function onNarrate() {
     if (!reading) return;
-    if (!apiKey.trim()) {
-      setError("กรอก API key ก่อนเรียบเรียงด้วย AI");
-      return;
-    }
+    // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย — กรอกคีย์เองก็ได้ (ไม่บังคับ)
     setLlmLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/honeycomb/narrate", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ phoneNumber: reading.input, apiKey: apiKey.trim() }),
+        body: JSON.stringify({ phoneNumber: reading.input, ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}) }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "AI ตอบไม่สำเร็จ");

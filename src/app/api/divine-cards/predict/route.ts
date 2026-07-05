@@ -10,6 +10,7 @@ import {
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { polishDivineReading } from "@/lib/bazi/divine-cards/reading-llm";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
+import { guardServerLlm } from "@/lib/bazi/llm-guard";
 
 export const runtime = "nodejs";
 
@@ -47,8 +48,11 @@ export async function POST(req: Request) {
   }
   const { mode, question, cardNos, random, apiKey, model, provider } = parsed.data;
 
-  if (mode === "llm" && !apiKey && provider === "gemini") {
-    return badRequest("โหมด LLM ต้องกรอก API key");
+  // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับให้ผู้ใช้กรอกคีย์) — มี guard กันยิงรัว/โควตา/เพดานต้นทุน
+  const usedOwnKey = Boolean(apiKey);
+  if (mode === "llm" && provider === "gemini") {
+    const blocked = guardServerLlm(req, "divine_llm", usedOwnKey);
+    if (blocked) return blocked;
   }
 
   // เลือกไพ่: random หรือเลือกเอง

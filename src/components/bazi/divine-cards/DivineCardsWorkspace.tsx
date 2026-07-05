@@ -119,10 +119,7 @@ export function DivineCardsWorkspace() {
 
   async function onAskLlm() {
     if (!result) return;
-    if (!apiKey.trim()) {
-      setError("กรอก API key ก่อนตอบแบบ LLM");
-      return;
-    }
+    // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย — กรอกคีย์เองก็ได้ (ไม่บังคับ)
     setLlmLoading(true);
     setError(null);
     try {
@@ -132,7 +129,7 @@ export function DivineCardsWorkspace() {
         body: JSON.stringify({
           cardNos: result.cards.map((c) => c.no),
           mode: "llm",
-          apiKey: apiKey.trim(),
+          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
           question: question.trim() || undefined,
         }),
       });
@@ -284,7 +281,7 @@ export function DivineCardsWorkspace() {
 
           <div className="divine__llm">
             <label className="divine__field">
-              <span>API key (Gemini) — สำหรับตอบแบบ LLM</span>
+              <span>API key (Gemini) — ไม่บังคับ (มีคีย์เซิร์ฟเวอร์ให้แล้ว ใส่เองเพื่อไม่จำกัดโควตา)</span>
               <input
                 type="password"
                 className="divine__input"
