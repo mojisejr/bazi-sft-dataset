@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
+
 type TopicKey = "career" | "finance" | "health" | "love" | "family";
 
 type Stick = {
@@ -160,6 +162,17 @@ export function FortuneSageWorkspace() {
               <div className="sage__prose">{result.stick.topics[t.key]}</div>
             </div>
           ))}
+
+          <AiNarrateButton
+            feature="fortune_sage"
+            domainLabel={`เซียมซีใบที่ ${result.stick.no}`}
+            engineText={[
+              `เซียมซีหัวที่ ${result.stick.no} เสา ${result.stick.pillar} (${result.stick.nayin})`,
+              `องค์เทพประจำใบ: ${result.stick.deity}`,
+              `นิสัย/แก่น: ${result.stick.personality}`,
+              ...shownTopics.map((t) => `${t.label}: ${result.stick.topics[t.key]}`),
+            ].join("\n")}
+          />
         </div>
       )}
 

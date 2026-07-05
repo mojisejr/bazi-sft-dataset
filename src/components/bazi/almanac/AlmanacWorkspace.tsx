@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
+
 type Pillar = { stem: string; branch: string; ganzhi: string; element: string };
 type GateInfo = { name: string; direction: string; meaning: string | null };
 type SpiritInfo = { name: string; keywords: string[] };
@@ -484,6 +486,22 @@ export function AlmanacWorkspace() {
       )}
 
       {day.note && <p className="almanac-note">📝 {day.note}</p>}
+
+      <AiNarrateButton
+        feature="almanac"
+        domainLabel={`ฤกษ์ยามวันที่ ${day.date}`}
+        engineText={[
+          `วันที่ ${day.date} (${day.weekday}) เสาวัน ${day.dayPillar.ganzhi}`,
+          day.officer ? `ดิถี: ${day.officer}${day.officerDesc ? ` — ${day.officerDesc}` : ""}` : "",
+          day.luckyDirection ? `ทิศมงคล: ${day.luckyDirection}` : "",
+          day.colors.length ? `สีมงคล: ${day.colors.map((c) => c.colors).join(" / ")}` : "",
+          day.luckyHours.length
+            ? `เวลามงคล: ${day.luckyHours.map((h) => `${h.range} ${h.meaning}`).join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("\n")}
+      />
     </>
   );
 

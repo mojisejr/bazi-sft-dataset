@@ -3,6 +3,7 @@
 import { useCallback, useState, type FormEvent } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
+import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import type { PhonePairReading, PhoneReading } from "@/lib/bazi/phone-number";
@@ -19,6 +20,12 @@ const FIELD_LABELS: { key: keyof PhonePairReading["meaning"]; label: string }[] 
   { key: "love", label: "ความรัก" },
   { key: "analysis", label: "บทวิเคราะห์" },
 ];
+
+/** รวมคำอ่านของคู่หนึ่งเป็นข้อความ engine-truth ให้ AI เกลา */
+function pairToText(p: PhonePairReading): string {
+  const parts = FIELD_LABELS.filter(({ key }) => p.meaning[key]).map(({ key, label }) => `${label}: ${p.meaning[key]}`);
+  return `คู่ ${p.pair} (${ZONE_LABEL[p.zone]}): ${parts.join(" · ")}`;
+}
 
 function PairMeaningBlock({ reading }: { reading: PhonePairReading }) {
   return (
@@ -127,6 +134,16 @@ export function PhoneReadingWorkspace() {
               </details>
             ))}
           </div>
+
+          <AiNarrateButton
+            feature="phone_reading"
+            domainLabel={`วิเคราะห์เบอร์ ${result.normalized}`}
+            engineText={[
+              `เบอร์ ${result.normalized}`,
+              `คู่ปิดท้าย (เด่นสุด) ${pairToText(result.closing)}`,
+              ...result.pairs.map(pairToText),
+            ].join("\n")}
+          />
 
           <div className="phone-tally">
             <SectionHeading

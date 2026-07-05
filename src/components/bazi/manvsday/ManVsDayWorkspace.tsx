@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 
 import { ActionButton } from "@/components/bazi/primitives/Action";
+import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
 import { SectionHeading } from "@/components/bazi/primitives/SectionHeading";
 import { Surface } from "@/components/bazi/primitives/Surface";
 import { MascotBadge } from "@/components/bazi/reading/MascotBadge";
@@ -396,6 +397,16 @@ export function ManVsDayWorkspace() {
               ))}
             </ul>
           </div>
+
+          <AiNarrateButton
+            feature="man_vs_day"
+            domainLabel="ดวงกับวันนี้"
+            engineText={[
+              result.summaryHeadline,
+              result.summary,
+              ...result.summaryItems.map((it) => `${it.label}: ${it.text}`),
+            ].join("\n")}
+          />
 
           {matchFound ? (
             <>

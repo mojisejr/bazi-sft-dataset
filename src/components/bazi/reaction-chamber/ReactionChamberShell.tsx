@@ -17,6 +17,7 @@ import {
   ReactionChamberCanvas,
   ReactFlowProvider,
 } from "@/components/bazi/reaction-chamber/ReactionChamberCanvas";
+import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
 import { ChamberCommandBar } from "@/components/bazi/reaction-chamber/ChamberCommandBar";
 import { ChamberInspector } from "@/components/bazi/reaction-chamber/ChamberInspector";
 import { ChamberLayerTogglesPanel } from "@/components/bazi/reaction-chamber/ChamberLayerTogglesPanel";
@@ -149,6 +150,20 @@ export function ReactionChamberShell() {
 
         {variant === "sheet" && isInspectorOpen && (
           <ChamberInspector selection={selection} relationBundle={relationBundle} readingPacket={readingPacket} variant="sheet" onClose={clearSelection} />
+        )}
+
+        {readingPacket && (
+          <div className="reaction-chamber-shell__ai">
+            <AiNarrateButton
+              feature="reaction_chamber"
+              domainLabel="ปฏิกิริยาธาตุในดวง"
+              engineText={[
+                readingPacket.chartAnchor.identityNarrativeThai,
+                readingPacket.chartAnchor.balanceNarrativeThai,
+                ...readingPacket.stepInsights.map((s) => `${s.titleThai}: ${s.summaryThai}`),
+              ].join("\n")}
+            />
+          </div>
         )}
       </main>
     </ReactFlowProvider>
