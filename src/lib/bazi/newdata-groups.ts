@@ -34,6 +34,11 @@ export type NewdataGroup = {
   keyKind: NewdataKeyKind;
   /** ไฟล์ต้นฉบับใน knownlage/NewData (อ้างอิงให้ซินแสรู้ที่มา) */
   sourceFile: string;
+  /**
+   * true = เนื้อเป็น pre-fill "generic" (คัดลอกจากตำรากลาง ยังไม่ถูกซินแส curate เฉพาะบทบาทนี้)
+   * → โหมด AI ควร "เขียนใหม่" (generate) แทน "ขัดเกลา" (polish) — engine track ยังใช้ generic เป็น fallback ปกติ
+   */
+  templatePrefill?: boolean;
 };
 
 export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
@@ -250,6 +255,7 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "ประโยคนำบอกชื่อธาตุตามบทบาท คีย์ = resource/output/wealth · template ใช้ {ดิถี} {ธาตุ} (ซินแสเปลี่ยนคำได้)",
     keyKind: "role",
     sourceFile: "(กรอกในแอดมิน)",
+    templatePrefill: true,
   },
   {
     key: "customer_60",
@@ -271,6 +277,7 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "คำอ่าน 'ผู้อุปถัมป์' ของเสาที่ธาตุส่งเสริม (印) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง (ซินแสแก้คำเฉพาะบทนี้ได้)",
     keyKind: "state",
     sourceFile: "12 เชี่ยงแซ.txt",
+    templatePrefill: true,
   },
   {
     key: "benefactor_output",
@@ -278,6 +285,7 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "คำอ่าน 'บริวาร/ลูกน้อง' ของเสาที่ธาตุถ่ายเท (食傷) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง",
     keyKind: "state",
     sourceFile: "12 เชี่ยงแซ.txt",
+    templatePrefill: true,
   },
   {
     key: "benefactor_wealth",
@@ -285,6 +293,7 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "คำอ่าน 'ลูกค้า/แหล่งทรัพย์' ของเสาที่ธาตุโชคลาภ (財) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง",
     keyKind: "state",
     sourceFile: "12 เชี่ยงแซ.txt",
+    templatePrefill: true,
   },
   {
     key: "study_by_element",

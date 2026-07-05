@@ -98,6 +98,51 @@ function parseBoxMarkdown(md: string): ReadingBox[] {
   return boxes.map((b) => ({ title: b.title, body: b.body.join("\n").trim() }));
 }
 
+const normTitle = (t: string) => (t || "").trim().replace(/\s+/g, " ");
+
+/**
+ * เติม "กล่องที่ขาด" จาก NewData ล่าสุด (base) เข้าไปในบทที่แก้แล้ว (edited) โดย:
+ *  - คงกล่องที่แก้ไว้ทั้งเนื้อและลำดับ (ไม่ทำใหม่)
+ *  - แทรกเฉพาะกล่องของ base ที่ "หัวข้อยังไม่มี" ใน edited — วางตามลำดับ NewData (หลังกล่องก่อนหน้าที่มีอยู่)
+ *  - ไม่ลบกล่องที่ base เอาออก (คงงานซินแสไว้เสมอ) · กล่องไม่มีหัวข้อ = ข้าม (match ไม่ได้)
+ * match ด้วยหัวข้อกล่อง (ถ้าซินแสเปลี่ยนชื่อหัวข้อ อาจถูกมองเป็นกล่องใหม่ — พบไม่บ่อย)
+ */
+function gapFillMerge(base: ReadingBox[], edited: ReadingBox[]): ReadingBox[] {
+  const present = new Set(edited.map((b) => normTitle(b.title)).filter((t) => t.length > 0));
+  const result = [...edited];
+  for (let i = 0; i < base.length; i++) {
+    const title = normTitle(base[i].title);
+    if (!title || present.has(title)) continue; // มีอยู่แล้ว / ไม่มีหัวข้อ → ข้าม
+    // หาตำแหน่งแทรก = หลังกล่องของ base ก่อนหน้าที่ปรากฏใน result อยู่แล้ว (คงลำดับ NewData)
+    let insertPos = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const pt = normTitle(base[j].title);
+      if (pt && present.has(pt)) {
+        const idx = result.findIndex((b) => normTitle(b.title) === pt);
+        if (idx >= 0) {
+          insertPos = idx + 1;
+          break;
+        }
+      }
+    }
+    result.splice(insertPos, 0, base[i]);
+    present.add(title);
+  }
+  return result;
+}
+
+/** เติมกล่องที่ขาด (จาก NewData ล่าสุด) เข้าทุกบทที่มี override — เฉพาะบทที่แก้แล้ว บทที่ยังไม่แก้ใช้ base สดอยู่แล้ว */
+function applyGapFill(edits: Edits, chapters: ChapterView[]): Edits {
+  if (Object.keys(edits.boxes).length === 0) return edits;
+  const baseById = new Map(chapters.map((c) => [c.id, c.boxes]));
+  const boxes: Record<string, ReadingBox[]> = {};
+  for (const [id, edited] of Object.entries(edits.boxes)) {
+    const base = baseById.get(id);
+    boxes[id] = base ? gapFillMerge(base, edited) : edited;
+  }
+  return { ...edits, boxes };
+}
+
 /**
  * Tab "อ่านดวงทีละบท (NewData)" — คำทายจาก NewData, แก้เป็นกล่อง (เพิ่ม/ลบ) ได้ทั้งหน้าจอและในตัวอย่าง PDF
  * PDF ดีไซน์เดียวกับหน้าดูดวงหลัก · บันทึก/โหลดดวงข้ามเครื่อง (DB)
@@ -115,6 +160,23 @@ export function NewdataReadingWorkspace() {
   }));
   const [clientName, setClientName] = useState("");
   const [referralCode, setReferralCode] = useState(DEFAULT_REFERRAL_CODE);
+  /** ชื่อเครื่องนี้ (ต่อ browser) — บอกว่าดวงถูกสร้าง/แก้จากเครื่องไหน (แยกงานซินแส) */
+  const [deviceLabel, setDeviceLabel] = useState("");
+  useEffect(() => {
+    try {
+      setDeviceLabel(localStorage.getItem("newdata-reading:device-label") ?? "");
+    } catch {
+      /* localStorage ปิด */
+    }
+  }, []);
+  const updateDeviceLabel = useCallback((value: string) => {
+    setDeviceLabel(value);
+    try {
+      localStorage.setItem("newdata-reading:device-label", value);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   // ค่าที่ derive จาก formState — รูปแบบเดิมที่ API/บันทึก/โหลดใช้
   const birthDate = buildBirthDateValue(formState);
@@ -139,11 +201,15 @@ export function NewdataReadingWorkspace() {
   const [storageKey, setStorageKey] = useState<string | null>(null);
   /** ร่างกล่องที่กำลังแก้ (ยังไม่บันทึก) ต่อบท — กด "บันทึกกล่อง" ถึงจะมีผล */
   const [drafts, setDrafts] = useState<Record<string, ReadingBox[]>>({});
+  /** บทที่ AI กำลังเรียบเรียงอยู่ (per-chapter) + สถานะทำทั้งชุด + ข้อความ error */
+  const [aiBusy, setAiBusy] = useState<Record<string, boolean>>({});
+  const [aiAll, setAiAll] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   const [showPreview, setShowPreview] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
-  type SavedItem = { id: string; clientName: string | null; birthDate: string; birthTime: string; gender: string; updatedAt: string };
+  type SavedItem = { id: string; clientName: string | null; birthDate: string; birthTime: string; gender: string; deviceLabel: string | null; updatedAt: string };
   const [savedList, setSavedList] = useState<SavedItem[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState("");
@@ -156,8 +222,8 @@ export function NewdataReadingWorkspace() {
   /** มีการบันทึกค้างอยู่ — กันสร้าง record ซ้ำซ้อนตอนยังไม่มี sessionId */
   const savingRef = useRef(false);
   const serializeReading = useCallback(
-    () => JSON.stringify({ clientName, gender, birthDate, birthTime, province, edits }),
-    [clientName, gender, birthDate, birthTime, province, edits],
+    () => JSON.stringify({ clientName, gender, birthDate, birthTime, province, edits, deviceLabel }),
+    [clientName, gender, birthDate, birthTime, province, edits, deviceLabel],
   );
 
   const persist = useCallback((key: string | null, next: Edits) => {
@@ -193,7 +259,6 @@ export function NewdataReadingWorkspace() {
         let saved: Edits = EMPTY_EDITS;
         if (editsOverride) {
           saved = { boxes: editsOverride.boxes ?? {}, titles: editsOverride.titles ?? {} };
-          persist(key, saved);
         } else {
           try {
             const raw = JSON.parse(localStorage.getItem(key) ?? "{}") as Partial<Edits>;
@@ -202,6 +267,9 @@ export function NewdataReadingWorkspace() {
             saved = EMPTY_EDITS;
           }
         }
+        // เติมกล่องที่ขาดจาก NewData ล่าสุดเข้าบทที่แก้แล้ว (คงกล่องที่แก้ + แทรกกล่องใหม่ตามลำดับ NewData)
+        saved = applyGapFill(saved, body.chapters ?? []);
+        if (editsOverride) persist(key, saved);
         setEdits(saved);
         setDrafts({});
       } catch {
@@ -350,6 +418,75 @@ export function NewdataReadingWorkspace() {
     persist(storageKey, EMPTY_EDITS);
   }, [persist, storageKey]);
 
+  // ── ทำนายด้วย LLM (Gemini) ──
+  // แกนคำตอบ = "ที่ซินแสแก้ไว้" (edits) ถ้ามี ไม่งั้น = NewData ต้นฉบับ → AI ขัดเกลาต่อจากงานซินแส ไม่ล้างทิ้ง
+  // (อยาก gen สดจากศูนย์: กด "คืนค่าต้นฉบับบทนี้" ก่อนแล้วค่อยกด AI)
+  // ผลลัพธ์แทนที่กล่องเดิมแบบ override — แก้ต่อ/คืนค่าได้เหมือนการแก้ทั่วไป
+  const predictChapterAi = useCallback(
+    async (ch: ChapterView, mode: "compose" | "refine" = "compose"): Promise<boolean> => {
+      if (!data?.rawInput || !data?.calculatedState || !ch.hasContent) return false;
+      setAiError("");
+      setAiBusy((prev) => ({ ...prev, [ch.id]: true }));
+      try {
+        const res = await fetch("/api/reading/newdata-reading/llm", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            topicId: ch.id,
+            rawInput: data.rawInput,
+            calculatedState: data.calculatedState,
+            boxes: edits.boxes[ch.id] ?? ch.boxes,
+            mode,
+          }),
+        });
+        const body = (await res.json()) as { text?: string; error?: string };
+        if (!res.ok || !body.text) {
+          setAiError(`บท "${titleOf(ch)}": ${body.error ?? "ทำนายด้วย AI ไม่สำเร็จ"}`);
+          return false;
+        }
+        // AI คืนเป็นกล่อง [[box=]]...[[/box]] (โหมดถอดแบบซินแส) → parse เป็นกล่องจริง
+        // fallback: ถ้าพาร์สไม่ออก ใช้ทั้งก้อนเป็นกล่องเดียว
+        const parsed = parseBoxMarkdown(body.text);
+        setBoxes(ch, parsed.length > 0 ? parsed : [{ title: "", body: body.text }]);
+        // เคลียร์ร่างที่ยังไม่บันทึก (ถ้ามี) เพื่อให้ผล AI แสดงแทน (ร่างมี precedence เหนือ edits)
+        setDrafts((prev) => {
+          if (!(ch.id in prev)) return prev;
+          const next = { ...prev };
+          delete next[ch.id];
+          return next;
+        });
+        return true;
+      } catch {
+        setAiError(`บท "${titleOf(ch)}": เชื่อมต่อ AI ไม่สำเร็จ`);
+        return false;
+      } finally {
+        setAiBusy((prev) => {
+          const next = { ...prev };
+          delete next[ch.id];
+          return next;
+        });
+      }
+    },
+    [data, edits, setBoxes, titleOf],
+  );
+
+  // ทำ AI ทีละบท (sequential) เพื่อเลี่ยง rate limit ของ Gemini — เฉพาะบทที่มีคำทาย NewData
+  const predictAllAi = useCallback(async () => {
+    const chapters = data?.chapters?.filter((c) => c.hasContent) ?? [];
+    if (chapters.length === 0) return;
+    if (!window.confirm(`ให้ AI เรียบเรียงคำทำนาย ${chapters.length} บท (ทับกล่องเดิม — คืนค่าได้ภายหลัง)?`)) return;
+    setAiAll(true);
+    setAiError("");
+    try {
+      for (const ch of chapters) {
+        // ทีละบท (sequential) เพื่อเลี่ยง rate limit ของ Gemini
+        await predictChapterAi(ch);
+      }
+    } finally {
+      setAiAll(false);
+    }
+  }, [data, predictChapterAi]);
+
   // ── DB ──
   const reloadSavedList = useCallback(async () => {
     try {
@@ -370,7 +507,7 @@ export function NewdataReadingWorkspace() {
       const res = await fetch("/api/reading/newdata-reading/sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id: sessionId, clientName, birthDate, birthTime, gender, province, edits }),
+        body: JSON.stringify({ id: sessionId, clientName, birthDate, birthTime, gender, province, edits, deviceLabel: deviceLabel || null }),
       });
       const body = (await res.json()) as { id?: string; error?: string };
       if (!res.ok || !body.id) {
@@ -384,7 +521,7 @@ export function NewdataReadingWorkspace() {
     } catch {
       setSaveStatus("บันทึกไม่สำเร็จ");
     }
-  }, [sessionId, clientName, birthDate, birthTime, gender, province, edits, reloadSavedList, serializeReading]);
+  }, [sessionId, clientName, birthDate, birthTime, gender, province, edits, deviceLabel, reloadSavedList, serializeReading]);
 
   const loadSession = useCallback(
     async (id: string) => {
@@ -485,6 +622,10 @@ export function NewdataReadingWorkspace() {
   // ส่ง createRevision:false → ลง DB ทุกครั้งแต่ไม่สร้างจุดประวัติรก (จุดประวัติ = กด "บันทึกดวงนี้" เองเท่านั้น)
   useEffect(() => {
     if (!data || !formComplete) return;
+    // กันรก: ถ้ายังไม่เคยบันทึก (ไม่มี sessionId) และยังไม่แก้อะไรเลย → "เปิดดูเฉย ๆ" ไม่ต้องสร้าง record
+    // (พอแก้ ≥1 บท หรือกด "บันทึกดวงนี้" เอง ค่อยลง DB)
+    const noEdits = Object.keys(edits.boxes).length === 0 && Object.keys(edits.titles).length === 0;
+    if (!sessionId && noEdits) return;
     const snapshot = serializeReading();
     // เพิ่งโหลดดวงจาก DB — จำค่าไว้เฉย ๆ ไม่เขียนกลับ
     if (skipAutosaveOnceRef.current) {
@@ -510,6 +651,7 @@ export function NewdataReadingWorkspace() {
               gender,
               province,
               edits,
+              deviceLabel: deviceLabel || null,
               createRevision: false,
             }),
           });
@@ -541,6 +683,7 @@ export function NewdataReadingWorkspace() {
     gender,
     province,
     edits,
+    deviceLabel,
     reloadSavedList,
   ]);
 
@@ -620,6 +763,15 @@ export function NewdataReadingWorkspace() {
             onChange={(e) => setReferralCode(e.target.value)}
             placeholder={DEFAULT_REFERRAL_CODE}
             title="โค้ดชวนเพื่อน (แก้ต่อคนได้) — แสดงบนหน้าก่อนปกหลังใน PDF"
+          />
+        </label>
+        <label>
+          ชื่อเครื่องนี้
+          <input
+            value={deviceLabel}
+            onChange={(e) => updateDeviceLabel(e.target.value)}
+            placeholder="เช่น เครื่องซินแส"
+            title="บอกว่าดวงนี้สร้าง/แก้จากเครื่องไหน — จำต่อ browser นี้ แล้วติดไปกับดวงที่บันทึก"
           />
         </label>
         <label>
@@ -705,6 +857,17 @@ export function NewdataReadingWorkspace() {
             💾 {sessionId ? "บันทึกทับ" : "บันทึกดวงนี้"}
           </button>
         )}
+        {data && (
+          <button
+            type="button"
+            className="newdata-reading__btn newdata-reading__btn--ai"
+            onClick={() => void predictAllAi()}
+            disabled={aiAll || Object.keys(aiBusy).length > 0 || !(summary && summary.got > 0)}
+            title="ให้ AI (Gemini) เรียบเรียงทุกบทที่มีคำทายจาก NewData เป็นร้อยแก้ว — ทับกล่อง แต่คืนค่าได้"
+          >
+            {aiAll ? "✨ ถอดแบบซินแส กำลังเรียบเรียง…" : "✨ ทำนายด้วย AI ทั้งบท (ถอดแบบซินแส)"}
+          </button>
+        )}
         {editedCount > 0 && (
           <button type="button" className="newdata-reading__btn newdata-reading__btn--ghost" onClick={clearAll}>
             ล้างที่แก้ ({editedCount})
@@ -729,6 +892,7 @@ export function NewdataReadingWorkspace() {
               <li key={s.id} className={s.id === sessionId ? "is-current" : ""}>
                 <button type="button" className="newdata-reading__saved-load" onClick={() => void loadSession(s.id)}>
                   {s.clientName || "(ไม่ระบุชื่อ)"} · {s.birthDate} {s.birthTime} · {s.gender === "female" ? "หญิง" : "ชาย"}
+                  {s.deviceLabel ? ` · 🖥 ${s.deviceLabel}` : ""}
                 </button>
                 <button type="button" className="newdata-reading__saved-del" title="ลบ" onClick={() => void deleteSession(s.id)}>
                   ✕
@@ -740,6 +904,7 @@ export function NewdataReadingWorkspace() {
       )}
 
       {error && <p className="newdata-reading__error no-print">{error}</p>}
+      {aiError && <p className="newdata-reading__error no-print">⚠️ {aiError}</p>}
 
       {data && (
         <article className="newdata-reading__doc ylc-prose">
@@ -824,6 +989,28 @@ export function NewdataReadingWorkspace() {
                   <div className="newdata-reading__box-actions">
                     <button type="button" className="newdata-reading__box-add" onClick={() => addBox(ch)}>
                       ＋ เพิ่มกล่อง
+                    </button>
+                    <button
+                      type="button"
+                      className="newdata-reading__btn newdata-reading__btn--ai"
+                      disabled={!ch.hasContent || aiBusy[ch.id] || aiAll}
+                      onClick={() => void predictChapterAi(ch, "compose")}
+                      title={
+                        ch.hasContent
+                          ? "AI เขียน/เสริมบทนี้แบบซินแส (เอาที่แก้เป็นแกน ถ้ามี) — ทับกล่อง แต่คืนค่าได้"
+                          : "บทนี้ยังไม่มีคำทายจาก NewData ให้ AI เรียบเรียง"
+                      }
+                    >
+                      {aiBusy[ch.id] ? "✨ ถอดแบบซินแส…" : "✨ ทำนายด้วย AI (ถอดแบบซินแส)"}
+                    </button>
+                    <button
+                      type="button"
+                      className="newdata-reading__btn newdata-reading__btn--ai newdata-reading__btn--refine"
+                      disabled={!ch.hasContent || aiBusy[ch.id] || aiAll}
+                      onClick={() => void predictChapterAi(ch, "refine")}
+                      title="เกลาสำนวนของกล่องเดิมให้ลื่น/อ่านง่าย โดยคงเนื้อครบ ไม่เติมเนื้อ (เอาที่แก้เป็นแกน ถ้ามี)"
+                    >
+                      {aiBusy[ch.id] ? "✏️ เกลาคำ…" : "✏️ เกลาคำอย่างเดียว"}
                     </button>
                     <button
                       type="button"

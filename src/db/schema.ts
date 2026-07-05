@@ -644,6 +644,8 @@ export const baziNewdataReading = pgTable(
     gender: text("gender").notNull(),
     province: text("province"),
     edits: jsonb("edits").$type<NewdataReadingEdits>().notNull().default({}),
+    /** ป้ายเครื่องที่สร้าง/แก้ดวงนี้ (เช่น "เครื่องซินแส") — แยกงานซินแสจากเครื่องอื่น */
+    deviceLabel: text("device_label"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()

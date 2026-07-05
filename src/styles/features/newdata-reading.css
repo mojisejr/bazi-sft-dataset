@@ -78,6 +78,26 @@
 .newdata-reading__btn--save {
   background: #1f8a4c;
 }
+.newdata-reading__btn--ai {
+  background: linear-gradient(135deg, #7b3fe4, #b14cd8);
+}
+.newdata-reading__btn--ai:disabled {
+  opacity: 0.5;
+}
+/* ปุ่ม AI ในแถวเครื่องมือกล่อง (เล็กลงให้เข้าชุดกับ ＋ เพิ่มกล่อง) */
+.newdata-reading__box-actions .newdata-reading__btn--ai {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+}
+/* ปุ่ม "เกลาคำอย่างเดียว" — โทนอ่อน/เส้นขอบ แยกจากปุ่มเขียนใหม่ (gradient ม่วง) */
+.newdata-reading__btn--refine {
+  background: #f0ecfa;
+  color: #5a2fb8;
+  border: 1px solid rgba(109, 63, 212, 0.4);
+}
+.newdata-reading__btn--refine:disabled {
+  opacity: 0.5;
+}
 .newdata-reading__savestatus {
   font-size: 0.8rem;
   color: var(--muted, #5b7c84);

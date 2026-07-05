@@ -8,6 +8,7 @@
  * pure + client/server-safe
  */
 import { CHAPTER_OUTLINE } from "@/lib/bazi/chapter-outline";
+import { getNewdataGroup } from "@/lib/bazi/newdata-groups";
 import {
   matchBranchPairs,
   matchCareer,
@@ -317,7 +318,12 @@ function blockToParagraph(b: NewdataBlock): string {
   return `${head}${b.text}`.trim();
 }
 
-export type ChapterBox = { title: string; body: string };
+export type ChapterBox = {
+  title: string;
+  body: string;
+  /** true = เนื้อมาจากกลุ่ม pre-fill generic ล้วน (ยังไม่ curate) → โหมด AI ให้ generate ใหม่ */
+  templatePrefill?: boolean;
+};
 export type ResolvedChapterBoxes = {
   chapterId: string;
   /** มี resolver ผูก NewData อย่างน้อย 1 ช่องหรือไม่ (false = บทยังไม่มีก้อนความรู้รองรับ) */
@@ -340,10 +346,28 @@ export function resolveChapterBoxes(
   let hasContent = false;
 
   const boxes: ChapterBox[] = bullets.map((bullet, i) => {
-    const blocks = (resolvers[i] ?? []).flatMap((r) => resolveOne(r, facts, map));
-    const body = blocks.map(blockToParagraph).join("\n\n");
+    // เดินทีละ resolver เพื่อรู้ว่าเนื้อในกล่องมาจากกลุ่ม pre-fill (template) หรือกลุ่ม curated
+    let templateContent = false;
+    let curatedContent = false;
+    const parts: string[] = [];
+    for (const r of resolvers[i] ?? []) {
+      const blocks = resolveOne(r, facts, map);
+      if (blocks.length === 0) continue;
+      const text = blocks.map(blockToParagraph).join("\n\n");
+      parts.push(text);
+      // นับ template/curated เฉพาะ resolver ที่ให้ "เนื้อจริง" (ตัดหัวข้อ **...** ออกแล้วยังเหลือ)
+      // — กล่องหัวข้อล้วน (เช่น customer_60 ที่ยังว่าง เหลือแต่หัวเสา) ไม่นับเป็น curated
+      const meaningful = text.replace(/\*\*[^*]*\*\*/g, "").trim();
+      if (!meaningful) continue;
+      const groupKey = "group" in r ? (r as { group?: string }).group : undefined;
+      if (groupKey && getNewdataGroup(groupKey)?.templatePrefill) templateContent = true;
+      else curatedContent = true;
+    }
+    const body = parts.join("\n\n");
     if (body.trim()) hasContent = true;
-    return { title: bullet, body };
+    // กล่อง template ล้วน (มีเนื้อ แต่มาจาก pre-fill generic ทั้งหมด) → ให้โหมด AI generate ใหม่
+    const templatePrefill = body.trim().length > 0 && templateContent && !curatedContent;
+    return templatePrefill ? { title: bullet, body, templatePrefill: true } : { title: bullet, body };
   });
 
   return { chapterId, defined, hasContent, boxes };

@@ -38,6 +38,8 @@
     "db:apply:newdata-reading-revisions": "node --env-file=.env --import tsx scripts/apply-newdata-reading-revisions-migration.ts",
     "db:apply:reading-newdata": "node --env-file=.env --import tsx scripts/apply-reading-newdata-migration.ts && tsx scripts/apply-newdata-reading-migration.ts",
     "db:apply:newdata-reading": "node --env-file=.env --import tsx scripts/apply-newdata-reading-migration.ts",
+    "db:apply:newdata-reading-device": "node --env-file=.env --import tsx scripts/apply-newdata-reading-device-migration.ts",
+    "build:shinse-fewshot": "node --env-file=.env --import tsx scripts/build-shinse-fewshot.ts",
     "db:seed:reading-newdata:dry": "tsx scripts/seed-reading-newdata.ts --dry-run",
     "db:seed:reading-newdata": "node --env-file=.env --import tsx scripts/seed-reading-newdata.ts",
     "db:seed:reading-newdata:force": "node --env-file=.env --import tsx scripts/seed-reading-newdata.ts --force",

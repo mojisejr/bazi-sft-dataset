@@ -24,6 +24,8 @@ type SaveBody = {
   gender?: string;
   province?: string;
   edits?: NewdataReadingEdits;
+  /** ป้ายเครื่องที่สร้าง/แก้ (เช่น "เครื่องซินแส") */
+  deviceLabel?: string | null;
   /** false = บันทึกแบบไม่สร้างจุดประวัติ (autosave). default true (กดบันทึกเอง) */
   createRevision?: boolean;
 };
@@ -47,6 +49,7 @@ export async function POST(request: Request) {
       gender: body.gender,
       province: body.province ?? null,
       edits: body.edits ?? {},
+      deviceLabel: body.deviceLabel,
       createRevision: body.createRevision,
     });
     return Response.json({ id: row.id, updatedAt: row.updatedAt });
