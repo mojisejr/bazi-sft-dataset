@@ -9,8 +9,18 @@ import { z } from "zod";
 
 import { generateProseLlm } from "@/lib/bazi/reading-llm";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
+import type { LlmUsageFeature } from "@/db/schema";
 
 export const runtime = "nodejs";
+
+/** ฟีเจอร์ที่มีตาราง usage ของตัวเอง (โผล่ใน /stats) — feature อื่นยังใช้ narrate ได้แต่ไม่ log */
+const LOGGED_FEATURES = new Set<LlmUsageFeature>([
+  "fortune_sage",
+  "almanac",
+  "man_vs_day",
+  "phone_reading",
+  "reaction_chamber",
+]);
 
 const BodySchema = z.object({
   engineText: z.string().trim().min(1).max(12000),
@@ -69,14 +79,18 @@ export async function POST(req: Request) {
   ].join("\n");
 
   try {
-    // NOTE: usage logging ต่อฟีเจอร์ (แดชบอร์ด /stats) ยังไม่ทำ — LlmUsageFeature เป็นตารางแยกต่อฟีเจอร์
-    // ต้องเพิ่มตาราง+migration ทีหลัง (guard กันต้นทุนยังทำงานครบ). feature ใช้แยก rate-limit ไปก่อน
+    // log usage ต่อฟีเจอร์ (โผล่ใน /stats) เฉพาะ feature ที่มีตารางรองรับ
+    const usageFeature = LOGGED_FEATURES.has(feature as LlmUsageFeature)
+      ? (feature as LlmUsageFeature)
+      : undefined;
     const result = await generateProseLlm({
       systemInstruction: SYSTEM_INSTRUCTION,
       userPrompt,
       apiKey: provider === "anthropic" ? apiKey ?? "local" : apiKey,
       model,
       provider,
+      usageFeature,
+      usageLabel: domainLabel.slice(0, 200),
     });
     return Response.json({ text: result.text, model: result.model });
   } catch (error) {

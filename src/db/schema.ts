@@ -946,6 +946,12 @@ export const oracleCardsUsage = pgTable("oracle_cards_usage", llmUsageColumns())
 export const honeycombUsage = pgTable("honeycomb_usage", llmUsageColumns());
 export const pairRephraseUsage = pgTable("pair_rephrase_usage", llmUsageColumns());
 export const readingDraftUsage = pgTable("reading_draft_usage", llmUsageColumns());
+// ฟีเจอร์ narrate กลาง (/api/bazi/narrate) — เกลาผล engine ด้วย AI
+export const fortuneSageUsage = pgTable("fortune_sage_usage", llmUsageColumns());
+export const almanacUsage = pgTable("almanac_usage", llmUsageColumns());
+export const manVsDayUsage = pgTable("man_vs_day_usage", llmUsageColumns());
+export const phoneReadingUsage = pgTable("phone_reading_usage", llmUsageColumns());
+export const reactionChamberUsage = pgTable("reaction_chamber_usage", llmUsageColumns());
 
 /** ตารางฟีเจอร์ LLM ทั้งหมด (นอกจาก louise_hay ที่มีโครงเฉพาะ) — dashboard วนอ่านทีละตัว */
 export const LLM_USAGE_TABLES = {
@@ -955,6 +961,11 @@ export const LLM_USAGE_TABLES = {
   honeycomb: honeycombUsage,
   pair_rephrase: pairRephraseUsage,
   reading_draft: readingDraftUsage,
+  fortune_sage: fortuneSageUsage,
+  almanac: almanacUsage,
+  man_vs_day: manVsDayUsage,
+  phone_reading: phoneReadingUsage,
+  reaction_chamber: reactionChamberUsage,
 } as const;
 
 export type LlmUsageFeature = keyof typeof LLM_USAGE_TABLES;

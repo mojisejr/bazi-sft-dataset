@@ -20,6 +20,11 @@ const FEATURE_LABEL: Record<string, string> = {
   honeycomb: "เบอร์รังผึ้ง",
   pair_rephrase: "จับคู่/เรียบเรียง",
   reading_draft: "ร่างบทใหม่ (draft)",
+  fortune_sage: "เซียมซี",
+  almanac: "ปฏิทินโหรา",
+  man_vs_day: "ดวงกับวัน",
+  phone_reading: "เลขพยากรณ์",
+  reaction_chamber: "ห้องปฏิกิริยา",
   louise_hay: "โค้ชฮีลใจ (แชท)",
 };
 
@@ -30,6 +35,11 @@ const FEATURE_TABLE: Record<string, string> = {
   honeycomb: "honeycomb_usage",
   pair_rephrase: "pair_rephrase_usage",
   reading_draft: "reading_draft_usage",
+  fortune_sage: "fortune_sage_usage",
+  almanac: "almanac_usage",
+  man_vs_day: "man_vs_day_usage",
+  phone_reading: "phone_reading_usage",
+  reaction_chamber: "reaction_chamber_usage",
 };
 
 const TZ = "Asia/Bangkok";

@@ -54,6 +54,7 @@
     "db:apply:louise-hay-usage": "node --env-file=.env --import tsx scripts/apply-louise-hay-usage-migration.ts",
     "db:apply:llm-usage-tables": "node --env-file=.env --import tsx scripts/apply-llm-usage-tables-migration.ts",
     "db:apply:bazi-alerts": "node --env-file=.env --import tsx scripts/apply-bazi-alerts-migration.ts",
+    "db:apply:narrate-usage-tables": "node --env-file=.env --import tsx scripts/apply-narrate-usage-tables-migration.ts",
     "db:seed:matching:dry": "tsx scripts/seed-reading-matching.ts --dry-run",
     "db:seed:matching": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts",
     "db:seed:matching:force": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts --force",

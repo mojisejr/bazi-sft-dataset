@@ -58,6 +58,11 @@ const FEATURE_COLORS: Record<string, string> = {
   honeycomb: "#e0a021",
   pair_rephrase: "#2aa198",
   reading_draft: "#8a6d3b",
+  fortune_sage: "#d4820a",
+  almanac: "#4b8b3b",
+  man_vs_day: "#3b7bb5",
+  phone_reading: "#7a5cc4",
+  reaction_chamber: "#b5416b",
   louise_hay: "#ff7ab0",
 };
 const colorOf = (f: string) => FEATURE_COLORS[f] ?? "#888";
