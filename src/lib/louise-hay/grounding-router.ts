@@ -694,8 +694,12 @@ const ACTIVITY_KEYWORDS =
 export function wantsMonthDayScan(question: string): boolean {
   if (ACTIVITY_KEYWORDS.test(question)) return false; // กิจกรรมเจาะจง → เลือกวันตามกิจกรรมแทน
   const hasWindow = /เดือนนี้|ในเดือน|ช่วงนี้|เดือน\s*นี้|เดือนนี/.test(question);
+  if (!hasWindow) return false;
+  // ถาม "วันไหน" ตรง ๆ
   const asksWhichDay = /วันไหน|วันที่ไหน|วันที่เท่าไหร่|กี่ค่ำ|วันดี|วันมงคล|วันเฮง|วันโชค/.test(question);
-  return hasWindow && asksWhichDay;
+  // หรือถามเชิงโชค/ระวังในกรอบเดือน แม้ไม่พูดคำว่า "วันไหน" (เช่น "เดือนนี้ควรระวังอะไร") → สแกนรายวันให้เลย
+  const luckOrCaution = /ระวัง|เตือน|โชค|เฮง|ดวงดี|ดวงตก|ดวงร้าย/.test(question);
+  return asksWhichDay || luckOrCaution;
 }
 
 /** ดึงชั่วโมง (0-23) จากข้อความ เช่น "04:00" / "20.30" — คืน null ถ้าไม่พบ */

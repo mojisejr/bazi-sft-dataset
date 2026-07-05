@@ -86,6 +86,9 @@ describe("wantsMonthDayScan (เดือนนี้...วันไหน เ�
   it("'เดือนนี้มีโชควันไหน' → true", () => expect(wantsMonthDayScan("เดือนนี้ฉันจะมีโชควันไหน")).toBe(true));
   it("'เดือนนี้ต้องระวังวันไหน' → true", () => expect(wantsMonthDayScan("เดือนนี้ฉันต้องระวังวันไหน")).toBe(true));
   it("'เดือนนี้วันไหนดี' → true", () => expect(wantsMonthDayScan("เดือนนี้วันไหนดี")).toBe(true));
+  it("'เดือนนี้ควรระวังอะไร' → true (ระวัง ในกรอบเดือน แม้ไม่พูด 'วันไหน')", () =>
+    expect(wantsMonthDayScan("เดือนนี้ฉันควรระวังอะไร")).toBe(true));
+  it("'เดือนนี้มีโชคไหม' → true", () => expect(wantsMonthDayScan("เดือนนี้มีโชคไหม")).toBe(true));
   it("กิจกรรมเจาะจง 'ขึ้นบ้านเดือนนี้วันไหนดี' → false (ใช้เลือกวันตามกิจกรรม)", () =>
     expect(wantsMonthDayScan("ขึ้นบ้านเดือนนี้วันไหนดี")).toBe(false));
   it("ถามพลังเดือนรวม 'เดือนนี้ควรทำอะไร' → false (ไม่ถามวันเจาะจง)", () =>
