@@ -126,7 +126,8 @@ async function classifyRoute(
     `วันนี้คือ ${today} (Asia/Bangkok).`,
     "จัดหมวดคำถามล่าสุดของผู้ใช้ให้เลือกศาสตร์ที่เหมาะจะตอบ (อ่านให้ดีว่ามี 'มิติเวลา' หรือเป็นการทำนายสิ่งภายนอกไหม):",
     "- \"chart\" = ถามดวงพื้นฐาน/ศักยภาพตัวเอง แบบ \"ไม่มีมิติเวลา\" เช่น นิสัย บุคลิก การงาน/การเงิน/ความรัก/สุขภาพโดยรวม พรสวรรค์ ผู้อุปถัมภ์ หุ้นส่วน สี/ทิศ องค์เทพ",
-    "- \"timing\" = ถามอิง \"จังหวะเวลาปัจจุบัน\" ของตัวเอง เช่น 'เดือนนี้/ช่วงนี้/ปีนี้/ตอนนี้ ควรทำอะไร' 'เดือนนี้ทำธุรกิจอะไรดี' 'ช่วงนี้เหมาะเริ่ม/ตัดสินใจไหม' 'วันนี้/พรุ่งนี้ดวงเป็นยังไง' (ใช้วัยจร+จร เป็นฐาน)",
+    "- \"timing\" = ถามอิง \"จังหวะช่วงกว้าง\" ของตัวเอง (เดือน/ปี/ช่วงชีวิต — ไม่เจาะจงวันเดียว) เช่น 'เดือนนี้/ช่วงนี้/ปีนี้/ตอนนี้ ควรทำอะไร' 'เดือนนี้ทำธุรกิจอะไรดี' 'ช่วงนี้เหมาะเริ่ม/ตัดสินใจไหม' (ใช้วัยจร+เสาเดือนจร เป็นฐาน)",
+    "- \"day\" = ถามเจาะจง \"วันใดวันหนึ่ง\" ว่าดวงของเราวันนั้นเป็นยังไง / ควรระวัง-ควรทำอะไรในวันนั้น เช่น 'วันนี้/พรุ่งนี้ดวงเป็นยังไง' 'พรุ่งนี้ควรระวังอะไร' 'วันที่ 6 ก.ค. เป็นวันของเรายังไง' (ใช้ ManVsDay = ดวงเรา×เสาวันนั้น เป็นฐาน — ต้องมีวันเกิด)",
     "- \"almanac\" = ถามฤกษ์/ยามมงคล/วันดีตามปฏิทินโหรา แบบทั่วไป (ไม่อิงดวงเกิด) เช่น 'วันนี้ฤกษ์ดีไหม' 'ยามไหนออกรถดี' 'พรุ่งนี้เหมาะเซ็นสัญญา/ขึ้นบ้านไหม'",
     "- \"offscope\" = ขอ \"ทำนายสิ่งภายนอกที่ดวงตัวเองบอกไม่ได้\" เช่น ผลกีฬา/บอล/มวย ใครชนะ, ผลหวย/ลอตเตอรี่/เลขเด็ด, ผลแข่งขัน, หรือดวง/อนาคตของ 'คนอื่น' ที่ไม่ใช่ผู้ถามเอง",
     "- \"fortune\" = ขอ \"เซียมซี/เสี่ยงเซียมซี\" โดยเฉพาะ",
@@ -135,7 +136,7 @@ async function classifyRoute(
     "- \"card\" = ขอคำแนะนำ/ทางเลือก/กำลังใจ หรือขอ 'จั่วไพ่/ดูไพ่' ทั่วไป ที่ไม่เข้าหมวดอื่น (จั่วไพ่ออราเคิล) — ค่าเริ่มต้น",
     "- \"chat\" = แค่ทักทาย ขอบคุณ ระบายความรู้สึก คุยเล่น ไม่ได้ขอคำทำนาย/คำแนะนำเจาะจง",
     `ถ้า route=chart ให้เลือก topicId ที่ใกล้ที่สุดจาก: ${TOPIC_IDS.join(", ")} (ค่าเริ่มต้น chart_foundation).`,
-    "ถ้า route=timing / almanac / offscope และระบุวันได้ ให้ date เป็น YYYY-MM-DD (แปลง 'พรุ่งนี้' ฯลฯ เทียบวันนี้) ไม่งั้น null.",
+    "ถ้า route=day / timing / almanac / offscope และระบุวันได้ ให้ date เป็น YYYY-MM-DD (แปลง 'พรุ่งนี้' ฯลฯ เทียบวันนี้) ไม่งั้น null.",
     ctx ? `บริบทบทสนทนาก่อนหน้า (ใช้เข้าใจว่าคำถามล่าสุดกำลังถามต่อเรื่องอะไร):\n${ctx}` : "",
     prevRoute ? `หมวด(ศาสตร์)ของคำตอบก่อนหน้า: ${prevRoute}` : "",
     ctx || prevRoute
@@ -161,7 +162,7 @@ async function classifyRoute(
         responseSchema: {
           type: "object",
           properties: {
-            route: { type: "string", enum: ["chart", "timing", "almanac", "offscope", "card", "divine", "fortune", "phone", "chat"] },
+            route: { type: "string", enum: ["chart", "timing", "day", "almanac", "offscope", "card", "divine", "fortune", "phone", "chat"] },
             topicId: { type: "string", nullable: true },
             date: { type: "string", nullable: true },
           },
@@ -182,7 +183,7 @@ async function classifyRoute(
   const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   try {
     const parsed = JSON.parse(raw) as { route: LouiseHayRoute; topicId: string | null; date: string | null };
-    const valid: LouiseHayRoute[] = ["chart", "timing", "almanac", "offscope", "card", "divine", "fortune", "phone", "chat"];
+    const valid: LouiseHayRoute[] = ["chart", "timing", "day", "almanac", "offscope", "card", "divine", "fortune", "phone", "chat"];
     const route: LouiseHayRoute = valid.includes(parsed.route) ? parsed.route : "card";
     const topicId = parsed.topicId && TOPIC_IDS.includes(parsed.topicId) ? parsed.topicId : "chart_foundation";
     const date = typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null;
@@ -559,9 +560,87 @@ async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInp
   };
 }
 
+/**
+ * "เดือนนี้มีโชควันไหน / ต้องระวังวันไหน" — ผสม 4 ชั้นให้ระบุ "วันจริง" ได้:
+ *   วัยจร + เสาเดือนจร (บริบทเดือน) + สแกนรายวันทั้งเดือน (ManVsDay ดวง×เสาวัน + ฤกษ์ 建除) + ยามมงคล.
+ * คืนทั้ง "วันเด่น/โชคดี" และ "วันควรระวัง" พร้อมเสาวัน/%เข้าดวง/ฤกษ์/ยาม. ต้องผูกดวง.
+ */
+async function groundMonthDayScan(
+  birth: LouiseHayBirthInput,
+  now: Date,
+): Promise<GroundingCore | null> {
+  const iso = todayIsoBangkok(now);
+  const [y, m, dToday] = iso.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+  const repository = createDbKnowledgeRepository();
+  const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
+  const matching = applyMatchingOverrides(await getMatchingMap());
+  const pillars = facetPillarsOf(state);
+  const dm = dayPillarOf(state);
+
+  const scored: { dd: number; fit: number | null; combined: number }[] = [];
+  for (let dd = dToday; dd <= lastDay; dd += 1) {
+    const jScore = jianchuFor(y, m, dd)?.score ?? 0;
+    let fit: number | null = null;
+    try {
+      fit = buildManVsDay(pillars, dm, y, m, dd, matching).overallPercent;
+    } catch {
+      fit = null;
+    }
+    const combined = fit != null ? (jScore + fit) / 2 : jScore;
+    scored.push({ dd, fit, combined });
+  }
+  if (scored.length === 0) return null;
+
+  const dayLine = ({ dd, fit }: { dd: number; fit: number | null }) => {
+    const j = jianchuFor(y, m, dd);
+    const a = buildAlmanacDay(y, m, dd);
+    const hours = a.luckyHours.slice(0, 3).map((h) => `${h.range}(${h.god})`).join(", ");
+    const fitStr = fit != null ? ` · เข้ากับดวงคุณ ${fit}%` : "";
+    return `- วันที่ ${dd} (เสาวัน ${a.dayPillar.ganzhi} · ฤกษ์ ${j?.name ?? "-"} = ${j?.meaning ?? ""})${fitStr}${hours ? ` · ยามมงคล ${hours}` : ""}`;
+  };
+
+  const goodDays = [...scored].sort((a, b) => b.combined - a.combined).slice(0, 4).sort((a, b) => a.dd - b.dd);
+  const cautionDays = [...scored].sort((a, b) => a.combined - b.combined).slice(0, 3).sort((a, b) => a.dd - b.dd);
+
+  const timing = await groundTiming(null, birth, now).catch(() => null);
+  const parts: string[] = [];
+  if (timing) parts.push(`[บริบทเดือน — วัยจร + เสาเดือนจร (พลังรวมของเดือน)]\n${timing.text}`);
+  parts.push(`[วันเด่น/โชคดีในเดือน ${iso.slice(0, 7)} — สแกนรายวัน: ดวงคุณ×เสาวัน + ฤกษ์]\n${goodDays.map(dayLine).join("\n")}`);
+  parts.push(`[วันควรระวัง/พลังอ่อนในเดือน ${iso.slice(0, 7)}]\n${cautionDays.map(dayLine).join("\n")}`);
+
+  const age = ageFromBirthDate(birth.birthDate, now);
+  const ageLine = age != null ? `อายุปัจจุบันของเจ้าชะตา: ${age} ปี\n\n` : "";
+  return {
+    route: "timing",
+    sourceLabel: "ดวงกับเวลา · วัยจร + เสาเดือนจร + ศาสตร์ปฏิทิน + ฤกษ์ยาม",
+    text: `${ageLine}คำถามนี้ถามหา "วันเจาะจงในเดือน" ตั้งแต่วันที่ ${dToday} ถึงสิ้นเดือน ${iso.slice(0, 7)}:\n\n${parts.join("\n\n———\n\n")}`,
+    note:
+      "คำถามนี้ถามหา 'วัน' ที่เจาะจง — ต้องระบุ 'เลขวันที่' ชัด ๆ ไม่ตอบแค่พลังรวมของเดือน: " +
+      "บอก 'วันโชคดี/วันเด่น' 2-3 วัน (พร้อมยามมงคลของวันนั้น) และ 'วันควรระวัง' 1-2 วัน อิงจากรายการด้านบน " +
+      "โยงกับพลังเดือน (วัยจร+เสาเดือนจร) สั้น ๆ เป็นฉากหลัง แล้วห่อด้วยน้ำเสียงอบอุ่น ปิดท้ายด้วยคำยืนยัน",
+  };
+}
+
 /** ผู้ใช้ขอ "เลือกวัน/หาวันดี" ในช่วงเวลา (ไม่ใช่ถามว่าวันนี้เป็นไง) → สแกนทั้งเดือน */
 export function wantsDayPicker(question: string): boolean {
   return /เลือกวัน|วันไหน|วันดี|หาวัน|หาฤกษ์|ฤกษ์.*(เดือน|ขึ้นบ้าน|แต่งงาน|ย้าย|เปิดร้าน|ออกรถ)|วัน.*(เหมาะ|มงคล).*เดือน/.test(question);
+}
+
+/** กิจกรรมเจาะจง (ขึ้นบ้าน/แต่งงาน…) — คำถามแบบนี้เป็น "เลือกวันตามกิจกรรม" ใช้ groundAlmanacMonthPick */
+const ACTIVITY_KEYWORDS =
+  /ขึ้นบ้าน|แต่งงาน|หมั้น|ย้าย|เปิดร้าน|เปิดกิจการ|ออกรถ|เซ็นสัญญา|ลาออก|สมัคร|ผ่าตัด|เดินทาง|ขึ้นศาล|โยกย้าย|บวช/;
+
+/**
+ * ถามหา "วันเจาะจงในเดือน" เชิงโชค/ดวง/ระวัง (ไม่ใช่กิจกรรม) เช่น
+ * 'เดือนนี้มีโชควันไหน' 'เดือนนี้ต้องระวังวันไหน' → ต้องสแกนรายวันทั้งเดือน + บริบทเดือน (ไม่ใช่แค่พลังรวม).
+ */
+export function wantsMonthDayScan(question: string): boolean {
+  if (ACTIVITY_KEYWORDS.test(question)) return false; // กิจกรรมเจาะจง → เลือกวันตามกิจกรรมแทน
+  const hasWindow = /เดือนนี้|ในเดือน|ช่วงนี้|เดือน\s*นี้|เดือนนี/.test(question);
+  const asksWhichDay = /วันไหน|วันที่ไหน|วันที่เท่าไหร่|กี่ค่ำ|วันดี|วันมงคล|วันเฮง|วันโชค/.test(question);
+  return hasWindow && asksWhichDay;
 }
 
 /** ดึงชั่วโมง (0-23) จากข้อความ เช่น "04:00" / "20.30" — คืน null ถ้าไม่พบ */
@@ -678,6 +757,12 @@ export async function resolveLouiseHayGrounding(
     classifyOutTokens: classification!.outTokens,
   });
 
+  // safety net: แปลง "พรุ่งนี้/มะรืน" แบบ deterministic เผื่อ classifier ไม่เติม date ให้ route ที่อิงวัน
+  if (!classification.date) {
+    const rel = parseRelativeDate(question, now);
+    if (rel) classification.date = rel;
+  }
+
   const route: LouiseHayRoute = classification.route;
 
   // ทักทาย/คุยเล่น — ไม่ต้องใช้ศาสตร์ ตอบจากใจได้เลย
@@ -686,6 +771,13 @@ export async function resolveLouiseHayGrounding(
   }
 
   try {
+    // "เดือนนี้มีโชค/ต้องระวังวันไหน" — ต้องสแกนรายวันทั้งเดือน + บริบทเดือน (ต้องผูกดวง)
+    // เช็คก่อนแยก route เพราะ classifier มักจัดไป timing/almanac แต่ทั้งคู่ระบุ "วันจริง" ไม่ได้
+    if (birth && wantsMonthDayScan(question)) {
+      const scan = await groundMonthDayScan(birth, now);
+      if (scan) return withClassify(scan);
+    }
+
     // ── ศาสตร์ที่ไม่ต้องผูกดวง ──
     if (route === "phone") {
       if (phone) {

@@ -13,6 +13,7 @@ import {
   recentContext,
   wantsDailyLifestyle,
   wantsDayPicker,
+  wantsMonthDayScan,
 } from "@/lib/louise-hay/grounding-router";
 
 describe("extractPhone", () => {
@@ -79,6 +80,18 @@ describe("wantsDailyLifestyle (คำถามใช้ชีวิตประ�
   it("'ออกจากบ้านทิศไหน' → true", () => expect(wantsDailyLifestyle("ออกจากบ้านทิศไหนดี")).toBe(true));
   it("'ก้าวเท้าไหน' → true", () => expect(wantsDailyLifestyle("ก้าวเท้าไหนออกจากบ้านดี")).toBe(true));
   it("คำถามอารมณ์ทั่วไป → false", () => expect(wantsDailyLifestyle("วันนี้รู้สึกเหนื่อย")).toBe(false));
+});
+
+describe("wantsMonthDayScan (เดือนนี้...วันไหน เชิงโชค/ระวัง → สแกนรายวัน)", () => {
+  it("'เดือนนี้มีโชควันไหน' → true", () => expect(wantsMonthDayScan("เดือนนี้ฉันจะมีโชควันไหน")).toBe(true));
+  it("'เดือนนี้ต้องระวังวันไหน' → true", () => expect(wantsMonthDayScan("เดือนนี้ฉันต้องระวังวันไหน")).toBe(true));
+  it("'เดือนนี้วันไหนดี' → true", () => expect(wantsMonthDayScan("เดือนนี้วันไหนดี")).toBe(true));
+  it("กิจกรรมเจาะจง 'ขึ้นบ้านเดือนนี้วันไหนดี' → false (ใช้เลือกวันตามกิจกรรม)", () =>
+    expect(wantsMonthDayScan("ขึ้นบ้านเดือนนี้วันไหนดี")).toBe(false));
+  it("ถามพลังเดือนรวม 'เดือนนี้ควรทำอะไร' → false (ไม่ถามวันเจาะจง)", () =>
+    expect(wantsMonthDayScan("เดือนนี้ควรทำอะไรดี")).toBe(false));
+  it("ถามวันเดียว 'พรุ่งนี้ควรระวังอะไร' → false (ไม่ใช่กรอบเดือน)", () =>
+    expect(wantsMonthDayScan("พรุ่งนี้ควรระวังอะไร")).toBe(false));
 });
 
 describe("parseRelativeDate", () => {
