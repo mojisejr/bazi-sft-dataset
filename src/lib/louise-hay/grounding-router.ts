@@ -12,6 +12,7 @@
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { buildAlmanacDay, checkHour, jianchuFor, pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
 import { elementThOfStem, type ElementTh } from "@/lib/bazi/constants/career-finance-table";
+import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { buildElementInteractionAB, buildFacets } from "@/lib/bazi/pair-matching";
 import { drawRandom as drawDivine } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
@@ -227,32 +228,6 @@ function toRawInput(birth: LouiseHayBirthInput) {
   };
 }
 
-async function groundChart(topicId: string, birth: LouiseHayBirthInput): Promise<GroundingCore | null> {
-  const repository = createDbKnowledgeRepository();
-  const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
-  const facts = extractChartFacts(state, birth.gender);
-  const map = await getNewdataMap();
-
-  const collect = (id: string) => resolveChapterBoxes(id, facts, map);
-  let resolved = collect(topicId);
-  let usedTopic = topicId;
-  if (!resolved.hasContent && topicId !== "chart_foundation") {
-    resolved = collect("chart_foundation");
-    usedTopic = "chart_foundation";
-  }
-  const body = resolved.boxes
-    .map((b) => `- ${b.title}: ${b.body}`)
-    .filter((line) => line.length > 3)
-    .join("\n");
-  if (!body) return null;
-  const title = TOPIC_TITLE.get(usedTopic) ?? "ดวงพื้นฐาน";
-  return {
-    route: "chart",
-    sourceLabel: `อ่านดวงใหม่ (NewData) · ${title}`,
-    text: `หัวข้อ: ${title}\n${body}`,
-  };
-}
-
 function dayPillarOf(state: Awaited<ReturnType<typeof calculateBaziStateFromRawInput>>): DayPillar {
   return { stem: state.fourPillars.day.stem, branch: state.fourPillars.day.branch };
 }
@@ -263,103 +238,283 @@ function facetPillarsOf(state: Awaited<ReturnType<typeof calculateBaziStateFromR
   return { hour: lite(p.hour), day: lite(p.day), month: lite(p.month), year: lite(p.year) };
 }
 
-async function groundDay(
-  dateIso: string | null,
-  birth: LouiseHayBirthInput,
-  now: Date,
-): Promise<GroundingCore | null> {
+// ─────────────── building blocks (โหลด state ครั้งเดียว แล้วประกอบชั้นศาสตร์) ───────────────
+
+type BaziState = Awaited<ReturnType<typeof calculateBaziStateFromRawInput>>;
+type LoadedState = {
+  state: BaziState;
+  matching: ReturnType<typeof applyMatchingOverrides>;
+  facts: ReturnType<typeof extractChartFacts>;
+  map: Awaited<ReturnType<typeof getNewdataMap>>;
+};
+
+/** โหลด state + matching + facts + map ครั้งเดียว (ใช้ประกอบหลายชั้นโดยไม่ต้อง fetch ซ้ำ) */
+async function loadReadingState(birth: LouiseHayBirthInput): Promise<LoadedState> {
   const repository = createDbKnowledgeRepository();
   const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
-  const text = applyMatchingOverrides(await getMatchingMap());
-  const iso = dateIso ?? todayIsoBangkok(now);
-  const [y, m, d] = iso.split("-").map(Number);
-  const result = buildManVsDay(facetPillarsOf(state), dayPillarOf(state), y, m, d, text);
-  const items = result.summaryItems.map((it) => `- ${it.label}: ${it.text}`).join("\n");
-  const pct = result.overallPercent ?? 50;
-  const kind: AlertDay["kind"] = pct >= 55 ? "luck" : pct <= 45 ? "caution" : "custom";
+  const [matchingMap, map] = await Promise.all([getMatchingMap(), getNewdataMap()]);
   return {
-    route: "day",
-    sourceLabel: `ศาสตร์ปฏิทิน · วันที่ ${iso}`,
-    alertDays: [
-      {
-        date: iso,
-        kind,
-        label: `เตือนวันที่ ${thaiDateLabel(iso)}`,
-        message: `📅 ${thaiDateLabel(iso)} — ${result.summaryHeadline} วันนี้ดูแลใจตัวเองดี ๆ นะคะ 💗`,
-      },
-    ],
-    text: `วันที่ ${iso}\n${result.summaryHeadline}\n${result.summary}\n${items}`,
+    state,
+    matching: applyMatchingOverrides(matchingMap),
+    facts: extractChartFacts(state, birth.gender),
+    map,
   };
 }
 
-/**
- * เสาเดือนจร — พลังของ "เดือนปฏิทินปัจจุบัน" (月柱จร) ปฏิสัมพันธ์กับดวงเกิด.
- * ใช้ตรรกะจับคู่เดียวกับ ManVsDay แต่ใส่ "เสาเดือนจร" ในช่องคู่แทนเสาวัน → person × เสาเดือนจร.
- */
-async function groundMonthTransit(dateIso: string | null, birth: LouiseHayBirthInput, now: Date): Promise<GroundingCore | null> {
-  const repository = createDbKnowledgeRepository();
-  const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
-  const matching = applyMatchingOverrides(await getMatchingMap());
-  const iso = dateIso ?? todayIsoBangkok(now);
-  const [y, m, d] = iso.split("-").map(Number);
-  const { monthPillar } = pillarsForDate(y, m, d);
-  const monthLite: DayPillar = { stem: monthPillar.stem, branch: monthPillar.branch };
-  // ใส่เสาเดือนจรในช่อง .day (relationship "day" อ่านคู่จาก partner.day) → เทียบดวง × เสาเดือนจร
-  const monthAsPartner: ManPillars = { hour: monthLite, day: monthLite, month: monthLite, year: monthLite };
-  const facets = buildFacets("day", facetPillarsOf(state), monthAsPartner, matching);
-  const rel = buildElementInteractionAB(dayPillarOf(state).stem, monthPillar.stem);
+/** topic ที่ถือเป็น "การงาน/ธุรกิจ" → เติมชั้น "ปีจร" ให้ */
+const CAREER_TOPICS = new Set(["career_potential"]);
 
+/** บรรทัด "ดิถี" (หลักวันเกิด + กำลังดวง) — แนบทุกคำตอบเชิงดวง */
+function dithiLine(facts: LoadedState["facts"]): string {
+  const band = classifyOperatorStrengthScore(facts.strengthScore);
+  const el = elementThOfStem(facts.dayMaster);
+  return `ดิถี (หลักวันเกิด): ${facts.dayMaster}${el ? ` ธาตุ${el}` : ""} · ${band.displayLabel} (คะแนนกำลังดวง ${facts.strengthScore})`;
+}
+
+/** ดึงเนื้อหาบทหนึ่งจาก NewData (fallback → chart_foundation) */
+function chartTopicText(topicId: string, facts: LoadedState["facts"], map: LoadedState["map"]): { title: string; body: string } | null {
+  const collect = (id: string) => resolveChapterBoxes(id, facts, map);
+  let resolved = collect(topicId);
+  let usedTopic = topicId;
+  if (!resolved.hasContent && topicId !== "chart_foundation") {
+    resolved = collect("chart_foundation");
+    usedTopic = "chart_foundation";
+  }
+  const body = resolved.boxes.map((b) => `- ${b.title}: ${b.body}`).filter((line) => line.length > 3).join("\n");
+  if (!body) return null;
+  return { title: TOPIC_TITLE.get(usedTopic) ?? "ดวงพื้นฐาน", body };
+}
+
+/** ชั้น "จร" (person × เสาจร: เดือน/ปี) — ปฏิสัมพันธ์ดวงเกิดกับเสาจร */
+function transitPillarText(label: string, pillar: { stem: string; branch: string; ganzhi: string; element: string }, state: BaziState, matching: LoadedState["matching"]): string | null {
+  const lite: DayPillar = { stem: pillar.stem, branch: pillar.branch };
+  const asPartner: ManPillars = { hour: lite, day: lite, month: lite, year: lite };
+  const facets = buildFacets("day", facetPillarsOf(state), asPartner, matching);
+  const rel = buildElementInteractionAB(dayPillarOf(state).stem, pillar.stem);
   const facetText = facets
     .filter((f) => f.found)
     .map((f) => {
-      const detail = f.lines
-        .filter((ln) => ln.text)
-        .map((ln) => `${ln.name}: ${ln.text}`)
-        .join(" · ");
+      const detail = f.lines.filter((ln) => ln.text).map((ln) => `${ln.name}: ${ln.text}`).join(" · ");
       const pct = f.percent != null ? ` ${f.percent}%` : "";
       return `- ${f.label} (${f.ourGanzhi}×${f.partnerGanzhi}${pct} ${f.ratingText})${detail ? `: ${detail}` : ""}`;
     })
     .filter((line) => line.length > 6)
     .join("\n");
   if (!facetText) return null;
+  return `${label}: ${pillar.ganzhi} — ธาตุ${pillar.element}\nดิถีเจ้าชะตา × ${label}: ${rel.summaryTh}\n${facetText}`;
+}
+
+/** ManVsDay (ดวงเรา × เสาวันนั้น) เป็นข้อความ + %/headline */
+function manVsDayBlock(state: BaziState, matching: LoadedState["matching"], y: number, m: number, d: number): { text: string; headline: string; pct: number } {
+  const result = buildManVsDay(facetPillarsOf(state), dayPillarOf(state), y, m, d, matching);
+  const items = result.summaryItems.map((it) => `- ${it.label}: ${it.text}`).join("\n");
+  return { text: `${result.summaryHeadline}\n${result.summary}\n${items}`, headline: result.summaryHeadline, pct: result.overallPercent ?? 50 };
+}
+
+/** ฤกษ์ยามของวัน (ปฏิทินโหรา: ฤกษ์/ทิศ/สี/ยามมงคล) */
+function almanacBlock(y: number, m: number, d: number): string {
+  const a = buildAlmanacDay(y, m, d);
+  const hours = a.luckyHours.slice(0, 4).map((h) => `${h.range}(${h.god})`).join(", ");
+  const colors = a.colors.map((c) => `${c.element}=${c.colors}`).join(", ");
+  return [
+    `เสาวัน ${a.dayPillar.ganzhi}`,
+    a.officer ? `ฤกษ์: ${a.officer}${a.officerDesc ? ` — ${a.officerDesc}` : ""}` : "",
+    a.luckyDirection ? `ทิศมงคล: ${a.luckyDirection}` : "",
+    colors ? `สีมงคล: ${colors}` : "",
+    hours ? `ยามมงคล: ${hours}` : "",
+  ].filter((line) => line.length > 0).join("\n");
+}
+
+/** สแกนรายวันจากรายการวัน (ManVsDay fit + ฤกษ์ 建除 + ยามมงคล) → วันเด่น/วันควรระวัง + alertDays */
+function scanDates(
+  L: LoadedState,
+  dates: { y: number; m: number; d: number; iso: string }[],
+): { goodText: string; cautionText: string; alertDays: AlertDay[] } {
+  const scored = dates.map((dt) => {
+    const jScore = jianchuFor(dt.y, dt.m, dt.d)?.score ?? 0;
+    let fit: number | null = null;
+    try {
+      fit = buildManVsDay(facetPillarsOf(L.state), dayPillarOf(L.state), dt.y, dt.m, dt.d, L.matching).overallPercent;
+    } catch {
+      fit = null;
+    }
+    return { ...dt, fit, combined: fit != null ? (jScore + fit) / 2 : jScore };
+  });
+  const line = (s: (typeof scored)[number]) => {
+    const j = jianchuFor(s.y, s.m, s.d);
+    const a = buildAlmanacDay(s.y, s.m, s.d);
+    const hours = a.luckyHours.slice(0, 3).map((h) => `${h.range}(${h.god})`).join(", ");
+    const fitStr = s.fit != null ? ` · เข้ากับดวงคุณ ${s.fit}%` : "";
+    return `- ${thaiDateLabel(s.iso)} (เสาวัน ${a.dayPillar.ganzhi} · ฤกษ์ ${j?.name ?? "-"} = ${j?.meaning ?? ""})${fitStr}${hours ? ` · ยามมงคล ${hours}` : ""}`;
+  };
+  const bySoonIso = (a: { iso: string }, b: { iso: string }) => (a.iso < b.iso ? -1 : 1);
+  const good = [...scored].sort((a, b) => b.combined - a.combined).slice(0, 4).sort(bySoonIso);
+  const caution = [...scored].sort((a, b) => a.combined - b.combined).slice(0, 3).sort(bySoonIso);
+  const alertDays: AlertDay[] = [
+    ...good.map((s): AlertDay => ({
+      date: s.iso,
+      kind: "luck",
+      label: `วันโชคดี ${thaiDateLabel(s.iso)}`,
+      message: `🍀 ${thaiDateLabel(s.iso)} เป็นวันเด่นของคุณนะคะ — พลังหนุนดี เหมาะเริ่มสิ่งที่ตั้งใจไว้ ลองใช้วันนี้ทำสิ่งดี ๆ ให้ตัวเองสักอย่างนะคะ 💗`,
+    })),
+    ...caution.map((s): AlertDay => ({
+      date: s.iso,
+      kind: "caution",
+      label: `วันควรระวัง ${thaiDateLabel(s.iso)}`,
+      message: `🌙 ${thaiDateLabel(s.iso)} พลังของวันค่อนข้างอ่อนสำหรับคุณ ค่อย ๆ ดูแลใจ พักให้พอ ไม่ต้องเร่งรีบนะคะ วันนี้แค่ประคองตัวเองได้ก็เก่งมากแล้ว 💗`,
+    })),
+  ];
+  return { goodText: good.map(line).join("\n"), cautionText: caution.map(line).join("\n"), alertDays };
+}
+
+function ageLineOf(birth: LouiseHayBirthInput, now: Date): string {
+  const age = ageFromBirthDate(birth.birthDate, now);
+  return age != null ? `อายุปัจจุบันของเจ้าชะตา: ${age} ปี\n\n` : "";
+}
+
+// ─────────────── composite grounders (ประกอบชั้นศาสตร์ตามชนิดคำถาม) ───────────────
+
+/** ดวงพื้นฐาน/หัวข้อ + ดิถี + วัยจร (+ ปีจร ถ้าเป็นการงาน/ธุรกิจ) */
+async function groundChartFull(topicId: string, birth: LouiseHayBirthInput, now: Date): Promise<GroundingCore | null> {
+  const L = await loadReadingState(birth);
+  const topic = chartTopicText(topicId, L.facts, L.map);
+  if (!topic) return null;
+  const withYear = CAREER_TOPICS.has(topicId);
+  const parts: string[] = [dithiLine(L.facts), `[${topic.title}]\n${topic.body}`];
+  const turning = chartTopicText("turning_points", L.facts, L.map);
+  if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
+  if (withYear) {
+    const iso = todayIsoBangkok(now);
+    const [y, m, d] = iso.split("-").map(Number);
+    const yr = transitPillarText("ปีจร", pillarsForDate(y, m, d).yearPillar, L.state, L.matching);
+    if (yr) parts.push(`[ปีจร — พลังปี ${y} กับดวง]\n${yr}`);
+  }
   return {
-    route: "timing",
-    sourceLabel: `เสาเดือนจร ${monthPillar.ganzhi}`,
-    text: `เสาเดือนจร (เดือน ${iso.slice(0, 7)}): ${monthPillar.ganzhi} — ธาตุ${monthPillar.element}\nดิถีเจ้าชะตา × เสาเดือนจร: ${rel.summaryTh}\n${facetText}`,
+    route: "chart",
+    sourceLabel: `อ่านดวงใหม่ · ${topic.title} + ดิถี + วัยจร${withYear ? " + ปีจร" : ""}`,
+    text: ageLineOf(birth, now) + parts.join("\n\n———\n\n"),
+    note: "ตอบเน้นหัวข้อที่ถามเป็นแกน โยงดิถี/วัยจร" + (withYear ? "/ปีจร" : "") + " เป็นบริบท ตอบกระชับได้ใจความ",
   };
 }
 
-/**
- * คำถามเชิงเวลา ("เดือนนี้/ช่วงนี้ ควรทำอะไร") — รวม 2 ฐาน:
- *   วัยจร (turning_points / ช่วงชีวิตดี-ร้ายตามอายุ) + เสาเดือนจร (月柱จร × ดวงเกิด)
- * ต้องมีดวงเกิด. คืน null ถ้าดึงไม่ได้ทั้งคู่.
- */
-async function groundTiming(
-  dateIso: string | null,
-  birth: LouiseHayBirthInput,
-  now: Date,
-): Promise<GroundingCore | null> {
-  const [luck, month] = await Promise.all([
-    groundChart("turning_points", birth).catch(() => null),
-    groundMonthTransit(dateIso, birth, now).catch(() => null),
-  ]);
-  const parts: string[] = [];
-  if (luck) parts.push(`[ช่วงวัยจร — จังหวะชีวิตช่วงนี้ตามอายุ]\n${luck.text}`);
-  if (month) parts.push(`[เสาเดือนจร — พลังเดือนนี้กับดวง]\n${month.text}`);
-  if (parts.length === 0) return null;
-  const age = ageFromBirthDate(birth.birthDate, now);
-  const ageLine = age != null ? `อายุปัจจุบันของเจ้าชะตา: ${age} ปี\n\n` : "";
-  const focusNote =
-    "โฟกัสเฉพาะจังหวะ 'ตอนนี้' กับเดือนนี้ ไม่ต้องไล่เล่าทุกช่วงวัยตั้งแต่เด็ก ตอบให้กระชับได้ใจความ (2-3 ย่อหน้าสั้น ๆ)";
+/** จังหวะช่วงกว้าง (ปีนี้/ช่วงนี้) — วัยจร + ปีจร + ดิถี + พื้นดวง/อาชีพ */
+async function groundYearTiming(question: string, birth: LouiseHayBirthInput, now: Date): Promise<GroundingCore | null> {
+  const L = await loadReadingState(birth);
+  const iso = todayIsoBangkok(now);
+  const [y, m, d] = iso.split("-").map(Number);
+  const topicId = /ธุรกิจ|การงาน|อาชีพ|งาน|ลงทุน|ค้าขาย/.test(question) ? "career_potential" : "chart_foundation";
+  const parts: string[] = [dithiLine(L.facts)];
+  const turning = chartTopicText("turning_points", L.facts, L.map);
+  if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
+  const yr = transitPillarText("ปีจร", pillarsForDate(y, m, d).yearPillar, L.state, L.matching);
+  if (yr) parts.push(`[ปีจร — พลังปี ${y} กับดวง]\n${yr}`);
+  const base = chartTopicText(topicId, L.facts, L.map);
+  if (base) parts.push(`[${base.title}]\n${base.body}`);
+  if (parts.length <= 1) return null;
   return {
     route: "timing",
-    sourceLabel: "ดวงกับเวลา · วัยจร + เสาเดือนจร",
-    text: `${ageLine}คำถามนี้อิงจังหวะเวลา ใช้ "วัยจร + เสาเดือนจร" เป็นฐาน (ดวงพื้นฐานเป็นแค่ฉากหลัง):\n\n${parts.join("\n\n———\n\n")}`,
-    note:
-      age != null
-        ? `เวลาพูดถึงจังหวะชีวิตช่วงนี้ ให้อ้าง "อายุ ${age} ปี" (อายุจริงตอนนี้) ไม่ต้องบอกเป็นช่วงอายุ เช่น 30-34 ปี. ${focusNote}`
-        : focusNote,
+    sourceLabel: "ดวงกับเวลา · วัยจร + ปีจร + ดิถี",
+    text: `${ageLineOf(birth, now)}คำถามอิงจังหวะ "ช่วงนี้/ปีนี้" ใช้ วัยจร + ปีจร + ดิถี เป็นฐาน:\n\n${parts.join("\n\n———\n\n")}`,
+    note: "โฟกัสพลัง 'ช่วงนี้/ปีนี้' (วัยจร+ปีจร) เป็นหลัก ดวงพื้นฐานเป็นฉากหลัง ตอบกระชับ 2-3 ย่อหน้า",
   };
+}
+
+/** เดือนนี้/เดือนหน้า — สแกนรายวันทั้งเดือน + วัยจร + เสาเดือนจร + ปีจร + ดิถี + ปฏิทิน + ฤกษ์ยาม */
+async function groundMonthScan(birth: LouiseHayBirthInput, now: Date, monthOffset: number): Promise<GroundingCore | null> {
+  const L = await loadReadingState(birth);
+  const todayIso = todayIsoBangkok(now);
+  const [ty, tm, td] = todayIso.split("-").map(Number);
+  const base = new Date(Date.UTC(ty, tm - 1 + monthOffset, 1));
+  const y = base.getUTCFullYear();
+  const m = base.getUTCMonth() + 1;
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const startDay = monthOffset === 0 ? td : 1;
+  const mm = String(m).padStart(2, "0");
+  const dates: { y: number; m: number; d: number; iso: string }[] = [];
+  for (let dd = startDay; dd <= lastDay; dd += 1) dates.push({ y, m, d: dd, iso: `${y}-${mm}-${String(dd).padStart(2, "0")}` });
+  if (dates.length === 0) return null;
+  const { goodText, cautionText, alertDays } = scanDates(L, dates);
+
+  const repDay = Math.min(15, lastDay);
+  const { monthPillar, yearPillar } = pillarsForDate(y, m, repDay);
+  const parts: string[] = [dithiLine(L.facts)];
+  const turning = chartTopicText("turning_points", L.facts, L.map);
+  if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
+  const monthTr = transitPillarText("เสาเดือนจร", monthPillar, L.state, L.matching);
+  if (monthTr) parts.push(`[เสาเดือนจร — พลังเดือน ${y}-${mm} กับดวง]\n${monthTr}`);
+  const yearTr = transitPillarText("ปีจร", yearPillar, L.state, L.matching);
+  if (yearTr) parts.push(`[ปีจร — พลังปี ${y} กับดวง]\n${yearTr}`);
+  parts.push(`[วันเด่น/โชคดีในเดือน ${y}-${mm} — สแกนรายวัน: ดวงคุณ×เสาวัน + ฤกษ์]\n${goodText}`);
+  parts.push(`[วันควรระวัง/พลังอ่อนในเดือน ${y}-${mm}]\n${cautionText}`);
+
+  const whichMonth = monthOffset === 0 ? "เดือนนี้" : "เดือนหน้า";
+  return {
+    route: "timing",
+    sourceLabel: "ดวงกับเวลา · วัยจร + เสาเดือนจร + ปีจร + ศาสตร์ปฏิทิน + ฤกษ์ยาม",
+    alertDays,
+    text: `${ageLineOf(birth, now)}คำถามอิง "${whichMonth}" — ระบุวันจริงในเดือน ${y}-${mm} (วันที่ ${startDay} ถึง ${lastDay}):\n\n${parts.join("\n\n———\n\n")}`,
+    note:
+      `คำถามอิง '${whichMonth}' — ต้องระบุ 'เลขวันที่' ชัด ๆ: บอก 'วันโชคดี/วันเด่น' 2-3 วัน (พร้อมยามมงคล) และ 'วันควรระวัง' 1-2 วัน อิงจากรายการด้านบน ` +
+      "โยงพลังเดือน (เสาเดือนจร) + ปีจร + วัยจร สั้น ๆ เป็นฉากหลัง แล้วห่อด้วยน้ำเสียงอบอุ่น ปิดท้ายด้วยคำยืนยัน",
+  };
+}
+
+/** วันนี้/พรุ่งนี้/วันที่ระบุ — วัยจร + ดิถี + ManVsDay + ปฏิทิน + ฤกษ์ยาม (วันเดียว) */
+async function groundDayFull(dateIso: string | null, birth: LouiseHayBirthInput, now: Date): Promise<GroundingCore | null> {
+  const L = await loadReadingState(birth);
+  const iso = dateIso ?? todayIsoBangkok(now);
+  const [y, m, d] = iso.split("-").map(Number);
+  const mvd = manVsDayBlock(L.state, L.matching, y, m, d);
+  const parts: string[] = [dithiLine(L.facts)];
+  const turning = chartTopicText("turning_points", L.facts, L.map);
+  if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
+  parts.push(`[ดวงกับวัน ${iso} — ManVsDay ดวงคุณ×เสาวัน]\n${mvd.text}`);
+  parts.push(`[ฤกษ์ยามของวัน ${iso}]\n${almanacBlock(y, m, d)}`);
+  const kind: AlertDay["kind"] = mvd.pct >= 55 ? "luck" : mvd.pct <= 45 ? "caution" : "custom";
+  return {
+    route: "day",
+    sourceLabel: `ดวงกับวัน · ${iso} + วัยจร + ดิถี + ฤกษ์ยาม`,
+    alertDays: [{ date: iso, kind, label: `เตือนวันที่ ${thaiDateLabel(iso)}`, message: `📅 ${thaiDateLabel(iso)} — ${mvd.headline} วันนี้ดูแลใจตัวเองดี ๆ นะคะ 💗` }],
+    text: `${ageLineOf(birth, now)}คำถามเจาะจงวันที่ ${iso}:\n\n${parts.join("\n\n———\n\n")}`,
+    note: "ตอบเจาะจง 'วันนี้/วันนั้น' เป็นแกน (ManVsDay + ฤกษ์ยาม) โยงวัยจร/ดิถีเป็นบริบทสั้น ๆ กระชับ",
+  };
+}
+
+/** อาทิตย์นี้/สัปดาห์นี้ — สแกน 7 วันข้างหน้า (mini month-scan) + วัยจร + ดิถี */
+async function groundWeekScan(birth: LouiseHayBirthInput, now: Date): Promise<GroundingCore | null> {
+  const L = await loadReadingState(birth);
+  const todayIso = todayIsoBangkok(now);
+  const dates: { y: number; m: number; d: number; iso: string }[] = [];
+  for (let i = 0; i < 7; i += 1) {
+    const iso = addDaysIso(todayIso, i);
+    const [y, m, d] = iso.split("-").map(Number);
+    dates.push({ y, m, d, iso });
+  }
+  const { goodText, cautionText, alertDays } = scanDates(L, dates);
+  const parts: string[] = [dithiLine(L.facts)];
+  const turning = chartTopicText("turning_points", L.facts, L.map);
+  if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
+  parts.push(`[วันเด่น/โชคดีใน 7 วันนี้ — สแกนรายวัน: ดวงคุณ×เสาวัน + ฤกษ์]\n${goodText}`);
+  parts.push(`[วันควรระวัง/พลังอ่อนใน 7 วันนี้]\n${cautionText}`);
+  return {
+    route: "timing",
+    sourceLabel: "ดวงกับสัปดาห์ · วัยจร + ดิถี + ManVsDay + ศาสตร์ปฏิทิน + ฤกษ์ยาม",
+    alertDays,
+    text: `${ageLineOf(birth, now)}คำถามอิง "อาทิตย์นี้/สัปดาห์นี้" — สแกน 7 วันจาก ${todayIso}:\n\n${parts.join("\n\n———\n\n")}`,
+    note: "คำถามอิง 'อาทิตย์นี้' — ระบุ 'วันเด่น' และ 'วันควรระวัง' ใน 7 วันนี้เป็นเลขวันชัด ๆ พร้อมยามมงคล โยงวัยจร/ดิถีสั้น ๆ ปิดท้ายด้วยคำยืนยัน",
+  };
+}
+
+/** ตรวจ "กรอบเวลา" ของคำถามแบบ deterministic → เลือก composite ที่ถูก */
+type TimeWindow = { kind: "day" | "week" | "month" | "year" | "none"; monthOffset: number };
+function detectTimeWindow(question: string, classificationDate: string | null): TimeWindow {
+  if (/อาทิตย์นี้|สัปดาห์นี้|อาทิตย์หน้า|สัปดาห์หน้า|7\s*วัน/.test(question)) return { kind: "week", monthOffset: 0 };
+  if (/เดือนหน้า/.test(question)) return { kind: "month", monthOffset: 1 };
+  if (/เดือนนี้|ในเดือน|เดือนนี|ทั้งเดือน|ภายในเดือน/.test(question)) return { kind: "month", monthOffset: 0 };
+  if (/ปีนี้|ปีหน้า|ทั้งปี|ครึ่งปี/.test(question)) return { kind: "year", monthOffset: 0 };
+  if (/ช่วงนี้|ตอนนี้|ระยะนี้|พักนี้|เร็ว ๆ นี้/.test(question)) return { kind: "year", monthOffset: 0 };
+  if (/วันนี้|พรุ่งนี้|มะรืน|เมื่อวาน|วันที่\s*\d/.test(question) || classificationDate) return { kind: "day", monthOffset: 0 };
+  return { kind: "none", monthOffset: 0 };
 }
 
 function groundCard(question: string): GroundingCore {
@@ -591,93 +746,6 @@ async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInp
   };
 }
 
-/**
- * "เดือนนี้มีโชควันไหน / ต้องระวังวันไหน" — ผสม 4 ชั้นให้ระบุ "วันจริง" ได้:
- *   วัยจร + เสาเดือนจร (บริบทเดือน) + สแกนรายวันทั้งเดือน (ManVsDay ดวง×เสาวัน + ฤกษ์ 建除) + ยามมงคล.
- * คืนทั้ง "วันเด่น/โชคดี" และ "วันควรระวัง" พร้อมเสาวัน/%เข้าดวง/ฤกษ์/ยาม. ต้องผูกดวง.
- */
-async function groundMonthDayScan(
-  birth: LouiseHayBirthInput,
-  now: Date,
-): Promise<GroundingCore | null> {
-  const iso = todayIsoBangkok(now);
-  const [y, m, dToday] = iso.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
-
-  const repository = createDbKnowledgeRepository();
-  const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
-  const matching = applyMatchingOverrides(await getMatchingMap());
-  const pillars = facetPillarsOf(state);
-  const dm = dayPillarOf(state);
-
-  const scored: { dd: number; fit: number | null; combined: number }[] = [];
-  for (let dd = dToday; dd <= lastDay; dd += 1) {
-    const jScore = jianchuFor(y, m, dd)?.score ?? 0;
-    let fit: number | null = null;
-    try {
-      fit = buildManVsDay(pillars, dm, y, m, dd, matching).overallPercent;
-    } catch {
-      fit = null;
-    }
-    const combined = fit != null ? (jScore + fit) / 2 : jScore;
-    scored.push({ dd, fit, combined });
-  }
-  if (scored.length === 0) return null;
-
-  const dayLine = ({ dd, fit }: { dd: number; fit: number | null }) => {
-    const j = jianchuFor(y, m, dd);
-    const a = buildAlmanacDay(y, m, dd);
-    const hours = a.luckyHours.slice(0, 3).map((h) => `${h.range}(${h.god})`).join(", ");
-    const fitStr = fit != null ? ` · เข้ากับดวงคุณ ${fit}%` : "";
-    return `- วันที่ ${dd} (เสาวัน ${a.dayPillar.ganzhi} · ฤกษ์ ${j?.name ?? "-"} = ${j?.meaning ?? ""})${fitStr}${hours ? ` · ยามมงคล ${hours}` : ""}`;
-  };
-
-  const goodDays = [...scored].sort((a, b) => b.combined - a.combined).slice(0, 4).sort((a, b) => a.dd - b.dd);
-  const cautionDays = [...scored].sort((a, b) => a.combined - b.combined).slice(0, 3).sort((a, b) => a.dd - b.dd);
-
-  const timing = await groundTiming(null, birth, now).catch(() => null);
-  const parts: string[] = [];
-  if (timing) parts.push(`[บริบทเดือน — วัยจร + เสาเดือนจร (พลังรวมของเดือน)]\n${timing.text}`);
-  parts.push(`[วันเด่น/โชคดีในเดือน ${iso.slice(0, 7)} — สแกนรายวัน: ดวงคุณ×เสาวัน + ฤกษ์]\n${goodDays.map(dayLine).join("\n")}`);
-  parts.push(`[วันควรระวัง/พลังอ่อนในเดือน ${iso.slice(0, 7)}]\n${cautionDays.map(dayLine).join("\n")}`);
-
-  const monthPrefix = iso.slice(0, 7);
-  const isoOf = (dd: number) => `${monthPrefix}-${String(dd).padStart(2, "0")}`;
-  const alertDays: AlertDay[] = [
-    ...goodDays.map(({ dd }): AlertDay => {
-      const date = isoOf(dd);
-      return {
-        date,
-        kind: "luck",
-        label: `วันโชคดี ${thaiDateLabel(date)}`,
-        message: `🍀 ${thaiDateLabel(date)} เป็นวันเด่นของคุณนะคะ — พลังหนุนดี เหมาะเริ่มสิ่งที่ตั้งใจไว้ ลองใช้วันนี้ทำสิ่งดี ๆ ให้ตัวเองสักอย่างนะคะ 💗`,
-      };
-    }),
-    ...cautionDays.map(({ dd }): AlertDay => {
-      const date = isoOf(dd);
-      return {
-        date,
-        kind: "caution",
-        label: `วันควรระวัง ${thaiDateLabel(date)}`,
-        message: `🌙 ${thaiDateLabel(date)} พลังของวันค่อนข้างอ่อนสำหรับคุณ ค่อย ๆ ดูแลใจ พักให้พอ ไม่ต้องเร่งรีบนะคะ วันนี้แค่ประคองตัวเองได้ก็เก่งมากแล้ว 💗`,
-      };
-    }),
-  ];
-
-  const age = ageFromBirthDate(birth.birthDate, now);
-  const ageLine = age != null ? `อายุปัจจุบันของเจ้าชะตา: ${age} ปี\n\n` : "";
-  return {
-    route: "timing",
-    sourceLabel: "ดวงกับเวลา · วัยจร + เสาเดือนจร + ศาสตร์ปฏิทิน + ฤกษ์ยาม",
-    alertDays,
-    text: `${ageLine}คำถามนี้ถามหา "วันเจาะจงในเดือน" ตั้งแต่วันที่ ${dToday} ถึงสิ้นเดือน ${iso.slice(0, 7)}:\n\n${parts.join("\n\n———\n\n")}`,
-    note:
-      "คำถามนี้ถามหา 'วัน' ที่เจาะจง — ต้องระบุ 'เลขวันที่' ชัด ๆ ไม่ตอบแค่พลังรวมของเดือน: " +
-      "บอก 'วันโชคดี/วันเด่น' 2-3 วัน (พร้อมยามมงคลของวันนั้น) และ 'วันควรระวัง' 1-2 วัน อิงจากรายการด้านบน " +
-      "โยงกับพลังเดือน (วัยจร+เสาเดือนจร) สั้น ๆ เป็นฉากหลัง แล้วห่อด้วยน้ำเสียงอบอุ่น ปิดท้ายด้วยคำยืนยัน",
-  };
-}
-
 /** ผู้ใช้ขอ "เลือกวัน/หาวันดี" ในช่วงเวลา (ไม่ใช่ถามว่าวันนี้เป็นไง) → สแกนทั้งเดือน */
 export function wantsDayPicker(question: string): boolean {
   return /เลือกวัน|วันไหน|วันดี|หาวัน|หาฤกษ์|ฤกษ์.*(เดือน|ขึ้นบ้าน|แต่งงาน|ย้าย|เปิดร้าน|ออกรถ)|วัน.*(เหมาะ|มงคล).*เดือน/.test(question);
@@ -830,11 +898,18 @@ export async function resolveLouiseHayGrounding(
   }
 
   try {
-    // "เดือนนี้มีโชค/ต้องระวังวันไหน" — ต้องสแกนรายวันทั้งเดือน + บริบทเดือน (ต้องผูกดวง)
-    // เช็คก่อนแยก route เพราะ classifier มักจัดไป timing/almanac แต่ทั้งคู่ระบุ "วันจริง" ไม่ได้
-    if (birth && wantsMonthDayScan(question)) {
-      const scan = await groundMonthDayScan(birth, now);
-      if (scan) return withClassify(scan);
+    // เลือก composite ตาม "กรอบเวลา" ของคำถาม (deterministic) ก่อนแยก route —
+    // เพราะ classifier มักจัด 'เดือน/สัปดาห์' ไปเป็น timing รวม ๆ ที่ระบุ 'วันจริง' ไม่ได้.
+    // จำกัดเฉพาะ route อ่านดวงเชิงเวลา (ไม่แตะ เซียมซี/ไพ่/เบอร์/นอกขอบเขต) และไม่ใช่คำถามกิจกรรม.
+    if (birth && (route === "chart" || route === "day" || route === "timing") && !ACTIVITY_KEYWORDS.test(question)) {
+      const win = detectTimeWindow(question, classification.date);
+      if (win.kind === "month") {
+        const g = await groundMonthScan(birth, now, win.monthOffset);
+        if (g) return withClassify(g);
+      } else if (win.kind === "week") {
+        const g = await groundWeekScan(birth, now);
+        if (g) return withClassify(g);
+      }
     }
 
     // ── ศาสตร์ที่ไม่ต้องผูกดวง ──
@@ -863,24 +938,25 @@ export async function resolveLouiseHayGrounding(
       return withClassify(groundOffscope(question, classification.date, now));
     }
 
-    // ── ศาสตร์ที่ต้องผูกดวง ──
+    // ── ศาสตร์ที่ต้องผูกดวง (composite หลายชั้น) ──
     if (route === "timing") {
       if (!birth) {
         return withClassify({ ...groundCard(question), note: "คำถามนี้ต้องดูวัยจร+จรของดวงเกิด ถ้าผูกวันเกิดที่ปุ่ม 🔮 จะตอบได้ตรงจังหวะชีวิตช่วงนี้ของคุณเลยนะคะ" });
       }
-      const grounded = await groundTiming(classification.date, birth, now);
+      // เดือน/สัปดาห์ ถูกดักไว้ด้านบนแล้ว → ที่เหลือคือ ปีนี้/ช่วงนี้ (year-timing)
+      const grounded = await groundYearTiming(question, birth, now);
       if (grounded) return withClassify(grounded);
     } else if (route === "chart") {
       if (!birth) {
         return withClassify({ ...groundCard(question), note: "ถ้าอยากให้อ่านจากดวงเกิดจริง ลองผูกวันเกิดที่ปุ่ม 🔮 นะคะ" });
       }
-      const grounded = await groundChart(classification.topicId ?? "chart_foundation", birth);
+      const grounded = await groundChartFull(classification.topicId ?? "chart_foundation", birth, now);
       if (grounded) return withClassify(grounded);
     } else if (route === "day") {
       if (!birth) {
         return withClassify({ ...groundCard(question), note: "ถ้าอยากดูดวงกับวันจริง ๆ ลองผูกวันเกิดที่ปุ่ม 🔮 นะคะ" });
       }
-      const grounded = await groundDay(classification.date, birth, now);
+      const grounded = await groundDayFull(classification.date, birth, now);
       if (grounded) return withClassify(grounded);
     }
   } catch {
