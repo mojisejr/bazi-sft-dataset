@@ -49,13 +49,20 @@ export const DAILY_BUDGET_THB = Number(process.env.LH_DAILY_BUDGET_THB) || 100;
 const CHARGE_ESTIMATE_THB = 0.03; // pre-charge ตอนเริ่ม request (คืนส่วนต่างตอนรู้ต้นทุนจริง) กัน burst race
 let spend = { date: "", thb: 0 };
 
-function utcDay(now: number): string {
-  return new Date(now).toISOString().slice(0, 10);
+// server รันบน UTC (Vercel) — "รายวัน" ต้องอิง "วันปฏิทินไทย" ไม่ใช่ UTC ของ server
+// ไม่งั้นโควตา/เพดานจะรีเซ็ตตอน 07:00 น.ไทย (UTC เที่ยงคืน) แทนเที่ยงคืนไทย
+const BANGKOK_OFFSET_MS = 7 * 3600 * 1000;
+
+/** วันปฏิทินไทย "YYYY-MM-DD" (Asia/Bangkok) จาก epoch ms */
+function bangkokDay(now: number): string {
+  return new Date(now + BANGKOK_OFFSET_MS).toISOString().slice(0, 10);
 }
-function secToNextUtcMidnight(now: number): number {
-  const d = new Date(now);
-  const next = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1);
-  return Math.max(1, Math.ceil((next - now) / 1000));
+/** วินาทีถึง "เที่ยงคืนไทย" ถัดไป — ให้ Retry-After ตรงกับตอนที่โควตารีเซ็ตจริง */
+function secToNextBangkokMidnight(now: number): number {
+  const dayMs = 86_400_000;
+  const bkk = now + BANGKOK_OFFSET_MS;
+  const nextBkkMidnightUtc = (Math.floor(bkk / dayMs) + 1) * dayMs - BANGKOK_OFFSET_MS;
+  return Math.max(1, Math.ceil((nextBkkMidnightUtc - now) / 1000));
 }
 
 /**
@@ -64,10 +71,10 @@ function secToNextUtcMidnight(now: number): number {
  */
 export function tryChargeDailyBudget(): { ok: boolean; retryAfterSec: number } {
   const now = Date.now();
-  const day = utcDay(now);
+  const day = bangkokDay(now);
   if (spend.date !== day) spend = { date: day, thb: 0 };
   if (spend.thb >= DAILY_BUDGET_THB) {
-    return { ok: false, retryAfterSec: secToNextUtcMidnight(now) };
+    return { ok: false, retryAfterSec: secToNextBangkokMidnight(now) };
   }
   spend.thb += CHARGE_ESTIMATE_THB;
   return { ok: true, retryAfterSec: 0 };
@@ -75,7 +82,7 @@ export function tryChargeDailyBudget(): { ok: boolean; retryAfterSec: number } {
 
 /** แทนที่ค่าประมาณด้วยต้นทุนจริงหลัง request จบ (บวกส่วนต่าง) */
 export function reconcileDailyBudget(actualThb: number): void {
-  if (spend.date === utcDay(Date.now())) {
+  if (spend.date === bangkokDay(Date.now())) {
     spend.thb += actualThb - CHARGE_ESTIMATE_THB;
   }
 }
@@ -106,12 +113,14 @@ export function checkRateLimit(
     };
   }
   if (enforceDaily) {
-    const perDay = hit(`${feature}:day:${ip}`, DAILY_LIMIT, 86_400_000);
+    // โควตา "รายวัน" อิงวันปฏิทินไทย: ใส่วันไทยใน key → เปลี่ยนวัน = เริ่มนับใหม่ตอนเที่ยงคืนไทย
+    const now = Date.now();
+    const perDay = hit(`${feature}:day:${ip}:${bangkokDay(now)}`, DAILY_LIMIT, 86_400_000 + 3_600_000);
     if (!perDay.ok) {
       return {
         status: 429,
         message: `วันนี้ใช้ครบโควตาฟรีแล้ว (${DAILY_LIMIT} ครั้ง/วัน) 🌷 พรุ่งนี้กลับมาคุยกันใหม่ หรือใส่ Gemini API key ของคุณเองเพื่อคุยต่อได้ไม่จำกัด`,
-        retryAfterSec: perDay.retryAfterSec,
+        retryAfterSec: secToNextBangkokMidnight(now),
       };
     }
   }
