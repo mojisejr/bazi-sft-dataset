@@ -680,6 +680,29 @@ export type InsertBaziNewdataReadingRevision = typeof baziNewdataReadingRevision
 export type SelectBaziNewdataReadingRevision = typeof baziNewdataReadingRevisions.$inferSelect;
 
 /**
+ * "เวอร์ชัน PDF" ของ tab อ่าน 15 บท (NewData) — สแน็ปช็อต edits ที่กด "บันทึกเวอร์ชัน PDF" เอง (ไม่ใช่ autosave)
+ * ให้ทีม PDF บันทึกเวอร์ชันที่จัดหน้าเสร็จแยกจาก working edits + ย้อน/กู้ได้ (มิเรอร์ bazi_reading_pdf_versions)
+ * insert-only · มี version_note · ผูก FK ON DELETE CASCADE กับดวงต้นทาง
+ */
+export const baziNewdataReadingPdfVersions = pgTable("bazi_newdata_reading_pdf_versions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  readingId: uuid("reading_id")
+    .notNull()
+    .references(() => baziNewdataReading.id, { onDelete: "cascade" }),
+  clientName: text("client_name"),
+  birthDate: text("birth_date").notNull(),
+  birthTime: text("birth_time").notNull(),
+  gender: text("gender").notNull(),
+  province: text("province"),
+  versionNote: text("version_note"),
+  edits: jsonb("edits").$type<NewdataReadingEdits>().notNull().default({}),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type InsertBaziNewdataReadingPdfVersion = typeof baziNewdataReadingPdfVersions.$inferInsert;
+export type SelectBaziNewdataReadingPdfVersion = typeof baziNewdataReadingPdfVersions.$inferSelect;
+
+/**
  * รูปไพ่ "โหมดเซียน" (ไพ่จิตวิญญาณแดนสวรรค์) — สร้างล่วงหน้าด้วย Imagen เก็บ base64
  * cardNo = เลขไพ่ (PK) ตรงกับ divine-cards.json
  */

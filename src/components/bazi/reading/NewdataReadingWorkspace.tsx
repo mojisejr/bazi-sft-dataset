@@ -52,10 +52,28 @@ function sameBoxes(a: ReadingBox[], b: ReadingBox[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-/** กล่อง → markdown สำหรับ PDF (หัวข้อ = **ตัวหนา** ให้ ReadingPrintDocument เก็บหัวข้อไว้) */
+/** เติม [[indent]] หน้าย่อหน้าเนื้อ (ให้ PDF เยื้อง 2em เหมือนรายงานหลัก) — ข้าม bullet/หัวข้อ/marker */
+function indentBody(body: string): string {
+  return (body || "")
+    .split(/\n{2,}/)
+    .map((blk) => {
+      const first = blk.split("\n")[0].trimStart();
+      const skip =
+        !first ||
+        /^[-*•]\s/.test(first) || // bullet
+        /^#{1,4}\s/.test(first) || // ## หัวข้อ
+        /^\[\[/.test(first) || // marker [[pagebreak]] ฯลฯ
+        /^\*\*\*/.test(first) || // *** เตือน
+        /^\*\*[^*]+\*\*$/.test(first); // **หัวข้อย่อยล้วน**
+      return skip ? blk : `[[indent]]${blk}`;
+    })
+    .join("\n\n");
+}
+
+/** กล่อง → markdown สำหรับ PDF (หัวข้อ = **ตัวหนา**, ย่อหน้าเนื้อ = [[indent]] ให้เหมือนรายงานหลัก) */
 function boxesToBoldMarkdown(boxes: ReadingBox[]): string {
   return boxes
-    .map((b) => [b.title ? `**${b.title}**` : "", b.body].filter(Boolean).join("\n\n"))
+    .map((b) => [b.title ? `**${b.title}**` : "", indentBody(b.body)].filter(Boolean).join("\n\n"))
     .join("\n\n")
     .trim();
 }
@@ -213,6 +231,11 @@ export function NewdataReadingWorkspace() {
   const [savedList, setSavedList] = useState<SavedItem[]>([]);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState("");
+
+  // เวอร์ชัน PDF (สแน็ปช็อตแยก — ทีม PDF บันทึก/ย้อน/กู้)
+  type PdfVersion = { id: string; versionNote: string | null; createdAt: string };
+  const [pdfVersions, setPdfVersions] = useState<PdfVersion[]>([]);
+  const [pdfVerStatus, setPdfVerStatus] = useState("");
 
   // ── Auto-save: ทายดวงเสร็จ → สร้าง record ใน DB ทันที แล้วบันทึกทุกครั้งที่แก้ (กันปิด tab แล้วงานหาย) ──
   /** สแน็ปช็อตของสิ่งที่บันทึกลง DB ครั้งล่าสุด — กัน autosave ยิงซ้ำค่าเดิม */
@@ -618,6 +641,86 @@ export function NewdataReadingWorkspace() {
     [sessionId, reloadSavedList],
   );
 
+  // ── เวอร์ชัน PDF (สแน็ปช็อตแยก) ──
+  const reloadPdfVersions = useCallback(async (rid: string | null) => {
+    if (!rid) {
+      setPdfVersions([]);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/reading/newdata-reading/pdf-versions?readingId=${rid}`);
+      const body = (await res.json()) as { items?: PdfVersion[] };
+      setPdfVersions(body.items ?? []);
+    } catch {
+      setPdfVersions([]);
+    }
+  }, []);
+  useEffect(() => {
+    void reloadPdfVersions(sessionId);
+  }, [sessionId, reloadPdfVersions]);
+
+  const savePdfVersion = useCallback(async () => {
+    if (!sessionId) {
+      setPdfVerStatus("บันทึกดวงก่อน (💾 บันทึกดวงนี้) จึงจะบันทึกเวอร์ชัน PDF ได้");
+      return;
+    }
+    const note = window.prompt("โน้ตเวอร์ชันนี้ (เช่น “จัดหน้าเสร็จ”, “ก่อนแก้บทคู่ครอง”)", "");
+    if (note === null) return; // ยกเลิก
+    setPdfVerStatus("กำลังบันทึกเวอร์ชัน…");
+    try {
+      const res = await fetch("/api/reading/newdata-reading/pdf-versions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ readingId: sessionId, clientName, birthDate, birthTime, gender, province, versionNote: note || null, edits }),
+      });
+      const body = (await res.json()) as { id?: string; error?: string };
+      if (!res.ok || !body.id) {
+        setPdfVerStatus(body.error ?? "บันทึกเวอร์ชันไม่สำเร็จ (ยังไม่ได้รัน migration?)");
+        return;
+      }
+      setPdfVerStatus(`บันทึกเวอร์ชัน PDF แล้ว ✓${note ? ` (${note})` : ""}`);
+      await reloadPdfVersions(sessionId);
+    } catch {
+      setPdfVerStatus("บันทึกเวอร์ชันไม่สำเร็จ");
+    }
+  }, [sessionId, clientName, birthDate, birthTime, gender, province, edits, reloadPdfVersions]);
+
+  const restorePdfVersion = useCallback(
+    async (id: string) => {
+      if (!window.confirm("กู้เวอร์ชันนี้มาทับงานปัจจุบัน? (ควรกด “บันทึกเวอร์ชัน PDF” เก็บงานปัจจุบันไว้ก่อน)")) return;
+      try {
+        const res = await fetch(`/api/reading/newdata-reading/pdf-versions/${id}`);
+        const body = (await res.json()) as { version?: { edits?: Partial<Edits> }; error?: string };
+        if (!res.ok || !body.version) {
+          setPdfVerStatus(body.error ?? "โหลดไม่สำเร็จ");
+          return;
+        }
+        const e = body.version.edits ?? {};
+        const restored: Edits = { boxes: e.boxes ?? {}, titles: e.titles ?? {} };
+        setEdits(restored);
+        setDrafts({});
+        persist(storageKey, restored);
+        setPdfVerStatus("กู้เวอร์ชัน PDF แล้ว ✓ (บันทึกอัตโนมัติจะเก็บให้)");
+      } catch {
+        setPdfVerStatus("โหลดไม่สำเร็จ");
+      }
+    },
+    [persist, storageKey],
+  );
+
+  const deletePdfVersion = useCallback(
+    async (id: string) => {
+      if (!window.confirm("ลบเวอร์ชัน PDF นี้?")) return;
+      try {
+        await fetch(`/api/reading/newdata-reading/pdf-versions/${id}`, { method: "DELETE" });
+        await reloadPdfVersions(sessionId);
+      } catch {
+        /* ignore */
+      }
+    },
+    [sessionId, reloadPdfVersions],
+  );
+
   // Auto-save: ทายดวงเสร็จ → สร้าง record ทันที, แก้กล่อง/ชื่อ → บันทึกต่อเองอัตโนมัติ (debounce) ไม่ต้องกดปุ่ม
   // ส่ง createRevision:false → ลง DB ทุกครั้งแต่ไม่สร้างจุดประวัติรก (จุดประวัติ = กด "บันทึกดวงนี้" เองเท่านั้น)
   useEffect(() => {
@@ -903,6 +1006,25 @@ export function NewdataReadingWorkspace() {
         </details>
       )}
 
+      {sessionId && (pdfVersions.length > 0 || pdfVerStatus) && (
+        <details className="newdata-reading__saved no-print" open={pdfVersions.length > 0}>
+          <summary>🗂 เวอร์ชัน PDF ของดวงนี้ ({pdfVersions.length})</summary>
+          {pdfVerStatus && <p className="newdata-reading__savestatus">{pdfVerStatus}</p>}
+          <ul>
+            {pdfVersions.map((v) => (
+              <li key={v.id}>
+                <button type="button" className="newdata-reading__saved-load" onClick={() => void restorePdfVersion(v.id)} title="กู้เวอร์ชันนี้มาทับงานปัจจุบัน">
+                  {v.versionNote || "(ไม่มีโน้ต)"} · {new Date(v.createdAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" })}
+                </button>
+                <button type="button" className="newdata-reading__saved-del" title="ลบเวอร์ชัน" onClick={() => void deletePdfVersion(v.id)}>
+                  ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
       {error && <p className="newdata-reading__error no-print">{error}</p>}
       {aiError && <p className="newdata-reading__error no-print">⚠️ {aiError}</p>}
 
@@ -1053,6 +1175,14 @@ export function NewdataReadingWorkspace() {
                       onClick={() => setEditMode((v) => !v)}
                     >
                       {editMode ? "ดูหน้าจริง (A4)" : "แก้ข้อความ"}
+                    </button>
+                    <button
+                      type="button"
+                      className="ylc-preview__btn ylc-preview__btn--ghost"
+                      onClick={() => void savePdfVersion()}
+                      title="บันทึกงานตอนนี้เป็น 'เวอร์ชัน PDF' แยก (ย้อน/กู้ได้) — ไม่ทับ working edits"
+                    >
+                      🗂 บันทึกเวอร์ชัน PDF{pdfVersions.length > 0 ? ` (${pdfVersions.length})` : ""}
                     </button>
                     <button type="button" className="ylc-preview__btn ylc-preview__btn--primary" onClick={handlePrintYlc}>
                       🖨 พิมพ์ / บันทึก PDF
