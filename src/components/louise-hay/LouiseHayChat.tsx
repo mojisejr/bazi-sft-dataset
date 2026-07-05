@@ -3,13 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 
 import { LOUISE_HAY_AFFIRMATIONS } from "@/lib/louise-hay/affirmations";
+import { getLiffIdToken, liffAvailable } from "@/lib/louise-hay/liff-client";
 
 type ScienceMeta = { route: string; label: string; note?: string | null };
+type AlertDay = { date: string; kind: "luck" | "caution" | "custom"; label: string; message: string };
 type ChatMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
   science?: ScienceMeta;
+  alerts?: AlertDay[];
 };
 type Birth = { birthDate: string; birthTime: string; gender: "female" | "male"; province: string };
 
@@ -41,6 +44,18 @@ function decodeScience(route: string | null, header: string | null): ScienceMeta
     }
   }
   return { route, label, note };
+}
+
+/** ถอด X-LH-Alerts (base64 JSON) → รายการวันที่ตั้งเตือนได้ */
+function decodeAlerts(header: string | null): AlertDay[] | undefined {
+  if (!header) return undefined;
+  try {
+    const bytes = Uint8Array.from(atob(header), (c) => c.charCodeAt(0));
+    const parsed = JSON.parse(new TextDecoder().decode(bytes)) as AlertDay[];
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const GREETING =
@@ -141,12 +156,46 @@ export function LouiseHayChat() {
   });
   const [showBirth, setShowBirth] = useState(false);
   const [birthLinked, setBirthLinked] = useState(false);
+  // สถานะปุ่มตั้งเตือนต่อวัน: key = date|kind → saving/done/error
+  const [alertStatus, setAlertStatus] = useState<Record<string, "saving" | "done" | "error">>({});
+  const [canAlert, setCanAlert] = useState(false);
   const anonIdRef = useRef<string>("anon");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     anonIdRef.current = getAnonId();
+    void liffAvailable().then(setCanAlert);
   }, []);
+
+  async function setAlert(day: AlertDay) {
+    const key = `${day.date}|${day.kind}`;
+    if (alertStatus[key] === "saving" || alertStatus[key] === "done") return;
+    setAlertStatus((s) => ({ ...s, [key]: "saving" }));
+    try {
+      const idToken = await getLiffIdToken();
+      if (!idToken) {
+        // ไม่มี token = ยังไม่ได้เปิดผ่าน LINE (หรือกำลัง redirect ไป login)
+        setAlertStatus((s) => ({ ...s, [key]: "error" }));
+        setError("ตั้งเตือนได้เมื่อเปิดหน้านี้ผ่านแอป LINE นะคะ 🌷");
+        return;
+      }
+      const res = await fetch("/api/alerts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+        body: JSON.stringify({
+          targetDate: day.date,
+          kind: day.kind,
+          message: day.message,
+          ...(birthLinked && birthComplete ? { birthKey: `${birth.birthDate}|${birth.province}` } : {}),
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error?.message ?? "ตั้งเตือนไม่สำเร็จ");
+      setAlertStatus((s) => ({ ...s, [key]: "done" }));
+    } catch (err) {
+      setAlertStatus((s) => ({ ...s, [key]: "error" }));
+      setError(err instanceof Error ? err.message : "ตั้งเตือนไม่สำเร็จ");
+    }
+  }
 
   const birthComplete = Boolean(birth.birthDate && birth.birthTime && birth.province.trim());
 
@@ -190,6 +239,7 @@ export function LouiseHayChat() {
       }
 
       const science = decodeScience(res.headers.get("X-LH-Route"), res.headers.get("X-LH-Source"));
+      const alerts = decodeAlerts(res.headers.get("X-LH-Alerts"));
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
@@ -203,7 +253,7 @@ export function LouiseHayChat() {
       }
 
       setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, science } : m)),
+        prev.map((m) => (m.id === assistantId ? { ...m, science, alerts } : m)),
       );
     } catch (err) {
       const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
@@ -245,6 +295,32 @@ export function LouiseHayChat() {
               {m.science && (
                 <div className={`lh-chart-tag lh-chart-tag--${m.science.route}`}>
                   {ROUTE_ICON[m.science.route] ?? "✨"} {m.science.label}
+                </div>
+              )}
+              {m.alerts && m.alerts.length > 0 && (
+                <div className="lh-alerts">
+                  <span className="lh-alerts__hint">🔔 ตั้งเตือนผ่าน LINE เมื่อถึงวัน{canAlert ? "" : " (เปิดผ่านแอป LINE)"}</span>
+                  <div className="lh-alerts__row">
+                    {m.alerts.map((a) => {
+                      const key = `${a.date}|${a.kind}`;
+                      const st = alertStatus[key];
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`lh-alert-chip lh-alert-chip--${a.kind}${st === "done" ? " is-done" : ""}`}
+                          disabled={st === "saving" || st === "done"}
+                          onClick={() => setAlert(a)}
+                        >
+                          {st === "done"
+                            ? `✓ ตั้งเตือนแล้ว · ${a.label}`
+                            : st === "saving"
+                              ? `กำลังตั้ง… ${a.label}`
+                              : `🔔 ${a.label}`}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

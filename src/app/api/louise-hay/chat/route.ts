@@ -340,6 +340,10 @@ export async function POST(req: Request) {
         JSON.stringify({ label: grounding.sourceLabel, note: grounding.note ?? null }),
         "utf-8",
       ).toString("base64"),
+      // วันที่ตั้งเตือนได้ (ถ้ามี) → frontend ทำปุ่ม 🔔 ตั้งเตือนผ่าน LINE
+      "X-LH-Alerts": grounding.alertDays?.length
+        ? Buffer.from(JSON.stringify(grounding.alertDays), "utf-8").toString("base64")
+        : "",
     },
   });
 }

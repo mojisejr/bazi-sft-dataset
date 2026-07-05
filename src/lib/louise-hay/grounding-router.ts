@@ -52,6 +52,17 @@ export type LouiseHayRoute =
   | "offscope"
   | "chat";
 
+/** วันที่ผู้ใช้ "ตั้งเตือน" ได้ (ส่งให้ frontend ทำปุ่ม 🔔 → POST /api/alerts) */
+export type AlertDay = {
+  /** YYYY-MM-DD (Asia/Bangkok) */
+  date: string;
+  kind: "luck" | "caution" | "custom";
+  /** ป้ายปุ่ม เช่น "วันโชคดี 13 ก.ค." */
+  label: string;
+  /** ข้อความที่จะ push เมื่อถึงวัน (โทนอบอุ่น) */
+  message: string;
+};
+
 export type LouiseHayGrounding = {
   route: LouiseHayRoute;
   /** ป้ายกำกับศาสตร์ที่ใช้ (โชว์เป็น badge บน UI) */
@@ -60,10 +71,20 @@ export type LouiseHayGrounding = {
   text: string;
   /** ข้อความชวน (เช่น ให้ผูกดวง) เมื่อ fallback */
   note?: string;
+  /** วันที่ตั้งเตือนได้ (ถ้าคำถามให้ผลเป็น "วันเจาะจง") — frontend เอาไปทำปุ่ม 🔔 */
+  alertDays?: AlertDay[];
   /** โทเคนที่ใช้ในขั้นจัดหมวดคำถาม (classify) — ไว้คิดต้นทุน */
   classifyInTokens: number;
   classifyOutTokens: number;
 };
+
+const TH_MONTH_ABBR = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+/** "2026-07-13" → "13 ก.ค." */
+function thaiDateLabel(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${TH_MONTH_ABBR[(m ?? 1) - 1] ?? ""}`;
+}
 
 /** เนื้อ grounding ก่อนแนบโทเคน classify (fetcher แต่ละตัวคืนแบบนี้; resolve จะเติม classify tokens ทีเดียว) */
 type GroundingCore = Omit<LouiseHayGrounding, "classifyInTokens" | "classifyOutTokens">;
@@ -254,9 +275,19 @@ async function groundDay(
   const [y, m, d] = iso.split("-").map(Number);
   const result = buildManVsDay(facetPillarsOf(state), dayPillarOf(state), y, m, d, text);
   const items = result.summaryItems.map((it) => `- ${it.label}: ${it.text}`).join("\n");
+  const pct = result.overallPercent ?? 50;
+  const kind: AlertDay["kind"] = pct >= 55 ? "luck" : pct <= 45 ? "caution" : "custom";
   return {
     route: "day",
     sourceLabel: `ศาสตร์ปฏิทิน · วันที่ ${iso}`,
+    alertDays: [
+      {
+        date: iso,
+        kind,
+        label: `เตือนวันที่ ${thaiDateLabel(iso)}`,
+        message: `📅 ${thaiDateLabel(iso)} — ${result.summaryHeadline} วันนี้ดูแลใจตัวเองดี ๆ นะคะ 💗`,
+      },
+    ],
     text: `วันที่ ${iso}\n${result.summaryHeadline}\n${result.summary}\n${items}`,
   };
 }
@@ -610,11 +641,35 @@ async function groundMonthDayScan(
   parts.push(`[วันเด่น/โชคดีในเดือน ${iso.slice(0, 7)} — สแกนรายวัน: ดวงคุณ×เสาวัน + ฤกษ์]\n${goodDays.map(dayLine).join("\n")}`);
   parts.push(`[วันควรระวัง/พลังอ่อนในเดือน ${iso.slice(0, 7)}]\n${cautionDays.map(dayLine).join("\n")}`);
 
+  const monthPrefix = iso.slice(0, 7);
+  const isoOf = (dd: number) => `${monthPrefix}-${String(dd).padStart(2, "0")}`;
+  const alertDays: AlertDay[] = [
+    ...goodDays.map(({ dd }): AlertDay => {
+      const date = isoOf(dd);
+      return {
+        date,
+        kind: "luck",
+        label: `วันโชคดี ${thaiDateLabel(date)}`,
+        message: `🍀 ${thaiDateLabel(date)} เป็นวันเด่นของคุณนะคะ — พลังหนุนดี เหมาะเริ่มสิ่งที่ตั้งใจไว้ ลองใช้วันนี้ทำสิ่งดี ๆ ให้ตัวเองสักอย่างนะคะ 💗`,
+      };
+    }),
+    ...cautionDays.map(({ dd }): AlertDay => {
+      const date = isoOf(dd);
+      return {
+        date,
+        kind: "caution",
+        label: `วันควรระวัง ${thaiDateLabel(date)}`,
+        message: `🌙 ${thaiDateLabel(date)} พลังของวันค่อนข้างอ่อนสำหรับคุณ ค่อย ๆ ดูแลใจ พักให้พอ ไม่ต้องเร่งรีบนะคะ วันนี้แค่ประคองตัวเองได้ก็เก่งมากแล้ว 💗`,
+      };
+    }),
+  ];
+
   const age = ageFromBirthDate(birth.birthDate, now);
   const ageLine = age != null ? `อายุปัจจุบันของเจ้าชะตา: ${age} ปี\n\n` : "";
   return {
     route: "timing",
     sourceLabel: "ดวงกับเวลา · วัยจร + เสาเดือนจร + ศาสตร์ปฏิทิน + ฤกษ์ยาม",
+    alertDays,
     text: `${ageLine}คำถามนี้ถามหา "วันเจาะจงในเดือน" ตั้งแต่วันที่ ${dToday} ถึงสิ้นเดือน ${iso.slice(0, 7)}:\n\n${parts.join("\n\n———\n\n")}`,
     note:
       "คำถามนี้ถามหา 'วัน' ที่เจาะจง — ต้องระบุ 'เลขวันที่' ชัด ๆ ไม่ตอบแค่พลังรวมของเดือน: " +
