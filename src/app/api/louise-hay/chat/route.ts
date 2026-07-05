@@ -63,6 +63,20 @@ function badRequest(message: string, status = 400) {
   return Response.json({ error: { message } }, { status });
 }
 
+/**
+ * ลบ "ศัพท์หลังบ้าน" ออกจากผลศาสตร์ก่อนเข้า prompt — โดยเฉพาะอักษรจีน (通根/黃道/建除/月柱 ฯลฯ)
+ * ที่ router แนบเป็นป้ายกำกับ. คำตอบเป็นไทยอยู่แล้ว จีนจึงเป็นแค่ข้อมูลภายในที่ไม่ควรให้โมเดลเห็น/เอ่ยต่อ.
+ * (ป้องกันชั้นแข็ง: โมเดลคายสิ่งที่ไม่เห็นไม่ได้ — เสริม guardrail ใน persona อีกชั้น)
+ */
+function stripInternalJargon(text: string): string {
+  return text
+    .replace(/[㐀-䶿一-鿿豈-﫿]/g, "") // CJK ideographs (+compat)
+    .replace(/\(\s*\)/g, "") // วงเล็บที่ว่างหลังลบจีน เช่น "(黃道)" → ""
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +([)\]:])/g, "$1")
+    .trim();
+}
+
 type SourceCitation = {
   n: number;
   title: string;
@@ -212,7 +226,7 @@ export async function POST(req: Request) {
   }));
 
   const groundingContext = grounding.text
-    ? grounding.text + (grounding.note ? `\n(หมายเหตุ: ${grounding.note})` : "")
+    ? stripInternalJargon(grounding.text + (grounding.note ? `\n(หมายเหตุ: ${grounding.note})` : ""))
     : null;
 
   const prompt = buildLouiseHayPrompt({
