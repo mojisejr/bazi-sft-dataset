@@ -576,20 +576,35 @@ function groundPhone(phone: string): GroundingCore | null {
 }
 
 /** ปฏิทินโหรา / ตรวจยาม — ฤกษ์+ยามมงคลของวัน (ทั่วไป ไม่อิงดวงเกิด) */
-function groundAlmanac(dateIso: string | null, now: Date): GroundingCore {
+/** ฤกษ์/ยามมงคลของวัน (ปฏิทินโหรา) — ผูกดวง → เสริม ManVsDay + ดิถี (person × เสาวันนั้น) */
+async function groundAlmanac(dateIso: string | null, now: Date, birth: LouiseHayBirthInput | null): Promise<GroundingCore> {
   const iso = dateIso ?? todayIsoBangkok(now);
   const [y, m, d] = iso.split("-").map(Number);
   const a = buildAlmanacDay(y, m, d);
   const hours = a.luckyHours.slice(0, 6).map((h) => `${h.range} (${h.god}: ${h.meaning})`).join(", ");
   const colors = a.colors.map((c) => `${c.element}=${c.colors}`).join(", ");
-  const parts = [
+  const almText = [
     `วันที่ ${iso} (เสาวัน ${a.dayPillar.ganzhi})`,
     a.officer ? `ฤกษ์ 12 ตำแหน่ง: ${a.officer}${a.officerDesc ? ` — ${a.officerDesc}` : ""}` : "",
     a.luckyDirection ? `ทิศมงคล: ${a.luckyDirection}` : "",
     colors ? `สีมงคล: ${colors}` : "",
-    hours ? `ยามมงคล (黃道): ${hours}` : "",
-  ].filter((line) => line.length > 0);
-  return { route: "almanac", sourceLabel: `ปฏิทินโหรา · ${iso}`, text: parts.join("\n") };
+    hours ? `ยามมงคล: ${hours}` : "",
+  ].filter((line) => line.length > 0).join("\n");
+
+  const sections = [`[ฤกษ์ยามของวัน ${iso}]\n${almText}`];
+  let extraLabel = "";
+  if (birth) {
+    try {
+      const L = await loadReadingState(birth);
+      const mvd = manVsDayBlock(L.state, L.matching, y, m, d);
+      sections.unshift(dithiLine(L.facts));
+      sections.push(`[ดวงกับวัน — ManVsDay ดวงคุณ×เสาวันนั้น]\n${mvd.text}`);
+      extraLabel = " + ManVsDay + ดิถี";
+    } catch {
+      /* ดึงดวงไม่ได้ → ใช้ฤกษ์วันทั่วไป */
+    }
+  }
+  return { route: "almanac", sourceLabel: `ปฏิทินโหรา · ${iso}${extraLabel}`, text: sections.join("\n\n———\n\n") };
 }
 
 /** อาหาร/รส/สีเสริมพลังตาม "ธาตุประจำวัน" (五行) — ใช้ให้โค้ชฟันธงแนะนำการกิน/แต่งตัวได้เป็นรูปธรรม */
@@ -649,23 +664,22 @@ async function groundDailyLifestyle(
   const colors = a.colors.map((c) => `${c.element}=${c.colors}`).join(", ");
   const hours = a.luckyHours.slice(0, 4).map((h) => `${h.range} (${h.god})`).join(", ");
 
-  let fitLine = "";
+  let dithi = "";
+  let mvdBlock = "";
   if (birth) {
     try {
-      const repository = createDbKnowledgeRepository();
-      const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
-      const matching = applyMatchingOverrides(await getMatchingMap());
-      const fit = buildManVsDay(facetPillarsOf(state), dayPillarOf(state), y, m, d, matching).overallPercent;
-      const mineEl = elementThOfStem(state.fourPillars.day.stem);
-      fitLine = `วันนี้เข้ากับดวงคุณ ${fit}%${mineEl ? ` (ธาตุประจำตัวคุณคือธาตุ${mineEl})` : ""}`;
+      const L = await loadReadingState(birth);
+      dithi = dithiLine(L.facts);
+      const mineEl = elementThOfStem(L.state.fourPillars.day.stem);
+      const mvd = manVsDayBlock(L.state, L.matching, y, m, d);
+      mvdBlock = `[ดวงกับวัน ${iso} — ManVsDay ดวงคุณ×เสาวัน${mineEl ? ` · ธาตุประจำตัวคุณคือธาตุ${mineEl}` : ""}]\n${mvd.text}`;
     } catch {
       /* ดึงดวงไม่ได้ก็ข้าม ใช้ฤกษ์วันทั่วไป */
     }
   }
 
-  const parts = [
+  const lifestyle = [
     `วันที่ ${iso} — เสาวัน ${a.dayPillar.ganzhi} ธาตุประจำวันคือ "ธาตุ${el ?? "-"}"`,
-    fitLine,
     food ? `อาหารเสริมพลังวันนี้ (ธาตุ${el}): เน้น${food.taste} เช่น ${food.foods}` : "",
     a.luckyDirection
       ? `ทิศมงคลวันนี้: ${a.luckyDirection} — เริ่มวันดี ๆ ด้วยการก้าวเท้าขวาออกจากบ้านก่อน แล้วมุ่งไปทางทิศนี้`
@@ -673,12 +687,14 @@ async function groundDailyLifestyle(
     colors ? `สีเสื้อผ้ามงคล: ${colors}${food ? ` (โทน${food.color}ก็เสริมธาตุวัน)` : ""}` : "",
     a.officer ? `ฤกษ์วัน: ${a.officer}${a.officerDesc ? ` — ${a.officerDesc}` : ""}` : "",
     hours ? `ช่วงเวลาดี (ยามมงคล): ${hours}` : "",
-  ].filter((line) => line.length > 0);
+  ].filter((line) => line.length > 0).join("\n");
+
+  const parts = [dithi, `[ใช้ชีวิตวันนี้ — ฟันธงเป็นรูปธรรม]\n${lifestyle}`, mvdBlock].filter((s) => s.length > 0);
 
   return {
     route: "almanac",
-    sourceLabel: `ใช้ชีวิตวันนี้ · ${iso}`,
-    text: parts.join("\n"),
+    sourceLabel: `ใช้ชีวิตวันนี้ · ${iso}${birth ? " + ManVsDay + ดิถี" : ""}`,
+    text: parts.join("\n\n———\n\n"),
     note:
       "คำถามนี้เป็นเรื่องการใช้ชีวิตประจำวัน (กิน/แต่งตัว/สี/ทิศ/ก้าวเท้า/เวลา) — ให้ 'ฟันธงแนะนำเป็นรูปธรรม' ไปเลย: " +
       "เลือกมาให้ชัดว่าควรกินอะไร-รสไหน ใส่สีอะไร ออกจากบ้านทิศไหน-ก้าวเท้าไหน ช่วงเวลาไหนดี อิงจากธาตุวัน+ฤกษ์ยามด้านบน. " +
@@ -696,13 +712,14 @@ async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInp
   const [y, m, dToday] = iso.split("-").map(Number);
   const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
 
-  // ผูกดวง → เตรียม state + matching เพื่อคิด "ความเข้ากับดวง" ต่อวัน
+  // ผูกดวง → เตรียม state + matching เพื่อคิด "ความเข้ากับดวง" ต่อวัน + บรรทัดดิถี
   let person: { pillars: ManPillars; dayMaster: DayPillar; matching: ReturnType<typeof applyMatchingOverrides> } | null = null;
+  let dithi = "";
   if (birth) {
     try {
-      const repository = createDbKnowledgeRepository();
-      const state = await calculateBaziStateFromRawInput(toRawInput(birth), { repository });
-      person = { pillars: facetPillarsOf(state), dayMaster: dayPillarOf(state), matching: applyMatchingOverrides(await getMatchingMap()) };
+      const L = await loadReadingState(birth);
+      person = { pillars: facetPillarsOf(L.state), dayMaster: dayPillarOf(L.state), matching: L.matching };
+      dithi = dithiLine(L.facts);
     } catch {
       person = null;
     }
@@ -740,6 +757,7 @@ async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInp
     route: "almanac",
     sourceLabel: person ? `เลือกวันดี (อิงดวง) · ${iso.slice(0, 7)}` : `เลือกวันดี · ${iso.slice(0, 7)}`,
     text:
+      (dithi ? `${dithi}\n\n` : "") +
       `ผู้ใช้ขอเลือกวันฤกษ์ดีในเดือนนี้ (จะทำ: "${question}") — คัดจาก ${basis} ตั้งแต่วันที่ ${dToday} ถึงสิ้นเดือน ${iso.slice(0, 7)}:\n${lines}\n\n` +
       `ให้เลือก 2-3 วันที่ช่อง "เหมาะ/ห้าม" ตรงกับสิ่งที่จะทำ${person ? " และ 'เข้ากับดวง' สูง" : ""} เลี่ยงวันที่ระบุห้าม บอกเหตุผลสั้น ๆ + ยามมงคล อย่าตอบวันเดียว.` +
       (person ? "" : " (ถ้าผูกวันเกิดที่ปุ่ม 🔮 จะเลือกวันที่ตรงกับดวงคุณได้แม่นขึ้น — ชวนอย่างนุ่มนวล)"),
@@ -782,7 +800,7 @@ export function extractHour(text: string): number | null {
  * นอกขอบเขต (บอล/หวย/ทำนายผลภายนอก) — จั่วไพ่ให้ "ฟันธงสนุก" + ถ้ามีวัน/เวลา เสริมฤกษ์ยามของเวลานั้น.
  * note สั่งโค้ชให้ตอบแบบเลือกฝั่งไปเลย (จากไพ่) แต่เตือนชัดว่าเป็นการคาดเดาสนุก.
  */
-function groundOffscope(question: string, dateIso: string | null, now: Date): GroundingCore {
+function groundOffscope(question: string, dateIso: string | null): GroundingCore {
   const card = groundCard(question);
   const parts = [`ไพ่เสี่ยงทายที่จั่วได้:\n${card.text}`];
   let timeLabel = "";
@@ -790,7 +808,7 @@ function groundOffscope(question: string, dateIso: string | null, now: Date): Gr
   if (dateIso) {
     hasTiming = true;
     const [y, m, d] = dateIso.split("-").map(Number);
-    const alm = groundAlmanac(dateIso, now);
+    const almText = almanacBlock(y, m, d);
     const hour = extractHour(question);
     let hourInfo = "";
     if (hour != null) {
@@ -800,7 +818,7 @@ function groundOffscope(question: string, dateIso: string | null, now: Date): Gr
     } else {
       timeLabel = ` ${dateIso}`;
     }
-    parts.push(`ฤกษ์ยามของ${timeLabel}:\n${alm.text}${hourInfo}`);
+    parts.push(`ฤกษ์ยามของ${timeLabel}:\n${almText}${hourInfo}`);
   }
   return {
     route: "offscope",
@@ -930,12 +948,12 @@ export async function resolveLouiseHayGrounding(
       if (wantsDayPicker(question)) {
         return withClassify(await groundAlmanacMonthPick(question, birth, now));
       }
-      return withClassify(groundAlmanac(classification.date, now));
+      return withClassify(await groundAlmanac(classification.date, now, birth));
     }
 
     // นอกขอบเขต (บอล/หวย/ทำนายคนอื่น) — จั่วไพ่ "ฟันธงสนุก" + ถ้ามีวัน/เวลา เสริมฤกษ์ยาม
     if (route === "offscope") {
-      return withClassify(groundOffscope(question, classification.date, now));
+      return withClassify(groundOffscope(question, classification.date));
     }
 
     // ── ศาสตร์ที่ต้องผูกดวง (composite หลายชั้น) ──
