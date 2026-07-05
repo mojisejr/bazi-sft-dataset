@@ -6,6 +6,8 @@ export const LINE_SIGNATURE_HEADER = "x-line-signature";
 
 export type LineMessagingClient = {
   replyText: (replyToken: string, text: string) => Promise<void>;
+  /** push ข้อความหาผู้ใช้แบบ proactive (ไม่ต้องมี replyToken) — ใช้ตอน alert ถึงวัน */
+  pushText: (userId: string, text: string) => Promise<void>;
 };
 
 export function isValidLineSignature(
@@ -29,6 +31,17 @@ export function createLineMessagingClient(
     async replyText(replyToken: string, text: string): Promise<void> {
       await client.replyMessage({
         replyToken,
+        messages: [
+          {
+            type: "text",
+            text,
+          },
+        ],
+      });
+    },
+    async pushText(userId: string, text: string): Promise<void> {
+      await client.pushMessage({
+        to: userId,
         messages: [
           {
             type: "text",

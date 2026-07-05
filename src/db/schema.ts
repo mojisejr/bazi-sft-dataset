@@ -883,6 +883,39 @@ export type InsertLouiseHayUsage = typeof louiseHayUsage.$inferInsert;
 export type SelectLouiseHayUsage = typeof louiseHayUsage.$inferSelect;
 
 /**
+ * การเตือน "วันโชคดี/วันควรระวัง" ที่ผู้ใช้ตั้งไว้จาก LIFF → push ผ่าน LINE เมื่อถึงวัน.
+ * 1 แถว = 1 การเตือน; cron รายวันดึงแถว status='pending' ที่ targetDate = วันนี้ (Asia/Bangkok) มา push.
+ */
+export const baziAlerts = pgTable(
+  "bazi_alerts",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** LINE userId ผู้รับ (ได้จากการ verify id_token ของ LIFF) */
+    lineUserId: text("line_user_id").notNull(),
+    /** วันที่จะเตือน "YYYY-MM-DD" อิงโซนเวลา Asia/Bangkok (เก็บเป็น text ให้เทียบวันตรง ๆ ไม่ยุ่ง tz) */
+    targetDate: text("target_date").notNull(),
+    /** ชนิด: luck (วันโชคดี) / caution (วันควรระวัง) / custom */
+    kind: text("kind").notNull(),
+    /** ข้อความที่จะ push (เตรียมไว้ตอนตั้ง — ตอนถึงวันแค่ส่งออก) */
+    message: text("message").notNull(),
+    /** คีย์ดวงที่ผูก (อ้างอิง/กันซ้ำ) — null ได้ */
+    birthKey: text("birth_key"),
+    /** pending → รอส่ง, sent → ส่งแล้ว, canceled → ผู้ใช้ยกเลิก */
+    status: text("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+  },
+  (table) => [
+    // cron ดึงแถวครบกำหนดวันนี้เร็ว ๆ
+    index("bazi_alerts_due_idx").on(table.status, table.targetDate),
+    index("bazi_alerts_user_idx").on(table.lineUserId),
+  ],
+);
+
+export type InsertBaziAlert = typeof baziAlerts.$inferInsert;
+export type SelectBaziAlert = typeof baziAlerts.$inferSelect;
+
+/**
  * บันทึกโทเคน/ต้นทุน LLM ต่อ 1 การเรียก สำหรับฟีเจอร์อื่น ๆ ที่ใช้ LLM (แยกตารางตามฟีเจอร์
  * ตามที่เลือกไว้) — แต่ทุกตารางใช้ "โครงคอลัมน์เดียวกัน" ผ่าน factory ด้านล่าง เพื่อให้แดชบอร์ด
  * /stats รวมข้อมูลข้ามตารางได้ง่าย. ต้นทุนไม่เก็บเป็นคอลัมน์ — คำนวณจาก provider+model+token

@@ -6,6 +6,10 @@ const envSchema = z.object({
   LINE_CHANNEL_ACCESS_TOKEN: z.string().min(1).optional(),
   LINE_CHANNEL_SECRET: z.string().min(1).optional(),
   LINE_LOGIN_URL: z.string().url().optional(),
+  /** Channel ID ของ LINE Login/LIFF — ใช้ verify id_token จาก LIFF ก่อนตั้ง alert */
+  LINE_LOGIN_CHANNEL_ID: z.string().min(1).optional(),
+  /** ความลับสำหรับป้องกัน endpoint cron (Vercel Cron แนบ Authorization: Bearer <CRON_SECRET> อัตโนมัติ) */
+  CRON_SECRET: z.string().min(1).optional(),
   OPEN_WEBUI_API_TOKEN: z.string().min(1).optional(),
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1).optional(),
   CLERK_SECRET_KEY: z.string().min(1).optional(),
@@ -24,6 +28,8 @@ export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
     LINE_CHANNEL_ACCESS_TOKEN: raw.LINE_CHANNEL_ACCESS_TOKEN,
     LINE_CHANNEL_SECRET: raw.LINE_CHANNEL_SECRET,
     LINE_LOGIN_URL: raw.LINE_LOGIN_URL,
+    LINE_LOGIN_CHANNEL_ID: raw.LINE_LOGIN_CHANNEL_ID,
+    CRON_SECRET: raw.CRON_SECRET,
     OPEN_WEBUI_API_TOKEN: raw.OPEN_WEBUI_API_TOKEN,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: raw.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
     CLERK_SECRET_KEY: raw.CLERK_SECRET_KEY,
@@ -76,6 +82,21 @@ export function getLineChannelSecret(raw: Partial<NodeJS.ProcessEnv> = process.e
   }
 
   return env.LINE_CHANNEL_SECRET;
+}
+
+export function getLineLoginChannelId(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
+  const env = readEnv(raw);
+
+  if (!env.LINE_LOGIN_CHANNEL_ID) {
+    throw new Error("LINE_LOGIN_CHANNEL_ID is required to verify LIFF id_token.");
+  }
+
+  return env.LINE_LOGIN_CHANNEL_ID;
+}
+
+/** ความลับ cron — คืน null ถ้าไม่ตั้ง (endpoint จะปฏิเสธทุก request เพื่อความปลอดภัย) */
+export function getCronSecret(raw: Partial<NodeJS.ProcessEnv> = process.env): string | null {
+  return readEnv(raw).CRON_SECRET ?? null;
 }
 
 export function getLineLoginUrl(raw: Partial<NodeJS.ProcessEnv> = process.env): string {

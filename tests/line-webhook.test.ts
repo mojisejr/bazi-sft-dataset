@@ -38,6 +38,7 @@ describe("createLineWebhookHandler", () => {
       },
       messagingClient: {
         replyText,
+        pushText: vi.fn().mockResolvedValue(undefined),
       },
       scheduleAfter: vi.fn(),
       loginUrl: "https://example.com/line/login",
@@ -59,6 +60,7 @@ describe("createLineWebhookHandler", () => {
       },
       messagingClient: {
         replyText,
+        pushText: vi.fn().mockResolvedValue(undefined),
       },
       scheduleAfter,
       loginUrl: "https://example.com/line/login",
@@ -87,6 +89,7 @@ describe("createLineWebhookHandler", () => {
       },
       messagingClient: {
         replyText,
+        pushText: vi.fn().mockResolvedValue(undefined),
       },
       scheduleAfter: (callback) => {
         scheduledCallbacks.push(callback);
