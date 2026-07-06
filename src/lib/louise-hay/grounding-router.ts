@@ -198,10 +198,12 @@ async function classifyRoute(
   }
   const data = (await res.json()) as {
     candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+    usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number };
   };
   const inTokens = data.usageMetadata?.promptTokenCount ?? 0;
-  const outTokens = data.usageMetadata?.candidatesTokenCount ?? 0;
+  // รวม thinking tokens (Gemini คิดเป็น output) เผื่อ classify เปิด thinking
+  const outTokens =
+    (data.usageMetadata?.candidatesTokenCount ?? 0) + (data.usageMetadata?.thoughtsTokenCount ?? 0);
   const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   try {
     const parsed = JSON.parse(raw) as { route: LouiseHayRoute; topicId: string | null; date: string | null };

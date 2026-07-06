@@ -348,9 +348,11 @@ function resolveLlmGenerator(provider: ReadingLlmProvider, apiKey: string | unde
     const r = await new GoogleGenAI({ apiKey }).models.generateContent(request);
     return {
       text: r.text,
+      // Gemini คิดเงิน thinking (thoughtsTokenCount) เป็น output ด้วย → ต้องรวม ไม่งั้นต้นทุนต่ำกว่าจริง
       usage: {
         inTokens: r.usageMetadata?.promptTokenCount ?? 0,
-        outTokens: r.usageMetadata?.candidatesTokenCount ?? 0,
+        outTokens:
+          (r.usageMetadata?.candidatesTokenCount ?? 0) + (r.usageMetadata?.thoughtsTokenCount ?? 0),
       },
     };
   };

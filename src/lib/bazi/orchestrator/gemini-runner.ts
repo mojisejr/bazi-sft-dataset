@@ -192,7 +192,10 @@ async function executeChunkWithGemini(
     provider: "gemini",
     model: request.model,
     inTokens: response.usageMetadata?.promptTokenCount ?? 0,
-    outTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+    // รวม thinking tokens ที่ Gemini คิดเงินเป็น output ด้วย
+    outTokens:
+      (response.usageMetadata?.candidatesTokenCount ?? 0) +
+      (response.usageMetadata?.thoughtsTokenCount ?? 0),
     label: request.chunkId,
   });
 
