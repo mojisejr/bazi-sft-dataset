@@ -30,12 +30,22 @@ function escapeHtml(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-/** หมุดแบบการ์ดเล็ก (รูป + ชื่อ) — ใช้ตอนสถานที่มีรูป; ขอบสีตามธาตุ */
-function cardHtml(color: string, imageUrl: string, name: string, active: boolean): string {
+/** หมุดแบบการ์ดเล็ก (รูป + ชื่อ + ราศีบน/ล่าง) — ใช้ตอนสถานที่มีรูป; ขอบสีตามธาตุ */
+function cardHtml(
+  color: string,
+  imageUrl: string,
+  name: string,
+  rasi: string,
+  active: boolean,
+): string {
   const scale = active ? 1.08 : 1;
+  const rasiRow = rasi
+    ? `<span class="sacred-map__pin-card-rasi">☯ ${escapeHtml(rasi)}</span>`
+    : "";
   return `<div class="sacred-map__pin-card${active ? " sacred-map__pin-card--active" : ""}" style="--pin:${color};transform:scale(${scale})">` +
     `<img class="sacred-map__pin-card-img" src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />` +
     `<span class="sacred-map__pin-card-name">${escapeHtml(name)}</span>` +
+    rasiRow +
     `</div>`;
 }
 
@@ -87,12 +97,14 @@ export default function SacredMapView({ locations, selectedId, onSelect, onPick,
       const color = isSupportedElement(loc.element) ? ELEMENT_COLOR[loc.element] : "#8b5cf6";
       const active = loc.id === selectedId;
       const hasCard = Boolean(loc.imageUrl);
+      const rasi = [loc.rasiUpper, loc.rasiLower].filter(Boolean).join(" / ");
+      const cardH = rasi ? 100 : 86;
       const icon = hasCard
         ? L.divIcon({
             className: "sacred-map__pin",
-            html: cardHtml(color, loc.imageUrl as string, loc.name, active),
-            iconSize: [104, 86],
-            iconAnchor: [52, 86],
+            html: cardHtml(color, loc.imageUrl as string, loc.name, rasi, active),
+            iconSize: [104, cardH],
+            iconAnchor: [52, cardH],
           })
         : L.divIcon({
             className: "sacred-map__pin",
