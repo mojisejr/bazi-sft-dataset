@@ -37,6 +37,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/reading/history", icon: "🗂️", label: "ประวัติดวง" },
   { href: "/reading/knowledge", icon: "📚", label: "องค์ความรู้" },
   { href: "/reading/newdata-reading", icon: "📖", label: "อ่าน 15 บท" },
+  { href: "/reading/newdata-reading2", icon: "💗", label: "อ่าน 15 บท (Louise Hay)" },
   { href: "/reading/newdata", icon: "🗃️", label: "ข้อมูลใหม่" },
   { href: "/reading/matching", icon: "💞", label: "ข้อมูล Matching" },
   { href: "/reading/sacred-map", icon: "🗺️", label: "ข้อมูล Sacred Map" },
