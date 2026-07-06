@@ -996,6 +996,10 @@ export const baziSacredMapLocation = pgTable(
     lng: doublePrecision("lng").notNull(),
     /** ทิศมงคลของสถานที่ เช่น "ทิศเหนือ" (แสดงใน sheet) */
     direction: text("direction"),
+    /** ตัวแทนราศีบน (ราศีบน/เทียนกัน) ขององค์เทพประจำสถานที่ */
+    rasiUpper: text("rasi_upper"),
+    /** ตัวแทนราศีล่าง (ราศีล่าง/ตี่จื่อ) ขององค์เทพประจำสถานที่ */
+    rasiLower: text("rasi_lower"),
     /** ธาตุที่เกี่ยวข้อง (wood/fire/earth/metal/water) — ใช้กรอง + สี pin */
     element: text("element"),
     /** ความต้องการที่สถานที่นี้ช่วย เช่น ["การงาน","เงิน"] — ใช้กรอง */

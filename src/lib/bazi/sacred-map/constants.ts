@@ -80,6 +80,8 @@ export const SacredLocationInputSchema = z.object({
   lat: z.number().min(-90).max(90),
   lng: z.number().min(-180).max(180),
   direction: z.string().trim().max(60).optional().nullable(),
+  rasiUpper: z.string().trim().max(60).optional().nullable(),
+  rasiLower: z.string().trim().max(60).optional().nullable(),
   element: z.enum(["wood", "fire", "earth", "metal", "water"]).optional().nullable(),
   needs: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
   worshipGuide: z.string().trim().max(2000).optional().nullable(),
@@ -107,6 +109,8 @@ export interface SacredLocationDto {
   lat: number;
   lng: number;
   direction: string | null;
+  rasiUpper: string | null;
+  rasiLower: string | null;
   element: string | null;
   needs: string[];
   worshipGuide: string | null;

@@ -77,6 +77,14 @@ export function LocationDetailSheet({
             <dd>{location.direction}</dd>
           </div>
         ) : null}
+        {location.rasiUpper || location.rasiLower ? (
+          <div>
+            <dt>ตัวแทนราศี</dt>
+            <dd>
+              {[location.rasiUpper, location.rasiLower].filter(Boolean).join(" / ")}
+            </dd>
+          </div>
+        ) : null}
         {location.province ? (
           <div>
             <dt>จังหวัด</dt>

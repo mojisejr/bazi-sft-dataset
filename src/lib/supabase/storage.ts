@@ -168,6 +168,54 @@ export async function uploadOracleCardImage(
   return pub.publicUrl;
 }
 
+/* ───────────── Sacred Map — รูปสถานที่มู/ไหว้เทพ — แยก bucket ───────────── */
+
+export const DEFAULT_SACRED_BUCKET = "sacred-map";
+
+export function getSacredBucket(): string {
+  return process.env.SUPABASE_SACRED_BUCKET?.trim() || DEFAULT_SACRED_BUCKET;
+}
+
+/** สร้าง bucket รูปสถานที่มู (public) ถ้ายังไม่มี — idempotent */
+export async function ensureSacredBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getSacredBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/**
+ * อัปโหลดรูปสถานที่มูขึ้น storage แล้วคืน public URL
+ * objectKey = สลัก path-safe (เช่น location id) — path = locations/<objectKey>.<ext>
+ */
+export async function uploadSacredMapImage(
+  objectKey: string,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getSacredBucket();
+  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+  const objectPath = `locations/${objectKey}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปสถานที่ "${objectKey}" ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
+
 /* ───────────── mascot 60 ดิถี — แยก bucket ───────────── */
 
 export const DEFAULT_MASCOT_BUCKET = "mascot-60";

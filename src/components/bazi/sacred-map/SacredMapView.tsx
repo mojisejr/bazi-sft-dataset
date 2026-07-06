@@ -22,6 +22,23 @@ function pinHtml(color: string, active: boolean): string {
   return `<span class="sacred-map__pin-dot" style="--pin:${color};transform:scale(${scale})"></span>`;
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+/** หมุดแบบการ์ดเล็ก (รูป + ชื่อ) — ใช้ตอนสถานที่มีรูป; ขอบสีตามธาตุ */
+function cardHtml(color: string, imageUrl: string, name: string, active: boolean): string {
+  const scale = active ? 1.08 : 1;
+  return `<div class="sacred-map__pin-card${active ? " sacred-map__pin-card--active" : ""}" style="--pin:${color};transform:scale(${scale})">` +
+    `<img class="sacred-map__pin-card-img" src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />` +
+    `<span class="sacred-map__pin-card-name">${escapeHtml(name)}</span>` +
+    `</div>`;
+}
+
 export default function SacredMapView({ locations, selectedId, onSelect, onPick, pick }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -69,12 +86,20 @@ export default function SacredMapView({ locations, selectedId, onSelect, onPick,
     for (const loc of locations) {
       const color = isSupportedElement(loc.element) ? ELEMENT_COLOR[loc.element] : "#8b5cf6";
       const active = loc.id === selectedId;
-      const icon = L.divIcon({
-        className: "sacred-map__pin",
-        html: pinHtml(color, active),
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-      });
+      const hasCard = Boolean(loc.imageUrl);
+      const icon = hasCard
+        ? L.divIcon({
+            className: "sacred-map__pin",
+            html: cardHtml(color, loc.imageUrl as string, loc.name, active),
+            iconSize: [104, 86],
+            iconAnchor: [52, 86],
+          })
+        : L.divIcon({
+            className: "sacred-map__pin",
+            html: pinHtml(color, active),
+            iconSize: [24, 24],
+            iconAnchor: [12, 12],
+          });
       const marker = L.marker([loc.lat, loc.lng], { icon, title: loc.name });
       marker.on("click", () => onSelect?.(loc.id));
       marker.addTo(group);

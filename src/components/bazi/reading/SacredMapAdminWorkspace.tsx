@@ -28,6 +28,8 @@ type Draft = {
   lat: string;
   lng: string;
   direction: string;
+  rasiUpper: string;
+  rasiLower: string;
   element: string;
   needs: string[];
   worshipGuide: string;
@@ -44,6 +46,8 @@ const EMPTY: Draft = {
   lat: "",
   lng: "",
   direction: "",
+  rasiUpper: "",
+  rasiLower: "",
   element: "",
   needs: [],
   worshipGuide: "",
@@ -68,6 +72,8 @@ function toDraft(loc: SacredLocationDto): Draft {
     lat: String(loc.lat),
     lng: String(loc.lng),
     direction: loc.direction ?? "",
+    rasiUpper: loc.rasiUpper ?? "",
+    rasiLower: loc.rasiLower ?? "",
     element: loc.element ?? "",
     needs: loc.needs ?? [],
     worshipGuide: loc.worshipGuide ?? "",
@@ -82,6 +88,7 @@ export function SacredMapAdminWorkspace() {
   const [status, setStatus] = useState("");
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [filter, setFilter] = useState<"all" | SacredStatus>("all");
+  const [uploading, setUploading] = useState(false);
 
   const authHeaders = useMemo(() => {
     const h: Record<string, string> = { "content-type": "application/json" };
@@ -123,6 +130,29 @@ export function SacredMapAdminWorkspace() {
       needs: prev.needs.includes(n) ? prev.needs.filter((x) => x !== n) : [...prev.needs, n],
     }));
 
+  const uploadImage = async (file: File) => {
+    setUploading(true);
+    setStatus("กำลังอัปโหลดรูป…");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      if (draft.id) fd.append("id", draft.id);
+      const res = await fetch("/api/reading/sacred-map/upload", {
+        method: "POST",
+        headers: token.trim() ? { "x-admin-token": token.trim() } : {},
+        body: fd,
+      });
+      const body = await res.json();
+      if (!res.ok) return setStatus(body?.error?.message ?? "อัปโหลดไม่สำเร็จ");
+      set("imageUrl", body.imageUrl as string);
+      setStatus("อัปโหลดรูปแล้ว (อย่าลืมกดบันทึก)");
+    } catch {
+      setStatus("อัปโหลดไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const submit = async () => {
     if (!draft.name.trim()) return setStatus("ต้องมีชื่อสถานที่");
     const lat = Number(draft.lat);
@@ -139,6 +169,8 @@ export function SacredMapAdminWorkspace() {
       lat,
       lng,
       direction: draft.direction,
+      rasiUpper: draft.rasiUpper,
+      rasiLower: draft.rasiLower,
       element: draft.element || null,
       needs: draft.needs,
       worshipGuide: draft.worshipGuide,
@@ -259,6 +291,17 @@ export function SacredMapAdminWorkspace() {
             <input value={draft.address} onChange={(e) => set("address", e.target.value)} />
           </label>
 
+          <div className="sacred-map__field-row">
+            <label className="sacred-map__field">
+              <span>ตัวแทนราศีบน</span>
+              <input value={draft.rasiUpper} onChange={(e) => set("rasiUpper", e.target.value)} />
+            </label>
+            <label className="sacred-map__field">
+              <span>ตัวแทนราศีล่าง</span>
+              <input value={draft.rasiLower} onChange={(e) => set("rasiLower", e.target.value)} />
+            </label>
+          </div>
+
           <div className="sacred-map__field">
             <span>ธาตุ</span>
             <div className="sacred-map__pills">
@@ -303,9 +346,36 @@ export function SacredMapAdminWorkspace() {
             <textarea value={draft.worshipGuide} onChange={(e) => set("worshipGuide", e.target.value)} rows={2} />
           </label>
 
+          <div className="sacred-map__field">
+            <span>รูปสถานที่</span>
+            {draft.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={draft.imageUrl}
+                alt="พรีวิวรูปสถานที่"
+                style={{ maxWidth: "100%", maxHeight: 160, borderRadius: 8, objectFit: "cover" }}
+              />
+            ) : null}
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploading}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void uploadImage(f);
+                e.target.value = "";
+              }}
+            />
+            {draft.imageUrl ? (
+              <button type="button" className="sacred-map__link-btn" onClick={() => set("imageUrl", "")}>
+                ลบรูป
+              </button>
+            ) : null}
+          </div>
+
           <div className="sacred-map__field-row">
             <label className="sacred-map__field">
-              <span>ลิงก์รูป (URL)</span>
+              <span>ลิงก์รูป (URL) — หรือวางเอง</span>
               <input value={draft.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} />
             </label>
             <label className="sacred-map__field">

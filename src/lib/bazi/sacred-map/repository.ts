@@ -29,6 +29,8 @@ function normalize(input: SacredLocationInput): Omit<InsertBaziSacredMapLocation
     lat: input.lat,
     lng: input.lng,
     direction: clean(input.direction),
+    rasiUpper: clean(input.rasiUpper),
+    rasiLower: clean(input.rasiLower),
     element: clean(input.element),
     needs: (input.needs ?? []).map((n) => n.trim()).filter(Boolean),
     worshipGuide: clean(input.worshipGuide),

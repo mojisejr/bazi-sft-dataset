@@ -56,6 +56,8 @@
     "db:apply:bazi-alerts": "node --env-file=.env --import tsx scripts/apply-bazi-alerts-migration.ts",
     "db:apply:narrate-usage-tables": "node --env-file=.env --import tsx scripts/apply-narrate-usage-tables-migration.ts",
     "db:apply:sacred-map": "node --env-file=.env --import tsx scripts/apply-sacred-map-migration.ts",
+    "db:apply:sacred-map-rasi": "node --env-file=.env --import tsx scripts/apply-sacred-map-rasi-migration.ts",
+    "db:seed:sacred-map-images": "node --env-file=.env --import tsx scripts/seed-sacred-map-sample-images.ts",
     "db:seed:matching:dry": "tsx scripts/seed-reading-matching.ts --dry-run",
     "db:seed:matching": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts",
     "db:seed:matching:force": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts --force",
