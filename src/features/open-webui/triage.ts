@@ -115,6 +115,8 @@ export type OpenWebUiTriageResult = {
   extraction: OpenWebUiBaziExtraction;
   /** Coarse-domain classification for downstream back-compat (truth-packet, adapter). */
   classification: OpenWebUiIntentClassification;
+  /** โทเคน+โมเดลของการเรียก triage — ไว้ log ต้นทุน (route เป็นผู้บันทึก) */
+  usage?: { model: string; inTokens: number; outTokens: number };
 };
 
 // ───────────────────────────── Zod / JSON schema for the single call ────────────────────────────
@@ -192,6 +194,11 @@ type GeminiTriageGenerateContentRequest = {
 
 type GeminiTriageGenerateContentResponse = {
   text?: string | null;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+  };
 };
 
 export type GeminiTriageGenerateContent = (
@@ -408,6 +415,7 @@ export async function runOpenWebUiTriage(
   const generateContent = options.generateContent ?? createTriageGenerateContent(config);
 
   let draft: OpenWebUiTriageDraft;
+  let usage: OpenWebUiTriageResult["usage"];
 
   try {
     const response = await generateContent({
@@ -421,6 +429,13 @@ export async function runOpenWebUiTriage(
         seed: buildStableSeed(input.triageMessages),
       },
     });
+
+    const u = response.usageMetadata;
+    usage = {
+      model: config.model,
+      inTokens: u?.promptTokenCount ?? 0,
+      outTokens: (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0),
+    };
 
     const responseText = response.text?.trim();
 
@@ -447,5 +462,5 @@ export async function runOpenWebUiTriage(
     );
   }
 
-  return normalizeTriageDraft(draft, options.existing);
+  return { ...normalizeTriageDraft(draft, options.existing), usage };
 }

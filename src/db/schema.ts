@@ -953,6 +953,8 @@ export const almanacUsage = pgTable("almanac_usage", llmUsageColumns());
 export const manVsDayUsage = pgTable("man_vs_day_usage", llmUsageColumns());
 export const phoneReadingUsage = pgTable("phone_reading_usage", llmUsageColumns());
 export const reactionChamberUsage = pgTable("reaction_chamber_usage", llmUsageColumns());
+// gateway OpenAI-compatible (/api/v1/chat/completions) สำหรับ open-webui — triage + ตอบหลัก
+export const openWebuiUsage = pgTable("open_webui_usage", llmUsageColumns());
 
 /** ตารางฟีเจอร์ LLM ทั้งหมด (นอกจาก louise_hay ที่มีโครงเฉพาะ) — dashboard วนอ่านทีละตัว */
 export const LLM_USAGE_TABLES = {
@@ -967,6 +969,7 @@ export const LLM_USAGE_TABLES = {
   man_vs_day: manVsDayUsage,
   phone_reading: phoneReadingUsage,
   reaction_chamber: reactionChamberUsage,
+  open_webui: openWebuiUsage,
 } as const;
 
 export type LlmUsageFeature = keyof typeof LLM_USAGE_TABLES;

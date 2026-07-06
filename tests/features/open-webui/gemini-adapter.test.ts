@@ -271,6 +271,7 @@ describe("generateGeminiAssistantReply", () => {
   test("returns a non-empty assistant payload from the Gemini adapter", async () => {
     const generateContent = vi.fn().mockResolvedValue({
       text: "ภาพรวมการงานปีนี้ดีขึ้นจากเดิมค่ะ",
+      usageMetadata: { promptTokenCount: 1200, candidatesTokenCount: 300, thoughtsTokenCount: 50 },
     });
 
     await expect(generateGeminiAssistantReply(readyChatInput, {
@@ -283,6 +284,8 @@ describe("generateGeminiAssistantReply", () => {
     })).resolves.toEqual({
       model: "gemini-2.5-flash-lite",
       text: "ภาพรวมการงานปีนี้ดีขึ้นจากเดิมค่ะ",
+      // thinking tokens รวมใน outTokens (300 + 50)
+      usage: { inTokens: 1200, outTokens: 350 },
     });
 
     expect(generateContent).toHaveBeenCalledWith({

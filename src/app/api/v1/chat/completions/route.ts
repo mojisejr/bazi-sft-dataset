@@ -18,6 +18,7 @@ import {
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
 import { fetchGroundedReading, resolveGroundingTopicId } from "@/features/open-webui/reading-bridge";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
+import { logLlmUsage } from "@/lib/llm-usage/logger";
 import {
   createGuardedOpenAiSseStream,
   type GlassBoxTrace,
@@ -251,6 +252,28 @@ export async function POST(req: Request) {
     });
 
     const reply = await generateGeminiAssistantReply(result, { executionContext });
+
+    // อุดรอยรั่วต้นทุน: log ทั้ง 2 การเรียก Gemini (triage + ตอบหลัก) เข้า /stats — fire-and-forget
+    if (triage.usage) {
+      logLlmUsage("open_webui", {
+        provider: "gemini",
+        model: triage.usage.model,
+        inTokens: triage.usage.inTokens,
+        outTokens: triage.usage.outTokens,
+        label: "triage",
+        anonId: effectiveUserId,
+      });
+    }
+    if (reply.usage) {
+      logLlmUsage("open_webui", {
+        provider: "gemini",
+        model: reply.model,
+        inTokens: reply.usage.inTokens,
+        outTokens: reply.usage.outTokens,
+        label: "reply",
+        anonId: effectiveUserId,
+      });
+    }
 
     if (!glassBoxTraceEnabled) {
       return reply;

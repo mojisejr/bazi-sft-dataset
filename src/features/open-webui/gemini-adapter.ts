@@ -97,6 +97,11 @@ type GeminiGenerateContentRequest = {
 
 type GeminiGenerateContentResponse = {
   text?: string | null;
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+  };
 };
 
 export type GeminiGenerateContent = (
@@ -129,6 +134,8 @@ export type OpenWebUiGeminiConfig = {
 export type OpenWebUiGeminiReply = {
   model: string;
   text: string;
+  /** โทเคนของการเรียกตอบหลัก — ไว้ log ต้นทุน (thinking รวมใน outTokens แล้ว) */
+  usage?: { inTokens: number; outTokens: number };
 };
 
 export class OpenWebUiGeminiError extends Error {
@@ -326,9 +333,15 @@ export async function generateGeminiAssistantReply(
       );
     }
 
+    const u = response.usageMetadata;
     return {
       model: config.model,
       text,
+      usage: {
+        inTokens: u?.promptTokenCount ?? 0,
+        // Gemini คิด thinking tokens เป็น output ด้วย
+        outTokens: (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0),
+      },
     };
   } catch (error) {
     if (error instanceof OpenWebUiGeminiError) {
