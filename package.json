@@ -55,6 +55,7 @@
     "db:apply:llm-usage-tables": "node --env-file=.env --import tsx scripts/apply-llm-usage-tables-migration.ts",
     "db:apply:bazi-alerts": "node --env-file=.env --import tsx scripts/apply-bazi-alerts-migration.ts",
     "db:apply:narrate-usage-tables": "node --env-file=.env --import tsx scripts/apply-narrate-usage-tables-migration.ts",
+    "db:apply:sacred-map": "node --env-file=.env --import tsx scripts/apply-sacred-map-migration.ts",
     "db:seed:matching:dry": "tsx scripts/seed-reading-matching.ts --dry-run",
     "db:seed:matching": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts",
     "db:seed:matching:force": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts --force",
@@ -96,6 +97,7 @@
     "docx": "^9.7.1",
     "drizzle-orm": "^0.45.2",
     "exceljs": "^4.4.0",
+    "leaflet": "^1.9.4",
     "lunar-javascript": "^1.7.7",
     "motion": "^12.38.0",
     "next": "^16.2.7",
@@ -105,6 +107,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.21",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",

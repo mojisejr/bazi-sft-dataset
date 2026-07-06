@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -971,3 +972,57 @@ export const LLM_USAGE_TABLES = {
 export type LlmUsageFeature = keyof typeof LLM_USAGE_TABLES;
 export type InsertLlmUsage = typeof readingTopicUsage.$inferInsert;
 export type SelectLlmUsage = typeof readingTopicUsage.$inferSelect;
+
+/**
+ * Sacred Map — สถานที่มู/ไหว้เทพ verified (Section 5 ของ PRD Mumate).
+ * 1 แถว = 1 สถานที่. แอดมินเพิ่ม/แก้/verify; ผู้ใช้เสนอเข้ามาได้ (status='pending', source='user').
+ * Save/check-in/ตั้งเตือน ฝั่งผู้ใช้เก็บใน localStorage (ยังไม่ผูก LINE login) — คอลัมน์ checkinCount
+ * เก็บยอดเช็คอินรวมแบบนิรนามไว้โชว์ความนิยม.
+ */
+export const baziSacredMapLocation = pgTable(
+  "bazi_sacred_map_location",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** ชื่อสถานที่ เช่น "ศาลเจ้าพ่อเสือ" */
+    name: text("name").notNull(),
+    /** สิ่งศักดิ์สิทธิ์/เทพประจำสถานที่ เช่น "เจ้าพ่อเสือ (ตั่วเหล่าเอี๊ย)" */
+    deity: text("deity"),
+    /** คำอธิบายสถานที่ */
+    description: text("description"),
+    province: text("province"),
+    address: text("address"),
+    /** พิกัดสำหรับปักหมุดบนแผนที่ */
+    lat: doublePrecision("lat").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    /** ทิศมงคลของสถานที่ เช่น "ทิศเหนือ" (แสดงใน sheet) */
+    direction: text("direction"),
+    /** ธาตุที่เกี่ยวข้อง (wood/fire/earth/metal/water) — ใช้กรอง + สี pin */
+    element: text("element"),
+    /** ความต้องการที่สถานที่นี้ช่วย เช่น ["การงาน","เงิน"] — ใช้กรอง */
+    needs: jsonb("needs").$type<string[]>().notNull().default([]),
+    /** โพยการมู — ของไหว้/วิธีขอพร */
+    worshipGuide: text("worship_guide"),
+    imageUrl: text("image_url"),
+    /** ลิงก์ Google Maps เฉพาะ (ถ้าเว้นว่าง จะสร้างจาก lat/lng) */
+    googleMapUrl: text("google_map_url"),
+    /** ยอดเช็คอินรวม (นิรนาม) */
+    checkinCount: integer("checkin_count").notNull().default(0),
+    /** pending → รอ verify, verified → โชว์สาธารณะ, rejected → ซ่อน */
+    status: text("status").notNull().default("pending"),
+    /** admin → แอดมินเพิ่มเอง, user → ผู้ใช้เสนอ */
+    source: text("source").notNull().default("admin"),
+    /** ช่องทางติดต่อผู้เสนอ (สำหรับ submission ของผู้ใช้) — null ได้ */
+    submitterContact: text("submitter_contact"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("bazi_sacred_map_status_idx").on(table.status),
+    index("bazi_sacred_map_element_idx").on(table.element),
+  ],
+);
+
+export type InsertBaziSacredMapLocation = typeof baziSacredMapLocation.$inferInsert;
+export type SelectBaziSacredMapLocation = typeof baziSacredMapLocation.$inferSelect;
