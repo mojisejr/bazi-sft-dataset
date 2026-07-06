@@ -5,7 +5,7 @@
  */
 
 /** อัตราแลกเปลี่ยน USD → THB (โดยประมาณ) — ปรับได้ */
-export const USD_TO_THB = 36.5;
+export const USD_TO_THB = 32;
 
 type ModelPrice = { inPerM: number; outPerM: number };
 
@@ -16,11 +16,11 @@ const MODEL_PRICES: Record<string, ModelPrice> = {
   "gemini-2.5-flash-lite": { inPerM: 0.1, outPerM: 0.4 },
   "gemini-2.5-pro": { inPerM: 1.25, outPerM: 10 },
   "gemini-2.0-flash": { inPerM: 0.1, outPerM: 0.4 },
-  // Gemini 3 (ค่าประมาณ — เทียบชั้น flash/flash-lite)
+  // Gemini 3 (ราคาจริง พ.ค.–ก.ค. 2026)
   "gemini-3-flash-preview": { inPerM: 0.3, outPerM: 2.5 },
   "gemini-3-flash": { inPerM: 0.3, outPerM: 2.5 },
-  "gemini-3.1-flash-lite": { inPerM: 0.1, outPerM: 0.4 },
-  "gemini-3-flash-lite": { inPerM: 0.1, outPerM: 0.4 },
+  "gemini-3.1-flash-lite": { inPerM: 0.25, outPerM: 1.5 },
+  "gemini-3-flash-lite": { inPerM: 0.25, outPerM: 1.5 },
   "gemini-embedding-001": { inPerM: 0.15, outPerM: 0 },
   "text-embedding-004": { inPerM: 0, outPerM: 0 },
   // ── Anthropic Claude ──
