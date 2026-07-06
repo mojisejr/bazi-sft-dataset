@@ -115,6 +115,51 @@
   cursor: progress;
 }
 
+/* ปุ่มสลับสถานะ "เสร็จสิ้น" ↔ "กลับไปแก้ต่อ" */
+.reading-history__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.reading-history__toggle--done {
+  background: rgba(31, 140, 74, 0.1);
+  border: 1px solid rgba(31, 140, 74, 0.35);
+  color: #1f8c4a;
+}
+
+.reading-history__toggle--reopen {
+  background: transparent;
+  border: 1px solid rgba(90, 90, 90, 0.32);
+  color: #5a5a5a;
+}
+
+.reading-history__toggle:hover:not(:disabled) {
+  filter: brightness(0.97);
+}
+
+.reading-history__toggle:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+/* ปุ่มดาวน์โหลด dataset — โทนเขียวเข้ม แยกจากปุ่ม primary */
+.reading-history__export {
+  margin-left: 0;
+  background: #1f8c4a;
+  color: #fff;
+  border-radius: 14px;
+  padding: 8px 14px;
+  font-weight: 700;
+}
+
 /* เวอร์ชัน PDF ที่บันทึก — บล็อกใต้การ์ดดวง (span เต็มแถวด้วย flex-basis 100%) */
 .reading-history__versions {
   flex: 1 1 100%;

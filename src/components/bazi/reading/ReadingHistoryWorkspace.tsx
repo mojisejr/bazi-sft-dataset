@@ -89,6 +89,7 @@ export function ReadingHistoryWorkspace({
 }: ReadingHistoryWorkspaceProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
   const [deletingRevisionId, setDeletingRevisionId] = useState<string | null>(null);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
@@ -239,6 +240,25 @@ export function ReadingHistoryWorkspace({
       router.refresh();
     } catch {
       setDeletingId(null);
+    }
+  }
+
+  // สลับสถานะ "เสร็จสิ้น" ↔ "กำลังแก้" — mark ดวงว่าคำอ่านสุดท้ายพร้อมเก็บไปเทรน
+  async function handleToggleStatus(id: string, currentStatus: string) {
+    const nextStatus = currentStatus === "done" ? "in_progress" : "done";
+    setTogglingId(id);
+    try {
+      const response = await fetch(`/api/reading/sessions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (!response.ok) {
+        throw new Error("อัปเดตสถานะไม่สำเร็จ");
+      }
+      router.refresh();
+    } catch {
+      setTogglingId(null);
     }
   }
 
@@ -432,6 +452,15 @@ export function ReadingHistoryWorkspace({
           <ActionLink href="/reading" tone="primary" className="reading-history__new">
             + เริ่มดูดวงใหม่
           </ActionLink>
+          {doneCount > 0 ? (
+            <a
+              href="/api/reading/export-done"
+              download="done-readings.json"
+              className="reading-history__new reading-history__export"
+            >
+              ⭳ ดาวน์โหลด dataset (เสร็จสิ้น {doneCount})
+            </a>
+          ) : null}
         </div>
       </Surface>
 
@@ -508,6 +537,22 @@ export function ReadingHistoryWorkspace({
                       >
                         ปริ้น/PDF
                       </ActionLink>
+                      <button
+                        type="button"
+                        className={
+                          record.status === "done"
+                            ? "reading-history__action reading-history__toggle reading-history__toggle--reopen"
+                            : "reading-history__action reading-history__toggle reading-history__toggle--done"
+                        }
+                        disabled={togglingId === record.id}
+                        onClick={() => void handleToggleStatus(record.id, record.status)}
+                      >
+                        {togglingId === record.id
+                          ? "กำลังบันทึก..."
+                          : record.status === "done"
+                            ? "กลับไปแก้ต่อ"
+                            : "✓ เสร็จสิ้น"}
+                      </button>
                       <button
                         type="button"
                         className="reading-history__delete"

@@ -5,7 +5,7 @@
  *
  * มิเรอร์รูปแบบจาก dataset-records.ts (repository factory + handler factory + localAuth)
  */
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { ZodError, z } from "zod";
 
 import { createDbClient, createDbSqlClient } from "@/db/client";
@@ -80,6 +80,11 @@ export const SaveReadingSessionRequestSchema = z.object({
 
 export type SaveReadingSessionRequest = z.infer<typeof SaveReadingSessionRequestSchema>;
 
+/** อัปเดตสถานะดวง (เสร็จสิ้น/กลับไปแก้) — PATCH /api/reading/sessions/[sessionId] */
+export const SetReadingSessionStatusSchema = z.object({
+  status: z.enum(["in_progress", "done"]),
+});
+
 // ── Domain types ───────────────────────────────────────────────────────────────
 
 export type SavedReadingSession = {
@@ -127,7 +132,14 @@ export type ReadingSessionRepository = {
     input: SaveReadingSessionRequest,
     ownerId: string,
   ) => Promise<SavedReadingSession>;
+  /** อัปเดตสถานะอย่างเดียว (เสร็จสิ้น/กลับไปแก้ต่อ) โดยไม่แตะเนื้อหา */
+  setSessionStatus: (
+    sessionId: string,
+    status: ReadingSessionStatus,
+  ) => Promise<SavedReadingSession>;
   listSessions: () => Promise<ReadingSessionListItem[]>;
+  /** ดวงที่ mark "เสร็จสิ้น" แล้ว พร้อมเนื้อหาเต็ม — ไว้ export ไปเทรน */
+  listDoneSessions: () => Promise<ReadingSessionDetail[]>;
   getSessionById: (sessionId: string) => Promise<ReadingSessionDetail | null>;
   deleteSession: (sessionId: string, ownerId: string) => Promise<void>;
 };
@@ -221,6 +233,28 @@ export function createDbReadingSessionRepository(
         updatedAt: updatedAt.toISOString(),
       };
     },
+    async setSessionStatus(sessionId, status) {
+      const db = createDbClient(databaseUrl);
+      const [record] = await db
+        .update(baziReadingSessions)
+        .set({ status })
+        .where(eq(baziReadingSessions.id, sessionId))
+        .returning({
+          sessionId: baziReadingSessions.id,
+          status: baziReadingSessions.status,
+          updatedAt: baziReadingSessions.updatedAt,
+        });
+
+      if (!record) {
+        throw new Error(`Reading session ${sessionId} was not found.`);
+      }
+
+      return {
+        sessionId: record.sessionId,
+        status: record.status,
+        updatedAt: record.updatedAt.toISOString(),
+      };
+    },
     async listSessions() {
       const db = createDbSqlClient(databaseUrl);
       const records = (await db`
@@ -250,6 +284,48 @@ export function createDbReadingSessionRepository(
         status: record.status,
         createdAt: record.created_at,
         updatedAt: record.updated_at,
+      }));
+    },
+    async listDoneSessions() {
+      const db = createDbClient(databaseUrl);
+      const records = await db
+        .select({
+          id: baziReadingSessions.id,
+          label: baziReadingSessions.label,
+          birthDate: baziReadingSessions.birthDate,
+          birthTime: baziReadingSessions.birthTime,
+          gender: baziReadingSessions.gender,
+          dayMaster: baziReadingSessions.dayMaster,
+          provider: baziReadingSessions.provider,
+          status: baziReadingSessions.status,
+          rawInput: baziReadingSessions.rawInput,
+          calculatedState: baziReadingSessions.calculatedState,
+          sessionData: baziReadingSessions.sessionData,
+          metadata: baziReadingSessions.metadata,
+          ownerId: baziReadingSessions.ownerId,
+          createdAt: baziReadingSessions.createdAt,
+          updatedAt: baziReadingSessions.updatedAt,
+        })
+        .from(baziReadingSessions)
+        .where(eq(baziReadingSessions.status, "done"))
+        .orderBy(desc(baziReadingSessions.updatedAt));
+
+      return records.map((record) => ({
+        id: record.id,
+        label: record.label,
+        birthDate: record.birthDate,
+        birthTime: record.birthTime,
+        gender: record.gender,
+        dayMaster: record.dayMaster,
+        provider: record.provider,
+        status: record.status,
+        rawInput: record.rawInput,
+        calculatedState: record.calculatedState,
+        sessionData: record.sessionData,
+        metadata: record.metadata,
+        ownerId: record.ownerId,
+        createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
       }));
     },
     async getSessionById(sessionId) {
@@ -342,6 +418,16 @@ type GetReadingSessionHandlerOptions = {
 
 type DeleteReadingSessionHandlerOptions = {
   repository?: Pick<ReadingSessionRepository, "deleteSession">;
+  authenticate?: ReadingSessionAuthenticate;
+};
+
+type SetReadingSessionStatusHandlerOptions = {
+  repository?: Pick<ReadingSessionRepository, "setSessionStatus">;
+  authenticate?: ReadingSessionAuthenticate;
+};
+
+type ExportDoneReadingsHandlerOptions = {
+  repository?: Pick<ReadingSessionRepository, "listDoneSessions">;
   authenticate?: ReadingSessionAuthenticate;
 };
 
@@ -471,6 +557,126 @@ export function createDeleteReadingSessionHandler(
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Unknown reading session delete error.";
+
+      return Response.json({ error: message }, { status: 500 });
+    }
+  };
+}
+
+export function createSetReadingSessionStatusHandler(
+  options: SetReadingSessionStatusHandlerOptions,
+) {
+  return async function PATCH(request: Request, context: RouteContext) {
+    try {
+      const authResult = await (options.authenticate ?? localAuth)();
+      const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
+
+      if (!isAuthenticated || !authResult.userId) {
+        return unauthorizedResponse();
+      }
+
+      const { sessionId } = await context.params;
+      const { status } = SetReadingSessionStatusSchema.parse(await request.json());
+      const repository = options.repository ?? createDbReadingSessionRepository();
+      const record = await repository.setSessionStatus(sessionId, status);
+
+      return Response.json(record, { status: 200 });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return Response.json(
+          { error: "Invalid status payload.", details: error.issues },
+          { status: 400 },
+        );
+      }
+
+      if (error instanceof Error && error.message.includes("was not found")) {
+        return Response.json({ error: error.message }, { status: 404 });
+      }
+
+      const message =
+        error instanceof Error ? error.message : "Unknown reading session status error.";
+
+      return Response.json({ error: message }, { status: 500 });
+    }
+  };
+}
+
+// ── Export dataset (ดวงที่ "เสร็จสิ้น") ────────────────────────────────────────────
+
+/** 1 รายการ dataset ต่อดวง: ข้อมูลนำเข้า + คำอ่านสุดท้ายรายบท (เนื้อ PDF สุดท้าย) */
+export type ReadingExportItem = {
+  sessionId: string;
+  label: string | null;
+  birthDate: string;
+  birthTime: string;
+  gender: string;
+  dayMaster: string | null;
+  provider: string;
+  rawInput: RawInputValue;
+  calculatedState: CalculatedStateValue | null;
+  /** topicId → คำอ่านสุดท้าย (ที่ซินแสแก้แล้ว) */
+  readings: Record<string, string>;
+  /** topicId → ชื่อบทที่ปรับเอง */
+  titleOverrides: Record<string, string>;
+  relationshipLines: ReadingSessionDataValue["relationshipLines"];
+  updatedAt: string;
+};
+
+/** แปลงดวงเต็มเป็นรายการ dataset — ตัด state ที่ไม่ใช้เทรน (topicStates/corrections ฯลฯ) ออก */
+export function toReadingExportItem(detail: ReadingSessionDetail): ReadingExportItem {
+  return {
+    sessionId: detail.id,
+    label: detail.label,
+    birthDate: detail.birthDate,
+    birthTime: detail.birthTime,
+    gender: detail.gender,
+    dayMaster: detail.dayMaster,
+    provider: detail.provider,
+    rawInput: detail.rawInput,
+    calculatedState: detail.calculatedState,
+    readings: detail.sessionData.readings ?? {},
+    titleOverrides: detail.sessionData.titleOverrides ?? {},
+    relationshipLines: detail.sessionData.relationshipLines ?? null,
+    updatedAt: detail.updatedAt,
+  };
+}
+
+/** ดึงดวงที่เสร็จสิ้นทั้งหมดในรูป dataset (ใช้ทั้ง API export และสคริปต์) */
+export async function collectDoneReadingsForExport(
+  repository: Pick<ReadingSessionRepository, "listDoneSessions"> = createDbReadingSessionRepository(),
+): Promise<ReadingExportItem[]> {
+  const sessions = await repository.listDoneSessions();
+  return sessions.map(toReadingExportItem);
+}
+
+export function createExportDoneReadingsHandler(
+  options: ExportDoneReadingsHandlerOptions,
+) {
+  return async function GET() {
+    try {
+      const authResult = await (options.authenticate ?? localAuth)();
+      const isAuthenticated = authResult.isAuthenticated ?? Boolean(authResult.userId);
+
+      if (!isAuthenticated || !authResult.userId) {
+        return unauthorizedResponse();
+      }
+
+      const repository = options.repository ?? createDbReadingSessionRepository();
+      const items = await collectDoneReadingsForExport(repository);
+
+      return new Response(
+        JSON.stringify({ count: items.length, items }, null, 2),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            "Content-Disposition": 'attachment; filename="done-readings.json"',
+          },
+        },
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unknown reading export error.";
 
       return Response.json({ error: message }, { status: 500 });
     }
