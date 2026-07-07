@@ -284,7 +284,8 @@ const CAREER_TOPICS = new Set(["career_potential"]);
 function dithiLine(facts: LoadedState["facts"]): string {
   const band = classifyOperatorStrengthScore(facts.strengthScore);
   const el = elementThOfStem(facts.dayMaster);
-  return `ดิถี (หลักวันเกิด): ${facts.dayMaster}${el ? ` ธาตุ${el}` : ""} · ${band.displayLabel} (คะแนนกำลังดวง ${facts.strengthScore})`;
+  // ไม่แนบคะแนนดิบ (strengthScore) — เป็นค่าหลังบ้าน โมเดลเคยเผลอพูดตัวเลขออกไปให้ผู้ใช้เห็น
+  return `ดิถี (หลักวันเกิด): ${facts.dayMaster}${el ? ` ธาตุ${el}` : ""} · ${band.displayLabel}`;
 }
 
 /** ดึงเนื้อหาบทหนึ่งจาก NewData (fallback → chart_foundation) */
