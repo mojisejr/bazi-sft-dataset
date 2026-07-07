@@ -155,6 +155,28 @@ function buildLayer(digits: number[], layerNo: number): HoneycombLayer {
   };
 }
 
+/**
+ * อ่าน "เลขสั้น" ทั่วไป (เช่น เลขทะเบียนรถ 1-4 หลัก) ด้วยตารางเดียวกับเบอร์โทร:
+ * คู่เลขติดกันทุกคู่ + เลขผลรวมยุบเหลือหลักเดียว. ไม่บังคับความยาว 10 หลัก.
+ */
+export function readShortNumber(raw: string): {
+  digits: string;
+  pairs: HoneycombPair[];
+  sum: number;
+  sumMeaning: DigitInfo;
+} | null {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (digits.length < 1 || digits.length > 6) return null;
+  const nums = digits.split("").map((c) => Number(c));
+  const pairs: HoneycombPair[] = [];
+  for (let i = 0; i < nums.length - 1; i++) {
+    const key = canonicalKey(nums[i], nums[i + 1]);
+    pairs.push({ pair: `${nums[i]}${nums[i + 1]}`, key, a: nums[i], b: nums[i + 1], meaning: pairMeaning(key) });
+  }
+  const sum = reduceToSingleDigit(nums.reduce((acc, n) => acc + n, 0));
+  return { digits, pairs, sum, sumMeaning: digitInfo(sum) };
+}
+
 /** คำนวณคำอ่านเบอร์รังผึ้งเต็มรูปแบบ (deterministic). throw HoneycombNumberError ถ้า input ไม่ถูกต้อง */
 export function readHoneycomb(raw: string): HoneycombReading {
   const normalized = normalizeHoneycombNumber(raw);

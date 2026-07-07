@@ -17,12 +17,22 @@ import { buildElementInteractionAB, buildFacets } from "@/lib/bazi/pair-matching
 import { drawRandom as drawDivine } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { drawRandom as drawFortune, TOPICS as FORTUNE_TOPICS } from "@/lib/bazi/fortune-sage/deck";
-import { readHoneycomb } from "@/lib/bazi/honeycomb/pyramid";
+import { readHoneycomb, readShortNumber } from "@/lib/bazi/honeycomb/pyramid";
 import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
 import { getMatchingMap } from "@/lib/bazi/matching.server";
 import { buildManVsDay, type ManPillars } from "@/lib/bazi/manvsday";
 import { resolveChapterBoxes } from "@/lib/bazi/chapter-newdata-map";
-import { extractChartFacts } from "@/lib/bazi/newdata-lookup";
+import { extractChartFacts, favorableElements } from "@/lib/bazi/newdata-lookup";
+import {
+  COLOR_BY_ELEMENT,
+  DEITY_BY_ELEMENT,
+  DIRECTION_BY_ELEMENT,
+  FENGSHUI_RULES,
+  MU_LOCATIONS,
+  PLANT_BY_ELEMENT,
+  type FengshuiTopic,
+  type MuTopic,
+} from "@/lib/bazi/constants/mu-fengshui";
 import { getNewdataMap } from "@/lib/bazi/newdata.server";
 import { drawRandom } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
@@ -50,6 +60,8 @@ export type LouiseHayRoute =
   | "divine"
   | "fortune"
   | "phone"
+  | "mu"
+  | "fengshui"
   | "offscope"
   | "chat";
 
@@ -154,7 +166,9 @@ async function classifyRoute(
     "- \"offscope\" = ขอ \"ทำนายสิ่งภายนอกที่ดวงตัวเองบอกไม่ได้\" เช่น ผลกีฬา/บอล/มวย ใครชนะ, ผลหวย/ลอตเตอรี่/เลขเด็ด, ผลแข่งขัน, หรือดวง/อนาคตของ 'คนอื่น' ที่ไม่ใช่ผู้ถามเอง",
     "- \"fortune\" = ขอ \"เซียมซี/เสี่ยงเซียมซี\" โดยเฉพาะ",
     "- \"divine\" = ขอ \"ไพ่โหมดเซียน\" โดยเฉพาะ",
-    "- \"phone\" = ถามเรื่องเบอร์มือถือ/เลขเบอร์โทร (ดูว่าเบอร์ดีไหม)",
+    "- \"phone\" = ถามเรื่องเบอร์มือถือ/เลขเบอร์โทร/เลขทะเบียนรถ (ดูว่าเลขดีไหม)",
+    "- \"mu\" = สายมู: ถามหาที่ไหว้พระ/ขอพร/บนบาน/แก้ชง/สะเดาะเคราะห์/ทำบุญเสริมดวง หรือถามเครื่องราง-วัตถุมงคล-องค์เทพที่ถูกโฉลก-วอลเปเปอร์มงคล",
+    "- \"fengshui\" = ฮวงจุ้ย/การจัดบ้าน-โต๊ะทำงาน: ทิศหัวนอน ทางสามแพร่ง กระเป๋าสตางค์สีมงคล ต้นไม้มงคล การตั้งของในบ้าน/ออฟฟิศ",
     "- \"card\" = ขอคำแนะนำ/ทางเลือก/กำลังใจ หรือขอ 'จั่วไพ่/ดูไพ่' ทั่วไป ที่ไม่เข้าหมวดอื่น (จั่วไพ่ออราเคิล) — ค่าเริ่มต้น",
     "- \"chat\" = แค่ทักทาย ขอบคุณ ระบายความรู้สึก คุยเล่น ไม่ได้ขอคำทำนาย/คำแนะนำเจาะจง",
     `ถ้า route=chart ให้เลือก topicId ที่ใกล้ที่สุดจาก: ${TOPIC_IDS.join(", ")} (ค่าเริ่มต้น chart_foundation).`,
@@ -184,7 +198,7 @@ async function classifyRoute(
         responseSchema: {
           type: "object",
           properties: {
-            route: { type: "string", enum: ["chart", "timing", "day", "almanac", "offscope", "card", "divine", "fortune", "phone", "chat"] },
+            route: { type: "string", enum: ["chart", "timing", "day", "almanac", "offscope", "card", "divine", "fortune", "phone", "mu", "fengshui", "chat"] },
             topicId: { type: "string", nullable: true },
             date: { type: "string", nullable: true },
           },
@@ -207,7 +221,7 @@ async function classifyRoute(
   const raw = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
   try {
     const parsed = JSON.parse(raw) as { route: LouiseHayRoute; topicId: string | null; date: string | null };
-    const valid: LouiseHayRoute[] = ["chart", "timing", "day", "almanac", "offscope", "card", "divine", "fortune", "phone", "chat"];
+    const valid: LouiseHayRoute[] = ["chart", "timing", "day", "almanac", "offscope", "card", "divine", "fortune", "phone", "mu", "fengshui", "chat"];
     const route: LouiseHayRoute = valid.includes(parsed.route) ? parsed.route : "card";
     const topicId = parsed.topicId && TOPIC_IDS.includes(parsed.topicId) ? parsed.topicId : "chart_foundation";
     const date = typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null;
@@ -577,6 +591,115 @@ function groundPhone(phone: string): GroundingCore | null {
   };
 }
 
+/** เลขทะเบียนรถ (หรือเลขสั้นอื่น) — คู่เลข + เลขผลรวม จากตารางเดียวกับเบอร์โทร */
+function groundPlate(question: string): GroundingCore | null {
+  // จับกลุ่มเลขทุกกลุ่ม แล้วใช้กลุ่มยาวสุด (เลี่ยงเลขหมวดอักษรนำหน้า เช่น "1กข 1234" → ใช้ 1234)
+  const groups = question.match(/\d[\d\s-]{0,7}\d|\d/g);
+  if (!groups?.length) return null;
+  const best = groups
+    .map((g) => g.replace(/\D/g, ""))
+    .sort((a, b) => b.length - a.length)[0];
+  const reading = readShortNumber(best);
+  if (!reading || reading.digits.length < 2) return null;
+  const pairLines = reading.pairs
+    .map((pr) => `คู่ ${pr.pair}: ${pr.meaning.feeling || pr.meaning.analysis || "-"}`)
+    .join("\n");
+  return {
+    route: "phone",
+    sourceLabel: `เลขทะเบียนรถ · ${reading.digits}`,
+    text: [
+      `วิเคราะห์เลขทะเบียน ${reading.digits} (ตารางคู่เลขศาสตร์เบอร์):`,
+      pairLines,
+      `เลขผลรวม (ยุบเหลือหลักเดียว) = ${reading.sum}: ${reading.sumMeaning.keyword} (${reading.sumMeaning.planet} ธาตุ${reading.sumMeaning.element})`,
+    ].join("\n"),
+  };
+}
+
+/** เดาหัวข้อคำขอสายมูจากคำถาม */
+function detectMuTopic(question: string): MuTopic {
+  if (/รัก|เนื้อคู่|แฟน|คู่ครอง|เสน่ห์/.test(question)) return "love";
+  if (/ค้าขาย|ยอดขาย|โชคลาภ|การเงิน|เงินทอง|ร่ำรวย|หนี้/.test(question)) return "wealth";
+  if (/งานใหม่|เลื่อนตำแหน่ง|เลื่อนขั้น|การงาน|สอบราชการ|สอบแข่งขัน|เจ้านาย/.test(question)) return "career";
+  if (/แก้ชง|ปีชง|ดวงตก|สะเดาะเคราะห์|ต่อชะตา|เคราะห์|กรรม|เจ้ากรรมนายเวร/.test(question)) return "fixluck";
+  if (/สุขภาพ|ป่วย|โรค|ผ่าตัด|แคล้วคลาด/.test(question)) return "health";
+  if (/สอบ|เรียน|ทุน|มหาวิทยาลัย|ปัญญา/.test(question)) return "study";
+  return "general";
+}
+
+/** สายมู: พิกัดวัด/องค์เทพตามคำขอ + ถ้าผูกดวง เสริมองค์เทพ-สี-ทิศถูกโฉลกตามธาตุเสริมดวง (用神) */
+async function groundMu(question: string, birth: LouiseHayBirthInput | null): Promise<GroundingCore> {
+  const topic = detectMuTopic(question);
+  const spots = MU_LOCATIONS[topic];
+  const spotLines = spots
+    .map((s) => `- ${s.name}${s.deity !== "—" ? ` (${s.deity})` : ""} · ${s.location} — ${s.tip}`)
+    .join("\n");
+  const sections = [`[พิกัดมู/ขอพร ตามเรื่องที่ขอ]\n${spotLines}`];
+  let extraLabel = "";
+  if (birth) {
+    try {
+      const L = await loadReadingState(birth);
+      const fav = favorableElements(L.facts);
+      if (fav.length) {
+        const lines = fav.map(
+          (el) =>
+            `ธาตุ${el}: องค์เทพถูกโฉลก ${DEITY_BY_ELEMENT[el]} · สีมงคล ${COLOR_BY_ELEMENT[el]} · ทิศมงคล ${DIRECTION_BY_ELEMENT[el]}`,
+        );
+        sections.unshift(dithiLine(L.facts));
+        sections.push(`[ถูกโฉลกตามธาตุเสริมดวง (用神) ของผู้ถาม]\n${lines.join("\n")}`);
+        extraLabel = " + ธาตุเสริมดวง + ดิถี";
+      }
+    } catch {
+      /* ดึงดวงไม่ได้ → ใช้พิกัดทั่วไป */
+    }
+  }
+  return {
+    route: "mu",
+    sourceLabel: `สายมูเสริมดวง${extraLabel}`,
+    text: sections.join("\n\n———\n\n"),
+    note: birth ? undefined : "ถ้าผูกวันเกิดที่ปุ่ม 🔮 จะบอกองค์เทพ/สี/ทิศที่ถูกโฉลกกับดวงคุณโดยเฉพาะได้เลยนะคะ",
+  };
+}
+
+/** เดาหัวข้อฮวงจุ้ยจากคำถาม */
+function detectFengshuiTopic(question: string): FengshuiTopic {
+  if (/หัวนอน|หัวเตียง|เตียง|ห้องนอน/.test(question)) return "bed";
+  if (/โต๊ะทำงาน|ออฟฟิศ|ที่นั่งทำงาน/.test(question)) return "desk";
+  if (/สามแพร่ง|เสาไฟ|หน้าบ้าน|ประตูบ้าน|กระจกแปดเหลี่ยม|ยันต์/.test(question)) return "entrance";
+  if (/กระเป๋าสตางค์|กระเป๋าตังค์|กระเป๋าเงิน/.test(question)) return "wallet";
+  if (/ต้นไม้|ปลูก/.test(question)) return "plant";
+  return "general";
+}
+
+/** ฮวงจุ้ยพื้นฐาน: กฎรายสถานการณ์ + ถ้าผูกดวง เติมทิศ/สี/ต้นไม้ตามธาตุเสริมดวง */
+async function groundFengshui(question: string, birth: LouiseHayBirthInput | null): Promise<GroundingCore> {
+  const topic = detectFengshuiTopic(question);
+  const sections = [`[หลักฮวงจุ้ยเรื่องที่ถาม]\n${FENGSHUI_RULES[topic]}`];
+  let extraLabel = "";
+  if (birth) {
+    try {
+      const L = await loadReadingState(birth);
+      const fav = favorableElements(L.facts);
+      if (fav.length) {
+        const lines = fav.map(
+          (el) =>
+            `ธาตุ${el}: ทิศมงคล ${DIRECTION_BY_ELEMENT[el]} · สีมงคล ${COLOR_BY_ELEMENT[el]} · ต้นไม้มงคล ${PLANT_BY_ELEMENT[el]}`,
+        );
+        sections.unshift(dithiLine(L.facts));
+        sections.push(`[ทิศ/สี/ต้นไม้ ตามธาตุเสริมดวง (用神) ของผู้ถาม]\n${lines.join("\n")}`);
+        extraLabel = " + ธาตุเสริมดวง + ดิถี";
+      }
+    } catch {
+      /* ดึงดวงไม่ได้ → ใช้หลักทั่วไป */
+    }
+  }
+  return {
+    route: "fengshui",
+    sourceLabel: `ฮวงจุ้ยพื้นฐาน${extraLabel}`,
+    text: sections.join("\n\n———\n\n"),
+    note: birth ? undefined : "ถ้าผูกวันเกิดที่ปุ่ม 🔮 จะระบุทิศและสีที่เสริมดวงคุณโดยเฉพาะได้แม่นขึ้นนะคะ",
+  };
+}
+
 /** ปฏิทินโหรา / ตรวจยาม — ฤกษ์+ยามมงคลของวัน (ทั่วไป ไม่อิงดวงเกิด) */
 /** ฤกษ์/ยามมงคลของวัน (ปฏิทินโหรา) — ผูกดวง → เสริม ManVsDay + ดิถี (person × เสาวันนั้น) */
 async function groundAlmanac(dateIso: string | null, now: Date, birth: LouiseHayBirthInput | null): Promise<GroundingCore> {
@@ -851,6 +974,11 @@ export function preClassify(question: string, phone: string | null): RouteClassi
   const q = question.trim();
   const zero = { topicId: null as string | null, date: null as string | null, inTokens: 0, outTokens: 0 };
   if (phone) return { route: "phone", ...zero };
+  if (/ทะเบียนรถ|เลขทะเบียน/.test(q) && /\d/.test(q)) return { route: "phone", ...zero };
+  if (/ฮวงจุ้ย|ทางสามแพร่ง|กระจกแปดเหลี่ยม/.test(q)) return { route: "fengshui", ...zero };
+  if (/แก้ชง|สะเดาะเคราะห์|ไหว้พระ|ขอพรที่|มูที่ไหน|ไปมู|สายมู|บนบาน|เครื่องราง|วัตถุมงคล|ฝากดวง/.test(q)) {
+    return { route: "mu", ...zero };
+  }
   if (/เซียมซี|เสี่ยงทาย/.test(q)) return { route: "fortune", ...zero };
   if (/ไพ่เซียน|โหมดเซียน/.test(q)) return { route: "divine", ...zero };
   if (/(จั่ว|ขอ|เปิด|ดู|สับ)ไพ่|ออราเคิล/.test(q)) return { route: "card", ...zero };
@@ -933,10 +1061,17 @@ export async function resolveLouiseHayGrounding(
     }
 
     // ── ศาสตร์ที่ไม่ต้องผูกดวง ──
+    if (route === "mu") return withClassify(await groundMu(question, birth));
+    if (route === "fengshui") return withClassify(await groundFengshui(question, birth));
     if (route === "phone") {
       if (phone) {
         const grounded = groundPhone(phone);
         if (grounded) return withClassify(grounded);
+      }
+      // เลขทะเบียนรถ / เลขสั้น — ใช้ตารางคู่เลขเดียวกับเบอร์
+      if (/ทะเบียน/.test(question)) {
+        const plate = groundPlate(question);
+        if (plate) return withClassify(plate);
       }
       return withClassify({
         ...groundCard(question),
