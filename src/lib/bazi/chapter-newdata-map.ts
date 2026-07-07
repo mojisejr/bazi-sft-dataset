@@ -19,6 +19,11 @@ import {
   matchDithiTransfer,
   matchDithiTransferPrioritized,
   matchElementCategory,
+  matchAnnualYears,
+  matchElementAdvice,
+  matchFamilyState,
+  matchFavorableSummary,
+  matchLuckyAnimal,
   matchElementRoleGanzhi,
   matchElementRoleState,
   matchFortune,
@@ -71,7 +76,11 @@ type Resolver =
   | { kind: "elementRoleState"; group: string; role: "output" | "wealth" | "resource" }
   | { kind: "elementRoleGanzhi"; group: string; role: "output" | "wealth" | "resource" | "peer" }
   | { kind: "healthElement"; group: string }
-  | { kind: "elementCategory"; group: string; category: string };
+  | { kind: "elementCategory"; group: string; category: string }
+  | { kind: "luckyAnimal" }
+  | { kind: "elementAdvice"; table: "wealth" | "health" | "talent" }
+  | { kind: "familyState"; pillar: PillarPosition; tier?: "upper" | "lower" }
+  | { kind: "annualYears" };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -94,7 +103,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     ],
     [{ kind: "dayElement", group: "dark_side_by_element" }],
     [{ kind: "selfPunish" }],
-    [{ kind: "dayElement", group: "develop_by_element" }],
+    // ข้อเสนอแนะ = พัฒนานิสัยตาม "ธาตุปรับดวง" (用神) — iterate favorableElements (merit) ไม่ใช่ธาตุดิถีเดี่ยว
+    [{ kind: "merit", group: "develop_by_element" }],
   ],
   // 5 bullets: [ควรทำ1] [ควรทำ2] [ควรทำ3 (บางคนมี)] [ไม่ควรทำ1] [ไม่ควรทำ2 (บางคนมี)]
   career_potential: [
@@ -117,7 +127,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
     [{ kind: "phua" }],
-    [],
+    [{ kind: "elementAdvice", table: "wealth" }],
   ],
   // 4 bullets: [ธาตุส่งเสริม] [คู่ธาตุ] [ธาตุถ่ายเท/บริวาร] [ธาตุโชคลาภ/ลูกค้า]
   // ข้อ 3-4: หาเสาที่ธาตุถ่ายเท(食傷)/ธาตุโชคลาภ(財) นั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (reuse shengxiang)
@@ -147,17 +157,19 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     ],
     // พรในราศีแฝง — ดิถีถ่ายเทไปยังราศีแฝง(藏干)ของหลักยาม (reuse dithi_transfer) · interpretive
     [{ kind: "hiddenTransfer", group: "dithi_transfer" }],
-    [],
+    [{ kind: "elementAdvice", table: "talent" }],
   ],
   // 6 bullets: [หลักปี] [หลักเดือน] [พ่อ] [แม่] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
   family: [
-    [{ kind: "state", group: "shengxiang", pillar: "year" }],
-    [{ kind: "state", group: "shengxiang", pillar: "month" }],
-    // พ่อ = เชี่ยงแซราศีบนหลักเดือน · แม่ = เชี่ยงแซราศีล่างหลักเดือน (reuse shengxiang, รอซินแสตรวจ)
-    [{ kind: "state", group: "shengxiang", pillar: "month", tier: "upper" }],
-    [{ kind: "state", group: "shengxiang", pillar: "month", tier: "lower" }],
+    // เชี่ยงแซ "โทนครอบครัว" (family_state static) — ไม่ใช้ shengxiang กลางที่นิยามตามวัฏจักรพลัง
+    // (แป่=เจ็บป่วย ฯลฯ) เพราะซินแสอ่านบทนี้เป็นลักษณะความสัมพันธ์/การฟูมฟัก (GT 3 ดวง)
+    [{ kind: "familyState", pillar: "year" }],
+    [{ kind: "familyState", pillar: "month" }],
+    // พ่อ = เชี่ยงแซราศีบนหลักเดือน · แม่ = เชี่ยงแซราศีล่างหลักเดือน
+    [{ kind: "familyState", pillar: "month", tier: "upper" }],
+    [{ kind: "familyState", pillar: "month", tier: "lower" }],
     [{ kind: "branchPairs", group: "harm_heng" }],
-    [],
+    [{ kind: "merit", group: "develop_by_element" }],
   ],
   // 5 bullets: [ชีวิตคู่พื้นดวง] [ลักษณะคู่ครอง] [มีคู่เหมาะไหม มาเมื่อไร] [สิ่งที่ควรระวัง] [ข้อเสนอแนะ]
   love_partner: [
@@ -166,7 +178,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "spouseStar", group: "shengxiang" }],
     [{ kind: "loveChance", group: "love_chance" }],
     [{ kind: "branchPairs", group: "clash" }, { kind: "branchPairs", group: "harm_hai" }],
-    [],
+    [{ kind: "merit", group: "develop_by_element" }],
   ],
   // 4 bullets: [มิตรแท้] [ระวัง/ข้อเสนอ-มิตร] [ศัตรู] [ระวัง/ข้อเสนอ-ศัตรู]
   // มิตรแท้ = ภาคีราศีล่าง + เชี่ยงแซเสาปี(ผู้ใหญ่หนุน) · ศัตรู = ไห่/เฮ้ง/ซำเฮ้ง + ผั่วไฉ่โข่ว · interpretive
@@ -213,7 +225,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 2 bullets: [วัยจรแต่ละช่วง] [ช่วงดี/ช่วงระวัง]
   turning_points: [
     [{ kind: "daYun" }],
-    [],
+    // ช่วงดี/ระวัง = ปีจรปัจจุบัน + รายปีย่อ 10 ปี + ปีชง/ให้ร้ายกับหลักวัน (เกรดตามระบบ PDF ซินแส)
+    [{ kind: "annualYears" }],
   ],
   // 3 bullets: [โรคจาก เจ๊า/ผั่ว/ซำเฮ้ง/จื่อเฮ้ง] [โรคจากธาตุมาก/น้อย] [ข้อเสนอแนะดูแล]
   health: [
@@ -224,7 +237,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "branchPairs", group: "harm_hai" },
     ],
     [{ kind: "healthElement", group: "health_by_element" }],
-    [],
+    [{ kind: "elementAdvice", table: "health" }],
   ],
   // 8 bullets: [สี+ทิศ] [เสื้อผ้า] [เครื่องประดับ] [กระเป๋าเงิน] [รถ] [สัตว์มงคล] [ทิศ] [ข้อเสนอแนะ]
   // ทุกช่อง (ยกเว้นข้อเสนอแนะ) = ตามธาตุที่ดวงต้องการ × หมวด (auspicious_by_element รอซินแสเติม)
@@ -234,7 +247,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "เครื่องประดับ" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "กระเป๋าเงิน" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "รถ" }],
-    [{ kind: "elementCategory", group: "auspicious_by_element", category: "สัตว์มงคล" }],
+    [{ kind: "luckyAnimal" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "ทิศ" }],
     [],
   ],
@@ -305,6 +318,14 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchHealthElement(map, r.group, facts);
     case "elementCategory":
       return matchElementCategory(map, r.group, facts, r.category);
+    case "luckyAnimal":
+      return matchLuckyAnimal(facts);
+    case "elementAdvice":
+      return matchElementAdvice(facts, r.table);
+    case "familyState":
+      return matchFamilyState(facts, r.pillar, r.tier ?? "lower");
+    case "annualYears":
+      return matchAnnualYears(facts);
     case "daYun":
       return matchDaYun(map, facts);
     default:
@@ -369,6 +390,18 @@ export function resolveChapterBoxes(
     const templatePrefill = body.trim().length > 0 && templateContent && !curatedContent;
     return templatePrefill ? { title: bullet, body, templatePrefill: true } : { title: bullet, body };
   });
+
+  // แกน用神/忌神 ชุดเดียว (canonical) — เติมเป็นกล่องท้ายของ "ทุกบท" ให้ธาตุเสริมดวง/เลี่ยงตรงกันเสมอ
+  // ต่อท้าย (ไม่ unshift) เพื่อคงดัชนีกล่องเดิม (ตัวแก้ PDF/คำอ่านอ้างกล่องตามลำดับ)
+  // และไม่ให้ไปพลิก hasContent (บทไม่มีเนื้อเฉพาะบทยังถูกข้ามตามเดิม) — เป็นแค่ข้อเท็จจริงแกนสำหรับ AI
+  const favBlocks = matchFavorableSummary(facts);
+  if (favBlocks.length) {
+    boxes.push({
+      title: "ธาตุเสริมดวง (用神) และ ธาตุที่ควรเลี่ยง (忌神)",
+      body: favBlocks.map(blockToParagraph).join("\n\n"),
+      templatePrefill: true,
+    });
+  }
 
   return { chapterId, defined, hasContent, boxes };
 }

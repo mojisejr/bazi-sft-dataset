@@ -71,7 +71,7 @@ async function main() {
       province: "Bangkok", calendarSystem: "solar", timezone: "Asia/Bangkok",
     });
     const state = await calculateBaziStateFromRawInput(raw);
-    const facts = extractChartFacts(state, chart.gender);
+    const facts = extractChartFacts(state, chart.gender, Number.parseInt(chart.date.slice(0, 4), 10));
     process.stderr.write(`\n=== ${chart.name} · ดิถี ${state.dayMaster} ===\n`);
 
     for (const topic of predict) {

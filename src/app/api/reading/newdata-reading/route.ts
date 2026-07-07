@@ -23,7 +23,9 @@ export async function POST(request: Request) {
     const repository = createDbKnowledgeRepository();
     const calculatedState = await calculateBaziStateFromRawInput(payload, { repository });
 
-    const facts = extractChartFacts(calculatedState, payload?.gender);
+    // birthYear จาก birthDate (ค.ศ.) — ใช้บท 12 โชว์อายุรายปีจร
+    const birthYear = Number.parseInt(String(payload?.birthDate ?? "").slice(0, 4), 10) || undefined;
+    const facts = extractChartFacts(calculatedState, payload?.gender, birthYear);
     const map = await getNewdataMap();
 
     const chapters = PREDICT_TOPICS.map((topic) => {
