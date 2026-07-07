@@ -25,6 +25,8 @@ const ROUTE_ICON: Record<string, string> = {
   divine: "🎴",
   fortune: "🎋",
   phone: "📱",
+  mu: "🙏",
+  fengshui: "🏮",
   offscope: "🎲",
 };
 
@@ -69,6 +71,7 @@ const SUGGESTIONS: { label: string; prompt: string }[] = [
   { label: "🃏 จั่วไพ่แนะนำ", prompt: "ขอจั่วไพ่แนะนำหน่อย" },
   { label: "🗓️ เลือกวันมงคลเดือนนี้", prompt: "ช่วยเลือกวันมงคลในเดือนนี้ให้หน่อย" },
   { label: "📱 ดูเบอร์มือถือ", prompt: "อยากให้ดูเบอร์มือถือ" },
+  { label: "🙏 ไปมูที่ไหนดี", prompt: "ช่วงนี้อยากไปไหว้พระเสริมดวง ควรไปมูที่ไหนดี" },
 ];
 
 // กล่องแนะนำ "คำถามถัดไป" หลังโค้ชตอบเสร็จ — เลือกชุดตามศาสตร์ที่เพิ่งใช้ตอบ
@@ -83,6 +86,12 @@ const CHART_FOLLOWUPS: { label: string; prompt: string }[] = [
   { label: "💰 การเงินฉันเป็นไง", prompt: "ดูเรื่องการเงินของฉันหน่อย" },
   { label: "❤️ ความรักฉันเป็นไง", prompt: "ดูเรื่องความรักของฉันหน่อย" },
   { label: "🍽️ วันนี้กินอะไรดี", prompt: "วันนี้กินอะไรดีให้เสริมดวง" },
+];
+const MU_FOLLOWUPS: { label: string; prompt: string }[] = [
+  { label: "🙏 องค์เทพที่ถูกโฉลก", prompt: "ดวงของเราถูกโฉลกกับองค์เทพองค์ไหน" },
+  { label: "👗 สีเสื้อมงคลของฉัน", prompt: "สีเสื้อมงคลประจำดวงฉันคือสีอะไร" },
+  { label: "🏮 กระเป๋าตังสีอะไรดี", prompt: "กระเป๋าสตางค์ควรใช้สีอะไรเรียกทรัพย์" },
+  { label: "🗓️ เลือกวันมงคลไปมู", prompt: "ช่วยเลือกวันมงคลในเดือนนี้สำหรับไปไหว้พระหน่อย" },
 ];
 const DEFAULT_FOLLOWUPS: { label: string; prompt: string }[] = [
   { label: "🍽️ วันนี้กินอะไรดี", prompt: "วันนี้กินอะไรดีให้เสริมดวง" },
@@ -99,6 +108,9 @@ function followupsFor(route?: string): { label: string; prompt: string }[] {
       return LIFESTYLE_FOLLOWUPS;
     case "chart":
       return CHART_FOLLOWUPS;
+    case "mu":
+    case "fengshui":
+      return MU_FOLLOWUPS;
     default:
       return DEFAULT_FOLLOWUPS;
   }
