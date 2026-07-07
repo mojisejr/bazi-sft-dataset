@@ -9,7 +9,7 @@ import { z } from "zod";
 
 import { getGeminiApiKey } from "@/lib/env";
 import { resolveLouiseHayGrounding } from "@/lib/louise-hay/grounding-router";
-import { buildLouiseHayPrompt, type LouiseHayChatMessage } from "@/lib/louise-hay/persona";
+import { buildLouiseHayPrompt, detectEmotionalDistress, type LouiseHayChatMessage } from "@/lib/louise-hay/persona";
 import { getPersonaCacheName } from "@/lib/louise-hay/persona-cache";
 import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
 import { logUsage } from "@/lib/louise-hay/usage-repository";
@@ -234,6 +234,7 @@ export async function POST(req: Request) {
     passages: retrieved.passages,
     latestUserMessage: latestUser.content,
     groundingContext,
+    emotionalDistress: detectEmotionalDistress(latestUser.content),
   });
 
   const usedOwnKey = isOwnKey;
