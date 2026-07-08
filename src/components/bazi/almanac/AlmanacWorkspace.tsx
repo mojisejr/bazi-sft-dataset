@@ -562,8 +562,6 @@ export function AlmanacWorkspace() {
                 <a
                   className="almanac-remind-item"
                   href={almanacIcsUrl(day.date, label, summary)}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   role="menuitem"
                   onClick={() => setCalMenuOpen(false)}
                 >

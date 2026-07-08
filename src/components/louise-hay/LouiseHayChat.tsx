@@ -387,8 +387,6 @@ export function LouiseHayChat() {
                               <a
                                 className="lh-cal-menu__item"
                                 href={icsUrl(a)}
-                                target="_blank"
-                                rel="noopener noreferrer"
                                 role="menuitem"
                                 onClick={() => setCalMenu(null)}
                               >
