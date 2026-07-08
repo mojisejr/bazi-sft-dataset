@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { NewdataValue } from "@/db/schema";
 import type { NewdataKeyKind } from "@/lib/bazi/newdata-groups";
+import { ganzhiThaiLabel } from "@/lib/bazi/pillar-display";
 
 type Item = {
   itemKey: string;
@@ -269,7 +270,13 @@ export function NewdataAdminWorkspace() {
                 return (
                   <li key={item.itemKey} className="newdata-admin__item">
                     <div className="newdata-admin__item-head">
-                      <span className="newdata-admin__item-key">{item.itemKey}</span>
+                      <span className="newdata-admin__item-key">
+                        {item.itemKey}
+                        {/* กลุ่ม 60 กะจื่อ: กำกับราศีบน-ล่างเป็นไทย ให้ซินแสรู้ทันทีว่าคีย์ไหนคือดวงไหน */}
+                        {selected.keyKind === "ganzhi" && ganzhiThaiLabel(item.itemKey) && (
+                          <span className="newdata-admin__item-sub">{ganzhiThaiLabel(item.itemKey)}</span>
+                        )}
+                      </span>
                       <input
                         className="newdata-admin__label-input"
                         value={draft.label}

@@ -430,7 +430,8 @@ export function matchPillarGanzhi(
   if (!pillar) return [];
   const key = `${pillar.stem}${pillar.branch}`;
   const value = map[group]?.[key];
-  if (!value) return [];
+  // ข้ามแถว placeholder ที่ยังไม่กรอกเนื้อหา (เช่น spouse_knowledge_60 เตรียมคีย์ครบ 60 ไว้ก่อน)
+  if (!value?.text?.trim()) return [];
   return [toBlock(group, key, value, `เสา${position}`, pillarLabel(facts, position))];
 }
 

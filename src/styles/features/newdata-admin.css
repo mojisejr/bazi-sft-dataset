@@ -143,6 +143,15 @@
   min-width: 3rem;
   color: var(--accent, #2f8f9d);
 }
+/* คำอ่านราศีบน-ล่างกำกับคีย์กะจื่อ (กลุ่ม 60 กะจื่อ) */
+.newdata-admin__item-sub {
+  display: block;
+  font-weight: 400;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--muted, rgba(0, 0, 0, 0.55));
+  white-space: nowrap;
+}
 .newdata-admin__label-input {
   flex: 1 1 12rem;
   padding: 0.3rem 0.5rem;

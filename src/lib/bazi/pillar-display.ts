@@ -1,5 +1,6 @@
 import {
   BRANCH_LABELS_TH,
+  BRANCH_TO_ELEMENT,
   CONTROLS,
   ELEMENT_LABELS_TH,
   GENERATES,
@@ -23,6 +24,39 @@ const TWELVE_QI_OFFSETS = {
   壬: 4,
   癸: 3,
 } as const;
+
+/** เสียงอ่านแต้จิ๋วของราศีบน (ตัวหลักที่ซินแสใช้เรียก) */
+const STEM_NAME_TH: Record<string, string> = {
+  甲: "เจี่ย",
+  乙: "อิก",
+  丙: "เปี้ย",
+  丁: "เต็ง",
+  戊: "โบ่ว",
+  己: "กี้",
+  庚: "แก",
+  辛: "ซิง",
+  壬: "ยิ่ม",
+  癸: "กุ่ย",
+};
+
+/**
+ * คำอ่านไทยของกะจื่อ 1 ตัว (เช่น "甲子") — ใช้กำกับคีย์ในหน้าแอดมิน NewData
+ * คืน "บน 甲 เจี่ย (ไม้หยาง) · ล่าง 子 ชวด (น้ำ)" หรือ null ถ้าไม่ใช่กะจื่อ
+ */
+export function ganzhiThaiLabel(ganzhi: string): string | null {
+  const chars = [...ganzhi.normalize("NFC")];
+  if (chars.length !== 2) return null;
+  const [stem, branch] = chars as [string, string];
+  const stemName = STEM_NAME_TH[stem];
+  const branchName = BRANCH_LABELS_TH[branch as keyof typeof BRANCH_LABELS_TH];
+  if (!stemName || !branchName) return null;
+  const stemEl = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
+  const branchEl = BRANCH_TO_ELEMENT[branch as keyof typeof BRANCH_TO_ELEMENT];
+  const stemElTh = stemEl ? ELEMENT_LABELS_TH[stemEl] : "";
+  const branchElTh = branchEl ? ELEMENT_LABELS_TH[branchEl] : "";
+  const polarity = YANG_STEMS.has(stem) ? "หยาง" : "ยิน";
+  return `บน ${stem} ${stemName} (${stemElTh}${polarity}) · ล่าง ${branch} ${branchName} (${branchElTh})`;
+}
 
 export function getStemElementTranslation(stem: string) {
   const element = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
