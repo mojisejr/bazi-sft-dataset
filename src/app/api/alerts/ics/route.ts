@@ -92,7 +92,9 @@ export async function GET(req: Request) {
   return new Response(lines.join("\r\n") + "\r\n", {
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename="alert-${date}.ics"`,
+      // inline (ไม่ใช่ attachment) → มือถือส่งต่อให้แอปปฏิทินเปิดเพิ่ม event เอง แทนที่จะดาวน์โหลดเป็นไฟล์ค้างไว้.
+      // desktop ที่เปิด text/calendar ไม่ได้จะดาวน์โหลดให้อยู่ดี (แล้วดับเบิลคลิกเข้า Outlook/Apple)
+      "Content-Disposition": `inline; filename="alert-${date}.ics"`,
       "Cache-Control": "no-cache",
     },
   });
