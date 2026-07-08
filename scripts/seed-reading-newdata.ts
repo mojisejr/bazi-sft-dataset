@@ -523,6 +523,74 @@ function ganzhiTemplate(group: string, labelPrefix: string): SeedRow[] {
   }));
 }
 
+/** บท13 · template ว่าง 10 ช่อง โรคตามธาตุ มาก/น้อย — คีย์ "{ธาตุ}|มาก"/"{ธาตุ}|น้อย" */
+function healthElementTemplate(): SeedRow[] {
+  const order = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
+  const rows: SeedRow[] = [];
+  let order_ = 0;
+  for (const el of order) {
+    for (const band of ["มาก", "น้อย"] as const) {
+      rows.push({
+        groupKey: "health_by_element",
+        itemKey: `${el}|${band}`,
+        ordinal: ++order_,
+        value: { text: "", label: `โรคจากธาตุ${el} ${band}เกินไป` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+  return rows;
+}
+
+/** บท13 · สุขภาพเจ๊าะ — รายการคีย์ที่ซินแสระบุ (กะจื่อ + ดิถี) × 4 ตำแหน่งเสา */
+const HEALTH_ZOAH_GANZHI = ["甲申", "乙酉"];
+const HEALTH_ZOAH_DITHI: Array<[string, string]> = [
+  ["甲", "申"],
+  ["甲", "壬"],
+  ["乙", "酉"],
+  ["乙", "丁"],
+  ["乙", "己"],
+  ["丙", "亥"],
+  ["丙", "甲"],
+  ["丁", "子"],
+  ["丁", "辛"],
+];
+const HEALTH_ZOAH_POS: Array<[string, string]> = [
+  ["ปี", "เสาปี"],
+  ["เดือน", "เสาเดือน"],
+  ["วัน", "เสาวัน"],
+  ["ยาม", "เสายาม"],
+];
+
+/** template ว่าง health_zoah — คีย์ "{กะจื่อ}@{เสา}" และ "{ดิถี}→{ปลายทาง}@{เสา}" */
+function healthZoahTemplate(): SeedRow[] {
+  const rows: SeedRow[] = [];
+  let ord = 0;
+  for (const gz of HEALTH_ZOAH_GANZHI) {
+    for (const [pos, posLabel] of HEALTH_ZOAH_POS) {
+      rows.push({
+        groupKey: "health_zoah",
+        itemKey: `${gz}@${pos}`.normalize("NFC"),
+        ordinal: ++ord,
+        value: { text: "", label: `สุขภาพ ${gz} ที่${posLabel}` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+  for (const [day, target] of HEALTH_ZOAH_DITHI) {
+    for (const [pos, posLabel] of HEALTH_ZOAH_POS) {
+      rows.push({
+        groupKey: "health_zoah",
+        itemKey: `${day}→${target}@${pos}`.normalize("NFC"),
+        ordinal: ++ord,
+        value: { text: "", label: `สุขภาพ ดิถี ${day}→${target} ที่${posLabel}` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+  return rows;
+}
+
 /**
  * template ว่างคีย์ "{ก้านอ้างอิง}|{ปลายทาง}" ครบทุกก้าน × ปลายทางธาตุเป้าหมาย (บท3 โชคลาภ)
  * ทุกก้าน 10 ตัวเป็นได้ทั้งดิถี (dithi/business) และก้านเดือน (month) → seed ครบให้ซินแสกรอกทีละช่อง
@@ -849,10 +917,10 @@ function collectAll(): SeedRow[] {
   push("dark_side_by_element", () =>
     parseElementKeyedFile("บท1 นิสัยด้านมืด 5 ธาตุ.txt", "dark_side_by_element", "นิสัยด้านมืด"),
   );
-  // บท 13 · สุขภาพ 5 ธาตุ (template — ว่างจนกว่าซินแสเติม)
-  push("health_by_element", () =>
-    parseElementKeyedFile("บท13 สุขภาพ 5 ธาตุ.txt", "health_by_element", "โรคจากธาตุ"),
-  );
+  // บท 13 · สุขภาพ 5 ธาตุ มาก/น้อย (template ว่าง 10 ช่อง — คีย์ "{ธาตุ}|มาก"/"{ธาตุ}|น้อย")
+  push("health_by_element", () => healthElementTemplate());
+  // บท 13 · สุขภาพเจ๊าะ ราย กะจื่อ/ดิถี × ตำแหน่งเสา (template ว่าง — ซินแสกรอกในแอดมิน)
+  push("health_zoah", () => healthZoahTemplate());
   // บท 14 · ของมงคลตามธาตุ — auspicious_by_element (หมวด × ธาตุ); สัตว์มงคล/ทิศ เป็น template
   const AUSPICIOUS: Array<[string, string]> = [
     ["บท14 สี 5 ธาตุ.txt", "สี"],

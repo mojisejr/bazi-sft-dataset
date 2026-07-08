@@ -1191,12 +1191,56 @@ export function matchHealthElement(map: NewdataMap, group: string, facts: ChartF
   const maxEl = order.reduce((a, b) => (count[b] > count[a] ? b : a));
   const minEl = order.reduce((a, b) => (count[b] < count[a] ? b : a));
   const out: NewdataBlock[] = [];
-  const push = (el: ElementTh, tier: string) => {
-    const value = map[group]?.[el];
-    if (value) out.push(toBlock(group, el, value, `ธาตุ${el} ${tier} (${count[el]} ตำแหน่ง)`));
+  // คีย์แยก "มาก"/"น้อย" ต่อธาตุ (เนื้อคนละชุด) — คีย์ "{ธาตุ}|มาก" / "{ธาตุ}|น้อย"
+  const push = (el: ElementTh, band: "มาก" | "น้อย", tier: string) => {
+    const key = `${el}|${band}`;
+    const value = map[group]?.[key];
+    if (!value?.text?.trim()) return; // ช่องว่าง (ยังไม่กรอก) = ไม่ขึ้น
+    out.push(toBlock(group, key, value, `ธาตุ${el} ${tier} (${count[el]} ตำแหน่ง)`));
   };
-  push(maxEl, "มากเกินไป");
-  if (minEl !== maxEl) push(minEl, "น้อยเกินไป");
+  push(maxEl, "มาก", "มากเกินไป");
+  if (minEl !== maxEl) push(minEl, "น้อย", "น้อยเกินไป");
+  return out;
+}
+
+/** ป้ายเสาแบบสั้น (ใช้ประกอบคีย์ health_zoah: "…@ปี") */
+const SHORT_PILLAR_NAME: Record<PillarPosition, string> = {
+  year: "ปี",
+  month: "เดือน",
+  day: "วัน",
+  hour: "ยาม",
+};
+
+/**
+ * บท 13 · สุขภาพเจ๊าะ — คำทำนายสุขภาพราย "กะจื่อประจำเสา" และ "ดิถีถ่ายเท" ตามตำแหน่งเสา
+ * ดึงเฉพาะคีย์ที่ซินแสกรอกเนื้อแล้ว (ช่องว่างไม่ขึ้น) — 2 รูปแบบคีย์:
+ *   "{กะจื่อ}@{เสา}"          เช่น "甲申@ปี"  → เสานั้นเป็นกะจื่อนี้ตรง ๆ (ก้าน+กิ่งครบ)
+ *   "{ดิถี}→{ปลายทาง}@{เสา}"  เช่น "甲→申@ปี" → ก้านดิถีถ่ายเทไปยังราศีบน/ล่างของเสานั้น
+ */
+export function matchHealthZoah(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const day = facts.dayMaster;
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  const emit = (key: string, context: string) => {
+    if (seen.has(key)) return;
+    const value = map[group]?.[key];
+    if (!value?.text?.trim()) return;
+    seen.add(key);
+    out.push(toBlock(group, key, value, context));
+  };
+  for (const p of facts.pillars) {
+    const pos = SHORT_PILLAR_NAME[p.position];
+    const label = THAI_PILLAR_NAME[p.position];
+    // กะจื่อประจำเสา (甲申@ปี …)
+    emit(`${p.stem}${p.branch}@${pos}`, `${label} ${p.stem}${p.branch}`);
+    // ดิถีถ่ายเทไปยังราศีบน/ล่างของเสานี้ (甲→申@ปี …)
+    for (const [ch, kind] of [
+      [p.stem, "ราศีบน"],
+      [p.branch, "ราศีล่าง"],
+    ] as const) {
+      emit(`${day}→${ch}@${pos}`, `${label} ${kind} · ดิถี ${day}→${ch}`);
+    }
+  }
   return out;
 }
 

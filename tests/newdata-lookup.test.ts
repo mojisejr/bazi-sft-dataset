@@ -11,6 +11,8 @@ import {
   matchBranchPairs,
   matchDithiTransferPrioritized,
   matchFavorableSummary,
+  matchHealthElement,
+  matchHealthZoah,
   matchLuckyAnimal,
   matchFortune,
   matchSelfPunish,
@@ -101,6 +103,53 @@ describe("newdata-lookup: matchers (set-membership)", () => {
 
   test("self_punish ไม่ match (辰 ปรากฏครั้งเดียว)", () => {
     expect(matchSelfPunish(MAP, FACTS)).toHaveLength(0);
+  });
+
+  // FACTS: 戊辰 丁巳 庚午 癸未 → นับธาตุ ดิน=3(戊辰未) ไฟ=3(丁巳午) ทอง=1 น้ำ=1 ไม้=0
+  //   maxEl=ไฟ (เสมอ 3 กับดิน แต่ ไฟ มาก่อนใน order) · minEl=ไม้ (0)
+  describe("matchHealthElement: คีย์แยก มาก/น้อย", () => {
+    test("มาก=ไฟ|มาก, น้อย=ไม้|น้อย (เลือกคีย์ถูก band)", () => {
+      const map: NewdataMap = {
+        health_by_element: {
+          "ไฟ|มาก": { text: "หัวใจ/ความดัน", label: "ไฟมาก" },
+          "ไม้|น้อย": { text: "ตับอ่อนแอ", label: "ไม้น้อย" },
+          "ไฟ|น้อย": { text: "ไม่ควรขึ้น", label: "ไฟน้อย" }, // ไฟ ไม่ใช่ธาตุน้อย → ไม่ match
+        },
+      };
+      expect(matchHealthElement(map, "health_by_element", FACTS).map((b) => b.itemKey)).toEqual([
+        "ไฟ|มาก",
+        "ไม้|น้อย",
+      ]);
+    });
+
+    test("ช่องว่าง (text ว่าง) = ไม่ขึ้น", () => {
+      const map: NewdataMap = {
+        health_by_element: { "ไฟ|มาก": { text: "", label: "ว่าง" } },
+      };
+      expect(matchHealthElement(map, "health_by_element", FACTS)).toHaveLength(0);
+    });
+  });
+
+  describe("matchHealthZoah: กะจื่อ/ดิถี × ตำแหน่งเสา", () => {
+    test("จับ กะจื่อประจำเสา + ดิถีถ่ายเท ของเสาวัน 庚午 (ดิถี 庚)", () => {
+      const map: NewdataMap = {
+        health_zoah: {
+          "庚午@วัน": { text: "โรคเสาวันกะจื่อ", label: "庚午@วัน" },
+          "庚→午@วัน": { text: "ดิถีถ่ายเทราศีล่างวัน", label: "庚→午@วัน" },
+          "甲申@ปี": { text: "ไม่อยู่ในดวงนี้", label: "甲申@ปี" }, // ไม่ match
+        },
+      };
+      expect(matchHealthZoah(map, "health_zoah", FACTS).map((b) => b.itemKey).sort()).toEqual(
+        ["庚午@วัน", "庚→午@วัน"].sort(),
+      );
+    });
+
+    test("ช่องว่างไม่ขึ้น + ไม่ match เมื่อคีย์ไม่ตรงดวง", () => {
+      const map: NewdataMap = {
+        health_zoah: { "庚午@วัน": { text: "", label: "ว่าง" } },
+      };
+      expect(matchHealthZoah(map, "health_zoah", FACTS)).toHaveLength(0);
+    });
   });
 });
 
@@ -309,8 +358,8 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     const map: NewdataMap = {
       ...MAP,
       health_by_element: {
-        ไฟ: { text: "ระวังหัวใจ ความดัน นอนไม่หลับ", label: "โรคธาตุไฟ" },
-        ไม้: { text: "ระวังตับ เส้นเอ็น ดวงตา", label: "โรคธาตุไม้" },
+        "ไฟ|มาก": { text: "ระวังหัวใจ ความดัน นอนไม่หลับ", label: "โรคธาตุไฟ มาก" },
+        "ไม้|น้อย": { text: "ระวังตับ เส้นเอ็น ดวงตา", label: "โรคธาตุไม้ น้อย" },
       },
     };
     const r = resolveChapterBoxes("health", FACTS, map);

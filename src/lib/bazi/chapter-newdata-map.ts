@@ -28,6 +28,7 @@ import {
   matchElementRoleState,
   matchFortune,
   matchHealthElement,
+  matchHealthZoah,
   matchHiddenTransfer,
   matchLoveBase,
   matchLoveChance,
@@ -76,6 +77,7 @@ type Resolver =
   | { kind: "elementRoleState"; group: string; role: "output" | "wealth" | "resource" }
   | { kind: "elementRoleGanzhi"; group: string; role: "output" | "wealth" | "resource" | "peer" }
   | { kind: "healthElement"; group: string }
+  | { kind: "healthZoah"; group: string }
   | { kind: "elementCategory"; group: string; category: string }
   | { kind: "luckyAnimal" }
   | { kind: "elementAdvice"; table: "wealth" | "health" | "talent" }
@@ -239,6 +241,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "selfPunish" },
       { kind: "samHeng" },
       { kind: "branchPairs", group: "harm_hai" },
+      { kind: "healthZoah", group: "health_zoah" },
     ],
     [{ kind: "healthElement", group: "health_by_element" }],
     [{ kind: "elementAdvice", table: "health" }],
@@ -320,6 +323,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchElementRoleGanzhi(map, r.group, facts, r.role);
     case "healthElement":
       return matchHealthElement(map, r.group, facts);
+    case "healthZoah":
+      return matchHealthZoah(map, r.group, facts);
     case "elementCategory":
       return matchElementCategory(map, r.group, facts, r.category);
     case "luckyAnimal":
