@@ -828,6 +828,37 @@
   background: #eefdfd;
 }
 
+/* แจ้งเตือน / เพิ่มลงปฏิทิน (Google / .ics) ใน modal รายละเอียดวัน */
+.almanac-remind {
+  position: relative;
+  margin-top: 0.5rem;
+}
+.almanac-remind-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #d9e6e8;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+}
+.almanac-remind-item {
+  padding: 8px 10px;
+  font-size: 0.8rem;
+  color: #235;
+  text-decoration: none;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.almanac-remind-item:hover {
+  background: #eefdfd;
+}
+
 .almanac-editor {
   display: flex;
   flex-direction: column;

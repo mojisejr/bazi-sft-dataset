@@ -161,6 +161,35 @@ function pct(n: number): string {
   return `${Math.round(n * 100)}%`;
 }
 
+// ───────── เพิ่มลงปฏิทิน (Google เด้งตรง / .ics ปฏิทินในเครื่อง) — ใช้ endpoint /api/alerts/ics ร่วมกับ /louise-hay ─────────
+/** YYYY-MM-DD → YYYYMMDD และวันถัดไป (all-day event: end แบบ exclusive) */
+function icsDatePair(date: string): { start: string; end: string } {
+  const [y, m, d] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  const p = (n: number) => String(n).padStart(2, "0");
+  return { start: date.replace(/-/g, ""), end: `${next.getUTCFullYear()}${p(next.getUTCMonth() + 1)}${p(next.getUTCDate())}` };
+}
+/** ลิงก์เปิดหน้าเพิ่ม event ใน Google Calendar โดยตรง (ไม่โหลดไฟล์) */
+function googleCalUrl(date: string, label: string, details: string): string {
+  const { start, end } = icsDatePair(date);
+  const params = new URLSearchParams({ action: "TEMPLATE", text: `🗓️ ${label}`, dates: `${start}/${end}`, details });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+/** ลิงก์ .ics ของเรา (มือถือเปิดแอปปฏิทิน / desktop เปิดไฟล์เข้า Outlook/Apple) */
+function almanacIcsUrl(date: string, label: string, message: string): string {
+  return `/api/alerts/ics?${new URLSearchParams({ date, kind: "custom", label, message }).toString()}`;
+}
+/** สรุปฤกษ์ยานของวันเป็นข้อความสั้น (ใส่ใน description ของ event) */
+function almanacDaySummary(day: AlmanacDay): string {
+  return [
+    `เสาวัน ${day.dayPillar.ganzhi}`,
+    day.officer ? `ฤกษ์: ${day.officer}${day.officerDesc ? ` — ${day.officerDesc}` : ""}` : "",
+    day.luckyDirection ? `ทิศมงคล: ${day.luckyDirection}` : "",
+    day.colors.length ? `สีมงคล: ${day.colors.map((c) => c.colors).join(" / ")}` : "",
+    day.luckyHours.length ? `เวลามงคล: ${day.luckyHours.slice(0, 4).map((h) => `${h.range} ${h.meaning}`).join(", ")}` : "",
+  ].filter(Boolean).join("\n");
+}
+
 // ฟิลด์ที่แก้รายวันได้ "ทุกอย่าง" (text=ช่องสั้น, textarea=ข้อความ, json=โครงสร้าง)
 type DayField = { key: string; label: string; type: "text" | "textarea" | "json" };
 const DAY_FIELDS: DayField[] = [
@@ -197,6 +226,8 @@ export function AlmanacWorkspace() {
   const [error, setError] = useState<string | null>(null);
   // วันที่เปิดดูรายละเอียด (modal) — null = ไม่เปิด
   const [detailDate, setDetailDate] = useState<string | null>(null);
+  // เปิด/ปิดเมนู "เพิ่มลงปฏิทิน" ใน modal รายละเอียดวัน
+  const [calMenuOpen, setCalMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -502,6 +533,45 @@ export function AlmanacWorkspace() {
           .filter(Boolean)
           .join("\n")}
       />
+
+      {(() => {
+        const label = `ฤกษ์ยาม ${Number(day.date.slice(8, 10))} ${MONTH_NAMES[Number(day.date.slice(5, 7)) - 1]}`;
+        const summary = almanacDaySummary(day);
+        return (
+          <div className="almanac-remind">
+            <button
+              type="button"
+              className="almanac-editbtn"
+              aria-expanded={calMenuOpen}
+              onClick={() => setCalMenuOpen((v) => !v)}
+            >
+              🔔 แจ้งเตือน / เพิ่มลงปฏิทิน
+            </button>
+            {calMenuOpen && (
+              <div className="almanac-remind-menu" role="menu">
+                <a
+                  className="almanac-remind-item"
+                  href={googleCalUrl(day.date, label, summary)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  role="menuitem"
+                  onClick={() => setCalMenuOpen(false)}
+                >
+                  🟢 Google ปฏิทิน
+                </a>
+                <a
+                  className="almanac-remind-item"
+                  href={almanacIcsUrl(day.date, label, summary)}
+                  role="menuitem"
+                  onClick={() => setCalMenuOpen(false)}
+                >
+                  📆 ปฏิทินในเครื่อง (.ics)
+                </a>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </>
   );
 
@@ -624,7 +694,7 @@ export function AlmanacWorkspace() {
                 <button
                   key={day.date}
                   type="button"
-                  onClick={() => setDetailDate(day.date)}
+                  onClick={() => { setDetailDate(day.date); setCalMenuOpen(false); }}
                   className={`almanac-cell${day.solarTerm ? ` almanac-cell--term-${day.solarTerm.kind}` : ""}${day.date === TODAY_ISO ? " almanac-cell--today" : ""}${wi === 0 ? " almanac-cell--sun" : ""}${wi === 6 ? " almanac-cell--sat" : ""}`}
                 >
                   <span className="almanac-cell-top">
@@ -741,7 +811,7 @@ export function AlmanacWorkspace() {
           {detailDate && (() => {
             const day = data.days.find((d) => d.date === detailDate);
             if (!day) return null;
-            const close = () => { setDetailDate(null); setEditDate(null); };
+            const close = () => { setDetailDate(null); setEditDate(null); setCalMenuOpen(false); };
             return (
               <div className="almanac-modal-backdrop" onClick={close}>
                 <div
