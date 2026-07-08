@@ -691,13 +691,14 @@
    โทเคนสีอิง DESIGN.md (root) — แก้คู่กันเสมอ */
 
 .pair-report-page {
+  /* ค่าจริงจาก Figma (DESIGN.md v0.2.0) */
   --primary: #1b9aaf;
   --accent-soft: #fef3c7;
-  --background: #faf7f2;
+  --background: #faf7f4;
   --surface: #ffffff;
-  --ink: #1f1a17;
-  --muted: #8a8377;
-  --border: #e5ded2;
+  --ink: #1f2937;
+  --muted: #71717a;
+  --border: #e4e4e7;
   --love: #e0245e;
   --warning: #8a6d3b;
   max-width: 800px;
@@ -705,7 +706,7 @@
   padding: 24px 16px 48px;
   background: var(--background);
   color: var(--ink);
-  font-family: "Noto Sans Thai", "IBM Plex Sans Thai", system-ui, sans-serif;
+  font-family: "IBM Plex Sans Thai", "Noto Sans Thai", system-ui, sans-serif;
   min-height: 100vh;
 }
 
