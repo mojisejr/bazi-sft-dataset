@@ -23,6 +23,25 @@ const HUB_CARDS: HubCard[] = [
     featured: true,
   },
   {
+    href: "/what-if",
+    icon: "🌀",
+    kicker: "แคมเปญไวรัล",
+    title: "What If...? โลกคู่ขนาน",
+    description:
+      "ถ้าวันนั้นเลือกเดินตามดวงชะตา ชีวิตจะเป็นยังไง? กรอกวันเกิด+อาชีพ เปิดประตูมิติดูตัวคุณอีกเวอร์ชัน พร้อมภาพ AI และการ์ดแชร์",
+    cta: "เปิดประตูมิติ",
+    featured: true,
+  },
+  {
+    href: "/mvp",
+    icon: "✨",
+    kicker: "Mumate UI ใหม่",
+    title: "หน้าเดโม MVP",
+    description:
+      "หน้าเดโม UI ใหม่ตามดีไซน์ Mumate — จับคู่ดวง รายงานดวง ไทม์ไลน์ชีวิต และสรุปธาตุ",
+    cta: "เปิดหน้าเดโม",
+  },
+  {
     href: "/pair-matching",
     icon: "💞",
     kicker: "คู่สมพงษ์",

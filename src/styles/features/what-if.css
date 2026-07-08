@@ -1,0 +1,828 @@
+/* ─────────────────────────────────────────────────────────────
+   แคมเปญ "What If" (/what-if) — ธีมจักรวาล/ประตูมิติ (Sci-Fi Astrological)
+   โทนสีอิงโปสเตอร์ What If: ม่วงลึกอวกาศ × ส้มทองประตูมิติ × นีออนม่วง
+   mobile-first ทั้งหน้า
+   ───────────────────────────────────────────────────────────── */
+
+.whatif-shell {
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(1200px 800px at 85% -10%, rgba(255, 140, 26, 0.22), transparent 55%),
+    radial-gradient(900px 700px at -10% 30%, rgba(120, 60, 220, 0.35), transparent 60%),
+    radial-gradient(700px 900px at 60% 110%, rgba(64, 27, 133, 0.5), transparent 65%),
+    linear-gradient(180deg, #120833 0%, #1d0d4a 45%, #0b0723 100%);
+  color: #f4ecff;
+  font-family: "Prompt", "IBM Plex Sans Thai", sans-serif;
+}
+
+.whatif {
+  position: relative;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 20px 20px 56px;
+  overflow: hidden;
+}
+
+/* ดาวพื้นหลัง (จุดเล็ก ๆ กระจาย + กระพริบ) */
+.whatif__stars,
+.whatif__stars::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff, transparent),
+    radial-gradient(1px 1px at 32% 44%, #e8ddff, transparent),
+    radial-gradient(2px 2px at 55% 12%, #ffd9a0, transparent),
+    radial-gradient(1px 1px at 71% 33%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 88% 56%, #e8ddff, transparent),
+    radial-gradient(1px 1px at 18% 71%, #fff, transparent),
+    radial-gradient(2px 2px at 42% 87%, #ffd9a0, transparent),
+    radial-gradient(1px 1px at 64% 66%, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 81% 91%, #e8ddff, transparent),
+    radial-gradient(1px 1px at 8% 52%, #fff, transparent);
+  opacity: 0.7;
+  animation: whatif-twinkle 4s ease-in-out infinite alternate;
+}
+.whatif__stars::after {
+  background-position: 40px 60px;
+  animation-delay: 2s;
+  opacity: 0.4;
+}
+@keyframes whatif-twinkle {
+  from { opacity: 0.35; }
+  to { opacity: 0.85; }
+}
+
+/* ── Page 1: The Portal ─────────────────────────────────────── */
+
+.whatif__brand {
+  text-align: right;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: #c9b6ff;
+}
+
+.whatif__hero {
+  text-align: center;
+  padding: 40px 0 8px;
+}
+
+.whatif__title {
+  margin: 0;
+  font-size: clamp(52px, 15vw, 76px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  color: #f7f1ff;
+  text-shadow:
+    0 0 26px rgba(180, 107, 255, 0.55),
+    0 0 70px rgba(255, 140, 26, 0.25);
+}
+.whatif__title-if {
+  background: linear-gradient(180deg, #ffd166 10%, #ff8c1a 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.whatif__tagline {
+  margin: 14px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.42em;
+  color: #b9a6ea;
+}
+
+.whatif__sub {
+  margin: 22px 0 0;
+  font-size: 16px;
+  line-height: 1.8;
+  color: #e6dcff;
+}
+
+.whatif__form {
+  margin-top: 28px;
+  display: grid;
+  gap: 16px;
+}
+
+.whatif__field { display: grid; gap: 7px; }
+
+.whatif__label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #cdbcf5;
+}
+
+.whatif__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 14px;
+  font-size: 16px;
+  font-family: inherit;
+  color: #f4ecff;
+  background: rgba(20, 10, 48, 0.75);
+  border: 1px solid rgba(180, 107, 255, 0.45);
+  border-radius: 14px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.whatif__input:focus {
+  border-color: #ffb23e;
+  box-shadow: 0 0 0 3px rgba(255, 155, 47, 0.22);
+}
+.whatif__input option { color: #1d0d4a; background: #fff; }
+
+/* แถวฟิลด์ (วันเกิด 3 ช่อง / เวลา / เพศ) */
+.whatif__row { display: flex; gap: 8px; }
+.whatif__row--dob .whatif__input { min-width: 0; }
+.whatif__row--dob .whatif__input:nth-child(1) { flex: 0 0 26%; }
+.whatif__row--dob .whatif__input:nth-child(2) { flex: 1 1 auto; }
+.whatif__row--dob .whatif__input:nth-child(3) { flex: 0 0 30%; }
+.whatif__row--time { align-items: center; }
+.whatif__row--time .whatif__input { flex: 1 1 auto; }
+.whatif__input:disabled { opacity: 0.4; }
+
+.whatif__hint { font-size: 12.5px; color: #b9a6ea; }
+.whatif__hint--warn { color: #ffc9a0; }
+
+.whatif__time-unknown {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13.5px;
+  color: #cdbcf5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.whatif__time-unknown input { width: 16px; height: 16px; accent-color: #ff9b2f; }
+
+.whatif__row--gender { gap: 10px; }
+.whatif__gender-btn {
+  flex: 1;
+  padding: 12px;
+  font-size: 15.5px;
+  font-family: inherit;
+  color: #cdbcf5;
+  background: rgba(20, 10, 48, 0.75);
+  border: 1px solid rgba(180, 107, 255, 0.45);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+}
+.whatif__gender-btn--active {
+  color: #2a1050;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffd166 0%, #ff9b2f 100%);
+  border-color: transparent;
+  box-shadow: 0 0 18px rgba(255, 155, 47, 0.4);
+}
+
+.whatif__consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #b9a6ea;
+  cursor: pointer;
+}
+.whatif__consent input {
+  margin-top: 3px;
+  width: 17px;
+  height: 17px;
+  accent-color: #ff9b2f;
+  flex: none;
+}
+
+.whatif__error {
+  margin: 0;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #ffc9c9;
+  background: rgba(180, 40, 60, 0.25);
+  border: 1px solid rgba(255, 120, 120, 0.4);
+  border-radius: 12px;
+}
+
+/* ปุ่ม CTA หลัก — ม่วงนีออน/ทอง เรืองแสง */
+.whatif__cta {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 16px 18px;
+  font-size: 17px;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  text-decoration: none;
+  color: #2a1050;
+  background: linear-gradient(135deg, #ffd166 0%, #ff9b2f 55%, #ff6b4a 100%);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow:
+    0 0 24px rgba(255, 155, 47, 0.45),
+    0 6px 22px rgba(0, 0, 0, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.whatif__cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 38px rgba(255, 155, 47, 0.65),
+    0 10px 26px rgba(0, 0, 0, 0.4);
+}
+.whatif__cta:disabled { opacity: 0.45; cursor: default; box-shadow: none; }
+
+/* ── Page 2: Quantum Calculation (loading) ──────────────────── */
+
+.whatif__loading {
+  min-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 42px;
+}
+
+.whatif__gate {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  display: grid;
+  place-items: center;
+}
+
+.whatif__gate-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background:
+    conic-gradient(from 0deg, #ff6b4a, #ffd166, #ff9b2f, rgba(255, 155, 47, 0.05), #ff6b4a)
+    border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: whatif-spin 2.6s linear infinite;
+  filter: drop-shadow(0 0 18px rgba(255, 155, 47, 0.75));
+}
+.whatif__gate-ring--inner {
+  inset: 26px;
+  animation-direction: reverse;
+  animation-duration: 1.8s;
+  background:
+    conic-gradient(from 180deg, #b46bff, #6bd9ff, rgba(180, 107, 255, 0.05), #b46bff)
+    border-box;
+  filter: drop-shadow(0 0 14px rgba(180, 107, 255, 0.7));
+}
+@keyframes whatif-spin {
+  to { transform: rotate(360deg); }
+}
+
+.whatif__gate-core {
+  font-size: 56px;
+  animation: whatif-pulse 1.6s ease-in-out infinite;
+}
+@keyframes whatif-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.16); }
+}
+
+.whatif__loading-text {
+  margin: 0;
+  font-size: 16.5px;
+  color: #e6dcff;
+  text-align: center;
+  animation: whatif-fadein 0.5s ease;
+}
+@keyframes whatif-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Page 3: The Revelation ─────────────────────────────────── */
+
+.whatif__result {
+  display: grid;
+  gap: 34px;
+  padding-top: 12px;
+  animation: whatif-fadein 0.7s ease;
+}
+
+.whatif__truth { text-align: center; }
+
+/* badge สรุปดวง (ดิถี · กำลัง · นักษัตร) — เม็ดยาแยกบรรทัด อ่านง่ายบนมือถือ */
+.whatif__chart-badge {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 7px 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e6dcff;
+  background: rgba(74, 45, 143, 0.4);
+  border: 1px solid rgba(180, 107, 255, 0.4);
+  border-radius: 999px;
+}
+
+.whatif__truth-lead {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.85;
+  color: #cdbcf5;
+}
+.whatif__truth-lead strong { color: #f4ecff; }
+
+.whatif__truth-reveal {
+  margin: 20px 0 8px;
+  font-size: 15px;
+  color: #ffd9a0;
+  letter-spacing: 0.04em;
+}
+
+.whatif__destined {
+  margin: 0;
+  font-size: clamp(26px, 7.4vw, 34px);
+  font-weight: 800;
+  line-height: 1.45;
+  background: linear-gradient(135deg, #ffe9b8 0%, #ffb23e 55%, #ff8c1a 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 44px rgba(255, 155, 47, 0.3);
+}
+
+.whatif__reason {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #b9a6ea;
+}
+
+/* ธุรกิจถูกโฉลกตามตำรา (chips) */
+.whatif__book {
+  padding: 16px 16px 14px;
+  background: rgba(24, 12, 56, 0.55);
+  border: 1px dashed rgba(255, 200, 107, 0.35);
+  border-radius: 18px;
+}
+.whatif__book-title {
+  margin: 0 0 12px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #ffd9a0;
+}
+.whatif__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.whatif__chip {
+  padding: 6px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #e6dcff;
+  background: rgba(74, 45, 143, 0.45);
+  border: 1px solid rgba(180, 107, 255, 0.35);
+  border-radius: 999px;
+}
+
+/* กรอบภาพ AI — วงแหวนประตูมิติ */
+.whatif__frame {
+  justify-self: center;
+  width: min(320px, 78vw);
+  aspect-ratio: 3 / 4;
+  border-radius: 22px;
+  padding: 4px;
+  background: linear-gradient(135deg, #ff9b2f, #ffd166 40%, #b46bff 100%);
+  box-shadow:
+    0 0 34px rgba(255, 155, 47, 0.4),
+    0 0 70px rgba(180, 107, 255, 0.3);
+}
+.whatif__image,
+.whatif__avatar-fallback {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 18px;
+  display: block;
+}
+.whatif__avatar-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 14px;
+  color: #cdbcf5;
+  background: radial-gradient(circle at 50% 38%, #4a2d8f 0%, #1b0f45 75%);
+}
+.whatif__avatar-emoji { font-size: 84px; }
+
+.whatif__reality { display: grid; gap: 26px; }
+
+/* นิทาน 3 บท — การ์ดสไลด์ปัดแนวนอน (scroll-snap) โทนสีประจำบท */
+.whatif__story { display: grid; gap: 12px; }
+
+.whatif__story-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  border-radius: 20px;
+}
+.whatif__story-track::-webkit-scrollbar { display: none; }
+
+.whatif__slide {
+  position: relative;
+  flex: 0 0 100%;
+  box-sizing: border-box;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  min-height: 240px;
+  padding: 22px 20px 20px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid;
+}
+/* โทนสีประจำบท: 1 ส้มประกายไฟ · 2 ชมพูม่วงรุ่งโรจน์ · 3 ฟ้ารุ่งอรุณ */
+.whatif__slide--shift {
+  border-color: rgba(255, 178, 62, 0.45);
+  background:
+    radial-gradient(130% 100% at 100% 0%, rgba(255, 140, 26, 0.28), transparent 55%),
+    linear-gradient(160deg, rgba(58, 26, 12, 0.85) 0%, rgba(30, 14, 52, 0.9) 60%);
+}
+.whatif__slide--peak {
+  border-color: rgba(255, 107, 194, 0.45);
+  background:
+    radial-gradient(130% 100% at 100% 0%, rgba(221, 42, 123, 0.3), transparent 55%),
+    linear-gradient(160deg, rgba(56, 12, 52, 0.85) 0%, rgba(26, 12, 56, 0.9) 60%);
+}
+.whatif__slide--future {
+  border-color: rgba(107, 217, 255, 0.45);
+  background:
+    radial-gradient(130% 100% at 100% 0%, rgba(74, 157, 232, 0.3), transparent 55%),
+    linear-gradient(160deg, rgba(10, 34, 60, 0.85) 0%, rgba(22, 14, 54, 0.9) 60%);
+}
+
+/* อีโมจิประจำบท — ลายน้ำใหญ่มุมขวาบน */
+.whatif__slide-emoji {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 64px;
+  opacity: 0.28;
+  pointer-events: none;
+}
+
+.whatif__slide-kicker {
+  display: inline-block;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+  margin-bottom: 10px;
+}
+.whatif__slide--shift .whatif__slide-kicker { color: #ffd9a0; background: rgba(255, 155, 47, 0.18); border: 1px solid rgba(255, 178, 62, 0.5); }
+.whatif__slide--peak .whatif__slide-kicker { color: #ffc2e5; background: rgba(221, 42, 123, 0.2); border: 1px solid rgba(255, 107, 194, 0.5); }
+.whatif__slide--future .whatif__slide-kicker { color: #bfeaff; background: rgba(74, 157, 232, 0.2); border: 1px solid rgba(107, 217, 255, 0.5); }
+
+.whatif__slide-title {
+  margin: 0 0 10px;
+  font-size: 22px;
+  font-weight: 800;
+}
+.whatif__slide--shift .whatif__slide-title {
+  background: linear-gradient(135deg, #ffe9b8, #ff9b2f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.whatif__slide--peak .whatif__slide-title {
+  background: linear-gradient(135deg, #ffd6ec, #ff6bc2);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.whatif__slide--future .whatif__slide-title {
+  background: linear-gradient(135deg, #d8f3ff, #6bd9ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.whatif__slide-text {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.95;
+  color: #f3edff;
+}
+
+/* ปุ่มลูกศร + จุดบอกตำแหน่ง */
+.whatif__story-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+.whatif__story-arrow {
+  width: 38px;
+  height: 38px;
+  font-size: 17px;
+  color: #e6dcff;
+  background: rgba(24, 12, 56, 0.72);
+  border: 1px solid rgba(180, 107, 255, 0.4);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.whatif__story-arrow:hover:not(:disabled) { border-color: #ffb23e; transform: scale(1.08); }
+.whatif__story-arrow:disabled { opacity: 0.3; cursor: default; }
+
+.whatif__story-dots { display: flex; gap: 8px; }
+.whatif__story-dot {
+  width: 9px;
+  height: 9px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(180, 107, 255, 0.35);
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.whatif__story-dot--on {
+  background: linear-gradient(135deg, #ffd166, #ff9b2f);
+  transform: scale(1.35);
+  box-shadow: 0 0 8px rgba(255, 155, 47, 0.7);
+}
+
+.whatif__story-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 12.5px;
+  color: #8f7cc9;
+  animation: whatif-hint-nudge 1.6s ease-in-out infinite;
+}
+@keyframes whatif-hint-nudge {
+  0%, 100% { transform: translateX(0); opacity: 0.75; }
+  50% { transform: translateX(6px); opacity: 1; }
+}
+
+.whatif__share { display: grid; gap: 12px; }
+
+.whatif__cta--share {
+  background: linear-gradient(135deg, #b46bff 0%, #7c3aed 60%, #5b21b6 100%);
+  color: #fff;
+  box-shadow:
+    0 0 24px rgba(180, 107, 255, 0.5),
+    0 6px 22px rgba(0, 0, 0, 0.35);
+}
+.whatif__cta--share:hover:not(:disabled) {
+  box-shadow:
+    0 0 38px rgba(180, 107, 255, 0.7),
+    0 10px 26px rgba(0, 0, 0, 0.4);
+}
+
+/* พรีวิวการ์ดแชร์ในหน้า (เห็นรูปก่อนแชร์/เซฟ) */
+.whatif__card-preview {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  padding: 14px;
+  background: rgba(24, 12, 56, 0.55);
+  border: 1px solid rgba(180, 107, 255, 0.3);
+  border-radius: 18px;
+}
+.whatif__card-caption {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffd9a0;
+}
+.whatif__card-img {
+  width: min(300px, 72vw);
+  border-radius: 14px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), 0 0 24px rgba(180, 107, 255, 0.25);
+}
+.whatif__card-save {
+  padding: 9px 18px;
+  font-size: 13.5px;
+  font-family: inherit;
+  color: #cdbcf5;
+  background: none;
+  border: 1px solid rgba(180, 107, 255, 0.45);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.whatif__card-save:hover:not(:disabled) { border-color: #ffb23e; color: #ffd9a0; }
+.whatif__card-save:disabled { opacity: 0.5; cursor: default; }
+
+/* ปุ่มคัดลอกลิงก์ (แชร์ทางเดียวที่เหลือ นอกจากปุ่ม 🪐) */
+.whatif__share-btn {
+  width: 100%;
+  padding: 11px 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #efe7ff;
+  background: rgba(24, 12, 56, 0.72);
+  border: 1px solid rgba(180, 107, 255, 0.35);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+.whatif__share-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 178, 62, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+.whatif__share-btn:disabled { opacity: 0.5; cursor: default; }
+
+.whatif__share-note {
+  margin: 0;
+  text-align: center;
+  font-size: 13.5px;
+  color: #9fe8c5;
+}
+
+.whatif__again {
+  background: none;
+  border: 1px solid rgba(180, 107, 255, 0.45);
+  color: #cdbcf5;
+  font-family: inherit;
+  font-size: 14.5px;
+  padding: 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.whatif__again:hover { border-color: #ffb23e; color: #ffd9a0; }
+
+/* ── Page 4: The Reality Check ──────────────────────────────── */
+
+.whatif__back {
+  display: grid;
+  gap: 18px;
+  margin-top: 8px;
+  padding: 26px 18px 24px;
+  border-radius: 22px;
+  /* โลกจริง = แสงอุ่นรุ่งอรุณ ตัดกับอวกาศด้านบน */
+  background:
+    radial-gradient(120% 90% at 50% 110%, rgba(255, 155, 47, 0.16), transparent 60%),
+    linear-gradient(180deg, rgba(24, 12, 56, 0.0) 0%, rgba(38, 20, 70, 0.55) 30%, rgba(52, 28, 74, 0.6) 100%);
+  border: 1px solid rgba(255, 200, 107, 0.14);
+  /* ซ่อนก่อน — โผล่พร้อมเอฟเฟกต์เมื่อเลื่อนถึง (.whatif__back--in) */
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.whatif__back--in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ประตูมิติหุบปิด + โลกจริงโผล่ตรงกลาง */
+.whatif__warp {
+  position: relative;
+  justify-self: center;
+  width: 130px;
+  height: 130px;
+  display: grid;
+  place-items: center;
+}
+.whatif__warp-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background:
+    conic-gradient(from 90deg, #ff6b4a, #ffd166, rgba(255, 155, 47, 0.06), #ff6b4a) border-box;
+  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: drop-shadow(0 0 16px rgba(255, 155, 47, 0.7));
+  animation: whatif-spin 3s linear infinite;
+}
+.whatif__back--in .whatif__warp-ring {
+  animation:
+    whatif-spin 3s linear infinite,
+    whatif-warp-close 1.6s cubic-bezier(0.6, 0, 0.3, 1) 0.35s forwards;
+}
+@keyframes whatif-warp-close {
+  0% { transform: scale(1.9); opacity: 1; }
+  70% { transform: scale(0.86); opacity: 0.95; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+.whatif__warp-core {
+  font-size: 52px;
+  opacity: 0;
+  transform: scale(0.3);
+}
+.whatif__back--in .whatif__warp-core {
+  animation: whatif-warp-earth 1s ease 1.1s forwards;
+}
+@keyframes whatif-warp-earth {
+  0% { opacity: 0; transform: scale(0.3) rotate(-30deg); }
+  60% { opacity: 1; transform: scale(1.18) rotate(6deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+/* ประกายไฟกระเด็นตอนประตูหุบ */
+.whatif__warp-spark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffd166;
+  box-shadow: 0 0 10px rgba(255, 209, 102, 0.9);
+  opacity: 0;
+}
+.whatif__back--in .whatif__warp-spark--1 { animation: whatif-spark 0.9s ease 1.15s; }
+.whatif__back--in .whatif__warp-spark--2 { animation: whatif-spark2 1s ease 1.2s; }
+.whatif__back--in .whatif__warp-spark--3 { animation: whatif-spark3 0.85s ease 1.28s; }
+@keyframes whatif-spark {
+  0% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(-64px, -46px) scale(0.4); }
+}
+@keyframes whatif-spark2 {
+  0% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(58px, -30px) scale(0.4); }
+}
+@keyframes whatif-spark3 {
+  0% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(30px, 56px) scale(0.4); }
+}
+
+.whatif__divider {
+  text-align: center;
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: #8f7cc9;
+  position: relative;
+  padding: 10px 0;
+}
+.whatif__divider::before,
+.whatif__divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 18%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(180, 107, 255, 0.55));
+}
+.whatif__divider::before { left: 0; }
+.whatif__divider::after { right: 0; transform: scaleX(-1); }
+
+.whatif__back-copy {
+  margin: 0;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.9;
+  color: #efe7ff;
+}
+.whatif__back-copy strong { color: #ffd166; }
+
+.whatif__disclaimer {
+  padding: 13px 16px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: #ffe6b8;
+  background: rgba(120, 86, 20, 0.28);
+  border: 1px solid rgba(255, 200, 107, 0.35);
+  border-radius: 12px;
+}
+
+.whatif__cta--final { margin-top: 4px; }
+
+/* ปุ่มออกจากโลกคู่ขนาน (ท้าย Page 3) — โทนโลกจริง เขียว-ฟ้าอุ่น ต่างจากปุ่มอื่น */
+.whatif__cta--exit {
+  margin-top: 6px;
+  background: linear-gradient(135deg, #6bd9ff 0%, #4a9de8 55%, #7c3aed 100%);
+  color: #fff;
+  box-shadow:
+    0 0 24px rgba(107, 217, 255, 0.4),
+    0 6px 22px rgba(0, 0, 0, 0.35);
+}
+.whatif__cta--exit:hover:not(:disabled) {
+  box-shadow:
+    0 0 38px rgba(107, 217, 255, 0.6),
+    0 10px 26px rgba(0, 0, 0, 0.4);
+}
+
+/* ปุ่มนำทางท้ายหน้าโลกจริง */
+.whatif__reality-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.whatif__incentive {
+  margin: 0;
+  text-align: center;
+  font-size: 14px;
+  color: #cdbcf5;
+}
+.whatif__incentive strong { color: #ffd166; }

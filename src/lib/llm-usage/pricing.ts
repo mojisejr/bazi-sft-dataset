@@ -23,6 +23,11 @@ const MODEL_PRICES: Record<string, ModelPrice> = {
   "gemini-3-flash-lite": { inPerM: 0.25, outPerM: 1.5 },
   "gemini-embedding-001": { inPerM: 0.15, outPerM: 0 },
   "text-embedding-004": { inPerM: 0, outPerM: 0 },
+  // ── Imagen (คิดต่อรูป ไม่ใช่ต่อโทเคน) ──
+  // convention: log 1 รูป = outTokens 1 → ตั้ง outPerM = ราคาต่อรูป(USD) × 1M ให้สูตรเชิงเส้นเดิมคิดถูกพอดี
+  "imagen-4.0-generate-001": { inPerM: 0, outPerM: 40_000 }, // $0.04/รูป
+  "imagen-4.0-fast-generate-001": { inPerM: 0, outPerM: 20_000 }, // $0.02/รูป
+  "imagen-4.0-ultra-generate-001": { inPerM: 0, outPerM: 60_000 }, // $0.06/รูป
   // ── Anthropic Claude ──
   "claude-opus-4-8": { inPerM: 15, outPerM: 75 },
   "claude-opus-4-7": { inPerM: 15, outPerM: 75 },

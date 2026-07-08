@@ -1157,6 +1157,8 @@ export const reactionChamberUsage = pgTable("reaction_chamber_usage", llmUsageCo
 export const openWebuiUsage = pgTable("open_webui_usage", llmUsageColumns());
 // Behavior Insights ของ Manifestation (/api/manifest/insights) — วิเคราะห์ mood/บันทึก/สตรีค
 export const manifestInsightsUsage = pgTable("manifest_insights_usage", llmUsageColumns());
+// แคมเปญ What If (/api/what-if/generate) — นิทานโลกคู่ขนาน 3 บท
+export const whatIfUsage = pgTable("what_if_usage", llmUsageColumns());
 
 /** ตารางฟีเจอร์ LLM ทั้งหมด (นอกจาก louise_hay ที่มีโครงเฉพาะ) — dashboard วนอ่านทีละตัว */
 export const LLM_USAGE_TABLES = {
@@ -1173,6 +1175,7 @@ export const LLM_USAGE_TABLES = {
   reaction_chamber: reactionChamberUsage,
   open_webui: openWebuiUsage,
   manifest_insights: manifestInsightsUsage,
+  what_if: whatIfUsage,
 } as const;
 
 export type LlmUsageFeature = keyof typeof LLM_USAGE_TABLES;

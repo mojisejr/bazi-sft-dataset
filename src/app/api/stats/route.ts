@@ -26,6 +26,7 @@ const FEATURE_LABEL: Record<string, string> = {
   phone_reading: "เลขพยากรณ์",
   reaction_chamber: "ห้องปฏิกิริยา",
   open_webui: "แชท open-webui (gateway)",
+  what_if: "แคมเปญ What If",
   louise_hay: "โค้ชฮีลใจ (แชท)",
 };
 
@@ -42,6 +43,7 @@ const FEATURE_TABLE: Record<string, string> = {
   phone_reading: "phone_reading_usage",
   reaction_chamber: "reaction_chamber_usage",
   open_webui: "open_webui_usage",
+  what_if: "what_if_usage",
 };
 
 const TZ = "Asia/Bangkok";
