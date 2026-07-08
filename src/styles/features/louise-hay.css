@@ -305,6 +305,19 @@
   background: #f0eef1;
   border-color: #e2dde5;
 }
+/* คู่ปุ่มต่อวัน: 🔔 (LINE) + 📅 (.ics ลงปฏิทินในเครื่อง) */
+.lh-alert-pair {
+  display: inline-flex;
+  gap: 3px;
+  align-items: stretch;
+}
+.lh-alert-chip--cal {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  text-decoration: none;
+  line-height: 1;
+}
 
 /* แถบผูกดวง + แผงกรอกวันเกิด */
 .lh-birthbar {

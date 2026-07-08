@@ -879,8 +879,20 @@ async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInp
     })
     .join("\n");
   const basis = person ? "ผสม ฤกษ์วัน(建除) + ความเข้ากับดวงเกิดของผู้ใช้" : "ฤกษ์วัน(建除) ทั่วไป (ผู้ใช้ยังไม่ผูกดวง)";
+  const mm = String(m).padStart(2, "0");
+  // วันที่คัดมา → ปุ่ม 🔔 ตั้งเตือนผ่าน LINE (เหมือน month/week scan)
+  const alertDays: AlertDay[] = top.map(({ dd }): AlertDay => {
+    const dayIso = `${y}-${mm}-${String(dd).padStart(2, "0")}`;
+    return {
+      date: dayIso,
+      kind: "luck",
+      label: `วันดี ${thaiDateLabel(dayIso)}`,
+      message: `🍀 ${thaiDateLabel(dayIso)} เป็นวันฤกษ์ดีที่คุณเลือกไว้นะคะ — เหมาะกับสิ่งที่ตั้งใจจะทำ ขอให้ราบรื่นสมหวังค่ะ 💗`,
+    };
+  });
   return {
     route: "almanac",
+    alertDays,
     sourceLabel: person ? `เลือกวันดี (อิงดวง) · ${iso.slice(0, 7)}` : `เลือกวันดี · ${iso.slice(0, 7)}`,
     text:
       (dithi ? `${dithi}\n\n` : "") +
@@ -1010,6 +1022,18 @@ export async function resolveLouiseHayGrounding(
   if (!phone && wantsDailyLifestyle(question)) {
     try {
       const g = await groundDailyLifestyle(question, birth, parseRelativeDate(question, now), now);
+      return { ...g, classifyInTokens: 0, classifyOutTokens: 0 };
+    } catch {
+      /* engine พัง → ตกไปเส้นทางปกติด้านล่าง */
+    }
+  }
+
+  // เคส "ขอเลือกวัน/หาฤกษ์ดี" ชัดเจน → สแกนทั้งเดือน (almanac picker) ข้าม classify LLM.
+  // classifier มักเผลอจัดคำขอแบบนี้ไปเป็น card/timing ทำให้ตกไปจั่วไพ่แทนที่จะเลือกวันให้.
+  // จำกัดเฉพาะกริยา 'เลือก/หา' ที่ชี้ชัดว่าเป็นการคัดวัน (ไม่แตะ 'เดือนนี้ควรระวังวันไหน' = personal scan).
+  if (!phone && /เลือกวัน|หาวัน|หาฤกษ์|ฤกษ์ดี/.test(question)) {
+    try {
+      const g = await groundAlmanacMonthPick(question, birth, now);
       return { ...g, classifyInTokens: 0, classifyOutTokens: 0 };
     } catch {
       /* engine พัง → ตกไปเส้นทางปกติด้านล่าง */

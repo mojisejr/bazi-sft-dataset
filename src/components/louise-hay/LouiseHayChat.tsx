@@ -311,25 +311,35 @@ export function LouiseHayChat() {
               )}
               {m.alerts && m.alerts.length > 0 && (
                 <div className="lh-alerts">
-                  <span className="lh-alerts__hint">🔔 ตั้งเตือนผ่าน LINE เมื่อถึงวัน{canAlert ? "" : " (เปิดผ่านแอป LINE)"}</span>
+                  <span className="lh-alerts__hint">🔔 ตั้งเตือนผ่าน LINE{canAlert ? "" : " (เปิดผ่านแอป LINE)"} หรือ 📅 เพิ่มลงปฏิทินในเครื่อง</span>
                   <div className="lh-alerts__row">
                     {m.alerts.map((a) => {
                       const key = `${a.date}|${a.kind}`;
                       const st = alertStatus[key];
                       return (
-                        <button
-                          key={key}
-                          type="button"
-                          className={`lh-alert-chip lh-alert-chip--${a.kind}${st === "done" ? " is-done" : ""}`}
-                          disabled={st === "saving" || st === "done"}
-                          onClick={() => setAlert(a)}
-                        >
-                          {st === "done"
-                            ? `✓ ตั้งเตือนแล้ว · ${a.label}`
-                            : st === "saving"
-                              ? `กำลังตั้ง… ${a.label}`
-                              : `🔔 ${a.label}`}
-                        </button>
+                        <span key={key} className="lh-alert-pair">
+                          <button
+                            type="button"
+                            className={`lh-alert-chip lh-alert-chip--${a.kind}${st === "done" ? " is-done" : ""}`}
+                            disabled={st === "saving" || st === "done"}
+                            onClick={() => setAlert(a)}
+                          >
+                            {st === "done"
+                              ? `✓ ตั้งเตือนแล้ว · ${a.label}`
+                              : st === "saving"
+                                ? `กำลังตั้ง… ${a.label}`
+                                : `🔔 ${a.label}`}
+                          </button>
+                          <a
+                            className={`lh-alert-chip lh-alert-chip--cal lh-alert-chip--${a.kind}`}
+                            href={`/api/alerts/ics?${new URLSearchParams({ date: a.date, kind: a.kind, label: a.label, message: a.message })}`}
+                            download
+                            title="เพิ่มลงปฏิทิน (Google/Apple/Outlook)"
+                            aria-label={`เพิ่ม ${a.label} ลงปฏิทิน`}
+                          >
+                            📅
+                          </a>
+                        </span>
                       );
                     })}
                   </div>
