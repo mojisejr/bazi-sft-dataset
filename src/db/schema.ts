@@ -11,6 +11,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import {
@@ -917,6 +918,205 @@ export type InsertBaziAlert = typeof baziAlerts.$inferInsert;
 export type SelectBaziAlert = typeof baziAlerts.$inferSelect;
 
 /**
+ * Onboarding intent — ด้านที่ผู้ใช้เลือก "อยากเน้นดูแล" (จอ 02-intent-check).
+ * key ด้วย anonId (localStorage) เพราะยังไม่มีระบบ user/auth — merge เข้า user จริงภายหลังได้
+ * (เพิ่มคอลัมน์ owner ทีหลังแล้ว backfill จาก anonId). โฟกัสเก็บเป็น text[] ไม่ผูก pgEnum
+ * intent_domain เดิม เพื่อรองรับค่า "self_development" (พัฒนาตนเอง) ที่ enum เดิมไม่มี.
+ */
+export const baziUserIntent = pgTable(
+  "bazi_user_intent",
+  {
+    /** id นิรนามจาก localStorage ฝั่ง client — 1 แถวต่อ anonId (upsert) */
+    anonId: text("anon_id").primaryKey(),
+    /** ด้านที่เลือก: love / work / wealth / health / family / self_development */
+    focus: text("focus").array().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+);
+
+export type InsertBaziUserIntent = typeof baziUserIntent.$inferInsert;
+export type SelectBaziUserIntent = typeof baziUserIntent.$inferSelect;
+
+/* ── Coin/XP ledger + Manifestation (UI ใหม่ เฟส 2) ─────────────────────────
+ * key ทุกตารางด้วย anonId (เหมือน bazi_user_intent) — ยังไม่มีระบบ user/auth
+ * ledger = append-only, wallet = cache ยอดล่าสุด (Mission/Karma/Referral เฟส 3 ใช้ร่วม)
+ */
+
+/** ยอดเหรียญ+XP ปัจจุบันต่อ anonId (cache — ความจริงอยู่ใน ledger) */
+export const baziWallet = pgTable("bazi_wallet", {
+  anonId: text("anon_id").primaryKey(),
+  coins: integer("coins").notNull().default(0),
+  xp: integer("xp").notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziWallet = typeof baziWallet.$inferSelect;
+
+/** ธุรกรรมแต้ม append-only — coinDelta/xpDelta บวก=ได้ ลบ=ใช้ */
+export const baziLedgerTxn = pgTable(
+  "bazi_ledger_txn",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    anonId: text("anon_id").notNull(),
+    coinDelta: integer("coin_delta").notNull().default(0),
+    xpDelta: integer("xp_delta").notNull().default(0),
+    /** เหตุผล เช่น daily_checkin / mission:xxx / referral / spend:unlock */
+    reason: text("reason").notNull(),
+    /** อ้างอิงเสริม (mission id, goal id ฯลฯ) */
+    ref: text("ref"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("bazi_ledger_txn_user_idx").on(t.anonId, t.createdAt)],
+);
+
+export type SelectBaziLedgerTxn = typeof baziLedgerTxn.$inferSelect;
+
+/** เป้าหมาย Manifestation (3-5 ข้อ) + affirmation + รูป visualization */
+export const baziManifestGoal = pgTable(
+  "bazi_manifest_goal",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    anonId: text("anon_id").notNull(),
+    title: text("title").notNull(),
+    /** ประโยคสะกดจิต เช่น "ฉันมีเงิน 1,000,000" */
+    affirmation: text("affirmation"),
+    imageUrl: text("image_url"),
+    /** active / done / archived */
+    status: text("status").notNull().default("active"),
+    ordinal: integer("ordinal").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("bazi_manifest_goal_user_idx").on(t.anonId, t.status)],
+);
+
+export type SelectBaziManifestGoal = typeof baziManifestGoal.$inferSelect;
+
+/** งานย่อย/milestone ของเป้าหมาย — targetCount = จำนวนครั้งเป้า (เช่น 7) */
+export const baziManifestTask = pgTable(
+  "bazi_manifest_task",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    goalId: uuid("goal_id").notNull(),
+    anonId: text("anon_id").notNull(),
+    title: text("title").notNull(),
+    targetCount: integer("target_count").notNull().default(1),
+    /** true = ภารกิจรายวัน (โผล่ทุกวัน), false = milestone ทำครั้งเดียว */
+    isDaily: boolean("is_daily").notNull().default(true),
+    ordinal: integer("ordinal").notNull().default(0),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("bazi_manifest_task_goal_idx").on(t.goalId)],
+);
+
+export type SelectBaziManifestTask = typeof baziManifestTask.$inferSelect;
+
+/** ติ๊กงานต่อวัน (ย้อนหลังได้) — unique ต่อ (task, วัน) */
+export const baziManifestCheckin = pgTable(
+  "bazi_manifest_checkin",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    taskId: uuid("task_id").notNull(),
+    anonId: text("anon_id").notNull(),
+    /** "YYYY-MM-DD" โซน Asia/Bangkok (text เทียบวันตรง ๆ แบบ bazi_alerts) */
+    entryDate: text("entry_date").notNull(),
+    count: integer("count").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("bazi_manifest_checkin_task_date_uq").on(t.taskId, t.entryDate),
+    index("bazi_manifest_checkin_user_date_idx").on(t.anonId, t.entryDate),
+  ],
+);
+
+export type SelectBaziManifestCheckin = typeof baziManifestCheckin.$inferSelect;
+
+/** บันทึกประจำวัน (mood + โน้ต) — 1 แถวต่อ (anonId, วัน) ใช้คิด streak */
+export const baziManifestEntry = pgTable(
+  "bazi_manifest_entry",
+  {
+    anonId: text("anon_id").notNull(),
+    entryDate: text("entry_date").notNull(),
+    /** อารมณ์ 1-5 (emoji แถวในจอ journal) */
+    mood: integer("mood"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.anonId, t.entryDate] })],
+);
+
+export type SelectBaziManifestEntry = typeof baziManifestEntry.$inferSelect;
+
+/* ── Mission / Achievement / Referral (UI ใหม่ เฟส 3 — บน ledger เดิม) ──────
+ * นิยามภารกิจ/เหรียญตราอยู่ในโค้ด (src/lib/bazi/manifest/missions.ts, achievements.ts)
+ * DB เก็บเฉพาะความคืบหน้า/การปลดล็อก — จ่ายรางวัลผ่าน applyLedger ที่เดียว
+ */
+
+/** ความคืบหน้าภารกิจต่อรอบ — periodKey: วัน "YYYY-MM-DD" (daily) / "all" (special) */
+export const baziMissionProgress = pgTable(
+  "bazi_mission_progress",
+  {
+    anonId: text("anon_id").notNull(),
+    missionId: text("mission_id").notNull(),
+    periodKey: text("period_key").notNull(),
+    count: integer("count").notNull().default(0),
+    /** จ่ายรางวัลแล้วเมื่อไหร่ — null = ยังไม่ครบเป้า */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.anonId, t.missionId, t.periodKey] })],
+);
+
+export type SelectBaziMissionProgress = typeof baziMissionProgress.$inferSelect;
+
+/** เหรียญตราที่ปลดล็อกแล้ว */
+export const baziAchievement = pgTable(
+  "bazi_achievement",
+  {
+    anonId: text("anon_id").notNull(),
+    badgeId: text("badge_id").notNull(),
+    unlockedAt: timestamp("unlocked_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.anonId, t.badgeId] })],
+);
+
+export type SelectBaziAchievement = typeof baziAchievement.$inferSelect;
+
+/** โค้ดชวนเพื่อนของแต่ละคน (จอ companion-referral: MUMATE888) */
+export const baziReferralCode = pgTable(
+  "bazi_referral_code",
+  {
+    anonId: text("anon_id").primaryKey(),
+    code: text("code").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("bazi_referral_code_code_uq").on(t.code)],
+);
+
+export type SelectBaziReferralCode = typeof baziReferralCode.$inferSelect;
+
+/** การใช้โค้ด — 1 คนใช้ได้ครั้งเดียวตลอดชีพ (referee unique) */
+export const baziReferralRedemption = pgTable(
+  "bazi_referral_redemption",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: text("code").notNull(),
+    referrerAnonId: text("referrer_anon_id").notNull(),
+    refereeAnonId: text("referee_anon_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [
+    uniqueIndex("bazi_referral_redemption_referee_uq").on(t.refereeAnonId),
+    index("bazi_referral_redemption_referrer_idx").on(t.referrerAnonId),
+  ],
+);
+
+export type SelectBaziReferralRedemption = typeof baziReferralRedemption.$inferSelect;
+
+/**
  * บันทึกโทเคน/ต้นทุน LLM ต่อ 1 การเรียก สำหรับฟีเจอร์อื่น ๆ ที่ใช้ LLM (แยกตารางตามฟีเจอร์
  * ตามที่เลือกไว้) — แต่ทุกตารางใช้ "โครงคอลัมน์เดียวกัน" ผ่าน factory ด้านล่าง เพื่อให้แดชบอร์ด
  * /stats รวมข้อมูลข้ามตารางได้ง่าย. ต้นทุนไม่เก็บเป็นคอลัมน์ — คำนวณจาก provider+model+token
@@ -955,6 +1155,8 @@ export const phoneReadingUsage = pgTable("phone_reading_usage", llmUsageColumns(
 export const reactionChamberUsage = pgTable("reaction_chamber_usage", llmUsageColumns());
 // gateway OpenAI-compatible (/api/v1/chat/completions) สำหรับ open-webui — triage + ตอบหลัก
 export const openWebuiUsage = pgTable("open_webui_usage", llmUsageColumns());
+// Behavior Insights ของ Manifestation (/api/manifest/insights) — วิเคราะห์ mood/บันทึก/สตรีค
+export const manifestInsightsUsage = pgTable("manifest_insights_usage", llmUsageColumns());
 
 /** ตารางฟีเจอร์ LLM ทั้งหมด (นอกจาก louise_hay ที่มีโครงเฉพาะ) — dashboard วนอ่านทีละตัว */
 export const LLM_USAGE_TABLES = {
@@ -970,6 +1172,7 @@ export const LLM_USAGE_TABLES = {
   phone_reading: phoneReadingUsage,
   reaction_chamber: reactionChamberUsage,
   open_webui: openWebuiUsage,
+  manifest_insights: manifestInsightsUsage,
 } as const;
 
 export type LlmUsageFeature = keyof typeof LLM_USAGE_TABLES;

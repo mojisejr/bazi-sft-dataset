@@ -686,6 +686,108 @@
   text-align: center;
 }
 
+/* ── หน้า /pair-match/report (รายงานจับคู่ของ wizard UI ใหม่) ──
+   ใช้สไตล์ pair-print__* ร่วมกัน แต่หน้านี้ต้องเห็นบนจอด้วย (ไม่ใช่ print-only)
+   โทเคนสีอิง DESIGN.md (root) — แก้คู่กันเสมอ */
+
+.pair-report-page {
+  --primary: #1b9aaf;
+  --accent-soft: #fef3c7;
+  --background: #faf7f2;
+  --surface: #ffffff;
+  --ink: #1f1a17;
+  --muted: #8a8377;
+  --border: #e5ded2;
+  --love: #e0245e;
+  --warning: #8a6d3b;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+  background: var(--background);
+  color: var(--ink);
+  font-family: "Noto Sans Thai", "IBM Plex Sans Thai", system-ui, sans-serif;
+  min-height: 100vh;
+}
+
+.pair-report-page .pair-print-report {
+  display: block;
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.pair-report-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.pair-report-toolbar button {
+  padding: 8px 18px;
+  border-radius: 999px;
+  border: none;
+  background: var(--primary);
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.pair-report__score {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 8px 0 4px;
+}
+
+.pair-report__grade {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.pair-report__percent {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.pair-report__hearts {
+  color: var(--love);
+  letter-spacing: 2px;
+}
+
+.pair-report__hearts-empty {
+  color: var(--border);
+}
+
+.pair-report__note {
+  font-size: 0.85rem;
+  color: var(--warning);
+  background: var(--accent-soft);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+
+.pair-report__error {
+  padding: 40px 16px;
+}
+
+@media print {
+  .pair-report-toolbar {
+    display: none !important;
+  }
+  .pair-report-page {
+    padding: 0;
+    max-width: none;
+    background: #ffffff;
+  }
+  .pair-report-page .pair-print-report {
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+}
+
 /* ── หน้าเปรียบเทียบการงาน (เรา vs ผู้ร่วมงาน หลายคน) ── */
 
 .pair-forms--candidates {

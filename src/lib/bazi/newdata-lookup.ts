@@ -41,7 +41,7 @@ import {
 } from "@/lib/bazi/symbolic-engine.constants";
 
 /** ปฏิกิริยาธาตุของ self เทียบ other (มุมดิถี): same/output(ถ่ายเท)/resource(ก่อเกิด)/wealth(ลาภ)/power(พิฆาต) */
-function elementRelationKey(self: string, other: string): string {
+export function elementRelationKey(self: string, other: string): string {
   if (self === other) return "same";
   if (GENERATES[self as keyof typeof GENERATES] === other) return "output";
   if (GENERATES[other as keyof typeof GENERATES] === self) return "resource";
