@@ -133,6 +133,36 @@ function renderRich(text: string) {
   });
 }
 
+const ALERT_EMOJI: Record<AlertDay["kind"], string> = { luck: "🍀", caution: "🌙", custom: "🔔" };
+
+/** YYYY-MM-DD → YYYYMMDD และวันถัดไป (all-day event: end แบบ exclusive) */
+function icsDates(date: string): { start: string; end: string } {
+  const [y, m, d] = date.split("-").map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return {
+    start: date.replace(/-/g, ""),
+    end: `${next.getUTCFullYear()}${pad(next.getUTCMonth() + 1)}${pad(next.getUTCDate())}`,
+  };
+}
+
+/** ลิงก์เปิดหน้า "เพิ่ม event" ใน Google Calendar โดยตรง (ไม่โหลดไฟล์) */
+function googleCalUrl(a: AlertDay): string {
+  const { start, end } = icsDates(a.date);
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: `${ALERT_EMOJI[a.kind]} ${a.label}`,
+    dates: `${start}/${end}`,
+    details: a.message,
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+/** ลิงก์ .ics ของเรา (ปฏิทินในเครื่อง: iOS/Android เปิดแอปให้เพิ่ม, desktop เปิดไฟล์เข้า Outlook/Apple) */
+function icsUrl(a: AlertDay): string {
+  return `/api/alerts/ics?${new URLSearchParams({ date: a.date, kind: a.kind, label: a.label, message: a.message }).toString()}`;
+}
+
 const ANON_KEY = "lh_anon_id";
 
 /** id นิรนามถาวรต่อเบราว์เซอร์ (ไว้นับสถิติ "คน") — สร้างครั้งแรกแล้วเก็บใน localStorage */
@@ -171,6 +201,8 @@ export function LouiseHayChat() {
   // สถานะปุ่มตั้งเตือนต่อวัน: key = date|kind → saving/done/error
   const [alertStatus, setAlertStatus] = useState<Record<string, "saving" | "done" | "error">>({});
   const [canAlert, setCanAlert] = useState(false);
+  // key ของวันที่กำลังเปิดเมนู "เพิ่มลงปฏิทิน" (Google / ในเครื่อง) — null = ปิด
+  const [calMenu, setCalMenu] = useState<string | null>(null);
   const anonIdRef = useRef<string>("anon");
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -330,15 +362,38 @@ export function LouiseHayChat() {
                                 ? `กำลังตั้ง… ${a.label}`
                                 : `🔔 ${a.label}`}
                           </button>
-                          <a
-                            className={`lh-alert-chip lh-alert-chip--cal lh-alert-chip--${a.kind}`}
-                            href={`/api/alerts/ics?${new URLSearchParams({ date: a.date, kind: a.kind, label: a.label, message: a.message })}`}
-                            download
-                            title="เพิ่มลงปฏิทิน (Google/Apple/Outlook)"
+                          <button
+                            type="button"
+                            className={`lh-alert-chip lh-alert-chip--cal lh-alert-chip--${a.kind}${calMenu === key ? " is-open" : ""}`}
+                            title="เพิ่มลงปฏิทิน"
                             aria-label={`เพิ่ม ${a.label} ลงปฏิทิน`}
+                            aria-expanded={calMenu === key}
+                            onClick={() => setCalMenu((k) => (k === key ? null : key))}
                           >
                             📅
-                          </a>
+                          </button>
+                          {calMenu === key && (
+                            <div className="lh-cal-menu" role="menu">
+                              <a
+                                className="lh-cal-menu__item"
+                                href={googleCalUrl(a)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                role="menuitem"
+                                onClick={() => setCalMenu(null)}
+                              >
+                                🟢 Google ปฏิทิน
+                              </a>
+                              <a
+                                className="lh-cal-menu__item"
+                                href={icsUrl(a)}
+                                role="menuitem"
+                                onClick={() => setCalMenu(null)}
+                              >
+                                📆 ปฏิทินในเครื่อง
+                              </a>
+                            </div>
+                          )}
                         </span>
                       );
                     })}

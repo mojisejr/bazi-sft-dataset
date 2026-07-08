@@ -305,8 +305,9 @@
   background: #f0eef1;
   border-color: #e2dde5;
 }
-/* คู่ปุ่มต่อวัน: 🔔 (LINE) + 📅 (.ics ลงปฏิทินในเครื่อง) */
+/* คู่ปุ่มต่อวัน: 🔔 (LINE) + 📅 (เมนูเพิ่มลงปฏิทิน) */
 .lh-alert-pair {
+  position: relative;
   display: inline-flex;
   gap: 3px;
   align-items: stretch;
@@ -317,6 +318,35 @@
   padding: 4px 8px;
   text-decoration: none;
   line-height: 1;
+}
+.lh-alert-chip--cal.is-open {
+  filter: brightness(0.95);
+}
+/* เมนู "เพิ่มลงปฏิทิน" (Google / ในเครื่อง) เด้งใต้ปุ่ม 📅 */
+.lh-cal-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+  padding: 4px;
+  background: #fff;
+  border: 1px solid #eadfe6;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+.lh-cal-menu__item {
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--lh-ink, #3a2f3a);
+  text-decoration: none;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.lh-cal-menu__item:hover {
+  background: #faf2f7;
 }
 
 /* แถบผูกดวง + แผงกรอกวันเกิด */
