@@ -456,6 +456,7 @@ export function ReadingHistoryWorkspace({
 
   const inProgressCount = records.filter((record) => record.status === "in_progress").length;
   const doneCount = records.filter((record) => record.status === "done").length;
+  const newdataDoneCount = newdataReadings.filter((item) => item.status === "done").length;
 
   return (
     <section className="workspace-stack">
@@ -621,6 +622,18 @@ export function ReadingHistoryWorkspace({
             titleLevel="h3"
             note="ดวงที่กด ‘บันทึกดวงนี้’ ในหน้าอ่าน 15 บท — เปิดกลับมาแก้คำทำนายต่อ หรือปริ้น PDF ซ้ำได้"
           />
+          {newdataDoneCount > 0 ? (
+            <div className="reading-history__hero-meta">
+              <Badge>เสร็จแล้ว {newdataDoneCount}</Badge>
+              <a
+                href="/api/reading/newdata-reading/export-done"
+                download="done-newdata-readings.json"
+                className="reading-history__new reading-history__export"
+              >
+                ⭳ ดาวน์โหลด dataset NewData (เสร็จสิ้น {newdataDoneCount})
+              </a>
+            </div>
+          ) : null}
           <div className="reading-history__list">
             {newdataReadings.map((item) => {
               const title = item.clientName?.trim() || item.id.slice(0, 8);
