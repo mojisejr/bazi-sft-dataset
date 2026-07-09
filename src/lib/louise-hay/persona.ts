@@ -120,6 +120,17 @@ function formatConversation(messages: readonly LouiseHayChatMessage[]): string {
 }
 
 /** สร้าง systemInstruction + userPrompt สำหรับเรียก Gemini (grounded ด้วยคำสอน + ดวง ถ้ามี) */
+/** วันนี้แบบไทยเต็ม (Asia/Bangkok, พ.ศ.) เช่น "วันพฤหัสบดีที่ 9 กรกฎาคม พ.ศ. 2569" */
+function thaiFullDate(now: Date): string {
+  return new Intl.DateTimeFormat("th-TH-u-ca-buddhist", {
+    timeZone: "Asia/Bangkok",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+}
+
 export function buildLouiseHayPrompt(input: {
   messages: readonly LouiseHayChatMessage[];
   passages: readonly LouiseHayPassage[];
@@ -128,11 +139,14 @@ export function buildLouiseHayPrompt(input: {
   groundingContext?: string | null;
   /** ผู้ใช้อยู่ในโทนซึมเศร้า/ทุกข์ใจ → แนบคำสั่งห่วงใย + แนะนำสายด่วน 1323 อย่างนุ่มนวล */
   emotionalDistress?: boolean;
+  /** เวลาปัจจุบัน — ใช้บอกวันนี้ให้โมเดล กันการเดาวันที่ผิด (ค่าเริ่มต้น = ตอนนี้) */
+  now?: Date;
 }): { systemInstruction: string; userPrompt: string } {
   const recent = input.messages.slice(-8);
   return {
     systemInstruction: LOUISE_HAY_PERSONA,
     userPrompt: [
+      `(ข้อเท็จจริงวันนี้ — ใช้อ้างอิงเสมอ ห้ามเดาวันที่เอง): วันนี้คือ ${thaiFullDate(input.now ?? new Date())}`,
       input.emotionalDistress ? EMOTIONAL_DISTRESS_INSTRUCTION : null,
       "คำสอนอ้างอิง (แก่นคิดจากหนังสือ Louise Hay — ใช้เป็นแรงบันดาลใจ เรียบเรียงใหม่ด้วยภาษาของคุณ):",
       formatPassages(input.passages),

@@ -235,6 +235,7 @@ export async function POST(req: Request) {
     latestUserMessage: latestUser.content,
     groundingContext,
     emotionalDistress: detectEmotionalDistress(latestUser.content),
+    now: new Date(),
   });
 
   const usedOwnKey = isOwnKey;
