@@ -92,11 +92,19 @@ export type LouiseHayGrounding = {
 };
 
 const TH_MONTH_ABBR = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+const TH_WEEKDAY = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 
-/** "2026-07-13" → "13 ก.ค." */
+/** วันในสัปดาห์ไทยของ ISO (แบบวันล้วน ไม่พึ่ง timezone) เช่น "2026-07-10" → "ศุกร์" */
+function thaiWeekday(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const dow = new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1)).getUTCDay();
+  return TH_WEEKDAY[dow] ?? "";
+}
+
+/** "2026-07-10" → "วันศุกร์ที่ 10 ก.ค." — ใส่วันในสัปดาห์เสมอ กันโมเดลเดาวันผิด */
 function thaiDateLabel(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);
-  return `${d} ${TH_MONTH_ABBR[(m ?? 1) - 1] ?? ""}`;
+  return `วัน${thaiWeekday(iso)}ที่ ${d} ${TH_MONTH_ABBR[(m ?? 1) - 1] ?? ""}`;
 }
 
 /** เนื้อ grounding ก่อนแนบโทเคน classify (fetcher แต่ละตัวคืนแบบนี้; resolve จะเติม classify tokens ทีเดียว) */
@@ -492,7 +500,7 @@ async function groundDayFull(dateIso: string | null, birth: LouiseHayBirthInput,
     route: "day",
     sourceLabel: `ดวงกับวัน · ${iso} + วัยจร + ดิถี + ฤกษ์ยาม`,
     alertDays: [{ date: iso, kind, label: `เตือนวันที่ ${thaiDateLabel(iso)}`, message: `📅 ${thaiDateLabel(iso)} — ${mvd.headline} วันนี้ดูแลใจตัวเองดี ๆ นะคะ 💗` }],
-    text: `${ageLineOf(birth, now)}คำถามเจาะจงวันที่ ${iso}:\n\n${parts.join("\n\n———\n\n")}`,
+    text: `${ageLineOf(birth, now)}คำถามเจาะจงวัน${thaiWeekday(iso)}ที่ ${iso}:\n\n${parts.join("\n\n———\n\n")}`,
     note: "ตอบเจาะจง 'วันนี้/วันนั้น' เป็นแกน (ManVsDay + ฤกษ์ยาม) โยงวัยจร/ดิถีเป็นบริบทสั้น ๆ กระชับ",
   };
 }
@@ -710,7 +718,7 @@ async function groundAlmanac(dateIso: string | null, now: Date, birth: LouiseHay
   const hours = a.luckyHours.slice(0, 6).map((h) => `${h.range} (${h.god}: ${h.meaning})`).join(", ");
   const colors = a.colors.map((c) => `${c.element}=${c.colors}`).join(", ");
   const almText = [
-    `วันที่ ${iso} (เสาวัน ${a.dayPillar.ganzhi})`,
+    `วัน${a.weekday}ที่ ${iso} (เสาวัน ${a.dayPillar.ganzhi})`,
     a.officer ? `ฤกษ์ 12 ตำแหน่ง: ${a.officer}${a.officerDesc ? ` — ${a.officerDesc}` : ""}` : "",
     a.luckyDirection ? `ทิศมงคล: ${a.luckyDirection}` : "",
     colors ? `สีมงคล: ${colors}` : "",
@@ -805,7 +813,7 @@ async function groundDailyLifestyle(
   }
 
   const lifestyle = [
-    `วันที่ ${iso} — เสาวัน ${a.dayPillar.ganzhi} ธาตุประจำวันคือ "ธาตุ${el ?? "-"}"`,
+    `วัน${a.weekday}ที่ ${iso} — เสาวัน ${a.dayPillar.ganzhi} ธาตุประจำวันคือ "ธาตุ${el ?? "-"}"`,
     food ? `อาหารเสริมพลังวันนี้ (ธาตุ${el}): เน้น${food.taste} เช่น ${food.foods}` : "",
     a.luckyDirection
       ? `ทิศมงคลวันนี้: ${a.luckyDirection} — เริ่มวันดี ๆ ด้วยการก้าวเท้าขวาออกจากบ้านก่อน แล้วมุ่งไปทางทิศนี้`
@@ -875,7 +883,7 @@ async function groundAlmanacMonthPick(question: string, birth: LouiseHayBirthInp
       const a = buildAlmanacDay(y, m, dd);
       const hours = a.luckyHours.slice(0, 3).map((h) => `${h.range}(${h.god})`).join(", ");
       const fitStr = fit != null ? ` · เข้ากับดวงคุณ ${fit}%` : "";
-      return `- วันที่ ${dd} (เสาวัน ${a.dayPillar.ganzhi} · ฤกษ์ ${j?.name ?? "-"} = ${j?.meaning ?? ""})${fitStr} → เหมาะ/ห้าม: ${j?.activity || "-"}${hours ? ` · ยามมงคล ${hours}` : ""}`;
+      return `- วัน${a.weekday}ที่ ${dd} (เสาวัน ${a.dayPillar.ganzhi} · ฤกษ์ ${j?.name ?? "-"} = ${j?.meaning ?? ""})${fitStr} → เหมาะ/ห้าม: ${j?.activity || "-"}${hours ? ` · ยามมงคล ${hours}` : ""}`;
     })
     .join("\n");
   const basis = person ? "ผสม ฤกษ์วัน(建除) + ความเข้ากับดวงเกิดของผู้ใช้" : "ฤกษ์วัน(建除) ทั่วไป (ผู้ใช้ยังไม่ผูกดวง)";
