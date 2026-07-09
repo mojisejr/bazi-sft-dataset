@@ -562,6 +562,58 @@ const HEALTH_ZOAH_POS: Array<[string, string]> = [
   ["ยาม", "เสายาม"],
 ];
 
+/**
+ * บท13 · สุขภาพผั่ว — กะจื่อ "ผั่ว" (ก้านถ่ายเท/พิฆาตกิ่งใต้ตน) จัดกลุ่มตามลักษณะโทษ
+ * ก้าน+กิ่งของแต่ละกะจื่อคือดิถีถ่ายเทในตัว (เช่น 甲午 → ดิถี 甲→午)
+ */
+const HEALTH_PHUA: Array<{ ganzhi: string; stem: string; branch: string }> = [
+  // ถ่ายเทจนหมดตัว (แตกหัก/ความเสียหาย/รั่วไหลจากภายใน)
+  { ganzhi: "甲午", stem: "甲", branch: "午" },
+  { ganzhi: "乙巳", stem: "乙", branch: "巳" },
+  { ganzhi: "丙辰", stem: "丙", branch: "辰" },
+  { ganzhi: "庚子", stem: "庚", branch: "子" },
+  // ส่งเสริมแต่แฝงพิษ
+  { ganzhi: "丁卯", stem: "丁", branch: "卯" },
+  { ganzhi: "庚戌", stem: "庚", branch: "戌" },
+  { ganzhi: "壬申", stem: "壬", branch: "申" },
+  // พิฆาตกันเองภายใน
+  { ganzhi: "戊寅", stem: "戊", branch: "寅" },
+  { ganzhi: "己亥", stem: "己", branch: "亥" },
+  { ganzhi: "癸未", stem: "癸", branch: "未" },
+  // คู่ธาตุรั่วไหล
+  { ganzhi: "己丑", stem: "己", branch: "丑" },
+  { ganzhi: "辛酉", stem: "辛", branch: "酉" },
+];
+
+/** template ว่าง health_phua — คีย์ "{กะจื่อ}@{เสา}" และ "{ดิถี}→{ปลายทาง}@{เสา}" */
+function healthPhuaTemplate(): SeedRow[] {
+  const rows: SeedRow[] = [];
+  let ord = 0;
+  for (const { ganzhi } of HEALTH_PHUA) {
+    for (const [pos, posLabel] of HEALTH_ZOAH_POS) {
+      rows.push({
+        groupKey: "health_phua",
+        itemKey: `${ganzhi}@${pos}`.normalize("NFC"),
+        ordinal: ++ord,
+        value: { text: "", label: `${ganzhi} ที่${posLabel}` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+  for (const { stem, branch } of HEALTH_PHUA) {
+    for (const [pos, posLabel] of HEALTH_ZOAH_POS) {
+      rows.push({
+        groupKey: "health_phua",
+        itemKey: `${stem}→${branch}@${pos}`.normalize("NFC"),
+        ordinal: ++ord,
+        value: { text: "", label: `ดิถี ${stem}→${branch} ที่${posLabel}` },
+        sourceFile: "(กรอกในแอดมิน)",
+      });
+    }
+  }
+  return rows;
+}
+
 /** template ว่าง health_zoah — คีย์ "{กะจื่อ}@{เสา}" และ "{ดิถี}→{ปลายทาง}@{เสา}" */
 function healthZoahTemplate(): SeedRow[] {
   const rows: SeedRow[] = [];
@@ -921,6 +973,8 @@ function collectAll(): SeedRow[] {
   push("health_by_element", () => healthElementTemplate());
   // บท 13 · สุขภาพเจ๊าะ ราย กะจื่อ/ดิถี × ตำแหน่งเสา (template ว่าง — ซินแสกรอกในแอดมิน)
   push("health_zoah", () => healthZoahTemplate());
+  // บท 13 · สุขภาพผั่ว ราย กะจื่อ/ดิถี × ตำแหน่งเสา (template ว่าง — ซินแสกรอกในแอดมิน)
+  push("health_phua", () => healthPhuaTemplate());
   // บท 14 · ของมงคลตามธาตุ — auspicious_by_element (หมวด × ธาตุ); สัตว์มงคล/ทิศ เป็น template
   const AUSPICIOUS: Array<[string, string]> = [
     ["บท14 สี 5 ธาตุ.txt", "สี"],

@@ -242,6 +242,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "samHeng" },
       { kind: "branchPairs", group: "harm_hai" },
       { kind: "healthZoah", group: "health_zoah" },
+      { kind: "healthZoah", group: "health_phua" },
     ],
     [{ kind: "healthElement", group: "health_by_element" }],
     [{ kind: "elementAdvice", table: "health" }],
