@@ -19,6 +19,7 @@ export type NewdataReadingHistoryItem = {
   birthDate: string;
   birthTime: string;
   gender: string;
+  status: string;
   updatedAt: string;
 };
 
@@ -94,6 +95,7 @@ export function ReadingHistoryWorkspace({
   const [deletingRevisionId, setDeletingRevisionId] = useState<string | null>(null);
   const [restoringRevisionId, setRestoringRevisionId] = useState<string | null>(null);
   const [deletingNewdataId, setDeletingNewdataId] = useState<string | null>(null);
+  const [togglingNewdataId, setTogglingNewdataId] = useState<string | null>(null);
   const [deletingNewdataRevisionId, setDeletingNewdataRevisionId] = useState<string | null>(null);
   const [restoringNewdataRevisionId, setRestoringNewdataRevisionId] = useState<string | null>(null);
 
@@ -203,6 +205,25 @@ export function ReadingHistoryWorkspace({
       router.push(`/reading?session=${sessionId}`);
     } catch {
       setRestoringRevisionId(null);
+    }
+  }
+
+  // สลับสถานะ "เสร็จสิ้น" ↔ "กำลังแก้" ของดวง NewData (อ่าน 15 บท)
+  async function handleToggleNewdataStatus(id: string, currentStatus: string) {
+    const nextStatus = currentStatus === "done" ? "in_progress" : "done";
+    setTogglingNewdataId(id);
+    try {
+      const response = await fetch(`/api/reading/newdata-reading/sessions/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      if (!response.ok) {
+        throw new Error("อัปเดตสถานะไม่สำเร็จ");
+      }
+      router.refresh();
+    } catch {
+      setTogglingNewdataId(null);
     }
   }
 
@@ -610,6 +631,15 @@ export function ReadingHistoryWorkspace({
                 <article key={item.id} className="reading-history__row">
                   <div className="reading-history__main">
                     <div className="reading-history__badges">
+                      <Badge
+                        className={
+                          item.status === "done"
+                            ? "reading-history__status reading-history__status--done"
+                            : "reading-history__status reading-history__status--progress"
+                        }
+                      >
+                        {item.status === "done" ? "เสร็จแล้ว" : "กำลังแก้"}
+                      </Badge>
                       <Badge tone="ai">อ่าน 15 บท</Badge>
                       {GENDER_LABEL[item.gender] ? <Badge>{GENDER_LABEL[item.gender]}</Badge> : null}
                     </div>
@@ -630,6 +660,22 @@ export function ReadingHistoryWorkspace({
                       >
                         เปิด/แก้ต่อ
                       </ActionLink>
+                      <button
+                        type="button"
+                        className={
+                          item.status === "done"
+                            ? "reading-history__action reading-history__toggle reading-history__toggle--reopen"
+                            : "reading-history__action reading-history__toggle reading-history__toggle--done"
+                        }
+                        disabled={togglingNewdataId === item.id}
+                        onClick={() => void handleToggleNewdataStatus(item.id, item.status)}
+                      >
+                        {togglingNewdataId === item.id
+                          ? "กำลังบันทึก..."
+                          : item.status === "done"
+                            ? "กลับไปแก้ต่อ"
+                            : "✓ เสร็จสิ้น"}
+                      </button>
                       <button
                         type="button"
                         className="reading-history__delete"

@@ -32,12 +32,15 @@ export type SaveNewdataReadingInput = {
   createRevision?: boolean;
 };
 
+export type NewdataReadingStatus = "in_progress" | "done";
+
 export type NewdataReadingRepository = {
   list: () => Promise<
-    Array<Pick<NewdataReadingRow, "id" | "clientName" | "birthDate" | "birthTime" | "gender" | "deviceLabel" | "updatedAt">>
+    Array<Pick<NewdataReadingRow, "id" | "clientName" | "birthDate" | "birthTime" | "gender" | "deviceLabel" | "status" | "updatedAt">>
   >;
   get: (id: string) => Promise<NewdataReadingRow | null>;
   save: (input: SaveNewdataReadingInput) => Promise<NewdataReadingRow>;
+  setStatus: (id: string, status: NewdataReadingStatus) => Promise<void>;
   remove: (id: string) => Promise<void>;
 };
 
@@ -54,30 +57,34 @@ const BASE_COLS = {
   updatedAt: baziNewdataReading.updatedAt,
 } as const;
 
-// ── probe ว่ามีคอลัมน์ device_label ไหม (cache: true = จำถาวร, false = re-probe ทุก 15 วิ) ──
-let deviceColOk: boolean | null = null;
-let lastProbe = 0;
-async function hasDeviceColumn(db: DbClient): Promise<boolean> {
-  if (deviceColOk === true) return true;
+// ── probe ว่ามีคอลัมน์ (cache: true = จำถาวร, false = re-probe ทุก 15 วิ) ──
+// ใช้ร่วมกันหลายคอลัมน์ (device_label, status) ที่เพิ่มทีหลังผ่าน expand/contract
+const colOk = new Map<string, boolean>();
+const colLastProbe = new Map<string, number>();
+async function hasColumn(db: DbClient, column: string): Promise<boolean> {
+  if (colOk.get(column) === true) return true;
   const now = Date.now();
-  if (deviceColOk === false && now - lastProbe < 15_000) return false;
-  lastProbe = now;
+  if (colOk.get(column) === false && now - (colLastProbe.get(column) ?? 0) < 15_000) return false;
+  colLastProbe.set(column, now);
   try {
     const res = await db.execute(
-      sql`select 1 as ok from information_schema.columns where table_name = 'bazi_newdata_reading' and column_name = 'device_label' limit 1`,
+      sql`select 1 as ok from information_schema.columns where table_name = 'bazi_newdata_reading' and column_name = ${column} limit 1`,
     );
     const rows = Array.isArray(res) ? res : ((res as { rows?: unknown[] }).rows ?? []);
-    deviceColOk = rows.length > 0;
+    colOk.set(column, rows.length > 0);
   } catch {
-    deviceColOk = false;
+    colOk.set(column, false);
   }
-  return deviceColOk === true;
+  return colOk.get(column) === true;
 }
+
+const hasDeviceColumn = (db: DbClient) => hasColumn(db, "device_label");
+const hasStatusColumn = (db: DbClient) => hasColumn(db, "status");
 
 export function createDbNewdataReadingRepository(db = createDbClient()): NewdataReadingRepository {
   return {
     async list() {
-      const hasCol = await hasDeviceColumn(db);
+      const [hasDevice, hasStatus] = await Promise.all([hasDeviceColumn(db), hasStatusColumn(db)]);
       const listBase = {
         id: baziNewdataReading.id,
         clientName: baziNewdataReading.clientName,
@@ -86,29 +93,33 @@ export function createDbNewdataReadingRepository(db = createDbClient()): Newdata
         gender: baziNewdataReading.gender,
         updatedAt: baziNewdataReading.updatedAt,
       };
-      if (hasCol) {
-        return db
-          .select({ ...listBase, deviceLabel: baziNewdataReading.deviceLabel })
-          .from(baziNewdataReading)
-          .orderBy(desc(baziNewdataReading.updatedAt))
-          .limit(200);
-      }
+      const select = {
+        ...listBase,
+        ...(hasDevice ? { deviceLabel: baziNewdataReading.deviceLabel } : {}),
+        ...(hasStatus ? { status: baziNewdataReading.status } : {}),
+      };
       const rows = await db
-        .select(listBase)
+        .select(select)
         .from(baziNewdataReading)
         .orderBy(desc(baziNewdataReading.updatedAt))
         .limit(200);
-      return rows.map((r) => ({ ...r, deviceLabel: null as string | null }));
+      return rows.map((r) => ({
+        deviceLabel: null as string | null,
+        status: "in_progress",
+        ...r,
+      }));
     },
 
     async get(id) {
-      const hasCol = await hasDeviceColumn(db);
-      if (hasCol) {
-        const rows = await db.select().from(baziNewdataReading).where(eq(baziNewdataReading.id, id)).limit(1);
-        return rows[0] ?? null;
-      }
-      const rows = await db.select(BASE_COLS).from(baziNewdataReading).where(eq(baziNewdataReading.id, id)).limit(1);
-      return rows[0] ? { ...rows[0], deviceLabel: null } : null;
+      const [hasDevice, hasStatus] = await Promise.all([hasDeviceColumn(db), hasStatusColumn(db)]);
+      const select = {
+        ...BASE_COLS,
+        ...(hasDevice ? { deviceLabel: baziNewdataReading.deviceLabel } : {}),
+        ...(hasStatus ? { status: baziNewdataReading.status } : {}),
+      };
+      const rows = await db.select(select).from(baziNewdataReading).where(eq(baziNewdataReading.id, id)).limit(1);
+      if (!rows[0]) return null;
+      return { deviceLabel: null, status: "in_progress", ...rows[0] } as NewdataReadingRow;
     },
 
     async save(input) {
@@ -183,7 +194,20 @@ export function createDbNewdataReadingRepository(db = createDbClient()): Newdata
         /* บันทึกประวัติไม่สำเร็จ — ข้ามได้ */
       }
 
-      return { ...saved, deviceLabel: (saved as { deviceLabel?: string | null }).deviceLabel ?? null };
+      return {
+        ...saved,
+        status: (saved as { status?: string }).status ?? "in_progress",
+        deviceLabel: (saved as { deviceLabel?: string | null }).deviceLabel ?? null,
+      } as NewdataReadingRow;
+    },
+
+    async setStatus(id, status) {
+      // ยังไม่ได้รัน migration status → ข้ามเงียบ ๆ (ไม่พังทั้งหน้า) พอรันแล้วปุ่มจะทำงานเอง
+      if (!(await hasStatusColumn(db))) return;
+      await db
+        .update(baziNewdataReading)
+        .set({ status, updatedAt: new Date() })
+        .where(eq(baziNewdataReading.id, id));
     },
 
     async remove(id) {

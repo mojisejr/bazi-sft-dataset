@@ -648,6 +648,8 @@ export const baziNewdataReading = pgTable(
     edits: jsonb("edits").$type<NewdataReadingEdits>().notNull().default({}),
     /** ป้ายเครื่องที่สร้าง/แก้ดวงนี้ (เช่น "เครื่องซินแส") — แยกงานซินแสจากเครื่องอื่น */
     deviceLabel: text("device_label"),
+    /** in_progress → กำลังแก้, done → เสร็จสิ้น (คำอ่านพร้อมเก็บ) */
+    status: text("status").notNull().default("in_progress"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .defaultNow()

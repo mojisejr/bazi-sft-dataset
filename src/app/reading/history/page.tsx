@@ -55,6 +55,7 @@ export default async function ReadingHistoryPage() {
       birthDate: row.birthDate,
       birthTime: row.birthTime,
       gender: row.gender,
+      status: row.status,
       updatedAt: row.updatedAt.toISOString(),
     }));
   } catch {
