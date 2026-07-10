@@ -111,6 +111,7 @@
     "lunar-javascript": "^1.7.7",
     "motion": "^12.38.0",
     "next": "^16.2.7",
+    "postgres": "^3.4.9",
     "qrcode": "^1.5.4",
     "react": "19.2.5",
     "react-dom": "19.2.5",
