@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 const envSchema = z.object({
+  APP_DATABASE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().url().optional(),
   GEMINI_API_KEY: z.string().min(1).optional(),
   LINE_CHANNEL_ACCESS_TOKEN: z.string().min(1).optional(),
@@ -23,6 +24,7 @@ export type AppEnv = z.infer<typeof envSchema>;
 
 export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
   return envSchema.parse({
+    APP_DATABASE_URL: raw.APP_DATABASE_URL,
     DATABASE_URL: raw.DATABASE_URL,
     GEMINI_API_KEY: raw.GEMINI_API_KEY,
     LINE_CHANNEL_ACCESS_TOKEN: raw.LINE_CHANNEL_ACCESS_TOKEN,
@@ -44,12 +46,13 @@ export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
 
 export function getDatabaseUrl(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
   const env = readEnv(raw);
+  const databaseUrl = env.APP_DATABASE_URL ?? env.DATABASE_URL;
 
-  if (!env.DATABASE_URL) {
-    throw new Error("DATABASE_URL is required for database operations.");
+  if (!databaseUrl) {
+    throw new Error("APP_DATABASE_URL or DATABASE_URL is required for database operations.");
   }
 
-  return env.DATABASE_URL;
+  return databaseUrl;
 }
 
 export function getGeminiApiKey(raw: Partial<NodeJS.ProcessEnv> = process.env): string {

@@ -51,8 +51,8 @@ const DAY_MS = 86_400_000;
 const num = (v: unknown) => Number(v ?? 0);
 
 type Row = Record<string, unknown>;
-async function rows(sql: ReturnType<typeof createDbSqlClient>, text: string, params: unknown[]): Promise<Row[]> {
-  const r = await sql.query(text, params);
+async function rows(sql: ReturnType<typeof createDbSqlClient>, text: string, params: string[]): Promise<Row[]> {
+  const r = await sql.unsafe(text, params);
   return (Array.isArray(r) ? r : ((r as { rows?: Row[] }).rows ?? [])) as Row[];
 }
 
