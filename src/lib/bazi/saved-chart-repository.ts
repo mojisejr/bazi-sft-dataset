@@ -26,6 +26,8 @@ export type SaveChartInput = {
 
 export type SavedChartRepository = {
   list: () => Promise<SavedChartSummary[]>;
+  /** รายการเต็ม (รวม rawInput) — ใช้ในโหมดจับคู่ที่ต้องคำนวณหลักวัน/เพศ. */
+  listFull: () => Promise<SavedChartRow[]>;
   get: (id: string) => Promise<SavedChartRow | null>;
   save: (input: SaveChartInput) => Promise<SavedChartRow>;
   remove: (id: string) => Promise<void>;
@@ -41,6 +43,14 @@ export function createDbSavedChartRepository(db = createDbClient()): SavedChartR
           dayMaster: baziSavedChart.dayMaster,
           updatedAt: baziSavedChart.updatedAt,
         })
+        .from(baziSavedChart)
+        .orderBy(desc(baziSavedChart.updatedAt))
+        .limit(200);
+    },
+
+    async listFull() {
+      return db
+        .select()
         .from(baziSavedChart)
         .orderBy(desc(baziSavedChart.updatedAt))
         .limit(200);

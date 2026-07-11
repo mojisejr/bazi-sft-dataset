@@ -65,6 +65,8 @@
     "db:apply:sacred-map": "node --env-file=.env --import tsx scripts/apply-sacred-map-migration.ts",
     "db:apply:sacred-map-rasi": "node --env-file=.env --import tsx scripts/apply-sacred-map-rasi-migration.ts",
     "db:seed:sacred-map-images": "node --env-file=.env --import tsx scripts/seed-sacred-map-sample-images.ts",
+    "db:apply:saved-charts": "node --env-file=.env --import tsx scripts/apply-saved-charts-migration.ts",
+    "db:seed:matchmaker": "node --env-file=.env --import tsx scripts/seed-matchmaker-people.ts",
     "db:seed:matching:dry": "tsx scripts/seed-reading-matching.ts --dry-run",
     "db:seed:matching": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts",
     "db:seed:matching:force": "node --env-file=.env --import tsx scripts/seed-reading-matching.ts --force",

@@ -24,6 +24,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/", icon: "🏠", label: "หน้าหลัก" },
   { href: "/reading", icon: "🔮", label: "อ่านดวง" },
   { href: "/pair-matching", icon: "💞", label: "คู่รัก" },
+  { href: "/love-match", icon: "🔥", label: "จับคู่ (ปัดการ์ด)" },
   { href: "/work-matching", icon: "🤝", label: "การงาน" },
   { href: "/phone-reading", icon: "📱", label: "เบอร์มือถือ" },
   { href: "/divine-cards", icon: "🎴", label: "โหมดเซียน" },
