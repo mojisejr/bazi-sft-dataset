@@ -5,9 +5,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
-
-import { getDatabaseUrl } from "../src/lib/env";
+import { createDbSqlClient } from "../src/db/client";
 
 /** ตัด comment + แยกเป็นรายคำสั่ง (neon http รันทีละ statement) */
 function splitStatements(ddl: string): string[] {
@@ -23,13 +21,13 @@ function splitStatements(ddl: string): string[] {
 async function main() {
   const sqlPath = path.resolve(process.cwd(), "drizzle/0008_phase_doctrine_audit.sql");
   const ddl = readFileSync(sqlPath, "utf8");
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
 
   for (const statement of splitStatements(ddl)) {
-    await sql.query(statement);
+    await sql.unsafe(statement);
   }
 
-  const result = await sql.query(
+  const result = await sql.unsafe(
     "select column_name, data_type from information_schema.columns where table_name = 'bazi_doctrine_audit' order by ordinal_position;",
   );
   const rows = (Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? []) as Array<{
@@ -42,7 +40,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
   console.error("MIGRATION FAILED:", e);
   process.exit(1);
 });

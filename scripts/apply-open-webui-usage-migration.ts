@@ -5,14 +5,12 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
-
-import { getDatabaseUrl } from "../src/lib/env";
+import { createDbSqlClient } from "../src/db/client";
 
 async function main() {
   const sqlPath = path.resolve(process.cwd(), "drizzle/0031_open_webui_usage.sql");
   const ddl = readFileSync(sqlPath, "utf8");
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
 
   const statements = ddl
     .split("--> statement-breakpoint")
@@ -26,7 +24,7 @@ async function main() {
     .filter((s) => s.length > 0);
 
   for (const statement of statements) {
-    await sql.query(statement);
+    await sql.unsafe(statement);
     console.log("ok:", statement.split("\n")[0]);
   }
   console.log("done");

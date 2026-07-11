@@ -4,9 +4,8 @@
  * จับคู่ด้วย "ชื่อสถานที่" ที่ seed ไว้ (apply-sacred-map-migration.ts). อัปเฉพาะแถวที่ยังไม่มีรูป.
  * Usage: node --env-file=.env --import tsx scripts/seed-sacred-map-sample-images.ts [--force]
  */
-import { neon } from "@neondatabase/serverless";
+import { createDbSqlClient } from "../src/db/client";
 
-import { getDatabaseUrl } from "../src/lib/env";
 import { ensureSacredBucket, uploadSacredMapImage } from "../src/lib/supabase/storage";
 
 const FORCE = process.argv.includes("--force");
@@ -53,12 +52,12 @@ const SAMPLES: Array<{
 ];
 
 async function main() {
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
   await ensureSacredBucket();
 
   let done = 0;
   for (const s of SAMPLES) {
-    const rows = (await sql.query(
+    const rows = (await sql.unsafe(
       'select id, image_url from "bazi_sacred_map_location" where name = $1 limit 1;',
       [s.name],
     )) as Array<{ id: string; image_url: string | null }>;
@@ -69,7 +68,7 @@ async function main() {
     }
 
     // เซ็ตราศีตัวอย่างเสมอ (ตัวแทนราศีบน/ล่าง)
-    await sql.query(
+    await sql.unsafe(
       'update "bazi_sacred_map_location" set rasi_upper = $1, rasi_lower = $2 where id = $3;',
       [s.rasiUpper, s.rasiLower, row.id],
     );
@@ -91,7 +90,7 @@ async function main() {
     const buffer = Buffer.from(await res.arrayBuffer());
     const publicUrl = await uploadSacredMapImage(s.slug, buffer, mime);
 
-    await sql.query('update "bazi_sacred_map_location" set image_url = $1 where id = $2;', [
+    await sql.unsafe('update "bazi_sacred_map_location" set image_url = $1 where id = $2;', [
       publicUrl,
       row.id,
     ]);
@@ -101,7 +100,9 @@ async function main() {
   console.log(`\nเสร็จ: อัปรูปตัวอย่าง ${done}/${SAMPLES.length} แถว`);
 }
 
-main().catch((e) => {
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
   console.error("SEED FAILED:", e);
   process.exit(1);
 });

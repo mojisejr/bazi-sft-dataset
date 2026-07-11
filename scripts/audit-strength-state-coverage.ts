@@ -1,9 +1,8 @@
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
+import { createDbSqlClient } from "../src/db/client";
 import { config as loadEnv } from "dotenv";
 
-import { getDatabaseUrl } from "../src/lib/env";
 import {
   CANONICAL_DAY_MASTER_STRENGTH_STATES,
   resolveCanonicalDayMasterStrengthState,
@@ -29,7 +28,7 @@ function resolveRowState(row: StrengthRow) {
 }
 
 async function main() {
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
 
   const rows = (await sql`
     select day_master_chinese, strength_state, score_text, narrative_summary
@@ -87,7 +86,9 @@ async function main() {
   }
 }
 
-main().catch((error: unknown) => {
+main()
+  .then(() => process.exit(0))
+  .catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
   process.exit(1);

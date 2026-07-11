@@ -5,9 +5,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
-
-import { getDatabaseUrl } from "../src/lib/env";
+import { createDbSqlClient } from "../src/db/client";
 
 const DUPLICATE_OBJECT = "42710";
 const DUPLICATE_TABLE = "42P07";
@@ -24,7 +22,7 @@ const TABLES = [
 async function main() {
   const sqlPath = path.resolve(process.cwd(), "drizzle/0033_manifest_ledger.sql");
   const ddl = readFileSync(sqlPath, "utf8");
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
 
   const statements = ddl
     .split("--> statement-breakpoint")
@@ -39,7 +37,7 @@ async function main() {
 
   for (const statement of statements) {
     try {
-      await sql.query(statement);
+      await sql.unsafe(statement);
     } catch (error) {
       const code = error && typeof error === "object" ? (error as { code?: string }).code : undefined;
       if (code === DUPLICATE_OBJECT || code === DUPLICATE_TABLE) continue;
@@ -48,7 +46,7 @@ async function main() {
   }
 
   for (const table of TABLES) {
-    const result = await sql.query(
+    const result = await sql.unsafe(
       "select count(*)::int as n from information_schema.columns where table_name = $1;",
       [table],
     );
@@ -57,7 +55,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
   console.error("MIGRATION FAILED:", e);
   process.exit(1);
 });

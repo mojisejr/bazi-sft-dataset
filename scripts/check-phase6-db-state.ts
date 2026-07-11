@@ -1,9 +1,7 @@
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
+import { createDbSqlClient } from "../src/db/client";
 import { config as loadEnv } from "dotenv";
-
-import { getDatabaseUrl } from "../src/lib/env";
 
 type CountRow = {
   dataset_count: number;
@@ -17,7 +15,7 @@ loadEnv({ path: path.resolve(process.cwd(), ".env.local"), override: false, quie
 loadEnv({ path: path.resolve(process.cwd(), ".env"), override: false, quiet: true });
 
 async function main() {
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
   const metadataColumns = (await sql`
     select column_name
     from information_schema.columns
@@ -46,7 +44,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
   process.exit(1);

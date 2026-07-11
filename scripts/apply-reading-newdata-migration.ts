@@ -5,9 +5,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
-
-import { getDatabaseUrl } from "../src/lib/env";
+import { createDbSqlClient } from "../src/db/client";
 
 const DUPLICATE_OBJECT = "42710";
 const DUPLICATE_TABLE = "42P07";
@@ -15,7 +13,7 @@ const DUPLICATE_TABLE = "42P07";
 async function main() {
   const sqlPath = path.resolve(process.cwd(), "drizzle/0015_phase_reading_newdata.sql");
   const ddl = readFileSync(sqlPath, "utf8");
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
 
   const statements = ddl
     .split("--> statement-breakpoint")
@@ -30,7 +28,7 @@ async function main() {
 
   for (const statement of statements) {
     try {
-      await sql.query(statement);
+      await sql.unsafe(statement);
     } catch (error) {
       const code = error && typeof error === "object" ? (error as { code?: string }).code : undefined;
       if (code === DUPLICATE_OBJECT || code === DUPLICATE_TABLE) {
@@ -40,7 +38,7 @@ async function main() {
     }
   }
 
-  const result = await sql.query(
+  const result = await sql.unsafe(
     "select column_name, data_type from information_schema.columns where table_name = 'bazi_newdata' order by ordinal_position;",
   );
   const rows = (Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? []) as Array<{
@@ -53,7 +51,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
   console.error("MIGRATION FAILED:", e);
   process.exit(1);
 });

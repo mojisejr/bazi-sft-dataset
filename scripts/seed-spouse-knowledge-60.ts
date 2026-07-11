@@ -4,9 +4,7 @@
  * idempotent: แถวที่มีอยู่แล้ว (ซินแสอาจกรอกไปแล้ว) ไม่ถูกแตะ (ON CONFLICT DO NOTHING)
  * Usage: node --env-file=.env --import tsx scripts/seed-spouse-knowledge-60.ts
  */
-import { neon } from "@neondatabase/serverless";
-
-import { getDatabaseUrl } from "../src/lib/env";
+import { createDbSqlClient } from "../src/db/client";
 
 const STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"];
 const BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"];
@@ -21,11 +19,11 @@ function sixtyGanzhi(): string[] {
 }
 
 async function main() {
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
   const keys = sixtyGanzhi();
   let inserted = 0;
   for (const [i, key] of keys.entries()) {
-    const r = await sql.query(
+    const r = await sql.unsafe(
       `insert into bazi_newdata (group_key, item_key, ordinal, value, source_file)
        values ('spouse_knowledge_60', $1, $2, $3::jsonb, 'seed-spouse-knowledge-60')
        on conflict (group_key, item_key) do nothing`,
@@ -34,14 +32,16 @@ async function main() {
     const count = (r as { rowCount?: number }).rowCount ?? (Array.isArray(r) ? 0 : 1);
     inserted += count ? 1 : 0;
   }
-  const check = await sql.query(
+  const check = await sql.unsafe(
     "select count(*)::int n from bazi_newdata where group_key = 'spouse_knowledge_60'",
   );
   const rows = (Array.isArray(check) ? check : (check as { rows?: unknown[] }).rows ?? []) as Array<{ n: number }>;
   console.log(`OK spouse_knowledge_60: rows in DB = ${rows[0]?.n ?? 0} (inserted new ${inserted})`);
 }
 
-main().catch((e) => {
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
   console.error("SEED FAILED:", e);
   process.exit(1);
 });

@@ -5,9 +5,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { neon } from "@neondatabase/serverless";
-
-import { getDatabaseUrl } from "../src/lib/env";
+import { createDbSqlClient } from "../src/db/client";
 
 const DUPLICATE_OBJECT = "42710";
 
@@ -96,7 +94,7 @@ const SEED = [
 async function main() {
   const sqlPath = path.resolve(process.cwd(), "drizzle/0029_sacred_map.sql");
   const ddl = readFileSync(sqlPath, "utf8");
-  const sql = neon(getDatabaseUrl());
+  const sql = createDbSqlClient();
 
   const statements = ddl
     .split("--> statement-breakpoint")
@@ -111,7 +109,7 @@ async function main() {
 
   for (const statement of statements) {
     try {
-      await sql.query(statement);
+      await sql.unsafe(statement);
     } catch (error) {
       if (error && typeof error === "object" && (error as { code?: string }).code === DUPLICATE_OBJECT) {
         continue;
@@ -121,7 +119,7 @@ async function main() {
   }
 
   // seed เฉพาะเมื่อตารางยังว่าง (idempotent)
-  const countRes = await sql.query('select count(*)::int as n from "bazi_sacred_map_location";');
+  const countRes = await sql.unsafe('select count(*)::int as n from "bazi_sacred_map_location";');
   const countRows = (Array.isArray(countRes) ? countRes : (countRes as { rows?: unknown[] }).rows ?? []) as Array<{
     n: number;
   }>;
@@ -129,7 +127,7 @@ async function main() {
 
   if (existing === 0) {
     for (const s of SEED) {
-      await sql.query(
+      await sql.unsafe(
         `insert into "bazi_sacred_map_location"
           (name, deity, description, province, address, lat, lng, direction, element, needs, worship_guide, status, source)
          values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,'verified','admin')`,
@@ -153,7 +151,7 @@ async function main() {
     console.log(`OK skip seed (already ${existing} rows)`);
   }
 
-  const result = await sql.query(
+  const result = await sql.unsafe(
     "select column_name, data_type from information_schema.columns where table_name = 'bazi_sacred_map_location' order by ordinal_position;",
   );
   const rows = (Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? []) as Array<{
@@ -166,7 +164,9 @@ async function main() {
   }
 }
 
-main().catch((e) => {
+main()
+  .then(() => process.exit(0))
+  .catch((e) => {
   console.error("MIGRATION FAILED:", e);
   process.exit(1);
 });
