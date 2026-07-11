@@ -717,6 +717,30 @@ function parseLoveBase60(file: string): SeedRow[] {
     .sort((a, b) => a.ordinal - b.ordinal);
 }
 
+// ── parser: บท 8 มิตรแท้ (เฉลยจาก 8.มิตรแท้-เฉลย.docx → friend-true.json) ─────────
+// รายการ = {key, label, category, text} — คีย์ "{ดิถี}→{ปลายทาง}@{เสา}" (เฉลย 138 ข้อ)
+// + "{ดิถี}|มิตรแย่ง" (ข้อความเมื่อธาตุดิถี ≥3 ตัวในดวง รวมดิถี)
+function parseFriendTrue(file: string): SeedRow[] {
+  const raw = readFileSync(path.join(NEWDATA_DIR, file), "utf8").normalize("NFC");
+  const items = JSON.parse(raw) as Array<{
+    key: string;
+    label: string;
+    category?: string;
+    text: string;
+  }>;
+  return items.map((it, i) => ({
+    groupKey: "friend_true",
+    itemKey: it.key.normalize("NFC"),
+    ordinal: i + 1,
+    value: {
+      text: (it.text ?? "").trim(),
+      label: it.label,
+      ...(it.category ? { category: it.category } : {}),
+    } as NewdataValue,
+    sourceFile: file,
+  }));
+}
+
 // ── parser: บท 7 โอกาสมีคู่ (เพศ × กำลังดิถี → 10 ช่อง) ───────────────────────────
 function parseLoveChance(file: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -975,6 +999,8 @@ function collectAll(): SeedRow[] {
   push("health_zoah", () => healthZoahTemplate());
   // บท 13 · สุขภาพผั่ว ราย กะจื่อ/ดิถี × ตำแหน่งเสา (template ว่าง — ซินแสกรอกในแอดมิน)
   push("health_phua", () => healthPhuaTemplate());
+  // บท 8 · มิตรแท้ — เฉลยจริงจาก 8.มิตรแท้-เฉลย.docx (138 ข้อ + มิตรแย่ง 10 ดิถี)
+  push("friend_true", () => parseFriendTrue("friend-true.json"));
   // บท 14 · ของมงคลตามธาตุ — auspicious_by_element (หมวด × ธาตุ); สัตว์มงคล/ทิศ เป็น template
   const AUSPICIOUS: Array<[string, string]> = [
     ["บท14 สี 5 ธาตุ.txt", "สี"],

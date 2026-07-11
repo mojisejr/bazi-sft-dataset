@@ -1245,6 +1245,48 @@ export function matchHealthZoah(map: NewdataMap, group: string, facts: ChartFact
 }
 
 /**
+ * บท 8 · มิตรแท้ (เฉลยจาก 8.มิตรแท้-เฉลย.docx) — ดิถีถ่ายเทหาก้าน/กิ่ง "ธาตุเดียวกับดิถี" ตามเสา
+ * เงื่อนไขตำรา: นับอักษรธาตุเดียวกับดิถีทั้งดวง (ก้าน+กิ่ง 8 ตัว รวมดิถี)
+ *   ≤ 2 ตัว → มิตรแท้ · อ่านรายตำแหน่ง คีย์ "{ดิถี}→{ปลายทาง}@{เสา}" (รูปเดียวกับ healthZoah)
+ *   ≥ 3 ตัว → มิตรแย่งผลประโยชน์ · อ่านก้อนเดียว คีย์ "{ดิถี}|มิตรแย่ง"
+ * คีย์ที่ธาตุไม่ตรงดิถีจะไม่มี row ใน DB จึงไม่ขึ้นเอง (เช่น 甲→丙)
+ */
+export function matchFriendTrue(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const day = facts.dayMaster;
+  const el = elementThOfStem(day);
+  if (!el) return [];
+  let count = 0;
+  for (const p of facts.pillars) {
+    if (elementThOfStem(p.stem) === el) count += 1;
+    if (elementThOfBranch(p.branch) === el) count += 1;
+  }
+  if (count >= 3) {
+    const key = `${day}|มิตรแย่ง`;
+    const value = map[group]?.[key];
+    if (!value?.text?.trim()) return [];
+    return [toBlock(group, key, value, `ธาตุ${el}ในดวง ${count} ตัว (รวมดิถี) — เข้าเงื่อนไขมิตรแย่งผลประโยชน์`)];
+  }
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  for (const p of facts.pillars) {
+    const pos = SHORT_PILLAR_NAME[p.position];
+    const label = THAI_PILLAR_NAME[p.position];
+    for (const [ch, kind] of [
+      [p.stem, "ราศีบน"],
+      [p.branch, "ราศีล่าง"],
+    ] as const) {
+      const key = `${day}→${ch}@${pos}`;
+      if (seen.has(key)) continue;
+      const value = map[group]?.[key];
+      if (!value?.text?.trim()) continue;
+      seen.add(key);
+      out.push(toBlock(group, key, value, `${label} ${kind} · ดิถี ${day}→${ch}`));
+    }
+  }
+  return out;
+}
+
+/**
  * บท 1 · นิสัยด้านมืดตามธาตุ — lookup ตามธาตุของดิถี (ราศีบนหลักวัน) คีย์ = ธาตุไทย
  * คืน 1 ก้อน (ปลายทางว่างถ้า DB ยังไม่มี)
  */

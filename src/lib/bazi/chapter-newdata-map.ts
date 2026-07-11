@@ -28,6 +28,7 @@ import {
   matchElementRoleState,
   matchFortune,
   matchHealthElement,
+  matchFriendTrue,
   matchHealthZoah,
   matchHiddenTransfer,
   matchLoveBase,
@@ -78,6 +79,7 @@ type Resolver =
   | { kind: "elementRoleGanzhi"; group: string; role: "output" | "wealth" | "resource" | "peer" }
   | { kind: "healthElement"; group: string }
   | { kind: "healthZoah"; group: string }
+  | { kind: "friendTrue"; group: string }
   | { kind: "elementCategory"; group: string; category: string }
   | { kind: "luckyAnimal" }
   | { kind: "elementAdvice"; table: "wealth" | "health" | "talent" }
@@ -190,7 +192,12 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // มิตรแท้ = ภาคีราศีล่าง + เชี่ยงแซเสาปี(ผู้ใหญ่หนุน) · ศัตรู = ไห่/เฮ้ง/ซำเฮ้ง + ผั่วไฉ่โข่ว · interpretive
   friends_foes: [
     // มิตรแท้/ผู้ใหญ่หนุน = เสาปี (เชี่ยงแซดี) ตามหลักซินแส — ไม่ใช่เสาวัน
-    [{ kind: "branchPairs", group: "combine_branch" }, { kind: "state", group: "shengxiang", pillar: "year" }],
+    // + ตารางเฉลยมิตรแท้ (friend_true) ดิถี→ธาตุเดียวกันรายเสา · เงื่อนไขธาตุ ≥3 → มิตรแย่งผลประโยชน์
+    [
+      { kind: "branchPairs", group: "combine_branch" },
+      { kind: "state", group: "shengxiang", pillar: "year" },
+      { kind: "friendTrue", group: "friend_true" },
+    ],
     [],
     [
       { kind: "branchPairs", group: "harm_hai" },
@@ -326,6 +333,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchHealthElement(map, r.group, facts);
     case "healthZoah":
       return matchHealthZoah(map, r.group, facts);
+    case "friendTrue":
+      return matchFriendTrue(map, r.group, facts);
     case "elementCategory":
       return matchElementCategory(map, r.group, facts, r.category);
     case "luckyAnimal":

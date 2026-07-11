@@ -11,6 +11,7 @@ import {
   matchBranchPairs,
   matchDithiTransferPrioritized,
   matchFavorableSummary,
+  matchFriendTrue,
   matchHealthElement,
   matchHealthZoah,
   matchLuckyAnimal,
@@ -40,8 +41,8 @@ const FACTS: ChartFacts = {
     { position: "hour", stem: "癸", branch: "未", state: "กวงตั่ว", upperState: "หมกยก" },
   ],
   daYun: [
-    { startAge: 6, endAge: 15, stem: "丙", branch: "辰", isCurrent: false, upperState: "แป่", lowerState: "เอี้ยง" },
-    { startAge: 16, endAge: 25, stem: "乙", branch: "卯", isCurrent: true, upperState: "ซี่", lowerState: "ตี้อ๋วง" },
+    { startAge: 6, endAge: 15, stem: "丙", branch: "辰", isCurrent: false, upperState: "แป่", lowerState: "เอี้ยง", phases: [] },
+    { startAge: 16, endAge: 25, stem: "乙", branch: "卯", isCurrent: true, upperState: "ซี่", lowerState: "ตี้อ๋วง", phases: [] },
   ],
 };
 
@@ -149,6 +150,46 @@ describe("newdata-lookup: matchers (set-membership)", () => {
         health_zoah: { "庚午@วัน": { text: "", label: "ว่าง" } },
       };
       expect(matchHealthZoah(map, "health_zoah", FACTS)).toHaveLength(0);
+    });
+  });
+
+  describe("matchFriendTrue: บท 8 มิตรแท้ (เงื่อนไขธาตุ + ดิถี→ธาตุเดียวกันรายเสา)", () => {
+    const FRIEND_MAP: NewdataMap = {
+      friend_true: {
+        "庚→庚@วัน": { text: "มิตรแท้เพศเดียวกัน...", label: "ดิถี 庚→庚 ที่เสาวัน" },
+        "庚→申@ปี": { text: "มิตรแท้ลูกค้า...", label: "ดิถี 庚→申 ที่เสาปี" },
+        "庚|มิตรแย่ง": { text: "ธาตุทอง ≥3 เป็นมิตรแย่งผลประโยชน์", label: "มิตรแย่ง" },
+      },
+    };
+
+    test("ธาตุดิถี ≤2 ในดวง → อ่านรายเสา (จับเฉพาะคีย์ที่ตรงดวง ไม่จับมิตรแย่ง)", () => {
+      // FACTS: 庚 (ทอง) มีทองตัวเดียวคือดิถี → เส้นทางมิตรแท้ · 庚→庚@วัน ตรงเสาวัน (ราศีบน 庚)
+      // 庚→申@ปี ไม่ตรง (เสาปีคือ 戊辰) → ไม่ขึ้น
+      const blocks = matchFriendTrue(FRIEND_MAP, "friend_true", FACTS);
+      expect(blocks.map((b) => b.itemKey)).toEqual(["庚→庚@วัน"]);
+      expect(blocks[0].label).toBe("ดิถี 庚→庚 ที่เสาวัน");
+    });
+
+    test("ธาตุดิถี ≥3 ในดวง (รวมดิถี) → อ่านก้อนมิตรแย่งก้อนเดียว", () => {
+      // ทอง 3 ตัว: 庚(ปี) 申(ปี) 庚(ดิถี) → เข้าเงื่อนไขมิตรแย่งผลประโยชน์
+      const facts: ChartFacts = {
+        ...FACTS,
+        pillars: [
+          { position: "year", stem: "庚", branch: "申", state: null, upperState: null },
+          { position: "month", stem: "丁", branch: "巳", state: null, upperState: null },
+          { position: "day", stem: "庚", branch: "午", state: null, upperState: null },
+          { position: "hour", stem: "癸", branch: "未", state: null, upperState: null },
+        ],
+      };
+      const blocks = matchFriendTrue(FRIEND_MAP, "friend_true", facts);
+      expect(blocks.map((b) => b.itemKey)).toEqual(["庚|มิตรแย่ง"]);
+      expect(blocks[0].context).toContain("3 ตัว");
+    });
+
+    test("ช่องว่าง/ไม่มี group → ไม่ขึ้น", () => {
+      expect(matchFriendTrue({}, "friend_true", FACTS)).toHaveLength(0);
+      const empty: NewdataMap = { friend_true: { "庚→庚@วัน": { text: "", label: "ว่าง" } } };
+      expect(matchFriendTrue(empty, "friend_true", FACTS)).toHaveLength(0);
     });
   });
 });
