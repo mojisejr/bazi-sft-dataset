@@ -207,7 +207,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
     const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
-    expect(r.boxes).toHaveLength(8); // 7 bullets + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(9); // 8 bullets (+รูปร่างหน้าตา) + กล่องแกน用神 ต่อท้าย
     expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
     expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก

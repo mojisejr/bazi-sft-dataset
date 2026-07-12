@@ -275,10 +275,9 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
   {
     key: "benefactor_resource",
     label: "บท 4 · ผู้อุปถัมป์ (ธาตุส่งเสริม 印) ตาม 12 เชี่ยงแซ",
-    description: "คำอ่าน 'ผู้อุปถัมป์' ของเสาที่ธาตุส่งเสริม (印) นั่ง ตาม 12 เชี่ยงแซ — แยกจาก shengxiang กลาง (ซินแสแก้คำเฉพาะบทนี้ได้)",
+    description: "คำอ่าน 'ผู้อุปถัมป์/ผู้ใหญ่ ผู้สนับสนุน' ของเสาที่ธาตุส่งเสริม (印) นั่ง ตาม 12 เชี่ยงแซ — เนื้อ curated จาก 4.ผู้อุปถัมภ์12 เชี่ยงแซ.docx",
     keyKind: "state",
-    sourceFile: "12 เชี่ยงแซ.txt",
-    templatePrefill: true,
+    sourceFile: "ผู้อุปถัมภ์ 12 เชี่ยงแซ.txt",
   },
   {
     key: "benefactor_output",
@@ -338,6 +337,27 @@ export const NEWDATA_GROUPS: readonly NewdataGroup[] = [
     description: "โอกาสมีคู่ตามเพศกำเนิด × กำลังดิถี (10 ช่อง) — บท 7 'มีคู่ครองที่เหมาะสมหรือไม่'",
     keyKind: "stemBand",
     sourceFile: "ความรักและความสัมพันธ์.txt",
+  },
+  {
+    key: "subordinate_state",
+    label: "บท 10 · ลักษณะบริวาร (ลูกน้อง) ตาม 12 เชี่ยงแซ",
+    description: "คำอ่าน 'ลักษณะบริวาร + วิธีบริหาร' ตาม 12 เชี่ยงแซของเสายาม — เนื้อ curated จาก 10.บริวาร 12 เชียงแซ.docx",
+    keyKind: "state",
+    sourceFile: "บริวาร 12 เชี่ยงแซ.txt",
+  },
+  {
+    key: "appearance_state",
+    label: "บท 1 · รูปร่างหน้าตา/บุคลิกภาพ ตาม 12 เชี่ยงแซ",
+    description: "คำอ่านรูปร่างหน้าตา/บุคลิกภาพ ตาม 12 เชี่ยงแซของหลักวัน — เนื้อ curated จาก 1.รูปร่างหน้าตา 12 เชี่ยงแซ.docx",
+    keyKind: "state",
+    sourceFile: "รูปร่างหน้าตา 12 เชี่ยงแซ.txt",
+  },
+  {
+    key: "appearance_element",
+    label: "บท 1 · รูปร่างหน้าตา/บุคลิกภาพ ตาม 5 ธาตุ",
+    description: "คำอ่านรูปร่างหน้าตา/บุคลิกภาพ ตามธาตุดิถี (5 ธาตุ) — เนื้อ curated จาก 1.รูปร่างหน้าตา 5 ธาตุ.docx",
+    keyKind: "element",
+    sourceFile: "รูปร่างหน้าตา 5 ธาตุ.txt",
   },
   {
     key: "subordinate_60",

@@ -109,6 +109,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "selfPunish" }],
     // ข้อเสนอแนะ = พัฒนานิสัยตาม "ธาตุปรับดวง" (用神) — iterate favorableElements (merit) ไม่ใช่ธาตุดิถีเดี่ยว
     [{ kind: "merit", group: "develop_by_element" }],
+    // รูปร่างหน้าตา/บุคลิกภาพ = เชี่ยงแซหลักวัน (appearance_state) + ธาตุดิถี (appearance_element)
+    [
+      { kind: "state", group: "appearance_state", pillar: "day" },
+      { kind: "dayElement", group: "appearance_element" },
+    ],
   ],
   // 5 bullets: [ควรทำ1] [ควรทำ2] [ควรทำ3 (บางคนมี)] [ไม่ควรทำ1] [ไม่ควรทำ2 (บางคนมี)]
   career_potential: [
@@ -216,7 +221,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 3 bullets: [ลักษณะบริวารตามพื้นดวง (เสายาม)] [มีส่วนหา/รักษา/ยักยอกทรัพย์ (ผั่วไฉ่โข่ว)] [ควรมี/ไม่มี]
   // ข้อ 1: เสายามเชี่ยงแซ (มีอยู่) + 60 กะจื่อเสายาม (subordinate_60 รอซินแสเติม ตามที่ซินแสสั่ง matching)
   subordinates: [
-    [{ kind: "state", group: "shengxiang", pillar: "hour" }, { kind: "ganzhiOf", group: "subordinate_60", pillar: "hour" }],
+    [{ kind: "state", group: "subordinate_state", pillar: "hour" }, { kind: "ganzhiOf", group: "subordinate_60", pillar: "hour" }],
     [{ kind: "phua" }],
     [],
   ],

@@ -976,10 +976,18 @@ function collectAll(): SeedRow[] {
       sourceFile: "(กรอกในแอดมิน)",
     }));
   });
-  // บท 4 · ผู้อุปถัมป์/บริวาร/ลูกค้า ตาม 12 เชี่ยงแซ — pre-fill จาก 12 เชี่ยงแซ.txt (แยกจาก shengxiang กลาง)
-  push("benefactor_resource", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_resource"));
+  // บท 4 · ผู้อุปถัมป์ (印) ตาม 12 เชี่ยงแซ — เนื้อ curated จาก 4.ผู้อุปถัมภ์12 เชี่ยงแซ.docx
+  push("benefactor_resource", () => parseStateKeyed("ผู้อุปถัมภ์ 12 เชี่ยงแซ.txt", "benefactor_resource"));
+  // บท 4 · บริวาร(食傷)/ลูกค้า(財) ตาม 12 เชี่ยงแซ — pre-fill จาก 12 เชี่ยงแซ.txt (แยกจาก shengxiang กลาง)
   push("benefactor_output", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_output"));
   push("benefactor_wealth", () => parseStateKeyed("12 เชี่ยงแซ.txt", "benefactor_wealth"));
+  // บท 10 · ลักษณะบริวาร (ลูกน้อง) ตาม 12 เชี่ยงแซ — เนื้อ curated จาก 10.บริวาร 12 เชียงแซ.docx
+  push("subordinate_state", () => parseStateKeyed("บริวาร 12 เชี่ยงแซ.txt", "subordinate_state"));
+  // บท 1 · รูปร่างหน้าตา/บุคลิกภาพ — ตาม 12 เชี่ยงแซหลักวัน + ตาม 5 ธาตุดิถี
+  push("appearance_state", () => parseStateKeyed("รูปร่างหน้าตา 12 เชี่ยงแซ.txt", "appearance_state"));
+  push("appearance_element", () =>
+    parseElementKeyedFile("รูปร่างหน้าตา 5 ธาตุ.txt", "appearance_element", "รูปร่างหน้าตา/บุคลิกภาพ"),
+  );
   push("merit_by_element", () => parseMeritByElement("ทำบุญ 5 ธาตุ.txt"));
   // บท 1 · นิสัยราศีบน 10 ก้าน (เพิ่มเติมกล่อง 60 กะจื่อ)
   push("stem_nisai", () => parseStemNisai("บท1 นิสัยราศีบน 10 ก้าน.txt"));

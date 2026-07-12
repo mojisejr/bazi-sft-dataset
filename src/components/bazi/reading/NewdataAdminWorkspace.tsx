@@ -77,6 +77,20 @@ export function NewdataAdminWorkspace() {
     [groups, selectedKey],
   );
 
+  // เรียงแถบซ้ายตามเลขบท ("บท 1", "บทที่ 4", "บท 15") — กลุ่มที่ไม่ระบุบทต่อท้าย
+  // stable sort: คงลำดับ catalog เดิมภายในบทเดียวกัน/กลุ่มไม่มีบท
+  const sortedGroups = useMemo(() => {
+    if (!groups) return [];
+    const chapterOf = (label: string): number => {
+      const m = label.match(/บท(?:ที่)?\s*(\d+)/);
+      return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+    };
+    return groups
+      .map((g, i) => ({ g, i, ch: chapterOf(g.label) }))
+      .sort((a, b) => a.ch - b.ch || a.i - b.i)
+      .map((x) => x.g);
+  }, [groups]);
+
   const draftFor = useCallback(
     (item: Item): Draft =>
       drafts[`${selectedKey}|${item.itemKey}`] ?? {
@@ -230,7 +244,7 @@ export function NewdataAdminWorkspace() {
 
       <div className="newdata-admin__body">
         <nav className="newdata-admin__groups" aria-label="กลุ่มก้อนความรู้">
-          {groups.map((g) => (
+          {sortedGroups.map((g) => (
             <button
               key={g.key}
               type="button"
