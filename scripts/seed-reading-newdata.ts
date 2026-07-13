@@ -101,6 +101,78 @@ function parseStateKeyed(file: string, group: string, stopAt?: string): SeedRow[
   }));
 }
 
+// ── parser: state-section (12 เชี่ยงแซ ไม่มี * นำหน้า — ชื่อสถานะยืนบรรทัดเดียว) ──────
+// ใช้กับ 3.ลูกค้า / 3.ธุรกิจ 12 เชี่ยงแซ (บรรทัดที่เป็นชื่อเชี่ยงแซ = คีย์ใหม่, บรรทัดอื่น = เนื้อ)
+function parseStateSections(file: string, group: string): SeedRow[] {
+  const lines = splitLines(read(file));
+  const rows: SeedRow[] = [];
+  let cur: { key: string; buf: string[] } | null = null;
+  const flush = () => {
+    if (cur) {
+      const text = cur.buf.join("\n").trim();
+      if (text) {
+        rows.push({
+          groupKey: group,
+          itemKey: cur.key,
+          ordinal: STATE_ORDER[cur.key] ?? 0,
+          value: { text, label: cur.key },
+          sourceFile: file,
+        });
+      }
+    }
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    const canon = canonicalState(t);
+    if (canon) {
+      flush();
+      cur = { key: canon, buf: [] };
+      continue;
+    }
+    if (cur) cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
+// ── parser: ganzhi-keyed (บรรทัดที่เป็นกะจื่อ 2 อักษร = คีย์, บรรทัดอื่น = เนื้อ) ──────
+// ใช้กับ 1.ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง 4 กะจื่อ 甲子/甲午/己酉/己卯) — ข้ามบทนำก่อนกะจื่อแรก
+function parseGanzhiKeyed(file: string, group: string): SeedRow[] {
+  const ORD = new Map(SIXTY_JIAZI.map(({ ganzhi, ordinal }) => [ganzhi.normalize("NFC"), ordinal]));
+  const lines = splitLines(read(file));
+  const rows: SeedRow[] = [];
+  let cur: { key: string; buf: string[] } | null = null;
+  const flush = () => {
+    if (cur) {
+      const text = cur.buf.join("\n").trim();
+      if (text) {
+        rows.push({
+          groupKey: group,
+          itemKey: cur.key,
+          ordinal: ORD.get(cur.key) ?? 0,
+          value: { text, label: cur.key },
+          sourceFile: file,
+        });
+      }
+    }
+  };
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+    const chars = [...t];
+    const isGanzhi = chars.length === 2 && STEMS.has(chars[0]) && chars[1] in BRANCHES;
+    if (isGanzhi) {
+      flush();
+      cur = { key: t.normalize("NFC"), buf: [] };
+      continue;
+    }
+    if (cur) cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
 // ── parser: "pair-keyed" (ชง / เฮ้ง / ไห่ / จื่อเฮ้ง) ─────────────────────────
 function parsePairs(file: string, group: string): SeedRow[] {
   const lines = splitLines(read(file));
@@ -1001,6 +1073,15 @@ function collectAll(): SeedRow[] {
   push("dark_side_by_element", () =>
     parseElementKeyedFile("บท1 นิสัยด้านมืด 5 ธาตุ.txt", "dark_side_by_element", "นิสัยด้านมืด"),
   );
+  // บท 1 · คุณธรรม 5 ธาตุ (ตามธาตุดิถี) — เนื้อ curated จาก 1.คุณธรรม 5 ธาตุ.docx
+  push("virtue_by_element", () =>
+    parseElementKeyedFile("1.คุณธรรม 5 ธาตุ.txt", "virtue_by_element", "คุณธรรม"),
+  );
+  // บท 1 · ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง 4 กะจื่อ) — เนื้อ curated จาก 1.ชื่อเสียงและเกียรติยศ.docx
+  push("fame_honor", () => parseGanzhiKeyed("1.ชื่อเสียงและเกียรติยศ.txt", "fame_honor"));
+  // บท 3 · ลูกค้า (เชี่ยงแซหลักปี) / ธุรกิจ (เชี่ยงแซหลักเดือน) — 12 เชี่ยงแซ
+  push("customer_state", () => parseStateSections("3.ลูกค้า 12 เชี่ยงแซ.txt", "customer_state"));
+  push("business_state", () => parseStateSections("3.ธุรกิจ 12 เชี่ยงแซ.txt", "business_state"));
   // บท 13 · สุขภาพ 5 ธาตุ มาก/น้อย (template ว่าง 10 ช่อง — คีย์ "{ธาตุ}|มาก"/"{ธาตุ}|น้อย")
   push("health_by_element", () => healthElementTemplate());
   // บท 13 · สุขภาพเจ๊าะ ราย กะจื่อ/ดิถี × ตำแหน่งเสา (template ว่าง — ซินแสกรอกในแอดมิน)

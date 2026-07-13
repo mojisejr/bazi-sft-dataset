@@ -26,6 +26,7 @@ import {
   matchLuckyAnimal,
   matchElementRoleGanzhi,
   matchElementRoleState,
+  matchFameHonor,
   matchFortune,
   matchHealthElement,
   matchFriendTrue,
@@ -63,6 +64,7 @@ type Resolver =
   | { kind: "career"; role: "do" | "avoid"; order: number; group?: string }
   | { kind: "dayMasterStrength"; group: string }
   | { kind: "dayElement"; group: string }
+  | { kind: "fameHonor"; group: string }
   | { kind: "deityRasi"; group: string; role: "protect" | "career" | "wealth" }
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
   | { kind: "stemOf"; group: string; pillar: PillarPosition }
@@ -114,6 +116,10 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "state", group: "appearance_state", pillar: "day" },
       { kind: "dayElement", group: "appearance_element" },
     ],
+    // คุณธรรมประจำธาตุดิถี (5 ธาตุ)
+    [{ kind: "dayElement", group: "virtue_by_element" }],
+    // ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง) = มีกะจื่อเด่นดังในเสาใดก็ได้ (ว่างถ้าไม่มี)
+    [{ kind: "fameHonor", group: "fame_honor" }],
   ],
   // 5 bullets: [ควรทำ1] [ควรทำ2] [ควรทำ3 (บางคนมี)] [ไม่ควรทำ1] [ไม่ควรทำ2 (บางคนมี)]
   career_potential: [
@@ -135,6 +141,10 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "fortune", group: "fortune_month", role: "month" },
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
+    // ธุรกิจที่เหมาะ = เชี่ยงแซหลักเดือน (business_state)
+    [{ kind: "state", group: "business_state", pillar: "month" }],
+    // ลูกค้าเป็นแบบไหน = เชี่ยงแซหลักปี (customer_state)
+    [{ kind: "state", group: "customer_state", pillar: "year" }],
     [{ kind: "phua" }],
     [{ kind: "elementAdvice", table: "wealth" }],
   ],
@@ -306,6 +316,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchDayMasterStrength(map, r.group, facts);
     case "dayElement":
       return matchDayElement(map, r.group, facts);
+    case "fameHonor":
+      return matchFameHonor(map, r.group, facts);
     case "deityRasi":
       return matchDeityByRasi(map, r.group, facts, r.role);
     case "branchOf":

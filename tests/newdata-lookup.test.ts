@@ -207,7 +207,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
     const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
-    expect(r.boxes).toHaveLength(9); // 8 bullets (+รูปร่างหน้าตา) + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(11); // 10 bullets (+รูปร่างหน้าตา/คุณธรรม/ชื่อเสียง) + กล่องแกน用神 ต่อท้าย
     expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
     expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
@@ -379,7 +379,8 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("ข้อเสนอแนะ wealth/health/talent = รายธาตุ用神 (static, iterate favorableElements)", () => {
     // FACTS 庚(weak) → 用神 ดิน+ทอง; แต่ละกล่องต้องมีเนื้อธาตุดิน (用神) และไม่มีธาตุไฟ (ไม่ใช่用神)
-    const wealth = resolveChapterBoxes("wealth_and_investment", FACTS, MAP).boxes[2].body;
+    // wealth bullets: [โชคลาภ, ธุรกิจ, ลูกค้า, ผั่ว, ข้อเสนอแนะ] → ข้อเสนอแนะ = box[4]
+    const wealth = resolveChapterBoxes("wealth_and_investment", FACTS, MAP).boxes[4].body;
     expect(wealth).toContain("เก็บออมแบบมั่นคง"); // ดิน
     expect(wealth).not.toContain("แปลงชื่อเสียง"); // ไฟ (ไม่ใช่用神)
     expect(resolveChapterBoxes("talent", FACTS, MAP).boxes[3].body).toContain("บริหารทรัพย์สิน"); // ดิน
@@ -406,6 +407,47 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     const r = resolveChapterBoxes("health", FACTS, map);
     expect(r.boxes[1].body).toContain("ระวังหัวใจ"); // ไฟ มากสุด (3 ตำแหน่ง)
     expect(r.boxes[1].body).toContain("ระวังตับ"); // ไม้ น้อยสุด (0 ตำแหน่ง)
+  });
+
+  test("กลุ่มใหม่: คุณธรรม(บท1)/ลูกค้า+ธุรกิจ(บท3) — ตามธาตุดิถี/เชี่ยงแซหลักปี/หลักเดือน", () => {
+    const map: NewdataMap = {
+      ...MAP,
+      // 庚 = ทอง → คุณธรรม ธาตุทอง
+      virtue_by_element: { ทอง: { text: "ยุติธรรม เด็ดขาด มีหลักการ", label: "คุณธรรม ธาตุทอง" } },
+      // ลูกค้า = เชี่ยงแซหลักปี (戊辰 = เอี้ยง) · ธุรกิจ = เชี่ยงแซหลักเดือน (丁巳 = เชี่ยงแซ)
+      customer_state: { เอี้ยง: { text: "ลูกค้าที่ต้องคอยดูแล วัยเด็ก", label: "เอี้ยง" } },
+      business_state: { เชี่ยงแซ: { text: "ธุรกิจเริ่มต้นสิ่งใหม่ เพื่อการพัฒนา", label: "เชี่ยงแซ" } },
+    };
+    const cf = resolveChapterBoxes("chart_foundation", FACTS, map);
+    expect(cf.boxes[8].body).toContain("ยุติธรรม เด็ดขาด"); // box8 = คุณธรรม (ตามธาตุดิถี ทอง)
+    const w = resolveChapterBoxes("wealth_and_investment", FACTS, map);
+    expect(w.boxes[1].body).toContain("ธุรกิจเริ่มต้นสิ่งใหม่"); // box1 = ธุรกิจ (หลักเดือน เชี่ยงแซ)
+    expect(w.boxes[2].body).toContain("ลูกค้าที่ต้องคอยดูแล"); // box2 = ลูกค้า (หลักปี เอี้ยง)
+  });
+
+  test("ชื่อเสียงและเกียรติยศ (fame_honor) — จับกะจื่อเด่นดังในเสาใดก็ได้", () => {
+    // FACTS หลักวัน 庚午 ไม่ใช่กะจื่อเด่นดัง → ว่าง
+    const none = resolveChapterBoxes("chart_foundation", FACTS, {
+      ...MAP,
+      fame_honor: { 甲子: { text: "ดาวเด่นดังแห่งหมกยก", label: "甲子" } },
+    });
+    expect(none.boxes[9].body).toBe(""); // box9 = ชื่อเสียง (ดวงนี้ไม่มีกะจื่อเด่นดัง)
+    // ดวงที่หลักวันเป็น 甲子 → จับได้
+    const withFame: ChartFacts = {
+      ...FACTS,
+      dayMaster: "甲",
+      pillars: [
+        { position: "year", stem: "戊", branch: "辰", state: null, upperState: null },
+        { position: "month", stem: "丁", branch: "巳", state: null, upperState: null },
+        { position: "day", stem: "甲", branch: "子", state: null, upperState: null },
+        { position: "hour", stem: "癸", branch: "未", state: null, upperState: null },
+      ],
+    };
+    const hit = resolveChapterBoxes("chart_foundation", withFame, {
+      ...MAP,
+      fame_honor: { 甲子: { text: "ดาวเด่นดังแห่งหมกยก", label: "甲子" } },
+    });
+    expect(hit.boxes[9].body).toContain("ดาวเด่นดังแห่งหมกยก");
   });
 
   test("CHAPTER_BULLET_RESOLVERS มีครบ 15 บท และ resolver align กับจำนวน bullets", () => {

@@ -436,6 +436,24 @@ export function matchPillarGanzhi(
 }
 
 /**
+ * ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง) — จับเมื่อดวงมีกะจื่อพิเศษ (甲子/甲午/己酉/己卯) ในเสาใดก็ได้
+ * lookup คีย์ = กะจื่อของเสา (เฉพาะคีย์ที่ซินแสกรอกเนื้อไว้ = 4 กะจื่อ) · ดีดุปตามกะจื่อ (กันเสาซ้ำ)
+ */
+export function matchFameHonor(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const out: NewdataBlock[] = [];
+  const seen = new Set<string>();
+  for (const p of facts.pillars) {
+    const key = `${p.stem}${p.branch}`;
+    if (seen.has(key)) continue;
+    const value = map[group]?.[key];
+    if (!value?.text?.trim()) continue;
+    seen.add(key);
+    out.push(toBlock(group, key, value, THAI_PILLAR_NAME[p.position], `${key} (${THAI_PILLAR_NAME[p.position]})`));
+  }
+  return out;
+}
+
+/**
  * ดิถีถ่ายเท — ก้านดิถี (D) "ถ่ายเท" ไปยังราศีบน/ล่างในดวง → lookup คีย์ "{D}|{ปลายทาง}"
  * scope: "all" = ทั้งราศีบน+ล่าง · "stems" = เฉพาะราศีบน (พรสวรรค์) · "branches" = เฉพาะราศีล่าง (พรแสวง)
  * คืนหลายก้อน (ดีดุปตามคีย์) — match เฉพาะปลายทางที่เป็นธาตุถ่ายเท (มีคีย์ในตาราง)
