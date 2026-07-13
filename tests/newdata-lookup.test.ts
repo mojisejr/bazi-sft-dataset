@@ -379,8 +379,8 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("ข้อเสนอแนะ wealth/health/talent = รายธาตุ用神 (static, iterate favorableElements)", () => {
     // FACTS 庚(weak) → 用神 ดิน+ทอง; แต่ละกล่องต้องมีเนื้อธาตุดิน (用神) และไม่มีธาตุไฟ (ไม่ใช่用神)
-    // wealth bullets: [โชคลาภ, ธุรกิจ, ลูกค้า, ผั่ว, ข้อเสนอแนะ] → ข้อเสนอแนะ = box[4]
-    const wealth = resolveChapterBoxes("wealth_and_investment", FACTS, MAP).boxes[4].body;
+    // wealth bullets: [โชคลาภ, ธุรกิจ, ลูกค้า, การใช้จ่าย, ผั่ว, ข้อเสนอแนะ] → ข้อเสนอแนะ = box[5]
+    const wealth = resolveChapterBoxes("wealth_and_investment", FACTS, MAP).boxes[5].body;
     expect(wealth).toContain("เก็บออมแบบมั่นคง"); // ดิน
     expect(wealth).not.toContain("แปลงชื่อเสียง"); // ไฟ (ไม่ใช่用神)
     expect(resolveChapterBoxes("talent", FACTS, MAP).boxes[3].body).toContain("บริหารทรัพย์สิน"); // ดิน
@@ -417,12 +417,15 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
       // ลูกค้า = เชี่ยงแซหลักปี (戊辰 = เอี้ยง) · ธุรกิจ = เชี่ยงแซหลักเดือน (丁巳 = เชี่ยงแซ)
       customer_state: { เอี้ยง: { text: "ลูกค้าที่ต้องคอยดูแล วัยเด็ก", label: "เอี้ยง" } },
       business_state: { เชี่ยงแซ: { text: "ธุรกิจเริ่มต้นสิ่งใหม่ เพื่อการพัฒนา", label: "เชี่ยงแซ" } },
+      // การใช้จ่าย = เชี่ยงแซของเสาที่ธาตุถ่ายเท(食傷=น้ำ)ปรากฏ → 癸เสายาม เชี่ยงแซกวงตั่ว
+      spending_state: { กวงตั่ว: { text: "ใช้จ่ายกับการเรียนรู้ เรื่องเฉพาะทาง", label: "กวงตั่ว" } },
     };
     const cf = resolveChapterBoxes("chart_foundation", FACTS, map);
     expect(cf.boxes[8].body).toContain("ยุติธรรม เด็ดขาด"); // box8 = คุณธรรม (ตามธาตุดิถี ทอง)
     const w = resolveChapterBoxes("wealth_and_investment", FACTS, map);
     expect(w.boxes[1].body).toContain("ธุรกิจเริ่มต้นสิ่งใหม่"); // box1 = ธุรกิจ (หลักเดือน เชี่ยงแซ)
     expect(w.boxes[2].body).toContain("ลูกค้าที่ต้องคอยดูแล"); // box2 = ลูกค้า (หลักปี เอี้ยง)
+    expect(w.boxes[3].body).toContain("ใช้จ่ายกับการเรียนรู้"); // box3 = การใช้จ่าย (ธาตุถ่ายเท น้ำ → กวงตั่ว)
   });
 
   test("ชื่อเสียงและเกียรติยศ (fame_honor) — จับกะจื่อเด่นดังในเสาใดก็ได้", () => {

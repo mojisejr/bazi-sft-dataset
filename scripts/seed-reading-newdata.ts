@@ -1082,6 +1082,8 @@ function collectAll(): SeedRow[] {
   // บท 3 · ลูกค้า (เชี่ยงแซหลักปี) / ธุรกิจ (เชี่ยงแซหลักเดือน) — 12 เชี่ยงแซ
   push("customer_state", () => parseStateSections("3.ลูกค้า 12 เชี่ยงแซ.txt", "customer_state"));
   push("business_state", () => parseStateSections("3.ธุรกิจ 12 เชี่ยงแซ.txt", "business_state"));
+  // บท 3 · การใช้จ่าย ตาม 12 เชี่ยงแซ ของ "ธาตุถ่ายเท" (食傷) ของดิถี
+  push("spending_state", () => parseStateSections("3.การใช้จ่าย 12 เชี่ยงแซ.txt", "spending_state"));
   // บท 13 · สุขภาพ 5 ธาตุ มาก/น้อย (template ว่าง 10 ช่อง — คีย์ "{ธาตุ}|มาก"/"{ธาตุ}|น้อย")
   push("health_by_element", () => healthElementTemplate());
   // บท 13 · สุขภาพเจ๊าะ ราย กะจื่อ/ดิถี × ตำแหน่งเสา (template ว่าง — ซินแสกรอกในแอดมิน)

@@ -145,6 +145,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "state", group: "business_state", pillar: "month" }],
     // ลูกค้าเป็นแบบไหน = เชี่ยงแซหลักปี (customer_state)
     [{ kind: "state", group: "customer_state", pillar: "year" }],
+    // ลักษณะการใช้จ่าย = เชี่ยงแซของเสาที่ธาตุถ่ายเท (食傷) ของดิถีปรากฏ (spending_state)
+    [{ kind: "elementRoleState", group: "spending_state", role: "output" }],
     [{ kind: "phua" }],
     [{ kind: "elementAdvice", table: "wealth" }],
   ],
