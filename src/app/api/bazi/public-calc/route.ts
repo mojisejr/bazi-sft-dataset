@@ -6,6 +6,7 @@ import {
 } from "@/features/bazi-math/bazi-engine-adapter";
 import { createNoOpKnowledgeRepository } from "@/lib/bazi/no-op-knowledge-repository";
 import { buildDaYunTableRows, resolveDaYunReaction } from "@/lib/bazi/topic-knowledge";
+import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import {
   BRANCH_TO_ELEMENT,
   CLASH_PAIRS,
@@ -147,6 +148,56 @@ function buildBadges(calculatedState: BaziStatePayload): Badge[] {
   return badges;
 }
 
+type PillarField = {
+  stem: string;
+  branch: string;
+  sittingStage?: string;
+  upperStageDisplay?: string;
+  lowerStageDisplay?: string;
+};
+
+type PillarResponse = {
+  stem: string;
+  branch: string;
+  stemElement: string;
+  branchElement: string;
+  upperStageDisplay?: string;
+  lowerStageDisplay?: string;
+  sittingStage?: string;
+};
+
+// #calculator-card-reframe-v2 (FROZEN, lamun-oracle) — same-engine data-correctness rule: any
+// เชี่ยงแซ/strength/reaction shown next to a glyph must come from THIS engine, never stapled onto
+// a mootech-be glyph. This exposes calculatedState.fourPillars + mingGong's own stage fields
+// directly (already computed, zero new engine logic) so mootech-fe can source both glyph and
+// stage from one call.
+//
+// Day pillar (ดิถี) deliberately omits upperStageDisplay + sittingStage even though the engine
+// computes sittingStage for every pillar including day (verified live: fourPillars.day.
+// sittingStage = "เอี้ยง", a real value) — the design freeze doctrine tags day as "ดิถี" with no
+// เชี่ยงแซ/ตัวนั่ง shown on it at all, so it's dropped here rather than left for the frontend to
+// remember to hide.
+function mapPillar(pillar: PillarField, isDay: boolean): PillarResponse {
+  return {
+    stem: pillar.stem,
+    branch: pillar.branch,
+    stemElement: elementLabelForSymbol(pillar.stem),
+    branchElement: elementLabelForSymbol(pillar.branch),
+    ...(isDay ? {} : { upperStageDisplay: pillar.upperStageDisplay, sittingStage: pillar.sittingStage }),
+    lowerStageDisplay: pillar.lowerStageDisplay,
+  };
+}
+
+function buildPillars(calculatedState: BaziStatePayload) {
+  return {
+    ascendant: calculatedState.mingGong ? mapPillar(calculatedState.mingGong, false) : null,
+    hour: mapPillar(calculatedState.fourPillars.hour, false),
+    day: mapPillar(calculatedState.fourPillars.day, true),
+    month: mapPillar(calculatedState.fourPillars.month, false),
+    year: mapPillar(calculatedState.fourPillars.year, false),
+  };
+}
+
 /**
  * POST /api/bazi/public-calc — วัยจร/ปีจร + ปฏิกิริยาธาตุ ล้วน ๆ (ไม่มีเกรด/ทำนาย)
  * คนละ route จาก mode=consumer เดิม — inject no-op repository เข้า calculateBaziStateFromRawInput
@@ -165,11 +216,15 @@ export function createPublicCalcHandler() {
         element: elementLabelForSymbol(row.symbol),
       }));
 
+      const band = classifyOperatorStrengthScore(calculatedState.strengthScore);
+
       return Response.json(
         {
           dayMaster: calculatedState.dayMaster,
           dayMasterElement: elementLabelForSymbol(calculatedState.dayMaster),
           strengthScore: calculatedState.strengthScore,
+          strengthBand: { id: band.id, displayLabel: band.displayLabel },
+          pillars: buildPillars(calculatedState),
           daYun,
           liuNian: buildLiuNianRows(calculatedState),
           badges: buildBadges(calculatedState),
