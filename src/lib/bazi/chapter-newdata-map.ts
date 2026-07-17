@@ -294,7 +294,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   ],
 };
 
-function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
+function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap, anchorYear?: number): NewdataBlock[] {
   switch (r.kind) {
     case "state": {
       const block = matchPillarState(map, r.group, facts, r.pillar, r.tier ?? "lower");
@@ -363,7 +363,7 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
     case "familyState":
       return matchFamilyState(facts, r.pillar, r.tier ?? "lower");
     case "annualYears":
-      return matchAnnualYears(facts);
+      return matchAnnualYears(facts, anchorYear);
     case "daYun":
       return matchDaYun(map, facts);
     default:
@@ -398,6 +398,8 @@ export function resolveChapterBoxes(
   chapterId: string,
   facts: ChartFacts,
   map: NewdataMap,
+  /** ปีจรที่ต้องการยึดเป็น "ปีปัจจุบัน" (บท 12) — ไม่ส่ง = ใช้ปีตามนาฬิกา server */
+  anchorYear?: number,
 ): ResolvedChapterBoxes {
   const bullets = CHAPTER_OUTLINE[chapterId]?.bullets ?? [];
   const resolvers = CHAPTER_BULLET_RESOLVERS[chapterId] ?? [];
@@ -410,7 +412,7 @@ export function resolveChapterBoxes(
     let curatedContent = false;
     const parts: string[] = [];
     for (const r of resolvers[i] ?? []) {
-      const blocks = resolveOne(r, facts, map);
+      const blocks = resolveOne(r, facts, map, anchorYear);
       if (blocks.length === 0) continue;
       const text = blocks.map(blockToParagraph).join("\n\n");
       parts.push(text);

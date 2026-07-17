@@ -18,13 +18,13 @@ import {
   STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
 import {
-  annualGanzhi,
   elementRelationKey,
   extractChartFacts,
   favorableElements,
   gradeLuckPhase,
   type ChartFacts,
 } from "@/lib/bazi/newdata-lookup";
+import { annualGanzhi } from "@/lib/bazi/annual-ganzhi";
 import { resolveDisplayTwelveQiStage } from "@/lib/bazi/pillar-display";
 
 export type DomainLevel = "high" | "medium" | "low";

@@ -438,3 +438,112 @@
     display: none !important;
   }
 }
+
+/* ── ตารางปีจร (流年) สไลด์แนวนอน คลิกเลือกได้ · บท 12 · screen-only ────────── */
+/* คอนเทนเนอร์ flex-column ต้อง min-width:0 เพื่อให้ overflow-x ของแถบปีจรทำงาน
+   (ไม่งั้น min-width:auto จะยืดตามความกว้างการ์ดทั้งแถว แถบเลยไม่ scroll) */
+.newdata-reading,
+.newdata-reading__doc {
+  min-width: 0;
+}
+.annual-picker {
+  margin: 0.25rem 0 1rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid rgba(47, 143, 157, 0.25);
+  border-radius: 0.6rem;
+  background: rgba(47, 143, 157, 0.05);
+}
+.annual-picker__hint {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  color: var(--muted, #4a6b73);
+}
+.annual-picker__strip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.15rem 0.1rem 0.6rem;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+/* scrollbar บาง ๆ ให้เห็นชัดว่าเลื่อนได้ */
+.annual-picker__strip::-webkit-scrollbar {
+  height: 8px;
+}
+.annual-picker__strip::-webkit-scrollbar-thumb {
+  background: rgba(47, 143, 157, 0.4);
+  border-radius: 99px;
+}
+.annual-picker__strip::-webkit-scrollbar-track {
+  background: rgba(47, 143, 157, 0.1);
+  border-radius: 99px;
+}
+.annual-picker__cell {
+  flex: 0 0 auto;
+  min-width: 5.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.22rem;
+  padding: 0.6rem 0.5rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: 0.7rem;
+  background: #fff;
+  cursor: pointer;
+  scroll-snap-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  transition: border-color 0.15s, background 0.15s, transform 0.15s;
+}
+.annual-picker__cell:hover:not(:disabled) {
+  border-color: var(--accent, #2f8f9d);
+  transform: translateY(-2px);
+}
+.annual-picker__cell:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.annual-picker__cell.is-active {
+  border-color: var(--accent, #2f8f9d);
+  background: var(--accent, #2f8f9d);
+  box-shadow: 0 3px 8px rgba(47, 143, 157, 0.35);
+}
+.annual-picker__cell.is-active .annual-picker__gz {
+  color: #fff;
+}
+.annual-picker__cell.is-active .annual-picker__yr,
+.annual-picker__cell.is-active .annual-picker__be,
+.annual-picker__cell.is-active .annual-picker__age {
+  color: rgba(255, 255, 255, 0.92);
+}
+.annual-picker__yr {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #2b3b40;
+  white-space: nowrap;
+}
+.annual-picker__be {
+  font-weight: 500;
+  font-size: 0.68rem;
+  color: var(--muted, #5b7c84);
+}
+.annual-picker__gz {
+  font-size: 1.5rem;
+  line-height: 1.05;
+  color: var(--accent, #2f8f9d);
+}
+.annual-picker__qi {
+  font-size: 0.7rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 99px;
+  background: rgba(47, 143, 157, 0.12);
+  color: var(--accent, #2f8f9d);
+  white-space: nowrap;
+}
+.annual-picker__cell.is-active .annual-picker__qi {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.annual-picker__age {
+  font-size: 0.68rem;
+  color: var(--muted, #5b7c84);
+}

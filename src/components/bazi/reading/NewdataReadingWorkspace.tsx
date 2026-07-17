@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { MascotBadge } from "@/components/bazi/reading/MascotBadge";
+import { AnnualPillarPicker } from "@/components/bazi/reading/AnnualPillarPicker";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
   DEFAULT_REFERRAL_CODE,
@@ -224,6 +225,10 @@ export function NewdataReadingWorkspace() {
   const [aiAll, setAiAll] = useState(false);
   const [aiError, setAiError] = useState("");
 
+  /** ปีจรที่เลือกในตารางบท 12 (ค.ศ.) + สถานะกำลังทำนายปีใหม่ */
+  const [anchorYear, setAnchorYear] = useState(() => new Date().getFullYear());
+  const [annualBusy, setAnnualBusy] = useState(false);
+
   const [showPreview, setShowPreview] = useState(false);
   const [editMode, setEditMode] = useState(false);
 
@@ -440,6 +445,50 @@ export function NewdataReadingWorkspace() {
     setDrafts({});
     persist(storageKey, EMPTY_EDITS);
   }, [persist, storageKey]);
+
+  // ── เลือกปีจร (บท 12) → ทำนายบท "จุดเปลี่ยน/วัยจร" ใหม่ตามปีที่เลือก (ไม่แตะ 14 บทที่เหลือ) ──
+  const pickAnnualYear = useCallback(
+    async (year: number) => {
+      if (!data?.rawInput) return;
+      const ch = data.chapters?.find((c) => c.id === "turning_points");
+      if (!ch) return;
+      const hasUnsaved = "turning_points" in drafts || edits.boxes["turning_points"] !== undefined;
+      if (
+        hasUnsaved &&
+        !window.confirm(
+          "บท “จุดเปลี่ยน/วัยจร” มีคำที่แก้ไว้ — เลือกปีจรใหม่จะแทนที่ด้วยคำทำนายของปีที่เลือก ดำเนินการต่อไหม?",
+        )
+      )
+        return;
+      setAnnualBusy(true);
+      setError("");
+      try {
+        const res = await fetch("/api/reading/newdata-reading/annual", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ ...data.rawInput, anchorYear: year }),
+        });
+        const body = (await res.json()) as { boxes?: ReadingBox[]; error?: string };
+        if (!res.ok || !body.boxes) {
+          setError(body.error ?? "ทำนายปีจรไม่สำเร็จ");
+          return;
+        }
+        setAnchorYear(year);
+        // ล้างร่างบทนี้ + ตั้งกล่องปีใหม่เป็นค่าที่แก้ (persist + โชว์ทันที เหมือนซินแสแก้เอง)
+        setDrafts((prev) => {
+          const next = { ...prev };
+          delete next["turning_points"];
+          return next;
+        });
+        setBoxes(ch, body.boxes);
+      } catch {
+        setError("เชื่อมต่อไม่สำเร็จ");
+      } finally {
+        setAnnualBusy(false);
+      }
+    },
+    [data, drafts, edits, setBoxes],
+  );
 
   // ── ทำนายด้วย LLM (Gemini) ──
   // แกนคำตอบ = "ที่ซินแสแก้ไว้" (edits) ถ้ามี ไม่งั้น = NewData ต้นฉบับ → AI ขัดเกลาต่อจากงานซินแส ไม่ล้างทิ้ง
@@ -1076,6 +1125,16 @@ export function NewdataReadingWorkspace() {
                   {!dirty && edited && <span className="newdata-reading__badge no-print is-edited">✎ แก้แล้ว</span>}
                   <span className={`newdata-reading__badge no-print ${status.cls}`}>{status.label}</span>
                 </h2>
+
+                {ch.id === "turning_points" && (
+                  <AnnualPillarPicker
+                    dayMaster={data.calculatedState?.dayMaster}
+                    birthYear={Number.parseInt(String(data.rawInput?.birthDate ?? "").slice(0, 4), 10) || undefined}
+                    selectedYear={anchorYear}
+                    busy={annualBusy}
+                    onSelect={(y) => void pickAnnualYear(y)}
+                  />
+                )}
 
                 <div className="newdata-reading__boxes no-print">
                   {boxes.map((box, idx) => (

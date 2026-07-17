@@ -25,6 +25,9 @@ import { LUCKY_ANIMAL_BY_DAY_MASTER } from "@/lib/bazi/constants/lucky-animal";
 import { ELEMENT_ADVICE_TABLES, type ElementAdviceTable } from "@/lib/bazi/constants/element-advice";
 import { FAMILY_STATE_READING } from "@/lib/bazi/constants/family-state-reading";
 import { resolveDisplayTwelveQiStage } from "@/lib/bazi/pillar-display";
+import { annualGanzhi } from "@/lib/bazi/annual-ganzhi";
+// re-export: ผู้ใช้เดิม (life-timeline/tests) import annualGanzhi จากไฟล์นี้ — คงพื้นผิว public ไว้
+export { annualGanzhi } from "@/lib/bazi/annual-ganzhi";
 import {
   BRANCH_COMBINATION_TRANSFORMS,
   BRANCH_HIDDEN_STEMS,
@@ -771,17 +774,6 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
 }
 
 // ── บท 12 · ปีจร (annual year pillar) ────────────────────────────────────────
-const ANNUAL_STEMS = ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"] as const;
-const ANNUAL_BRANCHES = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"] as const;
-
-/** กะจื่อปีจรของปี ค.ศ. (base 1984 = 甲子) */
-export function annualGanzhi(year: number): { stem: string; branch: string } {
-  const d = year - 1984;
-  const stem = ANNUAL_STEMS[((d % 10) + 10) % 10];
-  const branch = ANNUAL_BRANCHES[((d % 12) + 12) % 12];
-  return { stem, branch };
-}
-
 function pairIn(set: Set<string>, a: string, b: string): boolean {
   return set.has(`${a}|${b}`) || set.has(`${b}|${a}`);
 }
