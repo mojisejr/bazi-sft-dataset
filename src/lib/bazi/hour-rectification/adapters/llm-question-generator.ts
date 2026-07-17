@@ -1,23 +1,34 @@
-// Hour Rectification — llm-question-generator (#hour-rectification-engine).
+// Hour Rectification — llm-question-generator (#hour-rectification-engine, v1).
 //
-// 🔒 LLM CALL BUDGET GUARD — the single most important property of this file. ฟีม is worried
-// about runaway API cost on an unattended overnight run. The counter lives HERE, centrally, so
-// every call path that goes through this module is governed — there is no way to reach the LLM
-// from this generator without passing the guard first.
+// 🔒 LLM CALL BUDGET GUARD — the single most important property of this file. ฟีม is worried about
+// runaway API cost on an unattended run. The counter lives HERE, centrally, so every call path that
+// goes through this module is governed — there is no way to reach the LLM from this generator
+// without passing the guard first.
 //
-//   - MAX_LLM_CALLS defaults to 10, overridable via env RECTIFICATION_MAX_LLM_CALLS.
+//   - MAX_LLM_CALLS defaults to 20 (ฟีม raised it from v0's 10 for the more complex v1 bank),
+//     overridable via env RECTIFICATION_MAX_LLM_CALLS. Real target is still 3-6 calls.
 //   - Checked BEFORE every call, not after: if callCount >= max, throws LlmBudgetExceededError
 //     immediately — no network request is made for the call that would exceed the budget.
 //   - One generator instance = one shared budget for the whole generation run. The caller
 //     (generate-network.ts) must create exactly ONE instance per run and reuse it for every call
 //     (draft + repairs) — creating a second instance to "reset" the counter defeats the guard and
 //     must never be done.
+//
+// v1 shift: the LLM authors a person-agnostic BANK of behavioural questions and TAGS each option
+// with structural-signature votes (element / role / strength) from a FIXED vocabulary. It never
+// decides an hour — the runtime match does, against the real user's chart. This is the honest,
+// still-unproven part (behaviour→property mapping) — kept isolated here so swapping in real rules
+// later touches only the bank, not the match engine.
 import { generateProseLlm } from "@/lib/bazi/reading-llm";
-import type { HourBranch, QuestionNetwork, QuestionNode } from "../domain/types";
-import type { HourChartProfile } from "./chart-profile-adapter";
-import { HOUR_BRANCH_LABELS_TH } from "../domain/types";
+import {
+  SIGNATURE_DIMENSIONS,
+  SIGNATURE_VOCAB,
+  type BankQuestion,
+  type QuestionBank,
+  type QuestionOption,
+  type SignatureVote,
+} from "../domain/types";
 import type { ValidationIssue } from "../domain/validate-tree";
-import { MAX_QUESTION_DEPTH } from "../domain/validate-tree";
 
 export class LlmBudgetExceededError extends Error {
   constructor(
@@ -32,7 +43,7 @@ export class LlmBudgetExceededError extends Error {
   }
 }
 
-export const DEFAULT_MAX_LLM_CALLS = 10;
+export const DEFAULT_MAX_LLM_CALLS = 20;
 
 export function resolveMaxLlmCalls(
   env: Record<string, string | undefined> = process.env,
@@ -48,16 +59,13 @@ type RawLlmCaller = (input: {
   userPrompt: string;
 }) => Promise<{ text: string; model: string }>;
 
-// Wire format the LLM is instructed to emit — deliberately close to (but not identical to) the
-// domain QuestionNetwork shape ("type" not "kind") so a hand-written translation step is a natural
-// place to reject malformed output rather than silently coercing it.
-type WireNodeRef =
-  | { type: "question"; nodeId: string }
-  | { type: "result"; hourBranch: string };
-
-type WireOption = { id: string; label: string; next: WireNodeRef };
-type WireNode = { id: string; question: string; options: WireOption[] };
-type WireTree = { rootNodeId: string; nodes: WireNode[] };
+// Wire format the LLM emits — deliberately close to (but not identical to) the domain shape so the
+// hand-written translation step below is a natural place to reject malformed output rather than
+// silently coercing it.
+type WireVote = { dimension: string; value: string; weight: number };
+type WireOption = { id: string; label: string; evidence: WireVote[] };
+type WireQuestion = { id: string; question: string; options: WireOption[] };
+type WireBank = { questions: WireQuestion[] };
 
 function stripCodeFence(text: string): string {
   const trimmed = text.trim();
@@ -65,7 +73,7 @@ function stripCodeFence(text: string): string {
   return fenced ? fenced[1].trim() : trimmed;
 }
 
-function parseWireTree(text: string): WireTree {
+function parseWireBank(text: string): WireBank {
   let parsed: unknown;
   try {
     parsed = JSON.parse(stripCodeFence(text));
@@ -77,155 +85,120 @@ function parseWireTree(text: string): WireTree {
   if (
     !parsed ||
     typeof parsed !== "object" ||
-    !("rootNodeId" in parsed) ||
-    !("nodes" in parsed) ||
-    !Array.isArray((parsed as WireTree).nodes)
+    !("questions" in parsed) ||
+    !Array.isArray((parsed as WireBank).questions)
   ) {
-    throw new Error('LLM response JSON missing required "rootNodeId"/"nodes" shape');
+    throw new Error('LLM response JSON missing required "questions" array shape');
   }
-  return parsed as WireTree;
+  return parsed as WireBank;
 }
 
-function wireNodesToNetworkNodes(wireNodes: WireNode[]): Record<string, QuestionNode> {
-  const nodes: Record<string, QuestionNode> = {};
-  for (const wireNode of wireNodes) {
-    if (!wireNode.id || !wireNode.question || !Array.isArray(wireNode.options)) {
-      throw new Error(`LLM produced a malformed node: ${JSON.stringify(wireNode)}`);
+function wireVoteToVote(wire: WireVote): SignatureVote {
+  if (!wire || typeof wire.dimension !== "string" || typeof wire.value !== "string") {
+    throw new Error(`LLM produced a malformed evidence vote: ${JSON.stringify(wire)}`);
+  }
+  const weight = typeof wire.weight === "number" && wire.weight > 0 ? wire.weight : 1;
+  return { dimension: wire.dimension as SignatureVote["dimension"], value: wire.value, weight };
+}
+
+function wireQuestionsToBankQuestions(wireQuestions: WireQuestion[]): BankQuestion[] {
+  return wireQuestions.map((wireQuestion) => {
+    if (!wireQuestion.id || !wireQuestion.question || !Array.isArray(wireQuestion.options)) {
+      throw new Error(`LLM produced a malformed question: ${JSON.stringify(wireQuestion)}`);
     }
-    nodes[wireNode.id] = {
-      id: wireNode.id,
-      question: wireNode.question,
-      options: wireNode.options.map((option) => {
-        if (!option.id || !option.label || !option.next) {
-          throw new Error(`LLM produced a malformed option: ${JSON.stringify(option)}`);
-        }
-        const next =
-          option.next.type === "result"
-            ? { kind: "result" as const, hourBranch: option.next.hourBranch as HourBranch }
-            : { kind: "question" as const, nodeId: option.next.nodeId };
-        return { id: option.id, label: option.label, next };
-      }),
-    };
-  }
-  return nodes;
+    const options: QuestionOption[] = wireQuestion.options.map((option) => {
+      if (!option.id || !option.label || !Array.isArray(option.evidence)) {
+        throw new Error(`LLM produced a malformed option: ${JSON.stringify(option)}`);
+      }
+      return {
+        id: option.id,
+        label: option.label,
+        evidence: option.evidence.map(wireVoteToVote),
+      };
+    });
+    return { id: wireQuestion.id, question: wireQuestion.question, options };
+  });
 }
 
-function formatProfileForPrompt(profile: HourChartProfile): string {
-  const hourPillar = (profile.chart as { fourPillars?: { hour?: Record<string, unknown> } })
-    .fourPillars?.hour;
-  const strengthScore = (
-    profile.chart as { explainable?: { strengthScore?: { value?: number } } }
-  ).explainable?.strengthScore?.value;
+// The vocabulary block handed to the LLM — the SAME const-derived vocabulary validate-tree and
+// match.ts use, described in plain Thai so the model tags behaviour with the right property.
+function vocabularyBlock(): string {
   return [
-    `ยาม${profile.hourBranch} (${HOUR_BRANCH_LABELS_TH[profile.hourBranch]}):`,
-    `  เสายาม: ${hourPillar?.stem ?? "?"}${hourPillar?.branch ?? "?"} (${hourPillar?.tenGod ?? "?"})`,
-    `  ธาตุก้าน: ${hourPillar?.stemTranslation ?? "?"}, ซ่อน: ${
-      Array.isArray(hourPillar?.hiddenStems) ? (hourPillar!.hiddenStems as string[]).join(",") : "-"
-    }`,
-    `  กำลังดิถีรวม (strengthScore): ${strengthScore ?? "?"}`,
+    "ชุดคุณสมบัติ (dimension) และค่าที่อนุญาต (ต้องใช้ตรงตามนี้เป๊ะ ห้ามคิดค่าใหม่):",
+    `- stemElement (ธาตุของก้านยาม): ${SIGNATURE_VOCAB.stemElement.join(", ")}`,
+    "    wood=พลังเติบโต/ริเริ่ม, fire=พลังแสดงออก/กระตือรือร้น, earth=พลังมั่นคง/ดูแล, metal=พลังระเบียบ/เด็ดขาด, water=พลังยืดหยุ่น/คิดลึก",
+    `- stemRole (บทบาทก้านยามเทียบดิถี): ${SIGNATURE_VOCAB.stemRole.join(", ")}`,
+    "    same=พึ่งตัวเอง/เพื่อนพ้อง, resource=ได้รับการสนับสนุน/เรียนรู้, output=สร้างสรรค์/ถ่ายเท, wealth=จัดการทรัพย์/ควบคุมสิ่งของ, power=วินัย/หน้าที่/ถูกกำกับ",
+    `- branchRole (บทบาทกิ่งยามเทียบดิถี): ${SIGNATURE_VOCAB.branchRole.join(", ")} (ความหมายเดียวกับ stemRole แต่ดูจากกิ่ง)`,
+    `- strengthBucket (กำลังดิถีรวมของช่วงยามนั้น): ${SIGNATURE_VOCAB.strengthBucket.join(", ")}`,
+    "    strong=พลังชีวิตแรง/ยืนหยัด, balanced=สมดุล, weak=ต้องพึ่งพา/ประหยัดพลัง",
   ].join("\n");
 }
 
-// === call 1: condense 12 raw chart profiles into one compact differentiator summary ===
-async function summarizeProfiles(
-  profiles: HourChartProfile[],
-  callLlm: RawLlmCaller,
-): Promise<string> {
-  const rawProfilesText = profiles.map(formatProfileForPrompt).join("\n\n");
+const WIRE_EXAMPLE =
+  '{"questions":[{"id":"q1","question":"เวลาเจอปัญหาใหม่ คุณมัก...","options":[' +
+  '{"id":"a","label":"ลุยลองเองทันที","evidence":[{"dimension":"stemElement","value":"fire","weight":2},{"dimension":"stemRole","value":"output","weight":1}]},' +
+  '{"id":"b","label":"หาข้อมูล/ถามผู้รู้ก่อน","evidence":[{"dimension":"stemRole","value":"resource","weight":2}]}]}]}';
+
+// === call 1: generate the whole bank from the vocabulary (person-agnostic) ===
+async function generateBank(callLlm: RawLlmCaller, targetSize: number): Promise<QuestionBank> {
   const systemInstruction =
-    "คุณคือนักโหราศาสตร์จีนสาย orthodox ผู้เชี่ยวชาญเรื่อง สอบยาม (Hour Rectification) — " +
-    "หาว่าคนที่ไม่รู้เวลาเกิดที่แน่นอน เกิดยามไหนใน 12 ยาม โดยถามคำถามเกี่ยวกับชีวิตจริง";
+    "คุณคือนักออกแบบแบบสอบถามสำหรับ สอบยาม (Hour Rectification) แนวใหม่ — คุณไม่ต้องทายยามเอง " +
+    "หน้าที่คุณคือออกคำถามชีวิตจริงแบบเลือกตอบ แล้ว 'ติดป้าย' แต่ละตัวเลือกว่าบ่งชี้คุณสมบัติเชิงโครงสร้างอะไร " +
+    "ระบบจะเอาป้ายเหล่านี้ไปแมตช์กับดวงจริงของผู้ตอบเองภายหลัง";
   const userPrompt = [
-    "นี่คือดวงจริงของคนคนเดียวกัน คำนวณ 12 ครั้งด้วยยามที่ต่างกัน (ยามอื่นเหมือนกันหมด ต่างแค่เสายาม):",
+    vocabularyBlock(),
     "",
-    rawProfilesText,
+    `งาน: ออกคำถามชีวิตจริงแบบ multiple-choice ประมาณ ${targetSize} ข้อ (อย่างน้อย 20) ที่คนทั่วไปตอบได้เองแม้ไม่รู้ศาสตร์นี้ ` +
+      "(เช่น นิสัยการทำงาน การจัดการเงิน ความสัมพันธ์ พลังงานตอนเด็ก การตัดสินใจ)",
+    "กติกาบังคับ (ห้ามฝ่าฝืน):",
+    "- ทุกคำถามมีอย่างน้อย 2 ตัวเลือก",
+    "- ทุกตัวเลือกต้องมี evidence อย่างน้อย 1 ป้าย (dimension+value+weight)",
+    `- ใช้ dimension เฉพาะ: ${SIGNATURE_DIMENSIONS.join(", ")} และ value ตรงตามรายการข้างบนเท่านั้น`,
+    "- weight เป็นจำนวนบวก (1=สัญญาณอ่อน, 2=ปานกลาง, 3=ชัดมาก)",
+    "- กระจายให้ครบทั้ง 4 dimension ทั่วทั้งชุด (แต่ละ dimension ต้องมีคำถามที่ probe อย่างน้อย 2-3 ข้อ เพื่อให้ runtime เลือกมุมที่แยกดวงได้ดีสุด)",
+    "- ห้ามถามศัพท์เทคนิคโหราศาสตร์ (เช่น 'เทพเจ้าสิบของคุณคืออะไร') — ถามพฤติกรรม/ประสบการณ์จริงเท่านั้น",
+    "- id คำถามและ id ตัวเลือกห้ามซ้ำกันในชุด",
     "",
-    "งาน: สรุปเป็นตารางเปรียบเทียบสั้นๆ ว่าแต่ละยามมีจุดเด่น/ลักษณะนิสัย/พลังงานที่สังเกตได้จากชีวิตจริงต่างกันอย่างไร " +
-      "(จากเสายาม ธาตุ เทพเจ้าสิบ กำลังดิถี) เน้นแง่มุมที่แปลงเป็น 'คำถามเกี่ยวกับพฤติกรรม/ประสบการณ์ชีวิต' ที่คนทั่วไปตอบได้เองแม้ไม่รู้ศาสตร์นี้ " +
-      "(เช่น นิสัยการทำงาน ความสัมพันธ์กับพ่อแม่ พลังงานตอนเด็ก) ตอบเป็นข้อความธรรมดา กระชับที่สุด ไม่ต้องเป็น JSON",
+    "ตอบเป็น JSON ล้วนๆ เท่านั้น (ห้ามข้อความอื่นนอก JSON, ห้าม markdown code fence) ตรงรูปแบบนี้เป๊ะ:",
+    WIRE_EXAMPLE,
   ].join("\n");
 
   const response = await callLlm({ systemInstruction, userPrompt });
-  return response.text;
-}
-
-// === call 2: generate the full question tree from the condensed summary ===
-async function generateFullTree(
-  profileSummary: string,
-  callLlm: RawLlmCaller,
-): Promise<QuestionNetwork> {
-  const systemInstruction =
-    "คุณคือนักออกแบบแบบสอบถามสำหรับ สอบยาม (Hour Rectification) — สร้างต้นไม้คำถามแบบ multiple-choice " +
-    "ที่ทายได้ว่าผู้ตอบเกิดยามไหนใน 12 ยาม โดยถามคำถามชีวิตจริงเท่านั้น (ไม่ถามศัพท์โหราศาสตร์)";
-  const userPrompt = [
-    "สรุปความต่างของ 12 ยามนี้:",
-    "",
-    profileSummary,
-    "",
-    "กติกาบังคับ (ห้ามฝ่าฝืนเด็ดขาด):",
-    `- ทุกเส้นทางจากคำถามข้อแรกถึงคำตอบสุดท้าย ต้องมีคำถามไม่เกิน ${MAX_QUESTION_DEPTH} ข้อ เป้าหมายจริงคือ 5-8 ข้อ`,
-    "- ทุกคำถามต้องมีอย่างน้อย 2 ตัวเลือก",
-    "- ทุก 1 ใน 12 ยามต้องมีอย่างน้อย 1 เส้นทางไปถึงได้จริง (子丑寅卯辰巳午未申酉戌亥 ครบทั้ง 12 ตัวอักษรนี้)",
-    "- ห้ามมีเส้นทางวนกลับมาที่คำถามเดิม (ต้องจบที่คำตอบเสมอ ไม่มีวงวน)",
-    "- คำถามต้องเป็นเรื่องชีวิตจริงที่คนทั่วไปตอบได้เอง ห้ามถามศัพท์เทคนิค เช่น 'เทพเจ้าสิบของคุณคืออะไร'",
-    "",
-    "ตอบเป็น JSON ล้วนๆ เท่านั้น (ห้ามมีข้อความอื่นนอก JSON, ห้ามมี markdown code fence) ตรงรูปแบบนี้เป๊ะ:",
-    `{"rootNodeId":"q1","nodes":[{"id":"q1","question":"...","options":[{"id":"a","label":"...","next":{"type":"question","nodeId":"q2"}},{"id":"b","label":"...","next":{"type":"result","hourBranch":"子"}}]}]}`,
-    'hourBranch ต้องเป็นหนึ่งใน 子丑寅卯辰巳午未申酉戌亥 เท่านั้น (อักษรจีนตัวเดียว)',
-  ].join("\n");
-
-  const response = await callLlm({ systemInstruction, userPrompt });
-  const wireTree = parseWireTree(response.text);
+  const wireBank = parseWireBank(response.text);
   return {
     version: "llm-draft",
-    generatedAt: new Date().toISOString(),
-    rootNodeId: wireTree.rootNodeId,
-    nodes: wireNodesToNetworkNodes(wireTree.nodes),
+    generatedAt: "", // stamped by generate-network.ts on success
+    questions: wireQuestionsToBankQuestions(wireBank.questions),
   };
-}
-
-// === call 3-10: targeted repair of ONLY the node ids implicated by current validation issues ===
-function collectImplicatedNodeIds(issues: ValidationIssue[]): Set<string> {
-  const ids = new Set<string>();
-  for (const issue of issues) {
-    switch (issue.code) {
-      case "DANGLING_NODE_REF":
-        ids.add(issue.fromNodeId);
-        break;
-      case "TOO_FEW_OPTIONS":
-      case "DUPLICATE_OPTION_ID":
-      case "UNREACHABLE_NODE":
-        ids.add(issue.nodeId);
-        break;
-      case "DEPTH_EXCEEDED":
-      case "CYCLE_DETECTED":
-        issue.path.forEach((nodeId) => ids.add(nodeId));
-        break;
-      default:
-        break;
-    }
-  }
-  return ids;
 }
 
 function describeIssuesForPrompt(issues: ValidationIssue[]): string {
   return issues
     .map((issue) => {
       switch (issue.code) {
-        case "DANGLING_NODE_REF":
-          return `- ข้อ "${issue.fromNodeId}" ตัวเลือก "${issue.optionId}" ชี้ไปข้อ "${issue.toNodeId}" ที่ไม่มีอยู่จริง — ต้องแก้ให้ชี้ไปข้อที่มีจริง หรือเปลี่ยนเป็นคำตอบจบเลย`;
+        case "EMPTY_BANK":
+          return "- ชุดคำถามว่างเปล่า ต้องสร้างคำถามขึ้นมาใหม่ทั้งหมด";
+        case "BANK_TOO_SMALL":
+          return `- ชุดมีแค่ ${issue.size} ข้อ ต้องมีอย่างน้อย ${issue.min} ข้อ — เพิ่มคำถามใหม่`;
+        case "DUPLICATE_QUESTION_ID":
+          return `- คำถาม id "${issue.questionId}" ซ้ำ — ต้องเปลี่ยน id ให้ไม่ซ้ำ`;
         case "TOO_FEW_OPTIONS":
-          return `- ข้อ "${issue.nodeId}" มีแค่ ${issue.optionCount} ตัวเลือก ต้องมีอย่างน้อย 2`;
+          return `- คำถาม "${issue.questionId}" มีแค่ ${issue.optionCount} ตัวเลือก ต้องมีอย่างน้อย 2`;
         case "DUPLICATE_OPTION_ID":
-          return `- ข้อ "${issue.nodeId}" มีตัวเลือก id ซ้ำกัน "${issue.optionId}" — ต้องแก้ให้ id ไม่ซ้ำ`;
-        case "DEPTH_EXCEEDED":
-          return `- เส้นทาง ${issue.path.join(" → ")} ลึกเกิน ${MAX_QUESTION_DEPTH} ข้อ (ตอนนี้ ${issue.depth}) — ต้องย่อเส้นทางนี้ให้สั้นลง`;
-        case "CYCLE_DETECTED":
-          return `- เส้นทาง ${issue.path.join(" → ")} วนกลับมาที่ข้อเดิม — ต้องแก้ให้จบที่คำตอบ ไม่วนซ้ำ`;
-        case "UNREACHABLE_HOUR_BRANCH":
-          return `- ยาม${issue.hourBranch} (${HOUR_BRANCH_LABELS_TH[issue.hourBranch]}) ไม่มีเส้นทางไปถึงเลย — ต้องเพิ่ม/แก้ตัวเลือกให้มีทางไปถึงยามนี้ได้จริง`;
-        case "UNREACHABLE_NODE":
-          return `- ข้อ "${issue.nodeId}" ไม่มีใครชี้มาถึงเลย (ข้อลอย) — ลบทิ้ง หรือเชื่อมให้มีทางไปถึงจริง`;
+          return `- คำถาม "${issue.questionId}" มีตัวเลือก id ซ้ำ "${issue.optionId}"`;
+        case "OPTION_NO_EVIDENCE":
+          return `- คำถาม "${issue.questionId}" ตัวเลือก "${issue.optionId}" ไม่มี evidence เลย ต้องติดป้ายอย่างน้อย 1`;
+        case "UNKNOWN_DIMENSION":
+          return `- คำถาม "${issue.questionId}" ตัวเลือก "${issue.optionId}" ใช้ dimension "${issue.dimension}" ที่ไม่อนุญาต`;
+        case "UNKNOWN_VALUE":
+          return `- คำถาม "${issue.questionId}" ตัวเลือก "${issue.optionId}" dimension "${issue.dimension}" ใช้ค่า "${issue.value}" ที่ไม่อยู่ในรายการ`;
+        case "NON_POSITIVE_WEIGHT":
+          return `- คำถาม "${issue.questionId}" ตัวเลือก "${issue.optionId}" weight ${issue.weight} ต้องเป็นจำนวนบวก`;
+        case "DIMENSION_NOT_PROBED":
+          return `- ยังไม่มีคำถามที่ probe dimension "${issue.dimension}" เลย ต้องเพิ่มคำถามที่ติดป้าย dimension นี้`;
+        case "DEPTH_CEILING_TOO_LOW":
+          return `- (config) ceiling ความลึกต่ำเกินไป`;
         default:
           return `- ปัญหาที่ไม่รู้จัก: ${JSON.stringify(issue)}`;
       }
@@ -233,61 +206,39 @@ function describeIssuesForPrompt(issues: ValidationIssue[]): string {
     .join("\n");
 }
 
-async function repairIssues(
-  network: QuestionNetwork,
+// === call 2+: repair ONLY the problems validate-tree reported ===
+async function repairBank(
+  bank: QuestionBank,
   issues: ValidationIssue[],
-  profileSummary: string,
   callLlm: RawLlmCaller,
-): Promise<QuestionNetwork> {
-  const implicatedIds = collectImplicatedNodeIds(issues);
-  const implicatedNodes = Array.from(implicatedIds)
-    .map((id) => network.nodes[id])
-    .filter((node): node is QuestionNode => Boolean(node));
-
+): Promise<QuestionBank> {
   const systemInstruction =
-    "คุณคือนักออกแบบแบบสอบถามสำหรับ สอบยาม (Hour Rectification) กำลังซ่อมต้นไม้คำถามที่มีปัญหาเฉพาะบางจุด " +
-    "ห้ามแก้ข้อที่ไม่เกี่ยวข้องกับปัญหาที่ระบุ";
+    "คุณคือนักออกแบบแบบสอบถาม สอบยาม กำลังซ่อมชุดคำถามที่มีปัญหาเฉพาะบางจุด " +
+    "ตอบกลับมาเป็นชุดคำถามที่แก้ไขแล้ว (ส่งเฉพาะข้อที่แก้/เพิ่มใหม่ก็ได้ ระบบจะ merge ตาม id)";
   const userPrompt = [
-    "สรุปความต่างของ 12 ยาม (อ้างอิงเดิม):",
-    profileSummary,
+    vocabularyBlock(),
     "",
-    "ต้นไม้ทั้งหมดตอนนี้ (สำหรับดู context เท่านั้น ห้ามแก้ข้อที่ไม่อยู่ในลิสต์ปัญหาด้านล่าง):",
-    JSON.stringify(
-      { rootNodeId: network.rootNodeId, nodes: Object.values(network.nodes) },
-      null,
-      2,
-    ),
+    "ชุดคำถามตอนนี้ (สำหรับดู context):",
+    JSON.stringify({ questions: bank.questions }, null, 2),
     "",
-    "ปัญหาที่ต้องแก้ (เฉพาะจุดนี้เท่านั้น):",
+    "ปัญหาที่ต้องแก้:",
     describeIssuesForPrompt(issues),
     "",
-    "ข้อที่เกี่ยวข้องโดยตรง (แก้ตรงนี้ หรือเพิ่มข้อใหม่ถ้าจำเป็นเพื่อแก้ปัญหา 'ไปไม่ถึงยาม'):",
-    JSON.stringify(implicatedNodes, null, 2),
-    "",
-    "ตอบเป็น JSON ล้วนๆ เท่านั้น (ห้าม markdown fence) เป็นลิสต์ของ 'เฉพาะข้อที่แก้ไข/เพิ่มใหม่' เท่านั้น ไม่ต้องส่งข้อที่ไม่เปลี่ยน ตรงรูปแบบ:",
-    `{"rootNodeId":"q1","nodes":[{"id":"...","question":"...","options":[...]}]}`,
-    "(rootNodeId ใส่ค่าเดิมเสมอ เว้นแต่ root เองมีปัญหาและต้องเปลี่ยน id)",
+    "ตอบเป็น JSON ล้วนๆ (ห้าม markdown fence) รูปแบบ {\"questions\":[...]} — ส่งเฉพาะคำถามที่แก้ไข/เพิ่มใหม่ " +
+      "(id เดิม=แทนที่, id ใหม่=เพิ่ม) ไม่ต้องส่งข้อที่ไม่เปลี่ยน",
   ].join("\n");
 
   const response = await callLlm({ systemInstruction, userPrompt });
-  const wireTree = parseWireTree(response.text);
-  const patchedNodes = wireNodesToNetworkNodes(wireTree.nodes);
-
-  return {
-    ...network,
-    rootNodeId: wireTree.rootNodeId || network.rootNodeId,
-    nodes: { ...network.nodes, ...patchedNodes },
-  };
+  const wireBank = parseWireBank(response.text);
+  const patched = wireQuestionsToBankQuestions(wireBank.questions);
+  const byId = new Map(bank.questions.map((q) => [q.id, q]));
+  for (const question of patched) byId.set(question.id, question);
+  return { ...bank, questions: Array.from(byId.values()) };
 }
 
 export type LlmQuestionGenerator = {
-  summarizeProfiles: (profiles: HourChartProfile[]) => Promise<string>;
-  generateFullTree: (profileSummary: string) => Promise<QuestionNetwork>;
-  repairIssues: (
-    network: QuestionNetwork,
-    issues: ValidationIssue[],
-    profileSummary: string,
-  ) => Promise<QuestionNetwork>;
+  generateBank: (targetSize: number) => Promise<QuestionBank>;
+  repairBank: (bank: QuestionBank, issues: ValidationIssue[]) => Promise<QuestionBank>;
   getCallCount: () => number;
   getMaxCalls: () => number;
 };
@@ -324,10 +275,8 @@ export function createLlmQuestionGenerator(
   };
 
   return {
-    summarizeProfiles: (profiles) => summarizeProfiles(profiles, guardedCallLlm),
-    generateFullTree: (profileSummary) => generateFullTree(profileSummary, guardedCallLlm),
-    repairIssues: (network, issues, profileSummary) =>
-      repairIssues(network, issues, profileSummary, guardedCallLlm),
+    generateBank: (targetSize) => generateBank(guardedCallLlm, targetSize),
+    repairBank: (bank, issues) => repairBank(bank, issues, guardedCallLlm),
     getCallCount: () => callCount,
     getMaxCalls: () => maxCalls,
   };

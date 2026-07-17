@@ -1,6 +1,10 @@
-// Hour Rectification — LLM call budget guard (#hour-rectification-engine, MANDATORY per dispatch).
-// ฟีม is worried about runaway API cost on an unattended overnight run — this test proves call #11
-// never fires a network request, using a mock LLM caller that counts real invocations.
+// Hour Rectification — LLM call budget guard (#hour-rectification-engine, v1, MANDATORY per
+// dispatch). ฟีม is worried about runaway API cost on an unattended overnight generation run — this
+// test proves the guard throws LlmBudgetExceededError BEFORE the network request that would exceed
+// budget, using a mock callLlm that COUNTS real invocations. The single most important property:
+// the counting mock is NEVER invoked for the call that would blow the budget (count == max, not
+// max+1). Both the generateBank path (call 1) and the repairBank path (call 2+) funnel through the
+// same guard and share one budget. Cap default is now 20 (raised from v0's 10).
 import { describe, expect, test } from "vitest";
 import {
   createLlmQuestionGenerator,
@@ -8,159 +12,156 @@ import {
   LlmBudgetExceededError,
   resolveMaxLlmCalls,
 } from "@/lib/bazi/hour-rectification/adapters/llm-question-generator";
-import type { HourChartProfile } from "@/lib/bazi/hour-rectification/adapters/chart-profile-adapter";
-import type { QuestionNetwork } from "@/lib/bazi/hour-rectification/domain/types";
+import type { QuestionBank } from "@/lib/bazi/hour-rectification/domain/types";
 import type { ValidationIssue } from "@/lib/bazi/hour-rectification/domain/validate-tree";
 
-const MINIMAL_TREE_JSON = JSON.stringify({
-  rootNodeId: "q1",
-  nodes: [
+// Well-formed wire JSON so generateBank/repairBank's parser/translator never throws on its own —
+// the mock caller ignores content; only the real-call-count matters for the guard proof.
+const MINIMAL_BANK_JSON = JSON.stringify({
+  questions: [
     {
       id: "q1",
       question: "ทดสอบ",
       options: [
-        { id: "a", label: "A", next: { type: "result", hourBranch: "子" } },
-        { id: "b", label: "B", next: { type: "result", hourBranch: "丑" } },
+        { id: "a", label: "A", evidence: [{ dimension: "stemElement", value: "fire", weight: 2 }] },
+        { id: "b", label: "B", evidence: [{ dimension: "stemRole", value: "resource", weight: 1 }] },
       ],
     },
   ],
 });
 
-function fakeProfiles(): HourChartProfile[] {
-  // Minimal stand-in shape — the mock caller ignores content, only real-call-count matters here.
-  return [{ hourBranch: "子", chart: {} as HourChartProfile["chart"] }];
-}
-
-function fakeNetwork(): QuestionNetwork {
+// A minimal existing bank to hand repairBank (it merges patched questions into this by id).
+function fakeBank(): QuestionBank {
   return {
     version: "test",
     generatedAt: "2026-07-17T00:00:00.000Z",
-    rootNodeId: "q1",
-    nodes: {
-      q1: {
+    questions: [
+      {
         id: "q1",
         question: "x",
         options: [
-          { id: "a", label: "a", next: { kind: "result", hourBranch: "子" } },
-          { id: "b", label: "b", next: { kind: "result", hourBranch: "丑" } },
+          { id: "a", label: "a", evidence: [{ dimension: "stemElement", value: "water", weight: 1 }] },
+          { id: "b", label: "b", evidence: [{ dimension: "strengthBucket", value: "weak", weight: 1 }] },
         ],
       },
-    },
+    ],
   };
 }
 
-function fakeIssue(): ValidationIssue[] {
-  return [{ code: "TOO_FEW_OPTIONS", nodeId: "q1", optionCount: 1 }];
+function fakeIssues(): ValidationIssue[] {
+  return [{ code: "TOO_FEW_OPTIONS", questionId: "q1", optionCount: 1 }];
 }
 
 describe("resolveMaxLlmCalls", () => {
-  test("defaults to 10 with no env override", () => {
+  test("defaults to 20 with no env override (v1 raised the cap from v0's 10)", () => {
     expect(resolveMaxLlmCalls({})).toBe(DEFAULT_MAX_LLM_CALLS);
-    expect(DEFAULT_MAX_LLM_CALLS).toBe(10);
+    expect(DEFAULT_MAX_LLM_CALLS).toBe(20);
   });
 
   test("honors RECTIFICATION_MAX_LLM_CALLS when set to a valid positive integer", () => {
     expect(resolveMaxLlmCalls({ RECTIFICATION_MAX_LLM_CALLS: "3" })).toBe(3);
   });
 
-  test("falls back to default on a garbage env value (never crashes, never silently 0/negative)", () => {
+  test("falls back to default on garbage / non-positive env values (never crashes, never 0/negative)", () => {
     expect(resolveMaxLlmCalls({ RECTIFICATION_MAX_LLM_CALLS: "not-a-number" })).toBe(
       DEFAULT_MAX_LLM_CALLS,
     );
     expect(resolveMaxLlmCalls({ RECTIFICATION_MAX_LLM_CALLS: "-5" })).toBe(DEFAULT_MAX_LLM_CALLS);
     expect(resolveMaxLlmCalls({ RECTIFICATION_MAX_LLM_CALLS: "0" })).toBe(DEFAULT_MAX_LLM_CALLS);
+    expect(resolveMaxLlmCalls({ RECTIFICATION_MAX_LLM_CALLS: "   " })).toBe(DEFAULT_MAX_LLM_CALLS);
+  });
+});
+
+describe("createLlmQuestionGenerator — reports its resolved budget", () => {
+  test("with no override, getMaxCalls() is the default 20", () => {
+    const generator = createLlmQuestionGenerator({ callLlm: async () => ({ text: MINIMAL_BANK_JSON, model: "mock" }), env: {} });
+    expect(generator.getMaxCalls()).toBe(DEFAULT_MAX_LLM_CALLS);
+    expect(generator.getCallCount()).toBe(0);
   });
 });
 
 describe("LLM call budget guard — the mandatory test", () => {
-  test("call #11 never invokes the real caller — throws LlmBudgetExceededError BEFORE the network request", async () => {
+  test("the (max+1)th real call NEVER fires — guard throws BEFORE invoking the counting mock", async () => {
+    // Low cap so the boundary is cheap to exercise: generateBank + repairBank = 2 calls, the 3rd
+    // must throw before the network. (Same guard as the default-20 path, just fewer iterations.)
     let realInvocationCount = 0;
     const mockCallLlm = async () => {
-      realInvocationCount += 1; // proves whether a real request would have fired
-      return { text: MINIMAL_TREE_JSON, model: "mock" };
+      realInvocationCount += 1; // proves whether a real request WOULD have fired
+      return { text: MINIMAL_BANK_JSON, model: "mock" };
     };
 
-    const generator = createLlmQuestionGenerator({ callLlm: mockCallLlm, maxCalls: 10 });
+    const generator = createLlmQuestionGenerator({ callLlm: mockCallLlm, maxCalls: 2 });
+    expect(generator.getMaxCalls()).toBe(2);
 
-    // Burn exactly 10 calls: 1 summarize + 1 generate + 8 repairs = 10, all within budget.
-    await generator.summarizeProfiles(fakeProfiles()); // call 1
-    await generator.generateFullTree("summary"); // call 2
-    for (let i = 0; i < 8; i++) {
-      await generator.repairIssues(fakeNetwork(), fakeIssue(), "summary"); // calls 3-10
-    }
+    await generator.generateBank(20); // call 1 (generate path)
+    await generator.repairBank(fakeBank(), fakeIssues()); // call 2 (repair path)
 
-    expect(generator.getCallCount()).toBe(10);
-    expect(realInvocationCount).toBe(10);
+    expect(generator.getCallCount()).toBe(2);
+    expect(realInvocationCount).toBe(2);
 
-    // The 11th attempted call — this is the one that must NEVER reach the network.
-    await expect(
-      generator.repairIssues(fakeNetwork(), fakeIssue(), "summary"),
-    ).rejects.toBeInstanceOf(LlmBudgetExceededError);
+    // The 3rd attempted call — the one that must NEVER reach the network.
+    await expect(generator.repairBank(fakeBank(), fakeIssues())).rejects.toBeInstanceOf(
+      LlmBudgetExceededError,
+    );
 
-    // The critical assertion: the mock (standing in for "a real network request") was NOT called
-    // an 11th time. If the guard checked AFTER calling instead of BEFORE, this would be 11.
-    expect(realInvocationCount).toBe(10);
-    expect(generator.getCallCount()).toBe(10);
+    // THE critical assertion: the counting mock was called exactly `max` times, NOT max+1. If the
+    // guard checked AFTER calling instead of BEFORE, this would be 3.
+    expect(realInvocationCount).toBe(2);
+    expect(generator.getCallCount()).toBe(2);
   });
 
-  test("budget is shared across summarize/generate/repair — not a separate counter per method", async () => {
+  test("both generateBank and repairBank share ONE budget — not a separate counter per method", async () => {
     let realInvocationCount = 0;
     const mockCallLlm = async () => {
       realInvocationCount += 1;
-      return { text: MINIMAL_TREE_JSON, model: "mock" };
+      return { text: MINIMAL_BANK_JSON, model: "mock" };
     };
     const generator = createLlmQuestionGenerator({ callLlm: mockCallLlm, maxCalls: 2 });
 
-    await generator.summarizeProfiles(fakeProfiles()); // call 1/2
-    await generator.generateFullTree("summary"); // call 2/2
+    await generator.generateBank(20); // call 1/2
+    await generator.generateBank(20); // call 2/2 (still generate path — budget is shared, not reset)
 
-    await expect(generator.repairIssues(fakeNetwork(), fakeIssue(), "summary")).rejects.toBeInstanceOf(
+    // Now a repair would be the 3rd overall call → blocked, even though repairBank itself has never
+    // run. Proves the counter is instance-wide, not per-method.
+    await expect(generator.repairBank(fakeBank(), fakeIssues())).rejects.toBeInstanceOf(
       LlmBudgetExceededError,
     );
     expect(realInvocationCount).toBe(2);
   });
 
-  test("RECTIFICATION_MAX_LLM_CALLS env override is honored end-to-end (not just by resolveMaxLlmCalls in isolation)", async () => {
+  test("RECTIFICATION_MAX_LLM_CALLS env override is honored end-to-end (not just in resolveMaxLlmCalls)", async () => {
     let realInvocationCount = 0;
     const mockCallLlm = async () => {
       realInvocationCount += 1;
-      return { text: MINIMAL_TREE_JSON, model: "mock" };
+      return { text: MINIMAL_BANK_JSON, model: "mock" };
     };
     const generator = createLlmQuestionGenerator({
       callLlm: mockCallLlm,
       env: { RECTIFICATION_MAX_LLM_CALLS: "1" },
     });
+    expect(generator.getMaxCalls()).toBe(1);
 
-    await generator.summarizeProfiles(fakeProfiles()); // uses the 1 allowed call
-    await expect(generator.generateFullTree("summary")).rejects.toBeInstanceOf(
+    await generator.generateBank(20); // uses the 1 allowed call
+    await expect(generator.repairBank(fakeBank(), fakeIssues())).rejects.toBeInstanceOf(
       LlmBudgetExceededError,
     );
     expect(realInvocationCount).toBe(1);
   });
 
-  test("a malformed LLM response (not valid JSON) throws a clear error without corrupting the call count", async () => {
-    let realInvocationCount = 0;
-    const mockCallLlm = async () => {
-      realInvocationCount += 1;
-      return { text: "this is not json at all", model: "mock" };
-    };
-    const generator = createLlmQuestionGenerator({ callLlm: mockCallLlm, maxCalls: 10 });
-
-    await expect(generator.generateFullTree("summary")).rejects.toThrow(/not valid JSON/i);
-    // The call still counted against budget (a real request WAS made and billed) — the guard
-    // protects against making the request, not against the request coming back malformed.
-    expect(generator.getCallCount()).toBe(1);
-    expect(realInvocationCount).toBe(1);
-  });
-
-  test("a fenced ```json ... ``` response is parsed correctly (LLMs commonly wrap JSON in markdown)", async () => {
-    const mockCallLlm = async () => ({
-      text: "```json\n" + MINIMAL_TREE_JSON + "\n```",
-      model: "mock",
+  test("the thrown error carries the attempted-call index and the cap for diagnostics", async () => {
+    const generator = createLlmQuestionGenerator({
+      callLlm: async () => ({ text: MINIMAL_BANK_JSON, model: "mock" }),
+      maxCalls: 1,
     });
-    const generator = createLlmQuestionGenerator({ callLlm: mockCallLlm, maxCalls: 10 });
-    const tree = await generator.generateFullTree("summary");
-    expect(tree.rootNodeId).toBe("q1");
-    expect(Object.keys(tree.nodes)).toEqual(["q1"]);
+    await generator.generateBank(20); // burns the 1 call
+    try {
+      await generator.generateBank(20);
+      throw new Error("expected LlmBudgetExceededError to be thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(LlmBudgetExceededError);
+      const budgetError = error as LlmBudgetExceededError;
+      expect(budgetError.attemptedCall).toBe(2); // the call that would have exceeded
+      expect(budgetError.maxCalls).toBe(1);
+    }
   });
 });

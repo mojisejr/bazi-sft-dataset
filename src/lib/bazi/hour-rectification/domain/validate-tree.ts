@@ -1,116 +1,158 @@
-// Hour Rectification — structural validation of a generated question network
-// (#hour-rectification-engine). This is the file the whole "≤10 questions, guaranteed" promise
-// rests on: it's code, not a hope that the LLM followed instructions. Pure, no LLM/engine/file
-// access — takes a QuestionNetwork value in, returns a report out.
+// Hour Rectification — validate-tree.ts (#hour-rectification-engine, v1). This is the file the
+// "≤10 questions, guaranteed" and "every signature-combo maps to a ยาม" promises actually rest on:
+// it's CODE that inspects a generated bank, not a hope the LLM followed instructions. Pure — no
+// LLM/engine/file access — takes a QuestionBank in, returns a report out.
 
-import { HOUR_BRANCHES, type HourBranch, type QuestionNetwork } from "./types";
+import {
+  MAX_QUESTION_DEPTH,
+  MAX_QUESTIONS_TO_ASK,
+} from "./traverse";
+import {
+  SIGNATURE_DIMENSIONS,
+  SIGNATURE_VOCAB,
+  type QuestionBank,
+  type SignatureDimension,
+} from "./types";
 
-// "≤10 ข้อ เด็ดขาด" — a path may ask at most this many questions before a result is required.
-export const MAX_QUESTION_DEPTH = 10;
 export const MIN_QUESTION_OPTIONS = 2;
+// The bank must hold at least this many questions or the adaptive selector could run dry before
+// reaching MAX_QUESTIONS_TO_ASK. The spec targets ~20-25; this is the floor, not the target.
+export const MIN_BANK_SIZE = MAX_QUESTIONS_TO_ASK;
 
 export type ValidationIssue =
-  | { code: "MISSING_ROOT"; nodeId: string }
-  | { code: "DANGLING_NODE_REF"; fromNodeId: string; optionId: string; toNodeId: string }
-  | { code: "TOO_FEW_OPTIONS"; nodeId: string; optionCount: number }
-  | { code: "DUPLICATE_OPTION_ID"; nodeId: string; optionId: string }
-  | { code: "DEPTH_EXCEEDED"; path: string[]; depth: number }
-  | { code: "CYCLE_DETECTED"; path: string[] }
-  | { code: "UNREACHABLE_HOUR_BRANCH"; hourBranch: HourBranch }
-  | { code: "UNREACHABLE_NODE"; nodeId: string };
+  | { code: "EMPTY_BANK" }
+  | { code: "BANK_TOO_SMALL"; size: number; min: number }
+  | { code: "DUPLICATE_QUESTION_ID"; questionId: string }
+  | { code: "TOO_FEW_OPTIONS"; questionId: string; optionCount: number }
+  | { code: "DUPLICATE_OPTION_ID"; questionId: string; optionId: string }
+  | { code: "OPTION_NO_EVIDENCE"; questionId: string; optionId: string }
+  | {
+      code: "UNKNOWN_DIMENSION";
+      questionId: string;
+      optionId: string;
+      dimension: string;
+    }
+  | {
+      code: "UNKNOWN_VALUE";
+      questionId: string;
+      optionId: string;
+      dimension: string;
+      value: string;
+    }
+  | {
+      code: "NON_POSITIVE_WEIGHT";
+      questionId: string;
+      optionId: string;
+      dimension: string;
+      weight: number;
+    }
+  | { code: "DIMENSION_NOT_PROBED"; dimension: SignatureDimension }
+  | { code: "DEPTH_CEILING_TOO_LOW"; maxDepth: number; maxAsk: number };
 
 export type ValidationResult = {
   valid: boolean;
   issues: ValidationIssue[];
-  maxDepthObserved: number;
-  reachableHourBranches: HourBranch[];
+  bankSize: number;
+  // Which of the 4 dimensions the bank actually has evidence for — coverage readout for the
+  // generator's repair loop and for humans reviewing a generated bank.
+  probedDimensions: SignatureDimension[];
 };
 
-export function validateQuestionNetwork(network: QuestionNetwork): ValidationResult {
+export function validateQuestionBank(bank: QuestionBank): ValidationResult {
   const issues: ValidationIssue[] = [];
-  const reachableBranches = new Set<HourBranch>();
-  const reachableNodeIds = new Set<string>();
-  let maxDepthObserved = 0;
+  const probed = new Set<SignatureDimension>();
 
-  const rootNode = network.nodes[network.rootNodeId];
-  if (!rootNode) {
-    issues.push({ code: "MISSING_ROOT", nodeId: network.rootNodeId });
-    return { valid: false, issues, maxDepthObserved: 0, reachableHourBranches: [] };
+  // Structural invariant independent of the bank: the hard depth ceiling must not sit below the
+  // number of questions the selector may actually ask, or the ≤10 promise contradicts itself.
+  if (MAX_QUESTION_DEPTH < MAX_QUESTIONS_TO_ASK) {
+    issues.push({
+      code: "DEPTH_CEILING_TOO_LOW",
+      maxDepth: MAX_QUESTION_DEPTH,
+      maxAsk: MAX_QUESTIONS_TO_ASK,
+    });
   }
 
-  // Per-node sanity: option count, duplicate ids, dangling refs to nodes that don't exist.
-  for (const [nodeId, node] of Object.entries(network.nodes)) {
-    if (node.options.length < MIN_QUESTION_OPTIONS) {
-      issues.push({ code: "TOO_FEW_OPTIONS", nodeId, optionCount: node.options.length });
+  if (bank.questions.length === 0) {
+    issues.push({ code: "EMPTY_BANK" });
+    return { valid: false, issues, bankSize: 0, probedDimensions: [] };
+  }
+
+  if (bank.questions.length < MIN_BANK_SIZE) {
+    issues.push({ code: "BANK_TOO_SMALL", size: bank.questions.length, min: MIN_BANK_SIZE });
+  }
+
+  const seenQuestionIds = new Set<string>();
+  for (const question of bank.questions) {
+    if (seenQuestionIds.has(question.id)) {
+      issues.push({ code: "DUPLICATE_QUESTION_ID", questionId: question.id });
     }
+    seenQuestionIds.add(question.id);
+
+    if (question.options.length < MIN_QUESTION_OPTIONS) {
+      issues.push({
+        code: "TOO_FEW_OPTIONS",
+        questionId: question.id,
+        optionCount: question.options.length,
+      });
+    }
+
     const seenOptionIds = new Set<string>();
-    for (const option of node.options) {
+    for (const option of question.options) {
       if (seenOptionIds.has(option.id)) {
-        issues.push({ code: "DUPLICATE_OPTION_ID", nodeId, optionId: option.id });
+        issues.push({ code: "DUPLICATE_OPTION_ID", questionId: question.id, optionId: option.id });
       }
       seenOptionIds.add(option.id);
-      if (option.next.kind === "question" && !network.nodes[option.next.nodeId]) {
-        issues.push({
-          code: "DANGLING_NODE_REF",
-          fromNodeId: nodeId,
-          optionId: option.id,
-          toNodeId: option.next.nodeId,
-        });
+
+      if (option.evidence.length === 0) {
+        issues.push({ code: "OPTION_NO_EVIDENCE", questionId: question.id, optionId: option.id });
+      }
+
+      for (const vote of option.evidence) {
+        const dimension = vote.dimension as SignatureDimension;
+        if (!(SIGNATURE_DIMENSIONS as readonly string[]).includes(vote.dimension)) {
+          issues.push({
+            code: "UNKNOWN_DIMENSION",
+            questionId: question.id,
+            optionId: option.id,
+            dimension: vote.dimension,
+          });
+          continue; // can't check value against a vocab we don't have
+        }
+        probed.add(dimension);
+        if (!SIGNATURE_VOCAB[dimension].includes(vote.value)) {
+          issues.push({
+            code: "UNKNOWN_VALUE",
+            questionId: question.id,
+            optionId: option.id,
+            dimension: vote.dimension,
+            value: vote.value,
+          });
+        }
+        if (!(vote.weight > 0)) {
+          issues.push({
+            code: "NON_POSITIVE_WEIGHT",
+            questionId: question.id,
+            optionId: option.id,
+            dimension: vote.dimension,
+            weight: vote.weight,
+          });
+        }
       }
     }
   }
 
-  // DFS from root, tracking the CURRENT PATH (not a global visited set) so a node reachable via
-  // two different paths at two different depths is checked correctly on each, and any node that
-  // reappears within its own ancestor chain is a genuine cycle (would never terminate at runtime).
-  function dfs(nodeId: string, depth: number, pathNodeIds: readonly string[]): void {
-    if (pathNodeIds.includes(nodeId)) {
-      issues.push({ code: "CYCLE_DETECTED", path: [...pathNodeIds, nodeId] });
-      return;
-    }
-    reachableNodeIds.add(nodeId);
-    maxDepthObserved = Math.max(maxDepthObserved, depth);
-
-    // depth = how many questions were already asked to arrive here. This node would be
-    // question #(depth+1) — if depth already reached the max, this node itself is one too many.
-    if (depth >= MAX_QUESTION_DEPTH) {
-      issues.push({ code: "DEPTH_EXCEEDED", path: [...pathNodeIds, nodeId], depth: depth + 1 });
-      return;
-    }
-
-    const node = network.nodes[nodeId];
-    if (!node) return; // already reported as a dangling ref above
-
-    const nextPath = [...pathNodeIds, nodeId];
-    for (const option of node.options) {
-      if (option.next.kind === "result") {
-        reachableBranches.add(option.next.hourBranch);
-        maxDepthObserved = Math.max(maxDepthObserved, depth + 1);
-      } else if (network.nodes[option.next.nodeId]) {
-        dfs(option.next.nodeId, depth + 1, nextPath);
-      }
-      // dangling refs already reported in the per-node pass above — don't double-report here.
-    }
-  }
-
-  dfs(network.rootNodeId, 0, []);
-
-  for (const hourBranch of HOUR_BRANCHES) {
-    if (!reachableBranches.has(hourBranch)) {
-      issues.push({ code: "UNREACHABLE_HOUR_BRANCH", hourBranch });
-    }
-  }
-
-  for (const nodeId of Object.keys(network.nodes)) {
-    if (!reachableNodeIds.has(nodeId)) {
-      issues.push({ code: "UNREACHABLE_NODE", nodeId });
+  // Coverage: the bank must be able to probe every one of the 4 dimensions, or some hours become
+  // indistinguishable no matter which questions are asked.
+  for (const dimension of SIGNATURE_DIMENSIONS) {
+    if (!probed.has(dimension)) {
+      issues.push({ code: "DIMENSION_NOT_PROBED", dimension });
     }
   }
 
   return {
     valid: issues.length === 0,
     issues,
-    maxDepthObserved,
-    reachableHourBranches: Array.from(reachableBranches),
+    bankSize: bank.questions.length,
+    probedDimensions: Array.from(probed),
   };
 }

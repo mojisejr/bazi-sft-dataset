@@ -1,5 +1,5 @@
 /**
- * Hour Rectification (สอบยาม) — offline generation button (#hour-rectification-engine).
+ * Hour Rectification (สอบยาม) — offline generation button (#hour-rectification-engine, v1).
  * Mirrors scripts/compile-knowledge.ts's CLI convention. Run manually, never wrap in a
  * retry/supervisor loop (ฟีม's explicit instruction) — a budget-exhausted stop is an acceptable
  * outcome, not a bug to auto-retry past.
@@ -7,35 +7,34 @@
  * Usage:
  *   node --env-file=.env --import tsx scripts/generate-rectification-network.ts
  *   node --env-file=.env --import tsx scripts/generate-rectification-network.ts \
- *     --birthDate 1990-05-15 --gender male --province กรุงเทพมหานคร
+ *     --size 24 --sample 1989-01-03 --sample 1990-05-15
  *
- * ⚠️ Design note (flagging explicitly, not silently assumed): the 12 candidate charts are
- * computed from ONE reference profile (defaults below, overridable via flags) — the resulting
- * question tree's questions are written to be generic life-experience patterns (ten-god role,
- * twelve-qi stage, element flavor), not tied to this one profile's specific day/month/year
- * interactions, so it's intended to generalize to any real user at runtime. If a different
- * reference profile was intended, override via the flags above before running.
+ * v1 note: the question BANK is person-agnostic — it tags behaviour with structural-signature
+ * properties (element/role/strength), and the runtime matches those against each real user's own
+ * 12 hour charts. So generation needs no single "reference profile" the way v0 did. The --sample
+ * birth dates are recorded in meta for provenance and used by the self-consistency test suite
+ * (tests/rectification-*.test.ts), not by generation itself.
  */
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import { generateHourRectificationNetwork } from "@/lib/bazi/hour-rectification/generate-network";
-import type { ChartProfileBaseInput } from "@/lib/bazi/hour-rectification/adapters/chart-profile-adapter";
 
-const DEFAULT_REFERENCE_PROFILE: ChartProfileBaseInput = {
-  birthDate: "1990-05-15",
-  gender: "male",
-  province: "กรุงเทพมหานคร",
+type ScriptArgs = {
+  targetBankSize?: number;
+  sampleBirthDates: string[];
 };
 
-function parseArgs(argv: string[]): Partial<ChartProfileBaseInput> {
-  const out: Partial<ChartProfileBaseInput> = {};
+function parseArgs(argv: string[]): ScriptArgs {
+  const out: ScriptArgs = { sampleBirthDates: [] };
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     const value = argv[i + 1];
-    if (flag === "--birthDate" && value) out.birthDate = value;
-    if (flag === "--gender" && value) out.gender = value;
-    if (flag === "--province" && value) out.province = value;
+    if (flag === "--size" && value) {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed) && parsed > 0) out.targetBankSize = parsed;
+    }
+    if (flag === "--sample" && value) out.sampleBirthDates.push(value);
   }
   return out;
 }
@@ -47,26 +46,29 @@ function isMainModule() {
 }
 
 export async function main() {
-  const overrides = parseArgs(process.argv.slice(2));
-  const baseInput: ChartProfileBaseInput = { ...DEFAULT_REFERENCE_PROFILE, ...overrides };
+  const args = parseArgs(process.argv.slice(2));
 
-  console.log("=== Hour Rectification — generate question network ===");
-  console.log("Reference profile:", JSON.stringify(baseInput));
+  console.log("=== Hour Rectification — generate question bank (v1) ===");
+  console.log(`Target bank size: ${args.targetBankSize ?? "default"}`);
+  console.log(`Sample birth dates (provenance): ${args.sampleBirthDates.join(", ") || "none"}`);
   console.log("");
 
-  const outcome = await generateHourRectificationNetwork(baseInput);
+  const outcome = await generateHourRectificationNetwork({
+    targetBankSize: args.targetBankSize,
+    sampleBirthDates: args.sampleBirthDates.length ? args.sampleBirthDates : undefined,
+  });
 
   if (outcome.status === "success") {
-    console.log(`✅ SUCCESS — question network written to ${outcome.writtenPath}`);
+    console.log(`✅ SUCCESS — question bank written to ${outcome.writtenPath}`);
     console.log(`   LLM calls used: ${outcome.callsUsed}`);
-    console.log(`   Nodes: ${Object.keys(outcome.network.nodes).length}`);
+    console.log(`   Questions: ${outcome.bank.questions.length}`);
     return;
   }
 
   if (outcome.status === "budget-exhausted") {
     console.error(
       `🛑 STOPPED — LLM call budget exhausted at call ${outcome.callsUsed}/${outcome.maxCalls}. ` +
-        `This is an accepted outcome for an overnight run, not a crash.`,
+        `This is an accepted outcome, not a crash.`,
     );
     console.error(`   Draft saved (NOT the real artifact) at: ${outcome.draftPath}`);
     console.error(`   Remaining validation issues (${outcome.issues.length}):`);
