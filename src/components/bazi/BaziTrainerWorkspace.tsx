@@ -137,6 +137,14 @@ const HUB_CARDS: HubCard[] = [
     cta: "เปิดตรวจยาม",
   },
   {
+    href: "/rectify-hour",
+    icon: "🕰️",
+    kicker: "สอบยามเกิด",
+    title: "สอบยาม (หายามเกิด)",
+    description: "ไม่รู้เวลาเกิด? ตอบคำถามสั้น ๆ ให้ระบบช่วยประเมินยามเกิดที่น่าจะเป็น",
+    cta: "เริ่มสอบยาม",
+  },
+  {
     href: "/reading/history",
     icon: "🗂️",
     kicker: "บันทึกย้อนหลัง",
