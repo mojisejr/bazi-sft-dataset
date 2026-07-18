@@ -22,7 +22,6 @@ import {
   matchAnnualYears,
   matchElementAdvice,
   matchFamilyState,
-  matchFavorableSummary,
   matchLuckyAnimal,
   matchElementRoleGanzhi,
   matchElementRoleState,
@@ -428,18 +427,6 @@ export function resolveChapterBoxes(
     const templatePrefill = body.trim().length > 0 && templateContent && !curatedContent;
     return templatePrefill ? { title: bullet, body, templatePrefill: true } : { title: bullet, body };
   });
-
-  // แกน用神/忌神 ชุดเดียว (canonical) — เติมเป็นกล่องท้ายของ "ทุกบท" ให้ธาตุเสริมดวง/เลี่ยงตรงกันเสมอ
-  // ต่อท้าย (ไม่ unshift) เพื่อคงดัชนีกล่องเดิม (ตัวแก้ PDF/คำอ่านอ้างกล่องตามลำดับ)
-  // และไม่ให้ไปพลิก hasContent (บทไม่มีเนื้อเฉพาะบทยังถูกข้ามตามเดิม) — เป็นแค่ข้อเท็จจริงแกนสำหรับ AI
-  const favBlocks = matchFavorableSummary(facts);
-  if (favBlocks.length) {
-    boxes.push({
-      title: "ธาตุเสริมดวง (用神) และ ธาตุที่ควรเลี่ยง (忌神)",
-      body: favBlocks.map(blockToParagraph).join("\n\n"),
-      templatePrefill: true,
-    });
-  }
 
   return { chapterId, defined, hasContent, boxes };
 }

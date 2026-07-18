@@ -198,7 +198,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
   test("education → box=3: box0=สไตล์เรียน+วุฒิ, box1=ดิถีถ่ายเท(ว่าง), box2=อาชีพถูกดวง", () => {
     const r = resolveChapterBoxes("education", FACTS, MAP);
     expect(r.hasContent).toBe(true);
-    expect(r.boxes).toHaveLength(4); // 3 bullets + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(3); // 3 bullets
     expect(r.boxes[0].body).toContain("การเรียนซ้ำชั้น เรียนรู้เรื่องลึกลับ"); // study_style
     expect(r.boxes[0].body).toContain("การศึกษามักล่าช้า เรียนซ้ำชั้น"); // + edu_level (รวมในข้อ 1)
     expect(r.boxes[1].body).toBe(""); // ดิถี→ถ่ายเท→เชี่ยงแซ — MAP ไม่มี dithi_transfer = ว่าง
@@ -207,7 +207,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
     const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
-    expect(r.boxes).toHaveLength(11); // 10 bullets (+รูปร่างหน้าตา/คุณธรรม/ชื่อเสียง) + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(10); // 10 bullets (+รูปร่างหน้าตา/คุณธรรม/ชื่อเสียง)
     expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
     expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
@@ -219,7 +219,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("love_partner → box=5, ภาคีติด(box0) ชง/ไห่ ไม่ติด(box3 ว่าง)", () => {
     const r = resolveChapterBoxes("love_partner", FACTS, MAP);
-    expect(r.boxes).toHaveLength(6); // 5 bullets + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(5); // 5 bullets
     expect(r.boxes[0].body).toContain("คู่ครองที่มีการใช้อำนาจ"); // ลักษณะชีวิตคู่ 60 box (庚午 หลักวัน)
     expect(r.boxes[0].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // + ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toBe(""); // สิ่งที่ควรระวัง (ชง/ไห่) — ดวงนี้ไม่มี
@@ -227,7 +227,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("family → เชี่ยงแซโทนครอบครัว (family_state) ไม่ใช่ shengxiang กลาง", () => {
     const r = resolveChapterBoxes("family", FACTS, MAP);
-    expect(r.boxes).toHaveLength(7); // 6 bullets + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(6); // 6 bullets
     expect(r.boxes[0].body).toContain("เลี้ยงดูฟูมฟัก"); // เอี้ยง (เสาปี) โทนครอบครัว
     expect(r.boxes[2].body).toContain("การศึกษาและการวางรากฐาน"); // กวงตั่ว (ราศีบนเดือน) = พ่อ
     expect(r.boxes[2].body).toContain("ราศีบน 丁巳 (กวงตั่ว)"); // ป้ายเสาแบบซินแส
@@ -290,7 +290,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     const r = resolveChapterBoxes("career_potential", FACTS, MAP);
     expect(r.defined).toBe(true);
     expect(r.hasContent).toBe(true);
-    expect(r.boxes).toHaveLength(6); // 5 bullets + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(5); // 5 bullets
     expect(r.boxes[0].body).toContain("เหล็ก เครื่องประดับ"); // ควรทำ1 = ธาตุทอง
     expect(r.boxes[1].body).toBe(""); // ควรทำ2 — ตารางให้ธาตุเดียว = ว่าง
     expect(r.boxes[2].body).toBe(""); // ควรทำ3 — ว่าง
@@ -340,12 +340,12 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[3].body).toContain("ทำบุญถวายของโลหะ");
   });
 
-  test("colors_directions → DB ว่าง แต่ สัตว์มงคล(รายดิถี)+用神 เติมจาก static", () => {
+  test("colors_directions → DB ว่าง แต่ สัตว์มงคล(รายดิถี) เติมจาก static", () => {
     // บท 14 wire resolver ตามธาตุที่ดวงต้องการแล้ว แต่ตาราง auspicious_by_element ยังไม่มีใน MAP
     const r = resolveChapterBoxes("colors_directions", FACTS, MAP);
     expect(r.defined).toBe(true);
     expect(r.hasContent).toBe(true); // สัตว์มงคล เติมตามดิถีเสมอ (static ไม่พึ่ง DB)
-    expect(r.boxes).toHaveLength(9); // 8 bullets + กล่องแกน用神 ต่อท้าย
+    expect(r.boxes).toHaveLength(8); // 8 bullets
     expect(r.boxes[5].body).toContain("แพะ"); // box5 สัตว์มงคล: ดิถี 庚 = แพะ, กระต่าย
     // ช่องพึ่ง DB (สี/เสื้อผ้า/เครื่องประดับ/กระเป๋า/รถ/ทิศ/ข้อเสนอแนะ) ยังว่างในดวงนี้
     for (const i of [0, 1, 2, 3, 4, 6, 7]) expect(r.boxes[i].body, `box${i}`).toBe("");
@@ -626,20 +626,5 @@ describe("แกน用神/忌神 canonical (matchFavorableSummary)", () => {
     expect(block.text).toContain("用神");
     expect(block.text).toContain("忌神");
     for (const e of favorableElements(FACTS)) expect(block.text).toContain(`ธาตุ${e}`);
-  });
-
-  test("ทุกบทมีกล่องแกน用神 ต่อท้าย + เป็น templatePrefill (ธาตุเสริมดวงชุดเดียวทั้งดวง)", () => {
-    // ใส่ phases:[] กัน matchDaYun (บท turning_points) พังจาก fixture — เราสนใจแค่กล่องแกนที่ต่อท้าย
-    const facts: ChartFacts = { ...FACTS, daYun: FACTS.daYun.map((d) => ({ ...d, phases: [] })) };
-    const bodies = new Set<string>();
-    for (const chapterId of Object.keys(CHAPTER_OUTLINE)) {
-      const { boxes } = resolveChapterBoxes(chapterId, facts, MAP);
-      const last = boxes[boxes.length - 1];
-      expect(last.title, chapterId).toContain("用神");
-      expect(last.templatePrefill, chapterId).toBe(true);
-      bodies.add(last.body);
-    }
-    // canonical: กล่องแกนต้อง "เนื้อเดียวกัน" ทุกบท (กันแต่ละบทเขียนธาตุเสริมดวงไม่ตรงกัน)
-    expect(bodies.size).toBe(1);
   });
 });
