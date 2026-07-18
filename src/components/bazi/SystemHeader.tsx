@@ -35,6 +35,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/man-vs-day", icon: "🗓️", label: "ดวงกับวัน" },
   { href: "/sacred-map", icon: "🗺️", label: "แผนที่มู" },
   { href: "/almanac/yam", icon: "⏱️", label: "ตรวจยาม" },
+  { href: "/rectify-hour", icon: "🕰️", label: "สอบยาม" },
   { href: "/reading/history", icon: "🗂️", label: "ประวัติดวง" },
   { href: "/reading/knowledge", icon: "📚", label: "องค์ความรู้" },
   { href: "/reading/newdata-reading", icon: "📖", label: "อ่าน 15 บท" },
