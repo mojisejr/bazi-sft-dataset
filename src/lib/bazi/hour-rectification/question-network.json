@@ -1,0 +1,613 @@
+{
+  "version": "v1-personal-matching",
+  "generatedAt": "2026-07-17T23:23:25.654Z",
+  "questions": [
+    {
+      "id": "q1",
+      "question": "เมื่อต้องเริ่มโปรเจกต์ใหม่ ความรู้สึกแรกของคุณคืออะไร?",
+      "options": [
+        {
+          "id": "a1",
+          "label": "ตื่นเต้น อยากลองทำอะไรใหม่ๆ ทันที",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "wood",
+              "weight": 2
+            },
+            {
+              "dimension": "stemRole",
+              "value": "output",
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "id": "a2",
+          "label": "วางแผนให้รอบคอบ ดูความเป็นไปได้ก่อน",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "metal",
+              "weight": 2
+            },
+            {
+              "dimension": "stemRole",
+              "value": "power",
+              "weight": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q2",
+      "question": "ในวัยเด็ก คุณเป็นเด็กประเภทไหน?",
+      "options": [
+        {
+          "id": "b1",
+          "label": "ร่าเริง เข้าสังคมเก่ง เป็นจุดสนใจ",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "fire",
+              "weight": 2
+            },
+            {
+              "dimension": "strengthBucket",
+              "value": "strong",
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "id": "b2",
+          "label": "เงียบๆ ชอบสังเกตการณ์หรืออยู่กับตัวเอง",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "water",
+              "weight": 2
+            },
+            {
+              "dimension": "strengthBucket",
+              "value": "weak",
+              "weight": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q3",
+      "question": "เวลาจัดการเรื่องเงิน คุณให้ความสำคัญกับอะไรมากที่สุด?",
+      "options": [
+        {
+          "id": "c1",
+          "label": "การลงทุนให้งอกเงย",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "wealth",
+              "weight": 3
+            }
+          ]
+        },
+        {
+          "id": "c2",
+          "label": "การเก็บออมเพื่อความมั่นคงในระยะยาว",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "earth",
+              "weight": 2
+            },
+            {
+              "dimension": "stemRole",
+              "value": "resource",
+              "weight": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q4",
+      "question": "เมื่อเกิดความขัดแย้งกับผู้อื่น คุณมักจะ...",
+      "options": [
+        {
+          "id": "d1",
+          "label": "พยายามประนีประนอม รักษาความสัมพันธ์",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "same",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "d2",
+          "label": "ยึดหลักเหตุผลและกฎกติกาที่ถูกต้อง",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "power",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q5",
+      "question": "พลังงานของคุณในหนึ่งวันเป็นอย่างไร?",
+      "options": [
+        {
+          "id": "e1",
+          "label": "คึกคักตลอดวัน ต้องหาอะไรทำเสมอ",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "strong",
+              "weight": 3
+            }
+          ]
+        },
+        {
+          "id": "e2",
+          "label": "ต้องพักเป็นระยะ ไม่งั้นจะหมดไฟ",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "weak",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q6",
+      "question": "เวลาเรียนรู้ทักษะใหม่ คุณชอบสไตล์ไหน?",
+      "options": [
+        {
+          "id": "f1",
+          "label": "ลงมือทำเลย เรียนรู้จากความผิดพลาด",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "output",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "f2",
+          "label": "อ่านตำราหรือฟังผู้เชี่ยวชาญให้เข้าใจก่อน",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "resource",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q7",
+      "question": "คุณคิดว่าตัวเองเป็นคนประเภทไหนในที่ทำงาน?",
+      "options": [
+        {
+          "id": "g1",
+          "label": "ผู้นำที่ชอบคุมทิศทางและสร้างระเบียบ",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "power",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "g2",
+          "label": "ผู้สนับสนุนที่คอยดูแลความเรียบร้อยและคนรอบข้าง",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "resource",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q8",
+      "question": "เวลาตัดสินใจเรื่องสำคัญ คุณใช้เกณฑ์อะไร?",
+      "options": [
+        {
+          "id": "h1",
+          "label": "ความรู้สึกและสัญชาตญาณ",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "water",
+              "weight": 2
+            },
+            {
+              "dimension": "stemRole",
+              "value": "same",
+              "weight": 1
+            }
+          ]
+        },
+        {
+          "id": "h2",
+          "label": "ข้อมูลและผลลัพธ์ที่จับต้องได้",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "earth",
+              "weight": 2
+            },
+            {
+              "dimension": "stemRole",
+              "value": "wealth",
+              "weight": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q9",
+      "question": "ความสัมพันธ์กับเพื่อนฝูงของคุณเป็นอย่างไร?",
+      "options": [
+        {
+          "id": "i1",
+          "label": "มีเพื่อนเยอะ ชอบทำกิจกรรมร่วมกัน",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "same",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "i2",
+          "label": "มีเพื่อนสนิทไม่กี่คน เน้นความเข้าใจลึกซึ้ง",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "resource",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q10",
+      "question": "เวลาว่าง คุณชอบทำอะไร?",
+      "options": [
+        {
+          "id": "j1",
+          "label": "สร้างสรรค์งานอดิเรกหรืองานศิลปะ",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "output",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "j2",
+          "label": "จัดบ้าน จัดระเบียบชีวิต หรือวางแผนอนาคต",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "metal",
+              "weight": 2
+            },
+            {
+              "dimension": "stemRole",
+              "value": "power",
+              "weight": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q11",
+      "question": "คุณจัดการกับความเครียดอย่างไร?",
+      "options": [
+        {
+          "id": "k1",
+          "label": "หาทางออกด้วยการลงมือทำหรือระบายออก",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "output",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "k2",
+          "label": "เก็บตัวเงียบๆ เพื่อทบทวนตัวเอง",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "resource",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q12",
+      "question": "คุณมองว่าตัวเองเป็นคนแบบไหน?",
+      "options": [
+        {
+          "id": "l1",
+          "label": "คนที่มีพลังล้นเหลือ พร้อมลุย",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "strong",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "l2",
+          "label": "คนที่มีความสมดุล ไม่ตึงไม่หย่อนเกินไป",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "balanced",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q13",
+      "question": "เวลาทำงานเป็นทีม คุณมักทำหน้าที่อะไร?",
+      "options": [
+        {
+          "id": "m1",
+          "label": "คอยประสานงานและดูแลทุกคน",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "wealth",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "m2",
+          "label": "คอยควบคุมกฎเกณฑ์และตรวจสอบความผิดพลาด",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "power",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q14",
+      "question": "คุณให้ค่ากับอะไรมากที่สุดในชีวิต?",
+      "options": [
+        {
+          "id": "n1",
+          "label": "ความสำเร็จและชื่อเสียง",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "fire",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "n2",
+          "label": "ความมั่นคงและการมีฐานะ",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "earth",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q15",
+      "question": "เวลาเจอคนแปลกหน้า คุณมักจะ...",
+      "options": [
+        {
+          "id": "o1",
+          "label": "เป็นฝ่ายทักทายก่อนอย่างเป็นกันเอง",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "same",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "o2",
+          "label": "สังเกตดูท่าทีเขาก่อน",
+          "evidence": [
+            {
+              "dimension": "branchRole",
+              "value": "resource",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q16",
+      "question": "เมื่อต้องรับผิดชอบงานที่ยากลำบาก คุณรู้สึกอย่างไร?",
+      "options": [
+        {
+          "id": "p1",
+          "label": "รู้สึกท้าทายและพร้อมสู้",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "strong",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "p2",
+          "label": "รู้สึกกดดันและอยากหาตัวช่วย",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "weak",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q17",
+      "question": "คุณชอบสภาพแวดล้อมการทำงานแบบไหน?",
+      "options": [
+        {
+          "id": "q1",
+          "label": "อิสระ ยืดหยุ่น ไม่ยึดติดรูปแบบ",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "water",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "q2",
+          "label": "มีขั้นตอนชัดเจน มีระเบียบแบบแผน",
+          "evidence": [
+            {
+              "dimension": "stemElement",
+              "value": "metal",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q18",
+      "question": "คุณมองเรื่อง 'โชคชะตา' อย่างไร?",
+      "options": [
+        {
+          "id": "r1",
+          "label": "เรากำหนดเองได้ด้วยการกระทำ",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "output",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "r2",
+          "label": "ทุกอย่างมีจังหวะเวลาที่เหมาะสม",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "resource",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q19",
+      "question": "เวลาเลือกซื้อของ คุณมักเลือกจากอะไร?",
+      "options": [
+        {
+          "id": "s1",
+          "label": "ฟังก์ชันการใช้งานที่คุ้มค่า",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "wealth",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "s2",
+          "label": "ความสวยงามและภาพลักษณ์",
+          "evidence": [
+            {
+              "dimension": "stemRole",
+              "value": "output",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "q20",
+      "question": "นิสัยการนอนของคุณเป็นอย่างไร?",
+      "options": [
+        {
+          "id": "t1",
+          "label": "นอนเป็นเวลา ตื่นมาสดชื่น",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "balanced",
+              "weight": 2
+            }
+          ]
+        },
+        {
+          "id": "t2",
+          "label": "นอนไม่ค่อยหลับ หรือตื่นมาแล้วเพลีย",
+          "evidence": [
+            {
+              "dimension": "strengthBucket",
+              "value": "weak",
+              "weight": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "llmCallsUsed": 1,
+    "sampleBirthDates": [
+      "1989-01-03",
+      "1990-05-15"
+    ]
+  }
+}
