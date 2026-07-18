@@ -36,6 +36,7 @@
 @import "../styles/features/stats.css";
 @import "../styles/features/sacred-map.css";
 @import "../styles/features/what-if.css";
+@import "../styles/features/rectify-hour.css";
 @import "../styles/bazi-spillover.css";
 
 /* ปุ่ม "อ่านแบบ AI" กลาง (AiNarrateButton) — ใช้ร่วมทุกฟีเจอร์ */
