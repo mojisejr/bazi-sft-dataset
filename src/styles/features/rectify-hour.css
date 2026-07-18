@@ -1,0 +1,277 @@
+/* สอบยาม (Hour Rectification) internal experience — feature styles (#hour-rectification-engine).
+   Scoped entirely under .rectify-hour; uses the shared design tokens so it tracks light/dark and the
+   rest of the system. Self-contained: remove this file + its one @import in globals.css and nothing
+   else is affected. */
+
+.rectify-hour-page {
+  display: flex;
+  justify-content: center;
+}
+
+.rectify-hour {
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.rectify-hour__card {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.75rem;
+}
+
+/* ---- FORM ---- */
+.rectify-hour__form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.rectify-hour__fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.rectify-hour__legend {
+  font-weight: 600;
+  color: var(--color-text-primary, #1c1c1c);
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+.rectify-hour__date-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.rectify-hour__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #6b6b6b);
+}
+
+.rectify-hour__field select {
+  padding: 0.6rem 0.7rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
+  background: var(--panel, #fff);
+  color: var(--color-text-primary, #1c1c1c);
+  font-size: 0.95rem;
+}
+
+.rectify-hour__gender {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.rectify-hour__gender-label {
+  font-weight: 600;
+  color: var(--color-text-primary, #1c1c1c);
+}
+
+.rectify-hour__radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  color: var(--color-text-primary, #1c1c1c);
+}
+
+.rectify-hour__info {
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #6b6b6b);
+  margin: 0;
+}
+
+.rectify-hour__form-actions,
+.rectify-hour__result-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.rectify-hour__form-actions {
+  justify-content: center;
+}
+
+/* ---- QUIZ ---- */
+.rectify-hour__quiz-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.rectify-hour__progress-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #6b6b6b);
+}
+
+.rectify-hour__progress {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--accent-soft, rgba(0, 0, 0, 0.08));
+  overflow: hidden;
+}
+
+.rectify-hour__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent, #b8860b);
+  transition: width 0.25s ease;
+}
+
+.rectify-hour__question {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--color-text-primary, #1c1c1c);
+  margin: 0;
+}
+
+.rectify-hour__options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rectify-hour__option {
+  width: 100%;
+  text-align: left;
+  padding: 1rem 1.1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
+  background: var(--panel, #fff);
+  color: var(--color-text-primary, #1c1c1c);
+  font-size: 1rem;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+}
+
+.rectify-hour__option:hover:not(:disabled) {
+  border-color: var(--accent, #b8860b);
+  background: var(--accent-soft, rgba(184, 134, 11, 0.08));
+}
+
+.rectify-hour__option:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.rectify-hour__option:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.rectify-hour__quiz-foot {
+  display: flex;
+}
+
+.rectify-hour__back {
+  background: none;
+  border: none;
+  padding: 0.25rem 0;
+  color: var(--color-text-muted, #6b6b6b);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.rectify-hour__back:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rectify-hour__back:hover:not(:disabled) {
+  color: var(--accent, #b8860b);
+}
+
+/* ---- RESULT ---- */
+.rectify-hour__result-hour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 1.5rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.15));
+  background: var(--accent-soft, rgba(184, 134, 11, 0.06));
+}
+
+.rectify-hour__hour-char {
+  font-size: 3.5rem;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--accent, #b8860b);
+}
+
+.rectify-hour__hour-label {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #1c1c1c);
+}
+
+.rectify-hour__hour-time {
+  font-size: 0.95rem;
+  color: var(--color-text-muted, #6b6b6b);
+  font-variant-numeric: tabular-nums;
+}
+
+.rectify-hour__reason-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+  color: var(--color-text-primary, #1c1c1c);
+}
+
+.rectify-hour__reason-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--color-text-muted, #4a4a4a);
+}
+
+.rectify-hour__beta-warning {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text-muted, #6b6b6b);
+  background: var(--accent-soft, rgba(0, 0, 0, 0.05));
+  border-radius: 0.6rem;
+  padding: 0.75rem 0.9rem;
+  margin: 0;
+}
+
+.rectify-hour__result-actions {
+  justify-content: space-between;
+}
+
+/* ---- shared ---- */
+.rectify-hour__error {
+  color: var(--color-danger, #c0392b);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+@media (max-width: 30rem) {
+  .rectify-hour__card {
+    padding: 1.25rem;
+  }
+  .rectify-hour__result-actions {
+    flex-direction: column;
+  }
+}
