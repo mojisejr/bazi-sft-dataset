@@ -12,6 +12,11 @@ export default function RectifyHourPage() {
   return (
     <main className="page-shell rectify-hour-page">
       <RectifyHourExperience />
+      {/* v2 entry (additive) — event-based lane, standalone from this quiz. */}
+      <p className="rectify-hour__v2-entry">
+        รู้ปีเหตุการณ์สำคัญ (แต่งงาน/เปลี่ยนงาน/มีบุตร…)?{" "}
+        <a href="/rectify-hour/events">ลองสอบยามจากเหตุการณ์ →</a>
+      </p>
     </main>
   );
 }

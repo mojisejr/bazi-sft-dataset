@@ -44,3 +44,24 @@ export {
   MAX_QUESTIONS_TO_ASK,
   MIN_QUESTIONS_TO_ASK,
 } from "./domain/traverse";
+
+// ── v2 event-based lane (additive; separate from the v1 quiz lane above) ──
+export {
+  runRectificationByEvents,
+  type RunEventsInput,
+  type RunEventsResult,
+  type EventsTrace,
+} from "./run-events";
+
+export {
+  EVENT_TYPES,
+  EVENT_LABELS_TH,
+  MIN_EVENTS,
+  MAX_EVENTS,
+  isEventType,
+  type EventType,
+  type LifeEvent,
+} from "./domain/events";
+
+export { type RankedYam, type FiredRule } from "./domain/scorer";
+export { type TimeEstimate } from "./domain/time-mapper";
