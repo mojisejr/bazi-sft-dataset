@@ -507,3 +507,83 @@
 .rectify-hour__v2-entry a {
   color: var(--accent, #b8860b);
 }
+
+/* ── v3 reading-diff lane (สอบจากคำทำนาย) — choice buttons for daypart + answers ── */
+.rectify-reading__choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+.rectify-reading__choice {
+  text-align: left;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 0.6rem;
+  background: var(--color-surface, #fff);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.rectify-reading__choice:hover:not(:disabled) {
+  border-color: var(--accent, #b8860b);
+  background: var(--color-surface-raised, #faf6ee);
+}
+.rectify-reading__choice:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.rectify-reading__choice--muted {
+  color: var(--color-text-muted, #6b6b6b);
+  border-style: dashed;
+}
+
+/* ── unified hub: tab switcher over the 3 lanes (v3 reading / v2 events / v1 quiz) ── */
+.rectify-hub {
+  max-width: 44rem;
+  margin: 0 auto;
+}
+.rectify-hub__tabs {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.rectify-hub__tab {
+  padding: 0.5rem 0.95rem;
+  border: 1px solid var(--color-border, #ddd);
+  border-radius: 999px;
+  background: var(--color-surface, #fff);
+  font-size: 0.9rem;
+  cursor: pointer;
+  color: var(--color-text-muted, #6b6b6b);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.rectify-hub__tab:hover {
+  border-color: var(--accent, #b8860b);
+}
+.rectify-hub__tab--active {
+  border-color: var(--accent, #b8860b);
+  background: var(--color-surface-raised, #faf6ee);
+  color: var(--color-text, #222);
+  font-weight: 600;
+}
+.rectify-hub__hint {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #6b6b6b);
+  margin: 0 auto 1rem;
+  max-width: 34rem;
+}
+
+@media (max-width: 30rem) {
+  .rectify-hub__tabs {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rectify-hub__tab {
+    text-align: center;
+  }
+}

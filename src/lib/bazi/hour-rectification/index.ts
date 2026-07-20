@@ -65,3 +65,33 @@ export {
 
 export { type RankedYam, type FiredRule } from "./domain/scorer";
 export { type TimeEstimate } from "./domain/time-mapper";
+
+// ── v3 reading-diff lane (สอบจากคำทำนาย; additive, separate from v1/v2) ──
+export {
+  runRectificationByReading,
+  type RunReadingInput,
+  type RunReadingResult,
+  type ShortlistEntry,
+} from "./run-reading";
+
+// ── unified lane (flow เดียวถามต่อเนื่อง: daypart → events → reading → รวมคะแนน) ──
+export {
+  runRectificationCombined,
+  combineHourScores,
+  shortlistCombined,
+  MIN_EVENTS_WHEN_DAYPART_UNKNOWN,
+  type RunCombinedInput,
+  type RunCombinedResult,
+  type CombinedHourScore,
+} from "./run-combined";
+
+export {
+  DAYPARTS,
+  READING_DIMENSIONS,
+  SKIP_OPTION_ID,
+  isDaypartId,
+  type DaypartId,
+  type ReadingAnswer,
+  type ReadingDimension,
+  type ReadingQuestion,
+} from "./domain/reading-diff";

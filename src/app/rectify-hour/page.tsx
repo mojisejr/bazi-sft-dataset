@@ -1,8 +1,8 @@
-// สอบยาม (Hour Rectification) internal page — thin route that just mounts the self-contained
-// experience component (#hour-rectification-engine). No data fetching here; the client component
-// talks to /api/bazi/rectify-hour directly. Kept deliberately minimal so deleting the ui/ folder +
-// this file + the feature CSS restores the repo exactly (spec's self-contained requirement).
-import { RectifyHourExperience } from "@/lib/bazi/hour-rectification/ui/RectifyHourExperience";
+// สอบยาม (Hour Rectification) — flow เดียวถามต่อเนื่อง (#hour-rectification-engine).
+// รวมทุกชั้นในชุดคำถามเดียว: ช่วงของวัน → เหตุการณ์ชีวิต → คำถามจากคำทำนาย → รวมคะแนน
+// (ตามซินแส: ไม่แยกโหมดให้ผู้ใช้เลือกเอง) — lane เดิม v1/v2/v3 ยังเข้าถึงได้ผ่าน deep link
+// /rectify-hour/events และ /rectify-hour/reading (หน้า hub แบบแท็บ)
+import { RectifyCombinedExperience } from "@/lib/bazi/hour-rectification/ui/RectifyCombinedExperience";
 
 export const metadata = {
   title: "สอบยาม (Hour Rectification) · internal",
@@ -11,12 +11,7 @@ export const metadata = {
 export default function RectifyHourPage() {
   return (
     <main className="page-shell rectify-hour-page">
-      <RectifyHourExperience />
-      {/* v2 entry (additive) — event-based lane, standalone from this quiz. */}
-      <p className="rectify-hour__v2-entry">
-        รู้ปีเหตุการณ์สำคัญ (แต่งงาน/เปลี่ยนงาน/มีบุตร…)?{" "}
-        <a href="/rectify-hour/events">ลองสอบยามจากเหตุการณ์ →</a>
-      </p>
+      <RectifyCombinedExperience />
     </main>
   );
 }
