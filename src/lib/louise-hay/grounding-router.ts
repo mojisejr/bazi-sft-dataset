@@ -1071,7 +1071,15 @@ export async function resolveLouiseHayGrounding(
     if (rel) classification.date = rel;
   }
 
-  const route: LouiseHayRoute = classification.route;
+  let route: LouiseHayRoute = classification.route;
+
+  // classifier มักเผลอจัดคำถามดวงสั้น ๆ ("วันนี้เป็นยังไง" "ดวงช่วงนี้ดีไหม") เป็นคุยเล่น (chat)
+  // → override แบบ deterministic: มีคำอ้างเวลา + คำถามเชิงประเมิน ให้กลับไปอ่านดวงรายวัน/จังหวะชีวิต
+  const askHint = /เป็น(อย่าง|ยัง)?ไง|ยังไงบ้าง|ดีไหม|ดีมั้ย|โอเค(ไหม|มั้ย)|ระวังอะไร|เจออะไร/;
+  if (route === "chat" && askHint.test(question)) {
+    if (/วันนี้|พรุ่งนี้|มะรืน/.test(question)) route = "day";
+    else if (/ช่วงนี้|สัปดาห์นี้|อาทิตย์นี้|เดือนนี้|ปีนี้|ดวง/.test(question)) route = "timing";
+  }
 
   // ทักทาย/คุยเล่น — ไม่ต้องใช้ศาสตร์ ตอบจากใจได้เลย
   if (route === "chat") {
