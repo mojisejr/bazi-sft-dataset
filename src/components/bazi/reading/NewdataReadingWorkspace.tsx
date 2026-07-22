@@ -44,10 +44,17 @@ type ReadingData = {
   chapters?: ChapterView[];
   error?: string;
 };
-/** override ต่อบท: กล่อง (เพิ่ม/ลบ/แก้) + ชื่อบท — เก็บเฉพาะบทที่ซินแสแก้ */
-type Edits = { boxes: Record<string, ReadingBox[]>; titles: Record<string, string> };
+/**
+ * override ต่อบท: กล่อง (เพิ่ม/ลบ/แก้) + ชื่อบท — เก็บเฉพาะบทที่ซินแสแก้
+ * deleted = หัวข้อกล่อง base ที่ซินแส "ลบทิ้ง" ต่อบท — กัน gapFill เติมกล่องที่ลบแล้วกลับมา
+ */
+type Edits = {
+  boxes: Record<string, ReadingBox[]>;
+  titles: Record<string, string>;
+  deleted?: Record<string, string[]>;
+};
 
-const EMPTY_EDITS: Edits = { boxes: {}, titles: {} };
+const EMPTY_EDITS: Edits = { boxes: {}, titles: {}, deleted: {} };
 
 function sameBoxes(a: ReadingBox[], b: ReadingBox[]): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
@@ -126,12 +133,13 @@ const normTitle = (t: string) => (t || "").trim().replace(/\s+/g, " ");
  *  - ไม่ลบกล่องที่ base เอาออก (คงงานซินแสไว้เสมอ) · กล่องไม่มีหัวข้อ = ข้าม (match ไม่ได้)
  * match ด้วยหัวข้อกล่อง (ถ้าซินแสเปลี่ยนชื่อหัวข้อ อาจถูกมองเป็นกล่องใหม่ — พบไม่บ่อย)
  */
-function gapFillMerge(base: ReadingBox[], edited: ReadingBox[]): ReadingBox[] {
+function gapFillMerge(base: ReadingBox[], edited: ReadingBox[], deleted: string[] = []): ReadingBox[] {
   const present = new Set(edited.map((b) => normTitle(b.title)).filter((t) => t.length > 0));
+  const removed = new Set(deleted.map(normTitle));
   const result = [...edited];
   for (let i = 0; i < base.length; i++) {
     const title = normTitle(base[i].title);
-    if (!title || present.has(title)) continue; // มีอยู่แล้ว / ไม่มีหัวข้อ → ข้าม
+    if (!title || present.has(title) || removed.has(title)) continue; // มีอยู่แล้ว / ไม่มีหัวข้อ / ถูกลบไว้ → ข้าม
     // หาตำแหน่งแทรก = หลังกล่องของ base ก่อนหน้าที่ปรากฏใน result อยู่แล้ว (คงลำดับ NewData)
     let insertPos = 0;
     for (let j = i - 1; j >= 0; j--) {
@@ -157,7 +165,7 @@ function applyGapFill(edits: Edits, chapters: ChapterView[]): Edits {
   const boxes: Record<string, ReadingBox[]> = {};
   for (const [id, edited] of Object.entries(edits.boxes)) {
     const base = baseById.get(id);
-    boxes[id] = base ? gapFillMerge(base, edited) : edited;
+    boxes[id] = base ? gapFillMerge(base, edited, edits.deleted?.[id]) : edited;
   }
   return { ...edits, boxes };
 }
@@ -282,11 +290,11 @@ export function NewdataReadingWorkspace() {
         setStorageKey(key);
         let saved: Edits = EMPTY_EDITS;
         if (editsOverride) {
-          saved = { boxes: editsOverride.boxes ?? {}, titles: editsOverride.titles ?? {} };
+          saved = { boxes: editsOverride.boxes ?? {}, titles: editsOverride.titles ?? {}, deleted: editsOverride.deleted ?? {} };
         } else {
           try {
             const raw = JSON.parse(localStorage.getItem(key) ?? "{}") as Partial<Edits>;
-            saved = { boxes: raw.boxes ?? {}, titles: raw.titles ?? {} };
+            saved = { boxes: raw.boxes ?? {}, titles: raw.titles ?? {}, deleted: raw.deleted ?? {} };
           } catch {
             saved = EMPTY_EDITS;
           }
@@ -331,9 +339,21 @@ export function NewdataReadingWorkspace() {
     (ch: ChapterView, next: ReadingBox[]) => {
       setEdits((prev) => {
         const boxes = { ...prev.boxes };
-        if (sameBoxes(next, ch.boxes)) delete boxes[ch.id];
-        else boxes[ch.id] = next;
-        const out = { ...prev, boxes };
+        const deleted = { ...(prev.deleted ?? {}) };
+        if (sameBoxes(next, ch.boxes)) {
+          delete boxes[ch.id];
+          delete deleted[ch.id];
+        } else {
+          boxes[ch.id] = next;
+          // หัวข้อกล่อง base ที่หายไปจาก next = ถูกซินแสลบทิ้ง → จำไว้กัน gapFill เติมกลับ
+          const kept = new Set(next.map((b) => normTitle(b.title)));
+          const removed = ch.boxes
+            .map((b) => normTitle(b.title))
+            .filter((t) => t.length > 0 && !kept.has(t));
+          if (removed.length) deleted[ch.id] = removed;
+          else delete deleted[ch.id];
+        }
+        const out = { ...prev, boxes, deleted };
         persist(storageKey, out);
         return out;
       });
@@ -426,9 +446,11 @@ export function NewdataReadingWorkspace() {
       setEdits((prev) => {
         const boxes = { ...prev.boxes };
         const titles = { ...prev.titles };
+        const deleted = { ...(prev.deleted ?? {}) };
         delete boxes[chapterId];
         delete titles[chapterId];
-        const out = { boxes, titles };
+        delete deleted[chapterId];
+        const out = { boxes, titles, deleted };
         persist(storageKey, out);
         return out;
       });
@@ -575,7 +597,7 @@ export function NewdataReadingWorkspace() {
         setSaveStatus(`เปิดดวง "${r.clientName || r.birthDate}" แล้ว`);
         await runReading(
           { birthDate: r.birthDate, birthTime: r.birthTime, gender: g, province: r.province ?? "" },
-          { boxes: r.edits.boxes ?? {}, titles: r.edits.titles ?? {} },
+          { boxes: r.edits.boxes ?? {}, titles: r.edits.titles ?? {}, deleted: r.edits.deleted ?? {} },
         );
       } catch {
         setSaveStatus("โหลดไม่สำเร็จ");
@@ -619,7 +641,7 @@ export function NewdataReadingWorkspace() {
         setSaveStatus("เปิดจุดบันทึกจากประวัติแล้ว");
         await runReading(
           { birthDate: body.birthDate ?? "", birthTime: body.birthTime ?? "", gender: g, province: body.province ?? "" },
-          { boxes: body.edits?.boxes ?? {}, titles: body.edits?.titles ?? {} },
+          { boxes: body.edits?.boxes ?? {}, titles: body.edits?.titles ?? {}, deleted: body.edits?.deleted ?? {} },
         );
       } catch {
         setSaveStatus("โหลดไม่สำเร็จ");
@@ -697,7 +719,7 @@ export function NewdataReadingWorkspace() {
           return;
         }
         const e = body.version.edits ?? {};
-        const restored: Edits = { boxes: e.boxes ?? {}, titles: e.titles ?? {} };
+        const restored: Edits = { boxes: e.boxes ?? {}, titles: e.titles ?? {}, deleted: e.deleted ?? {} };
         setEdits(restored);
         setDrafts({});
         persist(storageKey, restored);

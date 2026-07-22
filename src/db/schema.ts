@@ -634,6 +634,8 @@ export type NewdataReadingBox = { title: string; body: string };
 export type NewdataReadingEdits = {
   boxes?: Record<string, NewdataReadingBox[]>;
   titles?: Record<string, string>;
+  /** หัวข้อกล่อง base ที่ซินแสลบทิ้งต่อบท — กัน gapFill เติมกล่องที่ลบแล้วกลับมา */
+  deleted?: Record<string, string[]>;
 };
 
 export const baziNewdataReading = pgTable(
