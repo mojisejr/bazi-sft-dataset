@@ -1,4 +1,5 @@
-import compiledKnowledgeArtifactJson from "./compiled-knowledge.json";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import {
   type CompiledKnowledgeArtifact,
@@ -7,29 +8,49 @@ import {
   type TopicId,
 } from "./topic-types";
 
-const compiledKnowledgeArtifact =
-  compiledKnowledgeArtifactJson as CompiledKnowledgeArtifact;
-
-if (compiledKnowledgeArtifact.topicCount !== compiledKnowledgeArtifact.topics.length) {
-  throw new Error("Compiled knowledge artifact topic count is inconsistent.");
-}
-
-const compiledTopicKnowledgeById = Object.freeze(
-  Object.fromEntries(
-    compiledKnowledgeArtifact.topics.map((topic) => [topic.id, topic]),
-  ) as Record<TopicId, CompiledTopicKnowledge>,
+// ⚠️ ห้ามเปลี่ยนกลับเป็น `import ... from "./compiled-knowledge.json"` —
+// ไฟล์นี้ ~42MB static import จะถูกฝังเข้า shared chunk แล้ว Vercel ก็อปเข้า
+// serverless function ทุกตัวที่แตะ lib/bazi (~77 routes) → deployment บวม >10GB.
+// อ่านด้วย fs ตอน runtime แทน ให้ Next file-tracing แนบไฟล์เฉพาะ function ที่ใช้จริง.
+const COMPILED_KNOWLEDGE_PATH = path.join(
+  process.cwd(),
+  "src/lib/bazi/knowledge/compiled-knowledge.json",
 );
 
+let cached: {
+  artifact: CompiledKnowledgeArtifact;
+  byId: Record<TopicId, CompiledTopicKnowledge>;
+} | null = null;
+
+function loadCompiledKnowledge() {
+  if (cached) return cached;
+  const artifact = JSON.parse(
+    readFileSync(COMPILED_KNOWLEDGE_PATH, "utf8"),
+  ) as CompiledKnowledgeArtifact;
+
+  if (artifact.topicCount !== artifact.topics.length) {
+    throw new Error("Compiled knowledge artifact topic count is inconsistent.");
+  }
+
+  const byId = Object.freeze(
+    Object.fromEntries(
+      artifact.topics.map((topic) => [topic.id, topic]),
+    ) as Record<TopicId, CompiledTopicKnowledge>,
+  );
+  cached = { artifact, byId };
+  return cached;
+}
+
 export function getCompiledKnowledgeArtifact(): CompiledKnowledgeArtifact {
-  return compiledKnowledgeArtifact;
+  return loadCompiledKnowledge().artifact;
 }
 
 export function listCompiledTopicKnowledge(): CompiledTopicKnowledge[] {
-  return compiledKnowledgeArtifact.topics;
+  return loadCompiledKnowledge().artifact.topics;
 }
 
 export function getTopicKnowledge(topicId: TopicId): CompiledTopicKnowledge {
-  return compiledTopicKnowledgeById[topicId];
+  return loadCompiledKnowledge().byId[topicId];
 }
 
 export function getTopicSourceBundle(
