@@ -124,6 +124,11 @@ export type OpenWebUiGeminiExecutionContext = {
     truthPacket: string | null;
   } | null;
   baziMissingFields?: BaziExtractionFieldKey[];
+  /**
+   * ความรู้เสริมจากซินแส (fix ไม่ผูกดวง เช่น ฮวงจุ้ยกระเป๋าตังค์จาก NewData) — แนบเมื่อ
+   * คำถามเข้าเงื่อนไข keyword; มีค่าแล้วให้ตอบจากก้อนนี้ได้เลย (ไม่ถูกปัดเป็น off-topic)
+   */
+  staticKnowledge?: string | null;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -224,7 +229,9 @@ export function buildOpenWebUiGeminiPromptPayload(
   const timeframe = input.executionContext?.timeframe;
   const baziConsult = input.executionContext?.baziConsult;
   const baziMissingFields = input.executionContext?.baziMissingFields ?? [];
-  const isOffTopic = topicId === "off_topic";
+  const staticKnowledge = input.executionContext?.staticKnowledge ?? null;
+  // มีความรู้เสริมจากซินแสแนบมา = คำถามนี้อยู่ในขอบเขตที่ซินแสให้ตอบ ห้ามปัดเป็น off-topic
+  const isOffTopic = topicId === "off_topic" && !staticKnowledge;
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -271,6 +278,13 @@ export function buildOpenWebUiGeminiPromptPayload(
             "- ห้ามเพิ่มคำทำนายที่ไม่มีในผลอ่าน และห้ามเปลี่ยน/ตัดสัญลักษณ์ ธาตุ ยาม หรืออักษรจีน",
             "- ถ้าผลอ่านไม่ครอบคลุมสิ่งที่ถาม ให้บอกตรงๆ ว่าข้อมูลไม่พอ ห้ามแต่งเพิ่ม",
           ].join("\n"),
+        ].join("\n")
+        : null,
+      staticKnowledge
+        ? [
+          "ความรู้เสริมจากซินแส (ใช้ตอบคำถามนี้ได้โดยตรง — สรุป/เรียบเรียงเป็นภาษาพูดได้ แต่ห้ามแต่ง fact ใหม่นอกก้อนนี้):",
+          staticKnowledge,
+          "ถ้าคำถามพาดพิงสีกระเป๋า/ธาตุเฉพาะดวง และไม่มีผลวินิจฉัย engine แนบมา ให้แนะนำภาพรวมจากก้อนความรู้นี้ แล้วชวนให้ดูดวงเพื่อเลือกสีที่ถูกโฉลกเฉพาะตัว",
         ].join("\n")
         : null,
       honestPrecisionReframe

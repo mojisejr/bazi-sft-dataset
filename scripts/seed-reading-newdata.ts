@@ -574,6 +574,24 @@ function parseElementKeyedFile(file: string, group: string, labelPrefix: string)
   );
 }
 
+/** เนื้อหา fix ทุกคน (keyKind "fixed") — ทั้งไฟล์ (ข้ามบรรทัด #) = 1 row คีย์ "ทุกคน" */
+function parseFixedFile(file: string, group: string, label: string): SeedRow[] {
+  const text = splitLines(read(file))
+    .filter((l) => !l.trimStart().startsWith("#"))
+    .join("\n")
+    .trim();
+  if (!text) return [];
+  return [
+    {
+      groupKey: group,
+      itemKey: "ทุกคน",
+      ordinal: 1,
+      value: { text, label },
+      sourceFile: file,
+    },
+  ];
+}
+
 /** ก้านบน/ราศีล่างของแต่ละธาตุ (ปลายทางที่เป็นธาตุนั้น) */
 const ELEMENT_CHARS: Record<string, string[]> = {
   wood: ["甲", "乙", "寅", "卯"],
@@ -1119,6 +1137,16 @@ function collectAll(): SeedRow[] {
   push("love_base", () => parseLoveBase("ความรักและความสัมพันธ์.txt"));
   push("love_base_60", () => parseLoveBase60("love-base-60.json"));
   push("love_chance", () => parseLoveChance("ความรักและความสัมพันธ์.txt"));
+  // เนื้อหา fix ทุกคน (2026-07-22): บท13 ข้อเสนอแนะ / บท14 บทนำสีมงคล / AI ฮวงจุ้ยกระเป๋าตังค์
+  push("health_advice_fixed", () =>
+    parseFixedFile("บท13 ข้อเสนอแนะทุกคน.txt", "health_advice_fixed", "ข้อเสนอแนะการดูแลและการรักษา"),
+  );
+  push("colors_intro", () =>
+    parseFixedFile("บท14 บทนำสีมงคล.txt", "colors_intro", "สีเบญจธาตุ — พลังของสีที่สะท้อนธรรมชาติทั้งห้า"),
+  );
+  push("wallet_fengshui", () =>
+    parseFixedFile("AI ฮวงจุ้ยกระเป๋าตังค์.txt", "wallet_fengshui", "ฮวงจุ้ยกระเป๋าตังค์"),
+  );
   push("chart_foundation_core", collectChartFoundationCore);
   return all;
 }

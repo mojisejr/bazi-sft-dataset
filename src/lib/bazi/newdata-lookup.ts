@@ -1300,11 +1300,33 @@ export function matchFriendTrue(map: NewdataMap, group: string, facts: ChartFact
  * บท 1 · นิสัยด้านมืดตามธาตุ — lookup ตามธาตุของดิถี (ราศีบนหลักวัน) คีย์ = ธาตุไทย
  * คืน 1 ก้อน (ปลายทางว่างถ้า DB ยังไม่มี)
  */
-export function matchDayElement(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+export function matchDayElement(
+  map: NewdataMap,
+  group: string,
+  facts: ChartFacts,
+  opts?: { onlyExtremeStrength?: boolean },
+): NewdataBlock[] {
+  // ด้านมืด: ซินแสกำหนดว่าเฉพาะดิถี "อ่อนเกินไป/แข็งเกินไป" เท่านั้นถึงมีด้านมืด
+  if (opts?.onlyExtremeStrength) {
+    const id = seasonalStrengthId(facts);
+    if (id !== "very-weak" && id !== "very-strong") return [];
+  }
   const el = elementThOfStem(facts.dayMaster);
   if (!el) return [];
   const value = map[group]?.[el];
   return value ? [toBlock(group, el, value, `ธาตุ${el} (ดิถี)`)] : [];
+}
+
+/** คีย์กลางของกลุ่ม keyKind "fixed" — เนื้อหาเดียวใช้กับทุกดวง */
+export const FIXED_KEY = "ทุกคน";
+
+/**
+ * กลุ่มเนื้อหา fix (เหมือนกันทุกดวง) — บทนำบท 14 / ข้อเสนอแนะบท 13 / ความรู้แชท AI
+ * lookup คีย์เดียว "ทุกคน" ไม่ขึ้นกับ ChartFacts
+ */
+export function matchFixed(map: NewdataMap, group: string): NewdataBlock[] {
+  const value = map[group]?.[FIXED_KEY];
+  return value ? [toBlock(group, FIXED_KEY, value)] : [];
 }
 
 /**

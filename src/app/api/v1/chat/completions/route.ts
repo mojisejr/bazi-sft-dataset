@@ -17,6 +17,7 @@ import {
 } from "@/features/open-webui/triage";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
 import { fetchGroundedReading, resolveGroundingTopicId } from "@/features/open-webui/reading-bridge";
+import { resolveStaticKnowledge } from "@/features/open-webui/static-knowledge";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
 import {
@@ -250,6 +251,9 @@ export async function POST(req: Request) {
       calculatedState,
       origin,
     });
+
+    // ความรู้เสริม fix จากซินแส (เช่น ฮวงจุ้ยกระเป๋าตังค์) — แนบเมื่อคำถามเข้า keyword
+    executionContext.staticKnowledge = await resolveStaticKnowledge(result.latestUserMessage.content);
 
     const reply = await generateGeminiAssistantReply(result, { executionContext });
 

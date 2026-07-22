@@ -207,7 +207,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
     const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
-    expect(r.boxes).toHaveLength(10); // 10 bullets (+รูปร่างหน้าตา/คุณธรรม/ชื่อเสียง)
+    expect(r.boxes).toHaveLength(8); // 8 bullets (2026-07-22 ซินแสเอา รูปร่างหน้าตา+คุณธรรม ออก)
     expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
     expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
@@ -345,10 +345,10 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     const r = resolveChapterBoxes("colors_directions", FACTS, MAP);
     expect(r.defined).toBe(true);
     expect(r.hasContent).toBe(true); // สัตว์มงคล เติมตามดิถีเสมอ (static ไม่พึ่ง DB)
-    expect(r.boxes).toHaveLength(8); // 8 bullets
-    expect(r.boxes[5].body).toContain("แพะ"); // box5 สัตว์มงคล: ดิถี 庚 = แพะ, กระต่าย
-    // ช่องพึ่ง DB (สี/เสื้อผ้า/เครื่องประดับ/กระเป๋า/รถ/ทิศ/ข้อเสนอแนะ) ยังว่างในดวงนี้
-    for (const i of [0, 1, 2, 3, 4, 6, 7]) expect(r.boxes[i].body, `box${i}`).toBe("");
+    expect(r.boxes).toHaveLength(9); // 9 bullets (+บทนำสีมงคล fix ที่ index 0)
+    expect(r.boxes[6].body).toContain("แพะ"); // box6 สัตว์มงคล: ดิถี 庚 = แพะ, กระต่าย
+    // ช่องพึ่ง DB (บทนำ/สี/เสื้อผ้า/เครื่องประดับ/กระเป๋า/รถ/ทิศ/ข้อเสนอแนะ) ยังว่างในดวงนี้
+    for (const i of [0, 1, 2, 3, 4, 5, 7, 8]) expect(r.boxes[i].body, `box${i}`).toBe("");
 
     // เติมตาราง 1 ช่อง (สี × ธาตุดิน = ธาตุที่ดวงต้องการของ 庚อ่อน ตาม merit band) → box แรกมีเนื้อ
     const filled: NewdataMap = {
@@ -356,7 +356,34 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
       auspicious_by_element: { "สี|ดิน": { text: "สีเหลือง น้ำตาล", label: "สีมงคล ธาตุดิน" } },
     };
     const r2 = resolveChapterBoxes("colors_directions", FACTS, filled);
-    expect(r2.boxes[0].body).toContain("สีเหลือง น้ำตาล");
+    expect(r2.boxes[1].body).toContain("สีเหลือง น้ำตาล"); // box1 = สี (box0 = บทนำ fix)
+
+    // บทนำสีมงคล (fix ทุกคน) + ข้อเสนอแนะบท 13 (fix ทุกคน) — เติมจาก keyKind "fixed"
+    const withFixed: NewdataMap = {
+      ...MAP,
+      colors_intro: { ทุกคน: { text: "สีเบญจธาตุ พลังของสีที่สะท้อนธรรมชาติทั้งห้า", label: "สีเบญจธาตุ" } },
+      health_advice_fixed: { ทุกคน: { text: "สุขภาพคือความมั่งคั่งที่แท้จริง", label: "ข้อเสนอแนะ" } },
+    };
+    const r3 = resolveChapterBoxes("colors_directions", FACTS, withFixed);
+    expect(r3.boxes[0].body).toContain("สีเบญจธาตุ");
+    const h = resolveChapterBoxes("health", FACTS, withFixed);
+    expect(h.boxes[2].body).toContain("สุขภาพคือความมั่งคั่งที่แท้จริง");
+  });
+
+  test("นิสัยด้านมืด (บท1 box4) — เฉพาะดิถีอ่อนเกินไป/แข็งเกินไปถึงขึ้น (กติกาซินแส 2026-07-22)", () => {
+    const darkMap: NewdataMap = {
+      ...MAP,
+      dark_side_by_element: { ทอง: { text: "ดื้อรั้น แข็งกร้าว เอาชนะไม่เลิก", label: "ด้านมืด ธาตุทอง" } },
+    };
+    // FACTS = 庚 อ่อน (weak ไม่สุดขั้ว) → กล่องว่างแม้ DB มีเนื้อ
+    const weak = resolveChapterBoxes("chart_foundation", FACTS, darkMap);
+    expect(weak.boxes[4].body).toBe("");
+    // ดวงอ่อนเกินไป (very-weak: score < 2) → ขึ้น
+    const veryWeak = resolveChapterBoxes("chart_foundation", { ...FACTS, strengthScore: 1 }, darkMap);
+    expect(veryWeak.boxes[4].body).toContain("ดื้อรั้น แข็งกร้าว");
+    // ดวงแข็งเกินไป (very-strong) → ขึ้น
+    const veryStrong = resolveChapterBoxes("chart_foundation", { ...FACTS, strengthScore: 9 }, darkMap);
+    expect(veryStrong.boxes[4].body).toContain("ดื้อรั้น แข็งกร้าว");
   });
 
   test("ข้อเสนอแนะ(จิตวิทยา) = พัฒนานิสัยตาม用神 (merit) ไม่ใช่ธาตุดิถีเดี่ยว", () => {
@@ -409,19 +436,15 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[1].body).toContain("ระวังตับ"); // ไม้ น้อยสุด (0 ตำแหน่ง)
   });
 
-  test("กลุ่มใหม่: คุณธรรม(บท1)/ลูกค้า+ธุรกิจ(บท3) — ตามธาตุดิถี/เชี่ยงแซหลักปี/หลักเดือน", () => {
+  test("กลุ่มใหม่: ลูกค้า+ธุรกิจ(บท3) — เชี่ยงแซหลักปี/หลักเดือน (คุณธรรมบท1 ถูกซินแสถอด 2026-07-22)", () => {
     const map: NewdataMap = {
       ...MAP,
-      // 庚 = ทอง → คุณธรรม ธาตุทอง
-      virtue_by_element: { ทอง: { text: "ยุติธรรม เด็ดขาด มีหลักการ", label: "คุณธรรม ธาตุทอง" } },
       // ลูกค้า = เชี่ยงแซหลักปี (戊辰 = เอี้ยง) · ธุรกิจ = เชี่ยงแซหลักเดือน (丁巳 = เชี่ยงแซ)
       customer_state: { เอี้ยง: { text: "ลูกค้าที่ต้องคอยดูแล วัยเด็ก", label: "เอี้ยง" } },
       business_state: { เชี่ยงแซ: { text: "ธุรกิจเริ่มต้นสิ่งใหม่ เพื่อการพัฒนา", label: "เชี่ยงแซ" } },
       // การใช้จ่าย = เชี่ยงแซของเสาที่ธาตุถ่ายเท(食傷=น้ำ)ปรากฏ → 癸เสายาม เชี่ยงแซกวงตั่ว
       spending_state: { กวงตั่ว: { text: "ใช้จ่ายกับการเรียนรู้ เรื่องเฉพาะทาง", label: "กวงตั่ว" } },
     };
-    const cf = resolveChapterBoxes("chart_foundation", FACTS, map);
-    expect(cf.boxes[8].body).toContain("ยุติธรรม เด็ดขาด"); // box8 = คุณธรรม (ตามธาตุดิถี ทอง)
     const w = resolveChapterBoxes("wealth_and_investment", FACTS, map);
     expect(w.boxes[1].body).toContain("ธุรกิจเริ่มต้นสิ่งใหม่"); // box1 = ธุรกิจ (หลักเดือน เชี่ยงแซ)
     expect(w.boxes[2].body).toContain("ลูกค้าที่ต้องคอยดูแล"); // box2 = ลูกค้า (หลักปี เอี้ยง)
@@ -434,7 +457,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
       ...MAP,
       fame_honor: { 甲子: { text: "ดาวเด่นดังแห่งหมกยก", label: "甲子" } },
     });
-    expect(none.boxes[9].body).toBe(""); // box9 = ชื่อเสียง (ดวงนี้ไม่มีกะจื่อเด่นดัง)
+    expect(none.boxes[7].body).toBe(""); // box7 = ชื่อเสียง (ดวงนี้ไม่มีกะจื่อเด่นดัง)
     // ดวงที่หลักวันเป็น 甲子 → จับได้
     const withFame: ChartFacts = {
       ...FACTS,
@@ -450,7 +473,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
       ...MAP,
       fame_honor: { 甲子: { text: "ดาวเด่นดังแห่งหมกยก", label: "甲子" } },
     });
-    expect(hit.boxes[9].body).toContain("ดาวเด่นดังแห่งหมกยก");
+    expect(hit.boxes[7].body).toContain("ดาวเด่นดังแห่งหมกยก");
   });
 
   test("CHAPTER_BULLET_RESOLVERS มีครบ 15 บท และ resolver align กับจำนวน bullets", () => {

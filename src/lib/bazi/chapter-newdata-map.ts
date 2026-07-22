@@ -14,6 +14,7 @@ import {
   matchCareer,
   matchDaYun,
   matchDayElement,
+  matchFixed,
   matchDeityByRasi,
   matchDayMasterStrength,
   matchDithiTransfer,
@@ -62,7 +63,7 @@ type Resolver =
   | { kind: "daYun" }
   | { kind: "career"; role: "do" | "avoid"; order: number; group?: string }
   | { kind: "dayMasterStrength"; group: string }
-  | { kind: "dayElement"; group: string }
+  | { kind: "dayElement"; group: string; onlyExtremeStrength?: boolean }
   | { kind: "fameHonor"; group: string }
   | { kind: "deityRasi"; group: string; role: "protect" | "career" | "wealth" }
   | { kind: "branchOf"; group: string; pillar: PillarPosition }
@@ -85,7 +86,8 @@ type Resolver =
   | { kind: "luckyAnimal" }
   | { kind: "elementAdvice"; table: "wealth" | "health" | "talent" }
   | { kind: "familyState"; pillar: PillarPosition; tier?: "upper" | "lower" }
-  | { kind: "annualYears" };
+  | { kind: "annualYears" }
+  | { kind: "fixed"; group: string };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -106,17 +108,13 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "dithiTransferPrioritized", group: "dithi_transfer" },
       { kind: "state", group: "shengxiang", pillar: "day" },
     ],
-    [{ kind: "dayElement", group: "dark_side_by_element" }],
+    // นิสัยด้านมืด — ซินแสกำหนด: เฉพาะดิถีอ่อนเกินไป/แข็งเกินไปถึงมีด้านมืด (ดวงอื่นกล่องว่าง)
+    [{ kind: "dayElement", group: "dark_side_by_element", onlyExtremeStrength: true }],
     [{ kind: "selfPunish" }],
     // ข้อเสนอแนะ = พัฒนานิสัยตาม "ธาตุปรับดวง" (用神) — iterate favorableElements (merit) ไม่ใช่ธาตุดิถีเดี่ยว
     [{ kind: "merit", group: "develop_by_element" }],
-    // รูปร่างหน้าตา/บุคลิกภาพ = เชี่ยงแซหลักวัน (appearance_state) + ธาตุดิถี (appearance_element)
-    [
-      { kind: "state", group: "appearance_state", pillar: "day" },
-      { kind: "dayElement", group: "appearance_element" },
-    ],
-    // คุณธรรมประจำธาตุดิถี (5 ธาตุ)
-    [{ kind: "dayElement", group: "virtue_by_element" }],
+    // (2026-07-22 ซินแสสั่งเอาออก: รูปร่างหน้าตา/บุคลิกภาพ + คุณธรรมประจำธาตุ —
+    //  กลุ่ม appearance_state/appearance_element/virtue_by_element เหลือเป็นสำรอง ไม่ถูกอ้าง)
     // ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง) = มีกะจื่อเด่นดังในเสาใดก็ได้ (ว่างถ้าไม่มี)
     [{ kind: "fameHonor", group: "fame_honor" }],
   ],
@@ -268,11 +266,16 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "healthZoah", group: "health_phua" },
     ],
     [{ kind: "healthElement", group: "health_by_element" }],
-    [{ kind: "elementAdvice", table: "health" }],
+    // ข้อเสนอแนะ = เนื้อ fix ทุกคน (13.ข้อเสนอแนะ.docx) + คำแนะนำรายธาตุ
+    [
+      { kind: "fixed", group: "health_advice_fixed" },
+      { kind: "elementAdvice", table: "health" },
+    ],
   ],
-  // 8 bullets: [สี+ทิศ] [เสื้อผ้า] [เครื่องประดับ] [กระเป๋าเงิน] [รถ] [สัตว์มงคล] [ทิศ] [ข้อเสนอแนะ]
-  // ทุกช่อง (ยกเว้นข้อเสนอแนะ) = ตามธาตุที่ดวงต้องการ × หมวด (auspicious_by_element รอซินแสเติม)
+  // 9 bullets: [บทนำ fix] [สี+ทิศ] [เสื้อผ้า] [เครื่องประดับ] [กระเป๋าเงิน] [รถ] [สัตว์มงคล] [ทิศ] [ข้อเสนอแนะ]
+  // ทุกช่อง (ยกเว้นบทนำ/ข้อเสนอแนะ) = ตามธาตุที่ดวงต้องการ × หมวด (auspicious_by_element รอซินแสเติม)
   colors_directions: [
+    [{ kind: "fixed", group: "colors_intro" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "สี" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "เสื้อผ้า" }],
     [{ kind: "elementCategory", group: "auspicious_by_element", category: "เครื่องประดับ" }],
@@ -316,7 +319,7 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
     case "dayMasterStrength":
       return matchDayMasterStrength(map, r.group, facts);
     case "dayElement":
-      return matchDayElement(map, r.group, facts);
+      return matchDayElement(map, r.group, facts, { onlyExtremeStrength: r.onlyExtremeStrength });
     case "fameHonor":
       return matchFameHonor(map, r.group, facts);
     case "deityRasi":
@@ -363,6 +366,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchFamilyState(facts, r.pillar, r.tier ?? "lower");
     case "annualYears":
       return matchAnnualYears(facts);
+    case "fixed":
+      return matchFixed(map, r.group);
     case "daYun":
       return matchDaYun(map, facts);
     default:
