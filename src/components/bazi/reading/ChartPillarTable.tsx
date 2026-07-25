@@ -30,6 +30,21 @@ export function colorOf(element: ElementEn | undefined): string {
   return ELEMENT_COLORS_TH[ELEMENT_LABELS_TH[element]] ?? "#3d4548";
 }
 
+/**
+ * สไตล์กล่องอักษร "สีตามธาตุ" (ตัวอักษร + พื้นจาง) ตามที่ซินแสสั่ง —
+ * ใช้ร่วมกันทั้งพื้นดวง (ราศีบน/ล่าง), วัยจร และปีจร เพื่อให้เป็นชุดสีเดียวกัน
+ */
+export function glyphElementStyle(
+  symbol: string | undefined,
+  kind: "stem" | "branch",
+): CSSProperties | undefined {
+  if (!symbol) return undefined;
+  const element = kind === "stem" ? elementOfStem(symbol) : elementOfBranch(symbol);
+  if (!element) return undefined;
+  const color = colorOf(element);
+  return { color, background: `${color}1f` };
+}
+
 export type PillarColumnData = { label: string; pillar: PillarValue | undefined };
 export type ColumnHighlight = { color: string; roleLabels: string[] };
 

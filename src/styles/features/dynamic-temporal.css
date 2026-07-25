@@ -60,6 +60,14 @@
   background: rgba(83, 52, 27, 0.08);
 }
 
+/* กล่องอักษรย่อ — ใช้ในการ์ดวัยจร/ปีจร ให้หน้าตาเป็นชุดเดียวกับพื้นดวง */
+.destiny-glyph--compact {
+  min-width: 54px;
+  min-height: 54px;
+  border-radius: 16px;
+  font-size: 1.65rem;
+}
+
 .pillar-stage-chip {
   display: inline-flex;
   align-items: center;
@@ -362,10 +370,20 @@
   font-weight: 700;
 }
 
+/*
+ * ซินแสสั่ง: วัยจรอยู่ "แถวเดียว เลื่อนได้" และ "อ่านจากขวา → ซ้าย" (ช่วงแรกขวาสุด)
+ * ใช้ direction:rtl ที่ราง → การ์ดตัวแรกใน DOM ไปอยู่ขวาสุด และสกรอลเริ่มที่ขวาโดยธรรมชาติ
+ * (การ์ดข้างในสั่ง direction:ltr กลับ เพื่อให้ข้อความ/ตัวเลขอ่านปกติ)
+ */
 .dayun-track {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
+  direction: rtl;
   gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .dayun-section {
@@ -380,6 +398,9 @@
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid var(--surface-line-muted);
+  direction: ltr;
+  flex: 0 0 150px;
+  scroll-snap-align: center;
 }
 
 .dayun-card--current {
@@ -405,6 +426,8 @@
   border-radius: 16px;
   background: var(--surface-raised-strong);
   border: 1px solid var(--surface-line-softer);
+  justify-items: center;
+  text-align: center;
 }
 
 .dayun-card__phase--current {
@@ -474,10 +497,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pillar-ribbon {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .dynamic-luck-grid,
   .movement-grid {
     grid-template-columns: 1fr;
@@ -530,14 +549,8 @@
   .reading-secondary-grid,
   .operator-insight-grid,
   .destiny-pillar-grid,
-  .dayun-track,
   .transient-shen-sha-list {
     grid-template-columns: 1fr;
-  }
-
-  .pillar-ribbon {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: start;
   }
 
   .identity-strip,
@@ -572,8 +585,3 @@
   }
 }
 
-@media (max-width: 520px) {
-  .pillar-ribbon {
-    grid-template-columns: 1fr;
-  }
-}

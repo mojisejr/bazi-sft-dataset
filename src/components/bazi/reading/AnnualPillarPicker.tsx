@@ -2,8 +2,12 @@
 
 import { useEffect, useMemo, useRef } from "react";
 
+import { glyphElementStyle } from "@/components/bazi/reading/ChartPillarTable";
 import { annualGanzhi } from "@/lib/bazi/annual-ganzhi";
-import { resolveDisplayTwelveQiStage } from "@/lib/bazi/pillar-display";
+import {
+  resolveDisplayStemPairStage,
+  resolveDisplayTwelveQiStage,
+} from "@/lib/bazi/pillar-display";
 
 type Props = {
   /** ก้านวัน (ดิถี) เช่น "庚" — ใช้คำนวณเชี่ยงแซต่อปีจร */
@@ -13,8 +17,10 @@ type Props = {
 };
 
 /**
- * ตารางปีจร (流年) แบบ "สไลด์ดูอย่างเดียว" — วางเหนือกล่องบท "จุดเปลี่ยน/วัยจร"
- * เลื่อนดูกะจื่อ/เชี่ยงแซแต่ละปีได้ ไฮไลต์ปีปัจจุบันเป็นจุดอ้างอิง (screen-only ไม่พิมพ์ลง PDF)
+ * ตารางปีจร (流年) แบบ "สไลด์ดูอย่างเดียว" — ซินแสสั่งให้ย้ายขึ้นไปไว้เหนือบทที่ 1
+ * (คู่กับตารางวัยจรในพื้นดวง) และให้การ์ดเป็น "แนวตั้งเหมือนผังดวง":
+ * ราศีบน + เชี่ยงแซของราศีบน / ราศีล่าง + เชี่ยงแซของราศีล่าง · สีอักษรตามธาตุ
+ * ไฮไลต์ปีปัจจุบันเป็นจุดอ้างอิง (screen-only ไม่พิมพ์ลง PDF)
  */
 export function AnnualPillarPicker({ dayMaster, birthYear }: Props) {
   const nowRef = useRef<HTMLDivElement | null>(null);
@@ -37,7 +43,8 @@ export function AnnualPillarPicker({ dayMaster, birthYear }: Props) {
       <div className="annual-picker__strip">
         {years.map((y) => {
           const { stem, branch } = annualGanzhi(y);
-          const qi = dayMaster ? resolveDisplayTwelveQiStage(dayMaster, branch) : "";
+          const stemQi = dayMaster ? resolveDisplayStemPairStage(dayMaster, stem) : "";
+          const branchQi = dayMaster ? resolveDisplayTwelveQiStage(dayMaster, branch) : "";
           const isNow = y === nowYear;
           return (
             <div
@@ -48,11 +55,20 @@ export function AnnualPillarPicker({ dayMaster, birthYear }: Props) {
               <span className="annual-picker__yr">
                 {y} <span className="annual-picker__be">พ.ศ. {y + 543}</span>
               </span>
-              <span className="annual-picker__gz">
+              <span
+                className="destiny-glyph destiny-glyph--compact"
+                style={glyphElementStyle(stem, "stem")}
+              >
                 {stem}
+              </span>
+              {stemQi ? <span className="annual-picker__qi">{stemQi}</span> : null}
+              <span
+                className="destiny-glyph destiny-glyph--compact"
+                style={glyphElementStyle(branch, "branch")}
+              >
                 {branch}
               </span>
-              {qi ? <span className="annual-picker__qi">{qi}</span> : null}
+              {branchQi ? <span className="annual-picker__qi">{branchQi}</span> : null}
               {birthYear ? <span className="annual-picker__age">อายุ {y - birthYear + 1} ปี</span> : null}
             </div>
           );

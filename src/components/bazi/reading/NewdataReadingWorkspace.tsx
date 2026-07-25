@@ -7,6 +7,7 @@ import { PagedPreview } from "@/components/bazi/reading/PagedPreview";
 import { ReadingChartFoundation } from "@/components/bazi/reading/ReadingChartFoundation";
 import { MascotBadge } from "@/components/bazi/reading/MascotBadge";
 import { AnnualPillarPicker } from "@/components/bazi/reading/AnnualPillarPicker";
+import { formatThaiBirthLabel } from "@/lib/bazi/thai-birth-label";
 import { ReadingEditPanel } from "@/components/bazi/reading/ReadingEditPanel";
 import {
   DEFAULT_REFERRAL_CODE,
@@ -1057,8 +1058,9 @@ export function NewdataReadingWorkspace() {
             <p className="newdata-reading__kicker">ถอดรหัสดวงชะตา · ฉบับ NewData</p>
             <h1>{clientName || "เจ้าของดวงชะตา"}</h1>
             <p className="newdata-reading__birth">
-              เกิด {data.rawInput?.birthDate} {data.rawInput?.birthTime} · {gender === "male" ? "ชาย" : "หญิง"}
+              เกิด {formatThaiBirthLabel(data.rawInput?.birthDate, data.rawInput?.birthTime)}
               {data.calculatedState?.dayMaster ? ` · ดิถี ${data.calculatedState.dayMaster}` : ""}
+              {` · เพศ${gender === "male" ? "ชาย" : "หญิง"}`}
             </p>
             {data.calculatedState && (
               <MascotBadge
@@ -1068,6 +1070,13 @@ export function NewdataReadingWorkspace() {
             )}
             {data.calculatedState && (
               <ReadingChartFoundation calculatedState={data.calculatedState} />
+            )}
+            {/* ปีจร (流年) — ซินแสสั่งให้ย้ายขึ้นมาไว้เหนือบทที่ 1 คู่กับตารางวัยจร */}
+            {data.calculatedState && (
+              <AnnualPillarPicker
+                dayMaster={data.calculatedState?.dayMaster}
+                birthYear={Number.parseInt(String(data.rawInput?.birthDate ?? "").slice(0, 4), 10) || undefined}
+              />
             )}
             {summary && (
               <p className="newdata-reading__summary no-print">
@@ -1099,13 +1108,6 @@ export function NewdataReadingWorkspace() {
                   {!dirty && edited && <span className="newdata-reading__badge no-print is-edited">✎ แก้แล้ว</span>}
                   <span className={`newdata-reading__badge no-print ${status.cls}`}>{status.label}</span>
                 </h2>
-
-                {ch.id === "turning_points" && (
-                  <AnnualPillarPicker
-                    dayMaster={data.calculatedState?.dayMaster}
-                    birthYear={Number.parseInt(String(data.rawInput?.birthDate ?? "").slice(0, 4), 10) || undefined}
-                  />
-                )}
 
                 <div className="newdata-reading__boxes no-print">
                   {boxes.map((box, idx) => (

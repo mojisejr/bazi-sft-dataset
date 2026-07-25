@@ -1,3 +1,4 @@
+import { glyphElementStyle } from "@/components/bazi/reading/ChartPillarTable";
 import {
   ELEMENT_LABELS_TH,
   STEM_TO_ELEMENT,
@@ -33,6 +34,9 @@ function getDayMasterElementLabel(dayMaster: string) {
   const element = STEM_TO_ELEMENT[dayMaster as keyof typeof STEM_TO_ELEMENT];
   return element ? ELEMENT_LABELS_TH[element] : null;
 }
+
+/** ตัวอักษร + พื้นการ์ด "สีตามธาตุ" (ตามที่ซินแสสั่ง — ทั้งราศีบนและราศีล่าง ไม่ใช้พื้นเทา) */
+const glyphStyle = glyphElementStyle;
 
 /**
  * พื้นดวง canonical สำหรับหน้า /reading — ใช้หน้าตาเดียวกับ pillar-ribbon
@@ -109,7 +113,12 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
                 )}
               </div>
               <div className="destiny-glyph-shell destiny-glyph-shell--stem">
-                <span className="destiny-glyph destiny-glyph--stem">{column.pillar?.stem ?? "-"}</span>
+                <span
+                  className="destiny-glyph destiny-glyph--stem"
+                  style={glyphStyle(column.pillar?.stem, "stem")}
+                >
+                  {column.pillar?.stem ?? "-"}
+                </span>
                 <span className="destiny-glyph-caption">
                   {formatGlyphWithTranslation(column.pillar?.stem, column.pillar?.stemTranslation)}
                 </span>
@@ -124,7 +133,12 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
                 )}
               </div>
               <div className="destiny-glyph-shell destiny-glyph-shell--branch">
-                <span className="destiny-glyph destiny-glyph--branch">{column.pillar?.branch ?? "-"}</span>
+                <span
+                  className="destiny-glyph destiny-glyph--branch"
+                  style={glyphStyle(column.pillar?.branch, "branch")}
+                >
+                  {column.pillar?.branch ?? "-"}
+                </span>
                 <span className="destiny-glyph-caption">
                   {formatGlyphWithTranslation(column.pillar?.branch, column.pillar?.branchTranslation)}
                 </span>
@@ -147,6 +161,7 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
         <div>
           <p className="section-kicker">วัยจร (ช่วงละ 5 ปี)</p>
           <h3>ตารางวัยจร แตกเป็นครึ่งก้าน 5 ปี และครึ่งกิ่ง 5 ปี</h3>
+          <p className="metric-copy">อ่านจากขวา → ซ้าย (ช่วงแรกอยู่ขวาสุด) · เลื่อน ← → ดูช่วงถัดไป</p>
         </div>
       </div>
 
@@ -179,7 +194,12 @@ export function ReadingChartFoundation({ calculatedState }: ReadingChartFoundati
                         <span className="dayun-card__phase-age">
                           {formatAgeRange(phase.startAge, phase.endAge)}
                         </span>
-                        <strong className="dayun-card__phase-symbol">{phase.symbol}</strong>
+                        <strong
+                          className="dayun-card__phase-symbol destiny-glyph destiny-glyph--compact"
+                          style={glyphStyle(phase.symbol, phase.source === "stem" ? "stem" : "branch")}
+                        >
+                          {phase.symbol}
+                        </strong>
                         <span className="dayun-card__phase-label">
                           {phase.source === "stem" ? "ราศีบน" : "ราศีล่าง"}
                         </span>

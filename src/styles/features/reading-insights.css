@@ -70,10 +70,15 @@
   line-height: 1;
 }
 
+/* ซินแสสั่ง: การ์ดเสาต้องอยู่ "แถวเดียว" เสมอ — จอแคบให้เลื่อนซ้าย-ขวา (ไม่ตกบรรทัด) */
 .pillar-ribbon {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
 }
 
 .pillar-ribbon-card {
@@ -85,6 +90,8 @@
   background: rgba(255, 255, 255, 0.74);
   border: 1px solid var(--surface-line-softer);
   min-height: 100%;
+  flex: 1 0 158px;
+  scroll-snap-align: center;
 }
 
 .pillar-ribbon-card__header {

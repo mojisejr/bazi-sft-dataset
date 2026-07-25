@@ -480,7 +480,7 @@
 }
 .annual-picker__cell {
   flex: 0 0 auto;
-  min-width: 5.4rem;
+  min-width: 6.2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -492,18 +492,12 @@
   scroll-snap-align: center;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
+/* ปีปัจจุบัน: ไฮไลต์ด้วยกรอบ/พื้นจาง (พื้นทึบเดิมกลบ "สีตามธาตุ" ของตัวอักษร) */
 .annual-picker__cell.is-active {
   border-color: var(--accent, #2f8f9d);
-  background: var(--accent, #2f8f9d);
-  box-shadow: 0 3px 8px rgba(47, 143, 157, 0.35);
-}
-.annual-picker__cell.is-active .annual-picker__gz {
-  color: #fff;
-}
-.annual-picker__cell.is-active .annual-picker__yr,
-.annual-picker__cell.is-active .annual-picker__be,
-.annual-picker__cell.is-active .annual-picker__age {
-  color: rgba(255, 255, 255, 0.92);
+  border-width: 2px;
+  background: rgba(47, 143, 157, 0.09);
+  box-shadow: 0 3px 8px rgba(47, 143, 157, 0.25);
 }
 .annual-picker__yr {
   font-size: 0.8rem;
@@ -516,11 +510,7 @@
   font-size: 0.68rem;
   color: var(--muted, #5b7c84);
 }
-.annual-picker__gz {
-  font-size: 1.5rem;
-  line-height: 1.05;
-  color: var(--accent, #2f8f9d);
-}
+/* .annual-picker__gz (กะจื่อบรรทัดเดียว) เลิกใช้ — การ์ดเป็นแนวตั้งเหมือนผังดวงแล้ว */
 .annual-picker__qi {
   font-size: 0.7rem;
   padding: 0.05rem 0.45rem;
@@ -529,10 +519,7 @@
   color: var(--accent, #2f8f9d);
   white-space: nowrap;
 }
-.annual-picker__cell.is-active .annual-picker__qi {
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
-}
+
 .annual-picker__age {
   font-size: 0.68rem;
   color: var(--muted, #5b7c84);
