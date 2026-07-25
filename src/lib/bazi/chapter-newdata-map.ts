@@ -34,6 +34,7 @@ import {
   matchHiddenTransfer,
   matchLoveBase,
   matchLoveChance,
+  matchLuckStars,
   matchMerit,
   matchSpouseStar,
   matchPhua,
@@ -87,6 +88,7 @@ type Resolver =
   | { kind: "elementAdvice"; table: "wealth" | "health" | "talent" }
   | { kind: "familyState"; pillar: PillarPosition; tier?: "upper" | "lower" }
   | { kind: "annualYears" }
+  | { kind: "luckStars"; group: string }
   | { kind: "fixed"; group: string };
 
 /**
@@ -145,7 +147,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     // ลักษณะการใช้จ่าย = เชี่ยงแซของเสาที่ธาตุถ่ายเท (食傷) ของดิถีปรากฏ (spending_state)
     [{ kind: "elementRoleState", group: "spending_state", role: "output" }],
     [{ kind: "phua" }],
-    [{ kind: "elementAdvice", table: "wealth" }],
+    // ข้อเสนอแนะ = เนื้อ fix ทุกคน (3.ข้อเสนอแนะโชคลาภ.docx) + คำแนะนำรายธาตุ
+    [
+      { kind: "fixed", group: "wealth_advice_fixed" },
+      { kind: "elementAdvice", table: "wealth" },
+    ],
   ],
   // 4 bullets: [ธาตุส่งเสริม] [คู่ธาตุ] [ธาตุถ่ายเท/บริวาร] [ธาตุโชคลาภ/ลูกค้า]
   // ข้อ 3-4: หาเสาที่ธาตุถ่ายเท(食傷)/ธาตุโชคลาภ(財) นั่งอยู่ แล้วอ่านเชี่ยงแซเสานั้น (reuse shengxiang)
@@ -175,7 +181,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     ],
     // พรในราศีแฝง — ดิถีถ่ายเทไปยังราศีแฝง(藏干)ของหลักยาม (reuse dithi_transfer) · interpretive
     [{ kind: "hiddenTransfer", group: "dithi_transfer" }],
-    [{ kind: "elementAdvice", table: "talent" }],
+    // ข้อเสนอแนะ = เนื้อ fix ทุกคน (5.ข้อเสนอแนะพรสวรรค์.docx) + คำแนะนำรายธาตุ
+    [
+      { kind: "fixed", group: "talent_advice_fixed" },
+      { kind: "elementAdvice", table: "talent" },
+    ],
   ],
   // 6 bullets: [หลักปี] [หลักเดือน] [พ่อ] [แม่] [สิ่งพึงระวัง] [ข้อเสนอแนะ]
   family: [
@@ -187,7 +197,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "familyState", pillar: "month", tier: "upper" }],
     [{ kind: "familyState", pillar: "month", tier: "lower" }],
     [{ kind: "branchPairs", group: "harm_heng" }],
-    [{ kind: "merit", group: "develop_by_element" }],
+    // ข้อเสนอแนะ = เนื้อ fix ทุกคน (6.ข้อเสนอแนะครอบครัว.docx) + พัฒนานิสัยตามธาตุปรับดวง
+    [
+      { kind: "fixed", group: "family_advice_fixed" },
+      { kind: "merit", group: "develop_by_element" },
+    ],
   ],
   // 5 bullets: [ชีวิตคู่พื้นดวง] [ลักษณะคู่ครอง] [มีคู่เหมาะไหม มาเมื่อไร] [สิ่งที่ควรระวัง] [ข้อเสนอแนะ]
   love_partner: [
@@ -200,7 +214,11 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "spouseStar", group: "shengxiang" }],
     [{ kind: "loveChance", group: "love_chance" }],
     [{ kind: "branchPairs", group: "clash" }, { kind: "branchPairs", group: "harm_hai" }],
-    [{ kind: "merit", group: "develop_by_element" }],
+    // ข้อเสนอแนะ = เนื้อ fix ทุกคน (7.ข้อเสนอแนะคู่ครอง.docx) + พัฒนานิสัยตามธาตุปรับดวง
+    [
+      { kind: "fixed", group: "love_advice_fixed" },
+      { kind: "merit", group: "develop_by_element" },
+    ],
   ],
   // 4 bullets: [มิตรแท้] [ระวัง/ข้อเสนอ-มิตร] [ศัตรู] [ระวัง/ข้อเสนอ-ศัตรู]
   // มิตรแท้ = ภาคีราศีล่าง + เชี่ยงแซเสาปี(ผู้ใหญ่หนุน) · ศัตรู = ไห่/เฮ้ง/ซำเฮ้ง + ผั่วไฉ่โข่ว · interpretive
@@ -252,8 +270,9 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
   // 2 bullets: [วัยจรแต่ละช่วง] [ช่วงดี/ช่วงระวัง]
   turning_points: [
     [{ kind: "daYun" }],
-    // ช่วงดี/ระวัง = ปีจรปัจจุบัน + รายปีย่อ 10 ปี + ปีชง/ให้ร้ายกับหลักวัน (เกรดตามระบบ PDF ซินแส)
-    [{ kind: "annualYears" }],
+    // ช่วงดี/ระวัง = ช่วงวัย ⭐⭐⭐⭐⭐ / ⭐ (ระบบดาวใหม่ ซินแสส่ง 2026-07-25)
+    // + ปีจรปัจจุบัน/รายปีย่อ 10 ปี/ปีชง-ให้ร้ายกับหลักวัน (เกรดตามระบบ PDF ซินแส)
+    [{ kind: "luckStars", group: "luck_stars" }, { kind: "annualYears" }],
   ],
   // 3 bullets: [โรคจาก เจ๊า/ผั่ว/ซำเฮ้ง/จื่อเฮ้ง] [โรคจากธาตุมาก/น้อย] [ข้อเสนอแนะดูแล]
   health: [
@@ -295,6 +314,29 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "dayElement", group: "sila_by_element" }],
   ],
 };
+
+/**
+ * บทนำรายบทที่ซินแสเขียนไว้ (fix ทุกคน) → กลุ่ม NewData ที่เก็บบทนำของบทนั้น
+ * ใช้แทนข้อความกล่อง "ภาพรวม" (ที่เดิมมาจาก outline.intro 1 ประโยคย่อ)
+ * บทที่ไม่อยู่ในนี้ (หรือกลุ่มยังไม่มีเนื้อ) = ใช้ outline.intro เหมือนเดิม
+ * (บท 14 บทนำสีมงคลไม่อยู่ในนี้ เพราะซินแสกำหนดให้เป็นหัวข้อย่อยข้อแรกของบท)
+ */
+export const CHAPTER_INTRO_GROUP: Record<string, string> = {
+  benefactor: "benefactor_intro",
+  talent: "talent_intro",
+  family: "family_intro",
+  love_partner: "love_intro",
+  partnership: "partnership_intro",
+  turning_points: "turning_points_intro",
+  health: "health_intro",
+};
+
+/** ข้อความกล่อง "ภาพรวม" ของบท — บทนำจาก NewData ถ้ามี ไม่มีก็ย่อจาก outline */
+export function resolveChapterIntro(chapterId: string, map: NewdataMap): string {
+  const group = CHAPTER_INTRO_GROUP[chapterId];
+  const fromNewdata = group ? matchFixed(map, group)[0]?.text?.trim() : "";
+  return fromNewdata || CHAPTER_OUTLINE[chapterId]?.intro || "";
+}
 
 function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlock[] {
   switch (r.kind) {
@@ -366,6 +408,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchFamilyState(facts, r.pillar, r.tier ?? "lower");
     case "annualYears":
       return matchAnnualYears(facts);
+    case "luckStars":
+      return matchLuckStars(map, r.group, facts);
     case "fixed":
       return matchFixed(map, r.group);
     case "daYun":

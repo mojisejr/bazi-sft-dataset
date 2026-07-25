@@ -9,7 +9,7 @@ import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 import { getNewdataMap } from "@/lib/bazi/newdata.server";
 import { extractChartFacts } from "@/lib/bazi/newdata-lookup";
-import { resolveChapterBoxes } from "@/lib/bazi/chapter-newdata-map";
+import { resolveChapterBoxes, resolveChapterIntro } from "@/lib/bazi/chapter-newdata-map";
 import { getChapterOutline } from "@/lib/bazi/chapter-outline";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 
@@ -31,9 +31,11 @@ export async function POST(request: Request) {
     const chapters = PREDICT_TOPICS.map((topic) => {
       const resolved = resolveChapterBoxes(topic.id, facts, map);
       const outline = getChapterOutline(topic.id);
-      // box ครบทุกหัวข้อย่อย (bullet) + กล่อง "ภาพรวม" นำหน้า (จาก outline.intro)
+      // box ครบทุกหัวข้อย่อย (bullet) + กล่อง "ภาพรวม" นำหน้า
+      // (บทนำจาก NewData ถ้าซินแสส่งมาแล้ว ไม่มีก็ย่อจาก outline.intro)
+      const intro = resolveChapterIntro(topic.id, map);
       const boxes = [
-        ...(outline?.intro ? [{ title: "ภาพรวม", body: outline.intro }] : []),
+        ...(intro ? [{ title: "ภาพรวม", body: intro }] : []),
         ...resolved.boxes,
       ];
       return {

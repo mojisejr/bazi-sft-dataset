@@ -750,6 +750,15 @@ export function gradeLuckPhase(
  * นำหน้าด้วยบล็อก legend เกรด (ตามโครง PDF ซินแส) · body = ความหมาย 12 เชี่ยงแซ
  * (เกรด provisional — ซินแสเขียนคำทำนายจริง + ใส่เกรดทับ)
  */
+/**
+ * บท 12 · ⭐ ของเชี่ยงแซ ตามตาราง "จำนวนดาวของวัยจร" (group luck_stars — ซินแสแก้ได้ในแอดมิน)
+ * คืน "" ถ้ายังไม่มีข้อมูลในกลุ่ม (ป้ายวัยจรก็ไม่โชว์ดาว)
+ */
+function luckStarsOf(map: NewdataMap, group: string, qi: string | null | undefined): string {
+  if (!qi) return "";
+  return (map[group]?.[qi]?.text ?? "").trim();
+}
+
 export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   const out: NewdataBlock[] = [];
@@ -763,12 +772,53 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
       const current = ph.isCurrent ? " ช่วงปัจจุบัน" : "";
       const roleTxt = role ? ` ${role} →` : " →";
       const grade = gradeLuckPhase(facts, symEl, ph.qi);
-      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi}) : เกรด (${grade})`;
+      const stars = luckStarsOf(map, "luck_stars", ph.qi);
+      const starTxt = stars ? ` ${stars}` : "";
+      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi}) : เกรด (${grade})${starTxt}`;
       out.push({ group: "shengxiang", itemKey: ph.qi, label, text: value.text });
     }
   }
   if (out.length) {
     out.unshift({ group: "luck_grade", itemKey: "legend", label: "เกรดแต่ละช่วง", text: LUCK_GRADE_LEGEND });
+  }
+  return out;
+}
+
+/**
+ * บท 12 · ช่วงวัยที่ดี / ช่วงวัยที่ควรระวัง — ตามระบบดาวใหม่ (group luck_stars)
+ * ซินแสสั่ง: ช่วงวัยที่ดี = วัยจร ⭐⭐⭐⭐⭐ · ช่วงที่ควรระวัง = วัยจร ⭐
+ * (ยังไม่มีข้อมูลในกลุ่ม → คืน [] กล่องว่างรอเติม เหมือนกลุ่มอื่น)
+ */
+export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
+  const good: string[] = [];
+  const watch: string[] = [];
+  for (const d of facts.daYun) {
+    for (const ph of d.phases) {
+      const stars = luckStarsOf(map, group, ph.qi);
+      if (!stars) continue;
+      const current = ph.isCurrent ? " (ช่วงปัจจุบัน)" : "";
+      const line = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} — ${ph.symbol} เชี่ยงแซ ${ph.qi} ${stars}`;
+      const count = [...stars].filter((c) => c === "⭐").length;
+      if (count >= 5) good.push(line);
+      else if (count === 1) watch.push(line);
+    }
+  }
+  const out: NewdataBlock[] = [];
+  if (good.length) {
+    out.push({
+      group,
+      itemKey: "ช่วงวัยที่ดี",
+      label: "ช่วงวัยที่ดี (⭐⭐⭐⭐⭐)",
+      text: good.join("\n"),
+    });
+  }
+  if (watch.length) {
+    out.push({
+      group,
+      itemKey: "ช่วงวัยที่ควรระวัง",
+      label: "ช่วงวัยที่ควรระมัดระวัง (⭐)",
+      text: watch.join("\n"),
+    });
   }
   return out;
 }

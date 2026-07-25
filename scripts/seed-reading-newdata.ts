@@ -592,6 +592,33 @@ function parseFixedFile(file: string, group: string, label: string): SeedRow[] {
   ];
 }
 
+/**
+ * บท 12 · จำนวนดาวของวัยจร ("ระบบดาวใหม่") — ตาราง "{จำนวนดาว} = เชี่ยงแซ, ..."
+ * → 12 row คีย์ = เชี่ยงแซ · text = ⭐ ตามจำนวน (ซินแสแก้จำนวนดาวในแอดมินได้)
+ */
+function parseStarTable(file: string, group: string): SeedRow[] {
+  const rows: SeedRow[] = [];
+  for (const line of splitLines(read(file))) {
+    const t = line.trim();
+    if (!t || t.startsWith("#")) continue;
+    const m = t.match(/^([1-5])\s*=\s*(.+)$/);
+    if (!m) continue;
+    const stars = Number(m[1]);
+    for (const raw of m[2].split(/[,，]/)) {
+      const canon = canonicalState(raw.trim());
+      if (!canon) continue;
+      rows.push({
+        groupKey: group,
+        itemKey: canon,
+        ordinal: STATE_ORDER[canon] ?? 0,
+        value: { text: "⭐".repeat(stars), label: `${canon} — ${stars} ดาว` },
+        sourceFile: file,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.ordinal - b.ordinal);
+}
+
 /** ก้านบน/ราศีล่างของแต่ละธาตุ (ปลายทางที่เป็นธาตุนั้น) */
 const ELEMENT_CHARS: Record<string, string[]> = {
   wood: ["甲", "乙", "寅", "卯"],
@@ -1147,6 +1174,25 @@ function collectAll(): SeedRow[] {
   push("wallet_fengshui", () =>
     parseFixedFile("AI ฮวงจุ้ยกระเป๋าตังค์.txt", "wallet_fengshui", "ฮวงจุ้ยกระเป๋าตังค์"),
   );
+  // เนื้อหา fix ทุกคน ชุด 2026-07-25: บทนำรายบท (4/5/6/7/9/12/13) + ข้อเสนอแนะรายบท (3/5/6/7)
+  const FIXED_2026_07_25: Array<[string, string, string]> = [
+    ["บท3 ข้อเสนอแนะโชคลาภ.txt", "wealth_advice_fixed", "ข้อเสนอแนะเรื่องโชคลาภ"],
+    ["บท4 บทนำผู้อุปถัมภ์.txt", "benefactor_intro", "ผู้อุปถัมภ์"],
+    ["บท5 บทนำพรสวรรค์.txt", "talent_intro", "พรสวรรค์"],
+    ["บท5 ข้อเสนอแนะพรสวรรค์.txt", "talent_advice_fixed", "ข้อเสนอแนะเรื่องพรสวรรค์"],
+    ["บท6 บทนำครอบครัว.txt", "family_intro", "ครอบครัว"],
+    ["บท6 ข้อเสนอแนะครอบครัว.txt", "family_advice_fixed", "ข้อเสนอแนะเรื่องครอบครัว"],
+    ["บท7 บทนำคู่ครอง.txt", "love_intro", "คู่ครอง"],
+    ["บท7 ข้อเสนอแนะคู่ครอง.txt", "love_advice_fixed", "ข้อเสนอแนะเรื่องคู่ครอง"],
+    ["บท9 บทนำหุ้นส่วน.txt", "partnership_intro", "หุ้นส่วน"],
+    ["บท12 บทนำถนนชีวิต.txt", "turning_points_intro", "ถนนชีวิต (วัยจร)"],
+    ["บท13 บทนำสุขภาพ.txt", "health_intro", "สุขภาพ"],
+  ];
+  for (const [f, group, label] of FIXED_2026_07_25) {
+    push(group, () => parseFixedFile(f, group, label));
+  }
+  // บท 12 · จำนวนดาวของวัยจร (ระบบดาวใหม่) — 12 เชี่ยงแซ → ⭐
+  push("luck_stars", () => parseStarTable("บท12 จำนวนดาวของวัยจร.txt", "luck_stars"));
   push("chart_foundation_core", collectChartFoundationCore);
   return all;
 }

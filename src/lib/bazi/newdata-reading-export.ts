@@ -9,8 +9,7 @@ import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 import { getNewdataMap } from "@/lib/bazi/newdata.server";
 import { extractChartFacts } from "@/lib/bazi/newdata-lookup";
-import { resolveChapterBoxes } from "@/lib/bazi/chapter-newdata-map";
-import { getChapterOutline } from "@/lib/bazi/chapter-outline";
+import { resolveChapterBoxes, resolveChapterIntro } from "@/lib/bazi/chapter-newdata-map";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import {
   createDbNewdataReadingRepository,
@@ -40,18 +39,15 @@ export type NewdataReadingExportItem = {
   updatedAt: string;
 };
 
-/** กล่องตั้งต้นจาก engine (ภาพรวมจาก outline.intro + กล่องที่ resolve ได้) — เหมือนใน route/POST */
+/** กล่องตั้งต้นจาก engine (ภาพรวม = บทนำ NewData/outline + กล่องที่ resolve ได้) — เหมือนใน route/POST */
 function engineBoxesFor(
   topicId: string,
   facts: ReturnType<typeof extractChartFacts>,
   map: Awaited<ReturnType<typeof getNewdataMap>>,
 ): NewdataReadingBox[] {
   const resolved = resolveChapterBoxes(topicId, facts, map);
-  const outline = getChapterOutline(topicId);
-  return [
-    ...(outline?.intro ? [{ title: "ภาพรวม", body: outline.intro }] : []),
-    ...resolved.boxes,
-  ];
+  const intro = resolveChapterIntro(topicId, map);
+  return [...(intro ? [{ title: "ภาพรวม", body: intro }] : []), ...resolved.boxes];
 }
 
 /** ดึงดวง NewData ที่เสร็จสิ้นทั้งหมดในรูป dataset (recompute + overlay edits) */
