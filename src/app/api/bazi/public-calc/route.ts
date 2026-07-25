@@ -7,13 +7,8 @@ import {
 import { createNoOpKnowledgeRepository } from "@/lib/bazi/no-op-knowledge-repository";
 import { buildDaYunTableRows, resolveDaYunReaction } from "@/lib/bazi/topic-knowledge";
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
-import {
-  BRANCH_TO_ELEMENT,
-  CLASH_PAIRS,
-  ELEMENT_LABELS_TH,
-  HARM_PAIRS,
-  STEM_TO_ELEMENT,
-} from "@/lib/bazi/symbolic-engine.constants";
+import { CLASH_PAIRS, HARM_PAIRS } from "@/lib/bazi/symbolic-engine.constants";
+import { elementLabelForSymbol } from "@/lib/bazi/element-label";
 
 export const runtime = "nodejs";
 
@@ -61,13 +56,6 @@ function evaluateSignal(role: BadgeRole, qi: string, clash: boolean): "wealth" |
   if (role !== "wealth" && role !== "power") return null;
   if (!RISING_QI.has(qi) && !clash) return null;
   return role;
-}
-
-function elementLabelForSymbol(symbol: string): string {
-  const stemEn = STEM_TO_ELEMENT[symbol as keyof typeof STEM_TO_ELEMENT];
-  if (stemEn) return ELEMENT_LABELS_TH[stemEn];
-  const branchEn = BRANCH_TO_ELEMENT[symbol as keyof typeof BRANCH_TO_ELEMENT];
-  return branchEn ? ELEMENT_LABELS_TH[branchEn] : "";
 }
 
 function pairFlag(pairs: Set<string>, a: string, b: string): boolean {
