@@ -19,6 +19,7 @@ import { getWallet, levelOfXp } from "@/lib/bazi/manifest/ledger";
 import { MISSION_DEFS } from "@/lib/bazi/manifest/missions";
 import type { DayPillar } from "@/lib/bazi/pair-types";
 import { gradeForPercent } from "@/lib/bazi/pair-matching";
+import { buildHomePersona, type HomePersona } from "@/lib/bazi/home-persona";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
@@ -78,31 +79,46 @@ export function createHomeHandler(options: HandlerOptions = {}) {
               d,
               text,
             );
+            // Persona (Home "ธาตุของคุณ" line) — derived from the SAME calculatedState the fortune
+            // uses, so element + strength never drift from the day's reading. Reuses the shared
+            // element label helper + the existing strength classifier (no engine change). Guarded:
+            // a bad score / unmapped symbol degrades persona to null but must NOT 500 the whole home
+            // (manifest/wallet/missions still return).
+            let persona: HomePersona | null = null;
+            try {
+              persona = buildHomePersona(state);
+            } catch {
+              persona = null;
+            }
+
             return {
-              date: result.date,
-              dayGanzhi: result.dayGanzhi,
-              percent: result.overallPercent,
-              // overall letter grade — reuse the existing mapper (single source of the ratingJson
-              // thresholds), computed at the route so the Home card doesn't reimplement it.
-              grade: gradeForPercent(result.overallPercent),
-              verdict: result.verdict,
-              summary: result.summary,
-              // forward the already-computed headline + best/worst items the Home daily-fortune card
-              // needs (buildManVsDay produces them; the route previously dropped them).
-              summaryHeadline: result.summaryHeadline,
-              summaryItems: result.summaryItems,
-              facets: result.facets.map((f) => ({
-                key: f.key,
-                label: f.label,
-                percent: f.percent,
-                grade: f.grade,
-                isMain: f.isMain,
-              })),
+              fortune: {
+                date: result.date,
+                dayGanzhi: result.dayGanzhi,
+                percent: result.overallPercent,
+                // overall letter grade — reuse the existing mapper (single source of the ratingJson
+                // thresholds), computed at the route so the Home card doesn't reimplement it.
+                grade: gradeForPercent(result.overallPercent),
+                verdict: result.verdict,
+                summary: result.summary,
+                // forward the already-computed headline + best/worst items the Home daily-fortune card
+                // needs (buildManVsDay produces them; the route previously dropped them).
+                summaryHeadline: result.summaryHeadline,
+                summaryItems: result.summaryItems,
+                facets: result.facets.map((f) => ({
+                  key: f.key,
+                  label: f.label,
+                  percent: f.percent,
+                  grade: f.grade,
+                  isMain: f.isMain,
+                })),
+              },
+              persona,
             };
           })()
         : Promise.resolve(null);
 
-      const [fortune, goals, entryDates, todayEntry, wallet, missionRows, intentRows] =
+      const [personBundle, goals, entryDates, todayEntry, wallet, missionRows, intentRows] =
         await Promise.all([
           fortunePromise,
           db
@@ -171,7 +187,10 @@ export function createHomeHandler(options: HandlerOptions = {}) {
         {
           anonId: body.anonId,
           date: today,
-          fortune,
+          fortune: personBundle?.fortune ?? null,
+          // Home "ธาตุของคุณ" line (element + day-master strength). null when no birth data (same
+          // graceful rule as fortune) — the FE hides the line rather than showing a hole.
+          persona: personBundle?.persona ?? null,
           manifest: {
             goals: goalCards,
             streak: computeStreak(entryDates.map((r) => r.d)),
