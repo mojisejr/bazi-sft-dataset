@@ -18,6 +18,7 @@ import { computeStreak, todayBangkok } from "@/lib/bazi/manifest/dates";
 import { getWallet, levelOfXp } from "@/lib/bazi/manifest/ledger";
 import { MISSION_DEFS } from "@/lib/bazi/manifest/missions";
 import type { DayPillar } from "@/lib/bazi/pair-types";
+import { gradeForPercent } from "@/lib/bazi/pair-matching";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
@@ -81,8 +82,15 @@ export function createHomeHandler(options: HandlerOptions = {}) {
               date: result.date,
               dayGanzhi: result.dayGanzhi,
               percent: result.overallPercent,
+              // overall letter grade — reuse the existing mapper (single source of the ratingJson
+              // thresholds), computed at the route so the Home card doesn't reimplement it.
+              grade: gradeForPercent(result.overallPercent),
               verdict: result.verdict,
               summary: result.summary,
+              // forward the already-computed headline + best/worst items the Home daily-fortune card
+              // needs (buildManVsDay produces them; the route previously dropped them).
+              summaryHeadline: result.summaryHeadline,
+              summaryItems: result.summaryItems,
               facets: result.facets.map((f) => ({
                 key: f.key,
                 label: f.label,
