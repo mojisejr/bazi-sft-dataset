@@ -87,7 +87,7 @@ function elementRelation(self: Element, other: Element): ElementRelation {
   };
 }
 
-function gradeForPercent(percent: number | null): string {
+export function gradeForPercent(percent: number | null): string {
   if (percent == null) return "-";
   const sorted = [...RATING.grades].sort((a, b) => a.min - b.min);
   for (const g of sorted) {
