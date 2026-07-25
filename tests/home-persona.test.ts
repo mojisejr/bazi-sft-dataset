@@ -4,8 +4,9 @@
 // buildHomePersona is pure, so this pins the /api/home persona contract without a DB.
 import { describe, expect, test } from "vitest";
 import { buildHomePersona } from "@/lib/bazi/home-persona";
-
-const REAL_VOCAB = ["ดิถีอ่อนเกินไป", "ดิถีอ่อน", "ดิถีสมดุล", "ดิถีแข็ง", "ดิถีแข็งเกินไป"];
+// Import the REAL config (source of truth) — NOT a local copy — so the copy-guard actually tests the
+// engine vocabulary (too's find: asserting against an array declared in this test proves nothing).
+import { OPERATOR_STRENGTH_CLASS_BANDS } from "@/lib/bazi/constants/operator-strength";
 
 describe("home-persona (ANCHOR: home-persona-complete)", () => {
   test("complete: dayMaster + strengthScore → BOTH fields populated (no silent omission)", () => {
@@ -24,15 +25,24 @@ describe("home-persona (ANCHOR: home-persona-complete)", () => {
     expect(buildHomePersona({ dayMaster: "癸", strengthScore: 5 }).elementTh).toBe("น้ำ");
   });
 
-  test("strength: REAL engine vocab across all 5 bands — NOT mapped to 'แข็งแรง'", () => {
+  test("strength: buildHomePersona maps each band to its REAL engine label (across all 5)", () => {
     const s = (score: number) => buildHomePersona({ dayMaster: "甲", strengthScore: score }).strengthLabel;
     expect(s(1.0)).toBe("ดิถีอ่อนเกินไป");
     expect(s(3.0)).toBe("ดิถีอ่อน");
     expect(s(5.0)).toBe("ดิถีสมดุล");
     expect(s(6.0)).toBe("ดิถีแข็ง");
     expect(s(8.0)).toBe("ดิถีแข็งเกินไป");
-    // Copy guard: ฟีมเคาะ ground-truth vocab. If someone maps to the Figma word, this fails.
-    expect(REAL_VOCAB).not.toContain("แข็งแรง");
+  });
+
+  test("copy guard tests the ENGINE config itself: no band is the Figma word 'แข็งแรง'", () => {
+    // Reads operator-strength.ts (source of truth). If someone edits a band's displayLabel to the
+    // Figma copy, THIS fails — unlike a local-array assertion. ฟีมเคาะ ground-truth vocab.
+    const engineLabels = OPERATOR_STRENGTH_CLASS_BANDS.map((b) => b.displayLabel);
+    expect(engineLabels).not.toContain("แข็งแรง");
+    // …and every buildHomePersona output is drawn from that real config, never a synthesized string.
+    for (const score of [1, 3, 5, 6, 8]) {
+      expect(engineLabels).toContain(buildHomePersona({ dayMaster: "甲", strengthScore: score }).strengthLabel);
+    }
   });
 
   test("NaN score throws → the route guards it to a null persona (never a bad label)", () => {
