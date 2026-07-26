@@ -39,6 +39,7 @@ import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import type { DayPillar } from "@/lib/bazi/pair-types";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import { buildXiangshaBoard, formatXiangshaBoard } from "@/lib/bazi/xiangsha-verdict";
 import { getGeminiApiKey } from "@/lib/env";
 
 export type LouiseHayBirthInput = {
@@ -296,6 +297,56 @@ function dithiLine(facts: LoadedState["facts"]): string {
   return `ดิถี (หลักวันเกิด): ${facts.dayMaster}${el ? ` ธาตุ${el}` : ""} · ${band.displayLabel}`;
 }
 
+/**
+ * บล็อก "ตารางเซียงแซตามตำแหน่งเสา" — ชั้นที่ซินแสสั่งเพิ่มสำหรับหมวดการงาน
+ *
+ * ก่อนหน้านี้ router ป้อนแต่ bundle กว้าง ๆ (ดิถี + วัยจร prose + ปีจร facets) โมเดลจึงไม่มีทาง
+ * ตอบตามที่ซินแสสั่ง เช่น "ราศีบนหลักเดือนเทียบกับเซียงแซ ดี/กลางๆ/ไม่ดี" เพราะข้อมูลชั้นนี้
+ * ไม่เคยถูกส่งเข้า prompt เลย (เอนจินคำนวณได้อยู่แล้ว แต่ไม่มีใครดึงมาใช้)
+ *
+ * คืน null ถ้าอ่านสภาวะไม่ได้เลย — ให้บล็อกอื่นทำงานต่อได้ ไม่ทำให้คำตอบล้ม
+ */
+function xiangshaBlock(L: LoadedState, now: Date): string | null {
+  const p = L.state.fourPillars;
+  const dayMasterStem = p.day.stem;
+  const iso = todayIsoBangkok(now);
+  const [y, m, d] = iso.split("-").map(Number);
+  const transits: { label: string; pillar: { stem: string; branch: string } }[] = [];
+  const currentDaYun = L.state.daYun?.find((entry) => entry.isCurrent);
+  if (currentDaYun?.stem && currentDaYun?.branch) {
+    transits.push({ label: "วัยจร (ช่วงนี้)", pillar: { stem: currentDaYun.stem, branch: currentDaYun.branch } });
+  }
+  const yearPillar = pillarsForDate(y, m, d).yearPillar;
+  if (yearPillar.stem && yearPillar.branch) {
+    transits.push({ label: `ปีจร ${y}`, pillar: { stem: yearPillar.stem, branch: yearPillar.branch } });
+  }
+
+  const rows = buildXiangshaBoard({
+    dayMasterStem,
+    pillars: { year: p.year, month: p.month, day: p.day, hour: p.hour },
+    transits,
+  });
+  if (!rows.length) return null;
+  // หัวข้อไม่ใส่ก้านเป็นจีน — stripInternalJargon ที่ chat route ลบ CJK ทิ้งก่อนส่งเข้า LLM
+  const dmEl = elementThOfStem(dayMasterStem);
+  const monthUpper = rows.find((r) => r.position === "หลักเดือน" && r.place === "ราศีบน");
+  return [
+    `[ชั้นชี้ขาด (ข้อมูลภายใน) — ดิถี${dmEl ? `ธาตุ${dmEl}` : ""}]`,
+    formatXiangshaBoard(rows),
+    "เกณฑ์เรียงจากดีไปเสีย: ดีมาก > ดี > กลาง > เสีย > เสียมาก",
+    // ชี้ตำแหน่งชี้ขาดให้ตรง ๆ — ไม่งั้นโมเดลจะไปหยิบบทวัยจร (ข้อความยาวกว่ามาก) มาเป็นคำตอบแทน
+    monthUpper
+      ? `ข้อสรุปเรื่องงาน/เปลี่ยนงาน/ก้าวหน้า = "${monthUpper.read.verdict}" ` +
+        `ให้ใช้ระดับนี้กำหนด "ทิศทางคำตอบ" แล้วใช้ วัยจร กับ ปีจร เป็นตัวบอกจังหวะเวลาว่าช่วงไหนหนัก-เบา`
+      : "ข้อสรุปเรื่องงานให้อิงระดับของหลักเดือน แล้วใช้ วัยจร กับ ปีจร บอกจังหวะเวลา",
+    "ถ้าชั้นนี้ขัดกับเนื้อหาบทอ่านดวงด้านล่าง ให้ยึดชั้นนี้เป็นหลัก",
+    // persona ห้ามสาดศัพท์เทคนิค/ยกป้ายกำกับใส่เครื่องหมายคำพูด — ย้ำที่ตัวข้อมูลด้วย
+    // เพราะทดสอบแล้วพบว่าโมเดลลอกชื่อตำแหน่ง/ระดับออกไปให้ผู้ใช้เห็นตรง ๆ
+    'ห้ามเอ่ยชื่อตำแหน่งเสา ชื่อสภาวะ หรือคำว่า "ดีมาก/ดี/กลาง/เสีย/เสียมาก" ให้ผู้ใช้เห็น — ' +
+      "ใช้เป็นเกณฑ์ตัดสินภายในแล้วเล่าเป็นภาษาคนธรรมดาอบอุ่นเท่านั้น",
+  ].join("\n");
+}
+
 /** ดึงเนื้อหาบทหนึ่งจาก NewData (fallback → chart_foundation) */
 function chartTopicText(topicId: string, facts: LoadedState["facts"], map: LoadedState["map"]): { title: string; body: string } | null {
   const collect = (id: string) => resolveChapterBoxes(id, facts, map);
@@ -405,7 +456,15 @@ async function groundChartFull(topicId: string, birth: LouiseHayBirthInput, now:
   const topic = chartTopicText(topicId, L.facts, L.map);
   if (!topic) return null;
   const withYear = CAREER_TOPICS.has(topicId);
-  const parts: string[] = [dithiLine(L.facts), `[${topic.title}]\n${topic.body}`];
+  const parts: string[] = [dithiLine(L.facts)];
+  // ชั้นเซียงแซ: เปิดเฉพาะหมวดการงานก่อน (thin slice) — หมวดอื่นยังใช้ของเดิมไม่เปลี่ยนพฤติกรรม
+  // ต้องมา "ก่อน" บทอ่านดวง: บท NewData ยาวเป็นหมื่นตัวอักษร ถ้าวางชั้นนี้ไว้ท้าย โมเดลจะหยิบบทมาตอบแทน
+  // (พิสูจน์แล้วด้วย harness — วางท้ายแล้วคำตอบไม่เปลี่ยนจากเดิมเลย)
+  if (withYear) {
+    const board = xiangshaBlock(L, now);
+    if (board) parts.push(board);
+  }
+  parts.push(`[${topic.title}]\n${topic.body}`);
   const turning = chartTopicText("turning_points", L.facts, L.map);
   if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
   if (withYear) {
@@ -418,7 +477,13 @@ async function groundChartFull(topicId: string, birth: LouiseHayBirthInput, now:
     route: "chart",
     sourceLabel: `อ่านดวงใหม่ · ${topic.title} + ดิถี + วัยจร${withYear ? " + ปีจร" : ""}`,
     text: ageLineOf(birth, now) + parts.join("\n\n———\n\n"),
-    note: "ตอบเน้นหัวข้อที่ถามเป็นแกน โยงดิถี/วัยจร" + (withYear ? "/ปีจร" : "") + " เป็นบริบท ตอบกระชับได้ใจความ",
+    note:
+      (withYear
+        ? "ยึด 'ชั้นชี้ขาด (ข้อมูลภายใน)' เป็นตัวตัดสินก่อน แล้วค่อยใช้บทอ่านดวง/วัยจร/ปีจร ขยายความ ห้ามเอ่ยศัพท์จากชั้นนั้นให้ผู้ใช้เห็น. "
+        : "") +
+      "ตอบเน้นหัวข้อที่ถามเป็นแกน โยงดิถี/วัยจร" +
+      (withYear ? "/ปีจร" : "") +
+      " เป็นบริบท ตอบกระชับได้ใจความ",
   };
 }
 
@@ -429,6 +494,11 @@ async function groundYearTiming(question: string, birth: LouiseHayBirthInput, no
   const [y, m, d] = iso.split("-").map(Number);
   const topicId = /ธุรกิจ|การงาน|อาชีพ|งาน|ลงทุน|ค้าขาย/.test(question) ? "career_potential" : "chart_foundation";
   const parts: string[] = [dithiLine(L.facts)];
+  // ชั้นเซียงแซ: เปิดเฉพาะคำถามการงาน/ธุรกิจก่อน (thin slice) ให้ตรงขอบเขตที่ตกลงไว้
+  if (topicId === "career_potential") {
+    const board = xiangshaBlock(L, now);
+    if (board) parts.push(board);
+  }
   const turning = chartTopicText("turning_points", L.facts, L.map);
   if (turning) parts.push(`[วัยจร — จังหวะชีวิตตามอายุ]\n${turning.body}`);
   const yr = transitPillarText("ปีจร", pillarsForDate(y, m, d).yearPillar, L.state, L.matching);
@@ -440,7 +510,10 @@ async function groundYearTiming(question: string, birth: LouiseHayBirthInput, no
     route: "timing",
     sourceLabel: "ดวงกับเวลา · วัยจร + ปีจร + ดิถี",
     text: `${ageLineOf(birth, now)}คำถามอิงจังหวะ "ช่วงนี้/ปีนี้" ใช้ วัยจร + ปีจร + ดิถี เป็นฐาน:\n\n${parts.join("\n\n———\n\n")}`,
-    note: "โฟกัสพลัง 'ช่วงนี้/ปีนี้' (วัยจร+ปีจร) เป็นหลัก ดวงพื้นฐานเป็นฉากหลัง ตอบกระชับ 2-3 ย่อหน้า",
+    note:
+      (topicId === "career_potential"
+        ? "ยึด 'ชั้นชี้ขาด (ข้อมูลภายใน)' เป็นตัวตัดสินก่อน แล้วใช้ วัยจร/ปีจร บอกจังหวะเวลา ห้ามเอ่ยศัพท์จากชั้นนั้นให้ผู้ใช้เห็น. "
+        : "") + "โฟกัสพลัง 'ช่วงนี้/ปีนี้' (วัยจร+ปีจร) เป็นหลัก ดวงพื้นฐานเป็นฉากหลัง ตอบกระชับ 2-3 ย่อหน้า",
   };
 }
 
