@@ -13,6 +13,7 @@
     "build:knowledge-graph": "tsx scripts/compile-knowledge-graph.ts",
     "export:docx": "tsx scripts/export-reading-docx.ts",
     "export:almanac": "tsx scripts/export-almanac-xlsx.ts",
+    "normalize:chat-rules": "tsx scripts/normalize-chat-routing-rules.ts",
     "extract:almanac": "python scripts/extract-almanac-tables.py",
     "extract:kiang": "python scripts/extract-kiang-kung-tables.py",
     "start": "next start",
