@@ -4,6 +4,9 @@
 //   2. คะแนนที่ใช้ตัดสินไม่ได้นิยามใหม่ — 2 implementation ของ 十二長生 ในโปรเจกต์ต้องตรงกันทั้ง 120 คู่
 //      (ถ้าวันหน้าใครแก้ตารางใดตารางหนึ่ง เทสนี้จะพัง แทนที่จะเพี้ยนเงียบ ๆ)
 //   3. จุดที่ต่างจาก classifyQiTier ของหน้าอ่านดวง 15 บท ถูกบันทึกไว้จริงและตรงกับผลที่ฟังก์ชันคืน
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, test } from "vitest";
 
 import { lifeStageScore } from "@/lib/bazi/almanac/almanac-engine";
@@ -147,6 +150,29 @@ describe("xiangsha-verdict (ANCHOR: xiangsha-verdict-bands)", () => {
     expect(text).toContain("ราศีล่าง ขาล");
     expect(text).toContain("ราศีล่าง มะเมีย");
     expect(text).toMatch(/ราศีบน ธาตุ/);
+  });
+
+  // ซินแสตัดสินแล้วว่าเกณฑ์ 5 ระดับนี้ใช้กับ "แชท" เท่านั้น หน้าอ่านดวง 15 บท ใช้ของเดิมต่อ
+  // เทสนี้กันคนมารวม 2 เกณฑ์เข้าด้วยกันภายหลัง ซึ่งจะเปลี่ยนคำอ่าน 15 บทของผู้ใช้ทุกคนแบบเงียบ ๆ
+  // ตรวจที่ source เพราะ classifyQiTier / RISING_QI / FALLING_QI เป็น private (ไม่ export)
+  test("กันการรวมเกณฑ์: หน้าอ่านดวงต้องยังจัดกลุ่มสภาวะแบบเดิม", () => {
+    const src = readFileSync(resolve(process.cwd(), "src/lib/bazi/topic-knowledge.ts"), "utf8");
+    const setOf = (name: string): string[] => {
+      const m = new RegExp(`const ${name} = new Set\\(\\[([^\\]]*)\\]`).exec(src);
+      // ถ้าหาไม่เจอ = มีการ refactor ชื่อ/รูปแบบ → ให้เทสพัง เพื่อบังคับให้กลับมาทบทวนข้อตกลงนี้
+      expect(m, `หา ${name} ใน topic-knowledge.ts ไม่เจอ — ถ้า refactor ให้อัปเดตเทสนี้พร้อมทบทวนว่าเกณฑ์ 2 ชุดยังต้องแยกกันอยู่`).not.toBeNull();
+      return [...m![1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
+    };
+    const rising = setOf("RISING_QI");
+    const falling = setOf("FALLING_QI");
+    for (const d of DIVERGENCE_FROM_READING_TIERS) {
+      const actual = rising.includes(d.stage) ? "RISING_QI" : falling.includes(d.stage) ? "FALLING_QI" : "transitional";
+      expect(
+        actual,
+        `"${d.stage}" ในหน้าอ่านดวงย้ายกลุ่มจาก ${d.readingSet} → ${actual}. ` +
+          `ซินแสสั่งให้เกณฑ์ 5 ระดับใช้กับแชทเท่านั้น — ถ้าจะรวมเกณฑ์ต้องถามซินแสก่อน`,
+      ).toBe(d.readingSet);
+    }
   });
 
   test("กิ่งที่ไม่รู้จัก → null (degrade ไม่ throw)", () => {

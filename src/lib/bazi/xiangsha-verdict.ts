@@ -6,9 +6,12 @@
  * รายละเอียดรายคำถามอยู่ใน src/lib/louise-hay/data/chat-routing-rules.json
  *
  * ⚠️ ระดับชุดนี้ **ไม่ตรงกับ** classifyQiTier ใน topic-knowledge.ts ที่หน้าอ่านดวง 15 บทใช้อยู่
- * (ดู DIVERGENCE_FROM_READING_TIERS ข้างล่าง) — จงใจแยกไฟล์ ไม่แก้ของเดิม เพราะการแก้
- * classifyQiTier จะเปลี่ยนคำอ่าน 15 บทของผู้ใช้ทุกคน ซึ่งเกินขอบเขตที่ซินแสสั่ง
- * ถ้าวันหน้าซินแสยืนยันให้ใช้เกณฑ์เดียวกันทั้งระบบ ให้ย้ายมาอ้างไฟล์นี้เป็นแหล่งเดียว
+ * (ดู DIVERGENCE_FROM_READING_TIERS ข้างล่าง) — ต่างกัน 5 จุด
+ *
+ * 🔒 **ซินแสตัดสินแล้วว่าเกณฑ์ 5 ระดับนี้ใช้กับ "แชทฮีลใจ" เท่านั้น** ไม่ใช้กับหน้าอ่านดวง 15 บท
+ * ความต่างนี้จึงเป็น "สถานะถาวรที่ตั้งใจให้ต่าง" ไม่ใช่หนี้ที่รอตามเก็บ
+ * ห้ามรวม 2 เกณฑ์เข้าด้วยกัน และห้ามแก้ classifyQiTier / RISING_QI / FALLING_QI ให้ตรงกับไฟล์นี้
+ * (จะเปลี่ยนคำอ่าน 15 บทของผู้ใช้ทุกคน) — มีเทสกันไว้ที่ tests/xiangsha-verdict.test.ts
  *
  * คะแนน 0–110 ไม่ได้นิยามใหม่ที่นี่ — เรียก lifeStageScore() ของ almanac-engine
  * (ตรวจแล้วว่าให้ผลตรงกับ resolveCanonicalTwelveQiStage() ของ pillar-display ทั้ง 120 คู่)
@@ -36,13 +39,20 @@ export const XIANGSHA_VERDICT_BANDS: { verdict: XiangshaVerdict; min: number }[]
 /**
  * จุดที่เกณฑ์ซินแส (แชท) ต่างจาก classifyQiTier (หน้าอ่านดวง 15 บท) — บันทึกไว้ให้เห็นชัด
  * ไม่ใช่โค้ดที่รัน แต่เป็นหลักฐานว่ารู้ตัวว่าต่าง ไม่ได้เผลอ fork
+ *
+ * `readingSet` = ชุดที่ stage นั้นอยู่ในฝั่งอ่านดวง ใช้เป็นคีย์ให้เทสตรวจ source ว่ายังไม่มีใครไปรวมกัน
  */
-export const DIVERGENCE_FROM_READING_TIERS: { stage: string; reading: string; shinseChat: XiangshaVerdict }[] = [
-  { stage: "แป่", reading: "transitional (50/50)", shinseChat: "เสียมาก" },
-  { stage: "หมกยก", reading: "transitional (50/50)", shinseChat: "เสีย" },
-  { stage: "เอี้ยง", reading: "transitional (50/50)", shinseChat: "ดี" },
-  { stage: "เชี่ยงแซ", reading: "rising (ชั้นบนสุด)", shinseChat: "ดี" },
-  { stage: "ซวย", reading: "falling + รุนแรง (ดอกจัน 3 ดอก)", shinseChat: "เสีย" },
+export const DIVERGENCE_FROM_READING_TIERS: {
+  stage: string;
+  reading: string;
+  readingSet: "RISING_QI" | "FALLING_QI" | "transitional";
+  shinseChat: XiangshaVerdict;
+}[] = [
+  { stage: "แป่", reading: "transitional (50/50)", readingSet: "transitional", shinseChat: "เสียมาก" },
+  { stage: "หมกยก", reading: "transitional (50/50)", readingSet: "transitional", shinseChat: "เสีย" },
+  { stage: "เอี้ยง", reading: "transitional (50/50)", readingSet: "transitional", shinseChat: "ดี" },
+  { stage: "เชี่ยงแซ", reading: "rising (ชั้นบนสุด)", readingSet: "RISING_QI", shinseChat: "ดี" },
+  { stage: "ซวย", reading: "falling + รุนแรง (ดอกจัน 3 ดอก)", readingSet: "FALLING_QI", shinseChat: "เสีย" },
 ];
 
 export function xiangshaVerdict(score: number): XiangshaVerdict {
