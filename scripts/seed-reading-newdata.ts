@@ -574,6 +574,132 @@ function parseElementKeyedFile(file: string, group: string, labelPrefix: string)
   );
 }
 
+// ── parser: วงจรธาตุประจำดิถี × เพศ (บท 1 · 1.อธิบายวงจรธาตุ) ────────────────
+// หัวข้อ "ดิถี 甲 (ไม้หยาง) เพศชาย" → คีย์ "甲|ชาย" · บรรทัดถัดไป (6 ปฏิกิริยา) = เนื้อ
+// (ต้นฉบับพิมพ์วงเล็บธาตุของ 壬 เพศหญิงผิดเป็น "ทองหยิน" — คีย์ยึดตัวก้าน จึงไม่กระทบ)
+function parseElementCycleByDayMaster(file: string, group: string): SeedRow[] {
+  const rows: SeedRow[] = [];
+  let cur: { key: string; label: string; ordinal: number; buf: string[] } | null = null;
+  const flush = () => {
+    if (!cur) return;
+    const text = cur.buf.join("\n").trim();
+    if (text) {
+      rows.push({
+        groupKey: group,
+        itemKey: cur.key,
+        ordinal: cur.ordinal,
+        value: { text, label: cur.label },
+        sourceFile: file,
+      });
+    }
+  };
+  for (const line of splitLines(read(file))) {
+    const t = line.trim();
+    if (!t) continue;
+    const m = t.match(/^ดิถี\s*(.)\s*\(([^)]*)\)\s*เพศ(ชาย|หญิง)\s*$/);
+    if (m && STEMS.has(m[1])) {
+      flush();
+      const stem = m[1];
+      const gender = m[3];
+      const idx = (STEM_ORDER as readonly string[]).indexOf(stem);
+      cur = {
+        key: `${stem}|${gender}`,
+        label: `ดิถี ${stem} เพศ${gender}`,
+        ordinal: (idx < 0 ? 0 : idx) * 2 + (gender === "ชาย" ? 1 : 2),
+        buf: [],
+      };
+      continue;
+    }
+    if (cur) cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
+// ── parser: 5 ปฏิกิริยาธาตุ (บท 1 · 1.ปฏิกิริยาธาตุ) ─────────────────────────
+// หัวข้อไทย → คีย์บทบาทธาตุ (same/resource/output/wealth/power) · ก่อนหัวข้อแรก = "บทนำ"
+const REACTION_ROLE_KEYS: Record<string, string> = {
+  คู่ธาตุดิถี: "same",
+  ธาตุส่งเสริมดิถี: "resource",
+  ดิถีถ่ายเท: "output",
+  ดิถีพิฆาต: "wealth",
+  พิฆาตดิถี: "power",
+};
+function parseElementReaction(file: string, group: string): SeedRow[] {
+  const rows: SeedRow[] = [];
+  let cur: { key: string; label: string; buf: string[] } = {
+    key: "บทนำ",
+    label: "บทนำ 5 ปฏิกิริยา",
+    buf: [],
+  };
+  let ordinal = 0;
+  const flush = () => {
+    const text = cur.buf.join("\n").trim();
+    if (text) {
+      rows.push({
+        groupKey: group,
+        itemKey: cur.key,
+        ordinal: ordinal++,
+        value: { text, label: cur.label },
+        sourceFile: file,
+      });
+    }
+  };
+  for (const line of splitLines(read(file))) {
+    const t = line.trim();
+    if (!t) continue;
+    const role = REACTION_ROLE_KEYS[t];
+    if (role) {
+      flush();
+      cur = { key: role, label: t, buf: [] };
+      continue;
+    }
+    cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
+// ── parser: คุณธรรม 5 ธาตุ แข็งแรง/อ่อนแอ (บท 1) ─────────────────────────────
+// หัวข้อ "ธาตุดินแข็งแรง (สัจจะและความน่าเชื่อถือ)" → คีย์ "ดิน|แข็งแรง"
+// เนื้อ = คำโปรย + 5 บรรทัด "ดิถี … → คุณสมบัตินี้…" (ต้นฉบับจับคู่หยาง/หยินไว้ด้วยกัน)
+function parseVirtueStrength(file: string, group: string, band: "แข็งแรง" | "อ่อนแอ"): SeedRow[] {
+  const ELEMENTS = ["ไม้", "ไฟ", "ดิน", "ทอง", "น้ำ"];
+  const rows: SeedRow[] = [];
+  let cur: { el: string; label: string; buf: string[] } | null = null;
+  const flush = () => {
+    if (!cur) return;
+    const text = cur.buf.join("\n").trim();
+    if (text) {
+      rows.push({
+        groupKey: group,
+        itemKey: `${cur.el}|${band}`,
+        ordinal: ELEMENTS.indexOf(cur.el) + 1,
+        value: { text, label: cur.label },
+        sourceFile: file,
+      });
+    }
+  };
+  for (const line of splitLines(read(file))) {
+    const t = line.trim();
+    if (!t) continue;
+    const m = t.match(/^ธาตุ(ไม้|ไฟ|ดิน|ทอง|น้ำ)\s*(แข็งแรง|อ่อนแอ)\s*\(?([^)]*)\)?\s*$/);
+    if (m && m[2] === band) {
+      flush();
+      const virtue = m[3].trim();
+      cur = {
+        el: m[1],
+        label: `ธาตุ${m[1]}${band}${virtue ? ` (${virtue})` : ""}`,
+        buf: [],
+      };
+      continue;
+    }
+    if (cur) cur.buf.push(t);
+  }
+  flush();
+  return rows;
+}
+
 /** เนื้อหา fix ทุกคน (keyKind "fixed") — ทั้งไฟล์ (ข้ามบรรทัด #) = 1 row คีย์ "ทุกคน" */
 function parseFixedFile(file: string, group: string, label: string): SeedRow[] {
   const text = splitLines(read(file))
@@ -1122,6 +1248,17 @@ function collectAll(): SeedRow[] {
   push("virtue_by_element", () =>
     parseElementKeyedFile("1.คุณธรรม 5 ธาตุ.txt", "virtue_by_element", "คุณธรรม"),
   );
+  // บท 1 · วงจรธาตุประจำดิถี × เพศ (20 ช่อง) — จาก 1.อธิบายวงจรธาตุ.docx
+  push("element_cycle_by_daymaster", () =>
+    parseElementCycleByDayMaster("1.อธิบายวงจรธาตุ.txt", "element_cycle_by_daymaster"),
+  );
+  // บท 1 · 5 ปฏิกิริยาธาตุ (บทนำ + 5 บทบาท) — จาก 1.ปฏิกิริยาธาตุ.docx
+  push("element_reaction", () => parseElementReaction("1.ปฏิกิริยาธาตุ.txt", "element_reaction"));
+  // บท 1 · คุณธรรม 5 ธาตุ แข็งแรง/อ่อนแอ (10 ช่อง) — จาก 1.คุณธรรม 5 ธาตุแข็งแรง/อ่อนแอ.docx
+  push("virtue_strength", () => [
+    ...parseVirtueStrength("1.คุณธรรม 5 ธาตุแข็งแรง.txt", "virtue_strength", "แข็งแรง"),
+    ...parseVirtueStrength("1.คุณธรรม 5 ธาตุอ่อนแอ.txt", "virtue_strength", "อ่อนแอ"),
+  ]);
   // บท 1 · ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง 4 กะจื่อ) — เนื้อ curated จาก 1.ชื่อเสียงและเกียรติยศ.docx
   push("fame_honor", () => parseGanzhiKeyed("1.ชื่อเสียงและเกียรติยศ.txt", "fame_honor"));
   // บท 3 · ลูกค้า (เชี่ยงแซหลักปี) / ธุรกิจ (เชี่ยงแซหลักเดือน) — 12 เชี่ยงแซ

@@ -6,7 +6,6 @@ import {
   avoidFavorableElements,
   favorableElements,
   findElementByMechanism,
-  gradeLuckPhase,
   matchAnnualYears,
   matchBranchPairs,
   matchDithiTransferPrioritized,
@@ -578,22 +577,13 @@ describe("บท3 โชคลาภ (matchFortune — คีย์ {ก้า�
   });
 });
 
-describe("บท 12 · เกรดวัยจร (0-3) + ปีจร (annual years)", () => {
-  test("gradeLuckPhase: 用神×คุณภาพ qi ตามระบบเกรด PDF ซินแส", () => {
-    // FACTS 庚 อ่อน → 用神 = ดิน+ทอง
-    expect(gradeLuckPhase(FACTS, "earth", "กวงตั่ว")).toBe(3); // ธาตุ∈用神 + qi ดี = ยุคทอง
-    expect(gradeLuckPhase(FACTS, "fire", "ลิ่มกัว")).toBe(2); // ธาตุ∉用神 + qi ดี = โอกาสมาพร้อมภาระ
-    expect(gradeLuckPhase(FACTS, "water", "ซวย")).toBe(1); // qi เสียแรง = เฝ้าระวัง
-    expect(gradeLuckPhase(FACTS, "wood", "ทอ")).toBe(1); // ลาภ (財 ของ庚=ไม้) นอก用神 + qi กลาง = เฝ้าติดตาม
-    expect(gradeLuckPhase(FACTS, "fire", "ทอ")).toBe(0); // อำนาจ + qi กลาง = ช่วงทั่วไป
-  });
-
+describe("บท 12 · ปีจร (annual years)", () => {
   test("annualGanzhi: 2026 = 丙午 (base 1984 甲子)", () => {
     expect(annualGanzhi(2026)).toEqual({ stem: "丙", branch: "午" });
     expect(annualGanzhi(1984)).toEqual({ stem: "甲", branch: "子" });
   });
 
-  test("matchAnnualYears (ดวงแบบธานัท 甲/หลักวัน午): ปีจร 丙午→ซี่ เกรด(1) + ชง 2575 + ให้ร้าย 2576 ตรง GT", () => {
+  test("matchAnnualYears (ดวงแบบธานัท 甲/หลักวัน午): ปีจร 丙午→ซี่ + ชง 2575 + ให้ร้าย 2576 ตรง GT", () => {
     const thanat: ChartFacts = {
       dayMaster: "甲",
       strengthScore: 2.25, // อ่อน → 用神 น้ำ+ไม้
@@ -612,7 +602,7 @@ describe("บท 12 · เกรดวัยจร (0-3) + ปีจร (annual 
     expect(current.label).toContain("พ.ศ. 2569");
     expect(current.label).toContain("อายุ 41 ปี"); // นับแบบจีน (2026-1986+1) ตรง GT
     expect(current.text).toContain("ถ่ายเท → ซี่"); // 丙=ไฟ ถ่ายเทของไม้ · 甲 ที่ 午 = ซี่
-    expect(current.text).toContain("เกรด (1)");
+    expect(current.text).not.toContain("เกรด"); // ซินแสสั่งเอาระบบเกรด 3/2/1/0 ออก
     const caution = blocks.find((b) => b.itemKey === "caution");
     expect(caution?.text).toContain("พ.ศ. 2575"); // 壬子 ชงหลักวัน (子-午) ตรง GT
     expect(caution?.text).toContain("ชง (冲)");

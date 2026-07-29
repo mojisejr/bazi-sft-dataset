@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-06-16T16:02:08.393Z",
+  "generatedAt": "2026-07-29T12:56:26.511Z",
   "nodeCount": 284,
   "edgeCount": 507,
   "edgeProviderCount": 6,
@@ -6231,7 +6231,7 @@
       "target": "discipline:wealth",
       "discipline": "wealth",
       "relation": "QI_WEALTH_TH",
-      "meaningTh": "ลาภจากทางไกล/ออนไลน์ หรือจากการแก้ปัญหา/ดูแลคนป่วย มักมาแบบเงินหมุน",
+      "meaningTh": "ลาภจากทางไกล/ออนไลน์ หรือจากการรับดูแล/แก้ปัญหาให้คนที่กำลังป่วยกาย-ป่วยใจ (เช่น ขายสินค้า-บริการ-เครื่องมือให้กลุ่มคนป่วย) มักมาแบบเงินหมุน",
       "weight": 1,
       "provenance": {
         "sourceTable": "QI_WEALTH_TH",

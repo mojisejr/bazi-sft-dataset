@@ -718,37 +718,12 @@ function elementOfSymbol(symbol: string, source: "stem" | "branch"): string | un
     : BRANCH_TO_ELEMENT[symbol as keyof typeof BRANCH_TO_ELEMENT];
 }
 
-// ── เกรดวัยจร/ปีจร (0-3) — สกัดจากระบบเกรดใน PDF ซินแส (rev turning_points) ──────────
-// (3) ยุคทอง (รุกเต็มที่) · (2) โอกาสมาพร้อมภาระ · (1) เฝ้าระวัง (ตั้งรับ) · (0) ช่วงทั่วไป
-// กติกา (เทียบ GT ธานัท ตรง 15/16 ช่วง — provisional ซินแสใส่เกรดทับได้):
-//   qi ดี (เชี่ยงแซ/กวงตั่ว/ลิ่มกัว/ตี้อ๋วง) → ธาตุช่วง ∈ 用神 ? 3 : 2
-//   qi เสียแรง (ซวย/ซี่/เจ๊าะ) → 1
-//   qi กลาง → บทบาท "ลาภ" นอก用神 = 1 (ลาภผลเข้าแต่ต้องเฝ้าติดตาม) · อื่น ๆ = 0
-const QI_GOOD = new Set(["เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง"]);
-const QI_SEVERE = new Set(["ซวย", "ซี่", "เจ๊าะ"]);
-export const LUCK_GRADE_LEGEND =
-  "(3) ยุคทอง (รุกเต็มที่) · (2) โอกาสมาพร้อมภาระ (รุกแต่ต้องหาคนช่วย) · (1) เฝ้าระวัง (ตั้งรับ) · (0) ช่วงทั่วไป";
-
-export function gradeLuckPhase(
-  facts: ChartFacts,
-  symbolElEn: string | undefined,
-  qi: string | null,
-): number {
-  if (!qi) return 0;
-  const elTh = symbolElEn ? EN_TO_TH_ELEMENT[symbolElEn] : undefined;
-  const inYongshen = elTh ? favorableElements(facts).includes(elTh) : false;
-  if (QI_GOOD.has(qi)) return inYongshen ? 3 : 2;
-  if (QI_SEVERE.has(qi)) return 1;
-  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
-  const isWealth = dayEl && symbolElEn ? elementRelationKey(dayEl, symbolElEn) === "wealth" : false;
-  return isWealth && !inYongshen ? 1 : 0;
-}
+// (2026-07-29 ซินแสสั่งเอาระบบเกรด 3/2/1/0 ออก — วัยจร/ปีจรใช้ระบบดาว (group luck_stars) แทน)
 
 /**
  * บท 14 (turning_points) · วัยจรช่วงละ 5 ปี — แตก upperPhase(ก้าน)+lowerPhase(กิ่ง) ของทุกวัยจร
- * แต่ละช่วง: label = "อายุ X-Y ปี[ ช่วงปัจจุบัน] (สัญลักษณ์ บทบาทธาตุ → เชี่ยงแซ) : เกรด (N)"
- * นำหน้าด้วยบล็อก legend เกรด (ตามโครง PDF ซินแส) · body = ความหมาย 12 เชี่ยงแซ
- * (เกรด provisional — ซินแสเขียนคำทำนายจริง + ใส่เกรดทับ)
+ * แต่ละช่วง: label = "อายุ X-Y ปี[ ช่วงปัจจุบัน] (สัญลักษณ์ บทบาทธาตุ → เชี่ยงแซ)[ ⭐...]"
+ * body = ความหมาย 12 เชี่ยงแซ
  */
 /**
  * บท 12 · ⭐ ของเชี่ยงแซ ตามตาราง "จำนวนดาวของวัยจร" (group luck_stars — ซินแสแก้ได้ในแอดมิน)
@@ -771,15 +746,11 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
       const role = dayEl && symEl ? RELATION_ROLE_TH[elementRelationKey(dayEl, symEl)] : null;
       const current = ph.isCurrent ? " ช่วงปัจจุบัน" : "";
       const roleTxt = role ? ` ${role} →` : " →";
-      const grade = gradeLuckPhase(facts, symEl, ph.qi);
       const stars = luckStarsOf(map, "luck_stars", ph.qi);
       const starTxt = stars ? ` ${stars}` : "";
-      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi}) : เกรด (${grade})${starTxt}`;
+      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi})${starTxt}`;
       out.push({ group: "shengxiang", itemKey: ph.qi, label, text: value.text });
     }
-  }
-  if (out.length) {
-    out.unshift({ group: "luck_grade", itemKey: "legend", label: "เกรดแต่ละช่วง", text: LUCK_GRADE_LEGEND });
   }
   return out;
 }
@@ -830,7 +801,7 @@ function pairIn(set: Set<string>, a: string, b: string): boolean {
 
 /**
  * บท 12 · ปีจรปัจจุบัน + พยากรณ์รายปีย่อ + ปีชง/ฮะ/ให้ร้ายกับหลักวัน — ตามโครง PDF ซินแส
- * แต่ละปี: กะจื่อ + บทบาทธาตุ (ก้านปีเทียบดิถี) + เชี่ยงแซ (ดิถี×กิ่งปี) + เกรด (0-3)
+ * แต่ละปี: กะจื่อ + บทบาทธาตุ (ก้านปีเทียบดิถี) + เชี่ยงแซ (ดิถี×กิ่งปี)
  * อายุ = นับแบบจีน (ปี - ปีเกิด + 1) โชว์เมื่อ facts.birthYear มี · nowYear ฉีดได้เพื่อเทสต์
  */
 export function matchAnnualYears(
@@ -846,8 +817,7 @@ export function matchAnnualYears(
     const stemElEn = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
     const role = stemElEn ? RELATION_ROLE_TH[elementRelationKey(dayEl, stemElEn)] : "";
     const qi = resolveDisplayTwelveQiStage(facts.dayMaster, branch);
-    const grade = gradeLuckPhase(facts, stemElEn, qi || null);
-    return { stem, branch, role, qi, grade };
+    return { stem, branch, role, qi };
   };
 
   const out: NewdataBlock[] = [];
@@ -857,7 +827,7 @@ export function matchAnnualYears(
     group: "annual_year",
     itemKey: `${cur.stem}${cur.branch}`,
     label: `ปีจรปัจจุบัน ${cur.stem}${cur.branch} (พ.ศ. ${nowYear + 543}, ${ageTxt(nowYear)}ค.ศ. ${nowYear})`,
-    text: `ก้านปีธาตุ${EN_TO_TH_ELEMENT[STEM_TO_ELEMENT[cur.stem as keyof typeof STEM_TO_ELEMENT]] ?? ""} เป็น${cur.role} → ${cur.qi} : เกรด (${cur.grade})\n${LUCK_GRADE_LEGEND}`,
+    text: `ก้านปีธาตุ${EN_TO_TH_ELEMENT[STEM_TO_ELEMENT[cur.stem as keyof typeof STEM_TO_ELEMENT]] ?? ""} เป็น${cur.role} → ${cur.qi}`,
   });
   // 2) พยากรณ์รายปีย่อ 10 ปี (ข้อเท็จจริงต่อปี ให้ AI ขยายเป็นคำทำนาย)
   const lines: string[] = [];
@@ -868,7 +838,7 @@ export function matchAnnualYears(
       pairIn(SIX_COMBINATION_PAIRS, it.branch, dayBranch) ? ` · ฮะ (六合) กับหลักวัน (${it.branch}-${dayBranch})` : "",
       pairIn(HARM_PAIRS, it.branch, dayBranch) ? ` · ให้ร้าย (害) กับหลักวัน (${it.branch}-${dayBranch})` : "",
     ].join("");
-    lines.push(`พ.ศ. ${y + 543} (${ageTxt(y)}ค.ศ. ${y}) ${it.stem}${it.branch} ${it.role} → ${it.qi} : เกรด (${it.grade})${flags}`);
+    lines.push(`พ.ศ. ${y + 543} (${ageTxt(y)}ค.ศ. ${y}) ${it.stem}${it.branch} ${it.role} → ${it.qi}${flags}`);
   }
   out.push({ group: "annual_year", itemKey: "yearly", label: "พยากรณ์รายปี (ข้อมูล 10 ปีข้างหน้า)", text: lines.join("\n") });
   // 3) ปีชง/ให้ร้ายกับหลักวัน 20 ปีข้างหน้า (จังหวะต้องระวังพิเศษ — ถ้อยคำเตือนตามซินแส)

@@ -1,12 +1,12 @@
 /**
  * "วัยจรชีวิต" (life timeline) — สร้างข้อมูลไทม์ไลน์อายุจาก state ที่ engine คำนวณ:
  *   - ช่วงวัยจร (daYun) ทั้งชีวิต + ช่วงปัจจุบัน
- *   - ปีจรรายปี (liuNianSeries, +20 ปี) พร้อมเกรด + ปีชง/ฮะ/ให้ร้าย
+ *   - ปีจรรายปี (liuNianSeries, +20 ปี) + ปีชง/ฮะ/ให้ร้าย
  *   - ระดับ HIGH/MED/LOW รายด้าน (การงาน/การเงิน/ความรัก) ต่อช่วงวัยจร
  *
  * ⚠️ ระดับรายด้านเป็นค่า "derive" — engine ไม่มีการจัดระดับ career/finance/love
  * แยกกันมาก่อน ที่นี่ประกอบจากปฏิกิริยาธาตุ (วัยจร×ดิถี) + ธาตุอุปถัมภ์(用神) + 12 เชี่ยงแซ
- * ตามหลักโป๊ยยี่มาตรฐาน เป็น provisional (ซินแสปรับได้ภายหลัง) เช่นเดียวกับ gradeLuckPhase.
+ * ตามหลักโป๊ยยี่มาตรฐาน เป็น provisional (ซินแสปรับได้ภายหลัง).
  */
 
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
@@ -21,7 +21,6 @@ import {
   elementRelationKey,
   extractChartFacts,
   favorableElements,
-  gradeLuckPhase,
   type ChartFacts,
 } from "@/lib/bazi/newdata-lookup";
 import { annualGanzhi } from "@/lib/bazi/annual-ganzhi";
@@ -37,8 +36,6 @@ export type LifeStage = {
   endAge: number;
   ganzhi: string;
   isCurrent: boolean;
-  /** เกรดรวม 0-3 (เฉลี่ยสองช่วงย่อย) — เหมือนระบบ turning_points */
-  overallGrade: number;
   /** ระดับรายด้าน (derive) */
   domains: DomainScores;
   upperState: string | null;
@@ -50,8 +47,6 @@ export type TimelineYear = {
   age: number | null;
   ganzhi: string;
   twelveQi: string | null;
-  /** เกรด 0-3 */
-  grade: number;
   clash: boolean;
   sixCombine: boolean;
   harm: boolean;
@@ -103,28 +98,12 @@ function levelFromScore(score: number): DomainLevel {
   return "low";
 }
 
-/** เกรดของช่วงย่อย (ก้าน/กิ่ง) จาก qi + ธาตุ — เหมือน matchDaYun */
-function phaseGrade(facts: ChartFacts, symbol: string, source: "stem" | "branch", qi: string | null): number {
-  const el =
-    source === "stem"
-      ? STEM_TO_ELEMENT[symbol as keyof typeof STEM_TO_ELEMENT]
-      : BRANCH_TO_ELEMENT[symbol as keyof typeof BRANCH_TO_ELEMENT];
-  return gradeLuckPhase(facts, el, qi);
-}
-
 function buildStage(
-  facts: ChartFacts,
   d: ChartFacts["daYun"][number],
   dayEl: string | undefined,
   favTh: string[],
   gender: string | undefined,
 ): LifeStage {
-  // เฉลี่ยเกรดสองช่วงย่อย → เกรดรวมช่วงวัยจร
-  const phaseGrades = d.phases.map((ph) => phaseGrade(facts, ph.symbol, ph.source, ph.qi));
-  const overallGrade = phaseGrades.length
-    ? Math.round(phaseGrades.reduce((s, g) => s + g, 0) / phaseGrades.length)
-    : 0;
-
   // รายด้าน: รวม affinity ของทั้งก้านและกิ่ง + โบนัสธาตุอุปถัมภ์ + โบนัส/หักตาม qi
   const totals: Record<LifeDomain, number> = { career: 0, finance: 0, love: 0 };
   let phaseCount = 0;
@@ -157,7 +136,6 @@ function buildStage(
     endAge: d.endAge,
     ganzhi: `${d.stem}${d.branch}`,
     isCurrent: d.isCurrent,
-    overallGrade,
     domains,
     upperState: d.upperState,
     lowerState: d.lowerState,
@@ -181,20 +159,18 @@ export function buildLifeTimeline(
   const favTh = favorableElements(facts);
   const currentAge = state.ageSnapshot?.thaiAge ?? null;
 
-  const stages = facts.daYun.map((d) => buildStage(facts, d, dayEl, favTh, gender));
+  const stages = facts.daYun.map((d) => buildStage(d, dayEl, favTh, gender));
   const current = stages.find((s) => s.isCurrent) ?? null;
 
-  // ปีจรรายปี — ใช้ liuNianSeries ของ engine (มี twelveQiDisplay) + เกรด + flags
+  // ปีจรรายปี — ใช้ liuNianSeries ของ engine (มี twelveQiDisplay) + flags
   const dayBranch = facts.pillars.find((p) => p.position === "day")?.branch ?? "";
   const years: TimelineYear[] = (state.liuNianSeries ?? []).map((y) => {
-    const stemEl = STEM_TO_ELEMENT[y.stem as keyof typeof STEM_TO_ELEMENT];
     const qi = y.twelveQiDisplay ?? resolveDisplayTwelveQiStage(facts.dayMaster, y.branch) ?? null;
     return {
       year: y.year,
       age: y.age ?? null,
       ganzhi: `${y.stem}${y.branch}`,
       twelveQi: qi,
-      grade: gradeLuckPhase(facts, stemEl, qi),
       clash: pairIn(CLASH_PAIRS, y.branch, dayBranch),
       sixCombine: pairIn(SIX_COMBINATION_PAIRS, y.branch, dayBranch),
       harm: pairIn(HARM_PAIRS, y.branch, dayBranch),

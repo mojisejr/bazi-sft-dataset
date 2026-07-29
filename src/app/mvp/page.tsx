@@ -330,7 +330,7 @@ function FortuneTab({ birth }: { birth: Birth }) {
   } | null>(null);
   const [timeline, setTimeline] = useState<{
     currentAge: number | null;
-    stages: { startAge: number; endAge: number; ganzhi: string; isCurrent: boolean; overallGrade: number; domains: Record<string, string> }[];
+    stages: { startAge: number; endAge: number; ganzhi: string; isCurrent: boolean; domains: Record<string, string> }[];
   } | null>(null);
   const [busy, setBusy] = useState("");
 
@@ -406,7 +406,7 @@ function FortuneTab({ birth }: { birth: Birth }) {
             <p className="small muted">อายุปัจจุบัน {timeline.currentAge ?? "-"} ปี</p>
             {timeline.stages.map((s) => (
               <div key={s.startAge} className={`stage ${s.isCurrent ? "cur" : ""}`}>
-                <b>อายุ {s.startAge}-{s.endAge}</b> {s.ganzhi} {s.isCurrent ? "← ปัจจุบัน" : ""} · เกรด {s.overallGrade}
+                <b>อายุ {s.startAge}-{s.endAge}</b> {s.ganzhi} {s.isCurrent ? "← ปัจจุบัน" : ""}
                 <div className="small">งาน {LV[s.domains.career]} · เงิน {LV[s.domains.finance]} · รัก {LV[s.domains.love]}</div>
               </div>
             ))}
