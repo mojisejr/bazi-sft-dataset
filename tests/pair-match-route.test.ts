@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { createTestKnowledgeRepository } from "./helpers/bazi-test-knowledge-repository";
+import { resolveOverallGrade } from "@/lib/bazi/pair-consumer";
 
 /**
  * Slice 2A — pair-match เติม 2 ฟิลด์ลง response (fourPillars + elementInteraction สองทาง)
@@ -151,4 +152,28 @@ describe("POST /api/bazi/pair-match — Slice 2A เติมฟิลด์", (
     // เสา hour ยังต้องมีค่าจริง (route ใส่เที่ยงวันแทน) — จอเป็นคนซ่อนจาก timeKnown ไม่ใช่ route ทิ้งเสา
     expectPillar(body.persons.b.fourPillars.hour);
   }, 30000);
+});
+
+// D9-hardening: เกรดรวมต้องไม่หายเมื่อมิติหลักมี percent แต่เกรดเป็นสตริงว่าง (band เกรดว่างหลุดจาก
+// RATING คงที่). helper ตัวเดียวกันใช้ทั้ง route /pair-match และหน้า report เพื่อไม่ให้ sibling บิดคนละทาง.
+// เทียบพฤติกรรมเดิมฝั่ง consumer: mainFacet.grade || overall.overallGrade || ''.
+describe("resolveOverallGrade — เกรดรวมไหลไป fallback เมื่อเกรดหลักว่าง (กัน grade หาย)", () => {
+  test("มี percent + เกรดหลักไม่ว่าง → ใช้เกรดหลัก", () => {
+    expect(resolveOverallGrade(62, "C", "D")).toBe("C");
+  });
+
+  test("มี percent แต่เกรดหลัก '' → ไหลไปเอา fallback (จุดที่ route เดิมทำเกรดหาย)", () => {
+    expect(resolveOverallGrade(62, "", "D+")).toBe("D+");
+    expect(resolveOverallGrade(62, "", "-")).toBe("-");
+  });
+
+  test("percent = null → ใช้ fallback เสมอ (ไม่พึ่งเกรดหลัก)", () => {
+    expect(resolveOverallGrade(null, "C", "D")).toBe("D");
+    expect(resolveOverallGrade(undefined, "C", "D")).toBe("D");
+  });
+
+  test("both-empty: เกรดหลักและ fallback ว่างพร้อมกัน → '' (เท่าพฤติกรรมเดิม)", () => {
+    expect(resolveOverallGrade(62, "", "")).toBe("");
+    expect(resolveOverallGrade(null, "", "")).toBe("");
+  });
 });

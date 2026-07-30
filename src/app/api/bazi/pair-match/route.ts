@@ -13,6 +13,7 @@ import {
   PAIR_MATCH_DEFAULT_PROVINCE,
   relationshipLabelOverride,
   relationshipNoteOf,
+  resolveOverallGrade,
   toEngineRelationship,
 } from "@/lib/bazi/pair-consumer";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
@@ -133,7 +134,8 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
       // คะแนนรวม = มิติคำทำนายหลักตามซินแส; ถ้าหลักหาไม่เจอ fallback ค่าเฉลี่ยสองทิศของ domain
       const fallback = comparison.match[spec.domain];
       const overallPercent = mainFacet?.percent ?? fallback.overallPercent;
-      const overallGrade = mainFacet?.percent != null ? mainFacet.grade : fallback.overallGrade;
+      // เลือกเกรดด้วย helper เดียวกับหน้า report — ไหลไป fallback เมื่อเกรดหลักว่าง (กัน band เกรดว่างหลุด)
+      const overallGrade = resolveOverallGrade(mainFacet?.percent, mainFacet?.grade, fallback.overallGrade);
 
       const profileOf = (p: (typeof comparison)["personA"], displayName?: string) => ({
         displayName: displayName ?? null,
