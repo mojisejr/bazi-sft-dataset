@@ -1,6 +1,7 @@
 import { z, ZodError } from "zod";
 
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
+import { elementLabelForSymbol } from "@/lib/bazi/element-label";
 import { buildFacets, buildPairComparison, mainFacetOf, RELATIONSHIP_SPECS } from "@/lib/bazi/pair-matching";
 import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
 import { getMatchingMap } from "@/lib/bazi/matching.server";
@@ -12,6 +13,7 @@ import {
   PAIR_MATCH_DEFAULT_PROVINCE,
   relationshipLabelOverride,
   relationshipNoteOf,
+  resolveOverallGrade,
   toEngineRelationship,
 } from "@/lib/bazi/pair-consumer";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
@@ -65,6 +67,25 @@ function facetPillarsOf(state: CalculatedState): Record<PillarPos, DayPillar> {
   return { hour: lite(p.hour), day: lite(p.day), month: lite(p.month), year: lite(p.year) };
 }
 
+/**
+ * มุมมองสี่เสาสำหรับจอผลลัพธ์ (year/month/day/hour) — เสาละ stem·branch·element.
+ * element = ธาตุของก้านเสา แปลงผ่าน elementLabelForSymbol (คำศัพท์ธาตุชุดเดียวกับ /home + public-calc)
+ * ไม่ใช่ hardcode ใหม่. hour คืนค่าเสมอ (เที่ยงวันเมื่อไม่ทราบเวลา) — จอตัดสินซ่อนเองจาก timeKnown.
+ */
+function pillarView(x: { stem: string; branch: string }) {
+  return { stem: x.stem, branch: x.branch, element: elementLabelForSymbol(x.stem) };
+}
+
+function fourPillarsView(state: CalculatedState) {
+  const p = state.fourPillars;
+  return {
+    year: pillarView(p.year),
+    month: pillarView(p.month),
+    day: pillarView(p.day),
+    hour: pillarView(p.hour),
+  };
+}
+
 /** ย่อ MatchFacet เหลือเฉพาะที่จอ wizard ใช้ (ตัด lines/sising เต็มออก). */
 function slimFacet(f: MatchFacet) {
   return {
@@ -113,7 +134,8 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
       // คะแนนรวม = มิติคำทำนายหลักตามซินแส; ถ้าหลักหาไม่เจอ fallback ค่าเฉลี่ยสองทิศของ domain
       const fallback = comparison.match[spec.domain];
       const overallPercent = mainFacet?.percent ?? fallback.overallPercent;
-      const overallGrade = mainFacet?.percent != null ? mainFacet.grade : fallback.overallGrade;
+      // เลือกเกรดด้วย helper เดียวกับหน้า report — ไหลไป fallback เมื่อเกรดหลักว่าง (กัน band เกรดว่างหลุด)
+      const overallGrade = resolveOverallGrade(mainFacet?.percent, mainFacet?.grade, fallback.overallGrade);
 
       const profileOf = (p: (typeof comparison)["personA"], displayName?: string) => ({
         displayName: displayName ?? null,
@@ -135,10 +157,12 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
             a: {
               ...profileOf(comparison.personA, body.personA.displayName),
               timeKnown: body.personA.birthTime != null,
+              fourPillars: fourPillarsView(stateA),
             },
             b: {
               ...profileOf(comparison.personB, body.personB.displayName),
               timeKnown: body.personB.birthTime != null,
+              fourPillars: fourPillarsView(stateB),
             },
           },
           overall: {
@@ -154,6 +178,10 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
             aElementTh: comparison.elementInteraction.aElementTh,
             bElementTh: comparison.elementInteraction.bElementTh,
             summaryTh: comparison.elementInteraction.summaryTh,
+            // ทิศทางปฏิกิริยาธาตุสองทาง { relation, labelTh, meaningTh } — มีครบใน comparison แล้ว
+            // route เดิมส่งแต่ summaryTh; จอผลลัพธ์ต้องการแยกทิศ เรา→เขา / เขา→เรา
+            aToB: comparison.elementInteraction.aToB,
+            bToA: comparison.elementInteraction.bToA,
           },
         },
         { status: 200 },

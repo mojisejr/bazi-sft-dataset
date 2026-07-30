@@ -9,6 +9,7 @@ import {
   RELATIONSHIP_INPUT_VALUES,
   relationshipLabelOverride,
   relationshipNoteOf,
+  resolveOverallGrade,
   toEngineRelationship,
   type RelationshipInput,
 } from "@/lib/bazi/pair-consumer";
@@ -138,7 +139,8 @@ export default async function PairMatchReportPage({
 
   const fallback = comparison.match[spec.domain];
   const overallPercent = mainFacet?.percent ?? fallback.overallPercent;
-  const overallGrade = mainFacet?.percent != null ? mainFacet.grade : fallback.overallGrade;
+  // sibling ของ route /pair-match — เลือกเกรดด้วย helper เดียวกัน ไหลไป fallback เมื่อเกรดหลักว่าง
+  const overallGrade = resolveOverallGrade(mainFacet?.percent, mainFacet?.grade, fallback.overallGrade);
   const relationshipLabel = relationshipLabelOverride(relationshipInput) ?? spec.label;
   const note = relationshipNoteOf(relationshipInput);
 

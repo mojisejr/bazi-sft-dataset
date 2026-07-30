@@ -48,5 +48,22 @@ export function heartsOf(percent: number | null): number {
   return Math.min(5, Math.max(1, Math.round(percent / 20)));
 }
 
+/**
+ * เกรดรวมของผลจับคู่: ใช้เกรดของมิติหลักเมื่อ "มีค่าจริง" (มี percent และเกรดไม่ใช่สตริงว่าง),
+ * ไม่งั้นไหลไปเอาเกรด fallback ของ domain. เทียบเท่าพฤติกรรมฝั่ง consumer เดิม
+ * (`mainFacet.grade || overall.overallGrade || ''`).
+ *
+ * กันเคส latent: `gradeForPercent` คืน "-"/band จริงเสมอเมื่อ percent!=null (ไม่เคย "" จาก compute ปกติ)
+ * แต่ RATING.grades เป็นข้อมูลคงที่ — ถ้ามี band ที่เกรดเป็นสตริงว่างหลุดเข้ามา ค่านั้นจะไหลออกเป็นเกรดหาย.
+ * helper นี้ทำให้ endpoint (route) กับหน้า report เลือกเกรดด้วยตรรกะเดียวกัน ไม่ให้ sibling บิดคนละทาง.
+ */
+export function resolveOverallGrade(
+  mainFacetPercent: number | null | undefined,
+  mainFacetGrade: string | null | undefined,
+  fallbackGrade: string,
+): string {
+  return mainFacetPercent != null && mainFacetGrade ? mainFacetGrade : fallbackGrade;
+}
+
 export const PAIR_MATCH_DEFAULT_BIRTH_TIME = "12:00";
 export const PAIR_MATCH_DEFAULT_PROVINCE = "กรุงเทพมหานคร";
