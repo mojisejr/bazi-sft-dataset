@@ -1,6 +1,7 @@
 import { z, ZodError } from "zod";
 
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
+import { elementLabelForSymbol } from "@/lib/bazi/element-label";
 import { buildFacets, buildPairComparison, mainFacetOf, RELATIONSHIP_SPECS } from "@/lib/bazi/pair-matching";
 import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
 import { getMatchingMap } from "@/lib/bazi/matching.server";
@@ -63,6 +64,25 @@ function facetPillarsOf(state: CalculatedState): Record<PillarPos, DayPillar> {
   const p = state.fourPillars;
   const lite = (x: { stem: string; branch: string }): DayPillar => ({ stem: x.stem, branch: x.branch });
   return { hour: lite(p.hour), day: lite(p.day), month: lite(p.month), year: lite(p.year) };
+}
+
+/**
+ * มุมมองสี่เสาสำหรับจอผลลัพธ์ (year/month/day/hour) — เสาละ stem·branch·element.
+ * element = ธาตุของก้านเสา แปลงผ่าน elementLabelForSymbol (คำศัพท์ธาตุชุดเดียวกับ /home + public-calc)
+ * ไม่ใช่ hardcode ใหม่. hour คืนค่าเสมอ (เที่ยงวันเมื่อไม่ทราบเวลา) — จอตัดสินซ่อนเองจาก timeKnown.
+ */
+function pillarView(x: { stem: string; branch: string }) {
+  return { stem: x.stem, branch: x.branch, element: elementLabelForSymbol(x.stem) };
+}
+
+function fourPillarsView(state: CalculatedState) {
+  const p = state.fourPillars;
+  return {
+    year: pillarView(p.year),
+    month: pillarView(p.month),
+    day: pillarView(p.day),
+    hour: pillarView(p.hour),
+  };
 }
 
 /** ย่อ MatchFacet เหลือเฉพาะที่จอ wizard ใช้ (ตัด lines/sising เต็มออก). */
@@ -135,10 +155,12 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
             a: {
               ...profileOf(comparison.personA, body.personA.displayName),
               timeKnown: body.personA.birthTime != null,
+              fourPillars: fourPillarsView(stateA),
             },
             b: {
               ...profileOf(comparison.personB, body.personB.displayName),
               timeKnown: body.personB.birthTime != null,
+              fourPillars: fourPillarsView(stateB),
             },
           },
           overall: {
@@ -154,6 +176,10 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
             aElementTh: comparison.elementInteraction.aElementTh,
             bElementTh: comparison.elementInteraction.bElementTh,
             summaryTh: comparison.elementInteraction.summaryTh,
+            // ทิศทางปฏิกิริยาธาตุสองทาง { relation, labelTh, meaningTh } — มีครบใน comparison แล้ว
+            // route เดิมส่งแต่ summaryTh; จอผลลัพธ์ต้องการแยกทิศ เรา→เขา / เขา→เรา
+            aToB: comparison.elementInteraction.aToB,
+            bToA: comparison.elementInteraction.bToA,
           },
         },
         { status: 200 },
