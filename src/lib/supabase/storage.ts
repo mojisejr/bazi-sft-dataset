@@ -264,3 +264,31 @@ export async function uploadMascotImage(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+/**
+ * อัปโหลดรูป mascot ชุด UI v2 — โฟลเดอร์ใหม่ mascot-v2/ (bucket เดิม, ไม่แตะ path mascots/ เดิม)
+ * objectKey = ชื่อไฟล์ไทย v2 เช่น "01_ชวด-ไม้" (Supabase รับ UTF-8 key; public URL จะ percent-encode)
+ * path = mascot-v2/<objectKey>.<ext>
+ */
+export async function uploadMascotV2Image(
+  objectKey: string,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getMascotBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `mascot-v2/${objectKey}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูป mascot v2 "${objectKey}" ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
