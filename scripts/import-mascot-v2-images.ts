@@ -23,6 +23,7 @@ import path from "node:path";
 import sharp from "sharp";
 
 import {
+  assertImageUrlRowCount,
   assertProdTargets,
   checkProdTargets,
   imageUrlColumnDigest,
@@ -62,10 +63,10 @@ function predictedUrl(bucket: string, storageKey: string): string {
     : `(ตั้ง SUPABASE_URL เพื่อดู URL ล่วงหน้า) → ${bucket}/${objectPath}`;
 }
 
-/** ลายนิ้วมือ image_url ปัจจุบันจาก DB (select แคบ ganzhi+image_url → digest) — ตาข่าย 2 */
-async function currentImageUrlDigest(repo: MascotImageRepository): Promise<string> {
+/** ลายนิ้วมือ + จำนวนแถว image_url ปัจจุบันจาก DB (select แคบ ganzhi+image_url) — ตาข่าย 2 */
+async function currentImageUrlState(repo: MascotImageRepository): Promise<{ digest: string; count: number }> {
   const rows = await repo.listImageUrlPairs();
-  return imageUrlColumnDigest(rows);
+  return { digest: imageUrlColumnDigest(rows), count: rows.length };
 }
 
 async function resizePng(buf: Buffer): Promise<Buffer> {
@@ -132,10 +133,11 @@ async function runReal(resolved: ReturnType<typeof resolveSources>["resolved"]) 
 
   const repo = createDbMascotImageRepository();
 
-  // ── ตาข่าย 2 (before): image_url ต้องตรง baseline ก่อนเริ่ม ──
-  const digestBefore = await currentImageUrlDigest(repo);
-  console.log(`   md5(image_url) ก่อน: ${digestBefore}  (baseline ${EXPECTED_IMAGE_URL_MD5})`);
-  if (digestBefore !== EXPECTED_IMAGE_URL_MD5) {
+  // ── ตาข่าย 2 (before): จำนวนแถว = 60 และ digest image_url ตรง baseline ก่อนเริ่ม ──
+  const before2 = await currentImageUrlState(repo);
+  console.log(`   แถว ก่อน: ${before2.count} · md5(image_url) ก่อน: ${before2.digest}  (baseline ${EXPECTED_IMAGE_URL_MD5})`);
+  assertImageUrlRowCount(before2.count, resolved.length);
+  if (before2.digest !== EXPECTED_IMAGE_URL_MD5) {
     throw new Error(
       `ตาข่าย2: image_url ปัจจุบันไม่ตรง baseline — DB ถูกแตะมาก่อนหรือ baseline ผิด. หยุด ไม่เขียนอะไร.`,
     );
@@ -166,16 +168,17 @@ async function runReal(resolved: ReturnType<typeof resolveSources>["resolved"]) 
     throw new Error(`อัปโหลดได้ ${ok}/${resolved.length} — ไม่ครบ 60 (ต้อง rollback ตรวจ)`);
   }
 
-  // ── ตาข่าย 2 (after): image_url ต้องไม่ขยับสักแถวหลังทำงาน ──
-  const digestAfter = await currentImageUrlDigest(repo);
-  console.log(`   md5(image_url) หลัง: ${digestAfter}`);
-  if (digestAfter !== digestBefore) {
+  // ── ตาข่าย 2 (after): จำนวนแถว = 60 (ไม่เกิน/ขาด) และ image_url ไม่ขยับสักแถว ──
+  const after2 = await currentImageUrlState(repo);
+  console.log(`   แถว หลัง: ${after2.count} · md5(image_url) หลัง: ${after2.digest}`);
+  assertImageUrlRowCount(after2.count, resolved.length);
+  if (after2.digest !== before2.digest) {
     throw new Error(
-      `ตาข่าย2: 🔴 image_url เปลี่ยนระหว่างรัน (${digestBefore} → ${digestAfter}) — DB พัง! ` +
+      `ตาข่าย2: 🔴 image_url เปลี่ยนระหว่างรัน (${before2.digest} → ${after2.digest}) — DB พัง! ` +
         `กู้จาก ~/mascot-backup-2026-08-02/bazi_mascot_image.before.csv ทันที.`,
     );
   }
-  console.log(`✅ ตาข่าย2 ผ่าน: image_url ทั้ง ${resolved.length} แถวไม่ขยับ (${digestAfter})`);
+  console.log(`✅ ตาข่าย2 ผ่าน: ${after2.count} แถว · image_url ไม่ขยับ (${after2.digest})`);
   console.log(
     `\nเสร็จ: image_url_v2 ครบ ${ok}/${resolved.length} | ขนาด ` +
       `${(before / 1024 / 1024).toFixed(1)}MB → ${(after / 1024 / 1024).toFixed(1)}MB`,

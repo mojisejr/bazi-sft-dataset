@@ -60,9 +60,23 @@ export function imageUrlColumnDigest(rows: ReadonlyArray<{ ganzhi: string; image
 }
 
 /**
+ * ตาข่าย 2 (เสริม) — จำนวนแถวต้องเป็น expected (60) ทั้งก่อนและหลัง.
+ * กันเคสแถวเกิน/ขาด (insert/delete หลุด) ที่ digest ก็จับได้ แต่ count ชี้ชัดกว่า (บองขอเพิ่ม).
+ */
+export function assertImageUrlRowCount(actual: number, expected: number): void {
+  if (actual !== expected) {
+    throw new Error(`ตาข่าย2: จำนวนแถว bazi_mascot_image = ${actual} (คาด ${expected}) — แถวเกิน/ขาด หยุด`);
+  }
+}
+
+/**
  * baseline image_url บน prod ก่อนแตะอะไร — คำนวณจาก csv สำรองจริงของบอง
  * (~/mascot-backup-2026-08-02/bazi_mascot_image.before.csv, dev==prod ยืนยันแล้ว) ด้วย recipe ข้างบน.
  * override ได้ด้วย EXPECTED_IMAGE_URL_MD5.
- * หมายเหตุ: ต่างจากค่า b76051… ที่บองเก็บ (recipe คนละแบบ reverse ไม่ได้) — ค่านี้ reproducible ตรวจเองได้.
+ *
+ * recipe ที่ใช้ = md5(string_agg(image_url, E'\n' ORDER BY ganzhi))  → c3e72e…  (ตัวนี้ที่ guard ยึด)
+ * ทางเลือก (สูตรบอง, บองรัน prod ยืนยันแล้ว) = md5(string_agg(ganzhi || '|' || image_url, E'\n' ORDER BY ganzhi))
+ *   → b76051348086aada420f8aeab9f1e652  (กินเพิ่มเคส ganzhi เองถูกแก้; แต่ ganzhi เป็น key + count guard จับได้อยู่แล้ว
+ *   ⇒ บองตัดสินใช้ c3e72e ต่อ ไม่ต้องสลับ — 2026-08-02)
  */
 export const PROD_IMAGE_URL_BASELINE_MD5 = "c3e72e3ac8b3894cd172a7c29b063ccb";

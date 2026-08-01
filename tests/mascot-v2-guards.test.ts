@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 
 import {
+  assertImageUrlRowCount,
   assertProdTargets,
   checkProdTargets,
   imageUrlColumnDigest,
@@ -71,5 +72,17 @@ describe("ตาข่าย 2 — imageUrlColumnDigest", () => {
 
   it("null image_url → treat เป็น '' (ไม่ crash)", () => {
     expect(() => imageUrlColumnDigest([{ ganzhi: "甲子", imageUrl: null }])).not.toThrow();
+  });
+});
+
+describe("ตาข่าย 2 (เสริม) — assertImageUrlRowCount", () => {
+  it("ผ่านเมื่อจำนวนตรง (60)", () => {
+    expect(() => assertImageUrlRowCount(60, 60)).not.toThrow();
+  });
+  it("throw เมื่อแถวขาด (59)", () => {
+    expect(() => assertImageUrlRowCount(59, 60)).toThrow(/59.*60|แถว/);
+  });
+  it("throw เมื่อแถวเกิน (61)", () => {
+    expect(() => assertImageUrlRowCount(61, 60)).toThrow(/61.*60|แถว/);
   });
 });
