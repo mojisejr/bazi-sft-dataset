@@ -266,9 +266,9 @@ export async function uploadMascotImage(
 }
 
 /**
- * อัปโหลดรูป mascot ชุด UI v2 — โฟลเดอร์ใหม่ mascot-v2/ (bucket เดิม, ไม่แตะ path mascots/ เดิม)
- * objectKey = ชื่อไฟล์ไทย v2 เช่น "01_ชวด-ไม้" (Supabase รับ UTF-8 key; public URL จะ percent-encode)
- * path = mascot-v2/<objectKey>.<ext>
+ * อัปโหลดรูป mascot ชุด UI v2 — ปลายทาง prod: bucket "mootech-v2" (จาก SUPABASE_MASCOT_BUCKET) โฟลเดอร์ mascot/
+ * ⇒ ผลลัพธ์: <SUPABASE_URL>/storage/v1/object/public/mootech-v2/mascot/<objectKey>.<ext>
+ * objectKey = ascii เช่น "01_wood" (ไม่ user-facing). ไม่แตะ path mascots/ เดิมและไม่แตะ bucket mootech ของระบบอื่น.
  */
 export async function uploadMascotV2Image(
   objectKey: string,
@@ -278,7 +278,8 @@ export async function uploadMascotV2Image(
 ): Promise<string> {
   const bucket = getMascotBucket();
   const ext = mime.includes("png") ? "png" : "jpg";
-  const objectPath = `mascot-v2/${objectKey}.${ext}`;
+  // โฟลเดอร์ "mascot/" (ไม่ใช่ "mascot-v2/") — bucket ชื่อ mootech-v2 อยู่แล้ว, ซ้อน mascot-v2 = ผิดที่สั่ง
+  const objectPath = `mascot/${objectKey}.${ext}`;
 
   const { error } = await client.storage.from(bucket).upload(objectPath, data, {
     contentType: mime,

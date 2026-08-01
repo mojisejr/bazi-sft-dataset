@@ -22,6 +22,11 @@ export type MascotImageRepository = {
   getByGanzhi: (ganzhi: string) => Promise<MascotImageRow | null>;
   /** ทั้งหมดที่มี */
   getAll: () => Promise<MascotImageRow[]>;
+  /**
+   * ganzhi + image_url เท่านั้น (คอลัมน์เดิม) — สำหรับ digest ตาข่าย 2.
+   * select แคบไม่แตะ image_url_v2 ⇒ ใช้ได้แม้ก่อน migration (robust ต่อ Phase order).
+   */
+  listImageUrlPairs: () => Promise<Array<{ ganzhi: string; imageUrl: string | null }>>;
   upsert: (ganzhi: string, input: MascotImageInput) => Promise<void>;
   /**
    * เขียน "เฉพาะ" image_url_v2 (ชุด UI v2) — ⚠️ ไม่แตะ imageUrl เดิมเด็ดขาด.
@@ -53,6 +58,12 @@ export function createDbMascotImageRepository(
 
     async getAll() {
       return db.select().from(baziMascotImage);
+    },
+
+    async listImageUrlPairs() {
+      return db
+        .select({ ganzhi: baziMascotImage.ganzhi, imageUrl: baziMascotImage.imageUrl })
+        .from(baziMascotImage);
     },
 
     async upsert(ganzhi, input) {
