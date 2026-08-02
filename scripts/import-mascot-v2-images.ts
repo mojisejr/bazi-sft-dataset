@@ -56,6 +56,26 @@ const EXPECTED_IMAGE_URL_MD5 = process.env.EXPECTED_IMAGE_URL_MD5?.trim() || PRO
  */
 const IMAGE_FORMAT = { ext: "jpg", mime: "image/jpeg" } as const;
 
+/**
+ * invariant ผูกที่ boot (คอมเมนต์เตือนอย่างเดียวไม่พอ): ext ที่แสดง/หาไฟล์ ต้องตรงกับ ext ที่
+ * upload จริงแปลงจาก mime ใน uploadMascotV2Image (mime.includes("png") ? "png" : "jpg").
+ * ถ้าใครตั้ง ext="webp" แต่ mime="image/jpeg" → dry-run โชว์ .webp แต่ของจริงอัปเป็น .jpg = dry-run โกหก.
+ * throw ก่อนทำอะไรทั้งสิ้น.
+ */
+function assertFormatInvariant(): void {
+  const mime: string = IMAGE_FORMAT.mime;
+  const uploadedExt = mime.includes("png") ? "png" : "jpg";
+  if (IMAGE_FORMAT.ext !== uploadedExt) {
+    throw new Error(
+      `IMAGE_FORMAT เพี้ยน: ext="${IMAGE_FORMAT.ext}" แต่ mime="${IMAGE_FORMAT.mime}" ` +
+        `จะถูก uploadMascotV2Image อัปเป็น ".${uploadedExt}" (มันแยก ext จาก mime เอง). ` +
+        `⇒ dry-run จะโชว์ ".${IMAGE_FORMAT.ext}" ซึ่งไม่ตรงของจริง (dry-run โกหก) — ` +
+        `ตั้ง ext ให้ตรงกับ mime ก่อนรัน.`,
+    );
+  }
+}
+assertFormatInvariant();
+
 /** กว้างสุด px — คงเท่าเดิม 512 (เปลี่ยนแค่นามสกุล/พื้นหลัง ไม่เปลี่ยนขนาด) */
 const MASCOT_WIDTH = 512;
 
