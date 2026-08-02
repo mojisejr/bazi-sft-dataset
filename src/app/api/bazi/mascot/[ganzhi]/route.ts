@@ -18,6 +18,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ ganzhi:
       nameTh: row.nameTh,
       nameEn: row.nameEn,
       imageUrl: row.imageUrl,
+      // ชุด UI v2 (nullable) — ผู้อ่านเดิมมองข้ามฟิลด์นี้; fe proxy v2 อ่านเฉพาะช่องนี้
+      imageUrlV2: row.imageUrlV2 ?? null,
     });
   } catch (error) {
     return Response.json(

@@ -22,7 +22,25 @@ export type MascotImageRepository = {
   getByGanzhi: (ganzhi: string) => Promise<MascotImageRow | null>;
   /** ทั้งหมดที่มี */
   getAll: () => Promise<MascotImageRow[]>;
+  /**
+   * ganzhi + image_url เท่านั้น (คอลัมน์เดิม) — สำหรับ digest ตาข่าย 2.
+   * select แคบไม่แตะ image_url_v2 ⇒ ใช้ได้แม้ก่อน migration (robust ต่อ Phase order).
+   */
+  listImageUrlPairs: () => Promise<Array<{ ganzhi: string; imageUrl: string | null }>>;
   upsert: (ganzhi: string, input: MascotImageInput) => Promise<void>;
+  /**
+   * เขียน "เฉพาะ" image_url_v2 (ชุด UI v2) — ⚠️ ไม่แตะ imageUrl เดิมเด็ดขาด.
+   * แถวมีอยู่ → update เฉพาะ image_url_v2; แถวหาย → insert (imageUrl คง null, ชื่อจาก input).
+   */
+  setImageUrlV2: (ganzhi: string, input: MascotV2ImageInput) => Promise<void>;
+};
+
+export type MascotV2ImageInput = {
+  nameTh: string;
+  nameEn: string;
+  /** URL ชุด v2 บน Supabase Storage (mascot-v2/) */
+  imageUrlV2: string;
+  mime?: string;
 };
 
 export function createDbMascotImageRepository(
@@ -42,6 +60,12 @@ export function createDbMascotImageRepository(
       return db.select().from(baziMascotImage);
     },
 
+    async listImageUrlPairs() {
+      return db
+        .select({ ganzhi: baziMascotImage.ganzhi, imageUrl: baziMascotImage.imageUrl })
+        .from(baziMascotImage);
+    },
+
     async upsert(ganzhi, input) {
       const { nameTh, nameEn, imageUrl = null, mime } = input;
       await db
@@ -50,6 +74,18 @@ export function createDbMascotImageRepository(
         .onConflictDoUpdate({
           target: baziMascotImage.ganzhi,
           set: { nameTh, nameEn, imageUrl, mime },
+        });
+    },
+
+    async setImageUrlV2(ganzhi, input) {
+      const { nameTh, nameEn, imageUrlV2, mime = "image/png" } = input;
+      await db
+        .insert(baziMascotImage)
+        .values({ ganzhi, nameTh, nameEn, imageUrlV2, mime })
+        .onConflictDoUpdate({
+          target: baziMascotImage.ganzhi,
+          // ⚠️ เฉพาะ image_url_v2 — ไม่มี imageUrl/nameTh/nameEn ใน set → ของเดิมไม่ถูกแตะ
+          set: { imageUrlV2 },
         });
     },
   };

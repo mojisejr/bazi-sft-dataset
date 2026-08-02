@@ -264,3 +264,32 @@ export async function uploadMascotImage(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+/**
+ * อัปโหลดรูป mascot ชุด UI v2 — ปลายทาง prod: bucket "mootech-v2" (จาก SUPABASE_MASCOT_BUCKET) โฟลเดอร์ mascot/
+ * ⇒ ผลลัพธ์: <SUPABASE_URL>/storage/v1/object/public/mootech-v2/mascot/<objectKey>.<ext>
+ * objectKey = ascii เช่น "01_wood" (ไม่ user-facing). ไม่แตะ path mascots/ เดิมและไม่แตะ bucket mootech ของระบบอื่น.
+ */
+export async function uploadMascotV2Image(
+  objectKey: string,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getMascotBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  // โฟลเดอร์ "mascot/" (ไม่ใช่ "mascot-v2/") — bucket ชื่อ mootech-v2 อยู่แล้ว, ซ้อน mascot-v2 = ผิดที่สั่ง
+  const objectPath = `mascot/${objectKey}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูป mascot v2 "${objectKey}" ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}

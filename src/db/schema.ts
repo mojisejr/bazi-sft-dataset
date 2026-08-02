@@ -763,8 +763,10 @@ export const baziMascotImage = pgTable("bazi_mascot_image", {
   ganzhi: text("ganzhi").primaryKey(),
   nameTh: text("name_th").notNull(),
   nameEn: text("name_en").notNull(),
-  /** URL รูปบน Supabase Storage (แหล่งหลัก) */
+  /** URL รูปบน Supabase Storage (แหล่งหลัก) — v1/PDF อ่านช่องนี้ ห้ามแตะ */
   imageUrl: text("image_url"),
+  /** URL รูปชุด UI v2 (mascot-v2/) — nullable; ไม่มี = v2 ซ่อนการ์ด (ไม่ fallback รูปเก่า) */
+  imageUrlV2: text("image_url_v2"),
   mime: text("mime").notNull().default("image/png"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
