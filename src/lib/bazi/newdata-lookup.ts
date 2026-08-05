@@ -983,6 +983,10 @@ const LOVE_QUALITY_QI = new Set([
   "เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง",
 ]);
 
+// จำกัดช่วงวัยที่ "เจอเนื้อคู่" ให้อยู่ในวัยที่สมเหตุสมผล — เด็กไป/แก่ไปไม่นับ
+const LOVE_MIN_AGE = 16;
+const LOVE_MAX_AGE = 55;
+
 export function matchLoveTiming(facts: ChartFacts): NewdataBlock[] {
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   if (!dayEl || !facts.daYun.length) return [];
@@ -1008,8 +1012,8 @@ export function matchLoveTiming(facts: ChartFacts): NewdataBlock[] {
   const normal: string[] = [];
   for (const d of facts.daYun) {
     for (const ph of d.phases) {
-      // ข้ามช่วงวัยเด็ก (จบก่อน 16) — ไม่ใช่วัยที่ "เจอเนื้อคู่/เริ่มความสัมพันธ์"
-      if (ph.endAge < 16) continue;
+      // จำกัดเฉพาะวัยที่สมเหตุสมผลจะ "เจอเนื้อคู่/เริ่มความสัมพันธ์" — เด็กไป/แก่ไปไม่นับ
+      if (ph.endAge < LOVE_MIN_AGE || ph.startAge > LOVE_MAX_AGE) continue;
       const symEl = elementOfSymbol(ph.symbol, ph.source);
       if (!symEl || !wantRoles.includes(elementRelationKey(dayEl, symEl))) continue;
       const current = ph.isCurrent ? " (ช่วงปัจจุบัน)" : "";

@@ -338,6 +338,7 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
             { source: "branch", symbol: "酉", startAge: 26, endAge: 30, qi: "ตี้อ๋วง", isCurrent: false }, // ทอง(same) qi ดี → โอกาสสูง
             { source: "stem", symbol: "戊", startAge: 31, endAge: 35, qi: "ซี่", isCurrent: false }, // ดิน(resource) qi ไม่ดี → รองลงมา
             { source: "branch", symbol: "午", startAge: 36, endAge: 40, qi: "เชี่ยงแซ", isCurrent: false }, // ไฟ(power) → ไม่ใช่ธาตุที่รอ ตัดทิ้ง
+            { source: "branch", symbol: "申", startAge: 66, endAge: 70, qi: "ลิ่มกัว", isCurrent: false }, // ทอง(same) qi ดี แต่แก่ไป (>55) → ตัด
           ],
         },
       ],
@@ -347,7 +348,8 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(block.text).toContain("ธาตุคู่ธาตุ/ส่งเสริม");
     expect(block.text).toContain("อายุ 26-30 ปี"); // โอกาสสูง (酉 ตี้อ๋วง)
     expect(block.text).toContain("อายุ 31-35 ปี"); // รองลงมา (戊 ซี่)
-    expect(block.text).not.toContain("อายุ 6-10"); // ตัดวัยเด็ก
+    expect(block.text).not.toContain("อายุ 6-10"); // ตัดวัยเด็ก (<16)
+    expect(block.text).not.toContain("อายุ 66-70"); // ตัดวัยแก่ (>55)
     expect(block.text).not.toContain("อายุ 36-40"); // ไฟ = power ไม่ใช่ธาตุที่รอ
   });
 
