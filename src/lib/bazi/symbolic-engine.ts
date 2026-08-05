@@ -11,6 +11,7 @@ import {
   buildLiuNianState,
   buildOrthodoxMingGongValue,
   buildPillarValue,
+  getBirthEightChar,
   isForwardDaYunDirection,
   normalizeBirthContext,
   normalizeGenderForYun,
@@ -170,7 +171,7 @@ function buildDynamicLuckStageDisplays(
 export function calculateBaziStructuralState(payload: RawInputValue): BaziStructuralState {
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
-  const eightChar = birthContext.solar.getLunar().getEightChar();
+  const eightChar = getBirthEightChar(birthContext.solar);
   const pillars = {
     year: buildPillarValue(eightChar.getYear(), eightChar.getYearHideGan()),
     month: buildPillarValue(eightChar.getMonth(), eightChar.getMonthHideGan()),
@@ -191,7 +192,7 @@ export async function calculateBaziChart(
   const rawInput = RawInputSchema.parse(payload);
   const birthContext = normalizeBirthContext(rawInput);
   const lunar = birthContext.solar.getLunar();
-  const eightChar = lunar.getEightChar();
+  const eightChar = getBirthEightChar(birthContext.solar);
   const forwardDirection = isForwardDaYunDirection(lunar as Parameters<typeof isForwardDaYunDirection>[0], rawInput.gender);
   const currentReferenceSolar = buildCurrentReferenceSolar();
   const currentReferenceEightChar = currentReferenceSolar.getLunar().getEightChar();

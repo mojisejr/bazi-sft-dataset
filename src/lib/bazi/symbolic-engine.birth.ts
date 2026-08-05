@@ -135,6 +135,49 @@ function normalizeHiddenStems(value: string[] | string) {
     .filter((entry) => entry.length > 0);
 }
 
+/**
+ * ยาม 23:00-23:59 (晚子時) — ตามตารางตั้งดวงของซินแส (Google Sheet 60 ชีต ส่ง 2026-08-05
+ * "ใช้ระบบนี้ Fix ละ · อันเดิมมีเคลื่อน") ทุกชีตกำหนดว่าแถว 23:00-23:59 = แถว 0:00-0:59
+ * ของ "วันเดียวกัน" คือ วันไม่เคลื่อน และก้านยามใช้ 五鼠遁 ของวันนั้น (甲日 → 甲子 ไม่ใช่ 丙子)
+ *
+ * lunar-javascript คิดก้านยามช่วง 23:00 จาก "วันถัดไป" จึงต้องดึงค่ายามจาก eightChar
+ * ของเวลา 00:xx วันเดียวกันมาแทน (เสาปี/เดือน/วัน เหมือนกันอยู่แล้ว จึงสอดคล้องกันทั้งผัง)
+ */
+const LATE_ZI_HOUR = 23;
+
+export function getBirthEightChar(solar: SolarInstance): EightCharLike {
+  const eightChar = solar.getLunar().getEightChar();
+
+  if (solar.getHour() !== LATE_ZI_HOUR) {
+    return eightChar;
+  }
+
+  const earlyZi = Solar.fromYmdHms(
+    solar.getYear(),
+    solar.getMonth(),
+    solar.getDay(),
+    0,
+    solar.getMinute(),
+    0,
+  ).getLunar().getEightChar();
+
+  return new Proxy(eightChar, {
+    get(target, property, receiver) {
+      if (typeof property === "string" && property.startsWith("getTime")) {
+        const delegated = (earlyZi as unknown as Record<string, unknown>)[property];
+
+        if (typeof delegated === "function") {
+          return (delegated as (...args: unknown[]) => unknown).bind(earlyZi);
+        }
+      }
+
+      const value = Reflect.get(target, property, receiver);
+
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  });
+}
+
 export function buildPillarValue(
   pillarText: string,
   hiddenStemValue: string[] | string,
@@ -296,7 +339,7 @@ export function buildOrthodoxMingGongValue(
   birthContext: NormalizedBirthContext,
 ): ExplainableValue<PillarValue> {
   const lunar = birthContext.solar.getLunar() as LunarLike;
-  const eightChar = lunar.getEightChar();
+  const eightChar = getBirthEightChar(birthContext.solar);
   const yearStem = splitGanZhi(eightChar.getYear()).stem;
   const monthBranch = splitGanZhi(eightChar.getMonth()).branch;
   const timeBranch = splitGanZhi(eightChar.getTime()).branch;
@@ -396,7 +439,7 @@ export function buildDaYunState(
   currentAge: number,
   currentYear: number,
 ) {
-  const eightChar = birthContext.solar.getLunar().getEightChar();
+  const eightChar = getBirthEightChar(birthContext.solar);
   const yun = eightChar.getYun(normalizeGenderForYun(gender));
   // 起运 (อายุเริ่มวัยจร) จริงจาก lunar-javascript; fallback กฎ 3 วัน=1 ปี ถ้าไลบรารีไม่ให้ค่า
   const yunStartYear = yun.getStartYear?.();
