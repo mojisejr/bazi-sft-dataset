@@ -1574,10 +1574,10 @@ function buildPersonalityReading(calculatedState: CalculatedStateValue): string 
 const CHART_FOUNDATION_SUBTOPICS = {
   basis: "ดิถีอะไร เกิดถูกฤดู นั่งถูกที่ อ่อนมาก/อ่อน/สมดุล/แข็ง/แข็งไป",
   lowerBranch: "ทายนิสัยจากราศีล่างหลักวัน",
-  upperLower: "ทายนิสัยจากราศีบนหลักวัน/ราศีล่างหลักวัน (ระบบนับอิม + 12 เชี่ยงแซ)",
+  upperLower: "ทายนิสัยจากราศีบน/ราศีล่างหลักวัน",
   transfer: "ทายนิสัยจาก ดิถี → การกระทำ (ธาตุถ่ายเท) → ผลลัพธ์ (ธาตุโชคลาภ)",
   caution: "สิ่งพึงระวัง",
-  advice: "ข้อเสนอแนะ (จิตวิทยา พฤติกรรมแก้ไข)",
+  advice: "ข้อเสนอแนะ",
 } as const;
 
 /** ป้ายกำลังดิถีตามถ้อยคำใน docx (อ่อนมาก/อ่อน/สมดุล/แข็ง/แข็งไป) */
@@ -2111,8 +2111,8 @@ function buildWealthReading(calculatedState: CalculatedStateValue): string | nul
  */
 const WEALTH_SUBTOPICS = {
   fortune: "ทายโชคลาภ (ดิถี → ธาตุถ่ายเท → ธาตุโชคลาภ)",
-  caution: "สิ่งพึงระวัง (ผั่วไฉ่โข่ว / กึ่งผั่วไฉ่โข่ว)",
-  advice: "ข้อเสนอแนะ (เพิ่มเงินเก็บ ลดรายจ่าย)",
+  caution: "สิ่งพึงระวัง",
+  advice: "ข้อเสนอแนะ",
 } as const;
 
 /**
@@ -2257,7 +2257,7 @@ export const TIMING_TEMPLATE_TH: Record<string, string> = {
   yearlyLead: "พยากรณ์ปีจร (เลี่ยงนี้ / liu nian) รายปีในกรอบ 20 ปีข้างหน้า — ดูบทบาทธาตุของแต่ละปีเทียบดิถีและสภาวะ 12 เชี่ยงแซ แล้วรวมปีที่คุณภาพใกล้กันเป็นช่วงเพื่อให้เห็นจังหวะชัด",
   yearLine: "- อายุ {ช่วงอายุ} ปี (พ.ศ. {พศ} / ค.ศ. {คศ}, {บทบาท}{เชี่ยงแซ}): {คำตัดสิน}",
   clashMonth: "เดือนนักษัตร{เดือน} ของทุกปี เป็นจังหวะปะทะ (ชง) กับหลักวัน ควรระมัดระวังการเงินและการตัดสินใจในช่วงนี้",
-  cycleLead: "วิเคราะห์จังหวะชีวิตตั้งแต่วัยจรแรกจนถึงบั้นปลาย โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี",
+  cycleLead: "วิเคราะห์จังหวะชีวิตตั้งแต่วัยจรแรกจนถึงบั้นปลาย โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี · เกรดแต่ละช่วง: (3) ยุคทอง (รุกเต็มที่) · (2) โอกาสมาพร้อมภาระ (รุกแต่ต้องหาคนช่วย) · (1) ช่วงทั่วไป · (0) เฝ้าระวัง (ตั้งรับ)",
   cycleLine: "อายุ {ช่วงอายุ}{ป้าย} ({สัญลักษณ์} — {เส้นความสัมพันธ์}): {ดาว}",
   liuNianLine: "ปีจรปัจจุบัน ({ก้านกิ่ง} ธาตุ{ธาตุ} เป็น{บทบาท}{เชี่ยงแซ}): {ดาว}",
   timingHeader: "จังหวะ ณ ปัจจุบัน:\n{รายการ}",
@@ -2387,21 +2387,22 @@ function buildDaYunCharacterBreakdown(calculatedState: CalculatedStateValue): st
     : "";
 }
 
-// แปลงเกรดวัยจร ([ยุคทอง]/[โอกาสมาพร้อมภาระ]/[เฝ้าระวัง]/[จังหวะดี]) เป็นไอคอนดาว 4 ระดับ
-// (ตามคำกำชับซินแซ): ⭐⭐⭐ ยุคทอง · ⭐⭐ โอกาสมาพร้อมภาระ/จังหวะดี · ⭐ เฝ้าระวัง · ◇ ช่วงทั่วไป
-const LUCK_GRADE_STARS: Record<string, string> = {
-  "ยุคทอง": "⭐⭐⭐",
-  "โอกาสมาพร้อมภาระ": "⭐⭐",
-  "จังหวะดี": "⭐⭐",
-  "เฝ้าระวัง": "⭐",
+// แปลงเกรดวัยจร ([ยุคทอง]/[โอกาสมาพร้อมภาระ]/[เฝ้าระวัง]/[จังหวะดี]) เป็นเกรดตัวเลข 4 ระดับ
+// (2026-08-05 ซินแสสั่งกลับมาใช้เกรด (3)/(2)/(1)/(0) แทนไอคอนดาว เพราะดาวไม่แสดงผลตอน save PDF)
+// (3) ยุคทอง · (2) โอกาสมาพร้อมภาระ/จังหวะดี · (1) ช่วงทั่วไป (ไม่มีป้าย) · (0) เฝ้าระวัง
+const LUCK_GRADE_SCORE: Record<string, number> = {
+  "ยุคทอง": 3,
+  "โอกาสมาพร้อมภาระ": 2,
+  "จังหวะดี": 2,
+  "เฝ้าระวัง": 0,
 };
-function luckGradeToStars(verdict: string): string {
+function luckGradeLabel(verdict: string): string {
   const matched = verdict.match(/^\[([^\]]+)\]\s*/);
-  if (matched && LUCK_GRADE_STARS[matched[1]]) {
-    return `${LUCK_GRADE_STARS[matched[1]]} ${verdict.slice(matched[0].length)}`;
+  if (matched && LUCK_GRADE_SCORE[matched[1]] !== undefined) {
+    return `(${LUCK_GRADE_SCORE[matched[1]]}) ${matched[1]} — ${verdict.slice(matched[0].length)}`;
   }
   // ไม่มี tag = ช่วงทั่วไป/ทุ่มแรงไม่เป็นชิ้นเป็นอัน
-  return `◇ ${verdict}`;
+  return `(1) ช่วงทั่วไป — ${verdict}`;
 }
 
 // ราศีล่าง → ชื่อเดือนนักษัตร + เดือนสากลโดยประมาณ (ใช้เตือน "เดือนชง" ประจำปี)
@@ -2435,7 +2436,7 @@ function buildCurrentTimingLines(calculatedState: CalculatedStateValue): string[
         "ธาตุ": elementLabel(current.element),
         "บทบาท": RELATION_ROLE_SHORT[role],
         "เชี่ยงแซ": current.qi ? ` → ${current.qi}` : "",
-        "ดาว": luckGradeToStars(verdict),
+        "ดาว": luckGradeLabel(verdict),
       }, "currentAgeLine"),
     );
   }
@@ -2485,7 +2486,7 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
       "ป้าย": tag,
       "สัญลักษณ์": row.symbol,
       "เส้นความสัมพันธ์": row.relationLine,
-      "ดาว": luckGradeToStars(row.deepNote),
+      "ดาว": luckGradeLabel(row.deepNote),
     }, "cycleLine");
   });
 
@@ -2505,7 +2506,7 @@ function buildLuckCycleReading(calculatedState: CalculatedStateValue): string | 
       "ธาตุ": elementLabel(lnElement),
       "บทบาท": lnRole,
       "เชี่ยงแซ": lnQi ? ` → ${lnQi}` : "",
-      "ดาว": luckGradeToStars(lnVerdict),
+      "ดาว": luckGradeLabel(lnVerdict),
     }, "liuNianLine");
   }
 
@@ -3258,7 +3259,7 @@ export const MISC_TEMPLATE_TH: Record<string, string> = {
   relHeng: "การเฮ้ง (刑) {กิ่ง}: {เนื้อหา}",
   relSpousePo: "การผั่ว (破) ที่เสาวัน (เรือนคู่ครอง) {ก้านกิ่ง}: {เนื้อหา} — สะท้อนปมที่ต้องระวังในชีวิตคู่",
   // ── บท 12 วัยจร (ฉบับกล่อง) ──
-  tpBoxLead: "วิเคราะห์จังหวะชีวิตตั้งแต่วัยจรแรกจนถึงบั้นปลาย โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี",
+  tpBoxLead: "วิเคราะห์จังหวะชีวิตตั้งแต่วัยจรแรกจนถึงบั้นปลาย โดยดูบทบาทธาตุของวัยจรควบคู่สภาวะ 12 เชี่ยงแซเทียบดิถี · เกรดแต่ละช่วง: (3) ยุคทอง (รุกเต็มที่) · (2) โอกาสมาพร้อมภาระ (รุกแต่ต้องหาคนช่วย) · (1) ช่วงทั่วไป · (0) เฝ้าระวัง (ตั้งรับ)",
   tpBoxAgeLine: "อายุ {ช่วงอายุ}{ป้าย} ({สัญลักษณ์} — {ปฏิกิริยา}): {ดาว}",
   // ── ภาพดิถี (เกริ่นบทพื้นฐาน) ──
   imageryBase: "ดิถีประจำตัวของคุณคือ {ภาพ} ({ก้าน} ธาตุ{ธาตุ}พลัง{ขั้ว})",
@@ -3835,7 +3836,7 @@ function buildDeitiesBoxes(calculatedState: CalculatedStateValue): string | null
   const box4 = readingBox("ทำบุญเสริมดวง", meritSubs);
 
   // กล่องใหญ่ 5: ข้อเสนอแนะ (ตามความเห็นซินแส)
-  const box5 = readingBox("ข้อเสนอแนะ (ตามความเห็นซินแส)", [
+  const box5 = readingBox("ข้อเสนอแนะ", [
     buildChapterAdvice(calculatedState, "guardian_deities"),
   ]);
 
@@ -3949,9 +3950,9 @@ const CAREER_SUBTOPICS = {
   basis: "ภาพรวมดิถีกับแนวทางการงาน",
   do1: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 1",
   do2: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 2",
-  do3: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 3 (บางคนมี)",
+  do3: "อาชีพ/ธุรกิจ ที่ควรทำ อันดับ 3",
   avoid1: "อาชีพ/ธุรกิจ ที่ไม่ควรทำ อันดับ 1",
-  avoid2: "อาชีพ/ธุรกิจ ที่ไม่ควรทำ อันดับ 2 (บางคนมี)",
+  avoid2: "อาชีพ/ธุรกิจ ที่ไม่ควรทำ อันดับ 2",
 } as const;
 
 /** เหตุผลว่าทำไมอาชีพสายธาตุนี้เป็นคุณกับดวง (อิงบทบาทธาตุเทียบดิถี) */
@@ -4936,20 +4937,20 @@ function buildBoxesFromBody(
 /** spec รายบท (หัวข้อย่อยตาม docx) สำหรับบทที่จัดกล่องจาก prose เดิม */
 const TOPIC_BOX_SPECS: Record<string, TopicBoxSpec> = {
   talent: {
-    main: "พรสวรรค์จากดาวถ่ายเท (ดิถี → การกระทำ → ผลลัพธ์)",
+    main: "พรสวรรค์",
     rules: [{ title: "วาทศิลป์/การสื่อสาร", match: /^วาทศิลป์\/การสื่อสาร/ }],
-    adviceTitle: "ข้อเสนอแนะ (พรสวรรค์นำไปใช้ในอาชีพ/ธุรกิจที่ควรทำ)",
+    adviceTitle: "ข้อเสนอแนะ",
   },
   family: {
     main: "ภาพรวมครอบครัวและวงศาคณาญาติ",
     rules: [
-      { title: "ลักษณะหลักปี (ปู่ย่าตายาย บรรพบุรุษ)", match: /^เสาปี / },
-      { title: "ลักษณะหลักเดือน (ครอบครัวพ่อแม่ที่ให้กำเนิด)", match: /^เสาเดือน / },
-      { title: "ลักษณะพ่อ (ราศีบนหลักเดือน)", match: /^พ่อ \(/ },
-      { title: "ลักษณะแม่ (ราศีล่างหลักเดือน)", match: /^แม่ \(/ },
+      { title: "ปู่ย่าตายาย บรรพบุรุษ", match: /^เสาปี / },
+      { title: "ครอบครัวพ่อแม่ที่ให้กำเนิด", match: /^เสาเดือน / },
+      { title: "ลักษณะพ่อ", match: /^พ่อ \(/ },
+      { title: "ลักษณะแม่", match: /^แม่ \(/ },
       { title: "สิ่งพึงระวัง", match: /^การชง \(冲\)/ },
     ],
-    adviceTitle: "ข้อเสนอแนะ (จิตวิทยา พฤติกรรมแก้ไข)",
+    adviceTitle: "ข้อเสนอแนะ",
   },
   love_partner: {
     main: "ลักษณะชีวิตคู่ตามพื้นดวง",
@@ -4958,7 +4959,7 @@ const TOPIC_BOX_SPECS: Record<string, TopicBoxSpec> = {
       { title: "มีคู่ครองที่เหมาะสมหรือไม่", match: /ปรากฏหลายตำแหน่งในดวง/ },
       { title: "สิ่งที่ควรระวัง", match: /^การผั่ว \(破\)|^การชง \(冲\)/ },
     ],
-    adviceTitle: "ข้อเสนอแนะ (จิตวิทยา พฤติกรรมแก้ไข)",
+    adviceTitle: "ข้อเสนอแนะ",
   },
   partnership: {
     main: "ลักษณะหุ้นส่วนตามพื้นดวง",
@@ -4983,7 +4984,7 @@ const TOPIC_BOX_SPECS: Record<string, TopicBoxSpec> = {
     ],
   },
   health: {
-    main: "โรคจากปฏิกิริยาในพื้นดวง/วัยจร (เจ๊าะ/ผั่ว/ชง และตำแหน่งสภาวะตก)",
+    main: "โรคในพื้นดวง / วัยจร",
     rules: [
       { title: "โรคจากธาตุที่น้อยเกินไป/ธาตุที่มากเกินไป", match: /^ธาตุ.+(อ่อนแอ|มากเกินไป):/ },
       {
@@ -5004,7 +5005,7 @@ const TOPIC_BOX_SPECS: Record<string, TopicBoxSpec> = {
       { title: "สัตว์มงคล", match: /^สัตว์มงคล/ },
       { title: "ทิศมงคล", match: /^ทิศมงคล:/ },
     ],
-    adviceTitle: "ข้อเสนอแนะ (ตามความเห็นซินแส)",
+    adviceTitle: "ข้อเสนอแนะ",
   },
   // หมายเหตุ: guardian_deities ใช้ buildDeitiesBoxes (nested box แยกองค์เทพ) ไม่ผ่าน spec นี้
 };
@@ -5068,7 +5069,7 @@ function buildTurningPointsBoxes(calculatedState: CalculatedStateValue): string 
   const lead = fillTemplate("MISC_TEMPLATE_TH", MISC_TEMPLATE_TH, {}, "tpBoxLead");
   const lines = rows.map((row) => {
     const tag = current && row.ageRange === current.ageRange ? " ◆ ช่วงปัจจุบัน" : "";
-    return fillTemplate("MISC_TEMPLATE_TH", MISC_TEMPLATE_TH, { "ช่วงอายุ": row.ageRange, "ป้าย": tag, "สัญลักษณ์": row.symbol, "ปฏิกิริยา": row.relationLine, "ดาว": luckGradeToStars(row.deepNote) }, "tpBoxAgeLine");
+    return fillTemplate("MISC_TEMPLATE_TH", MISC_TEMPLATE_TH, { "ช่วงอายุ": row.ageRange, "ป้าย": tag, "สัญลักษณ์": row.symbol, "ปฏิกิริยา": row.relationLine, "ดาว": luckGradeLabel(row.deepNote) }, "tpBoxAgeLine");
   });
 
   // ปีจรปัจจุบัน (liu nian) + จังหวะปัจจุบัน + พยากรณ์รายปี — โครงเดียวกับ buildLuckCycleReading
@@ -5087,7 +5088,7 @@ function buildTurningPointsBoxes(calculatedState: CalculatedStateValue): string 
       "ธาตุ": elementLabel(lnElement),
       "บทบาท": lnRole,
       "เชี่ยงแซ": lnQi ? ` → ${lnQi}` : "",
-      "ดาว": luckGradeToStars(lnVerdict),
+      "ดาว": luckGradeLabel(lnVerdict),
     }, "liuNianLine");
   }
   const timing = buildCurrentTimingLines(calculatedState);

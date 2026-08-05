@@ -252,13 +252,12 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     [{ kind: "phua" }],
     [],
   ],
-  // 3 bullets: [วิธี/ทักษะได้โชคลาภ (สไตล์เรียน+วุฒิ)] [ดิถี→ถ่ายเท→เชี่ยงแซดี] [เรียนตามอาชีพถูกดวง (คลัง 5 ธาตุ)]
+  // 2 bullets: [วิธี/ทักษะได้โชคลาภ = สไตล์เรียน+วุฒิ+ดิถี→ถ่ายเท→เชี่ยงแซดี] [เรียนตามอาชีพถูกดวง (คลัง 5 ธาตุ)]
+  // (2026-08-05 ซินแสสั่งยุบกล่อง "อ้างอิงบล็อค ดิถี → ถ่ายเท → ได้เชี่ยงแซดี" รวมกับกล่องแรก — ชื่อหัวข้อซ้ำกัน)
   education: [
     [
       { kind: "state", group: "study_style", pillar: "day" },
       { kind: "state", group: "edu_level", pillar: "day" },
-    ],
-    [
       { kind: "dithiTransfer", group: "dithi_transfer" },
       { kind: "dithiTransfer", group: "dithi_transfer_study" },
     ],

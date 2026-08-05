@@ -194,14 +194,14 @@ describe("newdata-lookup: matchers (set-membership)", () => {
 });
 
 describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bullet)", () => {
-  test("education → box=3: box0=สไตล์เรียน+วุฒิ, box1=ดิถีถ่ายเท(ว่าง), box2=อาชีพถูกดวง", () => {
+  test("education → box=2: box0=สไตล์เรียน+วุฒิ+ดิถีถ่ายเท, box1=อาชีพถูกดวง", () => {
     const r = resolveChapterBoxes("education", FACTS, MAP);
     expect(r.hasContent).toBe(true);
-    expect(r.boxes).toHaveLength(3); // 3 bullets
+    // 2 bullets (2026-08-05 ซินแสสั่งยุบกล่อง "ดิถี→ถ่ายเท→เชี่ยงแซดี" รวมกับกล่องแรก)
+    expect(r.boxes).toHaveLength(2);
     expect(r.boxes[0].body).toContain("การเรียนซ้ำชั้น เรียนรู้เรื่องลึกลับ"); // study_style
     expect(r.boxes[0].body).toContain("การศึกษามักล่าช้า เรียนซ้ำชั้น"); // + edu_level (รวมในข้อ 1)
-    expect(r.boxes[1].body).toBe(""); // ดิถี→ถ่ายเท→เชี่ยงแซ — MAP ไม่มี dithi_transfer = ว่าง
-    expect(r.boxes[2].body).toContain("วิศวกรรมเครื่องกล"); // เรียนตามอาชีพถูกดวง = study_by_element ธาตุทอง
+    expect(r.boxes[1].body).toContain("วิศวกรรมเครื่องกล"); // เรียนตามอาชีพถูกดวง = study_by_element ธาตุทอง
   });
 
   test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
@@ -212,8 +212,8 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
     expect(r.boxes[4].body).toBe(""); // นิสัยด้านมืดตามธาตุ — MAP ว่าง
     expect(r.boxes[5].body).toBe(""); // สิ่งพึงระวัง (จื่อเฮ้ง) — ดวงนี้ไม่มี
-    // หัว box = ข้อความ bullet เต็มจาก outline
-    expect(r.boxes[1].title).toContain("12 นักษัตร");
+    // หัว box = ข้อความ bullet เต็มจาก outline (2026-08-05 ซินแสสั่งตัดวงเล็บอ้างอิงศาสตร์ออก)
+    expect(r.boxes[1].title).toBe("ทายนิสัยจากราศีล่างหลักวัน");
   });
 
   test("love_partner → box=5, ภาคีติด(box0) ชง/ไห่ ไม่ติด(box3 ว่าง)", () => {

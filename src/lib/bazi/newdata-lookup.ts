@@ -734,6 +734,20 @@ function luckStarsOf(map: NewdataMap, group: string, qi: string | null | undefin
   return (map[group]?.[qi]?.text ?? "").trim();
 }
 
+/** นับจำนวน ⭐ ในข้อความของตาราง luck_stars */
+function starCount(stars: string): number {
+  return [...stars].filter((c) => c === "⭐").length;
+}
+
+/**
+ * ⭐ → ข้อความ "N ดาว" (2026-08-05 ซินแสแจ้งว่าไอคอนดาวไม่แสดงผลตอน save เป็น PDF
+ * จึงพิมพ์เป็นตัวหนังสือแทน — ระดับดาว 1-5 ตามตารางเดิมของซินแสไม่เปลี่ยน)
+ */
+function starsToText(stars: string): string {
+  const n = starCount(stars);
+  return n ? `${n} ดาว` : "";
+}
+
 export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   const out: NewdataBlock[] = [];
@@ -746,8 +760,8 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
       const role = dayEl && symEl ? RELATION_ROLE_TH[elementRelationKey(dayEl, symEl)] : null;
       const current = ph.isCurrent ? " ช่วงปัจจุบัน" : "";
       const roleTxt = role ? ` ${role} →` : " →";
-      const stars = luckStarsOf(map, "luck_stars", ph.qi);
-      const starTxt = stars ? ` ${stars}` : "";
+      const stars = starsToText(luckStarsOf(map, "luck_stars", ph.qi));
+      const starTxt = stars ? ` · ${stars}` : "";
       const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi})${starTxt}`;
       out.push({ group: "shengxiang", itemKey: ph.qi, label, text: value.text });
     }
@@ -768,8 +782,8 @@ export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts
       const stars = luckStarsOf(map, group, ph.qi);
       if (!stars) continue;
       const current = ph.isCurrent ? " (ช่วงปัจจุบัน)" : "";
-      const line = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} — ${ph.symbol} เชี่ยงแซ ${ph.qi} ${stars}`;
-      const count = [...stars].filter((c) => c === "⭐").length;
+      const line = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} — ${ph.symbol} เชี่ยงแซ ${ph.qi} · ${starsToText(stars)}`;
+      const count = starCount(stars);
       if (count >= 5) good.push(line);
       else if (count === 1) watch.push(line);
     }
@@ -779,7 +793,7 @@ export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts
     out.push({
       group,
       itemKey: "ช่วงวัยที่ดี",
-      label: "ช่วงวัยที่ดี (⭐⭐⭐⭐⭐)",
+      label: "ช่วงวัยที่ดี (5 ดาว)",
       text: good.join("\n"),
     });
   }
@@ -787,7 +801,7 @@ export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts
     out.push({
       group,
       itemKey: "ช่วงวัยที่ควรระวัง",
-      label: "ช่วงวัยที่ควรระมัดระวัง (⭐)",
+      label: "ช่วงวัยที่ควรระมัดระวัง (1 ดาว)",
       text: watch.join("\n"),
     });
   }
