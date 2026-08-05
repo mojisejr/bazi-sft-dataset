@@ -740,17 +740,34 @@ function starCount(stars: string): number {
 }
 
 /**
- * ⭐ → ข้อความ "N ดาว" (2026-08-05 ซินแสแจ้งว่าไอคอนดาวไม่แสดงผลตอน save เป็น PDF
- * จึงพิมพ์เป็นตัวหนังสือแทน — ระดับดาว 1-5 ตามตารางเดิมของซินแสไม่เปลี่ยน)
+ * เกรดวัยจร (2026-08-05 ซินแสสั่งเลิกใช้ไอคอนดาว — ไม่แสดงผลตอน save PDF —
+ * และให้ยุบสเกลดาว 1-5 ของตาราง luck_stars เป็น 4 เกรดตามภาพที่ส่งมา)
+ *   5 ดาว (ลิ่มกัว/ตี้อ๋วง) → (3) ยุคทอง
+ *   4 ดาว (กวงตั่ว/เชี่ยงแซ) → (2) โอกาสมาพร้อมภาระ
+ *   3-2 ดาว (ทอ/เอี้ยง/หมอ/หมกยก/แป่/ซวย) → (1) ช่วงทั่วไป
+ *   1 ดาว (ซี่/เจ๊าะ) → (0) เฝ้าระวัง
  */
-function starsToText(stars: string): string {
-  const n = starCount(stars);
-  return n ? `${n} ดาว` : "";
+const LUCK_STAR_TO_GRADE: Record<number, string> = {
+  5: "(3) ยุคทอง",
+  4: "(2) โอกาสมาพร้อมภาระ",
+  3: "(1) ช่วงทั่วไป",
+  2: "(1) ช่วงทั่วไป",
+  1: "(0) เฝ้าระวัง",
+};
+
+/** คำอธิบายเกรดหัวกล่อง (แสดง 1 ครั้งต้นบท) */
+export const LUCK_GRADE_LEGEND =
+  "เกรดแต่ละช่วง: (3) ยุคทอง (รุกเต็มที่) · (2) โอกาสมาพร้อมภาระ (รุกแต่ต้องหาคนช่วย) · (1) ช่วงทั่วไป · (0) เฝ้าระวัง (ตั้งรับ)";
+
+/** ⭐ ในตาราง luck_stars → ป้ายเกรด "(N) ชื่อเกรด" (คืน "" ถ้าไม่มีดาว) */
+function starsToGrade(stars: string): string {
+  return LUCK_STAR_TO_GRADE[starCount(stars)] ?? "";
 }
 
 export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   const out: NewdataBlock[] = [];
+  let legendPushed = false;
   for (const d of facts.daYun) {
     for (const ph of d.phases) {
       if (!ph.qi) continue;
@@ -760,9 +777,14 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
       const role = dayEl && symEl ? RELATION_ROLE_TH[elementRelationKey(dayEl, symEl)] : null;
       const current = ph.isCurrent ? " ช่วงปัจจุบัน" : "";
       const roleTxt = role ? ` ${role} →` : " →";
-      const stars = starsToText(luckStarsOf(map, "luck_stars", ph.qi));
-      const starTxt = stars ? ` · ${stars}` : "";
-      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi})${starTxt}`;
+      const grade = starsToGrade(luckStarsOf(map, "luck_stars", ph.qi));
+      const gradeTxt = grade ? ` · ${grade}` : "";
+      // เกริ่นเกรด 1 ครั้งบนสุดของกล่อง (เฉพาะเมื่อดวงนี้มีเกรดโผล่จริง)
+      if (grade && !legendPushed) {
+        out.unshift({ group: "shengxiang", itemKey: "legend", label: "", text: LUCK_GRADE_LEGEND });
+        legendPushed = true;
+      }
+      const label = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} (${ph.symbol}${roleTxt} ${ph.qi})${gradeTxt}`;
       out.push({ group: "shengxiang", itemKey: ph.qi, label, text: value.text });
     }
   }
@@ -770,8 +792,8 @@ export function matchDaYun(map: NewdataMap, facts: ChartFacts): NewdataBlock[] {
 }
 
 /**
- * บท 12 · ช่วงวัยที่ดี / ช่วงวัยที่ควรระวัง — ตามระบบดาวใหม่ (group luck_stars)
- * ซินแสสั่ง: ช่วงวัยที่ดี = วัยจร ⭐⭐⭐⭐⭐ · ช่วงที่ควรระวัง = วัยจร ⭐
+ * บท 12 · ช่วงวัยที่ดี / ช่วงวัยที่ควรระวัง — ตามระบบเกรด (group luck_stars)
+ * ซินแสสั่ง: ช่วงวัยที่ดี = วัยจรเกรดสูงสุด (3) ยุคทอง · ช่วงที่ควรระวัง = เกรดต่ำสุด (0) เฝ้าระวัง
  * (ยังไม่มีข้อมูลในกลุ่ม → คืน [] กล่องว่างรอเติม เหมือนกลุ่มอื่น)
  */
 export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts): NewdataBlock[] {
@@ -782,7 +804,7 @@ export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts
       const stars = luckStarsOf(map, group, ph.qi);
       if (!stars) continue;
       const current = ph.isCurrent ? " (ช่วงปัจจุบัน)" : "";
-      const line = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} — ${ph.symbol} เชี่ยงแซ ${ph.qi} · ${starsToText(stars)}`;
+      const line = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} — ${ph.symbol} เชี่ยงแซ ${ph.qi} · ${starsToGrade(stars)}`;
       const count = starCount(stars);
       if (count >= 5) good.push(line);
       else if (count === 1) watch.push(line);
@@ -793,7 +815,7 @@ export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts
     out.push({
       group,
       itemKey: "ช่วงวัยที่ดี",
-      label: "ช่วงวัยที่ดี (5 ดาว)",
+      label: "ช่วงวัยที่ดี (เกรด 3 · ยุคทอง)",
       text: good.join("\n"),
     });
   }
@@ -801,7 +823,7 @@ export function matchLuckStars(map: NewdataMap, group: string, facts: ChartFacts
     out.push({
       group,
       itemKey: "ช่วงวัยที่ควรระวัง",
-      label: "ช่วงวัยที่ควรระมัดระวัง (1 ดาว)",
+      label: "ช่วงวัยที่ควรระมัดระวัง (เกรด 0 · เฝ้าระวัง)",
       text: watch.join("\n"),
     });
   }
