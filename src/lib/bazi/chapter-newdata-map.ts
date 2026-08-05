@@ -34,6 +34,7 @@ import {
   matchHiddenTransfer,
   matchLoveBase,
   matchLoveChance,
+  matchLoveTiming,
   matchLuckStars,
   matchMerit,
   matchSpouseStar,
@@ -77,6 +78,7 @@ type Resolver =
   | { kind: "merit"; group: string }
   | { kind: "loveBase"; group: string }
   | { kind: "loveChance"; group: string }
+  | { kind: "loveTiming" }
   | { kind: "spouseStar"; group: string }
   | { kind: "elementRoleState"; group: string; role: "output" | "wealth" | "resource" }
   | { kind: "elementRoleGanzhi"; group: string; role: "output" | "wealth" | "resource" | "peer" }
@@ -212,7 +214,7 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
       { kind: "branchPairs", group: "combine_branch" },
     ],
     [{ kind: "spouseStar", group: "shengxiang" }],
-    [{ kind: "loveChance", group: "love_chance" }],
+    [{ kind: "loveChance", group: "love_chance" }, { kind: "loveTiming" }],
     [{ kind: "branchPairs", group: "clash" }, { kind: "branchPairs", group: "harm_hai" }],
     // ข้อเสนอแนะ = เนื้อ fix ทุกคน (7.ข้อเสนอแนะคู่ครอง.docx) + พัฒนานิสัยตามธาตุปรับดวง
     [
@@ -385,6 +387,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchLoveBase(map, r.group, facts);
     case "loveChance":
       return matchLoveChance(map, r.group, facts);
+    case "loveTiming":
+      return matchLoveTiming(facts);
     case "spouseStar":
       return matchSpouseStar(map, r.group, facts);
     case "elementRoleState":

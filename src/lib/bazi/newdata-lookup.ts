@@ -968,6 +968,74 @@ export function matchLoveChance(map: NewdataMap, group: string, facts: ChartFact
 }
 
 /**
+ * บท 7 · ช่วงวัยที่มีโอกาสเจอเนื้อคู่ (Marriage Timing) — ตาม Source5 §5
+ *
+ * §5.1 ธาตุที่ต้อง "รอ" ให้วัยจรมาถึง = ขึ้นกับ เพศ × กำลังดิถี:
+ *   แข็งไป (very-strong)        → ถ่ายเท (output)          · ทั้งชาย/หญิง
+ *   แข็ง/สมดุล (strong/balanced) → ชาย=ลาภ (wealth) · หญิง=สามี/พิฆาต (power)
+ *   อ่อน/อ่อนมาก (weak/very-weak) → คู่ธาตุ (same) หรือ ส่งเสริม (resource)
+ * §5.2 เกณฑ์คุณภาพ: ถ้าวัยจรช่วงนั้นตกเชี่ยงแซดี (เชี่ยงแซ/กวงตั่ว/ลิ่มกัว/ตี้อ๋วง/หมอ/ทอ/เอี้ยง)
+ *   = โอกาสมีคู่สูงเป็นพิเศษ (คัดช่วงเหล่านี้ขึ้นก่อน)
+ *
+ * คืน 1 block ต่อท้ายกล่อง "มีคู่ครองที่เหมาะสมหรือไม่ มาเมื่อไหร่" (ว่าง = ไม่มีข้อมูลวัยจร)
+ */
+const LOVE_QUALITY_QI = new Set([
+  "เชี่ยงแซ", "กวงตั่ว", "ลิ่มกัว", "ตี้อ๋วง", "หมอ", "ทอ", "เอี้ยง",
+]);
+
+export function matchLoveTiming(facts: ChartFacts): NewdataBlock[] {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl || !facts.daYun.length) return [];
+  const g = facts.gender === "female" ? "female" : "male";
+  const band = classifyOperatorStrengthScore(facts.strengthScore).id;
+
+  // ธาตุ(บทบาท)ที่ต้องรอ ตาม §5.1
+  let wantRoles: string[];
+  let wantLabel: string;
+  if (band === "very-strong") {
+    wantRoles = ["output"];
+    wantLabel = "ธาตุถ่ายเท";
+  } else if (band === "weak" || band === "very-weak") {
+    wantRoles = ["same", "resource"];
+    wantLabel = "ธาตุคู่ธาตุ/ส่งเสริม";
+  } else {
+    // strong / balanced
+    wantRoles = g === "female" ? ["power"] : ["wealth"];
+    wantLabel = g === "female" ? "ธาตุสามี (พิฆาตดิถี)" : "ธาตุลาภ";
+  }
+
+  const strong: string[] = [];
+  const normal: string[] = [];
+  for (const d of facts.daYun) {
+    for (const ph of d.phases) {
+      // ข้ามช่วงวัยเด็ก (จบก่อน 16) — ไม่ใช่วัยที่ "เจอเนื้อคู่/เริ่มความสัมพันธ์"
+      if (ph.endAge < 16) continue;
+      const symEl = elementOfSymbol(ph.symbol, ph.source);
+      if (!symEl || !wantRoles.includes(elementRelationKey(dayEl, symEl))) continue;
+      const current = ph.isCurrent ? " (ช่วงปัจจุบัน)" : "";
+      const qi = ph.qi ?? "";
+      const line = `อายุ ${ph.startAge}-${ph.endAge} ปี${current} — ${ph.symbol}${qi ? ` เชี่ยงแซ ${qi}` : ""}`;
+      if (qi && LOVE_QUALITY_QI.has(qi)) strong.push(`${line} · โอกาสสูง`);
+      else normal.push(line);
+    }
+  }
+  if (!strong.length && !normal.length) return [];
+
+  const parts: string[] = [
+    `ดวงนี้ต้องรอ "${wantLabel}" เข้าวัยจร จึงเป็นจังหวะที่มีโอกาสเจอเนื้อคู่/เริ่มความสัมพันธ์`,
+  ];
+  if (strong.length) parts.push(`ช่วงวัยที่โอกาสสูงที่สุด (วัยจรตกเชี่ยงแซดีด้วย):\n${strong.join("\n")}`);
+  if (normal.length) parts.push(`ช่วงวัยที่มีโอกาสรองลงมา:\n${normal.join("\n")}`);
+
+  return [{
+    group: "love_timing",
+    itemKey: "ช่วงวัยเจอเนื้อคู่",
+    label: "ช่วงวัยที่มีโอกาสเจอเนื้อคู่",
+    text: parts.join("\n\n"),
+  }];
+}
+
+/**
  * สถานะ 12 เชี่ยงแซ ของเสาที่ระบุ → lookup ในกลุ่ม state (shengxiang/edu_level/study_style)
  * tier "lower" = ราศีล่าง (ค่าเริ่มต้น) · "upper" = ราศีบน (ก้านเสา) — ใช้บท 6 พ่อ = ราศีบนหลักเดือน
  */

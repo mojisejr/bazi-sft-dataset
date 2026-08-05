@@ -15,6 +15,7 @@ import {
   matchHealthZoah,
   matchLuckyAnimal,
   matchFortune,
+  matchLoveTiming,
   matchSelfPunish,
   matchStemPairs,
   type ChartFacts,
@@ -321,6 +322,55 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
     const map: NewdataMap = { ...MAP, love_chance: { "male|weak": { text: "x", label: "y" } } };
     const r = resolveChapterBoxes("love_partner", FACTS, map); // FACTS ไม่มี gender
     expect(r.boxes[2].body).toBe("");
+  });
+
+  test("matchLoveTiming (ชาย×อ่อน 庚) → รอคู่ธาตุ/ส่งเสริม · ตัดวัยเด็ก <16 · คัดเชี่ยงแซดีขึ้นก่อน", () => {
+    // Source5 §5: ชายอ่อน → รอ same(ทอง)/resource(ดิน) · §5.2 qi ดี = โอกาสสูง
+    const facts: ChartFacts = {
+      ...FACTS,
+      gender: "male",
+      daYun: [
+        {
+          startAge: 6, endAge: 45, stem: "乙", branch: "卯", isCurrent: false,
+          upperState: null, lowerState: null,
+          phases: [
+            { source: "branch", symbol: "申", startAge: 6, endAge: 10, qi: "ลิ่มกัว", isCurrent: false }, // ทอง(same) qi ดี แต่วัยเด็ก → ตัด
+            { source: "branch", symbol: "酉", startAge: 26, endAge: 30, qi: "ตี้อ๋วง", isCurrent: false }, // ทอง(same) qi ดี → โอกาสสูง
+            { source: "stem", symbol: "戊", startAge: 31, endAge: 35, qi: "ซี่", isCurrent: false }, // ดิน(resource) qi ไม่ดี → รองลงมา
+            { source: "branch", symbol: "午", startAge: 36, endAge: 40, qi: "เชี่ยงแซ", isCurrent: false }, // ไฟ(power) → ไม่ใช่ธาตุที่รอ ตัดทิ้ง
+          ],
+        },
+      ],
+    };
+    const [block] = matchLoveTiming(facts);
+    expect(block.label).toBe("ช่วงวัยที่มีโอกาสเจอเนื้อคู่");
+    expect(block.text).toContain("ธาตุคู่ธาตุ/ส่งเสริม");
+    expect(block.text).toContain("อายุ 26-30 ปี"); // โอกาสสูง (酉 ตี้อ๋วง)
+    expect(block.text).toContain("อายุ 31-35 ปี"); // รองลงมา (戊 ซี่)
+    expect(block.text).not.toContain("อายุ 6-10"); // ตัดวัยเด็ก
+    expect(block.text).not.toContain("อายุ 36-40"); // ไฟ = power ไม่ใช่ธาตุที่รอ
+  });
+
+  test("matchLoveTiming (หญิง×สมดุล 庚) → รอธาตุสามี(พิฆาต=ไฟ)", () => {
+    const facts: ChartFacts = {
+      ...FACTS,
+      gender: "female",
+      strengthScore: 5, // สมดุล/แข็ง
+      daYun: [
+        {
+          startAge: 20, endAge: 39, stem: "丁", branch: "巳", isCurrent: false,
+          upperState: null, lowerState: null,
+          phases: [
+            { source: "branch", symbol: "午", startAge: 20, endAge: 24, qi: "ตี้อ๋วง", isCurrent: false }, // ไฟ(power) qi ดี → โอกาสสูง
+            { source: "branch", symbol: "申", startAge: 25, endAge: 29, qi: "เชี่ยงแซ", isCurrent: false }, // ทอง(same) → ไม่ใช่ธาตุที่รอ (หญิงสมดุลรอ power)
+          ],
+        },
+      ],
+    };
+    const [block] = matchLoveTiming(facts);
+    expect(block.text).toContain("ธาตุสามี (พิฆาตดิถี)");
+    expect(block.text).toContain("อายุ 20-24 ปี");
+    expect(block.text).not.toContain("อายุ 25-29"); // ทอง = same ไม่ใช่ธาตุที่รอ
   });
 
   test("guardian_deities box ทำบุญ → ดิถีทองอ่อน เสริมธาตุ ดิน+ทอง (merit band)", () => {
