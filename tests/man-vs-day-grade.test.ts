@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { gradeForPercent } from "@/lib/bazi/pair-matching";
-import { gradeOf } from "@/app/api/bazi/man-vs-day/route";
+// B-6/R3: gradeOf ย้ายจาก route → lib (เทสต์ไม่ import จาก route module อีก = ไม่ลาก DB repo graph)
+import { enrichDay, enrichMonth, enrichYear, gradeOf } from "@/lib/bazi/day-grade";
 
 // Locks the grade that man-vs-day exposes. We do NOT own the table (rating-scale.json / gradeForPercent) —
 // these tests pin its OBSERVED behaviour so nobody can move the seam without a red test, and pin the ONE
@@ -56,5 +57,44 @@ describe("gradeOf — the route mapping this PR adds (E1)", () => {
   it("real value passes straight through the table: 49.16 → C+ · 40.83 → C-", () => {
     expect(gradeOf(49.16)).toBe("C+");
     expect(gradeOf(40.83)).toBe("C-");
+  });
+});
+
+// B-6/R1 — lock the 3-mode response shape. Before this, tests only pinned the table + gradeOf, so a
+// refactor that dropped the รายเดือน/รายปี mapping would still be all-green. These fixtures mirror the
+// builder output shape (overallPercent per day) and assert grade lands in every mode. If enrichMonth/
+// enrichYear stops adding grade, the matching test goes RED.
+describe("grade enrichment — 3 modes locked (B-6/R1)", () => {
+  const dayResult = { date: "2026-08-05", dayGanzhi: "辛亥", overallPercent: 40.83, verdict: "caution" };
+  const monthResult = {
+    year: 2026,
+    month: 8,
+    days: [
+      { date: "2026-08-01", overallPercent: 61.67 },
+      { date: "2026-08-02", overallPercent: 88.34 },
+      { date: "2026-08-05", overallPercent: null },
+    ],
+  };
+  const yearResult = { year: 2026, months: [monthResult, { year: 2026, month: 9, days: [{ date: "2026-09-01", overallPercent: 20 }] }] };
+
+  it("รายวัน — grade เติมระดับบนสุด, คีย์เดิมครบ", () => {
+    const e = enrichDay(dayResult);
+    expect(e.grade).toBe("C-");
+    expect(e.dayGanzhi).toBe("辛亥"); // คีย์เดิมไม่หาย
+    expect(e.verdict).toBe("caution");
+  });
+
+  it("รายเดือน — grade เติมทุกวันใน days[] (ลบ mapping นี้ = แดง)", () => {
+    const e = enrichMonth(monthResult);
+    expect(e.days.map((d) => d.grade)).toEqual(["B", "A", null]); // null overallPercent → grade null
+    expect(e.days.every((d) => "grade" in d)).toBe(true);
+    expect(e.year).toBe(2026); // คีย์เดิมครบ
+  });
+
+  it("รายปี — grade เติมทุกวันในทุกเดือน months[].days[] (ห้ามลืม — PDF ขาย)", () => {
+    const e = enrichYear(yearResult);
+    const allDays = e.months.flatMap((m) => m.days);
+    expect(allDays.every((d) => "grade" in d)).toBe(true);
+    expect(allDays.map((d) => d.grade)).toEqual(["B", "A", null, "D-"]); // 20 → D-
   });
 });
