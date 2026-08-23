@@ -11,6 +11,7 @@ import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { polishDivineReading } from "@/lib/bazi/divine-cards/reading-llm";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
+import { qiGate } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,8 @@ const PredictSchema = z
     question: z.string().trim().max(500).optional(),
     cardNos: z.array(z.number().int()).length(3).optional(),
     random: z.boolean().optional(),
+    /** ผูกระบบแต้ม Qi (ตัดโควตาต่อ user) — ไม่ส่งมา = ไม่ตัดโควตา (backward-compat) */
+    anonId: z.string().trim().min(1).max(128).optional(),
     apiKey: z.string().trim().min(1).optional(),
     model: z.string().trim().min(1).optional(),
     provider: z.enum(["gemini", "opencode", "anthropic"]).default("gemini"),
@@ -46,7 +49,11 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
-  const { mode, question, cardNos, random, apiKey, model, provider } = parsed.data;
+  const { mode, question, cardNos, random, anonId, apiKey, model, provider } = parsed.data;
+
+  // ตัดโควตาเปิดการ์ด (ฟรีรายวัน → credit ที่แลกด้วย Qi) เมื่อผูก anonId
+  const gated = await qiGate(anonId, "card");
+  if (gated) return gated;
 
   // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับให้ผู้ใช้กรอกคีย์) — มี guard กันยิงรัว/โควตา/เพดานต้นทุน
   const usedOwnKey = Boolean(apiKey);

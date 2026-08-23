@@ -6,6 +6,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziReferralCode, baziReferralRedemption } from "@/db/schema";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
+import { earnQi } from "@/lib/bazi/qi/engine";
 
 export const runtime = "nodejs";
 
@@ -135,6 +136,9 @@ export async function POST(request: Request) {
         reason: "referral:referee",
         ref: body.code,
       }),
+      // แต้ม Qi ตามระบบกิจกรรม: ผู้ชวนได้ referral_free +50 Qi ต่อผู้ถูกชวน 1 คน
+      // (ref = anonId ผู้ถูกชวน → per_referral idempotent, สอดคล้อง unique redemption)
+      earnQi(owner[0].anonId, "referral_free", body.anonId),
     ]);
 
     return Response.json(

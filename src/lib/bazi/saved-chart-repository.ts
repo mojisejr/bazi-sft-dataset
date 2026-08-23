@@ -3,7 +3,7 @@
  * เก็บ birth input (RawInputValue) เพื่อเรียกกลับมาดูปฏิทินส่วนตัว/สั่ง PDF ซ้ำ
  * โดยไม่ต้องป้อนวันเกิดใหม่. มิเรอร์แพตเทิร์น newdata-reading-repository.
  */
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import { baziSavedChart, type SelectBaziSavedChart } from "@/db/schema";
@@ -22,20 +22,25 @@ export type SaveChartInput = {
   label: string;
   rawInput: RawInputValue;
   dayMaster?: string | null;
+  /** เจ้าของดวง (ระบบแต้ม Qi/slot) — ไม่ส่ง = ดวงกลาง (พฤติกรรมเดิม) */
+  ownerId?: string | null;
 };
 
 export type SavedChartRepository = {
-  list: () => Promise<SavedChartSummary[]>;
+  /** ownerId? = กรองเฉพาะดวงของเจ้าของ (ไม่ส่ง = ทั้งหมด แบบเดิม) */
+  list: (ownerId?: string) => Promise<SavedChartSummary[]>;
   /** รายการเต็ม (รวม rawInput) — ใช้ในโหมดจับคู่ที่ต้องคำนวณหลักวัน/เพศ. */
-  listFull: () => Promise<SavedChartRow[]>;
+  listFull: (ownerId?: string) => Promise<SavedChartRow[]>;
   get: (id: string) => Promise<SavedChartRow | null>;
   save: (input: SaveChartInput) => Promise<SavedChartRow>;
   remove: (id: string) => Promise<void>;
+  /** นับดวงของเจ้าของ (สำหรับเช็คเพดาน slot) */
+  countByOwner: (ownerId: string) => Promise<number>;
 };
 
 export function createDbSavedChartRepository(db = createDbClient()): SavedChartRepository {
   return {
-    async list() {
+    async list(ownerId?: string) {
       return db
         .select({
           id: baziSavedChart.id,
@@ -44,14 +49,16 @@ export function createDbSavedChartRepository(db = createDbClient()): SavedChartR
           updatedAt: baziSavedChart.updatedAt,
         })
         .from(baziSavedChart)
+        .where(ownerId ? eq(baziSavedChart.ownerId, ownerId) : undefined)
         .orderBy(desc(baziSavedChart.updatedAt))
         .limit(200);
     },
 
-    async listFull() {
+    async listFull(ownerId?: string) {
       return db
         .select()
         .from(baziSavedChart)
+        .where(ownerId ? eq(baziSavedChart.ownerId, ownerId) : undefined)
         .orderBy(desc(baziSavedChart.updatedAt))
         .limit(200);
     },
@@ -70,6 +77,7 @@ export function createDbSavedChartRepository(db = createDbClient()): SavedChartR
         label: input.label,
         rawInput: input.rawInput,
         dayMaster: input.dayMaster ?? null,
+        ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
       };
       if (input.id) {
         const rows = await db
@@ -85,6 +93,14 @@ export function createDbSavedChartRepository(db = createDbClient()): SavedChartR
 
     async remove(id) {
       await db.delete(baziSavedChart).where(eq(baziSavedChart.id, id));
+    },
+
+    async countByOwner(ownerId) {
+      const rows = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(baziSavedChart)
+        .where(and(eq(baziSavedChart.ownerId, ownerId)));
+      return rows[0]?.n ?? 0;
     },
   };
 }

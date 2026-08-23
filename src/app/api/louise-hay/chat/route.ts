@@ -15,6 +15,7 @@ import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
 import { logUsage } from "@/lib/louise-hay/usage-repository";
 import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
 import { checkRateLimit, clientIp, tryChargeDailyBudget, reconcileDailyBudget } from "@/lib/rate-limit";
+import { qiGate } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -192,6 +193,13 @@ export async function POST(req: Request) {
       { error: { message: limited.message } },
       { status: limited.status, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
+  }
+
+  // โควตาถาม AI ต่อ user (ระบบแต้ม Qi) — เฉพาะคีย์เซิร์ฟเวอร์ (free tier) และเมื่อผูก anonId
+  // ฟรีรายวันตาม tier → หมดแล้วตัด credit ที่แลกด้วย Qi; หมดทั้งคู่ → 402
+  if (!isOwnKey) {
+    const gated = await qiGate(parsed.data.anonId, "chat");
+    if (gated) return gated;
   }
 
   // เพดานค่าใช้จ่ายรวมต่อวัน (เฉพาะคีย์เซิร์ฟเวอร์) — กันกรณีเลวร้ายสุด

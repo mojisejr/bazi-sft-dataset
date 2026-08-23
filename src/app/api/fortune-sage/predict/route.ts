@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { drawRandom, getAllSticks, getStickByNo } from "@/lib/bazi/fortune-sage/deck";
+import { qiGate } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ const PredictSchema = z.object({
   topic: z.enum(["career", "finance", "health", "love", "family"]).optional(),
   /** ระบุหัวเซี่ยงแซเอง (ไม่บังคับ) — ถ้าไม่ส่งจะสุ่ม */
   no: z.number().int().optional(),
+  /** ผูกระบบแต้ม Qi (ตัดโควตาต่อ user) — ไม่ส่งมา = ไม่ตัดโควตา (backward-compat) */
+  anonId: z.string().trim().min(1).max(128).optional(),
 });
 
 /** POST — เสี่ยงทาย: สุ่ม 1 หัวเซี่ยงแซ แล้วคืนข้อความดิบ (ไม่แต่งคำ) */
@@ -28,7 +31,11 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
-  const { question, topic, no } = parsed.data;
+  const { question, topic, no, anonId } = parsed.data;
+
+  // ตัดโควตาเสี่ยงทาย (ฟรีรายวัน → credit ที่แลกด้วย Qi) เมื่อผูก anonId
+  const gated = await qiGate(anonId, "card");
+  if (gated) return gated;
 
   let stick;
   if (no !== undefined) {

@@ -19,6 +19,7 @@ import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packe
 import { fetchGroundedReading, resolveGroundingTopicId } from "@/features/open-webui/reading-bridge";
 import { resolveStaticKnowledge } from "@/features/open-webui/static-knowledge";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
+import { qiGate } from "@/lib/bazi/qi/quota";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
 import {
   createGuardedOpenAiSseStream,
@@ -211,6 +212,13 @@ export async function POST(req: Request) {
   const effectiveUserId = result.userId ?? getForwardedUserId(req);
 
   console.log("[open-webui] chat completions userId", effectiveUserId);
+
+  // โควตาถาม AI ต่อ user (ระบบแต้ม Qi) — ปิดเป็นค่าเริ่มต้น (กันกระทบแชทหลัก);
+  // เปิดด้วย env QI_GATE_OPENWEBUI=1 เมื่อพร้อมบังคับใช้. ฟรีรายวัน → credit ที่แลกด้วย Qi.
+  if (process.env.QI_GATE_OPENWEBUI === "1" && effectiveUserId) {
+    const gated = await qiGate(effectiveUserId, "chat");
+    if (gated) return gated;
+  }
 
   // Glass Box flag: opt-in via request header, default OFF. ON only adds the trace frame to the
   // stream — persona/temperature/grounding are identical, so the answer itself never changes.

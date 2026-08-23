@@ -42,6 +42,7 @@
     "db:apply:newdata-reading": "node --env-file=.env --import tsx scripts/apply-newdata-reading-migration.ts",
     "db:apply:newdata-reading-device": "node --env-file=.env --import tsx scripts/apply-newdata-reading-device-migration.ts",
     "db:apply:newdata-reading-status": "node --env-file=.env --import tsx scripts/apply-newdata-reading-status-migration.ts",
+    "db:apply:qi-point-system": "node --env-file=.env --import tsx scripts/apply-qi-point-system-migration.ts",
     "db:apply:newdata-reading-pdf-versions": "node --env-file=.env --import tsx scripts/apply-newdata-reading-pdf-versions-migration.ts",
     "build:shinse-fewshot": "node --env-file=.env --import tsx scripts/build-shinse-fewshot.ts",
     "db:seed:reading-newdata:dry": "tsx scripts/seed-reading-newdata.ts --dry-run",

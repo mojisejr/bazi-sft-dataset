@@ -954,6 +954,8 @@ export const baziWallet = pgTable("bazi_wallet", {
   anonId: text("anon_id").primaryKey(),
   coins: integer("coins").notNull().default(0),
   xp: integer("xp").notNull().default(0),
+  /** แต้ม Qi (ระบบกิจกรรม) — แยกจาก coins/xp */
+  qi: integer("qi").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -967,6 +969,8 @@ export const baziLedgerTxn = pgTable(
     anonId: text("anon_id").notNull(),
     coinDelta: integer("coin_delta").notNull().default(0),
     xpDelta: integer("xp_delta").notNull().default(0),
+    /** แต้ม Qi ที่เปลี่ยน (บวก=ได้ ลบ=ใช้) — เส้นกิจกรรม qi:earn:* / qi:spend:* / qi:refund:* */
+    qiDelta: integer("qi_delta").notNull().default(0),
     /** เหตุผล เช่น daily_checkin / mission:xxx / referral / spend:unlock */
     reason: text("reason").notNull(),
     /** อ้างอิงเสริม (mission id, goal id ฯลฯ) */
@@ -1121,6 +1125,66 @@ export const baziReferralRedemption = pgTable(
 );
 
 export type SelectBaziReferralRedemption = typeof baziReferralRedemption.$inferSelect;
+
+/* ── Qi Point System (ระบบกิจกรรม — แต้ม Qi) ────────────────────────────────
+ * catalog เส้นแต้มอยู่ในโค้ด (src/lib/bazi/qi/catalog.ts). DB เก็บ:
+ *   bazi_entitlement  — สิทธิ์ที่แลก/ได้รับ (credit หรือ owned/tier)
+ *   bazi_qi_claim     — กันจ่าย earn ซ้ำต่อรอบ (เหมือน mission progress)
+ *   bazi_feature_quota— โควตาฟรีต่อฟีเจอร์รายวัน (reset โดย period_key)
+ * ยอด qi อยู่ที่ bazi_wallet.qi · ธุรกรรมที่ bazi_ledger_txn.qi_delta (ผ่าน applyLedger)
+ */
+
+/** สิทธิ์ที่ user แลก/ได้รับ — credit-based (credits) หรือ owned/expiry (tier มี expiresAt) */
+export const baziEntitlement = pgTable(
+  "bazi_entitlement",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    anonId: text("anon_id").notNull(),
+    /** card_use | chat_question | matching_slot | course | book | tier */
+    kind: text("kind").notNull(),
+    /** ระบุรุ่นสำหรับ owned/tier เช่น destiny / lifecode / plus — credit/no-sku ใช้ '' */
+    sku: text("sku").notNull().default(""),
+    /** จำนวนคงเหลือ (เฉพาะ kind แบบ credit) */
+    credits: integer("credits").notNull().default(0),
+    /** วันหมดอายุ (เฉพาะ tier) — null = ไม่หมดอายุ */
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("bazi_entitlement_owner_uq").on(t.anonId, t.kind, t.sku)],
+);
+
+export type SelectBaziEntitlement = typeof baziEntitlement.$inferSelect;
+
+/** กันจ่ายแต้ม earn ซ้ำต่อรอบ — periodKey: "all"(once) / วันไทย(daily) / ref(per_referral) */
+export const baziQiClaim = pgTable(
+  "bazi_qi_claim",
+  {
+    anonId: text("anon_id").notNull(),
+    code: text("code").notNull(),
+    periodKey: text("period_key").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.anonId, t.code, t.periodKey] })],
+);
+
+export type SelectBaziQiClaim = typeof baziQiClaim.$inferSelect;
+
+/** โควตาฟรีต่อฟีเจอร์รายวัน — periodKey = วันไทย (reset โดยธรรมชาติ), used = ใช้ไปกี่ครั้ง */
+export const baziFeatureQuota = pgTable(
+  "bazi_feature_quota",
+  {
+    anonId: text("anon_id").notNull(),
+    /** card | chat */
+    feature: text("feature").notNull(),
+    periodKey: text("period_key").notNull(),
+    used: integer("used").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.anonId, t.feature, t.periodKey] })],
+);
+
+export type SelectBaziFeatureQuota = typeof baziFeatureQuota.$inferSelect;
 
 /**
  * บันทึกโทเคน/ต้นทุน LLM ต่อ 1 การเรียก สำหรับฟีเจอร์อื่น ๆ ที่ใช้ LLM (แยกตารางตามฟีเจอร์

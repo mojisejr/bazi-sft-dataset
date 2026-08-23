@@ -20,21 +20,24 @@ export type LedgerApplyInput = {
   anonId: string;
   coinDelta?: number;
   xpDelta?: number;
+  /** แต้ม Qi (ระบบกิจกรรม) — บวก=ได้ ลบ=ใช้; กันติดลบเหมือน coins/xp */
+  qiDelta?: number;
   reason: string;
   ref?: string | null;
 };
 
-export type WalletBalance = { coins: number; xp: number };
+export type WalletBalance = { coins: number; xp: number; qi: number };
 
 /**
- * บันทึกธุรกรรมแต้ม + อัปเดตยอด. คืนยอดใหม่ หรือ null ถ้ายอดไม่พอ (กันติดลบ).
+ * บันทึกธุรกรรมแต้ม + อัปเดตยอด. คืนยอดใหม่ หรือ null ถ้ายอดไม่พอ (กันติดลบ ทั้ง coins/xp/qi).
  */
 export async function applyLedger(input: LedgerApplyInput): Promise<WalletBalance | null> {
   const db = createDbClient();
   const coinDelta = input.coinDelta ?? 0;
   const xpDelta = input.xpDelta ?? 0;
+  const qiDelta = input.qiDelta ?? 0;
 
-  // มีแถว wallet เสมอ (แถวแรก = 0/0)
+  // มีแถว wallet เสมอ (แถวแรก = 0/0/0)
   await db.insert(baziWallet).values({ anonId: input.anonId }).onConflictDoNothing();
 
   // อัปเดตแบบมีเงื่อนไขใน statement เดียว — ยอดใหม่ต้องไม่ติดลบ
@@ -43,6 +46,7 @@ export async function applyLedger(input: LedgerApplyInput): Promise<WalletBalanc
     .set({
       coins: sql`${baziWallet.coins} + ${coinDelta}`,
       xp: sql`${baziWallet.xp} + ${xpDelta}`,
+      qi: sql`${baziWallet.qi} + ${qiDelta}`,
       updatedAt: sql`now()`,
     })
     .where(
@@ -50,9 +54,10 @@ export async function applyLedger(input: LedgerApplyInput): Promise<WalletBalanc
         eq(baziWallet.anonId, input.anonId),
         sql`${baziWallet.coins} + ${coinDelta} >= 0`,
         sql`${baziWallet.xp} + ${xpDelta} >= 0`,
+        sql`${baziWallet.qi} + ${qiDelta} >= 0`,
       ),
     )
-    .returning({ coins: baziWallet.coins, xp: baziWallet.xp });
+    .returning({ coins: baziWallet.coins, xp: baziWallet.xp, qi: baziWallet.qi });
 
   if (!updated.length) return null;
 
@@ -60,6 +65,7 @@ export async function applyLedger(input: LedgerApplyInput): Promise<WalletBalanc
     anonId: input.anonId,
     coinDelta,
     xpDelta,
+    qiDelta,
     reason: input.reason,
     ref: input.ref ?? null,
   });
@@ -70,5 +76,7 @@ export async function applyLedger(input: LedgerApplyInput): Promise<WalletBalanc
 export async function getWallet(anonId: string): Promise<WalletBalance> {
   const db = createDbClient();
   const rows = await db.select().from(baziWallet).where(eq(baziWallet.anonId, anonId)).limit(1);
-  return rows[0] ? { coins: rows[0].coins, xp: rows[0].xp } : { coins: 0, xp: 0 };
+  return rows[0]
+    ? { coins: rows[0].coins, xp: rows[0].xp, qi: rows[0].qi }
+    : { coins: 0, xp: 0, qi: 0 };
 }
