@@ -13,15 +13,16 @@ import { buildLouiseHayPrompt, detectEmotionalDistress, type LouiseHayChatMessag
 import { getPersonaCacheName } from "@/lib/louise-hay/persona-cache";
 import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
 import { logUsage } from "@/lib/louise-hay/usage-repository";
+import { CRISIS_RESPONSE, screenCrisis } from "@/lib/louise-hay/safety";
 import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
 import { checkRateLimit, clientIp, tryChargeDailyBudget, reconcileDailyBudget } from "@/lib/rate-limit";
 import { qiGate } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
-// ใช้ flash-lite เพื่อลดต้นทุน/คำถาม ~4 เท่า (฿0.09 → ฿0.02) โดยคุณภาพแชทให้กำลังใจยังพอ
-// override ได้ด้วย env LOUISE_HAY_MODEL
-const DEFAULT_MODEL = "gemini-2.5-flash-lite";
+// ใช้ flash-lite เพื่อลดต้นทุน/คำถาม โดยคุณภาพแชทให้กำลังใจยังพอ override ได้ด้วย env LOUISE_HAY_MODEL
+// หมายเหตุ: gemini-2.5-flash-lite ถูกปิดสำหรับ user ใหม่แล้ว (404) → ย้ายมา 3.1-flash-lite เหมือนฟีเจอร์อื่นในเรปอ
+const DEFAULT_MODEL = "gemini-3.1-flash-lite";
 const MAX_OUTPUT_TOKENS = 1024;
 const TEMPERATURE = 0.85;
 const TOP_P = 0.95;
@@ -49,6 +50,8 @@ const BodySchema = z.object({
   anonId: z.string().trim().min(1).max(100).optional(),
   /** หมวด(ศาสตร์)ของคำตอบก่อนหน้า — ช่วยให้จัดหมวดคำถามต่อเนื่องได้ต่อเรื่อง (ไม่จั่วไพ่ใหม่ทุกที) */
   prevRoute: z.string().trim().max(20).optional(),
+  /** เพศตัวละคร → คุมคำลงท้าย ค่ะ/ครับ (ค่าเริ่มต้น = หญิง) */
+  personaGender: z.enum(["female", "male"]).optional(),
 });
 
 const ANSWER_PREVIEW_CHARS = 400;
@@ -76,6 +79,20 @@ function stripInternalJargon(text: string): string {
     .replace(/[ \t]{2,}/g, " ")
     .replace(/ +([)\]:])/g, "$1")
     .trim();
+}
+
+/**
+ * กันชนชั้นสุดท้าย: ตัด "ตัวอักษรต่างภาษา" ที่โมเดลอาจหลุดปนในคำตอบ (พบเคสฮันกึลเกาหลีโผล่กลางไทย).
+ * ตัดเฉพาะสคริปต์ที่ไม่ควรมีในคำตอบไทยล้วน — ฮันกึล / คานะญี่ปุ่น / อักษรจีน (CJK) — ไม่แตะ
+ * อังกฤษ/ตัวเลข/อีโมจิ เพราะอาจใช้ประกอบคำตอบได้จริง. ทำระดับ chunk ได้เพราะแต่ละตัวอักษร
+ * ถอดรหัส UTF-8 มาครบตัวแล้ว (ไม่ถูกหั่นกลาง code point).
+ */
+const FOREIGN_SCRIPT_RE =
+  /[ᄀ-ᇿ㄰-㆏ꥠ-꥿가-힣ힰ-퟿぀-ゟ゠-ヿㇰ-ㇿ･-ﾟ㐀-䶿一-鿿豈-﫿]/gu;
+
+function stripForeignScript(text: string): string {
+  // ใช้ .replace ตรง ๆ (สแกนจากต้นเสมอ) เลี่ยงบั๊ก lastIndex ค้างของ regex /g
+  return text.replace(FOREIGN_SCRIPT_RE, "");
 }
 
 type SourceCitation = {
@@ -139,9 +156,10 @@ function geminiSseToText(
             usageMetadata?: GenUsage;
           };
           if (parsed.usageMetadata) usage = parsed.usageMetadata;
-          const text = parsed.candidates?.[0]?.content?.parts
+          const rawText = parsed.candidates?.[0]?.content?.parts
             ?.map((p) => p.text ?? "")
             .join("");
+          const text = rawText ? stripForeignScript(rawText) : rawText;
           if (text) {
             fullText += text;
             controller.enqueue(encoder.encode(text));
@@ -175,6 +193,25 @@ export async function POST(req: Request) {
   const latestUser = [...messages].reverse().find((m) => m.role === "user");
   if (!latestUser) {
     return badRequest("ต้องมีข้อความจากผู้ใช้อย่างน้อยหนึ่งข้อความ");
+  }
+
+  // ── ชั้นคัดกรองความปลอดภัย (RED crisis hard-stop) ──
+  // คัดกรองก่อนทุกอย่าง (ก่อน rate-limit/quota/Gemini). พบสัญญาณวิกฤต = หยุดบททันที
+  // ไม่ส่งเข้าโมเดล คืนข้อความส่งต่อ + สายด่วน. ดู src/lib/louise-hay/safety.ts
+  const crisis = screenCrisis(latestUser.content);
+  if (crisis.level === "red") {
+    // log แบบไม่เก็บข้อความผู้ใช้ (privacy) — ไว้ audit ว่ามีเคสวิกฤตเข้ามากี่ครั้ง
+    // TODO(safety): เก็บลงตาราง audit จริงเมื่อมี migration (ตอนนี้ warn ฝั่งเซิร์ฟเวอร์พอ)
+    console.warn(
+      `[louise-hay][CRISIS] hard-stop fired anonId=${parsed.data.anonId?.trim() || "anon"} matched=${crisis.matched.length}`,
+    );
+    return new Response(CRISIS_RESPONSE, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "X-LH-Crisis": "1",
+      },
+    });
   }
 
   // คีย์ของผู้ใช้ก่อน (จากช่องกรอกในหน้า) ไม่งั้นใช้คีย์กลางของเซิร์ฟเวอร์
@@ -243,6 +280,7 @@ export async function POST(req: Request) {
     latestUserMessage: latestUser.content,
     groundingContext,
     emotionalDistress: detectEmotionalDistress(latestUser.content),
+    personaGender: parsed.data.personaGender,
     now: new Date(),
   });
 

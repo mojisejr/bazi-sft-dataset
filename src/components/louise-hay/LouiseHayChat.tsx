@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LOUISE_HAY_AFFIRMATIONS } from "@/lib/louise-hay/affirmations";
 import { getLiffIdToken, liffAvailable } from "@/lib/louise-hay/liff-client";
+import { appendSpeechTranscript, useWebSpeech } from "@/hooks/bazi/useWebSpeech";
+import { useTextToSpeech, type VoiceGender, type VoiceSource } from "@/hooks/bazi/useTextToSpeech";
+import { LouiseHayAvatar, type AvatarState, type AvatarGender } from "@/components/louise-hay/LouiseHayAvatar";
 
 type ScienceMeta = { route: string; label: string; note?: string | null };
 type AlertDay = { date: string; kind: "luck" | "caution" | "custom"; label: string; message: string };
@@ -13,6 +16,8 @@ type ChatMessage = {
   content: string;
   science?: ScienceMeta;
   alerts?: AlertDay[];
+  /** true = โค้ชตรวจพบสัญญาณวิกฤต → เรนเดอร์การ์ดส่งต่อสายด่วนแทนบับเบิลปกติ */
+  crisis?: boolean;
 };
 type Birth = { birthDate: string; birthTime: string; gender: "female" | "male"; province: string };
 
@@ -60,8 +65,12 @@ function decodeAlerts(header: string | null): AlertDay[] | undefined {
   }
 }
 
-const GREETING =
+const GREETING_FEMALE =
   "สวัสดีค่ะ เราคือโค้ชฮีลใจ 🌷 พื้นที่ตรงนี้ปลอดภัยสำหรับคุณเสมอ วันนี้มีอะไรในใจ อยากเล่าให้เราฟังไหมคะ";
+const GREETING_MALE =
+  "สวัสดีครับ เราคือโค้ชฮีลใจ 🌷 พื้นที่ตรงนี้ปลอดภัยสำหรับคุณเสมอ วันนี้มีอะไรในใจ อยากเล่าให้เราฟังไหมครับ";
+const greetingFor = (g: AvatarGender) => (g === "male" ? GREETING_MALE : GREETING_FEMALE);
+const GREETING = GREETING_FEMALE;
 
 // ป้าย (มี emoji) + ข้อความจริงที่ส่ง — โชว์ความสามารถทั้งฮีลใจ + เสี่ยงทาย ให้ผู้ใช้รู้ว่าถามอะไรได้บ้าง
 const SUGGESTIONS: { label: string; prompt: string }[] = [
@@ -205,6 +214,89 @@ export function LouiseHayChat() {
   const [calMenu, setCalMenu] = useState<string | null>(null);
   const anonIdRef = useRef<string>("anon");
   const scrollRef = useRef<HTMLDivElement>(null);
+  // gate ปุ่มที่ขึ้นกับ capability ของเบราว์เซอร์ (ไมค์/เสียง) ให้ขึ้นหลัง mount เท่านั้น
+  // กัน hydration mismatch (server ไม่มี window → รู้จัก capability ไม่ตรงกับ client)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // พิมพ์ด้วยเสียง (STT): พูด → เติมข้อความลงช่องพิมพ์ (ผู้ใช้กดส่งเอง) — ไม่มีเสียงตอบ
+  const {
+    isSupported: micSupported,
+    isListening,
+    interimTranscript,
+    errorMessage: micError,
+    startListening,
+    stopListening,
+  } = useWebSpeech({
+    onTranscript: (t) => setInput((prev) => appendSpeechTranscript(prev, t)),
+  });
+
+  // เสียงตอบ (TTS) — อ่านคำตอบโค้ชออกเสียง (browser speechSynthesis ฟรี) + ป้อนสถานะให้อวตาร
+  const {
+    isSupported: ttsSupported,
+    serverAvailable,
+    serverVoices,
+    isSpeaking,
+    speak,
+    cancel: cancelSpeak,
+  } = useTextToSpeech();
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceGender, setVoiceGender] = useState<VoiceGender>("female");
+  const [characterGender, setCharacterGender] = useState<AvatarGender>("female");
+  // เลือกเพศตัวละคร → ตั้งเสียงตามเพศนั้นให้ด้วย (เสียงเซิร์ฟเวอร์ก็เลือกตัวแรกของเพศนั้น)
+  function pickCharacter(g: AvatarGender) {
+    setCharacterGender(g);
+    setVoiceGender(g);
+    const match = serverVoices.find((v) => v.gender === g);
+    if (match) setServerVoice(match.id);
+    // ยังไม่เริ่มคุย (มีแค่คำทักทาย) → สลับคำทักทายให้เข้ากับเพศตัวละคร
+    setMessages((prev) =>
+      prev.length === 1 && prev[0].role === "assistant"
+        ? [{ ...prev[0], content: greetingFor(g) }]
+        : prev,
+    );
+  }
+  const [voiceSource, setVoiceSource] = useState<VoiceSource>("auto");
+  const [serverVoice, setServerVoice] = useState<string>("");
+  const voiceOnRef = useRef(voiceOn);
+  const voiceGenderRef = useRef(voiceGender);
+  const voiceSourceRef = useRef(voiceSource);
+  const serverVoiceRef = useRef(serverVoice);
+  useEffect(() => {
+    voiceOnRef.current = voiceOn;
+    if (!voiceOn) cancelSpeak();
+  }, [voiceOn, cancelSpeak]);
+  useEffect(() => {
+    voiceGenderRef.current = voiceGender;
+  }, [voiceGender]);
+  useEffect(() => {
+    voiceSourceRef.current = voiceSource;
+  }, [voiceSource]);
+  useEffect(() => {
+    serverVoiceRef.current = serverVoice;
+  }, [serverVoice]);
+  // ตั้งเสียงเซิร์ฟเวอร์เริ่มต้นเป็นตัวแรกเมื่อ config มา
+  useEffect(() => {
+    if (serverVoices.length > 0 && !serverVoice) setServerVoice(serverVoices[0].id);
+  }, [serverVoices, serverVoice]);
+
+  /** พูดข้อความออกเสียงตาม setting ปัจจุบัน (ตัด ** / อีโมจิ ออกก่อน) */
+  const speakText = useCallback(
+    (text: string) => {
+      const spoken = text
+        .replace(/\*\*/g, "")
+        .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")
+        .trim();
+      if (!spoken) return;
+      speak(spoken, {
+        source: voiceSourceRef.current,
+        gender: voiceGenderRef.current,
+        serverVoice: serverVoiceRef.current || undefined,
+        rate: 1,
+      });
+    },
+    [speak],
+  );
 
   useEffect(() => {
     anonIdRef.current = getAnonId();
@@ -243,6 +335,15 @@ export function LouiseHayChat() {
 
   const birthComplete = Boolean(birth.birthDate && birth.birthTime && birth.province.trim());
 
+  const lastMsg = messages[messages.length - 1];
+  const avatarState: AvatarState = isSpeaking
+    ? "speaking"
+    : isListening
+      ? "listening"
+      : lastMsg?.role === "assistant" && lastMsg.crisis
+        ? "concern"
+        : "idle";
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
@@ -251,6 +352,7 @@ export function LouiseHayChat() {
     const trimmed = text.trim();
     if (!trimmed || isStreaming) return;
     setError(null);
+    cancelSpeak(); // หยุดเสียงคำตอบก่อนหน้า ถ้ายังพูดค้างอยู่
 
     // หมวดของคำตอบโค้ชล่าสุด — ส่งไปช่วยจัดหมวดคำถามต่อเนื่อง (ไม่จั่วไพ่/เปิดศาสตร์ใหม่ทุกครั้ง)
     const prevRoute = [...messages].reverse().find((m) => m.role === "assistant" && m.science)?.science
@@ -272,6 +374,7 @@ export function LouiseHayChat() {
         body: JSON.stringify({
           messages: history.map((m) => ({ role: m.role, content: m.content })),
           anonId: anonIdRef.current,
+          personaGender: characterGender,
           ...(birthLinked && birthComplete ? { birth } : {}),
           ...(prevRoute ? { prevRoute } : {}),
         }),
@@ -284,21 +387,33 @@ export function LouiseHayChat() {
 
       const science = decodeScience(res.headers.get("X-LH-Route"), res.headers.get("X-LH-Source"));
       const alerts = decodeAlerts(res.headers.get("X-LH-Alerts"));
+      const isCrisis = res.headers.get("X-LH-Crisis") === "1";
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
 
+      let fullReply = "";
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
+        fullReply += chunk;
         setMessages((prev) =>
           prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + chunk } : m)),
         );
       }
 
       setMessages((prev) =>
-        prev.map((m) => (m.id === assistantId ? { ...m, science, alerts } : m)),
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, science, alerts, ...(isCrisis ? { crisis: true } : {}) }
+            : m,
+        ),
       );
+
+      // อ่านคำตอบออกเสียงเมื่อเปิดเสียงไว้
+      if (voiceOnRef.current && ttsSupported && fullReply.trim()) {
+        speakText(fullReply);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "เกิดข้อผิดพลาด";
       setError(message);
@@ -328,14 +443,108 @@ export function LouiseHayChat() {
 
   return (
     <section className="lh-chat">
+      <div className="lh-avatarbar">
+        <LouiseHayAvatar state={avatarState} gender={characterGender} />
+        <div className="lh-charpick" role="group" aria-label="เลือกตัวละคร">
+          <button
+            type="button"
+            className={`lh-charpick__btn${characterGender === "female" ? " is-active" : ""}`}
+            onClick={() => pickCharacter("female")}
+            aria-pressed={characterGender === "female"}
+          >
+            ♀ หญิง
+          </button>
+          <button
+            type="button"
+            className={`lh-charpick__btn${characterGender === "male" ? " is-active" : ""}`}
+            onClick={() => pickCharacter("male")}
+            aria-pressed={characterGender === "male"}
+          >
+            ♂ ชาย
+          </button>
+        </div>
+        {mounted && ttsSupported && (
+          <div className="lh-voicectl">
+            <button
+              type="button"
+              className={`lh-voicectl__toggle${voiceOn ? " is-on" : ""}`}
+              onClick={() => setVoiceOn((v) => !v)}
+              aria-pressed={voiceOn}
+            >
+              {voiceOn ? "🔊 เสียงเปิด" : "🔇 เสียงปิด"}
+            </button>
+            {voiceOn && (
+              <>
+                {/* แหล่งเสียง — โชว์ต่อเมื่อเซิร์ฟเวอร์ (Azure) พร้อมใช้ */}
+                {serverAvailable && (
+                  <select
+                    className="lh-voicectl__gender"
+                    value={voiceSource}
+                    onChange={(e) => setVoiceSource(e.target.value as VoiceSource)}
+                    aria-label="แหล่งเสียง"
+                  >
+                    <option value="auto">อัตโนมัติ</option>
+                    <option value="server">เซิร์ฟเวอร์ (คุณภาพสูง)</option>
+                    <option value="browser">เบราว์เซอร์ (ฟรี)</option>
+                  </select>
+                )}
+                {/* ใช้เสียงเซิร์ฟเวอร์ → เลือกเสียง Azure; ไม่งั้นเลือกเพศเสียงเบราว์เซอร์ */}
+                {serverAvailable && voiceSource !== "browser" ? (
+                  <select
+                    className="lh-voicectl__gender"
+                    value={serverVoice}
+                    onChange={(e) => setServerVoice(e.target.value)}
+                    aria-label="เสียงพูด"
+                  >
+                    {serverVoices.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    className="lh-voicectl__gender"
+                    value={voiceGender}
+                    onChange={(e) => setVoiceGender(e.target.value as VoiceGender)}
+                    aria-label="เพศของเสียง"
+                  >
+                    <option value="female">เสียงหญิง</option>
+                    <option value="male">เสียงชาย</option>
+                    <option value="auto">อัตโนมัติ</option>
+                  </select>
+                )}
+                <button
+                  type="button"
+                  className="lh-voicectl__stop"
+                  onClick={() => speakText("สวัสดีค่ะ นี่คือเสียงของโค้ชฮีลใจนะคะ")}
+                >
+                  🎧 ทดสอบเสียง
+                </button>
+              </>
+            )}
+            {isSpeaking && (
+              <button type="button" className="lh-voicectl__stop" onClick={cancelSpeak}>
+                ⏹️ หยุด
+              </button>
+            )}
+          </div>
+        )}
+      </div>
       <div className="lh-chat__stream" ref={scrollRef}>
         {messages.map((m) => (
-          <div key={m.id} className={`lh-msg lh-msg--${m.role}`}>
-            {m.role === "assistant" && <div className="lh-msg__avatar" aria-hidden>💗</div>}
+          <div key={m.id} className={`lh-msg lh-msg--${m.role}${m.crisis ? " lh-msg--crisis" : ""}`}>
+            {m.role === "assistant" && <div className="lh-msg__avatar" aria-hidden>{m.crisis ? "🫂" : "💗"}</div>}
             <div className="lh-msg__bubble">
               <div className="lh-msg__text">
                 {m.content ? renderRich(m.content) : isStreaming ? <span className="lh-typing"><i /><i /><i /></span> : ""}
               </div>
+              {m.crisis && (
+                <div className="lh-crisis-actions">
+                  <a className="lh-crisis-btn" href="tel:1323">📞 โทรสายด่วนสุขภาพจิต 1323</a>
+                  <a className="lh-crisis-btn lh-crisis-btn--urgent" href="tel:1669">🚑 เหตุฉุกเฉิน 1669</a>
+                </div>
+              )}
               {m.science && (
                 <div className={`lh-chart-tag lh-chart-tag--${m.science.route}`}>
                   {ROUTE_ICON[m.science.route] ?? "✨"} {m.science.label}
@@ -529,11 +738,24 @@ export function LouiseHayChat() {
         >
           ✨ คำยืนยันวันนี้
         </button>
+        {mounted && micSupported && (
+          <button
+            type="button"
+            className={`lh-composer__mic${isListening ? " is-listening" : ""}`}
+            onClick={() => (isListening ? stopListening() : startListening())}
+            disabled={isStreaming}
+            title={isListening ? "หยุดฟัง" : "พิมพ์ด้วยเสียง"}
+            aria-label={isListening ? "หยุดฟัง" : "พิมพ์ด้วยเสียง"}
+            aria-pressed={isListening}
+          >
+            {isListening ? "⏹️" : "🎙️"}
+          </button>
+        )}
         <input
           className="lh-composer__input"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="พิมพ์สิ่งที่อยู่ในใจ…"
+          placeholder={isListening ? "กำลังฟัง… พูดได้เลย" : "พิมพ์สิ่งที่อยู่ในใจ…"}
           disabled={isStreaming}
           aria-label="ข้อความ"
         />
@@ -545,6 +767,15 @@ export function LouiseHayChat() {
           {isStreaming ? "…" : "ส่ง"}
         </button>
       </form>
+      {(isListening || interimTranscript || micError) && (
+        <p className={`lh-mic-note${micError ? " lh-mic-note--error" : ""}`}>
+          {micError
+            ? micError
+            : interimTranscript
+              ? `🎙️ ${interimTranscript}`
+              : "🎙️ กำลังฟัง… พูดสิ่งที่อยู่ในใจได้เลย"}
+        </p>
+      )}
     </section>
   );
 }

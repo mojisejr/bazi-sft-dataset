@@ -115,7 +115,7 @@ const PREDICT_TOPICS = TOPIC_PATH.filter((t) => t.kind === "predict");
 const TOPIC_IDS = PREDICT_TOPICS.map((t) => t.id);
 const TOPIC_TITLE = new Map(PREDICT_TOPICS.map((t) => [t.id, t.title]));
 
-const CLASSIFY_MODEL = "gemini-2.5-flash-lite";
+const CLASSIFY_MODEL = "gemini-3.1-flash-lite";
 
 // ───────────────────────────── classify (chart / day / card) ─────────────────────────────
 

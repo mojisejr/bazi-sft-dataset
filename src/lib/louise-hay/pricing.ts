@@ -6,7 +6,7 @@ import { priceCall, USD_TO_THB, usdToThb } from "@/lib/llm-usage/pricing";
 
 export { USD_TO_THB, usdToThb };
 
-export const CLASSIFY_MODEL = "gemini-2.5-flash-lite";
+export const CLASSIFY_MODEL = "gemini-3.1-flash-lite";
 export const EMBED_MODEL = "gemini-embedding-001";
 
 export type UsageTokens = {

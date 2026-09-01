@@ -239,6 +239,160 @@
   cursor: pointer;
 }
 .lh-composer__send:disabled { opacity: 0.5; cursor: not-allowed; }
+.lh-composer__mic {
+  flex: 0 0 auto;
+  border: 1px solid #ffd2e3;
+  background: #fff;
+  color: var(--lh-pink);
+  border-radius: 999px;
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.lh-composer__mic:hover { background: #ffe4ef; }
+.lh-composer__mic:disabled { opacity: 0.5; cursor: not-allowed; }
+.lh-composer__mic.is-listening {
+  background: linear-gradient(135deg, var(--lh-pink) 0%, var(--lh-pink-soft) 100%);
+  color: #fff;
+  border-color: transparent;
+  animation: lhMicPulse 1.2s ease-in-out infinite;
+}
+@keyframes lhMicPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(179, 37, 95, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(179, 37, 95, 0); }
+}
+.lh-mic-note {
+  margin: 6px 4px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--lh-muted);
+}
+.lh-mic-note--error { color: #b3255f; }
+
+/* ── อวตาร + แถบควบคุมเสียง ── */
+.lh-avatarbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.lh-avatar {
+  position: relative;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+}
+.lh-avatar__ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--lh-pink-soft);
+  opacity: 0;
+}
+.lh-avatar--listening .lh-avatar__ring,
+.lh-avatar--speaking .lh-avatar__ring {
+  opacity: 1;
+  animation: lhRing 1.4s ease-out infinite;
+}
+@keyframes lhRing {
+  0% { transform: scale(0.92); opacity: 0.55; }
+  100% { transform: scale(1.18); opacity: 0; }
+}
+.lh-avatar__img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 50%;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+/* เฟรมปากอ้า: ซ่อนไว้ ยกเว้นตอนพูด → สลับกับ idle เร็ว ๆ ให้เหมือนขยับปาก */
+.lh-avatar__img--talk { opacity: 0; }
+.lh-avatar--speaking .lh-avatar__img--talk { animation: lhTalkFlip 300ms steps(1) infinite; }
+@keyframes lhTalkFlip {
+  0%, 49% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+/* concern: เอียงหัวเล็กน้อยแสดงความห่วงใย */
+.lh-avatar--concern { transform: rotate(-3deg); }
+
+.lh-charpick { display: inline-flex; gap: 4px; padding: 3px; background: #fff; border: 1px solid #ffd2e3; border-radius: 999px; }
+.lh-charpick__btn {
+  border: none;
+  background: transparent;
+  color: var(--lh-muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.lh-charpick__btn.is-active {
+  background: linear-gradient(135deg, var(--lh-pink) 0%, var(--lh-pink-soft) 100%);
+  color: #fff;
+}
+
+.lh-voicectl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lh-voicectl__toggle,
+.lh-voicectl__stop {
+  border: 1px solid #ffc9de;
+  background: #fff;
+  color: var(--lh-pink);
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+}
+.lh-voicectl__toggle.is-on {
+  background: linear-gradient(135deg, var(--lh-pink) 0%, var(--lh-pink-soft) 100%);
+  color: #fff;
+  border-color: transparent;
+}
+.lh-voicectl__gender {
+  border: 1px solid #ffd2e3;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--lh-ink);
+  cursor: pointer;
+}
+
+/* การ์ดส่งต่อเมื่อโค้ชตรวจพบสัญญาณวิกฤต (RED) */
+.lh-msg--crisis .lh-msg__avatar { background: #ffe0d6; }
+.lh-crisis-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.lh-crisis-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid var(--lh-pink-soft);
+  background: #fff;
+  color: var(--lh-pink);
+}
+.lh-crisis-btn--urgent {
+  border-color: transparent;
+  background: linear-gradient(135deg, #e0562e 0%, #f2894a 100%);
+  color: #fff;
+}
 
 .lh-disclaimer {
   text-align: center;
