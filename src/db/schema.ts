@@ -891,6 +891,31 @@ export type InsertLouiseHayUsage = typeof louiseHayUsage.$inferInsert;
 export type SelectLouiseHayUsage = typeof louiseHayUsage.$inferSelect;
 
 /**
+ * บันทึกเหตุ "สัญญาณวิกฤต" (RED) ที่ด่านคัดกรองความปลอดภัยของแชทโค้ชฮีลใจจับได้ →
+ * ใช้ทำ audit/accountability (ตามแผน "Log ทุกเคส") ว่ามีเคสเข้ามากี่ครั้ง จับด้วยวิธีไหน.
+ * **ไม่เก็บข้อความผู้ใช้** (privacy) — เก็บแค่ anonId, วิธีตรวจ, จำนวน pattern ที่ match.
+ */
+export const louiseHayCrisisLog = pgTable(
+  "louise_hay_crisis_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    anonId: text("anon_id").notNull(),
+    /** วิธีที่จับได้: "regex" (คำ/วลี) หรือ "llm" (classifier ชั้นสอง) */
+    detectedBy: text("detected_by").notNull(),
+    /** จำนวน pattern ที่ match (regex); 0 ถ้าจับด้วย llm */
+    matchedCount: integer("matched_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("louise_hay_crisis_log_anon_idx").on(table.anonId),
+    index("louise_hay_crisis_log_created_idx").on(table.createdAt),
+  ],
+);
+
+export type InsertLouiseHayCrisisLog = typeof louiseHayCrisisLog.$inferInsert;
+export type SelectLouiseHayCrisisLog = typeof louiseHayCrisisLog.$inferSelect;
+
+/**
  * การเตือน "วันโชคดี/วันควรระวัง" ที่ผู้ใช้ตั้งไว้จาก LIFF → push ผ่าน LINE เมื่อถึงวัน.
  * 1 แถว = 1 การเตือน; cron รายวันดึงแถว status='pending' ที่ targetDate = วันนี้ (Asia/Bangkok) มา push.
  */

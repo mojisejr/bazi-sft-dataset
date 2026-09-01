@@ -56,6 +56,7 @@
     "db:apply:mascot-image": "node --env-file=.env --import tsx scripts/apply-mascot-image-migration.ts",
     "db:apply:matching": "node --env-file=.env --import tsx scripts/apply-matching-migration.ts",
     "db:apply:louise-hay-usage": "node --env-file=.env --import tsx scripts/apply-louise-hay-usage-migration.ts",
+    "db:apply:louise-hay-crisis-log": "node --env-file=.env --import tsx scripts/apply-louise-hay-crisis-log-migration.ts",
     "db:apply:llm-usage-tables": "node --env-file=.env --import tsx scripts/apply-llm-usage-tables-migration.ts",
     "db:apply:bazi-alerts": "node --env-file=.env --import tsx scripts/apply-bazi-alerts-migration.ts",
     "db:apply:narrate-usage-tables": "node --env-file=.env --import tsx scripts/apply-narrate-usage-tables-migration.ts",

@@ -99,3 +99,46 @@ export function screenCrisis(text: string): CrisisScreenResult {
   }
   return { level: matched.length > 0 ? "red" : "none", matched };
 }
+
+// ── ชั้นสอง: LLM classifier (belt-and-suspenders) ──
+// จับเคสวิกฤตที่ "พิมพ์อ้อม/เลี่ยงคำ" ที่ regex พลาด. ใช้เป็นชั้นเสริม — ด่านหลักยังเป็น regex
+// (deterministic ตรวจสอบได้). โมเดล lite ราคาถูก + prompt บังคับตอบ YES/NO อย่างเดียว.
+const CRISIS_LLM_MODEL = "gemini-3.1-flash-lite";
+// หมายเหตุ: prompt เป็นภาษาอังกฤษโดยตั้งใจ — โมเดล lite ตอบ YES/NO เสถียรกว่าภาษาไทย
+// (prompt ไทยเคยทำให้คืนค่าว่าง). ตัวข้อความผู้ใช้ยังเป็นไทยได้ปกติ.
+const CRISIS_LLM_PROMPT = [
+  "You are a safety classifier for a Thai emotional-support chat.",
+  "Decide if the user's message indicates thoughts, intent, or a plan of self-harm or suicide",
+  "(including indirect signals: wanting to disappear, not wanting to wake up, feeling like a burden,",
+  "being better off dead, or no reason to keep living).",
+  "Answer with ONE word only: YES if there is such risk, NO otherwise. Do not explain.",
+].join(" ");
+
+/**
+ * ถามโมเดลว่าข้อความเข้าข่ายวิกฤตไหม (YES/NO). คืน false เมื่อผิดพลาด/ตอบไม่ชัด
+ * (fail-open ฝั่ง LLM — ด่าน regex เป็นตัวกันหลักอยู่แล้ว).
+ */
+export async function screenCrisisLlm(text: string, apiKey: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${CRISIS_LLM_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: CRISIS_LLM_PROMPT }] },
+          contents: [{ role: "user", parts: [{ text }] }],
+          generationConfig: { temperature: 0, maxOutputTokens: 10, thinkingConfig: { thinkingBudget: 0 } },
+        }),
+      },
+    );
+    if (!res.ok) return false;
+    const json = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const answer = json.candidates?.[0]?.content?.parts?.[0]?.text?.trim().toUpperCase() ?? "";
+    return answer.startsWith("YES");
+  } catch {
+    return false;
+  }
+}

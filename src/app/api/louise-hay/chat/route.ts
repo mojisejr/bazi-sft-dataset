@@ -12,8 +12,8 @@ import { resolveLouiseHayGrounding } from "@/lib/louise-hay/grounding-router";
 import { buildLouiseHayPrompt, detectEmotionalDistress, type LouiseHayChatMessage } from "@/lib/louise-hay/persona";
 import { getPersonaCacheName } from "@/lib/louise-hay/persona-cache";
 import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
-import { logUsage } from "@/lib/louise-hay/usage-repository";
-import { CRISIS_RESPONSE, screenCrisis } from "@/lib/louise-hay/safety";
+import { logCrisisEvent, logUsage } from "@/lib/louise-hay/usage-repository";
+import { CRISIS_RESPONSE, screenCrisis, screenCrisisLlm } from "@/lib/louise-hay/safety";
 import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
 import { checkRateLimit, clientIp, tryChargeDailyBudget, reconcileDailyBudget } from "@/lib/rate-limit";
 import { qiGate } from "@/lib/bazi/qi/quota";
@@ -65,6 +65,19 @@ type GenUsage = {
 
 function badRequest(message: string, status = 400) {
   return Response.json({ error: { message } }, { status });
+}
+
+/** หยุดบท + คืนข้อความส่งต่อสายด่วน เมื่อพบสัญญาณวิกฤต (RED) + log (fire-and-forget, ไม่เก็บข้อความ) */
+function crisisResponse(anonId: string, detectedBy: "regex" | "llm", matchedCount: number) {
+  console.warn(`[louise-hay][CRISIS] hard-stop fired anonId=${anonId} by=${detectedBy} matched=${matchedCount}`);
+  void logCrisisEvent({ anonId, detectedBy, matchedCount });
+  return new Response(CRISIS_RESPONSE, {
+    headers: {
+      "Content-Type": "text/plain; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-LH-Crisis": "1",
+    },
+  });
 }
 
 /**
@@ -195,23 +208,14 @@ export async function POST(req: Request) {
     return badRequest("ต้องมีข้อความจากผู้ใช้อย่างน้อยหนึ่งข้อความ");
   }
 
-  // ── ชั้นคัดกรองความปลอดภัย (RED crisis hard-stop) ──
-  // คัดกรองก่อนทุกอย่าง (ก่อน rate-limit/quota/Gemini). พบสัญญาณวิกฤต = หยุดบททันที
+  const anonIdForLog = parsed.data.anonId?.trim() || "anon";
+
+  // ── ชั้นคัดกรองความปลอดภัย ชั้น 1: regex (RED crisis hard-stop) ──
+  // คัดกรองก่อนทุกอย่าง (ก่อน key/rate-limit/quota/Gemini). พบสัญญาณวิกฤต = หยุดบททันที
   // ไม่ส่งเข้าโมเดล คืนข้อความส่งต่อ + สายด่วน. ดู src/lib/louise-hay/safety.ts
   const crisis = screenCrisis(latestUser.content);
   if (crisis.level === "red") {
-    // log แบบไม่เก็บข้อความผู้ใช้ (privacy) — ไว้ audit ว่ามีเคสวิกฤตเข้ามากี่ครั้ง
-    // TODO(safety): เก็บลงตาราง audit จริงเมื่อมี migration (ตอนนี้ warn ฝั่งเซิร์ฟเวอร์พอ)
-    console.warn(
-      `[louise-hay][CRISIS] hard-stop fired anonId=${parsed.data.anonId?.trim() || "anon"} matched=${crisis.matched.length}`,
-    );
-    return new Response(CRISIS_RESPONSE, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        "X-LH-Crisis": "1",
-      },
-    });
+    return crisisResponse(anonIdForLog, "regex", crisis.matched.length);
   }
 
   // คีย์ของผู้ใช้ก่อน (จากช่องกรอกในหน้า) ไม่งั้นใช้คีย์กลางของเซิร์ฟเวอร์
@@ -230,6 +234,16 @@ export async function POST(req: Request) {
       { error: { message: limited.message } },
       { status: limited.status, headers: { "Retry-After": String(limited.retryAfterSec) } },
     );
+  }
+
+  // ── ชั้นคัดกรองความปลอดภัย ชั้น 2: LLM classifier (belt-and-suspenders) ──
+  // รันเฉพาะ "โซนเสี่ยง" (ข้อความโทนทุกข์ใจที่ชั้น regex ไม่จับ) เพื่อคุมต้นทุน/latency —
+  // จับเคสที่พิมพ์อ้อม/เลี่ยงคำ. พบ = หยุดบทเหมือนชั้น 1. ทำก่อนหักโควตา (ไม่คิดโควตาให้เคสวิกฤต).
+  if (detectEmotionalDistress(latestUser.content)) {
+    const risky = await screenCrisisLlm(latestUser.content, apiKey);
+    if (risky) {
+      return crisisResponse(anonIdForLog, "llm", 0);
+    }
   }
 
   // โควตาถาม AI ต่อ user (ระบบแต้ม Qi) — เฉพาะคีย์เซิร์ฟเวอร์ (free tier) และเมื่อผูก anonId

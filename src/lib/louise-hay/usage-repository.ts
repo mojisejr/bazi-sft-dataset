@@ -9,7 +9,13 @@
 import { desc } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
-import { louiseHayUsage, type InsertLouiseHayUsage, type SelectLouiseHayUsage } from "@/db/schema";
+import {
+  louiseHayCrisisLog,
+  louiseHayUsage,
+  type InsertLouiseHayCrisisLog,
+  type InsertLouiseHayUsage,
+  type SelectLouiseHayUsage,
+} from "@/db/schema";
 
 export type LouiseHayUsageInput = Omit<InsertLouiseHayUsage, "id" | "createdAt">;
 
@@ -20,6 +26,19 @@ export async function logUsage(input: LouiseHayUsageInput): Promise<void> {
     await db.insert(louiseHayUsage).values(input);
   } catch (error) {
     console.error("[louise-hay] logUsage failed:", error);
+  }
+}
+
+/**
+ * บันทึกเหตุสัญญาณวิกฤต (RED) — fire-and-forget, ล้มเงียบ, ไม่เก็บข้อความผู้ใช้.
+ * ถ้าตารางยังไม่ถูกสร้าง (ยังไม่รัน migration) ก็ปล่อยผ่าน ไม่กระทบการตอบผู้ใช้.
+ */
+export async function logCrisisEvent(input: Omit<InsertLouiseHayCrisisLog, "id" | "createdAt">): Promise<void> {
+  try {
+    const db = createDbClient();
+    await db.insert(louiseHayCrisisLog).values(input);
+  } catch (error) {
+    console.error("[louise-hay] logCrisisEvent failed:", error);
   }
 }
 
