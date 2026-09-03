@@ -1334,3 +1334,18 @@ export const baziSacredMapLocation = pgTable(
 
 export type InsertBaziSacredMapLocation = typeof baziSacredMapLocation.$inferInsert;
 export type SelectBaziSacredMapLocation = typeof baziSacredMapLocation.$inferSelect;
+/** โปรไฟล์แสดงตัวของผู้ใช้ (team.mp4 2026-09: @name ไม่ซ้ำกัน โชว์คู่ชื่อจริงในระบบเพื่อน-ดวงสมพงษ์)
+ *  ตั้งเองได้ตอนสมัคร; คนเก่าที่ยังไม่เคยตั้ง = ไม่มีแถว (ถือว่ายังไม่ตั้ง ตั้งได้เลยไม่มีค่าใช้จ่าย). */
+export const baziUserProfile = pgTable(
+  "bazi_user_profile",
+  {
+    anonId: text("anon_id").primaryKey(),
+    /** ชื่อแสดงแบบ @name — บังคับ unique แบบไม่สนตัวพิมพ์ (index ด้านล่าง) */
+    displayName: text("display_name").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("bazi_user_profile_display_name_lower_uq").on(sql`lower(${t.displayName})`)],
+);
+
+export type SelectBaziUserProfile = typeof baziUserProfile.$inferSelect;
