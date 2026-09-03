@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
-import { baziReferralCode, baziReferralRedemption } from "@/db/schema";
+import { baziReferralCode, baziReferralRedemption, baziUserProfile } from "@/db/schema";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
 import { earnQi } from "@/lib/bazi/qi/engine";
 
@@ -70,7 +70,36 @@ const PostSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
+    const url = new URL(request.url);
+
+    // invite-landing (จอ "เพื่อนเปิดลิงก์"): GET ?code=MUMATE123 → โค้ดถูกต้องไหม + ชื่อแสดงผู้ชวน (อาจ null).
+    // ใช้ก่อนสมัคร — ไม่มีตัวตน, ได้แค่ @name ไม่ใช่ข้อมูลส่วนตัว
+    const codeParam = url.searchParams.get("code")?.trim().toUpperCase();
+    if (codeParam) {
+      if (!/^MUMATE\d{3}$/.test(codeParam)) {
+        return Response.json({ error: "โค้ดไม่ถูกต้อง" }, { status: 400 });
+      }
+      const db = createDbClient();
+      const owner = await db
+        .select({ anonId: baziReferralCode.anonId })
+        .from(baziReferralCode)
+        .where(eq(baziReferralCode.code, codeParam))
+        .limit(1);
+      if (!owner.length) {
+        return Response.json({ error: "ไม่พบโค้ดนี้" }, { status: 404 });
+      }
+      const profile = await db
+        .select({ displayName: baziUserProfile.displayName })
+        .from(baziUserProfile)
+        .where(eq(baziUserProfile.anonId, owner[0].anonId))
+        .limit(1);
+      return Response.json(
+        { code: codeParam, inviterName: profile[0]?.displayName ?? null },
+        { status: 200 },
+      );
+    }
+
+    const anonId = url.searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
 
     const code = await getOrCreateCode(anonId);
