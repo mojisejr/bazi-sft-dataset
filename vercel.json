@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/bazi-alerts", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/qi-quota-reset", "schedule": "0 17 * * *" }
+    { "path": "/api/cron/qi-quota-reset", "schedule": "0 17 * * *" },
+    { "path": "/api/cron/account-purge", "schedule": "30 17 * * *" }
   ]
 }

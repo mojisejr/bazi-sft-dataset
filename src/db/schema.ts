@@ -1369,3 +1369,50 @@ export const baziCorrectionRequest = pgTable("bazi_correction_request", {
 });
 
 export type SelectBaziCorrectionRequest = typeof baziCorrectionRequest.$inferSelect;
+
+/** ความยินยอม (privacy-consent) — บันทึกต่อ kind/version; PDPA เวอร์ชันเปลี่ยนเมื่อนโยบายเปลี่ยน */
+export const baziConsent = pgTable("bazi_consent", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  anonId: text("anon_id").notNull(),
+  kind: text("kind").notNull(),
+  version: text("version").notNull(),
+  accepted: boolean("accepted").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziConsent = typeof baziConsent.$inferSelect;
+
+/** ตั้งค่าการแจ้งเตือนต่อผู้ใช้ (settings-notifications) — หมวดหมู่ใหญ่ 3 อัน; รายยามจัดที่ปฏิทิน */
+export const baziNotificationPrefs = pgTable("bazi_notification_prefs", {
+  anonId: text("anon_id").primaryKey(),
+  dailyFortune: boolean("daily_fortune").notNull().default(true),
+  reminders: boolean("reminders").notNull().default(true),
+  updates: boolean("updates").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziNotificationPrefs = typeof baziNotificationPrefs.$inferSelect;
+
+/** บทความช่วยเหลือ (help-faq / document-reader — template) — seed จาก scripts/seed-help-articles.ts */
+export const baziHelpArticle = pgTable("bazi_help_article", {
+  slug: text("slug").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziHelpArticle = typeof baziHelpArticle.$inferSelect;
+
+/** ลบบัญชี — พัก 30 วัน (delete-04 pending-recovery) ยกเลิกได้; cron /api/cron/account-purge ล้างจริง */
+export const baziAccountDeletion = pgTable("bazi_account_deletion", {
+  anonId: text("anon_id").primaryKey(),
+  status: text("status").notNull().default("pending"), // pending | canceled | purged
+  reason: text("reason"),
+  feedback: text("feedback"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
+  purgeAt: timestamp("purge_at", { withTimezone: true }).notNull(),
+  canceledAt: timestamp("canceled_at", { withTimezone: true }),
+});
+
+export type SelectBaziAccountDeletion = typeof baziAccountDeletion.$inferSelect;
