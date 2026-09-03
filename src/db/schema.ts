@@ -1342,6 +1342,16 @@ export const baziUserProfile = pgTable(
     anonId: text("anon_id").primaryKey(),
     /** ชื่อแสดงแบบ @name — บังคับ unique แบบไม่สนตัวพิมพ์ (index ด้านล่าง) */
     displayName: text("display_name").notNull(),
+    /** 0041 — ข้อมูลส่วนตัว + วันเกิด (edit-personal-info / edit-birth-data ก้อน 3)
+     *  birth_date 'YYYY-MM-DD' · birth_time 'HH:mm' (time_unknown=true แล้วเมิน) ตาม convention rawInput
+     *  การแก้ "วันเกิด" ผูกโควตา: ฟรี 1 ครั้งตลอดชีพ (bazi_qi_claim code birth_edit_free) ครั้งต่อไป
+     *  ใช้ชี่ (spend line birth_edit) — ดู /api/profile PATCH */
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    gender: text("gender"),
+    birthDate: text("birth_date"),
+    birthTime: text("birth_time"),
+    timeUnknown: boolean("time_unknown").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -1349,3 +1359,13 @@ export const baziUserProfile = pgTable(
 );
 
 export type SelectBaziUserProfile = typeof baziUserProfile.$inferSelect;
+/** คำขอพิจารณาแก้วันเกิด (เฟรม correction request sheet) — สิทธิ์ฟรีหมด/เคสพิเศษ ส่งเหตุผลถึงทีม */
+export const baziCorrectionRequest = pgTable("bazi_correction_request", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  anonId: text("anon_id").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("pending"), // pending | done | rejected
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziCorrectionRequest = typeof baziCorrectionRequest.$inferSelect;

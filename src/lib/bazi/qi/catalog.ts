@@ -135,6 +135,14 @@ export const QI_SPEND_LINES: readonly QiSpendLine[] = [
     note: "เพิ่มช่องบันทึกดวงสำหรับจับคู่/สมพงษ์อย่างถาวร 1 ช่อง",
   },
   {
+    code: "birth_edit",
+    kind: "spend",
+    qi: 100,
+    grant: { type: "credit", kind: "card_use", credits: 0 },
+    title: "แก้วันเกิด (ครั้งถัดไป)",
+    note: "สิทธิ์ฟรี 1 ครั้งตลอดชีพหมดแล้ว — แก้วันเกิดครั้งถัดไปใช้ 100 ชี่ (ดวงเปลี่ยนทั้งหมดจึงมีราคา)",
+  },
+  {
     code: "course_destiny",
     kind: "spend",
     qi: 500,
