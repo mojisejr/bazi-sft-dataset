@@ -143,6 +143,15 @@ export const QI_SPEND_LINES: readonly QiSpendLine[] = [
     note: "สิทธิ์ฟรี 1 ครั้งตลอดชีพหมดแล้ว — แก้วันเกิดครั้งถัดไปใช้ 100 ชี่ (ดวงเปลี่ยนทั้งหมดจึงมีราคา)",
   },
   {
+    code: "streak_restore",
+    kind: "spend",
+    qi: 20,
+    // grant เป็น no-op (credits 0) — การกู้คืนเกิดจากแถวหักแต้มเองที่ถือ ref=วันที่กู้ (ดู /api/qi/streak-restore)
+    grant: { type: "credit", kind: "card_use", credits: 0 },
+    title: "กู้คืนสตรีคเช็คอิน",
+    note: "ต่อสตรีคที่ขาดไป 1 วันให้เชื่อมต่อ (จำกัดสัปดาห์ละ 1 ครั้ง)",
+  },
+  {
     code: "course_destiny",
     kind: "spend",
     qi: 500,

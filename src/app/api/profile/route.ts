@@ -25,8 +25,10 @@ const PostSchema = z.object({
   firstName: z.string().trim().max(64).optional(),
   lastName: z.string().trim().max(64).optional(),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]).nullish(),
+  email: z.string().trim().max(200).nullish(),
   birth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "birth ต้องเป็น YYYY-MM-DD").optional(),
   birthTime: z.string().regex(/^\d{2}:\d{2}$/, "birthTime ต้องเป็น HH:mm").nullish(),
+  birthProvince: z.string().trim().max(100).nullish(),
   timeUnknown: z.boolean().optional(),
 });
 
@@ -66,8 +68,10 @@ export async function GET(request: Request) {
               firstName: profile.firstName,
               lastName: profile.lastName,
               gender: profile.gender,
+              email: profile.email,
               birthDate: profile.birthDate,
               birthTime: profile.birthTime,
+              birthProvince: profile.birthProvince,
               timeUnknown: profile.timeUnknown,
             }
           : null,
@@ -134,6 +138,9 @@ export async function PATCH(request: Request) {
     if (body.firstName !== undefined) patch.firstName = body.firstName || null;
     if (body.lastName !== undefined) patch.lastName = body.lastName || null;
     if (body.gender !== undefined) patch.gender = body.gender ?? null;
+    if (body.email !== undefined) patch.email = body.email || null;
+    // จังหวัดที่เกิด: แก้ได้อิสระ ไม่ผูกโควตาแก้วันเกิด (คนละฟิลด์กับ birth_date)
+    if (body.birthProvince !== undefined) patch.birthProvince = body.birthProvince || null;
     if (body.birth !== undefined) {
       patch.birthDate = body.birth;
       patch.timeUnknown = body.timeUnknown ?? false;

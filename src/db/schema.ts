@@ -1349,8 +1349,12 @@ export const baziUserProfile = pgTable(
     firstName: text("first_name"),
     lastName: text("last_name"),
     gender: text("gender"),
+    /** 0043 — อีเมล (ใช้ส่งใบเสร็จ/ไฟล์ข้อมูล ตามเฟรม edit-personal-info) */
+    email: text("email"),
     birthDate: text("birth_date"),
     birthTime: text("birth_time"),
+    /** 0043 — จังหวัดที่เกิด (ใช้คำนวณเวลาสุริยคติแม่นขึ้น ตามเฟรม edit-birth-data) */
+    birthProvince: text("birth_province"),
     timeUnknown: boolean("time_unknown").notNull().default(false),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
