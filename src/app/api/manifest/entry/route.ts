@@ -42,7 +42,8 @@ export async function POST(request: Request) {
       rewarded = Boolean(
         await applyLedger({
           anonId: body.anonId,
-          coinDelta: DAILY_REWARD.coins,
+          // รางวัลบันทึกประจำวันเข้าเป็น QI (รวม coins→qi ทั้งแอป)
+          qiDelta: DAILY_REWARD.coins,
           xpDelta: DAILY_REWARD.xp,
           reason: "daily_journal",
           ref: entryDate,

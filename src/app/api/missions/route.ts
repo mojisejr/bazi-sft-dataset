@@ -1,11 +1,12 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
-import { baziMissionProgress } from "@/db/schema";
+import { baziMissionProgress, baziReferralRedemption, baziUserProfile } from "@/db/schema";
 import { todayBangkok } from "@/lib/bazi/manifest/dates";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
-import { MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
+import { ELEMENT_ORDER, elementOfBirthDate, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
+import { earnQi } from "@/lib/bazi/qi/engine";
 
 export const runtime = "nodejs";
 
@@ -49,7 +50,45 @@ export async function GET(request: Request) {
       };
     });
 
-    return Response.json({ anonId, date: today, missions }, { status: 200 });
+    // เป้าหมายระยะยาวที่คิดจากข้อมูล referral (ไม่ผ่าน mission_progress)
+    const redemptions = await db
+      .select({ referee: baziReferralRedemption.refereeAnonId })
+      .from(baziReferralRedemption)
+      .where(eq(baziReferralRedemption.referrerAnonId, anonId));
+
+    // สะสมธาตุของเพื่อน (คิดจากปีเกิดของแต่ละคน) — เป้า 5 ธาตุ
+    const elements = new Set<string>();
+    if (redemptions.length) {
+      const profs = await db
+        .select({ birthDate: baziUserProfile.birthDate })
+        .from(baziUserProfile)
+        .where(inArray(baziUserProfile.anonId, redemptions.map((r) => r.referee)));
+      for (const p of profs) {
+        const el = elementOfBirthDate(p.birthDate);
+        if (el) elements.add(el);
+      }
+    }
+    const collected = elements.size;
+    // แจ็กพอตครบ 5 ธาตุ = wuxing_matrix +1000 QI (once) — จ่ายอัตโนมัติครั้งเดียว (idempotent)
+    if (collected >= 5) {
+      await earnQi(anonId, "wuxing_matrix").catch(() => {});
+    }
+
+    const goals = {
+      referral: {
+        invited: redemptions.length,
+        rewardPerInviteQi: 50,
+        earnedQi: redemptions.length * 50,
+      },
+      element: {
+        target: 5,
+        collected,
+        bonusQi: 1000,
+        elements: ELEMENT_ORDER.map((key) => ({ key, collected: elements.has(key) })),
+      },
+    };
+
+    return Response.json({ anonId, date: today, missions, goals }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown missions error.";
     return Response.json({ error: message }, { status: 500 });
@@ -97,7 +136,8 @@ export async function POST(request: Request) {
       if (claimed.length) {
         await applyLedger({
           anonId: body.anonId,
-          coinDelta: def.rewardCoins,
+          // รางวัลภารกิจเข้าเป็น QI (รวม coins→qi ทั้งแอป) — reason เดิม ทำให้โผล่ในประวัติ QI อัตโนมัติ
+          qiDelta: def.rewardCoins,
           xpDelta: def.rewardXp,
           reason: `mission:${def.id}`,
           ref: periodKey,

@@ -98,6 +98,14 @@ export const QI_EARN_LINES: readonly QiEarnLine[] = [
     title: "แคมเปญ Wu-Xing Matrix",
     note: "แจ็กพอตแคมเปญเมื่อสะสมครบ 5 ธาตุ — ได้ครั้งเดียว",
   },
+  {
+    code: "first_buy_bonus",
+    kind: "earn",
+    qi: 30,
+    limit: "once",
+    title: "โบนัสซื้อชี่ครั้งแรก",
+    note: "โบนัส +30 ชี่ เมื่อซื้อแพ็กชี่ครั้งแรก (เติมครั้งแรกโบนัส +30 ตามจอร้านค้า) — ได้ครั้งเดียว, ระบบซื้อยิงเอง",
+  },
 ] as const;
 
 /** ── เส้นใช้แต้ม (SPEND / REDEEM) ─────────────────────────────────────── */
@@ -125,6 +133,23 @@ export const QI_SPEND_LINES: readonly QiSpendLine[] = [
     grant: { type: "credit", kind: "matching_slot", credits: 1 },
     title: "+1 ช่องจับคู่สมพงษ์ (ถาวร)",
     note: "เพิ่มช่องบันทึกดวงสำหรับจับคู่/สมพงษ์อย่างถาวร 1 ช่อง",
+  },
+  {
+    code: "birth_edit",
+    kind: "spend",
+    qi: 100,
+    grant: { type: "credit", kind: "card_use", credits: 0 },
+    title: "แก้วันเกิด (ครั้งถัดไป)",
+    note: "สิทธิ์ฟรี 1 ครั้งตลอดชีพหมดแล้ว — แก้วันเกิดครั้งถัดไปใช้ 100 ชี่ (ดวงเปลี่ยนทั้งหมดจึงมีราคา)",
+  },
+  {
+    code: "streak_restore",
+    kind: "spend",
+    qi: 20,
+    // grant เป็น no-op (credits 0) — การกู้คืนเกิดจากแถวหักแต้มเองที่ถือ ref=วันที่กู้ (ดู /api/qi/streak-restore)
+    grant: { type: "credit", kind: "card_use", credits: 0 },
+    title: "กู้คืนสตรีคเช็คอิน",
+    note: "ต่อสตรีคที่ขาดไป 1 วันให้เชื่อมต่อ (จำกัดสัปดาห์ละ 1 ครั้ง)",
   },
   {
     code: "course_destiny",

@@ -65,7 +65,8 @@ export async function GET(request: Request) {
       if (badge.rewardCoins || badge.rewardXp) {
         await applyLedger({
           anonId,
-          coinDelta: badge.rewardCoins,
+          // รางวัลเหรียญตราเข้าเป็น QI (รวม coins→qi ทั้งแอป)
+          qiDelta: badge.rewardCoins,
           xpDelta: badge.rewardXp,
           reason: `badge:${badge.id}`,
         });

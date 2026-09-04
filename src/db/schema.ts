@@ -1334,3 +1334,89 @@ export const baziSacredMapLocation = pgTable(
 
 export type InsertBaziSacredMapLocation = typeof baziSacredMapLocation.$inferInsert;
 export type SelectBaziSacredMapLocation = typeof baziSacredMapLocation.$inferSelect;
+/** โปรไฟล์แสดงตัวของผู้ใช้ (team.mp4 2026-09: @name ไม่ซ้ำกัน โชว์คู่ชื่อจริงในระบบเพื่อน-ดวงสมพงษ์)
+ *  ตั้งเองได้ตอนสมัคร; คนเก่าที่ยังไม่เคยตั้ง = ไม่มีแถว (ถือว่ายังไม่ตั้ง ตั้งได้เลยไม่มีค่าใช้จ่าย). */
+export const baziUserProfile = pgTable(
+  "bazi_user_profile",
+  {
+    anonId: text("anon_id").primaryKey(),
+    /** ชื่อแสดงแบบ @name — บังคับ unique แบบไม่สนตัวพิมพ์ (index ด้านล่าง) */
+    displayName: text("display_name").notNull(),
+    /** 0041 — ข้อมูลส่วนตัว + วันเกิด (edit-personal-info / edit-birth-data ก้อน 3)
+     *  birth_date 'YYYY-MM-DD' · birth_time 'HH:mm' (time_unknown=true แล้วเมิน) ตาม convention rawInput
+     *  การแก้ "วันเกิด" ผูกโควตา: ฟรี 1 ครั้งตลอดชีพ (bazi_qi_claim code birth_edit_free) ครั้งต่อไป
+     *  ใช้ชี่ (spend line birth_edit) — ดู /api/profile PATCH */
+    firstName: text("first_name"),
+    lastName: text("last_name"),
+    gender: text("gender"),
+    /** 0043 — อีเมล (ใช้ส่งใบเสร็จ/ไฟล์ข้อมูล ตามเฟรม edit-personal-info) */
+    email: text("email"),
+    birthDate: text("birth_date"),
+    birthTime: text("birth_time"),
+    /** 0043 — จังหวัดที่เกิด (ใช้คำนวณเวลาสุริยคติแม่นขึ้น ตามเฟรม edit-birth-data) */
+    birthProvince: text("birth_province"),
+    timeUnknown: boolean("time_unknown").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("bazi_user_profile_display_name_lower_uq").on(sql`lower(${t.displayName})`)],
+);
+
+export type SelectBaziUserProfile = typeof baziUserProfile.$inferSelect;
+/** คำขอพิจารณาแก้วันเกิด (เฟรม correction request sheet) — สิทธิ์ฟรีหมด/เคสพิเศษ ส่งเหตุผลถึงทีม */
+export const baziCorrectionRequest = pgTable("bazi_correction_request", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  anonId: text("anon_id").notNull(),
+  reason: text("reason").notNull(),
+  status: text("status").notNull().default("pending"), // pending | done | rejected
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziCorrectionRequest = typeof baziCorrectionRequest.$inferSelect;
+
+/** ความยินยอม (privacy-consent) — บันทึกต่อ kind/version; PDPA เวอร์ชันเปลี่ยนเมื่อนโยบายเปลี่ยน */
+export const baziConsent = pgTable("bazi_consent", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  anonId: text("anon_id").notNull(),
+  kind: text("kind").notNull(),
+  version: text("version").notNull(),
+  accepted: boolean("accepted").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziConsent = typeof baziConsent.$inferSelect;
+
+/** ตั้งค่าการแจ้งเตือนต่อผู้ใช้ (settings-notifications) — หมวดหมู่ใหญ่ 3 อัน; รายยามจัดที่ปฏิทิน */
+export const baziNotificationPrefs = pgTable("bazi_notification_prefs", {
+  anonId: text("anon_id").primaryKey(),
+  dailyFortune: boolean("daily_fortune").notNull().default(true),
+  reminders: boolean("reminders").notNull().default(true),
+  updates: boolean("updates").notNull().default(false),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziNotificationPrefs = typeof baziNotificationPrefs.$inferSelect;
+
+/** บทความช่วยเหลือ (help-faq / document-reader — template) — seed จาก scripts/seed-help-articles.ts */
+export const baziHelpArticle = pgTable("bazi_help_article", {
+  slug: text("slug").primaryKey(),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type SelectBaziHelpArticle = typeof baziHelpArticle.$inferSelect;
+
+/** ลบบัญชี — พัก 30 วัน (delete-04 pending-recovery) ยกเลิกได้; cron /api/cron/account-purge ล้างจริง */
+export const baziAccountDeletion = pgTable("bazi_account_deletion", {
+  anonId: text("anon_id").primaryKey(),
+  status: text("status").notNull().default("pending"), // pending | canceled | purged
+  reason: text("reason"),
+  feedback: text("feedback"),
+  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
+  purgeAt: timestamp("purge_at", { withTimezone: true }).notNull(),
+  canceledAt: timestamp("canceled_at", { withTimezone: true }),
+});
+
+export type SelectBaziAccountDeletion = typeof baziAccountDeletion.$inferSelect;
