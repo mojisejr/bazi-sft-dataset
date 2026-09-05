@@ -1,6 +1,6 @@
 import { randomInt } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
@@ -107,10 +107,13 @@ export async function GET(request: Request) {
 
     const code = await getOrCreateCode(anonId);
     const db = createDbClient();
+    // รายชื่อเพื่อนที่ชวนสำเร็จ (+ displayName ถ้ามี) เรียงใหม่→เก่า — สำหรับลิสต์ "เพื่อนที่ชวน" ในหน้า referral
     const redemptions = await db
-      .select({ refereeAnonId: baziReferralRedemption.refereeAnonId })
+      .select({ refereeAnonId: baziReferralRedemption.refereeAnonId, createdAt: baziReferralRedemption.createdAt, displayName: baziUserProfile.displayName })
       .from(baziReferralRedemption)
-      .where(eq(baziReferralRedemption.referrerAnonId, anonId));
+      .leftJoin(baziUserProfile, eq(baziUserProfile.anonId, baziReferralRedemption.refereeAnonId))
+      .where(eq(baziReferralRedemption.referrerAnonId, anonId))
+      .orderBy(desc(baziReferralRedemption.createdAt));
 
     return Response.json(
       {
@@ -119,6 +122,11 @@ export async function GET(request: Request) {
         inviteUrl: `mumate.com/invite/${code}`,
         invitedCount: redemptions.length,
         rewardPerInvite: REWARD_PER_INVITE_QI,
+        friends: redemptions.map((r) => ({
+          name: r.displayName ? `@${r.displayName}` : "เพื่อนใหม่",
+          joinedAt: r.createdAt,
+          rewardQi: REWARD_PER_INVITE_QI,
+        })),
       },
       { status: 200 },
     );
