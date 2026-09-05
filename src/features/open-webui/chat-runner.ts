@@ -32,6 +32,8 @@ const OpenWebUiPayloadSchema = z.object({
   // Optional explicit reading topic (e.g. from a frontend suggested-question chip).
   // Validated downstream by the reading bridge; an unknown value falls back to intent routing.
   baziTopicHint: z.string().trim().min(1).optional(),
+  // ลูกค้าเลือกคุยกับใคร: mu=เสี่ยวมู่(ชาย) · mi=เสี่ยวมี่(หญิง) — default เสี่ยวมู่
+  persona: z.enum(["mu", "mi"]).optional(),
 });
 
 export const NormalizedChatMessageSchema = z.object({
@@ -48,6 +50,7 @@ export const ChatRunnerSuccessSchema = z.object({
   latestUserMessage: NormalizedChatMessageSchema.extend({ role: z.literal("user") }),
   baziConsult: OpenWebUiBaziConsultContextSchema.nullable(),
   baziTopicHint: z.string().trim().min(1).nullable(),
+  persona: z.enum(["mu", "mi"]).default("mu"),
   streamPlan: z.object({
     transport: z.literal("sse"),
     status: z.literal("deferred"),
@@ -171,6 +174,7 @@ export function runChatPipeline(payload: unknown): ChatRunnerResult {
     latestUserMessage,
     baziConsult: parsedPayload.baziConsult ?? null,
     baziTopicHint: parsedPayload.baziTopicHint ?? null,
+    persona: parsedPayload.persona ?? "mu",
     streamPlan: {
       transport: "sse",
       status: "deferred",
