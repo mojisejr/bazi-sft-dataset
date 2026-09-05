@@ -1420,3 +1420,18 @@ export const baziAccountDeletion = pgTable("bazi_account_deletion", {
 });
 
 export type SelectBaziAccountDeletion = typeof baziAccountDeletion.$inferSelect;
+
+/** ส่งออกข้อมูลส่วนตัวแบบ async (privacy-data-export) — คำขอ → รวบรวม → ส่งไฟล์ JSON+CSV ทางอีเมลภายใน 30 วัน.
+ *  status: collecting=รับคำขอแล้วกำลังรวบรวม · ready=ไฟล์พร้อม · emailed=ส่งอีเมลแล้ว · failed.
+ *  🔴 การส่งอีเมลจริงยังไม่ทำงาน — รอเลือก email provider (ดู route.ts POST) */
+export const baziDataExportRequest = pgTable("bazi_data_export_request", {
+  id: text("id").primaryKey(),
+  anonId: text("anon_id").notNull(),
+  email: text("email"),
+  format: text("format").notNull().default("json+csv"),
+  status: text("status").notNull().default("collecting"), // collecting | ready | emailed | failed
+  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+});
+
+export type SelectBaziDataExportRequest = typeof baziDataExportRequest.$inferSelect;
