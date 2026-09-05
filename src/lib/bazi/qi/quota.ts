@@ -29,6 +29,21 @@ export function freeLimitOf(feature: QuotaFeature, tier: Tier): number {
   return FREE_LIMIT[feature][tier];
 }
 
+/** จำนวนที่ใช้ไปแล้ววันนี้ (เขตไทย) ต่อฟีเจอร์ — สำหรับโชว์ badge "เหลือ N/limit วันนี้" ในหน้าแพ็กเกจ */
+export async function usageToday(anonId: string): Promise<Record<QuotaFeature, number>> {
+  const db = createDbClient();
+  const periodKey = todayBangkok();
+  const rows = await db
+    .select({ feature: baziFeatureQuota.feature, used: baziFeatureQuota.used })
+    .from(baziFeatureQuota)
+    .where(and(eq(baziFeatureQuota.anonId, anonId), eq(baziFeatureQuota.periodKey, periodKey)));
+  const out: Record<QuotaFeature, number> = { card: 0, chat: 0 };
+  for (const r of rows) {
+    if (r.feature === "card" || r.feature === "chat") out[r.feature] = r.used;
+  }
+  return out;
+}
+
 /** จำนวนช่องจับคู่พื้นฐานตาม tier (ยังไม่รวม slot ที่แลกด้วย Qi) */
 const BASE_MATCHING_SLOTS: Record<Tier, number> = { free: 3, plus: 10, pro: 50 };
 
