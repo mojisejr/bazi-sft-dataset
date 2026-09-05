@@ -41,8 +41,19 @@ function normalize(input: SacredLocationInput): Omit<InsertBaziSacredMapLocation
 
 export type ListFilter = { element?: string | null; need?: string | null };
 
+/** client-safe: ตัด base64 (ใหญ่) ออกจาก payload list, เพิ่ม hasImage (มีรูปใน DB ให้เสิร์ฟไหม) */
+export type SacredLocationPublic = Omit<SacredLocationRow, "imageBase64" | "imageMime"> & {
+  hasImage: boolean;
+};
+
+function toPublic(row: SacredLocationRow): SacredLocationPublic {
+  const { imageBase64, imageMime, ...rest } = row;
+  void imageMime;
+  return { ...rest, hasImage: !!imageBase64 };
+}
+
 /** สถานที่ที่ verified แล้ว (สาธารณะ) — กรองธาตุ/ความต้องการ, เรียงตามยอดเช็คอิน */
-export async function listVerified(filter: ListFilter = {}): Promise<SacredLocationRow[]> {
+export async function listVerified(filter: ListFilter = {}): Promise<SacredLocationPublic[]> {
   const db = createDbClient();
   const rows = await db
     .select()
@@ -50,11 +61,13 @@ export async function listVerified(filter: ListFilter = {}): Promise<SacredLocat
     .where(eq(baziSacredMapLocation.status, "verified"))
     .orderBy(desc(baziSacredMapLocation.checkinCount));
 
-  return rows.filter((row) => {
-    if (filter.element && row.element !== filter.element) return false;
-    if (filter.need && !(row.needs ?? []).includes(filter.need)) return false;
-    return true;
-  });
+  return rows
+    .filter((row) => {
+      if (filter.element && row.element !== filter.element) return false;
+      if (filter.need && !(row.needs ?? []).includes(filter.need)) return false;
+      return true;
+    })
+    .map(toPublic);
 }
 
 /** ทุกสถานที่ทุกสถานะ (แอดมิน) */

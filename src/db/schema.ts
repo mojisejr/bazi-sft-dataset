@@ -1311,6 +1311,9 @@ export const baziSacredMapLocation = pgTable(
     /** โพยการมู — ของไหว้/วิธีขอพร */
     worshipGuide: text("worship_guide"),
     imageUrl: text("image_url"),
+    /** 0046 — รูปสถานที่เก็บ base64 ใน DB (เสิร์ฟผ่าน GET /api/sacred-map/image/[id] ไม่พึ่ง Supabase) */
+    imageBase64: text("image_base64"),
+    imageMime: text("image_mime"),
     /** ลิงก์ Google Maps เฉพาะ (ถ้าเว้นว่าง จะสร้างจาก lat/lng) */
     googleMapUrl: text("google_map_url"),
     /** ยอดเช็คอินรวม (นิรนาม) */
