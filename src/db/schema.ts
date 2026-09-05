@@ -1356,6 +1356,10 @@ export const baziUserProfile = pgTable(
     /** 0043 — จังหวัดที่เกิด (ใช้คำนวณเวลาสุริยคติแม่นขึ้น ตามเฟรม edit-birth-data) */
     birthProvince: text("birth_province"),
     timeUnknown: boolean("time_unknown").notNull().default(false),
+    /** 0045 — รูปโปรไฟล์ (avatar) เก็บ base64 ใน DB (รูปเล็ก ~256px jpeg); null = ใช้ตัวย่อชื่อตามธาตุ */
+    avatarBase64: text("avatar_base64"),
+    avatarMime: text("avatar_mime"),
+    avatarUpdatedAt: timestamp("avatar_updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },

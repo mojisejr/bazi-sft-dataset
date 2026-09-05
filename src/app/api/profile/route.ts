@@ -73,6 +73,8 @@ export async function GET(request: Request) {
               birthTime: profile.birthTime,
               birthProvince: profile.birthProvince,
               timeUnknown: profile.timeUnknown,
+              hasAvatar: !!profile.avatarBase64,
+              avatarUpdatedAt: profile.avatarUpdatedAt,
             }
           : null,
         quota: {
