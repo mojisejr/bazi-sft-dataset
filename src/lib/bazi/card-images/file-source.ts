@@ -13,14 +13,14 @@ import path from "node:path";
 
 import { compressCardImage } from "@/lib/bazi/divine-cards/image-gen";
 
-export type CardDeck = "oracle" | "divine";
+export type CardDeck = "oracle" | "divine" | "sage";
 
 const ROOT = process.cwd();
 const KNOWNLAGE = path.join(ROOT, "knownlage");
 
-/** ขนาดรูปที่เสิร์ฟให้ FE (เล็กกว่าที่เก็บใน DB เพราะเป็น thumbnail/section icon) */
-const SERVE_WIDTH = 480;
-const SERVE_QUALITY = 78;
+/** ขนาดรูปที่เสิร์ฟให้ FE. การ์ด = thumbnail/section icon (เล็กพอ); ใบเซียมซี = โปสเตอร์มีตัวหนังสือ ต้องอ่านออก */
+const SERVE_QUALITY = 80;
+const SERVE_WIDTH: Record<CardDeck, number> = { oracle: 480, divine: 480, sage: 960 };
 
 const indexCache: Partial<Record<CardDeck, Map<number, string>>> = {};
 const bytesCache = new Map<string, { buf: Buffer; mime: string }>();
@@ -67,6 +67,13 @@ function divineNoFromFile(file: string): number | null {
   return m ? parseInt(m[1], 10) : null;
 }
 
+/** ใบเซียมซี "01.jpg".."64.jpg" (เลขนำหน้า 2 หลัก) → 1..64 */
+function sageNoFromFile(file: string): number | null {
+  const base = file.replace(/\.jpe?g$/i, "").trim();
+  const m = base.match(/^(\d+)$/);
+  return m ? parseInt(m[1], 10) : null;
+}
+
 function buildIndex(deck: CardDeck): Map<number, string> {
   const map = new Map<number, string>();
   if (deck === "oracle") {
@@ -75,6 +82,16 @@ function buildIndex(deck: CardDeck): Map<number, string> {
     for (const file of readdirSync(dir)) {
       if (!/\.jpe?g$/i.test(file)) continue;
       const no = oracleNoFromFile(file);
+      if (no && no > 0 && !map.has(no)) map.set(no, path.join(dir, file));
+    }
+    return map;
+  }
+  if (deck === "sage") {
+    const dir = path.join(KNOWNLAGE, "เซียนเสี่ยงทาย");
+    if (!existsSync(dir)) return map;
+    for (const file of readdirSync(dir)) {
+      if (!/\.jpe?g$/i.test(file)) continue;
+      const no = sageNoFromFile(file);
       if (no && no > 0 && !map.has(no)) map.set(no, path.join(dir, file));
     }
     return map;
@@ -108,7 +125,7 @@ export async function getCardImageBytes(
 
   const raw = readFileSync(file);
   const out = await compressCardImage(raw.toString("base64"), {
-    width: SERVE_WIDTH,
+    width: SERVE_WIDTH[deck],
     quality: SERVE_QUALITY,
   });
   const result = { buf: Buffer.from(out.base64, "base64"), mime: out.mime };
