@@ -36,6 +36,11 @@ export function freeLimitOf(feature: QuotaFeature, tier: Tier): number {
   return FREE_LIMIT[feature][tier];
 }
 
+/** สมาชิกจ่ายเงิน (plus/pro) แชทได้ไม่จำกัด — ไม่หัก QI, ไม่ตัดโควตา (นโยบายเฉพาะ chat) */
+export function isUnlimited(feature: QuotaFeature, tier: Tier): boolean {
+  return feature === "chat" && (tier === "plus" || tier === "pro");
+}
+
 /** จำนวนที่ใช้ไปแล้ววันนี้ (เขตไทย) ต่อฟีเจอร์ — สำหรับโชว์ badge "เหลือ N/limit วันนี้" ในหน้าแพ็กเกจ */
 export async function usageToday(anonId: string): Promise<Record<QuotaFeature, number>> {
   const db = createDbClient();
@@ -77,6 +82,8 @@ export type PeekResult = {
  */
 export async function peekUse(anonId: string, feature: QuotaFeature): Promise<PeekResult> {
   const tier = await getTier(anonId);
+  // สมาชิกจ่ายเงิน: แชทไม่จำกัด → ใช้ได้เสมอ ไม่หัก
+  if (isUnlimited(feature, tier)) return { affordable: true, nextSource: "free", cost: 0, freeRemaining: -1 };
   const limit = freeLimitOf(feature, tier);
   const cost = qiCostOf(feature);
   const used = (await usageToday(anonId))[feature];
@@ -100,6 +107,10 @@ export type ConsumeResult =
 export async function consumeUse(anonId: string, feature: QuotaFeature): Promise<ConsumeResult> {
   const db = createDbClient();
   const tier = await getTier(anonId);
+  // สมาชิกจ่ายเงิน: แชทไม่จำกัด → ผ่านเลย ไม่ตัดโควตา/ไม่หัก QI
+  if (isUnlimited(feature, tier)) {
+    return { ok: true, source: "free", cost: 0, freeRemaining: -1, creditRemaining: -1 };
+  }
   const limit = freeLimitOf(feature, tier);
   const periodKey = todayBangkok();
 
