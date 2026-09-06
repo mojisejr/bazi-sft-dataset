@@ -11,7 +11,7 @@ import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { polishDivineReading } from "@/lib/bazi/divine-cards/reading-llm";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
-import { qiGate } from "@/lib/bazi/qi/quota";
+import { gateFeature } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -51,9 +51,10 @@ export async function POST(req: Request) {
   }
   const { mode, question, cardNos, random, anonId, apiKey, model, provider } = parsed.data;
 
-  // ตัดโควตาเปิดการ์ด (ฟรีรายวัน → credit ที่แลกด้วย Qi) เมื่อผูก anonId
-  const gated = await qiGate(anonId, "card");
-  if (gated) return gated;
+  // ตัดสิทธิ์เปิดการ์ด (ฟรีรายวัน → credit → หัก QI) เมื่อผูก anonId
+  const { blocked, result: gate } = await gateFeature(anonId, "card");
+  if (blocked) return blocked;
+  const qi = gate && gate.ok ? { source: gate.source, cost: gate.cost } : null;
 
   // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับให้ผู้ใช้กรอกคีย์) — มี guard กันยิงรัว/โควตา/เพดานต้นทุน
   const usedOwnKey = Boolean(apiKey);
@@ -108,6 +109,7 @@ export async function POST(req: Request) {
         no: s.card.no,
       })),
       engineProse: reading.engineProse,
+      qi,
     });
   }
 
@@ -126,6 +128,7 @@ export async function POST(req: Request) {
       engineProse: reading.engineProse,
       llmProse: llm.text,
       model: llm.model,
+      qi,
     });
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : "LLM ตอบไม่สำเร็จ", 502);

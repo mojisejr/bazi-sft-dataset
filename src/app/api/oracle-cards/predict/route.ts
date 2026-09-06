@@ -11,7 +11,7 @@ import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { polishOracleReading } from "@/lib/bazi/oracle-cards/reading-llm";
 import { createDbOracleCardImageRepository } from "@/lib/bazi/oracle-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
-import { qiGate } from "@/lib/bazi/qi/quota";
+import { gateFeature } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -51,9 +51,11 @@ export async function POST(req: Request) {
   }
   const { mode, question, cardNos, random, anonId, apiKey, model, provider } = parsed.data;
 
-  // ตัดโควตาเปิดการ์ด (ฟรีรายวัน → credit ที่แลกด้วย Qi) เมื่อผูก anonId
-  const gated = await qiGate(anonId, "card");
-  if (gated) return gated;
+  // ตัดสิทธิ์เปิดการ์ด (ฟรีรายวัน → credit → หัก QI) เมื่อผูก anonId
+  const { blocked, result: gate } = await gateFeature(anonId, "card");
+  if (blocked) return blocked;
+  // ที่มาของการตัดสิทธิ์ให้ FE โชว์ป้ายตามจริง (free=ฟรีวันนี้ · qi=หัก N ชี่ · credit=ใช้เครดิต)
+  const qi = gate && gate.ok ? { source: gate.source, cost: gate.cost } : null;
 
   // โหมด AI ใช้คีย์เซิร์ฟเวอร์ได้เลย (ไม่บังคับกรอกคีย์) — guard กันยิงรัว/โควตา/เพดานต้นทุน
   const usedOwnKey = Boolean(apiKey);
@@ -108,6 +110,7 @@ export async function POST(req: Request) {
         no: s.card.no,
       })),
       engineProse: reading.engineProse,
+      qi,
     });
   }
 
@@ -126,6 +129,7 @@ export async function POST(req: Request) {
       engineProse: reading.engineProse,
       llmProse: llm.text,
       model: llm.model,
+      qi,
     });
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : "LLM ตอบไม่สำเร็จ", 502);
