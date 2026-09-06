@@ -1,6 +1,6 @@
 import { getWallet } from "@/lib/bazi/manifest/ledger";
 import { getEntitlementSummary } from "@/lib/bazi/qi/entitlements";
-import { freeLimitOf } from "@/lib/bazi/qi/quota";
+import { freeLimitOf, usageToday } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -13,7 +13,9 @@ export async function GET(request: Request) {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
 
-    const [summary, wallet] = await Promise.all([getEntitlementSummary(anonId), getWallet(anonId)]);
+    const [summary, wallet, used] = await Promise.all([getEntitlementSummary(anonId), getWallet(anonId), usageToday(anonId)]);
+    const cardLimit = freeLimitOf("card", summary.tier);
+    const chatLimit = freeLimitOf("chat", summary.tier);
 
     return Response.json(
       {
@@ -23,7 +25,12 @@ export async function GET(request: Request) {
         credits: summary.credits,
         owned: summary.owned,
         // โควตาฟรีต่อวันตาม tier (ให้ frontend โชว์ว่าเหลือเท่าไร)
-        freeLimit: { card: freeLimitOf("card", summary.tier), chat: freeLimitOf("chat", summary.tier) },
+        freeLimit: { card: cardLimit, chat: chatLimit },
+        // ใช้ไปแล้ววันนี้ + เพดาน — สำหรับ badge "เหลือ N/limit วันนี้" (หน้าแพ็กเกจ)
+        quota: {
+          card: { used: used.card, limit: cardLimit },
+          chat: { used: used.chat, limit: chatLimit },
+        },
       },
       { status: 200 },
     );

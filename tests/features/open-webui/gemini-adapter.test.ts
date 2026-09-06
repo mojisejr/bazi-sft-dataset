@@ -317,3 +317,20 @@ describe("generateGeminiAssistantReply", () => {
     );
   });
 });
+describe("persona (เสี่ยวมู่/เสี่ยวมี่)", () => {
+  test("mu → เสี่ยวมู่ + คำลงท้ายผู้ชาย", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({ ...readyChatInput, persona: "mu" });
+    expect(payload.systemInstruction).toContain("เสี่ยวมู่");
+    expect(payload.systemInstruction).toContain("ครับ/นะครับ");
+  });
+  test("mi → เสี่ยวมี่ + คำลงท้ายผู้หญิง", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({ ...readyChatInput, persona: "mi" });
+    expect(payload.systemInstruction).toContain("เสี่ยวมี่");
+    expect(payload.systemInstruction).toContain("ค่ะ/นะคะ");
+    expect(payload.systemInstruction).not.toContain("เสี่ยวมู่");
+  });
+  test("ไม่ระบุ persona → default เสี่ยวมู่", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload(readyChatInput);
+    expect(payload.systemInstruction).toContain("เสี่ยวมู่");
+  });
+});

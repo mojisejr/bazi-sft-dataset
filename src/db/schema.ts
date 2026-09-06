@@ -1311,6 +1311,9 @@ export const baziSacredMapLocation = pgTable(
     /** โพยการมู — ของไหว้/วิธีขอพร */
     worshipGuide: text("worship_guide"),
     imageUrl: text("image_url"),
+    /** 0046 — รูปสถานที่เก็บ base64 ใน DB (เสิร์ฟผ่าน GET /api/sacred-map/image/[id] ไม่พึ่ง Supabase) */
+    imageBase64: text("image_base64"),
+    imageMime: text("image_mime"),
     /** ลิงก์ Google Maps เฉพาะ (ถ้าเว้นว่าง จะสร้างจาก lat/lng) */
     googleMapUrl: text("google_map_url"),
     /** ยอดเช็คอินรวม (นิรนาม) */
@@ -1356,6 +1359,10 @@ export const baziUserProfile = pgTable(
     /** 0043 — จังหวัดที่เกิด (ใช้คำนวณเวลาสุริยคติแม่นขึ้น ตามเฟรม edit-birth-data) */
     birthProvince: text("birth_province"),
     timeUnknown: boolean("time_unknown").notNull().default(false),
+    /** 0045 — รูปโปรไฟล์ (avatar) เก็บ base64 ใน DB (รูปเล็ก ~256px jpeg); null = ใช้ตัวย่อชื่อตามธาตุ */
+    avatarBase64: text("avatar_base64"),
+    avatarMime: text("avatar_mime"),
+    avatarUpdatedAt: timestamp("avatar_updated_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   },
@@ -1420,3 +1427,18 @@ export const baziAccountDeletion = pgTable("bazi_account_deletion", {
 });
 
 export type SelectBaziAccountDeletion = typeof baziAccountDeletion.$inferSelect;
+
+/** ส่งออกข้อมูลส่วนตัวแบบ async (privacy-data-export) — คำขอ → รวบรวม → ส่งไฟล์ JSON+CSV ทางอีเมลภายใน 30 วัน.
+ *  status: collecting=รับคำขอแล้วกำลังรวบรวม · ready=ไฟล์พร้อม · emailed=ส่งอีเมลแล้ว · failed.
+ *  🔴 การส่งอีเมลจริงยังไม่ทำงาน — รอเลือก email provider (ดู route.ts POST) */
+export const baziDataExportRequest = pgTable("bazi_data_export_request", {
+  id: text("id").primaryKey(),
+  anonId: text("anon_id").notNull(),
+  email: text("email"),
+  format: text("format").notNull().default("json+csv"),
+  status: text("status").notNull().default("collecting"), // collecting | ready | emailed | failed
+  requestedAt: timestamp("requested_at", { withTimezone: true }).defaultNow().notNull(),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+});
+
+export type SelectBaziDataExportRequest = typeof baziDataExportRequest.$inferSelect;

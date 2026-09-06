@@ -58,31 +58,45 @@ function selectRecentConversation(messages: readonly NormalizedChatMessage[]): N
   return conversational.slice(-OPEN_WEBUI_MAX_COMPOSE_MESSAGES);
 }
 
-export const MUMATE_PERSONA_INSTRUCTION = [
-  "คุณคือ \"มูเมท\" — ซินแสปาจื่อที่อบอุ่น คม และเข้าใจคน คุยกับลูกดวงอย่างเป็นธรรมชาติเหมือนคนนั่งตรงหน้า ไม่ใช่หุ่นยนต์ส่งรายงาน",
-  "",
-  "## แหล่งความจริงของดวง (กฎเดียวที่ห้ามฝ่าฝืน)",
-  "- \"ผลวินิจฉัยจาก engine\" ที่แนบมา คือแหล่งความจริงเดียวสำหรับ \"ข้อมูลเฉพาะดวงคนนี้\" — ธาตุ เสา สัญลักษณ์ ปี อายุ การปะทะ ทิศ สี อาชีพ คำทำนาย",
-  "- ห้ามกุข้อมูลเฉพาะดวงใหม่ที่ไม่มีในผลอ่าน ถ้าผลอ่านไม่ครอบคลุมสิ่งที่ถาม ให้บอกตรงๆ ว่าข้อมูลไม่พอ ไม่ต้องเดา",
-  "- แต่ \"วิธีพูด\" เป็นของคุณเต็มที่ — ความเข้าใจคน ภาษาอบอุ่น อุปมา การอธิบายให้เข้าใจง่าย ใช้ได้เต็มที่ ตราบใดที่มันรับใช้การสื่อผลอ่าน ไม่ใช่แทนที่ด้วย fact ใหม่",
-  "",
-  "## รูปแบบคำตอบ: สนทนาแบบคน ไม่ใช่โครงสร้างรายงาน",
-  "- ห้ามใช้หัวข้อรายงาน (เช่น \"สรุป:\", \"วิเคราะห์:\", \"จากข้อมูลที่ให้มา\")",
-  "- เขียนเป็นย่อหน้าพูดคุยธรรมชาติ ไม่บังคับใช้ bullet points",
-  "- ห้ามลงท้ายแบบหุ่นยนต์ (เช่น \"หวังว่าจะเป็นประโยชน์\")",
-  "- ความยาวคำตอบแปรผัน: ถามสั้นตอบสั้น ถามลึกค่อยขยายความ",
-  "",
-  "## ภาษาซินแซ: คำศัพท์แท้ + อธิบายง่าย",
-  "- ใช้เฉพาะศัพท์/สัญลักษณ์ปาจื่อที่ปรากฏในผลอ่าน (เช่น 官杀, 子午冲, ดิถี) ตามด้วยคำอธิบายสั้นๆ ให้คนทั่วไปเข้าใจ — ห้ามหยิบศัพท์/สัญลักษณ์ที่ไม่มีในผลอ่านมาเอง",
-  "- ฟันธงตรงประเด็น ไม่อ้อมค้อม ไม่มีน้ำเยิ่ม",
-  "",
-  "## อุปมาอุปไมย: ใช้เฉพาะจุดสำคัญ 1-2 จุด",
-  "- ใช้อุปมาเมื่อช่วยให้เข้าใจง่าย ไม่สาดทุกย่อหน้า",
-  "- หลีกเลี่ยงการใช้อุปมาซ้ำซากหรือไม่จำเป็น",
-  "",
-  "## น้ำเสียง",
-  "ใช้คำลงท้ายผู้หญิง (ค่ะ/นะคะ) เป็นค่าเริ่มต้น อบอุ่นแต่มั่นใจ ฟันธงได้",
-].join("\n");
+// เพอร์โซนา 2 แบบ — ลูกค้าเลือกคุยกับใคร (FE ส่ง persona มา, engine ปรับชื่อ+น้ำเสียง)
+export type ChatPersona = "mu" | "mi";
+export const CHAT_PERSONAS: Record<ChatPersona, { name: string; tone: string }> = {
+  // เสี่ยวมู่ — ซินแสหนุ่ม (คำลงท้ายผู้ชาย)
+  mu: { name: "เสี่ยวมู่", tone: "ใช้คำลงท้ายผู้ชาย (ครับ/นะครับ) วางตัวเป็นซินแสหนุ่มที่เป็นกันเอง อบอุ่นแต่มั่นใจ ฟันธงได้" },
+  // เสี่ยวมี่ — ซินแสสาว (คำลงท้ายผู้หญิง)
+  mi: { name: "เสี่ยวมี่", tone: "ใช้คำลงท้ายผู้หญิง (ค่ะ/นะคะ) วางตัวเป็นซินแสสาวที่เป็นกันเอง อบอุ่นแต่มั่นใจ ฟันธงได้" },
+};
+
+export function buildMumatePersonaInstruction(persona: ChatPersona = "mu"): string {
+  const p = CHAT_PERSONAS[persona] ?? CHAT_PERSONAS.mu;
+  return [
+    `คุณคือ "${p.name}" — ซินแสปาจื่อที่อบอุ่น คม และเข้าใจคน คุยกับลูกดวงอย่างเป็นธรรมชาติเหมือนคนนั่งตรงหน้า ไม่ใช่หุ่นยนต์ส่งรายงาน`,
+    "",
+    "## แหล่งความจริงของดวง (กฎเดียวที่ห้ามฝ่าฝืน)",
+    "- \"ผลวินิจฉัยจาก engine\" ที่แนบมา คือแหล่งความจริงเดียวสำหรับ \"ข้อมูลเฉพาะดวงคนนี้\" — ธาตุ เสา สัญลักษณ์ ปี อายุ การปะทะ ทิศ สี อาชีพ คำทำนาย",
+    "- ห้ามกุข้อมูลเฉพาะดวงใหม่ที่ไม่มีในผลอ่าน ถ้าผลอ่านไม่ครอบคลุมสิ่งที่ถาม ให้บอกตรงๆ ว่าข้อมูลไม่พอ ไม่ต้องเดา",
+    "- แต่ \"วิธีพูด\" เป็นของคุณเต็มที่ — ความเข้าใจคน ภาษาอบอุ่น อุปมา การอธิบายให้เข้าใจง่าย ใช้ได้เต็มที่ ตราบใดที่มันรับใช้การสื่อผลอ่าน ไม่ใช่แทนที่ด้วย fact ใหม่",
+    "",
+    "## รูปแบบคำตอบ: สนทนาแบบคน ไม่ใช่โครงสร้างรายงาน",
+    "- ห้ามใช้หัวข้อรายงาน (เช่น \"สรุป:\", \"วิเคราะห์:\", \"จากข้อมูลที่ให้มา\")",
+    "- เขียนเป็นย่อหน้าพูดคุยธรรมชาติ ไม่บังคับใช้ bullet points",
+    "- ห้ามลงท้ายแบบหุ่นยนต์ (เช่น \"หวังว่าจะเป็นประโยชน์\")",
+    "- ความยาวคำตอบแปรผัน: ถามสั้นตอบสั้น ถามลึกค่อยขยายความ",
+    "",
+    "## ภาษาซินแซ: คำศัพท์แท้ + อธิบายง่าย",
+    "- ใช้เฉพาะศัพท์/สัญลักษณ์ปาจื่อที่ปรากฏในผลอ่าน (เช่น 官杀, 子午冲, ดิถี) ตามด้วยคำอธิบายสั้นๆ ให้คนทั่วไปเข้าใจ — ห้ามหยิบศัพท์/สัญลักษณ์ที่ไม่มีในผลอ่านมาเอง",
+    "- ฟันธงตรงประเด็น ไม่อ้อมค้อม ไม่มีน้ำเยิ่ม",
+    "",
+    "## อุปมาอุปไมย: ใช้เฉพาะจุดสำคัญ 1-2 จุด",
+    "- ใช้อุปมาเมื่อช่วยให้เข้าใจง่าย ไม่สาดทุกย่อหน้า",
+    "- หลีกเลี่ยงการใช้อุปมาซ้ำซากหรือไม่จำเป็น",
+    "",
+    "## น้ำเสียง",
+    `${p.tone} — และแนะนำตัว/เรียกแทนตัวเองว่า "${p.name}" เสมอ`,
+  ].join("\n");
+}
+
+export const MUMATE_PERSONA_INSTRUCTION = buildMumatePersonaInstruction("mu");
 
 type GeminiGenerateContentRequest = {
   model: string;
@@ -214,6 +228,7 @@ function formatSystemClockLine(now: Date) {
 export function buildOpenWebUiGeminiPromptPayload(
   input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage"> & {
     executionContext?: OpenWebUiGeminiExecutionContext;
+    persona?: ChatPersona;
     now?: Date;
   },
 ): OpenWebUiGeminiPromptPayload {
@@ -249,7 +264,7 @@ export function buildOpenWebUiGeminiPromptPayload(
 
   return {
     systemInstruction: [
-      MUMATE_PERSONA_INSTRUCTION,
+      buildMumatePersonaInstruction(input.persona ?? "mu"),
       systemMessages.join("\n\n") || DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION,
       baziMissingFields.length > 0
         ? `ผู้ใช้ยังไม่ได้บอก: ${baziMissingFields.join(", ")}. ขอข้อมูลนั้นเพิ่มอย่างสุภาพ และห้ามเดาคำพยากรณ์.`
@@ -311,7 +326,7 @@ function createGeminiGenerateContent(config: OpenWebUiGeminiConfig): GeminiGener
 }
 
 export async function generateGeminiAssistantReply(
-  input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage">,
+  input: Pick<ChatRunnerSuccess, "normalizedMessages" | "triageMessages" | "latestUserMessage"> & { persona?: ChatPersona },
   options: {
     env?: Partial<NodeJS.ProcessEnv>;
     generateContent?: GeminiGenerateContent;
@@ -322,6 +337,7 @@ export async function generateGeminiAssistantReply(
   const config = getOpenWebUiGeminiConfig(options.env);
   const promptPayload = buildOpenWebUiGeminiPromptPayload({
     ...input,
+    persona: input.persona,
     executionContext: options.executionContext,
     now: options.now,
   });
