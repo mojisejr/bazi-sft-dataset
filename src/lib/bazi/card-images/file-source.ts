@@ -17,6 +17,10 @@ export type CardDeck = "oracle" | "divine" | "sage";
 
 const ROOT = process.cwd();
 const KNOWNLAGE = path.join(ROOT, "knownlage");
+// รูปหน้าไพ่ที่ "บีบไว้ล่วงหน้า" (build ด้วย scripts/build-card-faces.ts) — เล็กพอ commit + bundle ขึ้น
+// prod ได้ (knownlage ดิบ ~180MB ใหญ่เกิน serverless). prod มีแค่ dir นี้; dev ยัง fallback ไป knownlage.
+// ⚠️ ต้อง trace เข้า route ผ่าน next.config outputFileTracingIncludes (`./card-faces/**`).
+const CARD_FACES = path.join(ROOT, "card-faces");
 
 /** ขนาดรูปที่เสิร์ฟให้ FE. การ์ด = thumbnail/section icon (เล็กพอ); ใบเซียมซี = โปสเตอร์มีตัวหนังสือ ต้องอ่านออก */
 const SERVE_QUALITY = 80;
@@ -120,6 +124,15 @@ export async function getCardImageBytes(
   const cached = bytesCache.get(key);
   if (cached) return cached;
 
+  // 1) รูปที่บีบไว้ล่วงหน้า (prod path) — เสิร์ฟตรง ๆ ไม่ต้อง sharp/knownlage
+  const prebuilt = path.join(CARD_FACES, deck, `${no}.jpg`);
+  if (existsSync(prebuilt)) {
+    const result = { buf: readFileSync(prebuilt), mime: "image/jpeg" };
+    bytesCache.set(key, result);
+    return result;
+  }
+
+  // 2) fallback: อ่านจากไฟล์ดิบใน knownlage แล้วบีบสด (dev — knownlage มีครบ)
   const file = getIndex(deck).get(no);
   if (!file || !existsSync(file)) return null;
 
