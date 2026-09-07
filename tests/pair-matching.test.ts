@@ -5,6 +5,8 @@ import {
   buildFacets,
   buildPairComparison,
   buildWorkComparison,
+  buildWorkRoleComparison,
+  RELATIONSHIP_SPECS,
   computePairMatch,
   computePairMatchPair,
   mainFacetOf,
@@ -193,5 +195,37 @@ describe("work multi-candidate comparison (เรา vs ผู้ร่วมง
     // each candidate carries work match + element interaction + roles
     expect(r.candidates[0].match.forward.domain).toBe("work");
     expect(r.candidates[0].elementInteraction.summaryTh).toBeTruthy();
+  });
+});
+
+// ฟีม 2026-09-07 — /api/bazi/work แยกตามบทบาท: คำนวณด้วยมิติของบทบาทนั้นจากสี่เสา ไม่ใช่เส้นรวม
+describe("buildWorkRoleComparison — แยกตามบทบาท (boss / partner / subordinate)", () => {
+  const sp = (stem: string, branch: string) => ({ stem, branch });
+  const ME = { hour: sp("壬", "申"), day: sp("己", "酉"), month: sp("癸", "亥"), year: sp("癸", "酉") };
+  const A = { hour: sp("甲", "寅"), day: sp("甲", "寅"), month: sp("壬", "辰"), year: sp("辛", "酉") };
+  const B = { hour: sp("丙", "午"), day: sp("庚", "子"), month: sp("乙", "卯"), year: sp("戊", "戌") };
+
+  test("แต่ละบทบาทใช้มิติของตัวเอง (key ตาม RELATIONSHIP_SPECS) และ rankScore = มิติหลักของบทบาท", () => {
+    for (const rel of ["boss", "partner", "subordinate"] as const) {
+      const r = buildWorkRoleComparison(rel, ME, [A, B]);
+      expect(r.relationship).toBe(rel);
+      expect(r.candidates).toHaveLength(2);
+      for (const c of r.candidates) {
+        expect(c.facets.map((f) => f.key)).toEqual(RELATIONSHIP_SPECS[rel].facets.map((f) => f.key));
+        expect(c.roleFacet?.isMain).toBe(true);
+        if (c.roleFacet?.found !== false) expect(c.rankScore).toBe(c.roleFacet?.percent ?? null);
+        expect(c.roles.length).toBeGreaterThan(0); // คำอ่าน 3 มุมมองยังอยู่
+      }
+      // ranking เรียงจาก rankScore มาก→น้อย
+      const scores = r.ranking.map((i) => r.candidates[i].rankScore ?? -1);
+      expect([...scores].sort((x, y) => y - x)).toEqual(scores);
+    }
+  });
+
+  test("บทบาทต่างกัน → ผลต่างกันได้ (ไม่ใช่ตัวเลขชุดเดียวกันติดป้ายคนละชื่อ)", () => {
+    const boss = buildWorkRoleComparison("boss", ME, [A, B]);
+    const sub = buildWorkRoleComparison("subordinate", ME, [A, B]);
+    const sig = (r: ReturnType<typeof buildWorkRoleComparison>) => r.candidates.map((c) => c.facets.map((f) => `${f.key}:${f.percent}`).join("|")).join("//");
+    expect(sig(boss)).not.toBe(sig(sub));
   });
 });

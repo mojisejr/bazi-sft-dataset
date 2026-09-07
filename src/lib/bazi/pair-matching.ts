@@ -38,6 +38,7 @@ import type {
   RoleReading,
   ShengxiaStage,
   SisingStar,
+  WorkCandidate,
   WorkComparisonResult,
 } from "@/lib/bazi/pair-types";
 
@@ -361,8 +362,27 @@ export const RELATIONSHIP_SPECS: Record<RelationshipType, RelationshipSpec> = {
   },
 };
 
+/**
+ * DAYMATE (relationship "day") — ชุดคำทำนายต่อ "ด้าน" ไม่ใช่ชุดเดียวทั้ง 4 ด้าน.
+ * เดิมทุกด้านใช้ loveShengxia → บนจอ "คำทำนายรายด้าน" ด้านที่ทำงาน/ไปหาลูกค้า/อยู่บ้าน ขึ้นข้อความเดียวกับ
+ * "อยู่กับเพื่อน พี่น้อง คู่ครอง" (ฟีม สไลด์ 16 ข้อ 3, 2026-09). โค้ด A1..B.. ใช้ร่วมกันทุกชุด จึง map ตามความหมายของด้าน:
+ *   companions (วันเรา×วัน · เพื่อน/พี่น้อง/คู่ครอง) → คนรัก (เชี่ยงแซ)  · เหมือนเดิม
+ *   workplace  (เดือนเรา×วัน · ที่ทำงาน/พ่อแม่/หัวหน้า) → ตัวเรา→เจ้านาย
+ *   home       (ยามเรา×วัน · บ้าน/คุมลูกน้อง)          → ลูกน้อง→ตัวเรา
+ *   outside    (ปีเรา×วัน · ลูกค้า/สังคม/ต่างถิ่น)      → หุ้นส่วน/เพื่อนร่วมงาน
+ */
+const DAY_FACET_TEXT_SET: Record<string, keyof Pick<ReferenceData, "loveShengxia" | "rolePartner" | "roleBoss" | "roleSubordinate">> = {
+  companions: "loveShengxia",
+  workplace: "roleBoss",
+  home: "roleSubordinate",
+  outside: "rolePartner",
+};
+
 /** list คำทำนายต่อมุมความสัมพันธ์ จากชุดข้อความที่ใช้ (DB overlay หรือ JSON เดิม). */
-function roleListFor(reference: ReferenceData, relationship: RelationshipType): ShengxiaStage[] {
+function roleListFor(reference: ReferenceData, relationship: RelationshipType, facetKey?: string): ShengxiaStage[] {
+  if (relationship === "day" && facetKey && DAY_FACET_TEXT_SET[facetKey]) {
+    return reference[DAY_FACET_TEXT_SET[facetKey]];
+  }
   switch (relationship) {
     case "love":
       return reference.loveShengxia;
@@ -378,9 +398,9 @@ function roleListFor(reference: ReferenceData, relationship: RelationshipType): 
 }
 
 /** Map โค้ด→stage (เก็บ occurrence แรก กันโค้ดซ้ำในชีตความรัก). */
-function roleMapFor(reference: ReferenceData, relationship: RelationshipType): Map<string, ShengxiaStage> {
+function roleMapFor(reference: ReferenceData, relationship: RelationshipType, facetKey?: string): Map<string, ShengxiaStage> {
   const map = new Map<string, ShengxiaStage>();
-  for (const st of roleListFor(reference, relationship)) {
+  for (const st of roleListFor(reference, relationship, facetKey)) {
     if (st.code && !map.has(st.code)) map.set(st.code, st);
   }
   return map;
@@ -391,8 +411,9 @@ function facetLines(
   relationship: RelationshipType,
   m: PairMatchResult,
   text: MatchingText = DEFAULT_MATCHING_TEXT,
+  facetKey?: string,
 ): FacetLine[] {
-  const map = roleMapFor(text.reference, relationship);
+  const map = roleMapFor(text.reference, relationship, facetKey);
   const slots: { slot: string; code: string | null }[] = [
     { slot: "ก้าน", code: m.stemCode },
     { slot: "กิ่ง", code: m.branchCode },
@@ -439,9 +460,70 @@ export function buildFacets(
       emoji: m.emoji,
       ratingText: m.ratingText,
       sising: m.sising,
-      lines: facetLines(relationship, m, text),
+      lines: facetLines(relationship, m, text, f.key),
     };
   });
+}
+
+/** บทบาทงานที่ /api/bazi/work จัดอันดับแยกได้ (ตัด "love"/"day" ออก — ไม่ใช่มุมมองการงาน). */
+export type WorkRelationship = Extract<RelationshipType, "boss" | "partner" | "subordinate">;
+export const WORK_RELATIONSHIPS: readonly WorkRelationship[] = ["boss", "partner", "subordinate"] as const;
+export function isWorkRelationship(v: unknown): v is WorkRelationship {
+  return typeof v === "string" && (WORK_RELATIONSHIPS as readonly string[]).includes(v);
+}
+
+/**
+ * เทียบ "เรา" กับผู้สมัครหลายคน **แยกตามบทบาท** (ฟีม 2026-09-07: เจ้านาย / หุ้นส่วน / ลูกน้อง ต้องคำนวณคนละเส้น
+ * ไม่รวมเป็นเส้นเดียว). ใช้สี่เสาครบ + RELATIONSHIP_SPECS ของบทบาทนั้น (มิติเดียวกับ /api/bazi/pair-match)
+ * แล้วจัดอันดับด้วย **มิติหลัก (isMain) ของบทบาท** — ไม่ใช่ forward score รวมแบบ buildWorkComparison.
+ * รูปร่างผลลัพธ์เป็น WorkComparisonResult เดิม + `relationship` + ต่อคน `facets`/`roleFacet` ให้ผู้เรียก (FE/B2B)
+ * อ่านคะแนน/เกรดของบทบาทนั้นตรง ๆ. `roles` ยังคืนครบ 3 มุมมอง (คำอ่านเชิงบรรยาย) เหมือนเดิม.
+ */
+export type WorkRoleCandidate = WorkCandidate & {
+  facets: MatchFacet[];
+  /** มิติหลักของบทบาท = ตัวที่ใช้จัดอันดับ (null เมื่อหาคู่ไม่เจอ) */
+  roleFacet: MatchFacet | null;
+};
+export type WorkRoleComparisonResult = Omit<WorkComparisonResult, "candidates"> & {
+  relationship: WorkRelationship;
+  relationshipLabel: string;
+  candidates: WorkRoleCandidate[];
+};
+
+export function buildWorkRoleComparison(
+  relationship: WorkRelationship,
+  self: Record<PillarPos, DayPillar>,
+  others: Record<PillarPos, DayPillar>[],
+  text: MatchingText = DEFAULT_MATCHING_TEXT,
+): WorkRoleComparisonResult {
+  const spec = RELATIONSHIP_SPECS[relationship];
+  const selfDay = normPillar(self.day);
+  const candidates: WorkRoleCandidate[] = others.map((o, index) => {
+    const p = normPillar(o.day);
+    const facets = buildFacets(relationship, self, o, text);
+    const roleFacet = mainFacetOf(facets);
+    return {
+      index,
+      profile: buildPersonProfile(p, text),
+      match: computePairMatchPair(selfDay, p, spec.domain, text),
+      elementInteraction: buildElementInteractionAB(selfDay.stem, p.stem),
+      roles: buildWorkRoleReadings(selfDay, p, text),
+      facets,
+      roleFacet,
+      rankScore: roleFacet?.found === false ? null : (roleFacet?.percent ?? null),
+    };
+  });
+  const ranking = [...candidates]
+    .sort((a, b) => (b.rankScore ?? -1) - (a.rankScore ?? -1))
+    .map((c) => c.index);
+  return {
+    relationship,
+    relationshipLabel: spec.label,
+    self: buildPersonProfile(selfDay, text),
+    candidates,
+    ranking,
+    sisingReference: text.sising,
+  };
 }
 
 /** มิติคำทำนายหลัก (isMain) — fallback เป็นมิติแรกถ้าไม่ได้ระบุ. */

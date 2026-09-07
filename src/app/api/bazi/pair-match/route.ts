@@ -4,6 +4,7 @@ import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine
 import { elementLabelForSymbol } from "@/lib/bazi/element-label";
 import { buildFacets, buildPairComparison, mainFacetOf, RELATIONSHIP_SPECS } from "@/lib/bazi/pair-matching";
 import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
+import { buildChartTable } from "@/lib/bazi/chart-table";
 import { getMatchingMap } from "@/lib/bazi/matching.server";
 import type { DayPillar, MatchFacet, PillarPos } from "@/lib/bazi/pair-types";
 import {
@@ -158,11 +159,14 @@ export function createPairMatchHandler(options: HandlerOptions = {}) {
               ...profileOf(comparison.personA, body.personA.displayName),
               timeKnown: body.personA.birthTime != null,
               fourPillars: fourPillarsView(stateA),
+              // ตารางดวงจีน (Figma 720:32490): สี่เสา+ลัคนา พร้อมธาตุ/นักษัตร, วัยจร, ปีจร 100 ปี — ทำที่ engine ที่เดียว
+              chart: buildChartTable(stateA, { birthDate: body.personA.birthDate, birthTime: body.personA.birthTime ?? null }),
             },
             b: {
               ...profileOf(comparison.personB, body.personB.displayName),
               timeKnown: body.personB.birthTime != null,
               fourPillars: fourPillarsView(stateB),
+              chart: buildChartTable(stateB, { birthDate: body.personB.birthDate, birthTime: body.personB.birthTime ?? null }),
             },
           },
           overall: {

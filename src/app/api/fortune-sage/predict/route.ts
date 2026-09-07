@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { drawRandom, getAllSticks, getStickByNo } from "@/lib/bazi/fortune-sage/deck";
-import { qiGate } from "@/lib/bazi/qi/quota";
+import { gateFeature } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -34,8 +34,10 @@ export async function POST(req: Request) {
   const { question, topic, no, anonId } = parsed.data;
 
   // ตัดโควตาเสี่ยงทาย (ฟรีรายวัน → credit ที่แลกด้วย Qi) เมื่อผูก anonId
-  const gated = await qiGate(anonId, "card");
-  if (gated) return gated;
+  const { blocked, result: gate } = await gateFeature(anonId, "card");
+  if (blocked) return blocked;
+  // ที่มาของการตัดสิทธิ์ให้ FE โชว์ป้ายตามจริง (free=ฟรีวันนี้ · qi=หัก N ชี่ · credit=ใช้เครดิต) — เหมือน oracle/divine
+  const qi = gate && gate.ok ? { source: gate.source, cost: gate.cost } : null;
 
   let stick;
   if (no !== undefined) {
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
     stick = drawRandom();
   }
 
-  return Response.json({ stick, question: question ?? null, topic: topic ?? null });
+  return Response.json({ stick, question: question ?? null, topic: topic ?? null, qi });
 }
 
 /** GET — ส่งรายการหัวเซี่ยงแซทั้งหมด (เผื่อโหมดดูทั้งหมด/เลือกเอง) */
