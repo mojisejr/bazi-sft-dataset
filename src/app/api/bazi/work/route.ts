@@ -1,7 +1,7 @@
 import { ZodError } from "zod";
 
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
-import { buildWorkComparison, buildWorkRoleComparison, isWorkRelationship, WORK_RELATIONSHIPS } from "@/lib/bazi/pair-matching";
+import { buildPersonProfile, buildWorkComparison, buildWorkRoleComparison, isWorkRelationship, WORK_RELATIONSHIPS } from "@/lib/bazi/pair-matching";
 import type { PillarPos } from "@/lib/bazi/pair-types";
 import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
 import { buildChartTable } from "@/lib/bazi/chart-table";
@@ -70,14 +70,20 @@ export function createWorkBaziHandler(options: HandlerOptions = {}) {
       ]);
 
       // overlay คำทำนายที่ซินแสแก้จาก DB (เหมือน pair-match) — เฉพาะเส้นแยกบทบาท; เส้นเดิมคงพฤติกรรมเดิม
+      const text = applyMatchingOverrides(await getMatchingMap());
       const comparison = isWorkRelationship(relationship)
         ? buildWorkRoleComparison(
             relationship,
             fourPillarsOf(selfState),
             candidateStates.map(fourPillarsOf),
-            applyMatchingOverrides(await getMatchingMap()),
+            text,
           )
         : buildWorkComparison(dayPillarOf(selfState), candidateStates.map(dayPillarOf));
+
+      // นิสัยของ "คุณ" (Figma 720:29221 hero: บรรทัดอธิบายใต้หัว) — รูปเดียวกับ persons.a.nisai ของ pair-match
+      const selfDay = dayPillarOf(selfState);
+      const sp = buildPersonProfile(selfDay, text);
+      const selfProfile = { dayGanzhi: `${selfDay.stem}${selfDay.branch}`, elementTh: sp.elementTh, stageTh: sp.stageTh, nisai: sp.nisai };
 
       // ตารางดวงจีนของทุกคน (Figma 720:32490) — ใส่ไว้ใน comparison เพราะ FE เก็บเฉพาะก้อนนี้ลง DB
       const rawOf = (p: unknown) => {
@@ -90,7 +96,7 @@ export function createWorkBaziHandler(options: HandlerOptions = {}) {
       };
 
       return Response.json(
-        { self: selfState, candidates: candidateStates, comparison: { ...comparison, charts } },
+        { self: selfState, candidates: candidateStates, comparison: { ...comparison, charts, selfProfile } },
         { status: 200 },
       );
     } catch (error) {

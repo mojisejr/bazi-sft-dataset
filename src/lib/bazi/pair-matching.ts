@@ -220,7 +220,7 @@ export function buildNisai(pillar: DayPillar, text: MatchingText = DEFAULT_MATCH
   return lines;
 }
 
-function buildPersonProfile(pillar: DayPillar, text: MatchingText = DEFAULT_MATCHING_TEXT) {
+export function buildPersonProfile(pillar: DayPillar, text: MatchingText = DEFAULT_MATCHING_TEXT) {
   const el = stemElement(pillar.stem);
   return {
     dayPillar: pillar,
