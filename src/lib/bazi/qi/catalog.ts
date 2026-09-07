@@ -137,10 +137,10 @@ export const QI_SPEND_LINES: readonly QiSpendLine[] = [
   {
     code: "birth_edit",
     kind: "spend",
-    qi: 100,
+    qi: 150,
     grant: { type: "credit", kind: "card_use", credits: 0 },
     title: "แก้วันเกิด (ครั้งถัดไป)",
-    note: "สิทธิ์ฟรี 1 ครั้งตลอดชีพหมดแล้ว — แก้วันเกิดครั้งถัดไปใช้ 100 ชี่ (ดวงเปลี่ยนทั้งหมดจึงมีราคา)",
+    note: "สิทธิ์ฟรี 1 ครั้งตลอดชีพหมดแล้ว — แก้วันเกิดครั้งถัดไปใช้ 150 QI (ดวงเปลี่ยนทั้งหมดจึงมีราคา — Figma parity 2026-09-04)",
   },
   {
     code: "streak_restore",

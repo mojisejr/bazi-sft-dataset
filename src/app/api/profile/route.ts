@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziCorrectionRequest, baziQiClaim, baziUserProfile } from "@/db/schema";
 import { spendQi, QiError } from "@/lib/bazi/qi/engine";
+import { QI_SPEND_BY_CODE } from "@/lib/bazi/qi/catalog";
 
 export const runtime = "nodejs";
 
@@ -34,6 +35,8 @@ const PostSchema = z.object({
 
 const BIRTH_EDIT_SPEND_CODE = "birth_edit";
 const BIRTH_EDIT_FREE_CLAIM = "birth_edit_free";
+/** ราคาแก้วันเกิดครั้งถัดไป — อ่านจาก catalog (แหล่งเดียว) ไม่ hardcode ซ้ำ (เคยค้างที่ 100 ขณะ catalog/Figma = 150) */
+const BIRTH_EDIT_PRICE_QI = QI_SPEND_BY_CODE.get(BIRTH_EDIT_SPEND_CODE)?.qi ?? 150;
 
 async function freeBirthEditUsed(anonId: string): Promise<boolean> {
   const db = createDbClient();
@@ -79,7 +82,7 @@ export async function GET(request: Request) {
           : null,
         quota: {
           birthEditFreeUsed: await freeBirthEditUsed(anonId),
-          birthEditPriceQi: 100,
+          birthEditPriceQi: BIRTH_EDIT_PRICE_QI,
           pendingCorrection: pending ?? null,
         },
       },
@@ -107,8 +110,12 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "ยังไม่มีโปรไฟล์ — ตั้ง @name ก่อน (หน้าสมัคร)" }, { status: 409 });
     }
 
+    // "กรอกครั้งแรก" (ยังไม่มีวันเกิดในระบบ) ไม่ใช่การ "แก้" → ไม่แตะสิทธิ์ฟรี/ไม่หัก QI.
+    // ใช้ตอน backfill จาก legacy (mootech `user.dob`) และตอนผู้ใช้ใหม่กรอกครั้งแรก — ไม่งั้นสิทธิ์ฟรีตลอดชีพ
+    // ถูกเผาไปกับการกรอกครั้งแรกทั้งที่ยังไม่เคย "แก้" อะไรเลย
+    const firstFill = existing.birthDate == null;
     const birthChanged =
-      body.birth !== undefined && (body.birth !== existing.birthDate || body.timeUnknown === true);
+      !firstFill && body.birth !== undefined && (body.birth !== existing.birthDate || body.timeUnknown === true);
 
     // ── โควตาแก้วันเกิด (เกิดที่เดียว ใน flow เดียว) ────────────────────────────────────────────
     let birthEditMode: "free" | "qi" | null = null;

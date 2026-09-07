@@ -27,9 +27,11 @@ export function qiCostOf(feature: QuotaFeature): number {
 }
 
 /** โควตาฟรีต่อวันตาม tier */
+// 2026-09-07 ตามแพลนที่ขายจริง (mootech-fe features/v2-shop/packages.ts): Free ไพ่ 2/วัน · แชท 1/วัน,
+// Plus ไพ่ 10/วัน · แชท 5/วัน, Pro ไม่จำกัดแชท (isUnlimited) · ไพ่ 20/วัน (แพลนไม่ระบุ — คงเพดานเดิม)
 const FREE_LIMIT: Record<QuotaFeature, Record<Tier, number>> = {
-  card: { free: 1, plus: 5, pro: 20 },
-  chat: { free: 3, plus: 30, pro: 100 },
+  card: { free: 2, plus: 10, pro: 20 },
+  chat: { free: 1, plus: 5, pro: 100 },
 };
 
 export function freeLimitOf(feature: QuotaFeature, tier: Tier): number {

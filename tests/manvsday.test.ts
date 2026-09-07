@@ -40,6 +40,26 @@ describe("Man-vs-Day facets (DAYMATE — spreadsheet-exact)", () => {
   });
 });
 
+describe("DAYMATE — คำทำนายรายด้านใช้ชุดข้อความตามด้าน (ฟีม สไลด์ 16 ข้อ 3)", () => {
+  test("workplace/home/outside ไม่ใช้ข้อความชุดเดียวกับ companions (เชี่ยงแซความรัก) แล้ว", () => {
+    const facets = buildFacets("day", MAN, DAY);
+    const by = Object.fromEntries(facets.map((f) => [f.key, f]));
+    // companions ยังเป็นชุดคนรัก (ค่าเดิม); ด้านอื่นต้องได้ข้อความจากชุด role ของตัวเอง
+    for (const k of ["companions", "workplace", "home", "outside"]) {
+      expect(by[k].lines.length).toBeGreaterThan(0);
+      for (const ln of by[k].lines) expect(ln.text.length).toBeGreaterThan(0);
+    }
+    // ด้านที่ใช้โค้ดเดียวกัน (ก้าน) ต้องได้ narrative ต่างกันเมื่อชุดข้อความต่างกัน
+    const sameCode = (a: string, b: string) => by[a].lines[0].code === by[b].lines[0].code;
+    const distinct = (a: string, b: string) => by[a].lines[0].text !== by[b].lines[0].text;
+    // อย่างน้อยหนึ่งคู่ที่โค้ดตรงกันต้องมีข้อความต่างกัน — ถ้าทุกด้านยังดึงชุดเดียวกัน ข้อนี้แดง
+    const pairs = [["workplace", "companions"], ["home", "companions"], ["outside", "companions"]] as const;
+    const proven = pairs.some(([a, b]) => sameCode(a, b) && distinct(a, b));
+    const allDifferentCodes = pairs.every(([a, b]) => !sameCode(a, b));
+    expect(proven || allDifferentCodes).toBe(true);
+  });
+});
+
 describe("buildManVsDay (compose กับปฏิทิน)", () => {
   test("คืน facets + กำลังวัน + ความสัมพันธ์ธาตุ สำหรับวันจริง", () => {
     // 2026-07-02 — วันใดก็ได้ ตรวจโครงสร้าง/ช่วงค่า

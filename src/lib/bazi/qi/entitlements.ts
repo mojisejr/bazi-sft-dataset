@@ -118,7 +118,28 @@ export async function getTier(anonId: string): Promise<Tier> {
     );
   if (rows.some((r) => r.sku === "pro")) return "pro";
   if (rows.some((r) => r.sku === "plus")) return "plus";
-  return "free";
+  // 2026-09-07: สมาชิกที่ซื้อผ่าน mootech-fe อยู่ใน member_subscription (DB เดียวกัน) — ไม่เคยถูก sync มาที่
+  // bazi_entitlement เลย ทำให้ PRO/PLUS ได้โควตาไพ่/แชทเท่าฟรี. อ่านตรงจากตารางนั้น (fail-open เป็น free ถ้าตารางไม่มี)
+  return (await memberSubscriptionTier(anonId)) ?? "free";
+}
+
+/** tier จาก member_subscription ของ mootech-fe (แถว ACTIVE ที่ยังไม่หมดอายุ วันไทย) — null = ไม่มี/อ่านไม่ได้ */
+async function memberSubscriptionTier(anonId: string): Promise<Tier | null> {
+  try {
+    const db = createDbClient();
+    const rows = (await db.execute(sql`
+      select tier_code from member_subscription
+      where user_id = ${anonId} and status = 'ACTIVE'
+        and expire_at >= (now() at time zone 'Asia/Bangkok')::date
+      order by expire_at desc limit 5
+    `)) as unknown as Array<{ tier_code?: string }>;
+    const codes = rows.map((r) => String(r.tier_code ?? "").toUpperCase());
+    if (codes.includes("PRO")) return "pro";
+    if (codes.includes("PLUS")) return "plus";
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export type EntitlementSummary = {
@@ -149,5 +170,7 @@ export async function getEntitlementSummary(anonId: string): Promise<Entitlement
     }
   }
 
+  // สมาชิกจาก mootech-fe (member_subscription) — ทางเดียวกับ getTier
+  if (tier === "free") tier = (await memberSubscriptionTier(anonId)) ?? "free";
   return { credits, owned, tier };
 }
