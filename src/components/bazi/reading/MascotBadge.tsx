@@ -11,6 +11,7 @@ type MascotData = {
   nameTh: string;
   nameEn: string;
   imageUrl: string;
+  imageUrlV2?: string | null;
 };
 
 export function MascotBadge({ dayStem, dayBranch }: { dayStem?: string; dayBranch?: string }) {
@@ -27,7 +28,9 @@ export function MascotBadge({ dayStem, dayBranch }: { dayStem?: string; dayBranc
     fetch(`/api/bazi/mascot/${encodeURIComponent(ganzhi)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((d: MascotData | null) => {
-        if (alive && d?.imageUrl) setData(d);
+        // ชุด v2 (scenic) อยู่บน Supabase ปัจจุบัน — ใช้ก่อน ถ้าไม่มีค่อย fallback เดิม
+        const url = d?.imageUrlV2 || d?.imageUrl;
+        if (alive && url) setData(d ? { ...d, imageUrl: url } : null);
       })
       .catch(() => {
         /* ซ่อนเงียบ */

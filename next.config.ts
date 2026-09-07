@@ -15,11 +15,6 @@ const nextConfig: NextConfig = {
 		"/api/bazi/rectify-hour/**": [
 			"./src/lib/bazi/knowledge/compiled-knowledge.json",
 		],
-		// รูปหน้าไพ่ที่บีบไว้ล่วงหน้า (scripts/build-card-faces.ts) — แนบให้เส้นเสิร์ฟรูปแต่ละสำรับ
-		// ไม่งั้นบน Vercel จะอ่านไฟล์ไม่เจอ → 404 ทุกใบ (ดู card-images/file-source.ts)
-		"/api/oracle-cards/image/**": ["./card-faces/oracle/**"],
-		"/api/divine-cards/image/**": ["./card-faces/divine/**"],
-		"/api/fortune-sage/image/**": ["./card-faces/sage/**"],
 	},
 	// อนุญาตให้เข้าถึง dev server ข้าม origin (เช่น ผ่าน ngrok) ไม่งั้น Next 15.3+/16
 	// จะบล็อก HMR/dev runtime ทำให้ client ไม่ mount แล้วหน้าค้างว่าง.

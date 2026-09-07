@@ -49,7 +49,12 @@ export type SacredLocationPublic = Omit<SacredLocationRow, "imageBase64" | "imag
 function toPublic(row: SacredLocationRow): SacredLocationPublic {
   const { imageBase64, imageMime, ...rest } = row;
   void imageMime;
-  return { ...rest, hasImage: !!imageBase64 };
+  return {
+    ...rest,
+    // ไม่มี URL แต่มีรูปใน DB → ชี้ไป endpoint ที่เสิร์ฟ base64 (หมุด/ชีตครบทุกที่ที่มีรูป)
+    imageUrl: rest.imageUrl ?? (imageBase64 ? `/api/sacred-map/image/${row.id}` : null),
+    hasImage: !!imageBase64,
+  };
 }
 
 /** สถานที่ที่ verified แล้ว (สาธารณะ) — กรองธาตุ/ความต้องการ, เรียงตามยอดเช็คอิน */
