@@ -39,7 +39,7 @@ export const MISSION_DEFS: readonly MissionDef[] = [
     target: 1,
     rewardCoins: 5,
     rewardXp: 10,
-    actionHref: "/v2",
+    actionHref: "/v2/destiny",
   },
   {
     id: "share_fortune",
