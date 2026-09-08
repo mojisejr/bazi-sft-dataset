@@ -1030,6 +1030,26 @@ export const baziManifestGoal = pgTable(
 
 export type SelectBaziManifestGoal = typeof baziManifestGoal.$inferSelect;
 
+/**
+ * รูปที่ผู้ใช้แนบกับ manifest — เก็บ "ในฐานข้อมูลเดียวกับการ์ด" (Neon) ไม่ใช่ Supabase Storage.
+ * มิเรอร์รูปแบบ bazi_divine_card_image (base64 ใน text). goal.imageUrl ชี้มาที่ /api/manifest/photo/<id>.
+ * ย่อขนาดฝั่ง client แล้ว (~1080px JPEG) จึงเก็บเป็น base64 ในคอลัมน์ text ได้.
+ */
+export const baziManifestPhoto = pgTable(
+  "bazi_manifest_photo",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    anonId: text("anon_id").notNull(),
+    /** base64 ล้วน (ไม่มี data: prefix) ของรูปที่ย่อแล้ว */
+    imageBase64: text("image_base64").notNull(),
+    mime: text("mime").notNull().default("image/jpeg"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("bazi_manifest_photo_anon_idx").on(t.anonId)],
+);
+
+export type SelectBaziManifestPhoto = typeof baziManifestPhoto.$inferSelect;
+
 /** งานย่อย/milestone ของเป้าหมาย — targetCount = จำนวนครั้งเป้า (เช่น 7) */
 export const baziManifestTask = pgTable(
   "bazi_manifest_task",
