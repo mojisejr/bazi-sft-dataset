@@ -3,8 +3,12 @@ import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziManifestCheckin, baziManifestGoal, baziManifestTask } from "@/db/schema";
+import { applyLedger } from "@/lib/bazi/manifest/ledger";
 
 export const runtime = "nodejs";
+
+/** รางวัล QI เมื่อ "ความปรารถนาเป็นจริง" (active → done) ครั้งแรก */
+const MANIFEST_DONE_REWARD = 5;
 
 /**
  * /api/manifest/goals — เป้าหมาย Manifestation (จอ Manifest Home / goal-detail).
@@ -161,10 +165,18 @@ export async function PATCH(request: Request) {
     const body = PatchSchema.parse(await request.json());
     const db = createDbClient();
 
+    // สถานะเดิม (ก่อนแก้) — ใช้เช็คว่าเพิ่ง "สำเร็จ" ครั้งแรกไหม เพื่อจ่ายรางวัลครั้งเดียว
+    const before = await db
+      .select({ status: baziManifestGoal.status })
+      .from(baziManifestGoal)
+      .where(and(eq(baziManifestGoal.id, body.id), eq(baziManifestGoal.anonId, body.anonId)));
+    const wasDone = before[0]?.status === "done";
+
     const set: Record<string, unknown> = { updatedAt: sql`now()` };
     if (body.title !== undefined) set.title = body.title;
     if (body.affirmation !== undefined) set.affirmation = body.affirmation;
     if (body.imageUrl !== undefined) set.imageUrl = body.imageUrl;
+    if (body.category !== undefined) set.category = body.category;
     if (body.status !== undefined) set.status = body.status;
     if (body.ordinal !== undefined) set.ordinal = body.ordinal;
 
@@ -175,7 +187,16 @@ export async function PATCH(request: Request) {
       .returning();
 
     if (!updated.length) return Response.json({ error: "ไม่พบเป้าหมาย" }, { status: 404 });
-    return Response.json({ goal: updated[0] }, { status: 200 });
+
+    // สำเร็จครั้งแรก (active/other → done) → จ่าย +5 QI ครั้งเดียว
+    let rewarded = false;
+    let balance: number | null = null;
+    if (body.status === "done" && !wasDone) {
+      const wallet = await applyLedger({ anonId: body.anonId, qiDelta: MANIFEST_DONE_REWARD, reason: "manifest_done" });
+      rewarded = true;
+      balance = wallet?.qi ?? null;
+    }
+    return Response.json({ goal: updated[0], rewarded, reward: MANIFEST_DONE_REWARD, balance }, { status: 200 });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json({ error: "Invalid goal payload.", details: error.issues }, { status: 400 });
