@@ -265,6 +265,54 @@ export async function uploadMascotImage(
   return pub.publicUrl;
 }
 
+/* ───────────── รูปแมนิเฟสต์ (สมุดแมนิเฟสต์) — user-uploaded — แยก bucket ───────────── */
+
+export const DEFAULT_MANIFEST_BUCKET = "manifest";
+
+export function getManifestBucket(): string {
+  return process.env.SUPABASE_MANIFEST_BUCKET?.trim() || DEFAULT_MANIFEST_BUCKET;
+}
+
+/** สร้าง bucket รูปแมนิเฟสต์ (public) ถ้ายังไม่มี — idempotent */
+export async function ensureManifestBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getManifestBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/**
+ * อัปโหลดรูปที่ผู้ใช้แนบกับ manifest ขึ้น storage แล้วคืน public URL
+ * objectKey = "<anonId>/<uuid>" (path-safe) → path = photos/<objectKey>.<ext>
+ */
+export async function uploadManifestImage(
+  objectKey: string,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getManifestBucket();
+  const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+  const objectPath = `photos/${objectKey}.${ext}`;
+
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปแมนิเฟสต์ "${objectKey}" ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
+
 /**
  * อัปโหลดรูป mascot ชุด UI v2 — ปลายทาง prod: bucket "mootech-v2" (จาก SUPABASE_MASCOT_BUCKET) โฟลเดอร์ mascot/
  * ⇒ ผลลัพธ์: <SUPABASE_URL>/storage/v1/object/public/mootech-v2/mascot/<objectKey>.<ext>

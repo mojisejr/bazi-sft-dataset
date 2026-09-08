@@ -1017,6 +1017,8 @@ export const baziManifestGoal = pgTable(
     /** ประโยคสะกดจิต เช่น "ฉันมีเงิน 1,000,000" */
     affirmation: text("affirmation"),
     imageUrl: text("image_url"),
+    /** หมวดของความปรารถนา เช่น การงาน/การเงิน (แสดงเป็น tag บนการ์ด) */
+    category: text("category"),
     /** active / done / archived */
     status: text("status").notNull().default("active"),
     ordinal: integer("ordinal").notNull().default(0),

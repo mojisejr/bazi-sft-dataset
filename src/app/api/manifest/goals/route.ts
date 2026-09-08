@@ -27,6 +27,7 @@ const CreateSchema = z.object({
   title: z.string().trim().min(1).max(200),
   affirmation: z.string().trim().max(500).optional(),
   imageUrl: z.string().trim().max(2000).optional(),
+  category: z.string().trim().max(60).optional(),
   tasks: z.array(TaskInputSchema).max(20).default([]),
 });
 
@@ -36,6 +37,7 @@ const PatchSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   affirmation: z.string().trim().max(500).nullable().optional(),
   imageUrl: z.string().trim().max(2000).nullable().optional(),
+  category: z.string().trim().max(60).nullable().optional(),
   status: z.enum(["active", "done", "archived"]).optional(),
   ordinal: z.number().int().min(0).max(1000).optional(),
 });
@@ -123,6 +125,7 @@ export async function POST(request: Request) {
         title: body.title,
         affirmation: body.affirmation ?? null,
         imageUrl: body.imageUrl ?? null,
+        category: body.category ?? null,
         ordinal: existing[0]?.n ?? 0,
       })
       .returning();
