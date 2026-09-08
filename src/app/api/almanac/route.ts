@@ -41,6 +41,36 @@ async function loadOverrides(): Promise<AlmanacOverrides> {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CACHE — อัลมาแนคเดือนหนึ่งเป็น deterministic ใน (yearBE, month, override snapshot). เดิมทุก request
+// (จากทุก user, ทุกวัน) โหลด override จาก Neon + คำนวณทั้งเดือนใหม่หมด — นั่นคือโหลดหลักของ engine.
+// เก็บผลไว้ในหน่วยความจำ + ล้างทันทีเมื่อมีการแก้ override (PUT/DELETE). ปลอดภัยเพราะ build เป็น pure.
+// (in-memory ต่อ instance — reset ตอน cold start; แต่ระหว่างที่ instance อุ่น ทุกคนใช้ผลเดียวกัน)
+// ─────────────────────────────────────────────────────────────────────────────
+let overrideVersion = 0; // bump เมื่อ override เปลี่ยน → invalidate ทั้ง overrides + month cache
+let cachedOverrides: { v: number; value: AlmanacOverrides } | null = null;
+const monthCache = new Map<string, unknown>(); // key = `${yearBE}-${month}-${version}`
+const MONTH_CACHE_MAX = 240; // ~20 ปี × 12 เดือน
+
+async function getOverrides(): Promise<AlmanacOverrides> {
+  if (cachedOverrides && cachedOverrides.v === overrideVersion) return cachedOverrides.value;
+  const value = await loadOverrides();
+  cachedOverrides = { v: overrideVersion, value };
+  return value;
+}
+
+function invalidateAlmanacCache(): void {
+  overrideVersion += 1;
+  cachedOverrides = null;
+  monthCache.clear();
+}
+
+// deterministic GET เดือน → ให้ CDN/edge cache ได้ด้วย (fresh 1 ชม. · serve stale ระหว่าง revalidate 1 วัน).
+// การแก้ override จะเห็นทันทีใน engine (in-memory) และภายใน ~1 ชม. ที่ชั้น CDN.
+const MONTH_CACHE_HEADERS = {
+  "Cache-Control": "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400",
+};
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
 
@@ -57,7 +87,7 @@ export async function GET(req: Request) {
 
   // ตาราง/กฎ สำหรับตัวแก้
   if (url.searchParams.get("meta") === "rules") {
-    const ov = await loadOverrides();
+    const ov = await getOverrides();
     return Response.json({ dayStars: ov.dayStars, specialDays: ov.specialDays });
   }
 
@@ -66,24 +96,35 @@ export async function GET(req: Request) {
     return badRequest("ระบุปี พ.ศ. ระหว่าง 2400–2700");
   }
 
-  const overrides = await loadOverrides();
-
-  if (url.searchParams.get("format") === "xlsx") {
-    const buffer = await buildAlmanacWorkbook(yearBE, overrides);
-    return new Response(new Uint8Array(buffer), {
-      headers: {
-        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="almanac-${yearBE}.xlsx"`,
-      },
-    });
-  }
-
   const month = Number(url.searchParams.get("month") ?? "1");
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    return badRequest("ระบุเดือน 1–12");
+  const isXlsx = url.searchParams.get("format") === "xlsx";
+
+  // ── hot path: เดือนเดียว (ที่ปฏิทินเรียกจริงทุกวัน) — เสิร์ฟจาก cache ถ้ามี ──
+  if (!isXlsx) {
+    if (!Number.isInteger(month) || month < 1 || month > 12) {
+      return badRequest("ระบุเดือน 1–12");
+    }
+    const cacheKey = `${yearBE}-${month}-${overrideVersion}`;
+    const hit = monthCache.get(cacheKey);
+    if (hit !== undefined) {
+      return Response.json(hit, { headers: MONTH_CACHE_HEADERS });
+    }
+    const overrides = await getOverrides();
+    const data = buildAlmanacMonth(yearBE - 543, month, overrides);
+    if (monthCache.size >= MONTH_CACHE_MAX) monthCache.clear();
+    monthCache.set(cacheKey, data);
+    return Response.json(data, { headers: MONTH_CACHE_HEADERS });
   }
-  const data = buildAlmanacMonth(yearBE - 543, month, overrides);
-  return Response.json(data);
+
+  // เหลือเฉพาะ xlsx ทั้งปี (ไฟล์ดาวน์โหลด · ไม่ใช่ hot path) — โหลด override สดเสมอ
+  const overrides = await loadOverrides();
+  const buffer = await buildAlmanacWorkbook(yearBE, overrides);
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="almanac-${yearBE}.xlsx"`,
+    },
+  });
 }
 
 const ALLOWED_KINDS = new Set([ALMANAC_KIND_DAY, ALMANAC_KIND_RULE]);
@@ -105,6 +146,7 @@ export async function PUT(req: Request) {
   } catch (err) {
     return badRequest(`บันทึกไม่สำเร็จ: ${err instanceof Error ? err.message : "DB error"}`, 500);
   }
+  invalidateAlmanacCache(); // override เปลี่ยน → ล้าง cache เดือนทั้งหมด
   return Response.json({ ok: true });
 }
 
@@ -122,5 +164,6 @@ export async function DELETE(req: Request) {
   } catch (err) {
     return badRequest(`ลบไม่สำเร็จ: ${err instanceof Error ? err.message : "DB error"}`, 500);
   }
+  invalidateAlmanacCache(); // override เปลี่ยน → ล้าง cache เดือนทั้งหมด
   return Response.json({ ok: true });
 }
