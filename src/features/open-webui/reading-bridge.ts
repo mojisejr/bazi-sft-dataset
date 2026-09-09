@@ -108,7 +108,63 @@ type GroundArgs = {
   timeframe?: TriageTimeframe | null;
   rawInput: RawInputValue;
   calculatedState?: CalculatedStateValue | null;
+  /** ข้อความผู้ใช้ล่าสุด — ใช้ตรวจว่าเป็นคำถาม "วันไหนดี" เพื่อ ground ด้วยวันดีจริง (man-vs-day) */
+  message?: string | null;
 };
+
+// คำถามเลือก "วันดี/วันมงคล/ฤกษ์/เดือนนี้วันไหนดีสุด" — ต้องตอบด้วยวันจริง ไม่ใช่เลี่ยงไปพูดวัยจร/ปีจร
+const GOOD_DAY_RE = /วันไหน|วันดี|วันมงคล|ฤกษ์|ดีสุด|วันที่ดี|มงคล/;
+export function isGoodDayQuestion(message?: string | null): boolean {
+  return typeof message === "string" && GOOD_DAY_RE.test(message);
+}
+
+type ManVsDayDay = {
+  date?: string;
+  dayOfMonth?: number;
+  weekday?: string;
+  dayGanzhi?: string;
+  overallPercent?: number | null;
+  grade?: string | null;
+};
+
+// Good-day seam: ground บนปฏิทินเฉพาะบุคคล (/api/bazi/man-vs-day โหมดเดือน) — ตัวเดียวกับที่หน้าปฏิทินใช้.
+// คืน top 5 วันคะแนนสูงสุดของ "เดือนนี้" เป็น prose ให้ LLM ตอบเป็นวันจริง; "" = ไม่มีข้อมูล → ตกไปทางเดิม.
+async function fetchGoodDaysThisMonth(
+  origin: string,
+  { rawInput }: { rawInput: RawInputValue },
+): Promise<string> {
+  try {
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const res = await fetch(`${origin}/api/bazi/man-vs-day`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ person: rawInput, month }),
+    });
+    if (!res.ok) {
+      return "";
+    }
+    const json = (await res.json()) as { days?: ManVsDayDay[] };
+    const days = Array.isArray(json.days) ? json.days : [];
+    const top = days
+      .filter((d) => typeof d.overallPercent === "number")
+      .sort((a, b) => (b.overallPercent as number) - (a.overallPercent as number))
+      .slice(0, 5);
+    if (!top.length) {
+      return "";
+    }
+    const lines = top.map(
+      (d) => `- ${d.date ?? d.dayOfMonth}${d.weekday ? ` (${d.weekday})` : ""}${d.dayGanzhi ? ` ${d.dayGanzhi}` : ""}: เหมาะ ${d.overallPercent}%${d.grade ? ` เกรด ${d.grade}` : ""}`,
+    );
+    return [
+      `วันดีที่สุดในเดือนนี้ (${month}) จากปฏิทินดวงเฉพาะบุคคล เรียงจากคะแนนสูงสุด:`,
+      ...lines,
+      "ให้แนะนำวันเหล่านี้เป็นวันจริงได้เลย (นี่คือ 流日 เฉพาะบุคคล ไม่ใช่การเดา).",
+    ].join("\n");
+  } catch {
+    return "";
+  }
+}
 
 type NewdataChapter = {
   id?: unknown;
@@ -220,8 +276,17 @@ async function fetchTopicReading(
 // graceful degradation. Returns prose, or null on total failure (caller uses the truth packet).
 export async function fetchGroundedReading(
   origin: string,
-  { topicId, timeframe, rawInput, calculatedState }: GroundArgs,
+  { topicId, timeframe, rawInput, calculatedState, message }: GroundArgs,
 ): Promise<string | null> {
+  // คำถาม "วันไหนดี/วันมงคล" → ตอบด้วยวันจริงจากปฏิทิน (man-vs-day) แทนการเลี่ยงไปพูดวัยจร/ปีจร
+  if (isGoodDayQuestion(message)) {
+    const goodDays = await fetchGoodDaysThisMonth(origin, { rawInput });
+    if (goodDays) {
+      return goodDays;
+    }
+    // ไม่มีข้อมูลวันดี → ตกไปใช้ seam ปกติ
+  }
+
   const plan = resolveGroundingPlan(topicId, timeframe);
   if (!plan) {
     return null;

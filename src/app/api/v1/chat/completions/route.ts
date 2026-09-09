@@ -16,11 +16,12 @@ import {
   runOpenWebUiTriage,
 } from "@/features/open-webui/triage";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
-import { fetchGroundedReading, resolveGroundingTopicId } from "@/features/open-webui/reading-bridge";
+import { fetchGroundedReading, resolveGroundingTopicId, isGoodDayQuestion } from "@/features/open-webui/reading-bridge";
 import { resolveStaticKnowledge } from "@/features/open-webui/static-knowledge";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { qiGate } from "@/lib/bazi/qi/quota";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
+import { logMateChatMeta } from "@/lib/bazi/mate-chat-meta";
 import {
   createGuardedOpenAiSseStream,
   type GlassBoxTrace,
@@ -45,7 +46,7 @@ function getForwardedUserId(req: Request) {
 }
 
 export type BuildOpenWebUiExecutionContextInput = {
-  result: Pick<ChatRunnerSuccess, "baziConsult"> & { baziTopicHint?: string | null };
+  result: Pick<ChatRunnerSuccess, "baziConsult" | "latestUserMessage"> & { baziTopicHint?: string | null };
   triage: OpenWebUiTriageResult;
   calculatedState?: BaziStatePayload | null;
   /** same-server origin used to call the reading engine internally (Path A grounding) */
@@ -57,6 +58,9 @@ export async function buildOpenWebUiExecutionContext(
 ): Promise<OpenWebUiGeminiExecutionContext> {
   const { result, triage, calculatedState, origin } = input;
   const { classification, extraction, topicId, timeframe } = triage;
+  // ข้อความผู้ใช้ล่าสุด → ตรวจว่าเป็นคำถาม "วันไหนดี" (ground ด้วย man-vs-day + ปิด honest-precision reframe)
+  const message = result.latestUserMessage?.content ?? null;
+  const isGoodDay = isGoodDayQuestion(message);
   const base = { intentClassification: classification, topicId, timeframe };
 
   if (!classification.requiresBaziConsult) {
@@ -80,9 +84,11 @@ export async function buildOpenWebUiExecutionContext(
       topicHint: result.baziTopicHint,
       rawInput: extraction.rawInput,
       calculatedState,
+      message,
     });
     return {
       ...base,
+      hasDailyGoodDayData: isGoodDay,
       baziConsult: {
         rawInput: extraction.rawInput,
         truthPacket,
@@ -112,9 +118,11 @@ export async function buildOpenWebUiExecutionContext(
       topicHint: result.baziTopicHint,
       rawInput: result.baziConsult.rawInput,
       calculatedState: result.baziConsult.calculatedState,
+      message,
     });
     return {
       ...base,
+      hasDailyGoodDayData: isGoodDay,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
         truthPacket,
@@ -138,8 +146,9 @@ async function groundOrFallback(args: {
   topicHint?: string | null;
   rawInput: RawInputValue;
   calculatedState: BaziStatePayload;
+  message?: string | null;
 }): Promise<string | null> {
-  const { origin, classification, topicId, timeframe, topicHint, rawInput, calculatedState } = args;
+  const { origin, classification, topicId, timeframe, topicHint, rawInput, calculatedState, message } = args;
   const resolvedTopicId = resolveGroundingTopicId(topicId, topicHint);
   const fallback = stringifyOpenWebUiTruthPacket(classification, calculatedState);
 
@@ -152,6 +161,7 @@ async function groundOrFallback(args: {
     timeframe,
     rawInput,
     calculatedState,
+    message,
   });
   return grounded ?? fallback;
 }
@@ -286,6 +296,8 @@ export async function POST(req: Request) {
         anonId: effectiveUserId,
       });
     }
+    // metadata แชท (ไม่เก็บข้อความ) — สำหรับ analytics /ops: ปริมาณ/สัดส่วน persona/หัวข้อ. fire-and-forget
+    logMateChatMeta({ anonId: effectiveUserId, persona: result.persona, topicId: triage.topicId, timeframe: triage.timeframe });
 
     if (!glassBoxTraceEnabled) {
       return reply;

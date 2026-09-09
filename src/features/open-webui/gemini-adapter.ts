@@ -143,6 +143,11 @@ export type OpenWebUiGeminiExecutionContext = {
    * คำถามเข้าเงื่อนไข keyword; มีค่าแล้วให้ตอบจากก้อนนี้ได้เลย (ไม่ถูกปัดเป็น off-topic)
    */
   staticKnowledge?: string | null;
+  /**
+   * true = แนบข้อมูล "วันดีเดือนนี้" จริง (man-vs-day/流日 เฉพาะบุคคล) มาแล้ว → อย่าเปิด honest-precision
+   * reframe ที่ห้ามพูดวันรายวัน ไม่งั้นจะกดคำตอบวันจริงทิ้ง (คำถาม "เดือนนี้วันไหนดีสุด")
+   */
+  hasDailyGoodDayData?: boolean;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -245,6 +250,7 @@ export function buildOpenWebUiGeminiPromptPayload(
   const baziConsult = input.executionContext?.baziConsult;
   const baziMissingFields = input.executionContext?.baziMissingFields ?? [];
   const staticKnowledge = input.executionContext?.staticKnowledge ?? null;
+  const hasDailyGoodDayData = input.executionContext?.hasDailyGoodDayData ?? false;
   // มีความรู้เสริมจากซินแสแนบมา = คำถามนี้อยู่ในขอบเขตที่ซินแสให้ตอบ ห้ามปัดเป็น off-topic
   const isOffTopic = topicId === "off_topic" && !staticKnowledge;
   const consultMode = intentClassification?.requiresBaziConsult
@@ -257,10 +263,10 @@ export function buildOpenWebUiGeminiPromptPayload(
         : "non_bazi_bypass"
       : null;
   // Same-day / monthly questions: the engine has no 流日/流月; answer as an honest trend.
-  const honestPrecisionReframe = isHonestPrecisionReframe(
-    intentClassification?.requiresBaziConsult,
-    timeframe,
-  );
+  // ยกเว้น: แนบข้อมูลวันดีจริง (man-vs-day) มาแล้ว → ปิด reframe ไม่งั้นมันห้ามพูดวันรายวันแล้วกดคำตอบทิ้ง.
+  const honestPrecisionReframe =
+    !hasDailyGoodDayData &&
+    isHonestPrecisionReframe(intentClassification?.requiresBaziConsult, timeframe);
 
   return {
     systemInstruction: [

@@ -1005,6 +1005,24 @@ export const baziLedgerTxn = pgTable(
   (t) => [index("bazi_ledger_txn_user_idx").on(t.anonId, t.createdAt)],
 );
 
+/** metadata ของแชท Mate AI (เสี่ยวมู่/เสี่ยวมี่) — เก็บ "ไม่มีเนื้อหาข้อความ" (PDPA-safe) เพื่อ analytics /ops:
+ *  1 แถวต่อ 1 คำตอบจริง (reply). ดูปริมาณแชท/สัดส่วน persona/หัวข้อยอดฮิตได้ โดยไม่แตะข้อความผู้ใช้ */
+export const baziMateChatMeta = pgTable(
+  "mate_ai_chat_meta",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    anonId: text("anon_id").notNull(),
+    /** เพอร์โซนาที่ผู้ใช้เลือก: mu (เสี่ยวมู่ ชาย) / mi (เสี่ยวมี่ หญิง) */
+    persona: text("persona"),
+    /** หัวข้อที่ triage จัด (turning_points/love_partner/... หรือ off_topic/chit_chat) */
+    topicId: text("topic_id"),
+    /** ช่วงเวลาที่ถาม (today/this_month/this_year/...) */
+    timeframe: text("timeframe"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [index("mate_ai_chat_meta_user_idx").on(t.anonId, t.createdAt)],
+);
+
 export type SelectBaziLedgerTxn = typeof baziLedgerTxn.$inferSelect;
 
 /** เป้าหมาย Manifestation (3-5 ข้อ) + affirmation + รูป visualization */
