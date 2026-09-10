@@ -18,7 +18,10 @@ type UserRow = {
   timeUnknown: boolean;
   birthProvince: string | null;
   qi: number;
-  lineUserId?: string | null;
+  handle?: string | null; // @name จริง (raw) สำหรับแก้ไข
+  provider?: string | null; // 'LINE' | 'GOOGLE' | null
+  providerName?: string | null; // ชื่อจาก provider ตอน login
+  lineId?: string | null; // LINE userId (เฉพาะ provider LINE)
   hasProfile?: boolean;
   updatedAt: string;
 };
@@ -94,6 +97,7 @@ export default function OpsAdminPage() {
   const [chatStatus, setChatStatus] = useState<ChatStatus | null>(null);
   const [flash, setFlash] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [providerFilter, setProviderFilter] = useState(""); // '' | 'LINE' | 'GOOGLE'
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("ops_secret") : "";
@@ -102,11 +106,11 @@ export default function OpsAdminPage() {
 
   const note = (ok: boolean, msg: string) => { setFlash({ ok, msg }); window.clearTimeout((note as any)._t); (note as any)._t = window.setTimeout(() => setFlash(null), 4000); };
 
-  const loadUsers = useCallback(async (query: string, pageArg: number) => {
+  const loadUsers = useCallback(async (query: string, pageArg: number, prov: string) => {
     if (!secret) return;
     setBusy(true);
     try {
-      const r = await fetch(`/api/ops/users?q=${encodeURIComponent(query)}&limit=${PAGE_SIZE}&offset=${pageArg * PAGE_SIZE}`, { headers: { "x-ops-secret": secret } });
+      const r = await fetch(`/api/ops/users?q=${encodeURIComponent(query)}&provider=${encodeURIComponent(prov)}&limit=${PAGE_SIZE}&offset=${pageArg * PAGE_SIZE}`, { headers: { "x-ops-secret": secret } });
       const j = await r.json();
       if (!r.ok) { note(false, j.error ?? "โหลดรายชื่อไม่สำเร็จ"); if (r.status === 401) setReady(false); return; }
       setUsers(j.users ?? []);
@@ -115,10 +119,11 @@ export default function OpsAdminPage() {
     } catch { note(false, "เชื่อมต่อไม่ได้"); } finally { setBusy(false); }
   }, [secret]);
 
-  const search = (query: string) => { void loadUsers(query, 0); };
-  const goPage = (p: number) => { void loadUsers(q, p); };
+  const search = (query: string) => { void loadUsers(query, 0, providerFilter); };
+  const goPage = (p: number) => { void loadUsers(q, p, providerFilter); };
+  const changeProvider = (prov: string) => { setProviderFilter(prov); void loadUsers(q, 0, prov); };
 
-  useEffect(() => { if (ready) void loadUsers("", 0); }, [ready, loadUsers]);
+  useEffect(() => { if (ready) void loadUsers("", 0, ""); }, [ready, loadUsers]);
 
   const login = async () => {
     setLoginErr("");
@@ -168,7 +173,7 @@ export default function OpsAdminPage() {
 
   const select = async (u: UserRow) => { setSelected({ ...u }); setFlash(null); await Promise.all([loadEntitlements(u.anonId), loadSub(u.anonId), loadLedger(u.anonId), loadChatStatus(u.anonId)]); };
 
-  const refreshSelectedFromList = async () => { if (selected) await loadUsers(q, page); };
+  const refreshSelectedFromList = async () => { if (selected) await loadUsers(q, page, providerFilter); };
 
   if (!ready) {
     return (
@@ -203,9 +208,14 @@ export default function OpsAdminPage() {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
         <div style={box}>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-            <input style={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search(q)} placeholder="ค้นชื่อ / อีเมล / anonId (เว้นว่าง = ทุกคน)" />
+          <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <input style={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search(q)} placeholder="ค้น ชื่อไลน์ / @name / ชื่อจริง / อีเมล / LINE id / anonId" />
             <button style={btn(C.accent)} onClick={() => search(q)}>ค้นหา</button>
+          </div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+            {[{ v: "", l: "ทุก provider" }, { v: "LINE", l: "LINE" }, { v: "GOOGLE", l: "Google" }].map((o) => (
+              <button key={o.v} onClick={() => changeProvider(o.v)} style={{ ...btn(providerFilter === o.v ? C.accent : C.inputBg), border: `1px solid ${providerFilter === o.v ? "transparent" : C.border}`, fontSize: 12, fontWeight: 600, padding: "5px 12px" }}>{o.l}</button>
+            ))}
           </div>
           {(() => {
             const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -226,13 +236,14 @@ export default function OpsAdminPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "72vh", overflowY: "auto" }}>
             {users.map((u) => (
               <button key={u.anonId} onClick={() => select(u)} style={{ textAlign: "left", background: selected?.anonId === u.anonId ? "#1e2a40" : C.inputBg, border: `1px solid ${selected?.anonId === u.anonId ? C.accent : C.border}`, borderRadius: 8, padding: "9px 11px", color: C.text, cursor: "pointer" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 600, fontSize: 14 }}>{u.displayName || `${u.firstName ?? ""} ${u.lastName ?? ""}`.trim() || "(ไม่มีชื่อ)"}</span>
+                  {u.provider && <ProviderBadge provider={u.provider} />}
                   {u.hasProfile === false && <span style={{ fontSize: 9, color: C.warn, border: `1px solid ${C.warn}`, borderRadius: 6, padding: "1px 5px" }}>ยังไม่ตั้งชื่อ</span>}
                 </div>
                 <div style={{ fontSize: 12, color: C.sub }}>เกิด {u.birthDate ?? "—"}{u.timeUnknown ? " · ไม่ทราบเวลา" : u.birthTime ? ` ${u.birthTime}` : ""} · {u.gender ?? "—"} · QI {u.qi}</div>
-                {u.email && <div style={{ fontSize: 11, color: C.sub }}>{u.email}</div>}
-                <div style={{ fontSize: 10, color: C.sub, opacity: 0.7 }}>{u.anonId}{u.lineUserId ? ` · LINE ${u.lineUserId}` : ""}</div>
+                {(u.providerName || u.email) && <div style={{ fontSize: 11, color: C.sub }}>{u.providerName ? `ไลน์/บัญชี: ${u.providerName}` : ""}{u.providerName && u.email ? " · " : ""}{u.email ?? ""}</div>}
+                <div style={{ fontSize: 10, color: C.sub, opacity: 0.7 }}>{u.anonId}{u.lineId ? ` · LINE id ${u.lineId}` : ""}</div>
               </button>
             ))}
           </div>
@@ -271,6 +282,7 @@ function ProfileCard({ user, setUser, secret, onSaved, onError }: { user: UserRo
           anonId: user.anonId,
           firstName: user.firstName ?? "",
           lastName: user.lastName ?? "",
+          displayName: user.handle?.trim() || undefined, // @name (ไม่ส่งถ้าว่าง — คอลัมน์ NOT NULL)
           gender: user.gender || null,
           birthProvince: user.birthProvince || null,
           birth: user.birthDate || undefined,
@@ -279,15 +291,22 @@ function ProfileCard({ user, setUser, secret, onSaved, onError }: { user: UserRo
         }),
       });
       const j = await r.json();
+      if (r.status === 409) return onError(j.error ?? "@name นี้มีคนใช้แล้ว");
       if (!r.ok) return onError(j.error ?? "บันทึกโปรไฟล์ไม่สำเร็จ");
       if (!j.updated && !j.legacySynced) return onError("ไม่พบผู้ใช้/ไม่มีแถวให้แก้");
-      onSaved(j.updated ? "บันทึกวัน-เวลาเกิด/โปรไฟล์แล้ว" : "บันทึกวันเกิด (legacy) แล้ว — ผู้ใช้ยังไม่ตั้ง @name");
+      onSaved(j.updated ? "บันทึกโปรไฟล์/ชื่อ/วันเกิดแล้ว" : "บันทึกวันเกิด (legacy) แล้ว — ผู้ใช้ยังไม่ตั้ง @name");
     } catch { onError("เชื่อมต่อไม่ได้"); } finally { setSaving(false); }
   };
   return (
     <div style={box}>
-      <h2 style={{ fontSize: 15, margin: "0 0 12px" }}>โปรไฟล์ · วัน-เวลาเกิด</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>โปรไฟล์ · ชื่อ · วัน-เวลาเกิด</h2>
+        {user.provider && <ProviderBadge provider={user.provider} />}
+        {user.providerName && <span style={{ fontSize: 12, color: C.sub }}>ไลน์/บัญชี: {user.providerName}</span>}
+        {user.lineId && <span style={{ fontSize: 11, color: C.sub }}>· LINE id {user.lineId}</span>}
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ gridColumn: "1 / -1" }}><label style={label}>@name (ชื่อที่ตั้ง · unique)</label><input style={input} value={user.handle ?? ""} onChange={(e) => set({ handle: e.target.value })} placeholder="เช่น gggfw" /></div>
         <div><label style={label}>ชื่อ</label><input style={input} value={user.firstName ?? ""} onChange={(e) => set({ firstName: e.target.value })} /></div>
         <div><label style={label}>นามสกุล</label><input style={input} value={user.lastName ?? ""} onChange={(e) => set({ lastName: e.target.value })} /></div>
         <div><label style={label}>วันเกิด (YYYY-MM-DD)</label><input style={input} value={user.birthDate ?? ""} onChange={(e) => set({ birthDate: e.target.value })} placeholder="1990-01-31" /></div>
@@ -457,6 +476,15 @@ function addDays(fromIso: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 const TODAY = () => new Date().toISOString().slice(0, 10);
+
+function ProviderBadge({ provider }: { provider: string }) {
+  const p = provider.toUpperCase();
+  const isLine = p === "LINE";
+  const isGoogle = p === "GOOGLE";
+  const color = isLine ? "#06C755" : isGoogle ? "#4285F4" : C.sub;
+  const label = isLine ? "LINE" : isGoogle ? "Google" : provider;
+  return <span style={{ fontSize: 9, fontWeight: 700, color, border: `1px solid ${color}`, borderRadius: 6, padding: "1px 6px" }}>{label}</span>;
+}
 
 function TierBadge({ tier }: { tier: string }) {
   const color = tier === "PRO" ? "#b07de8" : tier === "PLUS" ? C.accent : C.sub;

@@ -10,6 +10,22 @@ import {
 import type { BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { resolveCanonicalDayMasterStrengthState } from "@/lib/bazi/strength-state-vocabulary";
 
+// perf: cache ตารางความรู้ static ที่ "share ข้ามทุก user" ใน-process (module-level, TTL 10 นาที).
+// เดิมทุกครั้งที่คำนวณดวงจะ SELECT ตารางอ้างอิงเหล่านี้ใหม่ทั้งที่ข้อมูลไม่เปลี่ยน. cache เฉพาะ 2 lookup ที่
+// เป็น pure function ของ key ล้วน ๆ (ปลอดภัยแน่นอน): domain-matrix (2 domain) และ 60-jiazi (60 คู่).
+// ไม่ cache strength (ขึ้นกับ strengthScore) และ solar-term (ขึ้นกับเวลาเกิด) เพื่อกันเคสความหมายเพี้ยน.
+const KNOWLEDGE_TTL_MS = 10 * 60_000;
+type CachedKnowledge = { at: number; value: unknown };
+const knowledgeCache = new Map<string, CachedKnowledge>();
+async function memoizedKnowledge<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const hit = knowledgeCache.get(key);
+  if (hit && now - hit.at < KNOWLEDGE_TTL_MS) return hit.value as T;
+  const value = await load();
+  knowledgeCache.set(key, { at: now, value });
+  return value;
+}
+
 export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledgeRepository {
   const db = createDbClient(databaseUrl);
 
@@ -44,6 +60,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
     },
 
     async findSixtyJiaziPersona(dayMasterChinese, branchChinese) {
+      return memoizedKnowledge(`jiazi:${dayMasterChinese}|${branchChinese}`, async () => {
       const [persona] = await db
         .select({
           dayMasterChinese: baziSixtyJiaziNarratives.dayMasterChinese,
@@ -64,6 +81,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
         .limit(1);
 
       return persona ?? null;
+      });
     },
 
     async findDayMasterStrengthProfile(dayMasterChinese, strengthState, strengthScore) {
@@ -177,7 +195,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
     },
 
     async findDomainMatrixRows(domain) {
-      return db
+      return memoizedKnowledge(`domain:${domain}`, async () => db
         .select({
           domain: baziDomainMatrices.domain,
           sourceVariant: baziDomainMatrices.sourceVariant,
@@ -191,7 +209,7 @@ export function createDbKnowledgeRepository(databaseUrl?: string): BaziKnowledge
         })
         .from(baziDomainMatrices)
         .where(eq(baziDomainMatrices.domain, domain))
-        .orderBy(asc(baziDomainMatrices.sourceVariant), asc(baziDomainMatrices.rowOrder));
+        .orderBy(asc(baziDomainMatrices.sourceVariant), asc(baziDomainMatrices.rowOrder)));
     },
   };
 }

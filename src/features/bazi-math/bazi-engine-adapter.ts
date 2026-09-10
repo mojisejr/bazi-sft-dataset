@@ -97,6 +97,29 @@ export function buildRawInputFromBirthDate(
  * constructed lazily here — never at module import time — so importing this
  * module does not eagerly open a DB client.
  */
+// ── perf: memoize การคำนวณดวงต่อ rawInput (in-flight dedup + TTL สั้น) ──────────────────────────────
+// หน้า "ดวงของฉัน" ยิง ~6-8 endpoint พร้อมกัน (element-summary/life-timeline/strength-score/domain-power/
+// calculate/man-vs-day/reading-essence/career-finance) และแต่ละอันเดิม "คำนวณดวงใหม่จาก rawInput ตั้งแต่ต้น"
+// (lunar + 20-yr LiuNian + DaYun + strength/interaction + 5-6 SELECT static) = ซ้ำ 6-8 รอบ/โหลด.
+// cache นี้ทำให้ทั้ง fan-out รอ "compute เดียวกัน" — เก็บ Promise ไว้เลย (dedup ระหว่างที่ยังคำนวณอยู่).
+// deterministic ต่อ rawInput เท่านั้น (repository อ่าน static knowledge เหมือนกันทุก instance) จึง cache ปลอดภัย.
+// ⚠️ cache เฉพาะ default DB path — ถ้า caller ส่ง repository เอง (เทส) ให้ bypass เพื่อคงพฤติกรรมเทส.
+const STATE_TTL_MS = 60_000;
+const STATE_MAX_ENTRIES = 200;
+type StateCacheEntry = { at: number; promise: Promise<BaziStatePayload> };
+const stateCache = new Map<string, StateCacheEntry>();
+
+function stateCacheKey(rawInput: RawInputValue): string {
+  return JSON.stringify([
+    rawInput.birthDate,
+    rawInput.birthTime,
+    rawInput.gender,
+    rawInput.province,
+    rawInput.calendarSystem,
+    rawInput.timezone,
+  ]);
+}
+
 export async function calculateBaziStateFromRawInput(
   payload: unknown,
   options: CalculateBaziStateFromRawInputOptions = {},
@@ -114,16 +137,37 @@ export async function calculateBaziStateFromRawInput(
     );
   }
 
-  const repository = options.repository ?? createDbKnowledgeRepository();
+  // caller ส่ง repository เอง → ไม่ใช้ cache (เทส/เส้นทางพิเศษ)
+  if (options.repository) {
+    try {
+      return await calculateBaziChart(rawInput, options.repository);
+    } catch (error) {
+      throw new BaziEngineAdapterError(
+        "bazi_engine_calculation_failed",
+        error instanceof Error ? error.message : "Bazi engine failed.",
+      );
+    }
+  }
 
-  try {
-    return await calculateBaziChart(rawInput, repository);
-  } catch (error) {
+  const key = stateCacheKey(rawInput);
+  const now = Date.now();
+  const hit = stateCache.get(key);
+  if (hit && now - hit.at < STATE_TTL_MS) return hit.promise;
+
+  const promise = calculateBaziChart(rawInput, createDbKnowledgeRepository()).catch((error) => {
+    stateCache.delete(key); // อย่า cache ผลที่ error — ให้ครั้งถัดไปคำนวณใหม่
     throw new BaziEngineAdapterError(
       "bazi_engine_calculation_failed",
       error instanceof Error ? error.message : "Bazi engine failed.",
     );
+  });
+  stateCache.set(key, { at: now, promise });
+  // gc คร่าว ๆ: เกินเพดาน → ตัดตัวเก่าสุด (Map รักษาลำดับ insert)
+  if (stateCache.size > STATE_MAX_ENTRIES) {
+    const oldest = stateCache.keys().next().value;
+    if (oldest !== undefined) stateCache.delete(oldest);
   }
+  return promise;
 }
 
 /**

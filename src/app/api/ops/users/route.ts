@@ -33,6 +33,7 @@ function shape(row: Record<string, unknown>) {
   return {
     anonId: String(row.anon_id ?? ""),
     displayName: display || first || "(ไม่มีชื่อ)",
+    handle: s(row.display_name), // @name จริง (raw) สำหรับแก้ไข — null = ยังไม่ตั้ง
     firstName: first,
     lastName: last,
     email: s(row.email),
@@ -42,7 +43,9 @@ function shape(row: Record<string, unknown>) {
     timeUnknown,
     birthProvince: s(row.birth_province) ?? s(row.u_place),
     qi: typeof row.qi === "number" ? row.qi : Number(row.qi ?? 0) || 0,
-    lineUserId: s(row.line_user_id),
+    provider: s(row.provider), // 'LINE' | 'GOOGLE' | null (มาจาก user_provider)
+    providerName: s(row.provider_name), // ชื่อจาก provider ตอน login (LINE/Google)
+    lineId: (s(row.provider)?.toUpperCase() === "LINE" ? s(row.provider_id_token) : null), // id_token ของ LINE = LINE userId
     hasProfile: row.display_name != null,
     updatedAt: String(row.updated_at ?? ""),
   };
@@ -56,6 +59,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const q = url.searchParams.get("q")?.trim() ?? "";
+  const provider = (url.searchParams.get("provider")?.trim() ?? "").toUpperCase(); // '' | 'LINE' | 'GOOGLE' | ...
   const limitRaw = Number(url.searchParams.get("limit") ?? "100");
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.trunc(limitRaw), 1), 1000) : 100;
   const offsetRaw = Number(url.searchParams.get("offset") ?? "0");
@@ -66,28 +70,37 @@ export async function GET(request: Request) {
   // ── แหล่งหลัก: ตาราง identity "user" (ผู้สมัครทุกคน) ──
   try {
     const like = `%${q}%`;
-    // WHERE นี้อ้างเฉพาะ "user" (u) เท่านั้น เพื่อให้ count ที่ไม่ join ใช้ซ้ำได้ (p.display_name แยกไว้
-    // ในการค้นแบบ join ด้านล่าง). ครอบ ชื่อ/สกุล/อีเมล/anonId — พอสำหรับค้นผู้สมัครทุกคน.
-    // ค้นด้วย ชื่อไลน์ (u.name) / account_name / สกุล / email / anonId(user_id) / LINE user id (m.line_user_id)
-    const whereU = q
-      ? sql`WHERE u.name ILIKE ${like} OR u.account_name ILIKE ${like} OR u.surname ILIKE ${like} OR u.email ILIKE ${like} OR u.user_id ILIKE ${like} OR m.line_user_id ILIKE ${like}`
-      : sql``;
+    // provider (LINE/Google) + LINE id มาจาก user_provider (id_token ของ LINE = LINE userId). lateral เอา
+    // แถวล่าสุดต่อ user. ค้นครอบ: ชื่อไลน์(u.name)/account_name/สกุล/email/anonId + @name(display_name) +
+    // ชื่อที่ตั้ง(first_name/last_name) + LINE id(id_token) + ชื่อ provider(prov.name)
+    const conds = [] as ReturnType<typeof sql>[];
+    if (q)
+      conds.push(
+        sql`(u.name ILIKE ${like} OR u.account_name ILIKE ${like} OR u.surname ILIKE ${like} OR u.email ILIKE ${like} OR u.user_id ILIKE ${like} OR p.display_name ILIKE ${like} OR p.first_name ILIKE ${like} OR p.last_name ILIKE ${like} OR prov.id_token ILIKE ${like} OR prov.provider_name ILIKE ${like})`,
+      );
+    if (provider) conds.push(sql`upper(prov.provider) = ${provider}`);
+    const where = conds.length ? sql`WHERE ${sql.join(conds, sql` AND `)}` : sql``;
     const from = sql`
       FROM "user" u
       LEFT JOIN bazi_user_profile p ON p.anon_id = u.user_id
       LEFT JOIN bazi_wallet w ON w.anon_id = u.user_id
-      LEFT JOIN user_line_mappings m ON m.clerk_user_id = u.user_id`;
-    const countRes = await db.execute(sql`SELECT count(*)::int AS n ${from} ${whereU}`);
+      LEFT JOIN LATERAL (
+        SELECT provider, id_token, name AS provider_name
+        FROM user_provider up WHERE up.user_id = u.user_id
+        ORDER BY up.update_at DESC LIMIT 1
+      ) prov ON true`;
+    const countRes = await db.execute(sql`SELECT count(*)::int AS n ${from} ${where}`);
     const total = Number(rowsOf(countRes)[0]?.n ?? 0);
     const res = await db.execute(sql`
       SELECT u.user_id AS anon_id, u.name AS u_name, u.surname AS u_surname, u.email,
              u.gender AS u_gender, u.dob AS u_dob, u.time AS u_time, u.is_remember_time,
-             u.place_name AS u_place, u.update_at AS updated_at, m.line_user_id,
+             u.place_name AS u_place, u.update_at AS updated_at,
+             prov.provider, prov.id_token AS provider_id_token, prov.provider_name,
              p.display_name, p.first_name, p.last_name, p.gender AS p_gender,
              p.birth_date, p.birth_time, p.time_unknown, p.birth_province,
              w.qi
       ${from}
-      ${whereU}
+      ${where}
       ORDER BY u.update_at DESC NULLS LAST
       LIMIT ${limit} OFFSET ${offset}
     `);
@@ -127,7 +140,7 @@ export async function GET(request: Request) {
       );
       const total = Number(rowsOf(countRes)[0]?.n ?? rows.length);
       return Response.json(
-        { users: rows.map((r) => ({ ...r, qi: r.qi ?? 0, hasProfile: true })), total, limit, offset, source: "profile" },
+        { users: rows.map((r) => ({ ...r, qi: r.qi ?? 0, provider: null, providerName: null, lineId: null, hasProfile: true })), total, limit, offset, source: "profile" },
         { status: 200 },
       );
     } catch (error) {

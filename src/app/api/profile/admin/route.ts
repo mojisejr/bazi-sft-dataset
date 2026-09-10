@@ -23,6 +23,8 @@ const PatchSchema = z.object({
   birthProvince: z.string().trim().max(100).nullish(),
   firstName: z.string().trim().max(64).optional(),
   lastName: z.string().trim().max(64).optional(),
+  // @name (displayName) — บังคับ unique (case-insensitive) ที่ DB; ตั้งค่าที่ไม่ว่างเท่านั้น (คอลัมน์ NOT NULL)
+  displayName: z.string().trim().min(1).max(24).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -45,6 +47,7 @@ export async function PATCH(request: Request) {
     const patch: Record<string, unknown> = { updatedAt: sql`now()` };
     if (body.firstName !== undefined) patch.firstName = body.firstName || null;
     if (body.lastName !== undefined) patch.lastName = body.lastName || null;
+    if (body.displayName) patch.displayName = body.displayName; // @name (ไม่เซ็ตเป็นค่าว่าง — คอลัมน์ NOT NULL)
     if (body.gender !== undefined) patch.gender = body.gender ?? null;
     if (body.birthProvince !== undefined) patch.birthProvince = body.birthProvince || null;
     if (body.birth !== undefined) {
@@ -80,7 +83,12 @@ export async function PATCH(request: Request) {
 
     return Response.json({ anonId: body.anonId, updated: saved.length > 0, legacySynced, profile: saved[0] ?? null }, { status: 200 });
   } catch (error) {
+    // @name ซ้ำ → unique index (bazi_user_profile_display_name_lower_uq) โยน 23505
+    const code = error && typeof error === "object" ? (error as { code?: string }).code : undefined;
     const message = error instanceof Error ? error.message : "Unknown admin profile error.";
+    if (code === "23505" || /display_name|unique/i.test(message)) {
+      return Response.json({ error: "@name นี้มีคนใช้แล้ว ลองชื่ออื่น", code: "display_name_taken" }, { status: 409 });
+    }
     return Response.json({ error: message }, { status: 500 });
   }
 }
