@@ -161,6 +161,14 @@ export const QI_SPEND_LINES: readonly QiSpendLine[] = [
     note: "แลกสิทธิ์ทำนายเบอร์มือถือ 1 ครั้ง (เลขศาสตร์ + คำทำนาย AI)",
   },
   {
+    code: "honeycomb_reading",
+    kind: "spend",
+    qi: 10,
+    grant: { type: "credit", kind: "card_use", credits: 0 },
+    title: "ทำนายเบอร์รังผึ้ง",
+    note: "แลกสิทธิ์ทำนายเบอร์รังผึ้ง (พีระมิดผลรวมคู่เลข) 1 ครั้ง + คำทำนาย AI",
+  },
+  {
     code: "course_destiny",
     kind: "spend",
     qi: 500,
