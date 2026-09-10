@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 
 import type { SacredLocationInput, SacredStatus } from "./constants";
+import { baseSlugFor } from "./slug";
 
 export type SacredLocationRow = SelectBaziSacredMapLocation;
 
@@ -94,15 +95,53 @@ export async function getById(id: string): Promise<SacredLocationRow | null> {
   return row ?? null;
 }
 
+/** สถานที่เดียว (public, เฉพาะ verified) — สำหรับหน้าแชร์สาธารณะ /p/[id] */
+export async function getPublicById(id: string): Promise<SacredLocationPublic | null> {
+  const row = await getById(id);
+  if (!row || row.status !== "verified") return null;
+  return toPublic(row);
+}
+
+/** slug ที่ยังไม่ถูกใช้ (curated/ascii → fallback place-<hex>) — เติม -2, -3 ถ้าชนกัน */
+export async function generateUniqueSlug(name: string): Promise<string> {
+  const db = createDbClient();
+  const base = baseSlugFor(name) || `place-${Math.random().toString(16).slice(2, 10)}`;
+  for (let i = 0; i < 30; i++) {
+    const candidate = i === 0 ? base : `${base}-${i + 1}`;
+    const [hit] = await db
+      .select({ id: baziSacredMapLocation.id })
+      .from(baziSacredMapLocation)
+      .where(eq(baziSacredMapLocation.slug, candidate))
+      .limit(1);
+    if (!hit) return candidate;
+  }
+  return `${base}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+/** สถานที่เดียว (public, verified) จาก slug หรือ id — สำหรับหน้าแชร์ /p/<slug|id> */
+export async function getPublicBySlugOrId(key: string): Promise<SacredLocationPublic | null> {
+  const db = createDbClient();
+  const [bySlug] = await db
+    .select()
+    .from(baziSacredMapLocation)
+    .where(eq(baziSacredMapLocation.slug, key))
+    .limit(1);
+  const row = bySlug ?? (await getById(key));
+  if (!row || row.status !== "verified") return null;
+  return toPublic(row);
+}
+
 export async function createLocation(
   input: SacredLocationInput,
   opts: { status?: SacredStatus; source?: string; submitterContact?: string | null } = {},
 ): Promise<SacredLocationRow | null> {
   const db = createDbClient();
+  const slug = await generateUniqueSlug(input.name);
   const [row] = await db
     .insert(baziSacredMapLocation)
     .values({
       ...normalize(input),
+      slug,
       status: opts.status ?? "verified",
       source: opts.source ?? "admin",
       submitterContact: opts.submitterContact ?? null,

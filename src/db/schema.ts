@@ -1327,6 +1327,8 @@ export const baziSacredMapLocation = pgTable(
   "bazi_sacred_map_location",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    /** slug สำหรับลิงก์แชร์สาธารณะ /p/<slug> (unique, อ่านง่าย) — null ได้จนกว่าจะ gen */
+    slug: text("slug").unique(),
     /** ชื่อสถานที่ เช่น "ศาลเจ้าพ่อเสือ" */
     name: text("name").notNull(),
     /** สิ่งศักดิ์สิทธิ์/เทพประจำสถานที่ เช่น "เจ้าพ่อเสือ (ตั่วเหล่าเอี๊ย)" */
