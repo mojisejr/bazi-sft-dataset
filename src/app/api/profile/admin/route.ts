@@ -60,7 +60,25 @@ export async function PATCH(request: Request) {
       .where(eq(baziUserProfile.anonId, body.anonId))
       .returning({ anonId: baziUserProfile.anonId, birthDate: baziUserProfile.birthDate, birthTime: baziUserProfile.birthTime, timeUnknown: baziUserProfile.timeUnknown });
 
-    return Response.json({ anonId: body.anonId, updated: saved.length > 0, profile: saved[0] ?? null }, { status: 200 });
+    // A1 sync — แก้วันเกิดฝั่ง admin ต้องทับ legacy `user` (dob/time/is_remember_time) ด้วย เพราะหน้าหลัก
+    // (ธาตุ) ยังอ่านจาก user table; destiny ก็ fallback legacy เมื่อไม่มีแถว profile. best-effort: prod
+    // แชร์ Supabase เดียวกัน → มีตาราง "user"; local dev (Neon) ไม่มี → catch แล้วปล่อยผ่าน ไม่ให้ล้มคำตอบ.
+    // ครอบทั้งเคสที่ไม่มีแถว bazi_user_profile (legacy-only user) ให้แก้วันเกิดได้ผลทันที.
+    let legacySynced = false;
+    if (body.birth !== undefined) {
+      const legacyTime = body.timeUnknown ? null : (body.birthTime ?? null);
+      try {
+        const r = await db.execute(
+          sql`UPDATE "user" SET dob = ${body.birth}, "time" = ${legacyTime ?? ""}, is_remember_time = ${!body.timeUnknown} WHERE user_id = ${body.anonId}`,
+        );
+        const affected = (r as { count?: number })?.count ?? (Array.isArray(r) ? r.length : 0);
+        legacySynced = affected > 0;
+      } catch {
+        /* ไม่มีตาราง "user" (local) หรือ error → ปล่อยผ่าน */
+      }
+    }
+
+    return Response.json({ anonId: body.anonId, updated: saved.length > 0, legacySynced, profile: saved[0] ?? null }, { status: 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown admin profile error.";
     return Response.json({ error: message }, { status: 500 });
