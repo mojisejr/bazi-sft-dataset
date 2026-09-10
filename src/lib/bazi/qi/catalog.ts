@@ -152,6 +152,15 @@ export const QI_SPEND_LINES: readonly QiSpendLine[] = [
     note: "ต่อสตรีคที่ขาดไป 1 วันให้เชื่อมต่อ (จำกัดสัปดาห์ละ 1 ครั้ง)",
   },
   {
+    code: "phone_reading",
+    kind: "spend",
+    qi: 10,
+    // grant no-op (credits 0) — หักแต้มต่อการทำนาย 1 ครั้ง (deterministic reading, ไม่ผูก entitlement)
+    grant: { type: "credit", kind: "card_use", credits: 0 },
+    title: "ทำนายเบอร์มือถือ",
+    note: "แลกสิทธิ์ทำนายเบอร์มือถือ 1 ครั้ง (เลขศาสตร์ + คำทำนาย AI)",
+  },
+  {
     code: "course_destiny",
     kind: "spend",
     qi: 500,
