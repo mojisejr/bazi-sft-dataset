@@ -3,10 +3,13 @@ import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziMissionProgress, baziReferralRedemption, baziUserProfile } from "@/db/schema";
+import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { todayBangkok } from "@/lib/bazi/manifest/dates";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
-import { ELEMENT_ORDER, elementOfBirthDate, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
+import { ELEMENT_ORDER, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
 import { earnQi } from "@/lib/bazi/qi/engine";
+import { STEM_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
+import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 
 export const runtime = "nodejs";
 
@@ -56,17 +59,44 @@ export async function GET(request: Request) {
       .from(baziReferralRedemption)
       .where(eq(baziReferralRedemption.referrerAnonId, anonId));
 
-    // สะสมธาตุของเพื่อน (คิดจากปีเกิดของแต่ละคน) — เป้า 5 ธาตุ
+    // สะสมธาตุของเพื่อน — เป้า 5 ธาตุ. ฟีม (2026-09-10): ต้องใช้ "ธาตุจริง" ของเพื่อน = ธาตุประจำวัน (day-master)
+    // ตัวเดียวกับที่โชว์บนโปรไฟล์/มาสคอต ไม่ใช่ธาตุปีเกิด (year stem) เดิมที่ทำให้ธาตุที่สะสมไม่ตรงกับที่เพื่อนเห็น.
+    // day-master ขึ้นกับวันเกิดเป็นหลัก แต่ใช้เวลาเกิดจริงด้วยเพื่อให้ตรงเป๊ะกับโปรไฟล์ (กันเคสเวลาใกล้เที่ยงคืน).
     const elements = new Set<string>();
     if (redemptions.length) {
       const profs = await db
-        .select({ birthDate: baziUserProfile.birthDate })
+        .select({
+          birthDate: baziUserProfile.birthDate,
+          birthTime: baziUserProfile.birthTime,
+          timeUnknown: baziUserProfile.timeUnknown,
+          gender: baziUserProfile.gender,
+          birthProvince: baziUserProfile.birthProvince,
+        })
         .from(baziUserProfile)
         .where(inArray(baziUserProfile.anonId, redemptions.map((r) => r.referee)));
-      for (const p of profs) {
-        const el = elementOfBirthDate(p.birthDate);
-        if (el) elements.add(el);
-      }
+      const repository = createDbKnowledgeRepository();
+      const keys = await Promise.all(
+        profs.map(async (p) => {
+          if (!p.birthDate) return null;
+          try {
+            const state = await calculateBaziStateFromRawInput(
+              {
+                birthDate: String(p.birthDate).slice(0, 10),
+                birthTime: !p.timeUnknown && p.birthTime ? String(p.birthTime).slice(0, 5) : "12:00",
+                gender: p.gender === "FEMALE" ? "female" : "male",
+                province: p.birthProvince || "Bangkok",
+                calendarSystem: "solar",
+                timezone: "Asia/Bangkok",
+              },
+              { repository },
+            );
+            return STEM_TO_ELEMENT[state.dayMaster as keyof typeof STEM_TO_ELEMENT] ?? null;
+          } catch {
+            return null; // เพื่อนคนนี้คำนวณดวงไม่ได้ (ข้อมูลเกิดไม่ครบ/พัง) → ข้ามไป ไม่ให้ล้มทั้ง goals
+          }
+        }),
+      );
+      for (const el of keys) if (el) elements.add(el);
     }
     const collected = elements.size;
     // แจ็กพอตครบ 5 ธาตุ = wuxing_matrix +1000 QI (once) — จ่ายอัตโนมัติครั้งเดียว (idempotent)
