@@ -175,6 +175,33 @@ function jianchuIndex(monthBranch: string, dayBranch: string): number {
   return ((bIdx(dayBranch) - bIdx(monthBranch)) % 12 + 12) % 12;
 }
 
+/** 十二長生 index ของ (ก้าน @ กิ่ง) — 0=長生(A1)..11=養(A12) */
+function lifeStageIndex(stem: string, branch: string): number {
+  const start = bIdx(CHANGSHENG_START[stem]);
+  if (start < 0) return -1;
+  const step = YANG_STEMS.has(stem) ? 1 : -1;
+  return (((bIdx(branch) - start) * step) % 12 + 12) % 12;
+}
+
+/** 黃道 index ของ (ฐานกิ่ง → เป้ากิ่ง) — 0=青龍(B1)..11=勾陳(B12) */
+function huangdaoIndex(baseBranch: string, targetBranch: string): number {
+  const start = bIdx(QINGLONG_START[baseBranch]);
+  if (start < 0) return -1;
+  return ((bIdx(targetBranch) - start) % 12 + 12) % 12;
+}
+
+// วันมงคล ผ่าน 3 ชั้น (FIXเงื่อนไขปฏิทิน.docx): A=長生(ก้านวัน@กิ่งวัน) · B=黃道(กิ่งเดือน→กิ่งวัน) · C=建除(กิ่งเดือน→กิ่งวัน)
+const MONGKHON_A = new Set([1, 3, 4, 5, 9, 11, 12]);
+const MONGKHON_B = new Set([1, 2, 5, 6, 8]);
+const MONGKHON_C = new Set([1, 3, 5, 6, 9, 11]);
+/** วันนี้เป็น "วันมงคล" ไหม — ต้องผ่านทั้ง 3 ชั้น A∧B∧C */
+export function isMongkhonDay(dayStem: string, dayBranch: string, monthBranch: string): boolean {
+  const a = lifeStageIndex(dayStem, dayBranch) + 1;
+  const b = huangdaoIndex(monthBranch, dayBranch) + 1;
+  const c = jianchuIndex(monthBranch, dayBranch) + 1;
+  return MONGKHON_A.has(a) && MONGKHON_B.has(b) && MONGKHON_C.has(c);
+}
+
 /** 建除 C-score ของ (กิ่งเดือน → กิ่งวัน) — 建 ที่กิ่งเดือน */
 function jianchuScore(monthBranch: string, dayBranch: string): number {
   return resolveScore(JIANCHU_LEGEND[`C${jianchuIndex(monthBranch, dayBranch) + 1}`]?.score);
@@ -218,6 +245,15 @@ function dayStarsFor(
     }
   }
   return out;
+}
+
+/** ต่อท้าย "วันมงคล" (A∧B∧C) ลง dayStars ถ้าวันนี้ผ่าน 3 ชั้น — ใช้ชื่อ/กิจกรรมจาก entry mongkhon ถ้ามี */
+function withMongkhon(base: DayStar[], dayStem: string, dayBranch: string, monthBranch: string, rows: DayStarRow[]): DayStar[] {
+  if (!isMongkhonDay(dayStem, dayBranch, monthBranch)) return base;
+  const rec = rows.find((r) => r.id === "mongkhon");
+  const name = rec?.name ?? "วันมงคล";
+  if (base.some((s) => s.name === name)) return base;
+  return [...base, { name, activity: rec?.activity ?? null, polarity: "good" }];
 }
 
 /** 5 ยามมงคล (黃道) ของวัน ตามกิ่งวัน — คำนวณได้ทุกปี */
@@ -436,7 +472,10 @@ export function buildAlmanacDay(
     monthInfo,
     yearInfo,
     // ดาวประจำวัน (ชุดใหม่): คีย์ตามกิ่งเดือน → ตัวกระตุ้นของวัน (กิ่ง/ก้าน/เสาวันเต็ม)
-    dayStars: dayStarsFor(overrides?.dayStars ?? DAY_STARS, monthPillar.branch, dayPillar.stem, dayPillar.branch, dayPillar.ganzhi),
+    dayStars: withMongkhon(
+      dayStarsFor(overrides?.dayStars ?? DAY_STARS, monthPillar.branch, dayPillar.stem, dayPillar.branch, dayPillar.ganzhi),
+      dayPillar.stem, dayPillar.branch, monthPillar.branch, overrides?.dayStars ?? DAY_STARS,
+    ),
     // ขอบสารท (ปฏิทิน 150 ปี): null = ไม่ใช่วันสารท
     solarTerm,
     // จันทรคติไทย (ขึ้น/แรม ค่ำ เดือน + วันพระ)
