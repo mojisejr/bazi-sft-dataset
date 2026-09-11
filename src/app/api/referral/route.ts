@@ -103,7 +103,7 @@ export async function GET(request: Request) {
     }
 
     const anonId = url.searchParams.get("anonId")?.trim();
-    if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
+    if (!anonId) return Response.json({ error: "ไม่พบบัญชีผู้ใช้ กรุณาเข้าสู่ระบบใหม่" }, { status: 400 });
 
     const code = await getOrCreateCode(anonId);
     const db = createDbClient();
@@ -184,9 +184,9 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     if (error instanceof ZodError) {
-      return Response.json({ error: "Invalid referral payload.", details: error.issues }, { status: 400 });
+      return Response.json({ error: "ข้อมูลโค้ดไม่ถูกต้อง", details: error.issues }, { status: 400 });
     }
-    const message = error instanceof Error ? error.message : "Unknown referral error.";
-    return Response.json({ error: message }, { status: 500 });
+    // อย่าคืนข้อความ error ดิบ (มักเป็นภาษาอังกฤษ/เชิงเทคนิค) — คืนไทยกลาง ๆ
+    return Response.json({ error: "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" }, { status: 500 });
   }
 }
