@@ -11,6 +11,7 @@ import {
   STEM_TO_ELEMENT,
 } from "@/lib/bazi/symbolic-engine.constants";
 import type { SupportedElement } from "@/lib/bazi/symbolic-engine.types";
+import { buildElementNisai } from "@/lib/bazi/nisai-by-element";
 
 type ElementCounts = ElementAnalysisValue["totalCounts"];
 type ElementStrengths = ElementAnalysisValue["elementStrengths"];
@@ -166,6 +167,7 @@ export function buildElementAnalysis(
         ? FIVE_ELEMENT_ORDER.filter((element) => totalCounts[element] === maxCount)
         : [],
     elementStrengths: buildElementStrengths(pillars.month.branch, hiddenCounts, totalCounts),
+    elementNisai: buildElementNisai(totalCounts),
   };
 }
 

@@ -181,6 +181,13 @@ export const ContextRuleNoteSchema = z.object({
   params: z.record(z.string(), z.string()).default({}),
 });
 
+// นิสัย 5 ธาตุ แข็ง/อ่อน (ต่อธาตุ) — แหล่งเดียวจาก nisai-by-element.ts ใช้ทั้งหน้า ดวงของฉัน + บท 1
+export const ElementNisaiSchema = z.object({
+  element: SupportedElementSchema,
+  tier: z.enum(["strong", "weak"]),
+  text: z.string(),
+});
+
 export const ElementAnalysisSchema = z.object({
   visibleCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
   hiddenCounts: ElementCountsSchema.default(DEFAULT_ELEMENT_COUNTS),
@@ -188,6 +195,7 @@ export const ElementAnalysisSchema = z.object({
   missingElements: z.array(SupportedElementSchema).default([]),
   dominantElements: z.array(SupportedElementSchema).default([]),
   elementStrengths: z.array(ElementStrengthSchema).default([]),
+  elementNisai: z.array(ElementNisaiSchema).default([]),
 });
 
 export const SeasonalInteractionSchema = z.object({
@@ -536,6 +544,7 @@ export const CalculatedStateSchema = z.object({
     missingElements: [],
     dominantElements: [],
     elementStrengths: [],
+    elementNisai: [],
   }),
   seasonalInteraction: SeasonalInteractionSchema.optional(),
   dayMasterStrengthProfile: DayMasterStrengthProfileSchema.optional(),
