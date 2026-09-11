@@ -37,8 +37,10 @@ const FEATURES: FeatureDef[] = [
   { code: "card_use", label: "เปิดไพ่ / เสี่ยงทาย", credit: true, qi: 10, note: "เปลี่ยนชื่อ/เปลี่ยนวันที่ดูดวงไพ่ = เปิดไพ่ 1 ครั้ง (divine/oracle/fortune-sage)" },
   { code: "chat_question", label: "ถามแชท AI", credit: true, qi: 30, note: "PLUS/PRO แชทไม่จำกัดอยู่แล้ว (ตาม tier)" },
   { code: "phone_reading", label: "ดูเบอร์ (ทำนายเบอร์มือถือ)", credit: false, qi: 10, note: "เลขศาสตร์ + คำทำนาย AI" },
+  { code: "honeycomb_reading", label: "ทำนายเบอร์รังผึ้ง", credit: false, qi: 10, note: "พีระมิดผลรวมคู่เลข + คำทำนาย AI" },
   { code: "birth_edit", label: "เปลี่ยนวันเกิด", credit: false, qi: 150, note: "ฟรีครั้งแรกตลอดชีพ แล้วครั้งถัดไป 150 QI (เปลี่ยน @name ฟรีอยู่แล้ว ไม่หัก QI)" },
   { code: "matching_slot", label: "ช่องดูดวงคู่ (สมพงษ์)", credit: true, qi: 150, note: "เพิ่มช่องบันทึกดวงคู่ถาวร" },
+  { code: "streak_restore", label: "กู้คืนสตรีคเช็คอิน", credit: false, qi: 20, note: "ต่อสตรีคที่ขาด 1 วัน (ปกติจำกัดสัปดาห์ละ 1 ครั้ง)" },
 ];
 
 type Entitlement = {
