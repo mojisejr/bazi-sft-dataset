@@ -28,6 +28,12 @@ export type ManVsDayAlmanac = Pick<
   | "luckyDirection"
   | "luckyHours"
   | "gates"
+  // เพิ่มสำหรับปฏิทินลูกค้า: 8 เทพ + ดาววัน(วันมงคล/วันพิเศษ) + เทพ/สี/ทิศ ประจำวัน
+  | "spirits"
+  | "dayStars"
+  | "worshipDeities"
+  | "shirtColors"
+  | "dayDirections"
 > & {
   /** กำลังดิถีของวัน (E = ratioDay 0–1) — G61 ในชีต DAYMATE */
   dayStrength: number;
@@ -196,6 +202,11 @@ export function buildManVsDay(
       luckyDirection: almanacDay.luckyDirection,
       luckyHours: almanacDay.luckyHours,
       gates: almanacDay.gates,
+      spirits: almanacDay.spirits,
+      dayStars: almanacDay.dayStars,
+      worshipDeities: almanacDay.worshipDeities,
+      shirtColors: almanacDay.shirtColors,
+      dayDirections: almanacDay.dayDirections,
       dayStrength: almanacDay.strength.ratioDay,
     },
   };
