@@ -6,7 +6,7 @@ import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
 
 type Pillar = { stem: string; branch: string; ganzhi: string; element: string };
 type GateInfo = { name: string; direction: string; meaning: string | null };
-type SpiritInfo = { name: string; keywords: string[] };
+type SpiritInfo = { name: string; keywords: string[]; direction?: string };
 type ColorInfo = { element: string; colors: string };
 type PatronInfo = { branch: string; number: number | null; zodiac: string };
 type AsuraDirections = { day: string; month: string; year: string };
@@ -48,6 +48,9 @@ type AlmanacDay = {
   solarTerm: SolarTerm | null;
   thaiLunar: ThaiLunar;
   specialDays: SpecialDay[];
+  worshipDeities: string[];
+  shirtColors: { navin: string; colors: string[] } | null;
+  dayDirections: { fortune: string; patrons: { degree: string; zodiac: string }[]; bad: string } | null;
   note: string | null;
   strength: Strength;
 };
@@ -448,7 +451,23 @@ export function AlmanacWorkspace() {
         {day.colors.length > 0 && (
           <div><dt>สีมงคล</dt><dd>{day.colors.map((c) => c.colors).join(" / ")}</dd></div>
         )}
-        {day.luckyDirection && <div><dt>ทิศโชคลาภ</dt><dd>{day.luckyDirection}</dd></div>}
+        {day.worshipDeities.length > 0 && (
+          <div><dt>ไหว้องค์เทพ</dt><dd>{day.worshipDeities.join(" / ")}</dd></div>
+        )}
+        {day.shirtColors && (
+          <div><dt>สีเสื้อ ({day.shirtColors.navin})</dt><dd>{day.shirtColors.colors.join(" · ")}</dd></div>
+        )}
+        {day.dayDirections ? (
+          <>
+            <div><dt>ทิศโชคลาภ</dt><dd>{day.dayDirections.fortune}</dd></div>
+            {day.dayDirections.patrons.length > 0 && (
+              <div><dt>ทิศผู้อุปถัมภ์</dt><dd>{day.dayDirections.patrons.map((p) => `${p.degree}° (ปี${p.zodiac})`).join(" · ")}</dd></div>
+            )}
+            <div><dt>ทิศร้าย</dt><dd>{day.dayDirections.bad}</dd></div>
+          </>
+        ) : (
+          day.luckyDirection && <div><dt>ทิศโชคลาภ</dt><dd>{day.luckyDirection}</dd></div>
+        )}
         <div><dt>ทิศอสูร ว/ด/ป</dt><dd>{day.asura.day} · {day.asura.month} · {day.asura.year}</dd></div>
         {day.patrons.length > 0 && (
           <div><dt>เทพอุปถัมภ์</dt><dd>
@@ -509,7 +528,7 @@ export function AlmanacWorkspace() {
           <ul className="almanac-spirits">
             {day.spirits.map((s, i) => (
               <li key={`${s.name}-${i}`}>
-                <b>{s.name}</b> {s.keywords.join(" · ")}
+                <b>{s.name}</b>{s.direction ? <em> {s.direction}</em> : null} {s.keywords.join(" · ")}
               </li>
             ))}
           </ul>
