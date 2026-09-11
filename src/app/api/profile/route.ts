@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziCorrectionRequest, baziQiClaim, baziUserProfile } from "@/db/schema";
 import { spendQi, QiError } from "@/lib/bazi/qi/engine";
+import { isFeatureUnlimited } from "@/lib/bazi/qi/entitlements";
 import { QI_SPEND_BY_CODE } from "@/lib/bazi/qi/catalog";
 
 export const runtime = "nodejs";
@@ -80,11 +81,16 @@ export async function GET(request: Request) {
               avatarUpdatedAt: profile.avatarUpdatedAt,
             }
           : null,
-        quota: {
-          birthEditFreeUsed: await freeBirthEditUsed(anonId),
-          birthEditPriceQi: BIRTH_EDIT_PRICE_QI,
-          pendingCorrection: pending ?? null,
-        },
+        quota: await (async () => {
+          const unlimited = await isFeatureUnlimited(anonId, BIRTH_EDIT_SPEND_CODE);
+          return {
+            // แอดมินตั้ง "ไม่จำกัด" → รายงานว่าแก้ฟรีได้ (ปลดล็อกช่อง ไม่หัก QI) + ราคา 0
+            birthEditFreeUsed: unlimited ? false : await freeBirthEditUsed(anonId),
+            birthEditPriceQi: unlimited ? 0 : BIRTH_EDIT_PRICE_QI,
+            birthEditUnlimited: unlimited,
+            pendingCorrection: pending ?? null,
+          };
+        })(),
       },
       { status: 200 },
     );

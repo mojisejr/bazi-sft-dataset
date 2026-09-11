@@ -15,6 +15,41 @@ import type { EntitlementGrant } from "@/lib/bazi/qi/catalog";
 export type CreditKind = "card_use" | "chat_question" | "matching_slot";
 export type Tier = "free" | "plus" | "pro";
 
+/**
+ * "ไม่จำกัด (ไม่หัก QI)" ต่อฟีเจอร์ — แอดมินตั้งผ่าน /ops.
+ * เก็บเป็นแถวใน bazi_entitlement: kind="unlimited", sku = โค้ดฟีเจอร์ (เช่น card_use, chat_question,
+ * phone_reading, birth_edit, honeycomb_reading, matching_slot). "มีแถว = ไม่จำกัด".
+ * ผู้บริโภคเช็ค: consumeUse/peekUse (การ์ด/แชท) และ spendQi (ทุกเส้นใช้แต้ม) — ผ่านเลย ไม่หัก QI.
+ */
+export const UNLIMITED_KIND = "unlimited";
+
+/** ฟีเจอร์นี้ถูกตั้ง "ไม่จำกัด" ให้ user คนนี้ไหม (sku = โค้ดฟีเจอร์) */
+export async function isFeatureUnlimited(anonId: string, code: string): Promise<boolean> {
+  const db = createDbClient();
+  const rows = await db
+    .select({ id: baziEntitlement.id })
+    .from(baziEntitlement)
+    .where(
+      and(
+        eq(baziEntitlement.anonId, anonId),
+        eq(baziEntitlement.kind, UNLIMITED_KIND),
+        eq(baziEntitlement.sku, code),
+      ),
+    )
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** โค้ดฟีเจอร์ทั้งหมดที่ user คนนี้ถูกตั้งเป็น "ไม่จำกัด" */
+export async function getUnlimitedFeatures(anonId: string): Promise<string[]> {
+  const db = createDbClient();
+  const rows = await db
+    .select({ sku: baziEntitlement.sku })
+    .from(baziEntitlement)
+    .where(and(eq(baziEntitlement.anonId, anonId), eq(baziEntitlement.kind, UNLIMITED_KIND)));
+  return rows.map((r) => r.sku);
+}
+
 /** มอบสิทธิ์ตาม grant. throw ถ้าล้ม (ให้ engine จับไป refund) */
 export async function grantEntitlement(anonId: string, grant: EntitlementGrant): Promise<void> {
   const db = createDbClient();

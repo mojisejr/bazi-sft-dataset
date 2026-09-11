@@ -11,7 +11,7 @@ import { baziFeatureQuota } from "@/db/schema";
 import { todayBangkok } from "@/lib/bazi/manifest/dates";
 import { applyLedger, getWallet } from "@/lib/bazi/manifest/ledger";
 import { QI_SPEND_BY_CODE } from "@/lib/bazi/qi/catalog";
-import { consumeCredit, getCredits, getTier, type CreditKind, type Tier } from "@/lib/bazi/qi/entitlements";
+import { consumeCredit, getCredits, getTier, isFeatureUnlimited, type CreditKind, type Tier } from "@/lib/bazi/qi/entitlements";
 
 export type QuotaFeature = "card" | "chat";
 
@@ -86,6 +86,10 @@ export async function peekUse(anonId: string, feature: QuotaFeature): Promise<Pe
   const tier = await getTier(anonId);
   // สมาชิกจ่ายเงิน: แชทไม่จำกัด → ใช้ได้เสมอ ไม่หัก
   if (isUnlimited(feature, tier)) return { affordable: true, nextSource: "free", cost: 0, freeRemaining: -1 };
+  // แอดมินตั้งฟีเจอร์นี้เป็น "ไม่จำกัด" → ใช้ได้เสมอ ไม่หัก QI
+  if (await isFeatureUnlimited(anonId, CREDIT_KIND[feature])) {
+    return { affordable: true, nextSource: "credit", cost: 0, freeRemaining: -1 };
+  }
   const limit = freeLimitOf(feature, tier);
   const cost = qiCostOf(feature);
   const used = (await usageToday(anonId))[feature];
@@ -112,6 +116,10 @@ export async function consumeUse(anonId: string, feature: QuotaFeature): Promise
   // สมาชิกจ่ายเงิน: แชทไม่จำกัด → ผ่านเลย ไม่ตัดโควตา/ไม่หัก QI
   if (isUnlimited(feature, tier)) {
     return { ok: true, source: "free", cost: 0, freeRemaining: -1, creditRemaining: -1 };
+  }
+  // แอดมินตั้งฟีเจอร์นี้เป็น "ไม่จำกัด" → ผ่านเลย ไม่ตัดเครดิต/โควตา/ไม่หัก QI
+  if (await isFeatureUnlimited(anonId, CREDIT_KIND[feature])) {
+    return { ok: true, source: "credit", cost: 0, freeRemaining: -1, creditRemaining: -1 };
   }
   const limit = freeLimitOf(feature, tier);
   const periodKey = todayBangkok();

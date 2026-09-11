@@ -16,7 +16,7 @@ export const runtime = "nodejs";
  *   DELETE { secret, anonId, kind, sku? }                        → ถอนสิทธิ์แถวนั้น
  * เขียน DB ตรง (ตาราง bazi_entitlement) — unique(anonId,kind,sku) ทำให้ upsert ปลอดภัย.
  */
-const KIND = z.enum(["card_use", "chat_question", "matching_slot", "course", "book", "tier"]);
+const KIND = z.enum(["card_use", "chat_question", "matching_slot", "course", "book", "tier", "unlimited"]);
 
 const PostSchema = z.object({
   secret: z.string().trim().min(1),

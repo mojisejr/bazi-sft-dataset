@@ -14,7 +14,7 @@ import {
   type EntitlementGrant,
   type QiEarnLine,
 } from "@/lib/bazi/qi/catalog";
-import { grantEntitlement } from "@/lib/bazi/qi/entitlements";
+import { grantEntitlement, isFeatureUnlimited } from "@/lib/bazi/qi/entitlements";
 
 export class QiError extends Error {
   constructor(
@@ -85,6 +85,19 @@ export type SpendResult = {
 export async function spendQi(anonId: string, code: string, ref?: string | null): Promise<SpendResult> {
   const line = QI_SPEND_BY_CODE.get(code);
   if (!line) throw new QiError(`ไม่รู้จักเส้นใช้แต้ม: ${code}`, 404);
+
+  // แอดมินตั้งฟีเจอร์นี้ "ไม่จำกัด (ไม่หัก QI)" → มอบสิทธิ์ตามปกติ แต่ไม่หักแต้ม
+  if (await isFeatureUnlimited(anonId, code)) {
+    try {
+      await grantEntitlement(anonId, line.grant);
+    } catch (error) {
+      throw new QiError(
+        `มอบสิทธิ์ไม่สำเร็จ: ${error instanceof Error ? error.message : "unknown"}`,
+        500,
+      );
+    }
+    return { code, qi: 0, balance: await getWallet(anonId), grant: line.grant };
+  }
 
   const balance = await applyLedger({
     anonId,

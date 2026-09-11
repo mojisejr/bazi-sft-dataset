@@ -1,4 +1,5 @@
 import { getEntitlementSummary } from "@/lib/bazi/qi/entitlements";
+import { getUnlimitedFeatures } from "@/lib/bazi/qi/entitlements";
 import { usageToday, freeLimitOf, isUnlimited } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
@@ -20,15 +21,24 @@ export async function GET(request: Request) {
   if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
 
   try {
-    const [summary, used] = await Promise.all([getEntitlementSummary(anonId), usageToday(anonId)]);
+    const [summary, used, unlimitedList] = await Promise.all([
+      getEntitlementSummary(anonId),
+      usageToday(anonId),
+      getUnlimitedFeatures(anonId),
+    ]);
     const tier = summary.tier;
-    const chatUnlimited = isUnlimited("chat", tier);
+    // map โค้ดฟีเจอร์ → ถูกตั้งไม่จำกัดหรือไม่ (แอดมิน override) — ครอบทั้งการ์ด/แชท/ดูเบอร์/แก้วันเกิด/ดูดวงคู่
+    const unlimited: Record<string, boolean> = {};
+    for (const code of unlimitedList) unlimited[code] = true;
+    const chatUnlimited = isUnlimited("chat", tier) || !!unlimited.chat_question;
+    const cardUnlimited = !!unlimited.card_use;
     const chatFree = freeLimitOf("chat", tier);
     const cardFree = freeLimitOf("card", tier);
     return Response.json(
       {
         anonId,
         tier,
+        unlimited, // { card_use?, chat_question?, phone_reading?, birth_edit?, honeycomb_reading?, matching_slot? }
         chat: {
           unlimited: chatUnlimited,
           freeLimit: chatFree,
@@ -37,9 +47,10 @@ export async function GET(request: Request) {
           credits: summary.credits.chat_question,
         },
         card: {
+          unlimited: cardUnlimited,
           freeLimit: cardFree,
           usedToday: used.card,
-          freeRemaining: Math.max(0, cardFree - used.card),
+          freeRemaining: cardUnlimited ? -1 : Math.max(0, cardFree - used.card),
           credits: summary.credits.card_use,
         },
         matchingCredits: summary.credits.matching_slot,

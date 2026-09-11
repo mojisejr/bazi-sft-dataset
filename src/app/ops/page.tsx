@@ -28,7 +28,18 @@ type UserRow = {
 
 type LedgerRow = { qiDelta: number; reason: string; ref: string | null; createdAt: string };
 type QuotaLine = { unlimited?: boolean; freeLimit: number; usedToday: number; freeRemaining: number; credits: number };
-type ChatStatus = { available?: boolean; tier?: string; chat?: QuotaLine; card?: Omit<QuotaLine, "unlimited">; matchingCredits?: number; note?: string };
+type ChatStatus = { available?: boolean; tier?: string; chat?: QuotaLine; card?: QuotaLine; matchingCredits?: number; unlimited?: Record<string, boolean>; note?: string };
+
+// ฟีเจอร์ที่จัดการสิทธิ์/โควตาได้ในการ์ดเดียว (dropdown). credit=true → มีคลังเครดิต (ตั้งจำนวนได้);
+// credit=false → หัก QI ตรง ๆ ต่อครั้ง (ตั้งได้แค่ "ไม่จำกัด/ไม่หัก QI"). qi = ราคาต่อครั้งตาม catalog.
+type FeatureDef = { code: string; label: string; credit: boolean; qi: number; note: string };
+const FEATURES: FeatureDef[] = [
+  { code: "card_use", label: "เปิดไพ่ / เสี่ยงทาย", credit: true, qi: 10, note: "เปลี่ยนชื่อ/เปลี่ยนวันที่ดูดวงไพ่ = เปิดไพ่ 1 ครั้ง (divine/oracle/fortune-sage)" },
+  { code: "chat_question", label: "ถามแชท AI", credit: true, qi: 30, note: "PLUS/PRO แชทไม่จำกัดอยู่แล้ว (ตาม tier)" },
+  { code: "phone_reading", label: "ดูเบอร์ (ทำนายเบอร์มือถือ)", credit: false, qi: 10, note: "เลขศาสตร์ + คำทำนาย AI" },
+  { code: "birth_edit", label: "เปลี่ยนวันเกิด", credit: false, qi: 150, note: "ฟรีครั้งแรกตลอดชีพ แล้วครั้งถัดไป 150 QI (เปลี่ยน @name ฟรีอยู่แล้ว ไม่หัก QI)" },
+  { code: "matching_slot", label: "ช่องดูดวงคู่ (สมพงษ์)", credit: true, qi: 150, note: "เพิ่มช่องบันทึกดวงคู่ถาวร" },
+];
 
 type Entitlement = {
   kind: string;
@@ -51,6 +62,7 @@ const KIND_LABELS: Record<string, string> = {
   card_use: "สิทธิ์เปิดไพ่",
   chat_question: "สิทธิ์ถามแชท",
   matching_slot: "สิทธิ์ดูดวงคู่",
+  unlimited: "ไม่จำกัด (ไม่หัก QI)",
 };
 const kindLabel = (k: string) => KIND_LABELS[k] ?? k;
 const baht = (satang: number) => (satang / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
@@ -258,7 +270,7 @@ export default function OpsAdminPage() {
               <ProfileCard user={selected} setUser={setSelected} secret={secret} onSaved={(m) => { note(true, m); void refreshSelectedFromList(); }} onError={(m) => note(false, m)} />
               <PackageCard anonId={selected.anonId} secret={secret} sub={sub} reload={() => loadSub(selected.anonId)} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
               <QiCard user={selected} secret={secret} ledger={ledger} reloadLedger={() => loadLedger(selected.anonId)} onSaved={(qi, m) => { setSelected((s) => (s ? { ...s, qi } : s)); note(true, m); void refreshSelectedFromList(); }} onError={(m) => note(false, m)} />
-              <ChatQuotaCard anonId={selected.anonId} secret={secret} status={chatStatus} ledger={ledger} reload={() => { void loadChatStatus(selected.anonId); void loadEntitlements(selected.anonId); }} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
+              <FeatureAccessCard anonId={selected.anonId} secret={secret} status={chatStatus} ledger={ledger} reload={() => { void loadChatStatus(selected.anonId); void loadEntitlements(selected.anonId); }} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
               <EntitlementCard anonId={selected.anonId} secret={secret} entitlements={entitlements} reload={() => loadEntitlements(selected.anonId)} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
             </>
           )}
@@ -385,33 +397,64 @@ function QiCard({ user, secret, ledger, reloadLedger, onSaved, onError }: { user
   );
 }
 
-function ChatQuotaCard({ anonId, secret, status, ledger, reload, onSaved, onError }: { anonId: string; secret: string; status: ChatStatus | null; ledger: LedgerRow[]; reload: () => void; onSaved: (m: string) => void; onError: (m: string) => void }) {
+function FeatureAccessCard({ anonId, secret, status, ledger, reload, onSaved, onError }: { anonId: string; secret: string; status: ChatStatus | null; ledger: LedgerRow[]; reload: () => void; onSaved: (m: string) => void; onError: (m: string) => void }) {
+  const [code, setCode] = useState<string>(FEATURES[0].code);
   const [credits, setCredits] = useState("");
   const [saving, setSaving] = useState(false);
+  const feat = FEATURES.find((f) => f.code === code) ?? FEATURES[0];
 
-  const setChatCredits = async (value: number) => {
+  // "ไม่จำกัด (ไม่หัก QI)" ที่แอดมิน override — มาจาก status.unlimited[code] (ทุกฟีเจอร์)
+  const overrideUnlimited = !!status?.unlimited?.[code];
+  // แชท/การ์ด อาจ "ไม่จำกัด" จาก tier ด้วย (status.chat.unlimited) — โชว์ป้ายรวม
+  const tierUnlimited = (code === "chat_question" && !!status?.chat?.unlimited && !overrideUnlimited);
+  const unlimited = overrideUnlimited || tierUnlimited;
+
+  // POST/DELETE แถว entitlement (kind = "unlimited" | เครดิต) ผ่าน endpoint เดิม
+  const post = async (body: Record<string, unknown>, okMsg: string) => {
     setSaving(true);
     try {
-      const r = await fetch("/api/ops/entitlement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, anonId, kind: "chat_question", sku: "", credits: value }) });
+      const r = await fetch("/api/ops/entitlement", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, anonId, ...body }) });
       const j = await r.json();
-      if (!r.ok) return onError(j.error ?? "ตั้งเครดิตแชทไม่สำเร็จ");
-      onSaved(value === 0 ? "ตัดเครดิตแชทเป็น 0 แล้ว" : `ตั้งเครดิตแชท = ${value} แล้ว`);
-      setCredits("");
-      reload();
+      if (!r.ok) return onError(j.error ?? "บันทึกไม่สำเร็จ");
+      onSaved(okMsg); setCredits(""); reload();
+    } catch { onError("เชื่อมต่อไม่ได้"); } finally { setSaving(false); }
+  };
+  const del = async (body: Record<string, unknown>, okMsg: string) => {
+    setSaving(true);
+    try {
+      const r = await fetch("/api/ops/entitlement", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, anonId, ...body }) });
+      const j = await r.json();
+      if (!r.ok) return onError(j.error ?? "ยกเลิกไม่สำเร็จ");
+      onSaved(okMsg); reload();
     } catch { onError("เชื่อมต่อไม่ได้"); } finally { setSaving(false); }
   };
 
-  // ประวัติที่ระบบเก็บได้: การแชทที่ตกไปหัก QI (reason qi:spend:chat_question) — โผล่ใน ledger เดียวกับ QI
-  const chatLedger = ledger.filter((l) => /chat_question|chat/i.test(l.reason));
-  const chat = status?.chat;
+  const setUnlimited = () => post({ kind: "unlimited", sku: code, credits: 0 }, `ตั้ง "${feat.label}" ไม่จำกัด (ไม่หัก QI) แล้ว`);
+  const clearUnlimited = () => del({ kind: "unlimited", sku: code }, `ยกเลิกไม่จำกัด "${feat.label}" แล้ว (กลับไปหัก QI ตามปกติ)`);
+  const setCredit = (v: number) => post({ kind: code, sku: "", credits: v }, v === 0 ? `ตัดเครดิต "${feat.label}" เป็น 0 แล้ว` : `ตั้งเครดิต "${feat.label}" = ${v} แล้ว`);
+
+  // stat สำหรับฟีเจอร์ที่มีตัวนับรายวัน (การ์ด/แชท)
+  const line = code === "card_use" ? status?.card : code === "chat_question" ? status?.chat : undefined;
+  const creditNow = code === "matching_slot" ? status?.matchingCredits ?? 0 : line?.credits ?? 0;
+  const featLedger = ledger.filter((l) => l.reason.includes(code));
 
   return (
     <div style={box}>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-        <h2 style={{ fontSize: 15, margin: 0 }}>แชท AI · โควตา</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>สิทธิ์ / โควตาการใช้งาน</h2>
         {status?.tier && <TierBadge tier={String(status.tier).toUpperCase()} />}
+        {unlimited && <span style={{ fontSize: 11, fontWeight: 700, color: C.good, border: `1px solid ${C.good}`, borderRadius: 6, padding: "1px 7px" }}>ไม่จำกัด{tierUnlimited ? " (tier)" : ""}</span>}
       </div>
-      <p style={{ color: C.sub, fontSize: 12, margin: "0 0 12px" }}>ลำดับการใช้: ฟรีรายวัน (ตามระดับสมาชิก) → เครดิตแชทที่แลก/ซื้อ → หัก QI</p>
+
+      <div style={{ marginBottom: 12 }}>
+        <label style={label}>เลือกฟีเจอร์</label>
+        <select style={input} value={code} onChange={(e) => setCode(e.target.value)}>
+          {FEATURES.map((f) => <option key={f.code} value={f.code}>{f.label}</option>)}
+        </select>
+        <p style={{ color: C.sub, fontSize: 12, margin: "8px 0 0" }}>
+          {feat.credit ? "ลำดับการใช้: ฟรีรายวัน (ตาม tier) → เครดิตที่แลก/ซื้อ → หัก QI" : `หัก ${feat.qi} QI ต่อครั้ง (ไม่มีคลังเครดิตแยก)`} · {feat.note}
+        </p>
+      </div>
 
       {!status ? (
         <p style={{ color: C.sub, fontSize: 13 }}>กำลังโหลด…</p>
@@ -420,38 +463,49 @@ function ChatQuotaCard({ anonId, secret, status, ledger, reload, onSaved, onErro
       ) : (
         <>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 14 }}>
-            {chat?.unlimited ? (
-              <Stat label="แชทวันนี้" value="ไม่จำกัด" hint={`สมาชิก ${status.tier} — ใช้ฟรีไม่อั้น`} good />
-            ) : (
-              <Stat label="แชทฟรีวันนี้" value={`${chat?.usedToday ?? 0}/${chat?.freeLimit ?? 0}`} hint={`เหลือวันนี้ ${chat?.freeRemaining ?? 0}`} />
-            )}
-            <Stat label="เครดิตแชทเพิ่ม" value={String(chat?.credits ?? 0)} hint="ใช้ต่อเมื่อฟรีหมด (แลก/ซื้อ/แอดมินให้)" warn={(chat?.credits ?? 0) > 0 && !chat?.unlimited} />
+            {line ? (
+              unlimited ? (
+                <Stat label="วันนี้" value="ไม่จำกัด" hint="ไม่หัก QI" good />
+              ) : (
+                <Stat label="ฟรีวันนี้" value={`${line.usedToday}/${line.freeLimit}`} hint={`เหลือวันนี้ ${line.freeRemaining}`} />
+              )
+            ) : null}
+            {feat.credit && <Stat label="เครดิตเพิ่ม" value={unlimited ? "∞" : String(creditNow)} hint="ใช้ต่อเมื่อฟรีหมด (แลก/ซื้อ/แอดมินให้)" warn={!unlimited && creditNow > 0} good={unlimited} />}
+            {!feat.credit && <Stat label="สถานะ" value={unlimited ? "ไม่จำกัด" : `หัก ${feat.qi} QI/ครั้ง`} hint={unlimited ? "แอดมินให้ใช้ไม่อั้น" : "ปกติ"} good={unlimited} />}
           </div>
-
-          {chat?.unlimited && (
-            <p style={{ color: C.warn, fontSize: 12, margin: "0 0 12px" }}>⚠️ ระดับสมาชิก {status.tier} = แชทไม่จำกัด ไม่ว่าเครดิตเท่าไร ถ้าจะจำกัดแชทต้องปรับแพ็กเกจเป็น FREE ด้านบนก่อน แล้วค่อยตั้งเครดิตแชท</p>
-          )}
 
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "end" }}>
-            <div style={{ width: 160 }}><label style={label}>ตั้งเครดิตแชท (ตายตัว)</label><input style={input} value={credits} onChange={(e) => setCredits(e.target.value)} placeholder="เช่น 50" /></div>
-            <button style={btn(C.good)} disabled={saving || credits.trim() === "" || !Number.isInteger(Number(credits))} onClick={() => setChatCredits(Math.max(0, Math.trunc(Number(credits))))}>{saving ? "…" : "ตั้งเครดิต → DB"}</button>
-            <button style={btn(C.danger)} disabled={saving} onClick={() => setChatCredits(0)}>ตัดแชท (ตั้ง 0)</button>
+            {overrideUnlimited ? (
+              <button style={btn(C.danger)} disabled={saving} onClick={clearUnlimited}>{saving ? "…" : "ยกเลิกไม่จำกัด"}</button>
+            ) : (
+              <button style={btn(C.accent)} disabled={saving} onClick={setUnlimited}>{saving ? "…" : "ให้ไม่จำกัด (ไม่หัก QI)"}</button>
+            )}
+            {feat.credit && (
+              <>
+                <div style={{ width: 150 }}><label style={label}>ตั้งเครดิต (ตายตัว)</label><input style={input} value={credits} onChange={(e) => setCredits(e.target.value)} placeholder="เช่น 50" /></div>
+                <button style={btn(C.good)} disabled={saving || credits.trim() === "" || !Number.isInteger(Number(credits))} onClick={() => setCredit(Math.max(0, Math.trunc(Number(credits))))}>{saving ? "…" : "ตั้งเครดิต → DB"}</button>
+                <button style={btn(C.border)} disabled={saving} onClick={() => setCredit(0)}>ตัดเครดิต (0)</button>
+              </>
+            )}
           </div>
 
+          {tierUnlimited && (
+            <p style={{ color: C.warn, fontSize: 12, margin: "12px 0 0" }}>⚠️ ระดับสมาชิก {status.tier} = แชทไม่จำกัดอยู่แล้ว (ตาม tier) ถ้าจะจำกัดต้องลดแพ็กเกจเป็น FREE ก่อน</p>
+          )}
+
           <div style={{ marginTop: 14, fontSize: 12, color: C.sub }}>
-            ประวัติแชทที่หัก QI (ครั้งที่ฟรี+เครดิตหมดแล้วจ่ายด้วย QI) — {chatLedger.length} รายการ
-            {chatLedger.length > 0 && (
+            ประวัติที่หัก QI จากฟีเจอร์นี้ — {featLedger.length} รายการ
+            {featLedger.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
-                {chatLedger.slice(0, 10).map((l, i) => (
+                {featLedger.slice(0, 10).map((l, i) => (
                   <div key={i} style={{ display: "flex", gap: 10, background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "6px 11px" }}>
-                    <span style={{ color: C.danger, fontWeight: 700, width: 56 }}>{l.qiDelta}</span>
-                    <span style={{ color: C.sub }}>{l.reason}</span>
+                    <span style={{ color: l.qiDelta >= 0 ? C.good : C.danger, fontWeight: 700, width: 56 }}>{l.qiDelta >= 0 ? `+${l.qiDelta}` : l.qiDelta}</span>
+                    <span style={{ color: C.sub, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{l.reason}</span>
                     <span style={{ marginLeft: "auto", color: C.sub }}>{String(l.createdAt).slice(0, 10)}</span>
                   </div>
                 ))}
               </div>
             )}
-            <div style={{ marginTop: 6, opacity: 0.8 }}>หมายเหตุ: การแชทที่ใช้โควตาฟรีรายวันหรือเครดิต ระบบนับเป็นตัวเลข (ใช้วันนี้/เครดิตคงเหลือด้านบน) ไม่ได้ log รายครั้งแยกเหมือน QI</div>
           </div>
         </>
       )}
