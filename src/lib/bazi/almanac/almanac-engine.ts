@@ -26,6 +26,9 @@ import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
 import dayStarsJson from "@/lib/bazi/data/almanac/day-stars.json";
 import qimen2569Json from "@/lib/bazi/data/almanac/qimen-2569.json";
+import worshipDeityJson from "@/lib/bazi/data/almanac/worship-deity-60.json";
+import shirtColorJson from "@/lib/bazi/data/almanac/shirt-color-60.json";
+import dayDirectionJson from "@/lib/bazi/data/almanac/day-direction-60.json";
 
 import { solarTermFor } from "@/lib/bazi/almanac/solar-terms-data";
 import { thaiLunarDay } from "@/lib/bazi/thai-lunar";
@@ -382,6 +385,10 @@ function toSpirits(raw: AlmanacRecord["spirits"]): SpiritInfo[] {
 // ครอบคลุมเฉพาะช่วงที่มีข้อมูล (ก.ย.–ธ.ค. 2569); นอกช่วงนี้ engine fallback ตารางสกัดเดิม
 type QimenCell = { gate: string; dir: string; deity: string };
 const QIMEN = qimen2569Json as Record<string, QimenCell[]>;
+// ตาราง 60 วัน (key = day-ganzhi) จากเอกสารซินแส — เทพ/สี/ทิศ ประจำวัน
+const WORSHIP_DEITY = worshipDeityJson as Record<string, string[]>;
+const SHIRT_COLOR = shirtColorJson as Record<string, { navin: string; colors: string[] }>;
+const DAY_DIRECTION = dayDirectionJson as Record<string, { fortune: string; patrons: { degree: string; zodiac: string }[]; bad: string }>;
 /** คืน gates+spirits (พร้อมทิศ) จากคี้มึ้ง ถ้ามีคีย์ตรง ไม่งั้น null */
 function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: GateInfo[]; spirits: SpiritInfo[] } | null {
   const cells = QIMEN[`${dayGZ}|${monthGZ}|${yearGZ}`];
@@ -482,6 +489,10 @@ export function buildAlmanacDay(
     thaiLunar,
     // วันสำคัญ 6 หมวด
     specialDays,
+    // เทพ/สี/ทิศ ประจำวัน (ตาราง 60 day-ganzhi จากเอกสารซินแส)
+    worshipDeities: WORSHIP_DEITY[dayPillar.ganzhi] ?? [],
+    shirtColors: SHIRT_COLOR[dayPillar.ganzhi] ?? null,
+    dayDirections: DAY_DIRECTION[dayPillar.ganzhi] ?? null,
     // หมายเหตุที่ผู้ใช้แก้รายวัน (override) — null ถ้าไม่มี
     note: null,
     strength: buildStrength(m, {
