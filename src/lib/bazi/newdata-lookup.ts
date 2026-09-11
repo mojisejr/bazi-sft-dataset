@@ -9,6 +9,7 @@
  */
 import type { NewdataValue } from "@/db/schema";
 import type { CalculatedStateValue } from "@/lib/bazi/schema-types";
+import type { ElementNisai } from "@/lib/bazi/nisai-by-element";
 import type { NewdataMap } from "@/lib/bazi/newdata-repository";
 import {
   avoidElementsTh,
@@ -101,6 +102,8 @@ export type ChartFacts = {
   birthYear?: number;
   pillars: PillarFact[];
   daYun: LuckFact[];
+  /** นิสัย 5 ธาตุ แข็ง/อ่อน (จาก elementAnalysis.elementNisai — แหล่งเดียวกับหน้าดวงของฉัน) */
+  elementNisai?: ElementNisai[];
 };
 
 /** ผลคำอ่าน 1 ก้อนที่ match */
@@ -176,6 +179,7 @@ export function extractChartFacts(
     birthYear,
     pillars,
     daYun,
+    elementNisai: state.elementAnalysis?.elementNisai ?? [],
   };
 }
 
@@ -1144,6 +1148,20 @@ export function matchLuckyAnimal(facts: ChartFacts): NewdataBlock[] {
   const text = LUCKY_ANIMAL_BY_DAY_MASTER[facts.dayMaster];
   if (!text) return [];
   return [{ group: "lucky_animal", itemKey: facts.dayMaster, label: "สัตว์มงคล", text }];
+}
+
+// บท 1 · นิสัย 5 ธาตุ แข็ง/อ่อน — คำนวณจาก elementNisai (nisai-by-element) ไม่พึ่ง NewData DB
+export function matchElementNisai(facts: ChartFacts): NewdataBlock[] {
+  return (facts.elementNisai ?? []).map((n) => {
+    const th = EN_TO_TH_ELEMENT[n.element] ?? n.element;
+    const tierTh = n.tier === "strong" ? "แข็ง" : "อ่อน";
+    return {
+      group: "nisai_by_element",
+      itemKey: `${n.element}|${n.tier}`,
+      label: `ธาตุ${th} (${tierTh})`,
+      text: n.text,
+    };
+  });
 }
 
 /**

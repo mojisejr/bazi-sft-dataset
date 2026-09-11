@@ -24,6 +24,7 @@ import {
   matchElementAdvice,
   matchFamilyState,
   matchLuckyAnimal,
+  matchElementNisai,
   matchElementRoleGanzhi,
   matchElementRoleState,
   matchFameHonor,
@@ -91,7 +92,8 @@ type Resolver =
   | { kind: "familyState"; pillar: PillarPosition; tier?: "upper" | "lower" }
   | { kind: "annualYears" }
   | { kind: "luckStars"; group: string }
-  | { kind: "fixed"; group: string };
+  | { kind: "fixed"; group: string }
+  | { kind: "elementNisai" };
 
 /**
  * key = topic id · ค่า = array เรียงตาม bullets ใน CHAPTER_OUTLINE[id].bullets (ดัชนีตรงกัน)
@@ -121,6 +123,8 @@ export const CHAPTER_BULLET_RESOLVERS: Record<string, Resolver[][]> = {
     //  กลุ่ม appearance_state/appearance_element/virtue_by_element เหลือเป็นสำรอง ไม่ถูกอ้าง)
     // ชื่อเสียงและเกียรติยศ (ดาวจิ้งซิ้ง) = มีกะจื่อเด่นดังในเสาใดก็ได้ (ว่างถ้าไม่มี)
     [{ kind: "fameHonor", group: "fame_honor" }],
+    // นิสัย 5 ธาตุ แข็ง/อ่อน (คำนวณจาก elementNisai ใน calculatedState — แหล่งเดียวกับหน้าดวงของฉัน)
+    [{ kind: "elementNisai" }],
   ],
   // 5 bullets: [ควรทำ1] [ควรทำ2] [ควรทำ3 (บางคนมี)] [ไม่ควรทำ1] [ไม่ควรทำ2 (บางคนมี)]
   career_potential: [
@@ -405,6 +409,8 @@ function resolveOne(r: Resolver, facts: ChartFacts, map: NewdataMap): NewdataBlo
       return matchElementCategory(map, r.group, facts, r.category);
     case "luckyAnimal":
       return matchLuckyAnimal(facts);
+    case "elementNisai":
+      return matchElementNisai(facts);
     case "elementAdvice":
       return matchElementAdvice(facts, r.table);
     case "familyState":

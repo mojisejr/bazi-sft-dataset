@@ -44,6 +44,10 @@ const FACTS: ChartFacts = {
     { startAge: 6, endAge: 15, stem: "丙", branch: "辰", isCurrent: false, upperState: "แป่", lowerState: "เอี้ยง", phases: [] },
     { startAge: 16, endAge: 25, stem: "乙", branch: "卯", isCurrent: true, upperState: "ซี่", lowerState: "ตี้อ๋วง", phases: [] },
   ],
+  elementNisai: [
+    { element: "metal", tier: "weak", text: "ความยุติธรรมและความเด็ดขาด — อาจคิดวน" },
+    { element: "fire", tier: "strong", text: "มารยาทและวัฒนธรรม — แสดงออกเหมาะสม" },
+  ],
 };
 
 const STATES_12 = {
@@ -207,7 +211,11 @@ describe("chapter-newdata-map: resolveChapterBoxes (box ครบทุก bulle
 
   test("chart_foundation → box=7, ภาคี+เชี่ยงแซเติม, ด้านมืด/จื่อเฮ้งว่าง (ดวงนี้ไม่มี)", () => {
     const r = resolveChapterBoxes("chart_foundation", FACTS, MAP);
-    expect(r.boxes).toHaveLength(8); // 8 bullets (2026-07-22 ซินแสเอา รูปร่างหน้าตา+คุณธรรม ออก)
+    expect(r.boxes).toHaveLength(9); // 9 bullets (เพิ่ม "นิสัยตามธาตุเด่น/ธาตุอ่อน 5 ธาตุ" ท้ายบท)
+    // box8 = นิสัย 5 ธาตุ (จาก elementNisai — แข็ง/อ่อน)
+    expect(r.boxes[8].title).toContain("นิสัยตามธาตุเด่น")
+    expect(r.boxes[8].body).toContain("ความยุติธรรมและความเด็ดขาด")
+    expect(r.boxes[8].body).toContain("มารยาทและวัฒนธรรม")
     expect(r.boxes[0].body).toBe(""); // กำลังดิถี — ว่าง
     expect(r.boxes[2].body).toContain("ความผูกพันแห่งความกลมเกลียว"); // ภาคีราศีล่าง 午未
     expect(r.boxes[3].body).toContain("มีเสน่ห์ดึงดูด"); // เชี่ยงแซดิถี หมกยก
