@@ -1,6 +1,6 @@
 import { getWallet } from "@/lib/bazi/manifest/ledger";
 import { getEntitlementSummary } from "@/lib/bazi/qi/entitlements";
-import { freeLimitOf, usageToday } from "@/lib/bazi/qi/quota";
+import { freeLimitOf, isUnlimited, usageToday } from "@/lib/bazi/qi/quota";
 
 export const runtime = "nodejs";
 
@@ -15,7 +15,9 @@ export async function GET(request: Request) {
 
     const [summary, wallet, used] = await Promise.all([getEntitlementSummary(anonId), getWallet(anonId), usageToday(anonId)]);
     const cardLimit = freeLimitOf("card", summary.tier);
-    const chatLimit = freeLimitOf("chat", summary.tier);
+    // P2-12: chat ของ plus/pro = ไม่จำกัด (isUnlimited) → คืน -1 ให้ FE โชว์ "ไม่จำกัด" ตรงกัน
+    // ไม่ใช่เพดานหลอก 100 จากตาราง FREE_LIMIT ที่ถูก isUnlimited ลัดวงจรไปแล้ว
+    const chatLimit = isUnlimited("chat", summary.tier) ? -1 : freeLimitOf("chat", summary.tier);
 
     return Response.json(
       {

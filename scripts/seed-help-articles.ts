@@ -1,5 +1,5 @@
 /**
- * Seed บทความช่วยเหลือ (help-faq / document-reader) — idempotent (INSERT เมื่อ slug ยังไม่มี).
+ * Seed บทความช่วยเหลือ (help-faq / document-reader) — idempotent upsert (UPDATE แถวเดิม + INSERT ถ้ายังไม่มี).
  * ใช้: node --env-file=.env --import tsx scripts/seed-help-articles.ts
  */
 import postgres from "postgres";
@@ -32,7 +32,7 @@ const ARTICLES: Array<{ slug: string; title: string; body: string; position: num
       "วันเกิดเปลี่ยน ดวงเปลี่ยนทั้งหมด เราจึงให้แก้ได้ “ฟรี 1 ครั้งตลอดชีพ”",
       "",
       "• ครั้งแรก: ฟรี (แค่กดยืนยัน)",
-      "• ครั้งถัดไป: ใช้ 100 ชี่ ต่อการแก้",
+      "• ครั้งถัดไป: ใช้ 150 ชี่ ต่อการแก้",
       "• ถ้าไม่จำเวลาเกิด ให้ติ๊ก “ไม่ทราบเวลาเกิด” — ระบบจะไม่ใช้เสายามในการอ่านดวง",
       "",
       "ถ้าพบว่าระบบบันทึกวันเกิดไม่ตรง หรือมีเหตุพิเศษ ใช้ปุ่ม “ขอให้ทีมช่วยพิจารณา” ที่หน้าแก้วันเกิดได้เสมอ",
@@ -79,16 +79,23 @@ const ARTICLES: Array<{ slug: string; title: string; body: string; position: num
 
 async function main() {
   let inserted = 0;
+  let updated = 0;
   for (const a of ARTICLES) {
-    const rows = await sql`
-      INSERT INTO bazi_help_article (slug, title, body, position)
-      SELECT ${a.slug}, ${a.title}, ${a.body}, ${a.position}
-      WHERE NOT EXISTS (SELECT 1 FROM bazi_help_article WHERE slug = ${a.slug})
-      RETURNING slug`;
-    if (rows.length) inserted += 1;
+    // upsert: อัปเดตแถวเดิม (ซ่อม body ว่าง / ข้อความ stale เช่น 100→150 ชี่) แล้วค่อย insert ถ้ายังไม่มี
+    // ไม่พึ่ง unique constraint บน slug — UPDATE ก่อน ถ้าไม่โดนแถวไหนค่อย INSERT
+    const upd = await sql`
+      UPDATE bazi_help_article SET title = ${a.title}, body = ${a.body}, position = ${a.position}
+      WHERE slug = ${a.slug} RETURNING slug`;
+    if (upd.length) {
+      updated += 1;
+    } else {
+      await sql`INSERT INTO bazi_help_article (slug, title, body, position)
+        VALUES (${a.slug}, ${a.title}, ${a.body}, ${a.position})`;
+      inserted += 1;
+    }
   }
   const all = await sql`select slug, title from bazi_help_article order by position`;
-  console.log(`inserted ${inserted}, total ${all.length}:`);
+  console.log(`inserted ${inserted}, updated ${updated}, total ${all.length}:`);
   for (const a of all) console.log(` - ${a.slug}: ${a.title}`);
   await sql.end();
 }
