@@ -40,6 +40,8 @@ export type SpiritInfo = {
   name: string;
   /** คีย์เวิร์ดธุรกิจ 4 คำของเทพนั้น */
   keywords: string[];
+  /** ทิศของเทพในวันนั้น (จากคี้มึ้ง 8 ประตู 8 เทพ) — undefined เมื่อไม่มีข้อมูล */
+  direction?: string;
 };
 
 export type ColorInfo = {

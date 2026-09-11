@@ -25,6 +25,7 @@ import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
 import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
 import dayStarsJson from "@/lib/bazi/data/almanac/day-stars.json";
+import qimen2569Json from "@/lib/bazi/data/almanac/qimen-2569.json";
 
 import { solarTermFor } from "@/lib/bazi/almanac/solar-terms-data";
 import { thaiLunarDay } from "@/lib/bazi/thai-lunar";
@@ -341,6 +342,20 @@ function toSpirits(raw: AlmanacRecord["spirits"]): SpiritInfo[] {
     .map((name) => ({ name, keywords: SPIRIT_LEGEND[name] ?? [] }));
 }
 
+// คี้มึ้ง 8 ประตู 8 เทพ (ingest จากสเปรดชีตซินแส — scripts/ingest-qimen.cjs) คีย์ `dayGZ|monthGZ|yearGZ`
+// ครอบคลุมเฉพาะช่วงที่มีข้อมูล (ก.ย.–ธ.ค. 2569); นอกช่วงนี้ engine fallback ตารางสกัดเดิม
+type QimenCell = { gate: string; dir: string; deity: string };
+const QIMEN = qimen2569Json as Record<string, QimenCell[]>;
+/** คืน gates+spirits (พร้อมทิศ) จากคี้มึ้ง ถ้ามีคีย์ตรง ไม่งั้น null */
+function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: GateInfo[]; spirits: SpiritInfo[] } | null {
+  const cells = QIMEN[`${dayGZ}|${monthGZ}|${yearGZ}`];
+  if (!cells || cells.length === 0) return null;
+  return {
+    gates: cells.map((c) => ({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null })),
+    spirits: cells.map((c) => ({ name: c.deity, keywords: SPIRIT_LEGEND[c.deity] ?? [], direction: c.dir })),
+  };
+}
+
 /** ประกอบข้อมูลปฏิทิน 1 วัน (overrides = แก้กฎ/รายวันจาก DB; ไม่ส่ง = ใช้กฎฐาน) */
 export function buildAlmanacDay(
   year: number,
@@ -357,6 +372,8 @@ export function buildAlmanacDay(
   const spiritsOk = (s: AlmanacRecord["spirits"]) => !!s && s.length > 0 && s.every((x) => x && SPIRIT_SET.has(x));
   const gateRec = gatesOk(m?.gates) ? m : (gatesOk(d?.gates) ? d : rec);
   const spiritRec = spiritsOk(m?.spirits) ? m : (spiritsOk(d?.spirits) ? d : rec);
+  // คี้มึ้ง (ถ้ามีข้อมูลวันนี้) ใช้ก่อน — 8 ประตู/8 เทพ + ทิศ ตรงสเปรดชีตซินแส
+  const qimen = qimenFor(dayPillar.ganzhi, monthPillar.ganzhi, yearPillar.ganzhi);
 
   const colors = [toColors(rec?.color_primary), toColors(rec?.color_secondary)].filter(
     (c): c is ColorInfo => c !== null,
@@ -412,8 +429,8 @@ export function buildAlmanacDay(
     luckyDirection: rec?.lucky_dir ?? null,
     asura,
     patrons: toPatrons(rec?.patrons),
-    gates: toGates(gateRec?.gates),
-    spirits: toSpirits(spiritRec?.spirits),
+    gates: qimen?.gates ?? toGates(gateRec?.gates),
+    spirits: qimen?.spirits ?? toSpirits(spiritRec?.spirits),
     // เวลามงคล: คำนวณกฎ 黃道 จากกิ่งวัน (ถูกต้องทุกปี ไม่พึ่งตารางสกัด)
     luckyHours: luckyHoursByDayBranch(dayPillar.branch),
     monthInfo,
