@@ -3,6 +3,11 @@
 รายการนี้เป็นการแก้ "ข้อมูลในแถว DB prod" ที่โค้ดถูกต้องอยู่แล้ว — ให้ operator รันผ่าน /ops / SQL console
 ตรวจ (SELECT) ก่อนเสมอ แล้วค่อย UPDATE
 
+## สถานะหลังตรวจ DB จริง (2026-09-11)
+- ✅ P1-7/P1-8/P1-13 — รัน seeder แล้ว (insert terms/about, update payments + birth-edit 150 ชี่) ขึ้น prod แล้ว
+- ✅ P2-11 — ไม่ต้องแก้: payment_package QI_60=฿35 / QI_200=฿99 / QI_500=฿249 / QI_1200=฿499 (บาท) + description ตรง → ถูกต้องอยู่แล้ว
+- ⚠️ P3-16 — ไม่ใช่แถว DB: table worship_guide ไม่มีจริง (มีแค่ bazi_help_article + almanac_usage=log LLM) ข้อความ "เวลาเดินทาง 40 ชม." เป็นข้อความที่ AI สร้าง → แก้ด้วย SQL ไม่ได้ ต้องคุมที่ prompt/validation ตอน generate (งานแยก P3)
+
 ## P2-11 — โค้ดแพ็กชี่ vs จำนวน/ราคาไม่ตรง (90/900/2100)
 
 ข้อเท็จจริงจากโค้ด (`mootech-fe/lib/payment/catalog.ts`) — จำนวนชี่ต่อแพ็กมาจากโค้ด (แก้ที่ deploy),
