@@ -29,6 +29,12 @@ const PostSchema = z.object({
   increment: z.number().int().min(1).max(100).default(1),
 });
 
+// ธาตุ day-master ของเพื่อน = birth-deterministic (ไม่เปลี่ยนตามเวลา) → memo ต่อ birth-signature ทั้ง process
+// เดิม GET /missions คำนวณ chart เต็ม "ต่อเพื่อน 1 คน" ทุกครั้ง (N+1) → ผู้ใช้ที่ชวนหลายคนเจอ ~10s ต่อครั้ง.
+// memo ระดับ module: hot instance โหลด /account ซ้ำ = เพื่อนเดิม → cache ครบ ข้ามการคำนวณ. cold start อุ่นใหม่.
+const friendElementMemo = new Map<string, string | null>();
+const FRIEND_ELEMENT_MEMO_MAX = 5000;
+
 export async function GET(request: Request) {
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
@@ -78,19 +84,23 @@ export async function GET(request: Request) {
       const keys = await Promise.all(
         profs.map(async (p) => {
           if (!p.birthDate) return null;
+          // birth-signature = ตัวเดียวกับที่ป้อน engine → memo hit = ข้ามการคำนวณ chart (ต้นเหตุ N+1 ~10s)
+          const birthDate = String(p.birthDate).slice(0, 10);
+          const birthTime = !p.timeUnknown && p.birthTime ? String(p.birthTime).slice(0, 5) : "12:00";
+          const gender = p.gender === "FEMALE" ? "female" : "male";
+          const province = p.birthProvince || "Bangkok";
+          const sig = `${birthDate}|${birthTime}|${gender}|${province}`;
+          const memo = friendElementMemo.get(sig);
+          if (memo !== undefined) return memo; // เคยคำนวณแล้ว (คน/instance เดิม) → ใช้ซ้ำ
           try {
             const state = await calculateBaziStateFromRawInput(
-              {
-                birthDate: String(p.birthDate).slice(0, 10),
-                birthTime: !p.timeUnknown && p.birthTime ? String(p.birthTime).slice(0, 5) : "12:00",
-                gender: p.gender === "FEMALE" ? "female" : "male",
-                province: p.birthProvince || "Bangkok",
-                calendarSystem: "solar",
-                timezone: "Asia/Bangkok",
-              },
+              { birthDate, birthTime, gender, province, calendarSystem: "solar", timezone: "Asia/Bangkok" },
               { repository },
             );
-            return STEM_TO_ELEMENT[state.dayMaster as keyof typeof STEM_TO_ELEMENT] ?? null;
+            const el = STEM_TO_ELEMENT[state.dayMaster as keyof typeof STEM_TO_ELEMENT] ?? null;
+            if (friendElementMemo.size >= FRIEND_ELEMENT_MEMO_MAX) friendElementMemo.clear();
+            friendElementMemo.set(sig, el);
+            return el;
           } catch {
             return null; // เพื่อนคนนี้คำนวณดวงไม่ได้ (ข้อมูลเกิดไม่ครบ/พัง) → ข้ามไป ไม่ให้ล้มทั้ง goals
           }
