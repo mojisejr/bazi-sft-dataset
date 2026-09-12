@@ -29,11 +29,18 @@ const PostSchema = z.object({
   increment: z.number().int().min(1).max(100).default(1),
 });
 
-// ธาตุ day-master ของเพื่อน = birth-deterministic (ไม่เปลี่ยนตามเวลา) → memo ต่อ birth-signature ทั้ง process
+// ธาตุ day-master ของเพื่อน = birth-deterministic (ไม่เปลี่ยนตามเวลา) → cache ต่อ birth-signature.
 // เดิม GET /missions คำนวณ chart เต็ม "ต่อเพื่อน 1 คน" ทุกครั้ง (N+1) → ผู้ใช้ที่ชวนหลายคนเจอ ~10s ต่อครั้ง.
-// memo ระดับ module: hot instance โหลด /account ซ้ำ = เพื่อนเดิม → cache ครบ ข้ามการคำนวณ. cold start อุ่นใหม่.
+// 2 ชั้น: (L1) module-level Map — เร็วสุด แต่หายตอน cold start และไม่ share ข้าม Vercel serverless instance;
+//         (L2) ตาราง DB bazi_friend_element_cache (0049) — ทน cold start + ทุก instance hit ร่วมกัน.
+// อ่าน L2 แบบ batch ครั้งเดียว (ไม่ยิงรายเพื่อน = ไม่ N+1 ซ้ำ), miss ค่อยคำนวณสดแล้วเขียนกลับทั้ง L1+L2.
 const friendElementMemo = new Map<string, string | null>();
 const FRIEND_ELEMENT_MEMO_MAX = 5000;
+const FRIEND_ELEMENT_CACHE = "bazi_friend_element_cache";
+
+// db.execute (postgres-js) คืน array ตรง ๆ; เผื่อ driver อื่นคืน { rows } → normalize
+const rowsOf = (r: unknown): Record<string, unknown>[] =>
+  (Array.isArray(r) ? r : (r as { rows?: Record<string, unknown>[] })?.rows ?? []) as Record<string, unknown>[];
 
 export async function GET(request: Request) {
   try {
@@ -81,32 +88,77 @@ export async function GET(request: Request) {
         .from(baziUserProfile)
         .where(inArray(baziUserProfile.anonId, redemptions.map((r) => r.referee)));
       const repository = createDbKnowledgeRepository();
-      const keys = await Promise.all(
-        profs.map(async (p) => {
-          if (!p.birthDate) return null;
-          // birth-signature = ตัวเดียวกับที่ป้อน engine → memo hit = ข้ามการคำนวณ chart (ต้นเหตุ N+1 ~10s)
+      // 1) birth-signature ต่อเพื่อน (ข้ามคนไม่มีวันเกิด) — sig = ตัวเดียวกับที่ป้อน engine
+      const inputs = profs
+        .filter((p) => p.birthDate)
+        .map((p) => {
           const birthDate = String(p.birthDate).slice(0, 10);
           const birthTime = !p.timeUnknown && p.birthTime ? String(p.birthTime).slice(0, 5) : "12:00";
           const gender = p.gender === "FEMALE" ? "female" : "male";
           const province = p.birthProvince || "Bangkok";
-          const sig = `${birthDate}|${birthTime}|${gender}|${province}`;
-          const memo = friendElementMemo.get(sig);
-          if (memo !== undefined) return memo; // เคยคำนวณแล้ว (คน/instance เดิม) → ใช้ซ้ำ
+          return { sig: `${birthDate}|${birthTime}|${gender}|${province}`, birthDate, birthTime, gender, province };
+        });
+      const uniqueSigs = [...new Set(inputs.map((i) => i.sig))];
+
+      // 2) L2 batch read: sig ที่ยังไม่มีใน L1 memo → ยิง DB ครั้งเดียว (ไม่ N+1) แล้วอุ่น memo
+      const needFromDb = uniqueSigs.filter((s) => !friendElementMemo.has(s));
+      if (needFromDb.length) {
+        try {
+          const rows = rowsOf(await db.execute(
+            sql`SELECT sig, element FROM ${sql.identifier(FRIEND_ELEMENT_CACHE)} WHERE sig IN (${sql.join(
+              needFromDb.map((s) => sql`${s}`),
+              sql`, `,
+            )})`,
+          ));
+          for (const r of rows) {
+            if (typeof r.sig === "string" && typeof r.element === "string") friendElementMemo.set(r.sig, r.element);
+          }
+        } catch {
+          /* cache อ่านไม่ได้ (ยังไม่ migrate 0049 ฯลฯ) → คำนวณสด */
+        }
+      }
+
+      // 3) sig ที่ยัง miss ทั้ง L1+L2 → คำนวณสด (ขนาน) แล้วเขียนกลับ L1 + เก็บเพื่อน batch-write L2
+      const toCompute = uniqueSigs.filter((s) => !friendElementMemo.has(s));
+      const bySig = new Map(inputs.map((i) => [i.sig, i]));
+      const freshRows: { sig: string; element: string }[] = [];
+      await Promise.all(
+        toCompute.map(async (sig) => {
+          const i = bySig.get(sig)!;
           try {
             const state = await calculateBaziStateFromRawInput(
-              { birthDate, birthTime, gender, province, calendarSystem: "solar", timezone: "Asia/Bangkok" },
+              { birthDate: i.birthDate, birthTime: i.birthTime, gender: i.gender, province: i.province, calendarSystem: "solar", timezone: "Asia/Bangkok" },
               { repository },
             );
             const el = STEM_TO_ELEMENT[state.dayMaster as keyof typeof STEM_TO_ELEMENT] ?? null;
             if (friendElementMemo.size >= FRIEND_ELEMENT_MEMO_MAX) friendElementMemo.clear();
             friendElementMemo.set(sig, el);
-            return el;
+            if (el) freshRows.push({ sig, element: el }); // เก็บเฉพาะผลสำเร็จลง L2 (ไม่ cache ค่าล้มถาวร)
           } catch {
-            return null; // เพื่อนคนนี้คำนวณดวงไม่ได้ (ข้อมูลเกิดไม่ครบ/พัง) → ข้ามไป ไม่ให้ล้มทั้ง goals
+            friendElementMemo.set(sig, null); // คำนวณไม่ได้ → จำใน L1 กันคำนวณซ้ำใน request เดียวกัน (ไม่ลง L2)
           }
         }),
       );
-      for (const el of keys) if (el) elements.add(el);
+
+      // 4) L2 batch write (best-effort) — sig เดิมไม่ทับ (element คงที่ต่อ birth)
+      if (freshRows.length) {
+        try {
+          await db.execute(
+            sql`INSERT INTO ${sql.identifier(FRIEND_ELEMENT_CACHE)} (sig, element, updated_at) VALUES ${sql.join(
+              freshRows.map((r) => sql`(${r.sig}, ${r.element}, now())`),
+              sql`, `,
+            )} ON CONFLICT (sig) DO NOTHING`,
+          );
+        } catch {
+          /* เขียน cache ไม่ได้ → ข้าม */
+        }
+      }
+
+      // 5) รวมธาตุที่สะสม (จากทุก sig ที่ resolve แล้ว)
+      for (const sig of uniqueSigs) {
+        const el = friendElementMemo.get(sig);
+        if (el) elements.add(el);
+      }
     }
     const collected = elements.size;
     // แจ็กพอตครบ 5 ธาตุ = wuxing_matrix +1000 QI (once) — จ่ายอัตโนมัติครั้งเดียว (idempotent)
