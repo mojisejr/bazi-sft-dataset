@@ -49,9 +49,10 @@ async function main() {
   const map = await getNewdataMap();
 
   const listed = await readingRepo.list();
-  // ดึงเต็ม แล้วคัดเฉพาะที่แก้ครบ 15 บท (edits.boxes มี >=15 คีย์)
+  // ดึงเต็ม แล้วคัดเฉพาะที่แก้ครบ 15 บท (edits.boxes มี >=15 คีย์) · ตัด device "M" (ไม่ใช่งานซินแส)
   const complete: Array<{ row: NonNullable<Awaited<ReturnType<typeof readingRepo.get>>>; dayElement: string }> = [];
   for (const it of listed) {
+    if ((it.deviceLabel ?? "").trim().toLowerCase() === "m") continue;
     const row = await readingRepo.get(it.id);
     if (!row) continue;
     const boxKeys = Object.keys(row.edits?.boxes ?? {});

@@ -12,6 +12,7 @@ import { resolveLouiseHayGrounding } from "@/lib/louise-hay/grounding-router";
 import { buildLouiseHayPrompt, detectEmotionalDistress, type LouiseHayChatMessage } from "@/lib/louise-hay/persona";
 import { getPersonaCacheName } from "@/lib/louise-hay/persona-cache";
 import { retrieveLouiseHayPassages } from "@/lib/louise-hay/retrieval";
+import { retrieveShinsePassages } from "@/lib/bazi/shinse-chat-retrieval";
 import { logCrisisEvent, logUsage } from "@/lib/louise-hay/usage-repository";
 import { CRISIS_RESPONSE, screenCrisis, screenCrisisLlm } from "@/lib/louise-hay/safety";
 import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
@@ -24,9 +25,12 @@ export const runtime = "nodejs";
 // หมายเหตุ: gemini-2.5-flash-lite ถูกปิดสำหรับ user ใหม่แล้ว (404) → ย้ายมา 3.1-flash-lite เหมือนฟีเจอร์อื่นในเรปอ
 const DEFAULT_MODEL = "gemini-3.1-flash-lite";
 const MAX_OUTPUT_TOKENS = 1024;
-const TEMPERATURE = 0.85;
+const TEMPERATURE = 0.6;
 const TOP_P = 0.95;
 const TOP_K_PASSAGES = 5;
+const SHINSE_TOP_K = 3;
+/** route เชิงดวงที่ควรเสริม "แนวทางคำอ่านจริงของซินแส" (คำถามอื่นไม่เกี่ยว) */
+const SHINSE_ROUTES = new Set(["chart", "timing", "day"]);
 const SOURCE_SNIPPET_CHARS = 90;
 
 const MessageSchema = z.object({
@@ -264,9 +268,10 @@ export async function POST(req: Request) {
     }
   }
 
-  // RAG คำสอน (น้ำเสียง) + เลือกศาสตร์ตอบตามชนิดคำถาม (ดวง NewData / ปฏิทิน / ไพ่) — ทำขนานกัน
-  const [retrieved, grounding] = await Promise.all([
+  // RAG คำสอน (น้ำเสียง) + คลังคำอ่านจริงซินแส (แนวทาง) + เลือกศาสตร์ตอบ — ทำขนานกัน
+  const [retrieved, shinseRef, grounding] = await Promise.all([
     retrieveLouiseHayPassages(latestUser.content, TOP_K_PASSAGES, apiKey),
+    retrieveShinsePassages(latestUser.content, SHINSE_TOP_K, apiKey),
     resolveLouiseHayGrounding(
       latestUser.content,
       parsed.data.birth ?? null,
@@ -284,9 +289,23 @@ export async function POST(req: Request) {
     snippet: p.text.slice(0, SOURCE_SNIPPET_CHARS).replace(/\s+/g, " ").trim(),
   }));
 
-  const groundingContext = grounding.text
+  let groundingContext = grounding.text
     ? stripInternalJargon(grounding.text + (grounding.note ? `\n(หมายเหตุ: ${grounding.note})` : ""))
     : null;
+
+  // เสริม "แนวทางจากคำอ่านจริงของซินแส" เฉพาะคำถามเชิงดวง — ใช้เป็นมุมมอง/สำนวน/ประเด็นที่ควรครอบคลุม
+  // ย้ำ: ไม่ใช่ข้อเท็จจริงเฉพาะดวงผู้ถาม (ข้อเท็จจริงยึดจากบล็อกดวงด้านบนเท่านั้น) กันเนื้อดวงคนอื่นปนเข้ามา
+  if (SHINSE_ROUTES.has(grounding.route) && shinseRef.length > 0) {
+    const refText = shinseRef
+      .map((p, i) => `(${i + 1}) [${p.title}] ${p.text.replace(/\s+/g, " ").trim().slice(0, 420)}`)
+      .join("\n");
+    const shinseBlock =
+      "[แนวทาง/สำนวนจากคำอ่านจริงของซินแส — ใช้เป็นมุมมองและวิธีเล่าให้ลึกขึ้นเท่านั้น " +
+      "ห้ามนำ 'ข้อเท็จจริงเฉพาะดวง' (เช่น พ่อแม่/คู่/ทรัพย์) จากตรงนี้มาใช้กับผู้ถาม " +
+      "ข้อเท็จจริงเรื่องดวงให้ยึดจากข้อมูลดวงด้านบนเท่านั้น]\n" +
+      refText;
+    groundingContext = groundingContext ? `${groundingContext}\n\n———\n\n${shinseBlock}` : shinseBlock;
+  }
 
   const prompt = buildLouiseHayPrompt({
     messages,

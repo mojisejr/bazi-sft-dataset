@@ -488,3 +488,65 @@ export function resolveChapterBoxes(
 
   return { chapterId, defined, hasContent, boxes };
 }
+
+/** cell ต้นทางใน bazi_newdata ที่ประกอบเป็น body ของกล่อง (ว่าง = คำนวณล้วน/ไม่มี cell ในคลัง) */
+export type ChapterBoxSource = { group: string; itemKey: string };
+export type ChapterBoxDetailed = ChapterBox & { sources: ChapterBoxSource[] };
+export type ResolvedChapterBoxesDetailed = {
+  chapterId: string;
+  defined: boolean;
+  hasContent: boolean;
+  boxes: ChapterBoxDetailed[];
+};
+
+/**
+ * เหมือน resolveChapterBoxes แต่แนบ "ที่มา" (group_key/item_key) ของทุก block ที่ประกอบเป็นกล่อง
+ * ใช้สำหรับเครื่องมือถอดคำแก้ซินแสกลับเข้าคลังกลาง (scripts/mine-shinse-corrections.ts) —
+ * ต้องรู้ว่ากล่องที่ซินแสแก้ตรงกับ cell ไหนใน bazi_newdata (map cell เดียว = ถอดกลับได้ชัด)
+ *
+ * ตรรกะการประกอบ body/templatePrefill เหมือน resolveChapterBoxes ทุกประการ (ยึดของเดิมเป็นหลัก)
+ */
+export function resolveChapterBoxesDetailed(
+  chapterId: string,
+  facts: ChartFacts,
+  map: NewdataMap,
+): ResolvedChapterBoxesDetailed {
+  const bullets = CHAPTER_OUTLINE[chapterId]?.bullets ?? [];
+  const resolvers = CHAPTER_BULLET_RESOLVERS[chapterId] ?? [];
+  const defined = resolvers.some((rs) => rs.length > 0);
+  let hasContent = false;
+
+  const boxes: ChapterBoxDetailed[] = bullets.map((bullet, i) => {
+    let templateContent = false;
+    let curatedContent = false;
+    const parts: string[] = [];
+    const sources: ChapterBoxSource[] = [];
+    const seen = new Set<string>();
+    for (const r of resolvers[i] ?? []) {
+      const blocks = resolveOne(r, facts, map);
+      if (blocks.length === 0) continue;
+      const text = blocks.map(blockToParagraph).join("\n\n");
+      parts.push(text);
+      for (const b of blocks) {
+        const id = `${b.group} ${b.itemKey}`;
+        if (!seen.has(id)) {
+          seen.add(id);
+          sources.push({ group: b.group, itemKey: b.itemKey });
+        }
+      }
+      const meaningful = text.replace(/\*\*[^*]*\*\*/g, "").trim();
+      if (!meaningful) continue;
+      const groupKey = "group" in r ? (r as { group?: string }).group : undefined;
+      if (groupKey && getNewdataGroup(groupKey)?.templatePrefill) templateContent = true;
+      else curatedContent = true;
+    }
+    const body = parts.join("\n\n");
+    if (body.trim()) hasContent = true;
+    const templatePrefill = body.trim().length > 0 && templateContent && !curatedContent;
+    return templatePrefill
+      ? { title: bullet, body, templatePrefill: true, sources }
+      : { title: bullet, body, sources };
+  });
+
+  return { chapterId, defined, hasContent, boxes };
+}
