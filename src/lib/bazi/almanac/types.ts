@@ -37,6 +37,15 @@ export type GateInfo = {
   keywords: string[];
   /** ชื่อเทพ 十神 ที่อยู่ช่องทิศเดียวกับประตูนี้ (จากคี้มึ้ง) — FE โชว์ชื่อเทพในช่องตาราง; undefined เมื่อไม่มีข้อมูล */
   deity?: string;
+  // ── เนื้อหาเอกสารซินแส (gate-info.json) — single source of truth ให้ทั้งปฏิทิน engine และ FE ────────
+  /** คำอ่านแต้จิ๋ว (ไค/ฮิว/แซ/เซีย/โต๋ว/เก้ง/ซี่/เกีย) */
+  reading?: string;
+  /** keyword สั้น (เริ่มต้นสิ่งใหม่/พักผ่อน/การเงิน/…) — บันทัด 2 ของลิสต์ */
+  keyword?: string;
+  /** ความหมาย (ลิสต์) — บันทัด 3 ของลิสต์ */
+  meanings?: string[];
+  /** ธาตุของประตู (ไม้/ไฟ/ดิน/ทอง/น้ำ) — ใช้กำหนดสี */
+  element?: string;
 };
 
 export type SpiritInfo = {
@@ -46,6 +55,15 @@ export type SpiritInfo = {
   keywords: string[];
   /** ทิศของเทพในวันนั้น (จากคี้มึ้ง 8 ประตู 8 เทพ) — undefined เมื่อไม่มีข้อมูล */
   direction?: string;
+  // ── เนื้อหาเอกสารซินแส (spirit-info.json) — single source of truth ────────
+  /** คำอ่านแต้จิ๋ว (ฮู้/ที/ตี่/…) */
+  reading?: string;
+  /** keyword สั้น (ผู้นำ/จัดฉาก/กลยุทธ์/…) — บันทัด 2 */
+  keyword?: string;
+  /** ความหมาย (ลิสต์) — บันทัด 3 */
+  meanings?: string[];
+  /** ธาตุของเทพ (ไม้/ไฟ/ดิน/ทอง/น้ำ) — ใช้กำหนดสี */
+  element?: string;
 };
 
 export type ColorInfo = {

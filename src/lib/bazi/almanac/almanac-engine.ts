@@ -22,6 +22,8 @@ import yearTableJson from "@/lib/bazi/data/almanac/year-pillar-table.json";
 import spiritLegendJson from "@/lib/bazi/data/almanac/spirit-legend.json";
 import gateLegendJson from "@/lib/bazi/data/almanac/gate-legend.json";
 import gateKeywordJson from "@/lib/bazi/data/almanac/gate-keyword.json";
+import gateInfoJson from "@/lib/bazi/data/almanac/gate-info.json";
+import spiritInfoJson from "@/lib/bazi/data/almanac/spirit-info.json";
 import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
 import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
@@ -87,6 +89,15 @@ const SPIRIT_SET = new Set("天地玄虎合陰蛇符陳雀");
 const SPIRIT_LEGEND = spiritLegendJson as Record<string, string[]>;
 const GATE_LEGEND = gateLegendJson as Record<string, string>;
 const GATE_KEYWORD = gateKeywordJson as Record<string, string[]>;
+// เนื้อหาเอกสารซินแส (reading/keyword/meanings/element) ต่อ glyph — single source of truth
+type GlyphInfoRec = { reading?: string; keyword?: string; element?: string; meanings?: string[] };
+const GATE_INFO = gateInfoJson as Record<string, GlyphInfoRec>;
+const SPIRIT_INFO = spiritInfoJson as Record<string, GlyphInfoRec>;
+/** ผสม field เนื้อหา (reading/keyword/meanings/element) ลงใน gate/spirit object */
+function withGlyphInfo<T extends { name: string }>(obj: T, table: Record<string, GlyphInfoRec>): T {
+  const info = table[obj.name];
+  return info ? { ...obj, reading: info.reading, keyword: info.keyword, meanings: info.meanings, element: info.element } : obj;
+}
 const HOUR_GOD_LEGEND = hourGodLegendJson as Record<
   string,
   { god: string | null; meaning: string | null; score: number | null; good: boolean }
@@ -373,14 +384,14 @@ function toGates(raw: AlmanacRecord["gates"]): GateInfo[] {
   if (!raw) return [];
   return raw
     .filter((g) => g && g[0])
-    .map((g) => ({ name: g[0] ?? "", direction: g[1] ?? "", meaning: GATE_LEGEND[g[0] ?? ""] ?? null, keywords: GATE_KEYWORD[g[0] ?? ""] ?? [] }));
+    .map((g) => withGlyphInfo({ name: g[0] ?? "", direction: g[1] ?? "", meaning: GATE_LEGEND[g[0] ?? ""] ?? null, keywords: GATE_KEYWORD[g[0] ?? ""] ?? [] }, GATE_INFO));
 }
 
 function toSpirits(raw: AlmanacRecord["spirits"]): SpiritInfo[] {
   if (!raw) return [];
   return raw
     .filter((s): s is string => Boolean(s))
-    .map((name) => ({ name, keywords: SPIRIT_LEGEND[name] ?? [] }));
+    .map((name) => withGlyphInfo({ name, keywords: SPIRIT_LEGEND[name] ?? [] }, SPIRIT_INFO));
 }
 
 // คี้มึ้ง 8 ประตู 8 เทพ (ingest จากสเปรดชีตซินแส — scripts/ingest-qimen.cjs) คีย์ `dayGZ|monthGZ|yearGZ`
@@ -396,8 +407,8 @@ function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: Gate
   const cells = QIMEN[`${dayGZ}|${monthGZ}|${yearGZ}`];
   if (!cells || cells.length === 0) return null;
   return {
-    gates: cells.map((c) => ({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null, keywords: GATE_KEYWORD[c.gate] ?? [], deity: c.deity })),
-    spirits: cells.map((c) => ({ name: c.deity, keywords: SPIRIT_LEGEND[c.deity] ?? [], direction: c.dir })),
+    gates: cells.map((c) => withGlyphInfo({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null, keywords: GATE_KEYWORD[c.gate] ?? [], deity: c.deity }, GATE_INFO)),
+    spirits: cells.map((c) => withGlyphInfo({ name: c.deity, keywords: SPIRIT_LEGEND[c.deity] ?? [], direction: c.dir }, SPIRIT_INFO)),
   };
 }
 

@@ -5,8 +5,10 @@ import { useCallback, useEffect, useState } from "react";
 import { AiNarrateButton } from "@/components/bazi/AiNarrateButton";
 
 type Pillar = { stem: string; branch: string; ganzhi: string; element: string };
-type GateInfo = { name: string; direction: string; meaning: string | null };
-type SpiritInfo = { name: string; keywords: string[]; direction?: string };
+// เนื้อหาเอกสารซินแส (reading/keyword/meanings/element) มาจาก API — single source of truth เดียวกับที่ FE ใช้
+type GlyphContent = { reading?: string; keyword?: string; meanings?: string[]; element?: string };
+type GateInfo = { name: string; direction: string; meaning: string | null } & GlyphContent;
+type SpiritInfo = { name: string; keywords: string[]; direction?: string } & GlyphContent;
 type ColorInfo = { element: string; colors: string };
 type PatronInfo = { branch: string; number: number | null; zodiac: string };
 type AsuraDirections = { day: string; month: string; year: string };
@@ -80,7 +82,12 @@ const GATE_COLOR: Record<string, string> = {
   陳: "#8a5a2b", 雀: "#c53030", 地: "#b7791f", 天: "#2b6cb0", 符: "#2f855a", 蛇: "#c53030", 陰: "#444", 合: "#2f855a",
   虎: "#8a5a2b", 玄: "#2b6cb0",
 };
-const gateColor = (ch: string) => GATE_COLOR[ch] ?? "#333";
+// สีตามธาตุ (เอกสารซินแส): ไม้=เขียว · ไฟ=แดง · ดิน=เหลือง/ทอง · ทอง=ขาว-เงิน · น้ำ=ฟ้า
+const ELEMENT_COLOR: Record<string, string> = {
+  "ไม้": "#2e9e52", "ไฟ": "#d93b2b", "ดิน": "#b8901a", "ทอง": "#8b929b", "น้ำ": "#2b7dc4",
+};
+// สีตัวอักษร = สีตามธาตุจาก API (element) ก่อน ไม่มีค่อย fallback ตารางสีเก่า
+const gateColor = (ch: string, element?: string) => (element && ELEMENT_COLOR[element]) || GATE_COLOR[ch] || "#333";
 
 // คะแนน → สีจุด (แถว "สิ่งมงคล")
 function dotColor(score: number): string {
@@ -516,7 +523,10 @@ export function AlmanacWorkspace() {
           <summary>8 ประตู 八門</summary>
           <ul className="almanac-tags">
             {day.gates.map((g) => (
-              <li key={g.name}>{g.name} {g.meaning ?? ""} <em>{g.direction}</em></li>
+              <li key={g.name}>
+                <span style={{ color: gateColor(g.name, g.element) }}>{g.name}</span> <b>ประตู{g.reading ?? ""}</b> {g.keyword ?? g.meaning ?? ""}
+                {(g.meanings?.length ?? 0) > 0 ? ` — ${g.meanings!.join(" · ")}` : ""} <em>{g.direction}</em>
+              </li>
             ))}
           </ul>
         </details>
@@ -524,11 +534,12 @@ export function AlmanacWorkspace() {
 
       {day.spirits.length > 0 && (
         <details className="almanac-detail">
-          <summary>8 เทพ 八神 + คีย์เวิร์ด</summary>
+          <summary>10 เทพ 十神 + คีย์เวิร์ด</summary>
           <ul className="almanac-spirits">
             {day.spirits.map((s, i) => (
               <li key={`${s.name}-${i}`}>
-                <b>{s.name}</b>{s.direction ? <em> {s.direction}</em> : null} {s.keywords.join(" · ")}
+                <span style={{ color: gateColor(s.name, s.element) }}>{s.name}</span> <b>{s.reading ?? ""}</b> {s.keyword ?? ""}
+                {s.direction ? <em> {s.direction}</em> : null} — {(s.meanings ?? s.keywords).join(" · ")}
               </li>
             ))}
           </ul>
@@ -763,8 +774,8 @@ export function AlmanacWorkspace() {
                   {day.gates.length > 0 && (
                     <span className="almanac-cell-gaterow">
                       {day.gates.map((g, i) => (
-                        <span key={`${g.name}-${i}`} className="almanac-gatecell" title={`${g.meaning ?? ""} · ${g.direction}`}>
-                          <span className="almanac-gatechar" style={{ color: gateColor(g.name) }}>{g.name}</span>
+                        <span key={`${g.name}-${i}`} className="almanac-gatecell" title={`ประตู${g.reading ?? ""} ${g.keyword ?? g.meaning ?? ""} · ${(g.meanings ?? []).join(" ")} · ${g.direction}`}>
+                          <span className="almanac-gatechar" style={{ color: gateColor(g.name, g.element) }}>{g.name}</span>
                           <span className="almanac-gatedir">{g.direction}</span>
                         </span>
                       ))}
@@ -773,7 +784,7 @@ export function AlmanacWorkspace() {
                   {day.spirits.length > 0 && (
                     <span className="almanac-cell-gates">
                       {day.spirits.map((s, i) => (
-                        <span key={`${s.name}-${i}`} className="almanac-gatechar" style={{ color: gateColor(s.name) }} title={s.keywords.join(" · ")}>{s.name}</span>
+                        <span key={`${s.name}-${i}`} className="almanac-gatechar" style={{ color: gateColor(s.name, s.element) }} title={`${s.reading ?? ""} ${s.keyword ?? ""} · ${(s.meanings ?? s.keywords).join(" ")}`}>{s.name}</span>
                       ))}
                     </span>
                   )}
@@ -804,7 +815,9 @@ export function AlmanacWorkspace() {
                       <ul>
                         {gateLegend.map((g) => (
                           <li key={g.name}>
-                            <span className="almanac-gatechar" style={{ color: gateColor(g.name) }}>{g.name}</span> {g.meaning ?? ""}
+                            <span className="almanac-gatechar" style={{ color: gateColor(g.name, g.element) }}>{g.name}</span>{" "}
+                            <b>ประตู{g.reading ?? ""}</b> {g.keyword ?? g.meaning ?? ""}
+                            {(g.meanings?.length ?? 0) > 0 && <div className="almanac-legend-meanings">{g.meanings!.join(" · ")}</div>}
                           </li>
                         ))}
                       </ul>
@@ -812,11 +825,15 @@ export function AlmanacWorkspace() {
                   )}
                   {spiritLegend.length > 0 && (
                     <div>
-                      <h4>8 เทพ 八神</h4>
+                      <h4>10 เทพ 十神</h4>
                       <ul>
                         {spiritLegend.map((s) => (
                           <li key={s.name}>
-                            <span className="almanac-gatechar" style={{ color: gateColor(s.name) }}>{s.name}</span> {s.keywords.join(" · ")}
+                            <span className="almanac-gatechar" style={{ color: gateColor(s.name, s.element) }}>{s.name}</span>{" "}
+                            <b>{s.reading ?? ""}</b> {s.keyword ?? ""}
+                            {(s.meanings?.length ?? 0) > 0
+                              ? <div className="almanac-legend-meanings">{s.meanings!.join(" · ")}</div>
+                              : <div className="almanac-legend-meanings">{s.keywords.join(" · ")}</div>}
                           </li>
                         ))}
                       </ul>
