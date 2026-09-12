@@ -394,7 +394,7 @@ function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: Gate
   const cells = QIMEN[`${dayGZ}|${monthGZ}|${yearGZ}`];
   if (!cells || cells.length === 0) return null;
   return {
-    gates: cells.map((c) => ({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null })),
+    gates: cells.map((c) => ({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null, deity: c.deity })),
     spirits: cells.map((c) => ({ name: c.deity, keywords: SPIRIT_LEGEND[c.deity] ?? [], direction: c.dir })),
   };
 }

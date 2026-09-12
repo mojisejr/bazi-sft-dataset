@@ -33,6 +33,8 @@ export type GateInfo = {
   direction: string;
   /** ความหมายไทยของประตู (เปิด/พักผ่อน/…) */
   meaning: string | null;
+  /** ชื่อเทพ 十神 ที่อยู่ช่องทิศเดียวกับประตูนี้ (จากคี้มึ้ง) — FE โชว์ชื่อเทพในช่องตาราง; undefined เมื่อไม่มีข้อมูล */
+  deity?: string;
 };
 
 export type SpiritInfo = {
