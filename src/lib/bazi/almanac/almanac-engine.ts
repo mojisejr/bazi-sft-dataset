@@ -21,6 +21,7 @@ import monthTableJson from "@/lib/bazi/data/almanac/month-pillar-table.json";
 import yearTableJson from "@/lib/bazi/data/almanac/year-pillar-table.json";
 import spiritLegendJson from "@/lib/bazi/data/almanac/spirit-legend.json";
 import gateLegendJson from "@/lib/bazi/data/almanac/gate-legend.json";
+import gateKeywordJson from "@/lib/bazi/data/almanac/gate-keyword.json";
 import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
 import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
@@ -85,6 +86,7 @@ const GATE_SET = new Set("開休生傷杜景死驚");
 const SPIRIT_SET = new Set("天地玄虎合陰蛇符陳雀");
 const SPIRIT_LEGEND = spiritLegendJson as Record<string, string[]>;
 const GATE_LEGEND = gateLegendJson as Record<string, string>;
+const GATE_KEYWORD = gateKeywordJson as Record<string, string[]>;
 const HOUR_GOD_LEGEND = hourGodLegendJson as Record<
   string,
   { god: string | null; meaning: string | null; score: number | null; good: boolean }
@@ -371,7 +373,7 @@ function toGates(raw: AlmanacRecord["gates"]): GateInfo[] {
   if (!raw) return [];
   return raw
     .filter((g) => g && g[0])
-    .map((g) => ({ name: g[0] ?? "", direction: g[1] ?? "", meaning: GATE_LEGEND[g[0] ?? ""] ?? null }));
+    .map((g) => ({ name: g[0] ?? "", direction: g[1] ?? "", meaning: GATE_LEGEND[g[0] ?? ""] ?? null, keywords: GATE_KEYWORD[g[0] ?? ""] ?? [] }));
 }
 
 function toSpirits(raw: AlmanacRecord["spirits"]): SpiritInfo[] {
@@ -394,7 +396,7 @@ function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: Gate
   const cells = QIMEN[`${dayGZ}|${monthGZ}|${yearGZ}`];
   if (!cells || cells.length === 0) return null;
   return {
-    gates: cells.map((c) => ({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null, deity: c.deity })),
+    gates: cells.map((c) => ({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null, keywords: GATE_KEYWORD[c.gate] ?? [], deity: c.deity })),
     spirits: cells.map((c) => ({ name: c.deity, keywords: SPIRIT_LEGEND[c.deity] ?? [], direction: c.dir })),
   };
 }
