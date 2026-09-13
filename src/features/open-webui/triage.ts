@@ -272,7 +272,12 @@ export function buildOpenWebUiTriagePromptPayload(
       ...TOPIC_CATALOG_LINES,
       "off_topic = คำถามที่ไม่เกี่ยวกับการดูดวงปาจื่อเลย (เช่น เขียนโค้ด, ข่าว, ความรู้ทั่วไป, คำนวณเลข, แปลภาษา) — ตั้ง requiresBaziConsult=false.",
       "chit_chat = ทักทาย/คุยเล่น/ขอบคุณ/ถามว่าคุยอะไรได้บ้าง — ตั้ง requiresBaziConsult=false.",
-      "Routing hints: ลูกค้า/การขาย→wealth_and_investment; เจ้านาย/หัวหน้า→career_potential; สีเสื้อ/สีรถ/สีมงคล→colors_directions; อนาคต/ปีนี้/ปีหน้า/ช่วงนี้→turning_points.",
+      "Routing hints: ลูกค้า/การขาย→wealth_and_investment; เจ้านาย/หัวหน้า→career_potential; สีเสื้อ/สีรถ/สีมงคล/สีอะไรดี→colors_directions; อนาคต/ปีนี้/ปีหน้า/ช่วงนี้→turning_points.",
+      // #6 (2026-09-13): กัน false off_topic — คำถามชีวิตประจำวันสั้น ๆ ยังเป็นการดูดวง อย่าปัดเป็น off_topic
+      "IMPORTANT: DEFAULT to one of the 15 reading topics. Use off_topic ONLY when the message is clearly unrelated to fortune-telling (เขียนโค้ด/ข่าว/คณิต/แปลภาษา/ความรู้ทั่วไป).",
+      "Short day questions like 'วันนี้ดีไหม' / 'พรุ่งนี้เป็นไง' / 'ช่วงนี้ดวงเป็นยังไง' / 'ดูดวงให้หน่อย' → turning_points (NOT off_topic, NOT chit_chat).",
+      "'วันนี้ใส่เสื้อสีอะไรดี' / 'สีอะไรมงคล' / 'ควรไปทิศไหน' → colors_directions. 'ควรกินอะไร/ดูแลสุขภาพ' → health.",
+      "When unsure between a reading topic and off_topic/chit_chat for a fortune-flavored question, choose the reading topic.",
       "requiresBaziConsult=true for any of the 15 reading topics; false only for off_topic/chit_chat.",
       "",
       "## timeframe — when is the user asking about:",

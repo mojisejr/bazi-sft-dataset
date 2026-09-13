@@ -14,9 +14,10 @@ import {
   type TriageTimeframe,
   OpenWebUiTriageError,
   runOpenWebUiTriage,
+  topicIdToDomain,
 } from "@/features/open-webui/triage";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
-import { fetchGroundedReading, resolveGroundingTopicId, isGoodDayQuestion } from "@/features/open-webui/reading-bridge";
+import { fetchGroundedReading, resolveGroundingTopicId, isGoodDayQuestion, isValidTopicId } from "@/features/open-webui/reading-bridge";
 import { resolveStaticKnowledge } from "@/features/open-webui/static-knowledge";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { qiGate } from "@/lib/bazi/qi/quota";
@@ -43,6 +44,17 @@ function createBadRequestResponse(message: string, code = "bad_request") {
 
 function getForwardedUserId(req: Request) {
   return req.headers.get("x-openwebui-user-id");
+}
+
+// #11 (2026-09-13): แชทจากหลังบ้าน/เครื่องมือทดสอบ/ยิง API ตรง ต้อง "ไม่นับ Qi".
+// ระบุด้วย (1) x-admin-token ตรงกับ ADMIN_DOCTRINE_TOKEN (คอนเวนชันเดิมของ admin tools ในรีโปนี้) หรือ
+// (2) header x-internal-no-qi: 1. ปลอดภัยเพราะผู้ใช้จริงเข้าผ่าน FE BFF (/api/chat/bazi) ซึ่งสร้าง request เอง
+// ไม่ส่งต่อ header เหล่านี้ — เบราว์เซอร์จึงยิงตรงมาที่นี่ไม่ได้ (ต้องมี OPEN_WEBUI_API_TOKEN อยู่แล้ว).
+function isInternalNoQiRequest(req: Request): boolean {
+  const adminExpected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
+  if (adminExpected && req.headers.get("x-admin-token")?.trim() === adminExpected) return true;
+  if (req.headers.get("x-internal-no-qi")?.trim() === "1") return true;
+  return false;
 }
 
 export type BuildOpenWebUiExecutionContextInput = {
@@ -225,7 +237,12 @@ export async function POST(req: Request) {
 
   // โควตาถาม AI ต่อ user (ระบบแต้ม Qi) — ปิดเป็นค่าเริ่มต้น (กันกระทบแชทหลัก);
   // เปิดด้วย env QI_GATE_OPENWEBUI=1 เมื่อพร้อมบังคับใช้. ฟรีรายวัน → credit ที่แลกด้วย Qi.
-  if (process.env.QI_GATE_OPENWEBUI === "1" && effectiveUserId) {
+  // #11: ข้ามการหัก Qi สำหรับแชทหลังบ้าน/ทดสอบ/ยิง API ตรง (isInternalNoQiRequest)
+  const internalNoQi = isInternalNoQiRequest(req);
+  if (internalNoQi) {
+    console.log("[open-webui] internal/test request — skip Qi gate");
+  }
+  if (process.env.QI_GATE_OPENWEBUI === "1" && effectiveUserId && !internalNoQi) {
     const gated = await qiGate(effectiveUserId, "chat");
     if (gated) return gated;
   }
@@ -256,6 +273,18 @@ export async function POST(req: Request) {
 
     // ONE Gemini call: route topic (16) + timeframe + off-topic + extract birth context.
     const triage = await runOpenWebUiTriage(result, { existing });
+
+    // #6 (2026-09-13): ถ้า FE ส่ง baziTopicHint (มาจากการกดชิปคำถาม) และเป็น topic ที่ถูกต้อง แต่ triage
+    // ดันจัดเป็น off_topic/chit_chat (LLM พลาดกับคำถามสั้น ๆ เช่น "วันนี้ดีไหม") → เชื่อ hint แล้ว route เข้า
+    // หัวข้อดูดวงจริง เพื่อไม่ให้คำถามที่ engine ตอบได้ถูกปฏิเสธผิด ๆ.
+    const hint = result.baziTopicHint ?? null;
+    if (isValidTopicId(hint) && (triage.topicId === "off_topic" || triage.topicId === "chit_chat")) {
+      console.log("[open-webui] topic hint overrides triage", { hint, triaged: triage.topicId });
+      triage.topicId = hint;
+      triage.requiresBaziConsult = true;
+      triage.classification.requiresBaziConsult = true;
+      triage.classification.intent = topicIdToDomain(hint);
+    }
 
     let calculatedState: BaziStatePayload | null = null;
 
