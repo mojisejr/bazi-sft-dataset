@@ -29,6 +29,7 @@ import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
 import dayStarsJson from "@/lib/bazi/data/almanac/day-stars.json";
 import qimen2569Json from "@/lib/bazi/data/almanac/qimen-2569.json";
+import qimenYearMonthJson from "@/lib/bazi/data/almanac/qimen-year-month-2569.json";
 import worshipDeityJson from "@/lib/bazi/data/almanac/worship-deity-60.json";
 import shirtColorJson from "@/lib/bazi/data/almanac/shirt-color-60.json";
 import dayDirectionJson from "@/lib/bazi/data/almanac/day-direction-60.json";
@@ -412,6 +413,16 @@ function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: Gate
   };
 }
 
+// คี้มึ้งระดับปี/เดือน (奇門) — key = เสาปี/เดือน ganzhi (เอกสารซินแส). ครอบเท่าที่กรอก (2569); นอกช่วง → null
+type QimenYMEntry = { kimeng: string; kimengBranch: string; caishenDir: string; badDir: string; deity: string; cells: QimenCell[] };
+const QIMEN_YM = qimenYearMonthJson as { year: Record<string, QimenYMEntry>; month: Record<string, QimenYMEntry> };
+/** สร้าง GateInfo[] จาก cells คี้มึ้ง (ปี/เดือน) — enrich เหมือน gates รายวัน */
+function qimenGatesFrom(cells: QimenCell[]): GateInfo[] {
+  return cells.map((c) =>
+    withGlyphInfo({ name: c.gate, direction: c.dir, meaning: GATE_LEGEND[c.gate] ?? null, keywords: GATE_KEYWORD[c.gate] ?? [], deity: c.deity }, GATE_INFO),
+  );
+}
+
 /** ประกอบข้อมูลปฏิทิน 1 วัน (overrides = แก้กฎ/รายวันจาก DB; ไม่ส่ง = ใช้กฎฐาน) */
 export function buildAlmanacDay(
   year: number,
@@ -436,23 +447,30 @@ export function buildAlmanacDay(
   );
 
   const monthRec = MONTH_TABLE[monthPillar.ganzhi];
+  // คี้มึ้งเดือน (เอกสารซินแส) — เติมทิศไฉ่ซิ้ง/เทพประจำเดือน ที่ month-pillar-table ยังไม่มี (เช่น 丙申/丁酉) + กริด 8 ประตู
+  const monthYM = QIMEN_YM.month[monthPillar.ganzhi];
   const monthInfo: MonthInfo = {
-    deity: monthRec?.deity ?? null,
-    caishenDir: monthRec?.caishen_dir ?? null,
+    deity: monthRec?.deity ?? monthYM?.deity ?? null,
+    caishenDir: monthRec?.caishen_dir ?? (monthYM ? `ทิศ ${monthYM.caishenDir}` : null),
     lapDir: monthRec?.lap_dir ?? null,
     asuraDir: monthRec?.asura_dir ?? (asuraOf(monthPillar.branch) || null),
     spiritDirs: monthRec?.spirit_dirs ?? null,
+    kimeng: monthYM?.kimeng ?? monthPillar.ganzhi.charAt(0) ?? null, // คี้มึ้ง = ก้านสวรรค์ของเสาเดือน
+    gates: monthYM ? qimenGatesFrom(monthYM.cells) : null,
   };
 
   // ระดับปี: อสูรปีคำนวณได้ทุกปี (三煞); ไฉ่ซิ้ง/โชคลาภ/เทพประจำปี = lookup (มีเท่าที่กรอกใน year-pillar-table)
   const yearRec = YEAR_TABLE[yearPillar.ganzhi];
+  const yearYM = QIMEN_YM.year[yearPillar.ganzhi]; // คี้มึ้งปี (เอกสารซินแส) — กริด 8 ประตูประจำปี
   const yearInfo: YearInfo = {
     pillar: yearPillar.ganzhi,
     asuraDir: asuraOf(yearPillar.branch) || null,
-    caishenDir: yearRec?.caishen_dir ?? null,
+    caishenDir: yearRec?.caishen_dir ?? (yearYM ? `ทิศ ${yearYM.caishenDir}` : null),
     lapDir: yearRec?.lap_dir ?? null,
-    deity: yearRec?.deity ?? null,
+    deity: yearRec?.deity ?? yearYM?.deity ?? null,
     spiritDirs: yearRec?.spirit_dirs ?? null,
+    kimeng: yearYM?.kimeng ?? yearPillar.ganzhi.charAt(0) ?? null, // คี้มึ้ง = ก้านสวรรค์ของเสาปี
+    gates: yearYM ? qimenGatesFrom(yearYM.cells) : null,
   };
 
   const asura: AsuraDirections = {

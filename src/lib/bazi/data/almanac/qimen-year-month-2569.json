@@ -1,0 +1,58 @@
+{
+  "_note": "คี้มึ้งระดับปี/เดือน (奇門) จากเอกสารซินแสนุ้ย — Google Sheet 2569. key = เสาปี/เดือน ganzhi. cells = 8 ประตู (開休生傷杜景死驚) → ทิศ + เทพ. caishenDir/deity ของเดือนเติมจากที่นี่ (month-pillar-table ไม่มี 丙申/丁酉). badDir=อสูร engine คำนวณเอง. kimeng = ก้านสวรรค์ของเสา.",
+  "year": {
+    "丙午": {
+      "kimeng": "丙",
+      "kimengBranch": "午",
+      "caishenDir": "W",
+      "badDir": "N",
+      "deity": "ฮั่วท้อเซียงซือ",
+      "cells": [
+        { "gate": "開", "dir": "SE", "deity": "天" },
+        { "gate": "休", "dir": "S", "deity": "地" },
+        { "gate": "生", "dir": "SW", "deity": "玄" },
+        { "gate": "傷", "dir": "W", "deity": "虎" },
+        { "gate": "杜", "dir": "NW", "deity": "合" },
+        { "gate": "景", "dir": "N", "deity": "陰" },
+        { "gate": "死", "dir": "NE", "deity": "蛇" },
+        { "gate": "驚", "dir": "E", "deity": "符" }
+      ]
+    }
+  },
+  "month": {
+    "丙申": {
+      "kimeng": "丙",
+      "kimengBranch": "申",
+      "caishenDir": "W",
+      "badDir": "S",
+      "deity": "ท้าวเวสสุวรรณ",
+      "cells": [
+        { "gate": "開", "dir": "NE", "deity": "合" },
+        { "gate": "休", "dir": "E", "deity": "陰" },
+        { "gate": "生", "dir": "SE", "deity": "蛇" },
+        { "gate": "傷", "dir": "S", "deity": "符" },
+        { "gate": "杜", "dir": "SW", "deity": "天" },
+        { "gate": "景", "dir": "W", "deity": "地" },
+        { "gate": "死", "dir": "NW", "deity": "玄" },
+        { "gate": "驚", "dir": "N", "deity": "虎" }
+      ]
+    },
+    "丁酉": {
+      "kimeng": "丁",
+      "kimengBranch": "酉",
+      "caishenDir": "W",
+      "badDir": "E",
+      "deity": "พระสังกัจจายน์",
+      "cells": [
+        { "gate": "開", "dir": "S", "deity": "虎" },
+        { "gate": "休", "dir": "SW", "deity": "合" },
+        { "gate": "生", "dir": "W", "deity": "陰" },
+        { "gate": "傷", "dir": "NW", "deity": "蛇" },
+        { "gate": "杜", "dir": "N", "deity": "符" },
+        { "gate": "景", "dir": "NE", "deity": "天" },
+        { "gate": "死", "dir": "E", "deity": "地" },
+        { "gate": "驚", "dir": "SE", "deity": "玄" }
+      ]
+    }
+  }
+}
