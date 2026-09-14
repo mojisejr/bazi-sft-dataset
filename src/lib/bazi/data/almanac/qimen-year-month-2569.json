@@ -1,5 +1,5 @@
 {
-  "_note": "คี้มึ้งระดับปี/เดือน (奇門) จากเอกสารซินแสนุ้ย — Google Sheet 2569. key = เสาปี/เดือน ganzhi. cells = 8 ประตู (開休生傷杜景死驚) → ทิศ + เทพ. caishenDir/deity ของเดือนเติมจากที่นี่ (month-pillar-table ไม่มี 丙申/丁酉). badDir=อสูร engine คำนวณเอง. kimeng = ก้านสวรรค์ของเสา.",
+  "_note": "คี้มึ้งระดับปี/เดือน (奇門) — cells/kimeng ingest จาก knownlage/NewData/คี้มึ้ง2569.xlsx (scripts/ingest-qimen-month.cjs), ครอบ ก.ย.–ธ.ค. 2569. key = เสาปี/เดือน ganzhi. cells = 8 ประตู (開休生傷杜景死驚) → ทิศ+เทพ. caishenDir/deity เดือน (丙申/丁酉) + ปี (丙午) กรอกมือจาก Google Sheet — รักษาไว้; เสาอื่นยังไม่มี (engine รับ null). badDir=อสูร engine คำนวณเอง.",
   "year": {
     "丙午": {
       "kimeng": "丙",
@@ -8,14 +8,46 @@
       "badDir": "N",
       "deity": "ฮั่วท้อเซียงซือ",
       "cells": [
-        { "gate": "開", "dir": "SE", "deity": "天" },
-        { "gate": "休", "dir": "S", "deity": "地" },
-        { "gate": "生", "dir": "SW", "deity": "玄" },
-        { "gate": "傷", "dir": "W", "deity": "虎" },
-        { "gate": "杜", "dir": "NW", "deity": "合" },
-        { "gate": "景", "dir": "N", "deity": "陰" },
-        { "gate": "死", "dir": "NE", "deity": "蛇" },
-        { "gate": "驚", "dir": "E", "deity": "符" }
+        {
+          "gate": "開",
+          "dir": "SE",
+          "deity": "天"
+        },
+        {
+          "gate": "休",
+          "dir": "S",
+          "deity": "地"
+        },
+        {
+          "gate": "生",
+          "dir": "SW",
+          "deity": "玄"
+        },
+        {
+          "gate": "傷",
+          "dir": "W",
+          "deity": "虎"
+        },
+        {
+          "gate": "杜",
+          "dir": "NW",
+          "deity": "合"
+        },
+        {
+          "gate": "景",
+          "dir": "N",
+          "deity": "陰"
+        },
+        {
+          "gate": "死",
+          "dir": "NE",
+          "deity": "蛇"
+        },
+        {
+          "gate": "驚",
+          "dir": "E",
+          "deity": "符"
+        }
       ]
     }
   },
@@ -27,14 +59,46 @@
       "badDir": "S",
       "deity": "ท้าวเวสสุวรรณ",
       "cells": [
-        { "gate": "開", "dir": "NE", "deity": "合" },
-        { "gate": "休", "dir": "E", "deity": "陰" },
-        { "gate": "生", "dir": "SE", "deity": "蛇" },
-        { "gate": "傷", "dir": "S", "deity": "符" },
-        { "gate": "杜", "dir": "SW", "deity": "天" },
-        { "gate": "景", "dir": "W", "deity": "地" },
-        { "gate": "死", "dir": "NW", "deity": "玄" },
-        { "gate": "驚", "dir": "N", "deity": "虎" }
+        {
+          "gate": "開",
+          "dir": "NE",
+          "deity": "合"
+        },
+        {
+          "gate": "休",
+          "dir": "E",
+          "deity": "陰"
+        },
+        {
+          "gate": "生",
+          "dir": "SE",
+          "deity": "蛇"
+        },
+        {
+          "gate": "傷",
+          "dir": "S",
+          "deity": "符"
+        },
+        {
+          "gate": "杜",
+          "dir": "SW",
+          "deity": "天"
+        },
+        {
+          "gate": "景",
+          "dir": "W",
+          "deity": "地"
+        },
+        {
+          "gate": "死",
+          "dir": "NW",
+          "deity": "玄"
+        },
+        {
+          "gate": "驚",
+          "dir": "N",
+          "deity": "虎"
+        }
       ]
     },
     "丁酉": {
@@ -44,14 +108,184 @@
       "badDir": "E",
       "deity": "พระสังกัจจายน์",
       "cells": [
-        { "gate": "開", "dir": "S", "deity": "虎" },
-        { "gate": "休", "dir": "SW", "deity": "合" },
-        { "gate": "生", "dir": "W", "deity": "陰" },
-        { "gate": "傷", "dir": "NW", "deity": "蛇" },
-        { "gate": "杜", "dir": "N", "deity": "符" },
-        { "gate": "景", "dir": "NE", "deity": "天" },
-        { "gate": "死", "dir": "E", "deity": "地" },
-        { "gate": "驚", "dir": "SE", "deity": "玄" }
+        {
+          "gate": "開",
+          "dir": "S",
+          "deity": "虎"
+        },
+        {
+          "gate": "休",
+          "dir": "SW",
+          "deity": "合"
+        },
+        {
+          "gate": "生",
+          "dir": "W",
+          "deity": "陰"
+        },
+        {
+          "gate": "傷",
+          "dir": "NW",
+          "deity": "蛇"
+        },
+        {
+          "gate": "杜",
+          "dir": "N",
+          "deity": "符"
+        },
+        {
+          "gate": "景",
+          "dir": "NE",
+          "deity": "天"
+        },
+        {
+          "gate": "死",
+          "dir": "E",
+          "deity": "地"
+        },
+        {
+          "gate": "驚",
+          "dir": "SE",
+          "deity": "玄"
+        }
+      ]
+    },
+    "戊戌": {
+      "kimeng": "戊",
+      "kimengBranch": "戌",
+      "cells": [
+        {
+          "gate": "開",
+          "dir": "N",
+          "deity": "地"
+        },
+        {
+          "gate": "休",
+          "dir": "NE",
+          "deity": "玄"
+        },
+        {
+          "gate": "生",
+          "dir": "E",
+          "deity": "虎"
+        },
+        {
+          "gate": "傷",
+          "dir": "SE",
+          "deity": "合"
+        },
+        {
+          "gate": "杜",
+          "dir": "S",
+          "deity": "陰"
+        },
+        {
+          "gate": "景",
+          "dir": "SW",
+          "deity": "蛇"
+        },
+        {
+          "gate": "死",
+          "dir": "W",
+          "deity": "符"
+        },
+        {
+          "gate": "驚",
+          "dir": "NW",
+          "deity": "天"
+        }
+      ]
+    },
+    "己亥": {
+      "kimeng": "己",
+      "kimengBranch": "亥",
+      "cells": [
+        {
+          "gate": "開",
+          "dir": "SW",
+          "deity": "陰"
+        },
+        {
+          "gate": "休",
+          "dir": "W",
+          "deity": "蛇"
+        },
+        {
+          "gate": "生",
+          "dir": "NW",
+          "deity": "符"
+        },
+        {
+          "gate": "傷",
+          "dir": "N",
+          "deity": "天"
+        },
+        {
+          "gate": "杜",
+          "dir": "NE",
+          "deity": "地"
+        },
+        {
+          "gate": "景",
+          "dir": "E",
+          "deity": "玄"
+        },
+        {
+          "gate": "死",
+          "dir": "SE",
+          "deity": "虎"
+        },
+        {
+          "gate": "驚",
+          "dir": "S",
+          "deity": "合"
+        }
+      ]
+    },
+    "庚子": {
+      "kimeng": "庚",
+      "kimengBranch": "子",
+      "cells": [
+        {
+          "gate": "開",
+          "dir": "E",
+          "deity": "合"
+        },
+        {
+          "gate": "休",
+          "dir": "SE",
+          "deity": "陰"
+        },
+        {
+          "gate": "生",
+          "dir": "S",
+          "deity": "蛇"
+        },
+        {
+          "gate": "傷",
+          "dir": "SW",
+          "deity": "符"
+        },
+        {
+          "gate": "杜",
+          "dir": "W",
+          "deity": "天"
+        },
+        {
+          "gate": "景",
+          "dir": "NW",
+          "deity": "地"
+        },
+        {
+          "gate": "死",
+          "dir": "N",
+          "deity": "玄"
+        },
+        {
+          "gate": "驚",
+          "dir": "NE",
+          "deity": "虎"
+        }
       ]
     }
   }

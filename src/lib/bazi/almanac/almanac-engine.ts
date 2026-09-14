@@ -414,7 +414,9 @@ function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: Gate
 }
 
 // คี้มึ้งระดับปี/เดือน (奇門) — key = เสาปี/เดือน ganzhi (เอกสารซินแส). ครอบเท่าที่กรอก (2569); นอกช่วง → null
-type QimenYMEntry = { kimeng: string; kimengBranch: string; caishenDir: string; badDir: string; deity: string; cells: QimenCell[] };
+// caishenDir/badDir/deity เติมมือจาก Google Sheet (มีเฉพาะบางเสา เช่น 丙申/丁酉/丙午) — optional; เสาที่ ingest จาก
+// xlsx (戊戌/己亥/庚子) มีแค่ cells+kimeng. badDir ไม่ถูกใช้ (asuraDir engine คำนวณเอง).
+type QimenYMEntry = { kimeng: string; kimengBranch: string; caishenDir?: string; badDir?: string; deity?: string; cells: QimenCell[] };
 const QIMEN_YM = qimenYearMonthJson as { year: Record<string, QimenYMEntry>; month: Record<string, QimenYMEntry> };
 /** สร้าง GateInfo[] จาก cells คี้มึ้ง (ปี/เดือน) — enrich เหมือน gates รายวัน */
 function qimenGatesFrom(cells: QimenCell[]): GateInfo[] {
@@ -452,7 +454,7 @@ export function buildAlmanacDay(
   const monthInfo: MonthInfo = {
     pillar: monthPillar.ganzhi, // เสาเดือนเต็ม (ราศีบน+ล่าง เช่น 丁酉) — ซินแสขอโชว์ทั้งก้าน+กิ่ง
     deity: monthRec?.deity ?? monthYM?.deity ?? null,
-    caishenDir: monthRec?.caishen_dir ?? (monthYM ? `ทิศ ${monthYM.caishenDir}` : null),
+    caishenDir: monthRec?.caishen_dir ?? (monthYM?.caishenDir ? `ทิศ ${monthYM.caishenDir}` : null),
     lapDir: monthRec?.lap_dir ?? null,
     asuraDir: monthRec?.asura_dir ?? (asuraOf(monthPillar.branch) || null),
     spiritDirs: monthRec?.spirit_dirs ?? null,
@@ -466,7 +468,7 @@ export function buildAlmanacDay(
   const yearInfo: YearInfo = {
     pillar: yearPillar.ganzhi,
     asuraDir: asuraOf(yearPillar.branch) || null,
-    caishenDir: yearRec?.caishen_dir ?? (yearYM ? `ทิศ ${yearYM.caishenDir}` : null),
+    caishenDir: yearRec?.caishen_dir ?? (yearYM?.caishenDir ? `ทิศ ${yearYM.caishenDir}` : null),
     lapDir: yearRec?.lap_dir ?? null,
     deity: yearRec?.deity ?? yearYM?.deity ?? null,
     spiritDirs: yearRec?.spirit_dirs ?? null,
