@@ -1235,6 +1235,47 @@ export const baziQiClaim = pgTable(
 
 export type SelectBaziQiClaim = typeof baziQiClaim.$inferSelect;
 
+/** คูปองกิจกรรม (#2 Phase 2 · ซินแสนุ้ย 2026-09-14) — user กรอกโค้ด → รับรางวัล (QI / เครดิตแชท·เปิดไพ่ / tier).
+ *  แยกจาก discount_code (ฝั่ง FE) ที่ลด "ราคาจ่ายเงิน" — อันนี้ "แจกสิทธิ์" ตรง ๆ. reward_kind ชี้ว่าใช้ field ไหน. */
+export const activityCoupon = pgTable(
+  "activity_coupon",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    code: text("code").notNull(),
+    /** 'qi' | 'chat' | 'card' | 'tier' */
+    rewardKind: text("reward_kind").notNull(),
+    rewardQi: integer("reward_qi").notNull().default(0),
+    /** จำนวนเครดิต (chat_question/card_use) เมื่อ reward_kind = chat|card */
+    creditCount: integer("credit_count").notNull().default(0),
+    /** 'plus' | 'pro' เมื่อ reward_kind = tier */
+    tierSku: text("tier_sku"),
+    tierDays: integer("tier_days").notNull().default(0),
+    startsAt: timestamp("starts_at", { withTimezone: true }),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    /** เพดานใช้รวมทั้งหมด (null = ไม่จำกัด) — กันเกินด้วย conditional UPDATE ที่ used_count */
+    maxUseTotal: integer("max_use_total"),
+    usedCount: integer("used_count").notNull().default(0),
+    /** 'ACTIVE' | 'PAUSED' | 'EXPIRED' */
+    status: text("status").notNull().default("ACTIVE"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("uq_activity_coupon_lower_code").on(sql`lower(${t.code})`)],
+);
+export type SelectActivityCoupon = typeof activityCoupon.$inferSelect;
+
+/** กันผู้ใช้รับคูปองเดิมซ้ำ — 1 คูปองต่อ 1 บัญชี (UNIQUE coupon_id+anon_id) */
+export const activityCouponRedemption = pgTable(
+  "activity_coupon_redemption",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    couponId: uuid("coupon_id").notNull(),
+    anonId: text("anon_id").notNull(),
+    rewardSummary: text("reward_summary").notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => [uniqueIndex("uq_activity_coupon_redemption").on(t.couponId, t.anonId)],
+);
+
 /** โควตาฟรีต่อฟีเจอร์รายวัน — periodKey = วันไทย (reset โดยธรรมชาติ), used = ใช้ไปกี่ครั้ง */
 export const baziFeatureQuota = pgTable(
   "bazi_feature_quota",
