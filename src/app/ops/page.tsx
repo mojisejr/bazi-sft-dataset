@@ -698,38 +698,69 @@ function EntitlementCard({ anonId, secret, entitlements, reload, onSaved, onErro
   );
 }
 
-// ── คูปองกิจกรรม (#2 Phase 2) — global CRUD ผ่าน /api/ops/coupon (secret-gated) ──
+// ── คูปอง (#2 Phase 2) — 2 เลนใน CRUD เดียว (secret-gated):
+//    · แจกรางวัล (QI/เครดิต/tier) → /api/ops/coupon (activity_coupon, แลกที่ /v2/qi)
+//    · ลดราคาตอนจ่ายเงิน → /api/ops/discount (discount_code, กรอกตอน checkout) ── ซินแสนุ้ย 2026-09-14
 type CouponRow = {
   id: string; code: string; rewardKind: string; rewardQi: number; creditCount: number;
   tierSku: string | null; tierDays: number; startsAt: string | null; endsAt: string | null;
   maxUseTotal: number | null; usedCount: number; status: string; createdAt: string;
 };
+type DiscountRow = {
+  id: string; code: string; kind: "PERCENT" | "FIXED"; value: number; maxDiscountSatang: number | null;
+  startsAt: string | null; endsAt: string | null; maxUseTotal: number | null; maxUsePerUser: number | null;
+  usedCount: number; status: string; createdAt: string;
+};
+type RewardKind = "qi" | "chat" | "card" | "tier" | "discount";
 
 function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<CouponRow[]>([]);
+  const [discRows, setDiscRows] = useState<DiscountRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState("");
-  const [rewardKind, setRewardKind] = useState<"qi" | "chat" | "card" | "tier">("qi");
+  const [rewardKind, setRewardKind] = useState<RewardKind>("qi");
   const [amount, setAmount] = useState("");
   const [tierSku, setTierSku] = useState<"plus" | "pro">("plus");
+  const [dkind, setDkind] = useState<"PERCENT" | "FIXED">("PERCENT");
+  const [dMaxBaht, setDMaxBaht] = useState("");
+  const [maxUsePerUser, setMaxUsePerUser] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
   const [maxUseTotal, setMaxUseTotal] = useState("");
+  const isDiscount = rewardKind === "discount";
 
   const load = useCallback(async () => {
     if (!secret) return;
     try {
-      const r = await fetch(`/api/ops/coupon?secret=${encodeURIComponent(secret)}`);
-      if (r.ok) setRows((((await r.json()) as { coupons?: CouponRow[] }).coupons ?? []));
+      const [cr, dr] = await Promise.all([
+        fetch(`/api/ops/coupon?secret=${encodeURIComponent(secret)}`),
+        fetch(`/api/ops/discount?secret=${encodeURIComponent(secret)}`),
+      ]);
+      if (cr.ok) setRows((((await cr.json()) as { coupons?: CouponRow[] }).coupons ?? []));
+      if (dr.ok) setDiscRows((((await dr.json()) as { discounts?: DiscountRow[] }).discounts ?? []));
     } catch { /* ignore */ }
   }, [secret]);
 
   useEffect(() => { if (open) void load(); }, [open, load]);
 
+  const resetForm = () => { setCode(""); setAmount(""); setStartsAt(""); setEndsAt(""); setMaxUseTotal(""); setDMaxBaht(""); setMaxUsePerUser(""); };
+
   const create = async () => {
     setBusy(true);
     try {
+      if (isDiscount) {
+        const r = await fetch("/api/ops/discount", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ secret, action: "create", code, kind: dkind, value: Number(amount), maxDiscountBaht: dkind === "PERCENT" && dMaxBaht ? Number(dMaxBaht) : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined }),
+        });
+        const j = (await r.json().catch(() => ({}))) as { discounts?: DiscountRow[]; reason?: string; error?: string };
+        if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างไม่สำเร็จ"); return; }
+        setDiscRows(j.discounts ?? []);
+        onNote(true, `สร้างโค้ดส่วนลด ${code.toUpperCase()} แล้ว`);
+        resetForm();
+        return;
+      }
       const r = await fetch("/api/ops/coupon", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ secret, action: "create", code, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined }),
@@ -738,7 +769,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
       if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างไม่สำเร็จ"); return; }
       setRows(j.coupons ?? []);
       onNote(true, `สร้างคูปอง ${code.toUpperCase()} แล้ว`);
-      setCode(""); setAmount(""); setStartsAt(""); setEndsAt(""); setMaxUseTotal("");
+      resetForm();
     } finally { setBusy(false); }
   };
 
@@ -752,36 +783,54 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
     } finally { setBusy(false); }
   };
 
+  const toggleDisc = async (d: DiscountRow) => {
+    const next = d.status === "ACTIVE" ? "PAUSED" : "ACTIVE";
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/discount", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, action: "status", id: d.id, status: next }) });
+      const j = (await r.json().catch(() => ({}))) as { discounts?: DiscountRow[]; error?: string };
+      if (r.ok) setDiscRows(j.discounts ?? []); else onNote(false, j.error ?? "เปลี่ยนสถานะไม่สำเร็จ");
+    } finally { setBusy(false); }
+  };
+
   const rewardText = (c: CouponRow) =>
     c.rewardKind === "qi" ? `QI +${c.rewardQi}` : c.rewardKind === "chat" ? `แชท +${c.creditCount}` : c.rewardKind === "card" ? `เปิดไพ่ +${c.creditCount}` : `${(c.tierSku ?? "").toUpperCase()} ${c.tierDays}วัน`;
+  const discText = (d: DiscountRow) =>
+    d.kind === "PERCENT" ? `ลด ${d.value}%${d.maxDiscountSatang ? ` (สูงสุด ${(d.maxDiscountSatang / 100).toLocaleString("th-TH")}฿)` : ""}` : `ลด ${(d.value / 100).toLocaleString("th-TH")}฿`;
+  const amountLabel = isDiscount ? (dkind === "PERCENT" ? "ลด (%)" : "ลด (บาท)") : rewardKind === "tier" ? "จำนวนวัน" : rewardKind === "qi" ? "จำนวน QI" : "จำนวนเครดิต";
   const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
 
   return (
     <div style={{ ...box, marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <strong style={{ fontSize: 15 }}>🎟️ คูปองกิจกรรม (แจก QI / เครดิต / tier)</strong>
+        <strong style={{ fontSize: 15 }}>🎟️ คูปอง (แจก QI / เครดิต / tier · หรือ ลดราคาตอนจ่ายเงิน)</strong>
         <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((o) => !o)}>{open ? "ซ่อน" : "จัดการ"}</button>
       </div>
       {open && (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
             <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="SONGKRAN" /></div>
-            <div><span style={label}>รางวัล</span>
-              <select style={input} value={rewardKind} onChange={(e) => setRewardKind(e.target.value as "qi" | "chat" | "card" | "tier")}>
-                <option value="qi">QI</option><option value="chat">เครดิตแชท</option><option value="card">เครดิตเปิดไพ่</option><option value="tier">Tier (วัน)</option>
+            <div><span style={label}>ประเภท</span>
+              <select style={input} value={rewardKind} onChange={(e) => setRewardKind(e.target.value as RewardKind)}>
+                <option value="qi">QI</option><option value="chat">เครดิตแชท</option><option value="card">เครดิตเปิดไพ่</option><option value="tier">Tier (วัน)</option><option value="discount">ลดราคา (ตอนจ่ายเงิน)</option>
               </select>
             </div>
-            <div><span style={label}>{rewardKind === "tier" ? "จำนวนวัน" : rewardKind === "qi" ? "จำนวน QI" : "จำนวนเครดิต"}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            {isDiscount && <div><span style={label}>ชนิดส่วนลด</span><select style={input} value={dkind} onChange={(e) => setDkind(e.target.value as "PERCENT" | "FIXED")}><option value="PERCENT">เปอร์เซ็นต์ %</option><option value="FIXED">จำนวนเงิน ฿</option></select></div>}
+            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
+            {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
+            {isDiscount && <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
             <div><span style={label}>หมดอายุ</span><input style={input} type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} /></div>
-            <div style={{ display: "flex", alignItems: "flex-end" }}><button style={btn(C.good)} disabled={busy || !code.trim() || !amount} onClick={create}>{busy ? "…" : "สร้างคูปอง"}</button></div>
+            <div style={{ display: "flex", alignItems: "flex-end" }}><button style={btn(C.good)} disabled={busy || !code.trim() || !amount} onClick={create}>{busy ? "…" : isDiscount ? "สร้างโค้ดส่วนลด" : "สร้างคูปอง"}</button></div>
           </div>
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+
+          <p style={{ ...label, marginBottom: 4 }}>แจกรางวัล (แลกที่หน้า /v2/qi)</p>
+          <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
             <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>โค้ด</th><th style={td}>รางวัล</th><th style={td}>ช่วงเวลา</th><th style={td}>ใช้แล้ว</th><th style={td}>สถานะ</th><th style={td} /></tr></thead>
             <tbody>
-              {rows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีคูปอง</td></tr>}
+              {rows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีคูปองรางวัล</td></tr>}
               {rows.map((c) => (
                 <tr key={c.id}>
                   <td style={td}><code>{c.code}</code></td>
@@ -790,6 +839,24 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
                   <td style={td}>{c.usedCount}/{c.maxUseTotal ?? "∞"}</td>
                   <td style={{ ...td, color: c.status === "ACTIVE" ? C.good : c.status === "PAUSED" ? C.warn : C.sub }}>{c.status}</td>
                   <td style={td}>{c.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggle(c)}>{c.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <p style={{ ...label, marginBottom: 4 }}>ลดราคา (กรอกตอนจ่ายเงิน)</p>
+          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+            <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>โค้ด</th><th style={td}>ส่วนลด</th><th style={td}>ช่วงเวลา</th><th style={td}>ใช้แล้ว</th><th style={td}>สถานะ</th><th style={td} /></tr></thead>
+            <tbody>
+              {discRows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีโค้ดส่วนลด</td></tr>}
+              {discRows.map((d) => (
+                <tr key={d.id}>
+                  <td style={td}><code>{d.code}</code></td>
+                  <td style={td}>{discText(d)}{d.maxUsePerUser ? ` · จำกัด ${d.maxUsePerUser}/คน` : ""}</td>
+                  <td style={td}>{d.startsAt ? new Date(d.startsAt).toLocaleDateString("th-TH") : "—"} → {d.endsAt ? new Date(d.endsAt).toLocaleDateString("th-TH") : "—"}</td>
+                  <td style={td}>{d.usedCount}/{d.maxUseTotal ?? "∞"}</td>
+                  <td style={{ ...td, color: d.status === "ACTIVE" ? C.good : d.status === "PAUSED" ? C.warn : C.sub }}>{d.status}</td>
+                  <td style={td}>{d.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggleDisc(d)}>{d.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}</td>
                 </tr>
               ))}
             </tbody>
