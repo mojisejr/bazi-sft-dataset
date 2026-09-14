@@ -450,6 +450,7 @@ export function buildAlmanacDay(
   // คี้มึ้งเดือน (เอกสารซินแส) — เติมทิศไฉ่ซิ้ง/เทพประจำเดือน ที่ month-pillar-table ยังไม่มี (เช่น 丙申/丁酉) + กริด 8 ประตู
   const monthYM = QIMEN_YM.month[monthPillar.ganzhi];
   const monthInfo: MonthInfo = {
+    pillar: monthPillar.ganzhi, // เสาเดือนเต็ม (ราศีบน+ล่าง เช่น 丁酉) — ซินแสขอโชว์ทั้งก้าน+กิ่ง
     deity: monthRec?.deity ?? monthYM?.deity ?? null,
     caishenDir: monthRec?.caishen_dir ?? (monthYM ? `ทิศ ${monthYM.caishenDir}` : null),
     lapDir: monthRec?.lap_dir ?? null,

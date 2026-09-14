@@ -106,6 +106,8 @@ export type DayStar = {
 };
 
 export type MonthInfo = {
+  /** เสาเดือนเต็ม (干支 เช่น 丁酉) — ราศีบน(ก้าน)+ล่าง(กิ่ง) */
+  pillar?: string | null;
   /** เทพประจำเดือน */
   deity: string | null;
   /** ทิศไฉ่ซิ้ง (เทพโชคลาภ) ประจำเดือน */
