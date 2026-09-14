@@ -48,7 +48,10 @@ export async function POST(request: Request) {
     const foundation = chap("chart_foundation");
     const prediction = {
       personality: bodyText(foundation),
-      habit: bodyText(foundation, "นิสัย"),
+      // #3 (ซินแสนุ้ย 2026-09-14): "นิสัย" ต้องใช้เสาเต็ม 60 กะจื่อ (甲午 = ganzhi_nisai) ไม่ใช่แค่ราศีล่าง (午 = zodiac_nisai).
+      // กล่องเสาเต็มคือ "ทายนิสัยจากราศีบน/ราศีล่างหลักวัน" (มีคำว่า "ราศีบน" ต่างจากกล่องราศีล่างที่ขึ้นก่อน) —
+      // เลือกกล่องนั้นก่อน, ถ้ายังไม่ได้ seed (ไม่มี body) ค่อย fallback กล่อง "นิสัย" ตัวแรก (ราศีล่าง) เหมือนเดิม
+      habit: bodyText(foundation, "ราศีบน") ?? bodyText(foundation, "นิสัย"),
       love: bodyText(chap("love_partner")),
       // work ไม่อยู่ที่นี่ — มาจาก /api/reading/career-finance แหล่งเดียว (รวมอาชีพ)
     };
