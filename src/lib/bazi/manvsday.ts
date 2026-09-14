@@ -34,7 +34,6 @@ export type ManVsDayAlmanac = Pick<
   | "worshipDeities"
   | "shirtColors"
   | "dayDirections"
-  | "specialDayTypes"
 > & {
   /** กำลังดิถีของวัน (E = ratioDay 0–1) — G61 ในชีต DAYMATE */
   dayStrength: number;
@@ -208,7 +207,6 @@ export function buildManVsDay(
       worshipDeities: almanacDay.worshipDeities,
       shirtColors: almanacDay.shirtColors,
       dayDirections: almanacDay.dayDirections,
-      specialDayTypes: almanacDay.specialDayTypes,
       dayStrength: almanacDay.strength.ratioDay,
     },
   };
