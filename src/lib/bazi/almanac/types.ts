@@ -235,6 +235,8 @@ export type AlmanacDay = {
   shirtColors: { navin: string; colors: string[] } | null;
   /** ทิศประจำวัน: ทิศโชคลาภ / ผู้อุปถัมภ์(องศา+ปีนักษัตร) / ทิศร้าย (ตาม day-ganzhi 60) */
   dayDirections: { fortune: string; patrons: { degree: string; zodiac: string }[]; bad: string } | null;
+  /** วันพิเศษตามกิ่งเดือน: ความรัก/ลาภสวรรค์/หมอเทพ/ฟ้าอภัย — [] ถ้าไม่เข้าเงื่อนไขใด (เอกสารซินแส) */
+  specialDayTypes: { id: string; name: string; desc: string }[];
   /** หมายเหตุที่ผู้ใช้แก้รายวัน (override) — null ถ้าไม่มี */
   note: string | null;
   strength: StrengthScore;

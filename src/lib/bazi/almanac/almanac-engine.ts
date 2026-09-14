@@ -33,6 +33,7 @@ import qimenYearMonthJson from "@/lib/bazi/data/almanac/qimen-year-month-2569.js
 import worshipDeityJson from "@/lib/bazi/data/almanac/worship-deity-60.json";
 import shirtColorJson from "@/lib/bazi/data/almanac/shirt-color-60.json";
 import dayDirectionJson from "@/lib/bazi/data/almanac/day-direction-60.json";
+import specialDayTypesJson from "@/lib/bazi/data/almanac/special-day-types.json";
 
 import { solarTermFor } from "@/lib/bazi/almanac/solar-terms-data";
 import { thaiLunarDay } from "@/lib/bazi/thai-lunar";
@@ -403,6 +404,28 @@ const QIMEN = qimen2569Json as Record<string, QimenCell[]>;
 const WORSHIP_DEITY = worshipDeityJson as Record<string, string[]>;
 const SHIRT_COLOR = shirtColorJson as Record<string, { navin: string; colors: string[] }>;
 const DAY_DIRECTION = dayDirectionJson as Record<string, { fortune: string; patrons: { degree: string; zodiac: string }[]; bad: string }>;
+
+// วันมงคลพิเศษตามกิ่งเดือน (เอกสารซินแส FIXเงื่อนไขปฏิทิน): ความรัก/ลาภสวรรค์/หมอเทพ = กิ่งเดือน→กิ่งวัน,
+// ฟ้าอภัย = กิ่งเดือน→เสาวันเต็ม (gānzhī). วันหนึ่ง "เข้าเงื่อนไข" เมื่อกิ่งวัน (หรือเสาวัน) ตรงกับที่ตารางระบุ.
+type SpecialDayDef =
+  | { name: string; desc: string; byMonth: Record<string, string> }
+  | { name: string; desc: string; byMonthGanzhi: Record<string, string> };
+const SPECIAL_DAY_TYPES = specialDayTypesJson as Record<string, SpecialDayDef>;
+export type SpecialDayTypeHit = { id: string; name: string; desc: string };
+
+/** วันนี้เข้าเงื่อนไข "วันพิเศษ" ชนิดใดบ้าง (ความรัก/ลาภสวรรค์/หมอเทพ/ฟ้าอภัย) — PURE, unit-testable. */
+export function matchSpecialDayTypes(monthBranch: string, dayBranch: string, dayGanzhi: string): SpecialDayTypeHit[] {
+  const hits: SpecialDayTypeHit[] = [];
+  for (const [id, def] of Object.entries(SPECIAL_DAY_TYPES)) {
+    if ("byMonthGanzhi" in def) {
+      if (def.byMonthGanzhi[monthBranch] === dayGanzhi) hits.push({ id, name: def.name, desc: def.desc });
+    } else if (def.byMonth[monthBranch] === dayBranch) {
+      hits.push({ id, name: def.name, desc: def.desc });
+    }
+  }
+  return hits;
+}
+
 /** คืน gates+spirits (พร้อมทิศ) จากคี้มึ้ง ถ้ามีคีย์ตรง ไม่งั้น null */
 function qimenFor(dayGZ: string, monthGZ: string, yearGZ: string): { gates: GateInfo[]; spirits: SpiritInfo[] } | null {
   const cells = QIMEN[`${dayGZ}|${monthGZ}|${yearGZ}`];
@@ -524,6 +547,8 @@ export function buildAlmanacDay(
     worshipDeities: WORSHIP_DEITY[dayPillar.ganzhi] ?? [],
     shirtColors: SHIRT_COLOR[dayPillar.ganzhi] ?? null,
     dayDirections: DAY_DIRECTION[dayPillar.ganzhi] ?? null,
+    // วันพิเศษตามกิ่งเดือน (ความรัก/ลาภสวรรค์/หมอเทพ/ฟ้าอภัย) — [] ถ้าวันนี้ไม่เข้าเงื่อนไขใดเลย
+    specialDayTypes: matchSpecialDayTypes(monthPillar.branch, dayPillar.branch, dayPillar.ganzhi),
     // หมายเหตุที่ผู้ใช้แก้รายวัน (override) — null ถ้าไม่มี
     note: null,
     strength: buildStrength(m, {
