@@ -219,6 +219,9 @@ export default function OpsAdminPage() {
         <div style={{ marginBottom: 14, padding: "10px 14px", borderRadius: 8, background: flash.ok ? "#123528" : "#3a1620", color: flash.ok ? C.good : C.danger, border: `1px solid ${flash.ok ? C.good : C.danger}`, fontSize: 14 }}>{flash.msg}</div>
       )}
 
+      {/* ภาพรวมรายวัน (DAU / ใช้อะไร / รายรับ / ถามอะไร) */}
+      <AnalyticsPanel secret={secret} />
+
       {/* คูปองกิจกรรม (global — ไม่ผูก user) */}
       <CouponManager secret={secret} onNote={note} />
 
@@ -713,6 +716,118 @@ type DiscountRow = {
 };
 type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null };
 type RewardKind = "qi" | "chat" | "card" | "matching" | "tier" | "discount";
+
+type Analytics = {
+  days: number;
+  dau: { total: number; byDay: { day: string; users: number }[] };
+  features: { feature: string; uses: number; users: number }[];
+  revenue: { total: { orders: number; baht: number }; byDay: { day: string; orders: number; baht: number }[]; byPackage: { package_code: string; orders: number; baht: number }[] };
+  chat: { topTopics: { topic_id: string; replies: number }[]; byPersona: { persona: string; replies: number }[] };
+};
+
+function AnalyticsPanel({ secret }: { secret: string }) {
+  const [open, setOpen] = useState(false);
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState<Analytics | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
+  const th: React.CSSProperties = { ...td, textAlign: "left", color: C.sub };
+
+  const load = useCallback(async () => {
+    if (!secret) return;
+    setBusy(true); setErr(null);
+    try {
+      const r = await fetch(`/api/ops/analytics?days=${days}`, { headers: { "x-ops-secret": secret } });
+      const j = (await r.json().catch(() => ({}))) as Analytics & { error?: string };
+      if (r.ok) setData(j); else setErr(j.error ?? "โหลดไม่สำเร็จ");
+    } catch { setErr("เชื่อมต่อไม่ได้"); } finally { setBusy(false); }
+  }, [secret, days]);
+
+  useEffect(() => { if (open) void load(); }, [open, load]);
+
+  const baht = (n: number) => `฿${Number(n ?? 0).toLocaleString("th-TH")}`;
+  const stat = (labelText: string, value: string) => (
+    <div style={{ ...box, padding: 12, minWidth: 130 }}>
+      <div style={{ fontSize: 12, color: C.sub }}>{labelText}</div>
+      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 2 }}>{value}</div>
+    </div>
+  );
+
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <strong style={{ fontSize: 15 }}>📊 ภาพรวมรายวัน (DAU · ใช้อะไร · รายรับ · ถามอะไร)</strong>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+          {open && (
+            <select style={{ ...input, width: 110 }} value={days} onChange={(e) => setDays(Number(e.target.value))}>
+              <option value={7}>7 วัน</option><option value={30}>30 วัน</option><option value={90}>90 วัน</option>
+            </select>
+          )}
+          <button style={{ ...btn(C.border), fontWeight: 500 }} onClick={() => setOpen((o) => !o)}>{open ? "ซ่อน" : "ดู"}</button>
+        </div>
+      </div>
+      {open && (
+        <div style={{ marginTop: 12 }}>
+          {busy && !data ? <p style={{ color: C.sub }}>กำลังโหลด…</p> : err ? <p style={{ color: C.warn }}>{err}</p> : data ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* การ์ดสรุป */}
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                {stat(`ผู้ใช้ไม่ซ้ำ (${data.days} วัน)`, `${data.dau.total.toLocaleString("th-TH")} คน`)}
+                {stat(`รายรับ (${data.days} วัน)`, baht(data.revenue.total.baht))}
+                {stat("ออเดอร์ที่จ่ายสำเร็จ", `${data.revenue.total.orders.toLocaleString("th-TH")}`)}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+                {/* ใช้อะไรบ้าง */}
+                <div>
+                  <p style={{ ...label, marginBottom: 4 }}>ใช้อะไรบ้าง (ครั้ง · คน)</p>
+                  <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                    <thead><tr><th style={th}>ฟีเจอร์</th><th style={{ ...th, textAlign: "right" }}>ครั้ง</th><th style={{ ...th, textAlign: "right" }}>คน</th></tr></thead>
+                    <tbody>
+                      {data.features.length === 0 && <tr><td style={td} colSpan={3}>ยังไม่มีข้อมูล</td></tr>}
+                      {data.features.map((f) => (
+                        <tr key={f.feature}><td style={td}>{f.feature}</td><td style={{ ...td, textAlign: "right" }}>{f.uses.toLocaleString("th-TH")}</td><td style={{ ...td, textAlign: "right" }}>{f.users.toLocaleString("th-TH")}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* รายรับแยกแพ็ก + หัวข้อแชท */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <p style={{ ...label, marginBottom: 4 }}>รายรับแยกแพ็กเกจ</p>
+                    <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                      <thead><tr><th style={th}>แพ็ก</th><th style={{ ...th, textAlign: "right" }}>ออเดอร์</th><th style={{ ...th, textAlign: "right" }}>บาท</th></tr></thead>
+                      <tbody>
+                        {data.revenue.byPackage.length === 0 && <tr><td style={td} colSpan={3}>ยังไม่มียอดขาย</td></tr>}
+                        {data.revenue.byPackage.map((p) => (
+                          <tr key={p.package_code}><td style={td}>{p.package_code}</td><td style={{ ...td, textAlign: "right" }}>{p.orders}</td><td style={{ ...td, textAlign: "right" }}>{baht(p.baht)}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div>
+                    <p style={{ ...label, marginBottom: 4 }}>ถามอะไรบ้าง (หัวข้อแชท · PDPA-safe)</p>
+                    <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                      <thead><tr><th style={th}>หัวข้อ</th><th style={{ ...th, textAlign: "right" }}>ครั้ง</th></tr></thead>
+                      <tbody>
+                        {data.chat.topTopics.length === 0 && <tr><td style={td} colSpan={2}>ยังไม่มีแชท</td></tr>}
+                        {data.chat.topTopics.map((t) => (
+                          <tr key={t.topic_id}><td style={td}>{t.topic_id}</td><td style={{ ...td, textAlign: "right" }}>{t.replies.toLocaleString("th-TH")}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
   const [open, setOpen] = useState(false);
