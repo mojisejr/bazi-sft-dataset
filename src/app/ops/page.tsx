@@ -55,12 +55,13 @@ type SubRow = { id: string; tier_code: string; package_code: string; amount_sata
 type PayRow = { id: string; package_code: string; tier_code: string; amount_satang: number; vat_satang: number; method: string; status: string; created_at: string };
 type SubData = { available: boolean; current: SubRow | null; history: SubRow[]; payments: PayRow[]; note?: string };
 
-const KINDS = ["tier", "course", "book", "card_use", "chat_question", "matching_slot"] as const;
+const KINDS = ["tier", "course", "book", "calendar", "card_use", "chat_question", "matching_slot"] as const;
 // ป้ายไทยให้คนอื่นอ่านง่าย (value ที่เขียน DB ยังเป็น key อังกฤษเหมือนเดิม)
 const KIND_LABELS: Record<string, string> = {
   tier: "ระดับสมาชิก (tier)",
   course: "คอร์สเรียน",
   book: "หนังสือ / อีบุ๊ก",
+  calendar: "ปฏิทินดวงเฉพาะบุคคล",
   card_use: "สิทธิ์เปิดไพ่",
   chat_question: "สิทธิ์ถามแชท",
   matching_slot: "สิทธิ์ดูดวงคู่",
