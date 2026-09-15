@@ -4,7 +4,7 @@
 // ใช้ง่าย: ใส่ secret ครั้งเดียว → ค้น/ดู user ทุกคน → แก้วัน-เวลาเกิด, เติม/หัก QI, เปลี่ยนแพ็กเกจ/สิทธิ์
 // กด Save = ยิงเข้า DB ตรงผ่าน endpoint /api/ops/* และ /api/profile/admin, /api/qi/admin-adjust
 // (ทุกอัน secret-gated ด้วย OPS_ADMIN_SECRET — หน้านี้ไม่มีข้อมูลจนกว่าจะใส่ secret ถูก).
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 type UserRow = {
   anonId: string;
@@ -709,9 +709,10 @@ type CouponRow = {
 type DiscountRow = {
   id: string; code: string; kind: "PERCENT" | "FIXED"; value: number; maxDiscountSatang: number | null;
   startsAt: string | null; endsAt: string | null; maxUseTotal: number | null; maxUsePerUser: number | null;
-  usedCount: number; status: string; createdAt: string;
+  usedCount: number; distinctUsers: number; status: string; createdAt: string;
 };
-type RewardKind = "qi" | "chat" | "card" | "tier" | "discount";
+type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null };
+type RewardKind = "qi" | "chat" | "card" | "matching" | "tier" | "discount";
 
 function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -729,6 +730,10 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
   const [endsAt, setEndsAt] = useState("");
   const [maxUseTotal, setMaxUseTotal] = useState("");
   const isDiscount = rewardKind === "discount";
+  // ใครใช้โค้ดส่วนลด (เปิดดูรายคน)
+  const [redFor, setRedFor] = useState<string | null>(null);
+  const [redRows, setRedRows] = useState<RedemptionRow[]>([]);
+  const [redBusy, setRedBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!secret) return;
@@ -745,6 +750,18 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
   useEffect(() => { if (open) void load(); }, [open, load]);
 
   const resetForm = () => { setCode(""); setAmount(""); setStartsAt(""); setEndsAt(""); setMaxUseTotal(""); setDMaxBaht(""); setMaxUsePerUser(""); };
+
+  // ดู/ปิด "ใครใช้โค้ดนี้บ้าง"
+  const viewRedemptions = async (d: DiscountRow) => {
+    if (redFor === d.id) { setRedFor(null); setRedRows([]); return; }
+    setRedBusy(true);
+    setRedFor(d.id);
+    try {
+      const r = await fetch(`/api/ops/discount?secret=${encodeURIComponent(secret)}&redemptions=${encodeURIComponent(d.id)}`);
+      const j = (await r.json().catch(() => ({}))) as { redemptions?: RedemptionRow[] };
+      setRedRows(r.ok ? (j.redemptions ?? []) : []);
+    } catch { setRedRows([]); } finally { setRedBusy(false); }
+  };
 
   const create = async () => {
     setBusy(true);
@@ -793,11 +810,31 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
     } finally { setBusy(false); }
   };
 
+  // ลบคูปอง/โค้ด (เฉพาะที่ยังไม่ถูกใช้ — server กันอีกชั้น)
+  const delCoupon = async (c: CouponRow) => {
+    if (!window.confirm(`ลบคูปอง ${c.code}? (ลบไม่ได้ถ้าถูกใช้ไปแล้ว)`)) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/coupon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, action: "delete", id: c.id }) });
+      const j = (await r.json().catch(() => ({}))) as { coupons?: CouponRow[]; reason?: string; error?: string };
+      if (r.ok) { setRows(j.coupons ?? []); onNote(true, `ลบ ${c.code} แล้ว`); } else onNote(false, j.reason ?? j.error ?? "ลบไม่สำเร็จ");
+    } finally { setBusy(false); }
+  };
+  const delDisc = async (d: DiscountRow) => {
+    if (!window.confirm(`ลบโค้ด ${d.code}? (ลบไม่ได้ถ้าถูกใช้ไปแล้ว)`)) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/discount", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, action: "delete", id: d.id }) });
+      const j = (await r.json().catch(() => ({}))) as { discounts?: DiscountRow[]; reason?: string; error?: string };
+      if (r.ok) { setDiscRows(j.discounts ?? []); onNote(true, `ลบ ${d.code} แล้ว`); } else onNote(false, j.reason ?? j.error ?? "ลบไม่สำเร็จ");
+    } finally { setBusy(false); }
+  };
+
   const rewardText = (c: CouponRow) =>
-    c.rewardKind === "qi" ? `QI +${c.rewardQi}` : c.rewardKind === "chat" ? `แชท +${c.creditCount}` : c.rewardKind === "card" ? `เปิดไพ่ +${c.creditCount}` : `${(c.tierSku ?? "").toUpperCase()} ${c.tierDays}วัน`;
+    c.rewardKind === "qi" ? `QI +${c.rewardQi}` : c.rewardKind === "chat" ? `แชท +${c.creditCount}` : c.rewardKind === "card" ? `เปิดไพ่ +${c.creditCount}` : c.rewardKind === "matching" ? `แมทช์สมพงศ์ +${c.creditCount}` : `${(c.tierSku ?? "").toUpperCase()} ${c.tierDays}วัน`;
   const discText = (d: DiscountRow) =>
     d.kind === "PERCENT" ? `ลด ${d.value}%${d.maxDiscountSatang ? ` (สูงสุด ${(d.maxDiscountSatang / 100).toLocaleString("th-TH")}฿)` : ""}` : `ลด ${(d.value / 100).toLocaleString("th-TH")}฿`;
-  const amountLabel = isDiscount ? (dkind === "PERCENT" ? "ลด (%)" : "ลด (บาท)") : rewardKind === "tier" ? "จำนวนวัน" : rewardKind === "qi" ? "จำนวน QI" : "จำนวนเครดิต";
+  const amountLabel = isDiscount ? (dkind === "PERCENT" ? "ลด (%)" : "ลด (บาท)") : rewardKind === "tier" ? "จำนวนวัน" : rewardKind === "qi" ? "จำนวน QI" : rewardKind === "matching" ? "จำนวนแมทช์" : "จำนวนเครดิต";
   const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
 
   return (
@@ -812,11 +849,11 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="SONGKRAN" /></div>
             <div><span style={label}>ประเภท</span>
               <select style={input} value={rewardKind} onChange={(e) => setRewardKind(e.target.value as RewardKind)}>
-                <option value="qi">QI</option><option value="chat">เครดิตแชท</option><option value="card">เครดิตเปิดไพ่</option><option value="tier">Tier (วัน)</option><option value="discount">ลดราคา (ตอนจ่ายเงิน)</option>
+                <option value="qi">QI</option><option value="chat">เครดิตแชท</option><option value="card">เครดิตเปิดไพ่</option><option value="matching">แมทช์สมพงศ์</option><option value="tier">Tier (วัน)</option><option value="discount">ลดราคา (ตอนจ่ายเงิน)</option>
               </select>
             </div>
             {isDiscount && <div><span style={label}>ชนิดส่วนลด</span><select style={input} value={dkind} onChange={(e) => setDkind(e.target.value as "PERCENT" | "FIXED")}><option value="PERCENT">เปอร์เซ็นต์ %</option><option value="FIXED">จำนวนเงิน ฿</option></select></div>}
-            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : undefined} /></div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
             {isDiscount && <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
@@ -838,7 +875,10 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
                   <td style={td}>{c.startsAt ? new Date(c.startsAt).toLocaleDateString("th-TH") : "—"} → {c.endsAt ? new Date(c.endsAt).toLocaleDateString("th-TH") : "—"}</td>
                   <td style={td}>{c.usedCount}/{c.maxUseTotal ?? "∞"}</td>
                   <td style={{ ...td, color: c.status === "ACTIVE" ? C.good : c.status === "PAUSED" ? C.warn : C.sub }}>{c.status}</td>
-                  <td style={td}>{c.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggle(c)}>{c.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}</td>
+                  <td style={{ ...td, whiteSpace: "nowrap" }}>
+                    {c.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggle(c)}>{c.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}
+                    {c.usedCount === 0 && <button style={{ ...btn(C.warn), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => delCoupon(c)}>ลบ</button>}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -850,14 +890,43 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             <tbody>
               {discRows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีโค้ดส่วนลด</td></tr>}
               {discRows.map((d) => (
-                <tr key={d.id}>
+                <Fragment key={d.id}>
+                <tr>
                   <td style={td}><code>{d.code}</code></td>
                   <td style={td}>{discText(d)}{d.maxUsePerUser ? ` · จำกัด ${d.maxUsePerUser}/คน` : ""}</td>
                   <td style={td}>{d.startsAt ? new Date(d.startsAt).toLocaleDateString("th-TH") : "—"} → {d.endsAt ? new Date(d.endsAt).toLocaleDateString("th-TH") : "—"}</td>
-                  <td style={td}>{d.usedCount}/{d.maxUseTotal ?? "∞"}</td>
+                  <td style={td}>{d.usedCount}/{d.maxUseTotal ?? "∞"} ครั้ง · {d.distinctUsers} คน</td>
                   <td style={{ ...td, color: d.status === "ACTIVE" ? C.good : d.status === "PAUSED" ? C.warn : C.sub }}>{d.status}</td>
-                  <td style={td}>{d.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggleDisc(d)}>{d.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}</td>
+                  <td style={{ ...td, whiteSpace: "nowrap" }}>
+                    <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={redBusy && redFor === d.id} onClick={() => viewRedemptions(d)}>{redFor === d.id ? "ซ่อน" : "ดูผู้ใช้"}</button>
+                    {d.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => toggleDisc(d)}>{d.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}
+                    {d.usedCount === 0 && <button style={{ ...btn(C.warn), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => delDisc(d)}>ลบ</button>}
+                  </td>
                 </tr>
+                {redFor === d.id && (
+                  <tr>
+                    <td style={{ ...td, background: C.bg }} colSpan={6}>
+                      {redBusy ? "กำลังโหลด…" : redRows.length === 0 ? "ยังไม่มีใครใช้โค้ดนี้" : (
+                        <div>
+                          <div style={{ ...label, marginBottom: 6 }}>ผู้ใช้โค้ด {d.code} — {new Set(redRows.map((x) => x.userId)).size} คน · {redRows.length} ครั้ง</div>
+                          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                            <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>ผู้ใช้</th><th style={td}>ลดไป</th><th style={td}>เมื่อ</th></tr></thead>
+                            <tbody>
+                              {redRows.map((u, i) => (
+                                <tr key={`${u.userId}-${i}`}>
+                                  <td style={td}>{u.name}</td>
+                                  <td style={td}>{(u.discountSatang / 100).toLocaleString("th-TH")}฿</td>
+                                  <td style={td}>{u.redeemedAt ? new Date(u.redeemedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

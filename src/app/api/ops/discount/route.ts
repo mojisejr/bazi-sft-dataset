@@ -5,7 +5,7 @@
 //   POST { secret, action:"create", ... } → สร้าง | { secret, action:"status", id, status } → พัก/เปิด
 import { z, ZodError } from "zod";
 
-import { listDiscounts, validateCreate, createDiscount, setStatus } from "@/lib/bazi/qi/discount";
+import { listDiscounts, listRedemptions, validateCreate, createDiscount, setStatus, deleteDiscount } from "@/lib/bazi/qi/discount";
 
 export const runtime = "nodejs";
 
@@ -18,6 +18,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   if (!secret || url.searchParams.get("secret") !== secret) return unauthorized();
   try {
+    // ?redemptions=<codeId> → ใครใช้โค้ดนี้บ้าง (รายชื่อ + จำนวนคน)
+    const codeId = url.searchParams.get("redemptions");
+    if (codeId) {
+      const redemptions = await listRedemptions(codeId);
+      const distinctUsers = new Set(redemptions.map((x) => x.userId)).size;
+      return Response.json({ redemptions, distinctUsers }, { status: 200 });
+    }
     return Response.json({ discounts: await listDiscounts() }, { status: 200 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "discount list error" }, { status: 500 });
@@ -44,6 +51,13 @@ export async function POST(request: Request) {
       if (!id || !status) return Response.json({ error: "id + status required" }, { status: 400 });
       const ok = await setStatus(id, status);
       if (!ok) return Response.json({ error: "unknown id" }, { status: 404 });
+      return Response.json({ ok: true, discounts: await listDiscounts() }, { status: 200 });
+    }
+    if (body.action === "delete") {
+      const id = typeof body.id === "string" ? body.id : "";
+      if (!id) return Response.json({ error: "id required" }, { status: 400 });
+      const del = await deleteDiscount(id);
+      if (!del.ok) return Response.json({ error: "delete failed", reason: del.reason }, { status: 409 });
       return Response.json({ ok: true, discounts: await listDiscounts() }, { status: 200 });
     }
     // default = create
