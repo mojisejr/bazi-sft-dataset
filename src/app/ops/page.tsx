@@ -4,7 +4,7 @@
 // ใช้ง่าย: ใส่ secret ครั้งเดียว → ค้น/ดู user ทุกคน → แก้วัน-เวลาเกิด, เติม/หัก QI, เปลี่ยนแพ็กเกจ/สิทธิ์
 // กด Save = ยิงเข้า DB ตรงผ่าน endpoint /api/ops/* และ /api/profile/admin, /api/qi/admin-adjust
 // (ทุกอัน secret-gated ด้วย OPS_ADMIN_SECRET — หน้านี้ไม่มีข้อมูลจนกว่าจะใส่ secret ถูก).
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 
 type UserRow = {
   anonId: string;
@@ -709,8 +709,9 @@ type CouponRow = {
 type DiscountRow = {
   id: string; code: string; kind: "PERCENT" | "FIXED"; value: number; maxDiscountSatang: number | null;
   startsAt: string | null; endsAt: string | null; maxUseTotal: number | null; maxUsePerUser: number | null;
-  usedCount: number; status: string; createdAt: string;
+  usedCount: number; distinctUsers: number; status: string; createdAt: string;
 };
+type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null };
 type RewardKind = "qi" | "chat" | "card" | "tier" | "discount";
 
 function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
@@ -729,6 +730,10 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
   const [endsAt, setEndsAt] = useState("");
   const [maxUseTotal, setMaxUseTotal] = useState("");
   const isDiscount = rewardKind === "discount";
+  // ใครใช้โค้ดส่วนลด (เปิดดูรายคน)
+  const [redFor, setRedFor] = useState<string | null>(null);
+  const [redRows, setRedRows] = useState<RedemptionRow[]>([]);
+  const [redBusy, setRedBusy] = useState(false);
 
   const load = useCallback(async () => {
     if (!secret) return;
@@ -745,6 +750,18 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
   useEffect(() => { if (open) void load(); }, [open, load]);
 
   const resetForm = () => { setCode(""); setAmount(""); setStartsAt(""); setEndsAt(""); setMaxUseTotal(""); setDMaxBaht(""); setMaxUsePerUser(""); };
+
+  // ดู/ปิด "ใครใช้โค้ดนี้บ้าง"
+  const viewRedemptions = async (d: DiscountRow) => {
+    if (redFor === d.id) { setRedFor(null); setRedRows([]); return; }
+    setRedBusy(true);
+    setRedFor(d.id);
+    try {
+      const r = await fetch(`/api/ops/discount?secret=${encodeURIComponent(secret)}&redemptions=${encodeURIComponent(d.id)}`);
+      const j = (await r.json().catch(() => ({}))) as { redemptions?: RedemptionRow[] };
+      setRedRows(r.ok ? (j.redemptions ?? []) : []);
+    } catch { setRedRows([]); } finally { setRedBusy(false); }
+  };
 
   const create = async () => {
     setBusy(true);
@@ -816,7 +833,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
               </select>
             </div>
             {isDiscount && <div><span style={label}>ชนิดส่วนลด</span><select style={input} value={dkind} onChange={(e) => setDkind(e.target.value as "PERCENT" | "FIXED")}><option value="PERCENT">เปอร์เซ็นต์ %</option><option value="FIXED">จำนวนเงิน ฿</option></select></div>}
-            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} /></div>
+            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : undefined} /></div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
             {isDiscount && <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
@@ -850,14 +867,42 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             <tbody>
               {discRows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีโค้ดส่วนลด</td></tr>}
               {discRows.map((d) => (
-                <tr key={d.id}>
+                <Fragment key={d.id}>
+                <tr>
                   <td style={td}><code>{d.code}</code></td>
                   <td style={td}>{discText(d)}{d.maxUsePerUser ? ` · จำกัด ${d.maxUsePerUser}/คน` : ""}</td>
                   <td style={td}>{d.startsAt ? new Date(d.startsAt).toLocaleDateString("th-TH") : "—"} → {d.endsAt ? new Date(d.endsAt).toLocaleDateString("th-TH") : "—"}</td>
-                  <td style={td}>{d.usedCount}/{d.maxUseTotal ?? "∞"}</td>
+                  <td style={td}>{d.usedCount}/{d.maxUseTotal ?? "∞"} ครั้ง · {d.distinctUsers} คน</td>
                   <td style={{ ...td, color: d.status === "ACTIVE" ? C.good : d.status === "PAUSED" ? C.warn : C.sub }}>{d.status}</td>
-                  <td style={td}>{d.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggleDisc(d)}>{d.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}</td>
+                  <td style={{ ...td, whiteSpace: "nowrap" }}>
+                    <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={redBusy && redFor === d.id} onClick={() => viewRedemptions(d)}>{redFor === d.id ? "ซ่อน" : "ดูผู้ใช้"}</button>
+                    {d.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => toggleDisc(d)}>{d.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}
+                  </td>
                 </tr>
+                {redFor === d.id && (
+                  <tr>
+                    <td style={{ ...td, background: C.bg }} colSpan={6}>
+                      {redBusy ? "กำลังโหลด…" : redRows.length === 0 ? "ยังไม่มีใครใช้โค้ดนี้" : (
+                        <div>
+                          <div style={{ ...label, marginBottom: 6 }}>ผู้ใช้โค้ด {d.code} — {new Set(redRows.map((x) => x.userId)).size} คน · {redRows.length} ครั้ง</div>
+                          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                            <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>ผู้ใช้</th><th style={td}>ลดไป</th><th style={td}>เมื่อ</th></tr></thead>
+                            <tbody>
+                              {redRows.map((u, i) => (
+                                <tr key={`${u.userId}-${i}`}>
+                                  <td style={td}>{u.name}</td>
+                                  <td style={td}>{(u.discountSatang / 100).toLocaleString("th-TH")}฿</td>
+                                  <td style={td}>{u.redeemedAt ? new Date(u.redeemedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))}
             </tbody>
           </table>

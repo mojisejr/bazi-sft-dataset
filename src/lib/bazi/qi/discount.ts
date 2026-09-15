@@ -21,7 +21,16 @@ export type OpsDiscount = {
   maxUsePerUser: number | null;
   status: string;
   usedCount: number;
+  distinctUsers: number; // จำนวน "คน" ที่ใช้ (นับ user ไม่ซ้ำ) — ต่างจาก usedCount (จำนวนครั้ง)
   createdAt: string;
+};
+
+// รายการผู้ใช้โค้ด (ใครใช้บ้าง) — โชว์ในหลังบ้าน
+export type DiscountRedemptionRow = {
+  userId: string;
+  name: string; // @name / ชื่อไลน์ / อีเมล / user_id (อย่างใดอย่างหนึ่งที่มี)
+  discountSatang: number;
+  redeemedAt: string | null;
 };
 
 const iso = (d: unknown): string | null => (d ? new Date(d as string).toISOString() : null);
@@ -33,8 +42,10 @@ function rowsOf(r: unknown): Record<string, unknown>[] {
 export async function listDiscounts(): Promise<OpsDiscount[]> {
   const db = createDbClient();
   const r = await db.execute(
-    sql`SELECT id, code, kind, value, max_discount_satang, starts_at, ends_at, max_use_total, max_use_per_user, status, used_count, created_at
-        FROM discount_code ORDER BY created_at DESC LIMIT 300`,
+    sql`SELECT dc.id, dc.code, dc.kind, dc.value, dc.max_discount_satang, dc.starts_at, dc.ends_at,
+               dc.max_use_total, dc.max_use_per_user, dc.status, dc.used_count, dc.created_at,
+               (SELECT COUNT(DISTINCT user_id) FROM discount_redemption WHERE code_id = dc.id) AS distinct_users
+        FROM discount_code dc ORDER BY dc.created_at DESC LIMIT 300`,
   );
   return rowsOf(r).map((x) => ({
     id: String(x.id),
@@ -48,8 +59,33 @@ export async function listDiscounts(): Promise<OpsDiscount[]> {
     maxUsePerUser: x.max_use_per_user == null ? null : Number(x.max_use_per_user),
     status: String(x.status),
     usedCount: Number(x.used_count ?? 0),
+    distinctUsers: Number(x.distinct_users ?? 0),
     createdAt: iso(x.created_at) ?? "",
   }));
+}
+
+/** ใครใช้โค้ดนี้บ้าง — join user/@name เพื่อโชว์ชื่อ (ล่าสุดก่อน). ใช้ในหลังบ้าน /ops. */
+export async function listRedemptions(codeId: string): Promise<DiscountRedemptionRow[]> {
+  const db = createDbClient();
+  const r = await db.execute(
+    sql`SELECT r.user_id, r.discount_satang, r.redeemed_at,
+               u.name AS line_name, u.email, p.display_name
+        FROM discount_redemption r
+        LEFT JOIN "user" u ON u.user_id = r.user_id
+        LEFT JOIN bazi_user_profile p ON p.anon_id = r.user_id
+        WHERE r.code_id = ${codeId}
+        ORDER BY r.redeemed_at DESC LIMIT 500`,
+  );
+  return rowsOf(r).map((x) => {
+    const handle = x.display_name ? `@${String(x.display_name)}` : null;
+    const name = handle ?? (x.line_name ? String(x.line_name) : null) ?? (x.email ? String(x.email) : null) ?? String(x.user_id);
+    return {
+      userId: String(x.user_id),
+      name,
+      discountSatang: Number(x.discount_satang ?? 0),
+      redeemedAt: iso(x.redeemed_at),
+    };
+  });
 }
 
 export type ValidatedDiscount = {
@@ -89,8 +125,9 @@ export function validateCreate(input: Record<string, unknown>): { ok: true; valu
   let maxDiscountSatang: number | null = null;
   if (kind === "PERCENT") {
     value = Math.round(rawValue);
-    // ไม่ให้ลด 100% (FE rules MIN_CHARGE_SATANG กันยอดเป็น 0) — เพดาน 90%
-    if (value < 1 || value > 90) return { ok: false, reason: "ส่วนลดเปอร์เซ็นต์ต้อง 1-90" };
+    // 1-99% (เจ้าของ 2026-09-15): ไม่ให้ 100% เพราะยอดเป็น 0 gateway รับไม่ได้ (FE rules MIN_CHARGE_SATANG
+    // ยังกันยอด < ฿20 ตอน checkout อีกชั้น — % สูงบนแพ็กถูกอาจโดนปฏิเสธ BELOW_MIN)
+    if (value < 1 || value > 99) return { ok: false, reason: "ส่วนลดเปอร์เซ็นต์ต้อง 1-99" };
     const mdb = Number(input.maxDiscountBaht);
     maxDiscountSatang = Number.isFinite(mdb) && mdb > 0 ? Math.round(mdb * 100) : null;
   } else {

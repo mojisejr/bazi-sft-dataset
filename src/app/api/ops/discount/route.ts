@@ -5,7 +5,7 @@
 //   POST { secret, action:"create", ... } → สร้าง | { secret, action:"status", id, status } → พัก/เปิด
 import { z, ZodError } from "zod";
 
-import { listDiscounts, validateCreate, createDiscount, setStatus } from "@/lib/bazi/qi/discount";
+import { listDiscounts, listRedemptions, validateCreate, createDiscount, setStatus } from "@/lib/bazi/qi/discount";
 
 export const runtime = "nodejs";
 
@@ -18,6 +18,13 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   if (!secret || url.searchParams.get("secret") !== secret) return unauthorized();
   try {
+    // ?redemptions=<codeId> → ใครใช้โค้ดนี้บ้าง (รายชื่อ + จำนวนคน)
+    const codeId = url.searchParams.get("redemptions");
+    if (codeId) {
+      const redemptions = await listRedemptions(codeId);
+      const distinctUsers = new Set(redemptions.map((x) => x.userId)).size;
+      return Response.json({ redemptions, distinctUsers }, { status: 200 });
+    }
     return Response.json({ discounts: await listDiscounts() }, { status: 200 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "discount list error" }, { status: 500 });
