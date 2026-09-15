@@ -3,6 +3,8 @@ import { sql } from "drizzle-orm";
 import { createDbClient } from "@/db/client";
 
 export const runtime = "nodejs";
+// query หลายชุด (sequential เพราะ postgres max:1 — parallel จะ hang) + สแกน DB ใหญ่ → ให้เวลามากขึ้น กัน timeout
+export const maxDuration = 30;
 
 /**
  * /api/ops/analytics — สรุปฝั่ง engine สำหรับหน้า analytics /ops (อ่านอย่างเดียว):
