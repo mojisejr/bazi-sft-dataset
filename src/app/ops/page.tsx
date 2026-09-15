@@ -280,6 +280,7 @@ export default function OpsAdminPage() {
               <QiCard user={selected} secret={secret} ledger={ledger} reloadLedger={() => loadLedger(selected.anonId)} onSaved={(qi, m) => { setSelected((s) => (s ? { ...s, qi } : s)); note(true, m); void refreshSelectedFromList(); }} onError={(m) => note(false, m)} />
               <FeatureAccessCard anonId={selected.anonId} secret={secret} status={chatStatus} ledger={ledger} reload={() => { void loadChatStatus(selected.anonId); void loadEntitlements(selected.anonId); }} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
               <EntitlementCard anonId={selected.anonId} secret={secret} entitlements={entitlements} reload={() => loadEntitlements(selected.anonId)} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
+              <UserAttributionCard anonId={selected.anonId} secret={secret} />
             </>
           )}
         </div>
@@ -697,6 +698,128 @@ function EntitlementCard({ anonId, secret, entitlements, reload, onSaved, onErro
         <div style={{ width: 150 }}><label style={label}>วันหมดอายุ (ถ้ามี)</label><input style={input} value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} placeholder="2026-12-31" /></div>
         <button style={btn(C.good)} onClick={save} disabled={saving}>{saving ? "…" : "ให้สิทธิ์ → DB"}</button>
       </div>
+    </div>
+  );
+}
+
+// ── โปรไฟล์รายคน (#3): จ่ายเงิน · คูปองที่ใช้ · เข้ามาทางไหน · ชวน/ถูกชวน (read-only, /api/ops/user-attribution)
+type Attribution = {
+  payments: Array<{ package_code?: string; tier_code?: string; baht?: number | string; method?: string; day?: string }>;
+  discounts: Array<{ code?: string; baht?: number | string; day?: string }>;
+  rewards: Array<{ code?: string; kind?: string; day?: string }>;
+  providers: Array<string | undefined>;
+  referredBy: { id?: string; name?: string | null } | null;
+  referred: { count: number; list: Array<{ id?: string; name?: string | null }> };
+};
+
+const PROVIDER_LABEL: Record<string, string> = { google: "Google", line: "LINE", facebook: "Facebook", apple: "Apple", email: "อีเมล", password: "อีเมล" };
+
+function UserAttributionCard({ anonId, secret }: { anonId: string; secret: string }) {
+  const [data, setData] = useState<Attribution | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true); setErr(""); setData(null);
+    (async () => {
+      try {
+        const r = await fetch(`/api/ops/user-attribution?anonId=${encodeURIComponent(anonId)}`, { headers: { "x-ops-secret": secret } });
+        const j = await r.json();
+        if (!alive) return;
+        if (!r.ok) { setErr(j.error ?? "โหลดไม่สำเร็จ"); return; }
+        setData(j);
+      } catch { if (alive) setErr("เชื่อมต่อไม่ได้"); } finally { if (alive) setLoading(false); }
+    })();
+    return () => { alive = false; };
+  }, [anonId, secret]);
+
+  const row: React.CSSProperties = { background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 8, padding: "8px 11px", fontSize: 13, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" };
+  const sub: React.CSSProperties = { color: C.sub, fontSize: 12, margin: "10px 0 6px", fontWeight: 600 };
+
+  return (
+    <div style={box}>
+      <h2 style={{ fontSize: 15, margin: "0 0 4px" }}>ที่มา & กิจกรรมของผู้ใช้</h2>
+      <p style={{ color: C.sub, fontSize: 12, margin: "0 0 4px" }}>จ่ายเงินอะไร · ใช้คูปองไหน · สมัครเข้ามาทางไหน · ใครชวน / ชวนใครบ้าง (อ่านอย่างเดียว)</p>
+      {loading ? (
+        <p style={{ color: C.sub, fontSize: 13, margin: "8px 0 0" }}>กำลังโหลด…</p>
+      ) : err ? (
+        <p style={{ color: C.danger, fontSize: 13, margin: "8px 0 0" }}>{err}</p>
+      ) : !data ? null : (
+        <>
+          <div style={sub}>เข้ามาทางไหน (การสมัคร)</div>
+          {data.providers.length === 0 ? (
+            <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>—</p>
+          ) : (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {data.providers.map((p, i) => (
+                <span key={`${p}:${i}`} style={{ background: C.inputBg, border: `1px solid ${C.border}`, borderRadius: 999, padding: "3px 10px", fontSize: 12 }}>{PROVIDER_LABEL[String(p ?? "").toLowerCase()] ?? p ?? "?"}</span>
+              ))}
+            </div>
+          )}
+
+          <div style={sub}>จ่ายเงิน ({data.payments.length})</div>
+          {data.payments.length === 0 ? (
+            <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>ยังไม่มีการชำระเงิน</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {data.payments.map((p, i) => (
+                <div key={i} style={row}>
+                  <span style={{ fontWeight: 600 }}>{p.package_code ?? p.tier_code ?? "—"}</span>
+                  <span style={{ color: C.good }}>฿{p.baht}</span>
+                  {p.method ? <span style={{ color: C.sub }}>{p.method}</span> : null}
+                  <span style={{ color: C.sub, marginLeft: "auto" }}>{p.day}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={sub}>คูปองที่ใช้ ({data.discounts.length + data.rewards.length})</div>
+          {data.discounts.length + data.rewards.length === 0 ? (
+            <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>ยังไม่ได้ใช้คูปอง</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {data.discounts.map((d, i) => (
+                <div key={`d${i}`} style={row}>
+                  <span style={{ background: C.accent, color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 11 }}>ส่วนลด</span>
+                  <span style={{ fontWeight: 600 }}>{d.code}</span>
+                  <span style={{ color: C.good }}>−฿{d.baht}</span>
+                  <span style={{ color: C.sub, marginLeft: "auto" }}>{d.day}</span>
+                </div>
+              ))}
+              {data.rewards.map((rw, i) => (
+                <div key={`r${i}`} style={row}>
+                  <span style={{ background: C.warn, color: "#fff", borderRadius: 4, padding: "1px 6px", fontSize: 11 }}>รางวัล</span>
+                  <span style={{ fontWeight: 600 }}>{rw.code}</span>
+                  <span style={{ color: C.sub }}>{rw.kind}</span>
+                  <span style={{ color: C.sub, marginLeft: "auto" }}>{rw.day}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={sub}>คนที่ชวนเขามา (ref)</div>
+          {data.referredBy ? (
+            <div style={row}><span style={{ fontWeight: 600 }}>{data.referredBy.name ?? "(ไม่มีชื่อ)"}</span><span style={{ color: C.sub, fontSize: 11 }}>{data.referredBy.id}</span></div>
+          ) : (
+            <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>—</p>
+          )}
+
+          <div style={sub}>เขาชวนคนอื่น ({data.referred.count})</div>
+          {data.referred.count === 0 ? (
+            <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>ยังไม่ได้ชวนใคร</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {data.referred.list.map((u, i) => (
+                <div key={i} style={row}><span style={{ fontWeight: 600 }}>{u.name ?? "(ไม่มีชื่อ)"}</span><span style={{ color: C.sub, fontSize: 11 }}>{u.id}</span></div>
+              ))}
+              {data.referred.count > data.referred.list.length ? (
+                <p style={{ color: C.sub, fontSize: 12, margin: 0 }}>…และอีก {data.referred.count - data.referred.list.length} คน</p>
+              ) : null}
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
