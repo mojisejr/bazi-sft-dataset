@@ -3625,14 +3625,17 @@ function isAdjustCharUsable(
 
 /** Source7 §5 + เกณฑ์แก้ดวง: เลือก "ธาตุปรับดวง" → ตัวอักษร (ราศีบน/ล่าง) ที่ผ่านเชี่ยงแซ → องค์เทพ+องศา
  *  ถ้าไม่มีตัวอักษรที่ใช้ได้ → fallback เป็นทิศเสริมดวงตามธาตุที่ต้องการ */
-function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
+// เก็บ "องค์เทพคุ้มครอง" แบบมีทั้งชื่อ (deity) และประโยค (line) — rank ด้วยเชี่ยงแซ, dedup ตามชื่อ
+// (แยกจาก buildCustomDeities เพื่อให้ที่อื่นดึง "ชื่อเทพหลัก" ได้โดยพฤติกรรมเดิมไม่เปลี่ยน)
+type GuardianDeityEntry = { deity: string; line: string };
+function collectGuardianDeities(calculatedState: CalculatedStateValue): GuardianDeityEntry[] {
   const tables = parseSource7CustomDeities();
   if (!tables) {
     return [];
   }
   const dmEl = dayMasterElement(calculatedState);
   const adjustElements = resolveDeityAdjustElements(calculatedState);
-  const out: string[] = [];
+  const out: GuardianDeityEntry[] = [];
   const seen = new Set<string>();
 
   for (const element of adjustElements) {
@@ -3682,14 +3685,21 @@ function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
     for (const candidate of candidates) {
       if (!seen.has(candidate.deity)) {
         seen.add(candidate.deity);
-        out.push(candidate.line);
+        out.push({ deity: candidate.deity, line: candidate.line });
       }
     }
   }
 
+  return out;
+}
+
+function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
+  const guardians = collectGuardianDeities(calculatedState);
+  const out = guardians.map((g) => g.line);
+
   // fallback: ไม่มีตัวอักษรเชี่ยงแซดีที่ใช้ได้ → แนะนำทิศเสริมดวงตามธาตุที่ต้องการ
   if (out.length === 0) {
-    for (const element of adjustElements) {
+    for (const element of resolveDeityAdjustElements(calculatedState)) {
       const dir = ELEMENT_DIRECTION_TH_FALLBACK[element];
       if (dir) {
         out.push(fillTemplate("MISC_TEMPLATE_TH", MISC_TEMPLATE_TH, { "ธาตุ": elementLabel(element), "ทิศ": dir }, "noGoodQiFallback"));
@@ -3698,6 +3708,11 @@ function buildCustomDeities(calculatedState: CalculatedStateValue): string[] {
   }
 
   return out;
+}
+
+/** ชื่อ "เทพประจำตัว/องค์คุ้มครองหลัก" ของดวง (องค์ดีที่สุดจากเชี่ยงแซ) — ใช้โชว์ในหน้าดวง (สีมงคล/สิ่งศักดิ์สิทธิ์). */
+export function primaryGuardianDeity(calculatedState: CalculatedStateValue): string | null {
+  return collectGuardianDeities(calculatedState)[0]?.deity ?? null;
 }
 
 /** บล็อก "ดาวสี่ซิ้งประจำดวง" (ตามกิ่งวัน) — ชื่อ/พลัง + 6 ด้าน + สรุป (overlay แก้ได้) */
