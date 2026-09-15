@@ -173,3 +173,13 @@ export async function setStatus(id: string, status: "ACTIVE" | "PAUSED" | "EXPIR
   const r = await db.execute(sql`UPDATE discount_code SET status = ${status} WHERE id = ${id} RETURNING id`);
   return rowsOf(r).length > 0;
 }
+
+/** ลบโค้ดส่วนลด — เฉพาะที่ "ยังไม่ถูกใช้" (used_count = 0) กัน FK discount_redemption + กันลบประวัติ. */
+export async function deleteDiscount(id: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const db = createDbClient();
+  const r = await db.execute(sql`DELETE FROM discount_code WHERE id = ${id} AND used_count = 0 RETURNING id`);
+  if (rowsOf(r).length > 0) return { ok: true };
+  const ex = await db.execute(sql`SELECT used_count FROM discount_code WHERE id = ${id} LIMIT 1`);
+  if (rowsOf(ex).length === 0) return { ok: false, reason: "ไม่พบโค้ด" };
+  return { ok: false, reason: "โค้ดถูกใช้ไปแล้ว ลบไม่ได้ (พักแทนได้)" };
+}

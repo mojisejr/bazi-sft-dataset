@@ -4,7 +4,7 @@
 //   POST { secret, action:"create", ... } → สร้าง | { secret, action:"status", id, status } → พัก/เปิด
 import { z, ZodError } from "zod";
 
-import { listCoupons, validateCreate, createCoupon, setStatus } from "@/lib/bazi/qi/coupon";
+import { listCoupons, validateCreate, createCoupon, setStatus, deleteCoupon } from "@/lib/bazi/qi/coupon";
 
 export const runtime = "nodejs";
 
@@ -43,6 +43,13 @@ export async function POST(request: Request) {
       if (!id || !status) return Response.json({ error: "id + status required" }, { status: 400 });
       const ok = await setStatus(id, status);
       if (!ok) return Response.json({ error: "unknown id" }, { status: 404 });
+      return Response.json({ ok: true, coupons: await listCoupons() }, { status: 200 });
+    }
+    if (body.action === "delete") {
+      const id = typeof body.id === "string" ? body.id : "";
+      if (!id) return Response.json({ error: "id required" }, { status: 400 });
+      const del = await deleteCoupon(id);
+      if (!del.ok) return Response.json({ error: "delete failed", reason: del.reason }, { status: 409 });
       return Response.json({ ok: true, coupons: await listCoupons() }, { status: 200 });
     }
     // default = create

@@ -8,7 +8,7 @@ import { activityCoupon, activityCouponRedemption } from "@/db/schema";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
 import { grantEntitlement } from "@/lib/bazi/qi/entitlements";
 
-export type CouponRewardKind = "qi" | "chat" | "card" | "tier";
+export type CouponRewardKind = "qi" | "chat" | "card" | "matching" | "tier";
 
 export type OpsCoupon = {
   id: string;
@@ -77,7 +77,7 @@ export function validateCreate(input: CreateCouponInput): { ok: true; value: Val
   const code = typeof input.code === "string" ? input.code.trim() : "";
   if (!/^[A-Za-z0-9_-]{2,40}$/.test(code)) return { ok: false, reason: "โค้ดต้องเป็น a-z 0-9 _ - ยาว 2-40 ตัว" };
   const rewardKind = input.rewardKind as CouponRewardKind;
-  if (!["qi", "chat", "card", "tier"].includes(rewardKind)) return { ok: false, reason: "reward ต้องเป็น qi|chat|card|tier" };
+  if (!["qi", "chat", "card", "matching", "tier"].includes(rewardKind)) return { ok: false, reason: "reward ต้องเป็น qi|chat|card|matching|tier" };
 
   let rewardQi = 0;
   let creditCount = 0;
@@ -87,7 +87,7 @@ export function validateCreate(input: CreateCouponInput): { ok: true; value: Val
   if (rewardKind === "qi") {
     if (!Number.isFinite(amount) || amount < 1) return { ok: false, reason: "จำนวน QI ต้อง ≥ 1" };
     rewardQi = amount;
-  } else if (rewardKind === "chat" || rewardKind === "card") {
+  } else if (rewardKind === "chat" || rewardKind === "card" || rewardKind === "matching") {
     if (!Number.isFinite(amount) || amount < 1) return { ok: false, reason: "จำนวนเครดิตต้อง ≥ 1" };
     creditCount = amount;
   } else {
@@ -145,11 +145,26 @@ export async function setStatus(id: string, status: "ACTIVE" | "PAUSED" | "EXPIR
   return res.length > 0;
 }
 
+/** ลบคูปอง — เฉพาะที่ "ยังไม่ถูกใช้" (used_count = 0) กันลบทิ้งประวัติการแลกของคนที่ใช้ไปแล้ว. */
+export async function deleteCoupon(id: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+  const db = createDbClient();
+  const res = await db
+    .delete(activityCoupon)
+    .where(and(eq(activityCoupon.id, id), eq(activityCoupon.usedCount, 0)))
+    .returning({ id: activityCoupon.id });
+  if (res.length > 0) return { ok: true };
+  // ไม่ลบ = ไม่พบ หรือถูกใช้ไปแล้ว
+  const exists = await db.select({ used: activityCoupon.usedCount }).from(activityCoupon).where(eq(activityCoupon.id, id)).limit(1);
+  if (!exists.length) return { ok: false, reason: "ไม่พบคูปอง" };
+  return { ok: false, reason: "คูปองถูกใช้ไปแล้ว ลบไม่ได้ (พักแทนได้)" };
+}
+
 // ── user: แลกโค้ด ───────────────────────────────────────────────────────────────
 function rewardSummary(c: typeof activityCoupon.$inferSelect): string {
   if (c.rewardKind === "qi") return `QI +${c.rewardQi}`;
   if (c.rewardKind === "chat") return `แชท +${c.creditCount} ครั้ง`;
   if (c.rewardKind === "card") return `เปิดไพ่ +${c.creditCount} ครั้ง`;
+  if (c.rewardKind === "matching") return `แมทช์สมพงศ์ +${c.creditCount} ครั้ง`;
   return `${(c.tierSku ?? "").toUpperCase()} ${c.tierDays} วัน`;
 }
 
@@ -199,6 +214,8 @@ export async function redeemCoupon(anonId: string, codeInput: string): Promise<R
       await grantEntitlement(anonId, { type: "credit", kind: "chat_question", credits: c.creditCount });
     } else if (c.rewardKind === "card") {
       await grantEntitlement(anonId, { type: "credit", kind: "card_use", credits: c.creditCount });
+    } else if (c.rewardKind === "matching") {
+      await grantEntitlement(anonId, { type: "credit", kind: "matching_slot", credits: c.creditCount });
     } else {
       await grantEntitlement(anonId, { type: "tier", sku: (c.tierSku as "plus" | "pro") ?? "plus", durationDays: c.tierDays });
     }
