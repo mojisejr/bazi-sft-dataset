@@ -126,7 +126,7 @@ export async function getCredits(anonId: string, kind: CreditKind): Promise<numb
   return rows[0]?.credits ?? 0;
 }
 
-export async function hasEntitlement(anonId: string, kind: "course" | "book", sku: string): Promise<boolean> {
+export async function hasEntitlement(anonId: string, kind: "course" | "book" | "calendar", sku: string): Promise<boolean> {
   const db = createDbClient();
   const rows = await db
     .select({ id: baziEntitlement.id })
@@ -196,7 +196,7 @@ export async function getEntitlementSummary(anonId: string): Promise<Entitlement
   for (const r of rows) {
     if (r.kind === "card_use" || r.kind === "chat_question" || r.kind === "matching_slot") {
       credits[r.kind] = r.credits;
-    } else if (r.kind === "course" || r.kind === "book") {
+    } else if (r.kind === "course" || r.kind === "book" || r.kind === "calendar") {
       owned.push({ kind: r.kind, sku: r.sku });
     } else if (r.kind === "tier") {
       const active = !r.expiresAt || r.expiresAt.getTime() > now;
