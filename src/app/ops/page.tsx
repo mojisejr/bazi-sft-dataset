@@ -707,7 +707,7 @@ function EntitlementCard({ anonId, secret, entitlements, reload, onSaved, onErro
 type CouponRow = {
   id: string; code: string; rewardKind: string; rewardQi: number; creditCount: number;
   tierSku: string | null; tierDays: number; startsAt: string | null; endsAt: string | null;
-  maxUseTotal: number | null; usedCount: number; status: string; createdAt: string;
+  maxUseTotal: number | null; maxUsePerUser: number | null; usedCount: number; status: string; createdAt: string;
 };
 type DiscountRow = {
   id: string; code: string; kind: "PERCENT" | "FIXED"; value: number; maxDiscountSatang: number | null;
@@ -944,7 +944,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
       }
       const r = await fetch("/api/ops/coupon", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret, action: "create", code, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined }),
+        body: JSON.stringify({ secret, action: "create", code, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined }),
       });
       const j = (await r.json().catch(() => ({}))) as { coupons?: CouponRow[]; reason?: string; error?: string };
       if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างไม่สำเร็จ"); return; }
@@ -976,7 +976,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
 
   // ลบคูปอง/โค้ด (เฉพาะที่ยังไม่ถูกใช้ — server กันอีกชั้น)
   const delCoupon = async (c: CouponRow) => {
-    if (!window.confirm(`ลบคูปอง ${c.code}? (ลบไม่ได้ถ้าถูกใช้ไปแล้ว)`)) return;
+    if (!window.confirm(`ลบคูปอง ${c.code}? ${c.usedCount > 0 ? `(ถูกใช้ไป ${c.usedCount} ครั้ง — จะลบประวัติการแลกด้วย)` : ""}`)) return;
     setBusy(true);
     try {
       const r = await fetch("/api/ops/coupon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, action: "delete", id: c.id }) });
@@ -1020,7 +1020,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : undefined} /></div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
-            {isDiscount && <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
+            <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder={isDiscount ? "เว้น=ไม่จำกัด" : "เว้น=1 ครั้ง/คน"} /></div>
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
             <div><span style={label}>หมดอายุ</span><input style={input} type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} /></div>
@@ -1037,11 +1037,11 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
                   <td style={td}><code>{c.code}</code></td>
                   <td style={td}>{rewardText(c)}</td>
                   <td style={td}>{c.startsAt ? new Date(c.startsAt).toLocaleDateString("th-TH") : "—"} → {c.endsAt ? new Date(c.endsAt).toLocaleDateString("th-TH") : "—"}</td>
-                  <td style={td}>{c.usedCount}/{c.maxUseTotal ?? "∞"}</td>
+                  <td style={td}>{c.usedCount}/{c.maxUseTotal ?? "∞"} · {c.maxUsePerUser ?? 1}/คน</td>
                   <td style={{ ...td, color: c.status === "ACTIVE" ? C.good : c.status === "PAUSED" ? C.warn : C.sub }}>{c.status}</td>
                   <td style={{ ...td, whiteSpace: "nowrap" }}>
                     {c.status !== "EXPIRED" && <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => toggle(c)}>{c.status === "ACTIVE" ? "พัก" : "เปิด"}</button>}
-                    {c.usedCount === 0 && <button style={{ ...btn(C.warn), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => delCoupon(c)}>ลบ</button>}
+                    <button style={{ ...btn(C.warn), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => delCoupon(c)}>ลบ</button>
                   </td>
                 </tr>
               ))}

@@ -21,6 +21,7 @@ export type OpsCoupon = {
   startsAt: string | null;
   endsAt: string | null;
   maxUseTotal: number | null;
+  maxUsePerUser: number | null;
   usedCount: number;
   status: string;
   createdAt: string;
@@ -40,6 +41,7 @@ function shape(r: typeof activityCoupon.$inferSelect): OpsCoupon {
     startsAt: iso(r.startsAt),
     endsAt: iso(r.endsAt),
     maxUseTotal: r.maxUseTotal ?? null,
+    maxUsePerUser: r.maxUsePerUser ?? null,
     usedCount: r.usedCount,
     status: r.status,
     createdAt: iso(r.createdAt) ?? "",
@@ -64,6 +66,7 @@ export type ValidatedCoupon = {
   startsAt: Date | null;
   endsAt: Date | null;
   maxUseTotal: number | null;
+  maxUsePerUser: number | null;
 };
 
 function parseDate(v: unknown): Date | null | "invalid" {
@@ -107,8 +110,14 @@ export function validateCreate(input: CreateCouponInput): { ok: true; value: Val
     if (!Number.isFinite(n) || n < 1) return { ok: false, reason: "จำนวนใช้รวมต้อง ≥ 1 หรือเว้นว่าง" };
     maxUseTotal = Math.round(n);
   }
+  let maxUsePerUser: number | null = null;
+  if (input.maxUsePerUser != null && input.maxUsePerUser !== "") {
+    const n = Number(input.maxUsePerUser);
+    if (!Number.isFinite(n) || n < 1) return { ok: false, reason: "จำนวนต่อคนต้อง ≥ 1 หรือเว้นว่าง (=1)" };
+    maxUsePerUser = Math.round(n);
+  }
 
-  return { ok: true, value: { code, rewardKind, rewardQi, creditCount, tierSku, tierDays, startsAt: startsAt || null, endsAt: endsAt || null, maxUseTotal } };
+  return { ok: true, value: { code, rewardKind, rewardQi, creditCount, tierSku, tierDays, startsAt: startsAt || null, endsAt: endsAt || null, maxUseTotal, maxUsePerUser } };
 }
 
 export async function isCodeTaken(code: string): Promise<boolean> {
@@ -133,6 +142,7 @@ export async function createCoupon(v: ValidatedCoupon): Promise<{ ok: true; id: 
       startsAt: v.startsAt,
       endsAt: v.endsAt,
       maxUseTotal: v.maxUseTotal,
+      maxUsePerUser: v.maxUsePerUser,
       status: "ACTIVE",
     })
     .returning({ id: activityCoupon.id });
@@ -146,17 +156,15 @@ export async function setStatus(id: string, status: "ACTIVE" | "PAUSED" | "EXPIR
 }
 
 /** ลบคูปอง — เฉพาะที่ "ยังไม่ถูกใช้" (used_count = 0) กันลบทิ้งประวัติการแลกของคนที่ใช้ไปแล้ว. */
+/** ลบคูปองรางวัล — ลบประวัติการแลก (redemption) ด้วย (cascade) เพื่อให้ลบได้แม้ถูกใช้ไปแล้ว
+ *  (คูปองรางวัลเป็นการแจก ไม่ผูกใบเสร็จเงินเหมือน discount — ลบทิ้งได้ตามที่แอดมินสั่ง). */
 export async function deleteCoupon(id: string): Promise<{ ok: true } | { ok: false; reason: string }> {
   const db = createDbClient();
-  const res = await db
-    .delete(activityCoupon)
-    .where(and(eq(activityCoupon.id, id), eq(activityCoupon.usedCount, 0)))
-    .returning({ id: activityCoupon.id });
-  if (res.length > 0) return { ok: true };
-  // ไม่ลบ = ไม่พบ หรือถูกใช้ไปแล้ว
-  const exists = await db.select({ used: activityCoupon.usedCount }).from(activityCoupon).where(eq(activityCoupon.id, id)).limit(1);
+  const exists = await db.select({ id: activityCoupon.id }).from(activityCoupon).where(eq(activityCoupon.id, id)).limit(1);
   if (!exists.length) return { ok: false, reason: "ไม่พบคูปอง" };
-  return { ok: false, reason: "คูปองถูกใช้ไปแล้ว ลบไม่ได้ (พักแทนได้)" };
+  await db.delete(activityCouponRedemption).where(eq(activityCouponRedemption.couponId, id));
+  await db.delete(activityCoupon).where(eq(activityCoupon.id, id));
+  return { ok: true };
 }
 
 // ── user: แลกโค้ด ───────────────────────────────────────────────────────────────
@@ -184,13 +192,19 @@ export async function redeemCoupon(anonId: string, codeInput: string): Promise<R
   if (c.startsAt && new Date(c.startsAt).getTime() > now) return { ok: false, reason: "WINDOW" };
   if (c.endsAt && new Date(c.endsAt).getTime() <= now) return { ok: false, reason: "WINDOW" };
 
-  // 1) latch กันซ้ำต่อบัญชี (UNIQUE coupon_id+anon_id) — ยังไม่มอบรางวัล
+  // 1) จำกัดต่อคน: นับที่คนนี้เคยแลกคูปองนี้ (max_use_per_user; null = 1 = พฤติกรรมเดิม 1/บัญชี)
+  //    ไม่มี UNIQUE แล้ว (0053) → นับเอง. race แข่งกันเองสูงสุดเกิน 1 (ยอมรับได้; maxUseTotal กันรวมอีกชั้น)
+  const perUserLimit = c.maxUsePerUser ?? 1;
+  const mine = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(activityCouponRedemption)
+    .where(and(eq(activityCouponRedemption.couponId, c.id), eq(activityCouponRedemption.anonId, anonId)));
+  if ((mine[0]?.n ?? 0) >= perUserLimit) return { ok: false, reason: "ALREADY" };
+
   const claimed = await db
     .insert(activityCouponRedemption)
     .values({ couponId: c.id, anonId, rewardSummary: rewardSummary(c) })
-    .onConflictDoNothing()
     .returning({ id: activityCouponRedemption.id });
-  if (!claimed.length) return { ok: false, reason: "ALREADY" };
   const redemptionId = claimed[0].id;
 
   // 2) จองเพดานรวม (conditional) — ถ้าเต็ม/ปิด ย้อน latch

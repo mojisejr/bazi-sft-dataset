@@ -1254,6 +1254,8 @@ export const activityCoupon = pgTable(
     endsAt: timestamp("ends_at", { withTimezone: true }),
     /** เพดานใช้รวมทั้งหมด (null = ไม่จำกัด) — กันเกินด้วย conditional UPDATE ที่ used_count */
     maxUseTotal: integer("max_use_total"),
+    /** จำกัดต่อคน (null = 1 = พฤติกรรมเดิม 1 คูปอง/บัญชี) — นับฝั่งโค้ด redeemCoupon. ดู 0053 */
+    maxUsePerUser: integer("max_use_per_user"),
     usedCount: integer("used_count").notNull().default(0),
     /** 'ACTIVE' | 'PAUSED' | 'EXPIRED' */
     status: text("status").notNull().default("ACTIVE"),
@@ -1263,7 +1265,8 @@ export const activityCoupon = pgTable(
 );
 export type SelectActivityCoupon = typeof activityCoupon.$inferSelect;
 
-/** กันผู้ใช้รับคูปองเดิมซ้ำ — 1 คูปองต่อ 1 บัญชี (UNIQUE coupon_id+anon_id) */
+/** 1 แถว = 1 การแลก. เดิม UNIQUE(coupon_id, anon_id) ล็อก 1/บัญชี — เอาออก (0053) แล้วจำกัดต่อคนด้วย
+ *  max_use_per_user (นับใน redeemCoupon) เพื่อให้ตั้ง >1 ต่อคนได้. index ธรรมดาไว้ query นับเร็ว. */
 export const activityCouponRedemption = pgTable(
   "activity_coupon_redemption",
   {
@@ -1273,7 +1276,7 @@ export const activityCouponRedemption = pgTable(
     rewardSummary: text("reward_summary").notNull(),
     redeemedAt: timestamp("redeemed_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [uniqueIndex("uq_activity_coupon_redemption").on(t.couponId, t.anonId)],
+  (t) => [index("idx_activity_coupon_redemption_coupon_anon").on(t.couponId, t.anonId)],
 );
 
 /** โควตาฟรีต่อฟีเจอร์รายวัน — periodKey = วันไทย (reset โดยธรรมชาติ), used = ใช้ไปกี่ครั้ง */
