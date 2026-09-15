@@ -69,6 +69,28 @@ export async function GET(request: Request) {
         FROM v2_payment WHERE status = 'APPROVED' AND created_at >= now() - (${days} || ' days')::interval
        GROUP BY 1 ORDER BY baht DESC`);
 
+    // ส่วนลด/คูปองที่ใช้: discount_redemption (฿ ส่วนลดที่ให้ไป + แยกโค้ด) + activity_coupon (คูปองรางวัล)
+    const discountTotal = await db.execute(sql`
+      SELECT COUNT(*)::int AS uses, COALESCE(ROUND(SUM(discount_satang) / 100.0, 2), 0) AS baht, COUNT(DISTINCT user_id)::int AS users
+        FROM discount_redemption WHERE redeemed_at >= now() - (${days} || ' days')::interval`);
+    const discountByCode = await db.execute(sql`
+      SELECT dc.code, COUNT(*)::int AS uses, ROUND(SUM(r.discount_satang) / 100.0, 2) AS baht
+        FROM discount_redemption r JOIN discount_code dc ON dc.id = r.code_id
+       WHERE r.redeemed_at >= now() - (${days} || ' days')::interval
+       GROUP BY dc.code ORDER BY baht DESC`);
+    const rewardRedeemed = await db.execute(sql`
+      SELECT COUNT(*)::int AS uses, COUNT(DISTINCT anon_id)::int AS users
+        FROM activity_coupon_redemption WHERE redeemed_at >= now() - (${days} || ' days')::interval`);
+
+    // กดแชร์อะไรกี่คน: share_snapshot (tag = แชร์อะไร, user_id = คน)
+    const shareTotal = await db.execute(sql`
+      SELECT COUNT(*)::int AS shares, COUNT(DISTINCT user_id)::int AS users
+        FROM share_snapshot WHERE created_at >= now() - (${days} || ' days')::interval`);
+    const shareByTag = await db.execute(sql`
+      SELECT COALESCE(NULLIF(tag, ''), '—') AS tag, COUNT(*)::int AS shares, COUNT(DISTINCT user_id)::int AS users
+        FROM share_snapshot WHERE created_at >= now() - (${days} || ' days')::interval
+       GROUP BY 1 ORDER BY shares DESC`);
+
     // QI economy (เดิม): รวม qi_delta แยกหมวดของ reason
     const qi = await db.execute(sql`
       SELECT split_part(reason, ':', 2) AS category, COUNT(*)::int AS txns,
@@ -94,6 +116,11 @@ export async function GET(request: Request) {
         dau: { total: (rowsOf(dauTotal)[0] as { users?: number })?.users ?? 0, byDay: rowsOf(dauByDay) },
         features: rowsOf(features),
         revenue: { total: rowsOf(revTotal)[0] ?? { orders: 0, baht: 0 }, byDay: rowsOf(revByDay), byPackage: rowsOf(revByPackage) },
+        coupons: {
+          discount: { total: rowsOf(discountTotal)[0] ?? { uses: 0, baht: 0, users: 0 }, byCode: rowsOf(discountByCode) },
+          reward: rowsOf(rewardRedeemed)[0] ?? { uses: 0, users: 0 },
+        },
+        shares: { total: rowsOf(shareTotal)[0] ?? { shares: 0, users: 0 }, byTag: rowsOf(shareByTag) },
         qiEconomy: rowsOf(qi),
         chat: { byPersona: rowsOf(chatByPersona), topTopics: rowsOf(chatTopTopics) },
       },

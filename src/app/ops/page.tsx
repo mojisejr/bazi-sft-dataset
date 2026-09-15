@@ -722,6 +722,8 @@ type Analytics = {
   dau: { total: number; byDay: { day: string; users: number }[] };
   features: { feature: string; uses: number; users: number }[];
   revenue: { total: { orders: number; baht: number }; byDay: { day: string; orders: number; baht: number }[]; byPackage: { package_code: string; orders: number; baht: number }[] };
+  coupons: { discount: { total: { uses: number; baht: number; users: number }; byCode: { code: string; uses: number; baht: number }[] }; reward: { uses: number; users: number } };
+  shares: { total: { shares: number; users: number }; byTag: { tag: string; shares: number; users: number }[] };
   chat: { topTopics: { topic_id: string; replies: number }[]; byPersona: { persona: string; replies: number }[] };
 };
 
@@ -776,6 +778,8 @@ function AnalyticsPanel({ secret }: { secret: string }) {
                 {stat(`ผู้ใช้ไม่ซ้ำ (${data.days} วัน)`, `${data.dau.total.toLocaleString("th-TH")} คน`)}
                 {stat(`รายรับ (${data.days} วัน)`, baht(data.revenue.total.baht))}
                 {stat("ออเดอร์ที่จ่ายสำเร็จ", `${data.revenue.total.orders.toLocaleString("th-TH")}`)}
+                {stat("ส่วนลดที่ให้ไป", baht(data.coupons.discount.total.baht))}
+                {stat("กดแชร์", `${data.shares.total.shares.toLocaleString("th-TH")} ครั้ง · ${data.shares.total.users} คน`)}
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
@@ -819,6 +823,51 @@ function AnalyticsPanel({ secret }: { secret: string }) {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+
+              {/* ส่วนลด/คูปองที่ใช้ · กดแชร์อะไร · แชทแนวไหน */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+                {/* ส่วนลด/คูปอง */}
+                <div>
+                  <p style={{ ...label, marginBottom: 4 }}>ส่วนลด/คูปองที่ใช้ — ให้ส่วนลด {baht(data.coupons.discount.total.baht)} · {data.coupons.discount.total.uses} ครั้ง · คูปองรางวัลแลก {data.coupons.reward.uses} ครั้ง</p>
+                  <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                    <thead><tr><th style={th}>โค้ดส่วนลด</th><th style={{ ...th, textAlign: "right" }}>ครั้ง</th><th style={{ ...th, textAlign: "right" }}>ลดไป(฿)</th></tr></thead>
+                    <tbody>
+                      {data.coupons.discount.byCode.length === 0 && <tr><td style={td} colSpan={3}>ยังไม่มีการใช้โค้ดส่วนลด</td></tr>}
+                      {data.coupons.discount.byCode.map((c) => (
+                        <tr key={c.code}><td style={td}><code>{c.code}</code></td><td style={{ ...td, textAlign: "right" }}>{c.uses}</td><td style={{ ...td, textAlign: "right" }}>{baht(c.baht)}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* กดแชร์อะไร */}
+                <div>
+                  <p style={{ ...label, marginBottom: 4 }}>กดแชร์อะไร (กี่ครั้ง · กี่คน)</p>
+                  <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                    <thead><tr><th style={th}>แชร์</th><th style={{ ...th, textAlign: "right" }}>ครั้ง</th><th style={{ ...th, textAlign: "right" }}>คน</th></tr></thead>
+                    <tbody>
+                      {data.shares.byTag.length === 0 && <tr><td style={td} colSpan={3}>ยังไม่มีการแชร์</td></tr>}
+                      {data.shares.byTag.map((s) => (
+                        <tr key={s.tag}><td style={td}>{s.tag}</td><td style={{ ...td, textAlign: "right" }}>{s.shares}</td><td style={{ ...td, textAlign: "right" }}>{s.users}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* แชทแนวไหน (persona) */}
+                <div>
+                  <p style={{ ...label, marginBottom: 4 }}>แชทแนวไหน (เพอร์โซนา)</p>
+                  <table style={{ borderCollapse: "collapse", width: "100%" }}>
+                    <thead><tr><th style={th}>เพอร์โซนา</th><th style={{ ...th, textAlign: "right" }}>ครั้ง</th></tr></thead>
+                    <tbody>
+                      {data.chat.byPersona.length === 0 && <tr><td style={td} colSpan={2}>ยังไม่มีแชท</td></tr>}
+                      {data.chat.byPersona.map((p) => (
+                        <tr key={p.persona}><td style={td}>{p.persona === "mu" ? "เสี่ยวมู่ (ชาย)" : p.persona === "mi" ? "เสี่ยวมี่ (หญิง)" : p.persona}</td><td style={{ ...td, textAlign: "right" }}>{p.replies.toLocaleString("th-TH")}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
