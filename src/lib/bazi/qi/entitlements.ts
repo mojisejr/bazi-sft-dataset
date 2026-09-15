@@ -12,7 +12,7 @@ import { createDbClient } from "@/db/client";
 import { baziEntitlement } from "@/db/schema";
 import type { EntitlementGrant } from "@/lib/bazi/qi/catalog";
 
-export type CreditKind = "card_use" | "chat_question" | "matching_slot";
+export type CreditKind = "card_use" | "chat_question" | "matching_slot" | "phone_reading" | "honeycomb_reading";
 export type Tier = "free" | "plus" | "pro";
 
 /**
@@ -189,7 +189,7 @@ export async function getEntitlementSummary(anonId: string): Promise<Entitlement
   const rows = await db.select().from(baziEntitlement).where(eq(baziEntitlement.anonId, anonId));
   const now = Date.now();
 
-  const credits: Record<CreditKind, number> = { card_use: 0, chat_question: 0, matching_slot: 0 };
+  const credits: Record<CreditKind, number> = { card_use: 0, chat_question: 0, matching_slot: 0, phone_reading: 0, honeycomb_reading: 0 };
   const owned: Array<{ kind: string; sku: string }> = [];
   let tier: Tier = "free";
 
