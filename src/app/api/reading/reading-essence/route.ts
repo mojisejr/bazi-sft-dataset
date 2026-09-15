@@ -12,6 +12,7 @@ import { getNewdataMap } from "@/lib/bazi/newdata.server";
 import { extractChartFacts } from "@/lib/bazi/newdata-lookup";
 import { resolveChapterBoxes } from "@/lib/bazi/chapter-newdata-map";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import { primaryGuardianDeity } from "@/lib/bazi/topic-knowledge";
 
 export const runtime = "nodejs";
 
@@ -63,7 +64,8 @@ export async function POST(request: Request) {
         if (b?.body && b?.title?.includes("ระวัง")) cautions.push(b.body.trim());
       }
     }
-    const deity = chap("guardian_deities")[0]?.title?.trim() || null;
+    // เทพประจำตัว = ชื่อองค์คุ้มครองหลักของดวง (ไม่ใช่ชื่อกล่อง "องค์เทพคุ้มครองดวงชะตา")
+    const deity = primaryGuardianDeity(state);
 
     return Response.json({ prediction, cautions: cautions.slice(0, 4), deity }, { status: 200 });
   } catch (error) {
