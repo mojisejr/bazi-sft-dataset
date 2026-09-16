@@ -903,6 +903,36 @@ export function matchAnnualYears(
 }
 
 /**
+ * เดือนจรปัจจุบัน — สะท้อน "ปีจรปัจจุบัน" (matchAnnualYears) แต่ระดับเดือน (ผู้ใช้/ซินแส 2026-09-16: "อ่านให้ถึง
+ * เดือนจร"). ก้าน/กิ่งเดือนจรส่งเข้ามา (ผู้เรียกคำนวณจาก pillarsForDate ของวันนี้) → ธาตุก้านเดือนเทียบดิถี(บทบาท)
+ * + เชี่ยงแซของกิ่งเดือนต่อดิถี + ชง/ฮะ/ให้ร้าย กับกิ่งวัน. เป็นข้อเท็จจริง (ให้ AI/หน้าจอขยายเป็นคำทำนายต่อ).
+ */
+export function matchMonthLuck(
+  facts: ChartFacts,
+  monthStem: string,
+  monthBranch: string,
+  label: string,
+): NewdataBlock | null {
+  const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
+  const dayBranch = facts.pillars.find((p) => p.position === "day")?.branch;
+  const stemElEn = STEM_TO_ELEMENT[monthStem as keyof typeof STEM_TO_ELEMENT];
+  if (!dayEl || !dayBranch || !stemElEn) return null;
+  const role = RELATION_ROLE_TH[elementRelationKey(dayEl, stemElEn)] ?? "";
+  const qi = resolveDisplayTwelveQiStage(facts.dayMaster, monthBranch);
+  const flags = [
+    pairIn(CLASH_PAIRS, monthBranch, dayBranch) ? ` · ชง (冲) กับหลักวัน (${monthBranch}-${dayBranch})` : "",
+    pairIn(SIX_COMBINATION_PAIRS, monthBranch, dayBranch) ? ` · ฮะ (六合) กับหลักวัน (${monthBranch}-${dayBranch})` : "",
+    pairIn(HARM_PAIRS, monthBranch, dayBranch) ? ` · ให้ร้าย (害) กับหลักวัน (${monthBranch}-${dayBranch})` : "",
+  ].join("");
+  return {
+    group: "month_luck",
+    itemKey: `${monthStem}${monthBranch}`,
+    label,
+    text: `ก้านเดือนธาตุ${EN_TO_TH_ELEMENT[stemElEn] ?? ""} เป็น${role} → ${qi}${flags}`,
+  };
+}
+
+/**
  * บท 15 · ทำบุญเสริมดวง — ธาตุดิถี × กำลัง → ธาตุที่ควรทำบุญ → คำทำบุญรายธาตุ (group merit_by_element)
  * คืน 1 ก้อนต่อธาตุที่แนะนำ (1-2 ธาตุ)
  */
