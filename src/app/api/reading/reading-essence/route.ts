@@ -9,7 +9,8 @@ import { ZodError } from "zod";
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
 import { getNewdataMap } from "@/lib/bazi/newdata.server";
-import { extractChartFacts } from "@/lib/bazi/newdata-lookup";
+import { extractChartFacts, matchAnnualYears, matchMonthLuck } from "@/lib/bazi/newdata-lookup";
+import { pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
 import { resolveChapterBoxes } from "@/lib/bazi/chapter-newdata-map";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { primaryGuardianDeity } from "@/lib/bazi/topic-knowledge";
@@ -70,7 +71,32 @@ export async function POST(request: Request) {
     // เทพประจำตัว = ชื่อองค์คุ้มครองหลักของดวง (ไม่ใช่ชื่อกล่อง "องค์เทพคุ้มครองดวงชะตา")
     const deity = primaryGuardianDeity(state);
 
-    return Response.json({ prediction, cautions: cautions.slice(0, 4), deity }, { status: 200 });
+    // จังหวะปัจจุบัน (ผู้ใช้/ซินแส 2026-09-16 "อ่านให้ถึง ปีจร/เดือนจร") — วัยจรอยู่ใน Life Path แล้ว, เติมปีจร+เดือนจร
+    // ปีจร: บล็อก "ปีจรปัจจุบัน" จาก matchAnnualYears (ปีตาม พ.ศ. ไทย). เดือนจร: ก้าน/กิ่งเดือนของวันนี้ (pillarsForDate)
+    // เทียบดิถี. ทั้งคู่เป็นข้อเท็จจริงก้าน-กิ่ง+เชี่ยงแซ (หน้าจอ/AI ขยายต่อได้) — ไม่ต้องพึ่ง newdata seed.
+    const bkkToday = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }); // YYYY-MM-DD (CE)
+    const [ty, tm, td] = bkkToday.split("-").map(Number);
+    const annual = matchAnnualYears(facts, ty);
+    const yearNow = annual[0] ?? null; // บล็อกแรก = "ปีจรปัจจุบัน"
+    let monthNow: { label: string; text: string } | null = null;
+    try {
+      const { monthPillar } = pillarsForDate(ty, tm, td);
+      const mk = matchMonthLuck(
+        facts,
+        monthPillar.stem,
+        monthPillar.branch,
+        `เดือนจรปัจจุบัน ${monthPillar.stem}${monthPillar.branch} (${bkkToday})`,
+      );
+      if (mk) monthNow = { label: mk.label ?? "", text: mk.text ?? "" };
+    } catch {
+      /* คำนวณเดือนจรล้ม → ข้าม (ปีจรยังอยู่) */
+    }
+    const luck = {
+      year: yearNow ? { label: yearNow.label ?? "", text: yearNow.text ?? "" } : null,
+      month: monthNow,
+    };
+
+    return Response.json({ prediction, cautions: cautions.slice(0, 4), deity, luck }, { status: 200 });
   } catch (error) {
     if (error instanceof ZodError) {
       return Response.json({ error: "ข้อมูลวันเกิดไม่ถูกต้อง", details: error.issues }, { status: 400 });
