@@ -28,6 +28,9 @@ vi.mock("@/lib/bazi/manifest/ledger", () => ({
 const grantEntitlement = vi.fn(() => Promise.resolve());
 vi.mock("@/lib/bazi/qi/entitlements", () => ({
   grantEntitlement: (...args: unknown[]) => grantEntitlement(...(args as [])),
+  // spendQi เช็ค isFeatureUnlimited ก่อนหักแต้ม (engine.ts:90) — mock ต้อง export ด้วย ไม่งั้น throw
+  // "No isFeatureUnlimited export". false = ไม่ใช่ฟีเจอร์ไม่จำกัด → เดินเส้นหักแต้ม/grant ตามที่เทสวัด
+  isFeatureUnlimited: () => Promise.resolve(false),
 }));
 
 // ── claim table in-memory (แทน bazi_qi_claim) ────────────────────────────
