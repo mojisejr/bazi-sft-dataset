@@ -147,6 +147,9 @@ const SAMPLE_CHAT_RESULT = {
     },
     calculatedState: SAMPLE_CALCULATED_STATE,
   },
+  // result type ต้องมี latestUserMessage (buildOpenWebUiExecutionContext อ่าน result.latestUserMessage?.content) —
+  // เดิม fixture ขาดฟิลด์นี้ ทำให้ tsc แดง (แต่ runtime ผ่านเพราะ optional). เติมให้ตรง type.
+  latestUserMessage: { role: "user", content: "ช่วยดูดวงการเงินให้หน่อย" },
 } as const;
 
 const SAMPLE_RAW_INPUT = {
@@ -255,7 +258,7 @@ describe("buildOpenWebUiExecutionContext", () => {
 
   test("emits missingFields and null truth packet when extraction is incomplete", async () => {
     const executionContext = await buildOpenWebUiExecutionContext({
-      result: { baziConsult: null },
+      result: { baziConsult: null, latestUserMessage: { role: "user" as const, content: "เรื่องความรักเป็นยังไงบ้าง" } },
       triage: triage({
         topicId: "love_partner",
         intent: "love",
