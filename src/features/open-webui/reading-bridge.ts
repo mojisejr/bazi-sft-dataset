@@ -15,6 +15,8 @@ import { type OpenWebUiIntentClassification } from "@/features/open-webui/triage
 import { type CalculatedStateValue, type RawInputValue } from "@/lib/bazi/schema-types";
 import { type TriageTimeframe } from "@/features/open-webui/triage";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
+import { buildAlmanacDay } from "@/lib/bazi/almanac/almanac-engine";
+import { type LuckyHour } from "@/lib/bazi/almanac/types";
 import { getGeminiApiKey } from "@/lib/env";
 
 type Intent = OpenWebUiIntentClassification["intent"];
@@ -118,6 +120,73 @@ export function isGoodDayQuestion(message?: string | null): boolean {
   return typeof message === "string" && GOOD_DAY_RE.test(message);
 }
 
+// คำถามที่ต้องการ "จังหวะเจาะจง" ระดับวัน/เวลา ไม่ใช่ภาพรวมช่วงวัย — การตัดสินใจ, ควรทำเมื่อไหร่, ช่วง
+// อีกเดือนสองเดือน, ปรึกษาเรื่องที่ต้องเลือก ฯลฯ. เมื่อมีดวงเกิดครบ + ระบบมีปฏิทินเฉพาะบุคคล ต้อง ground
+// ด้วยวันจริง (流日) + ยามมงคล (時辰) แทนการตอบเป็น "ช่วงอายุ" กว้าง ๆ.
+const DECISION_TIMING_RE =
+  /ตัดสินใจ|ควร|เมื่อไหร่|เมื่อไร|ตอนไหน|ช่วงไหน|วันไหน|เดือนไหน|กี่โมง|เวลาไหน|ยามไหน|อีก.?เดือน|เดือนหน้า|เร็ว ?ๆ นี้|ปรึกษา|ลงทุน|เริ่ม|เซ็น|เปิด(ร้าน|บริษัท|กิจการ)|ย้าย|ลาออก|เปลี่ยนงาน|สมัคร|นัด|คุย|เจรจา|จะเอายังไง|ควรทำ|ควรไป|ควรเริ่ม|เหมาะ(จะ)?/;
+
+// Sub-year timeframes the triage flags → ต้องการวันจริง (ปฏิทินส่วนตัวมีอยู่แล้ว).
+const SUB_YEAR_TF: ReadonlySet<TriageTimeframe> = new Set<TriageTimeframe>(["today", "tomorrow", "this_month"]);
+
+export function needsPersonalDayCalendar(
+  message?: string | null,
+  timeframe?: TriageTimeframe | null,
+): boolean {
+  if (isGoodDayQuestion(message)) {
+    return true;
+  }
+  if (timeframe != null && SUB_YEAR_TF.has(timeframe)) {
+    return true;
+  }
+  return typeof message === "string" && DECISION_TIMING_RE.test(message);
+}
+
+// หัวข้อเสริมที่คำถามพ่วงมาบ่อย (คดีความ/ฤกษ์งานสำคัญ) — สี/ทิศ และ องค์เทพ/สิ่งที่ควรไหว้.
+// ตรวจแยกเพื่อ "ดึงผลอ่านหัวข้อนั้นมาจริง" แทนที่จะให้ LLM เดาธาตุเอง (multi-topic grounding).
+const COLORS_DIR_RE = /สี(อะไร|มงคล|เสื้อ|รถ|กระเป๋า|เสริม)?|ทิศ(ไหน|มงคล|ทาง)?|ใส่ชุด|แต่งตัว|แต่งกาย/;
+const DEITY_RE = /ไหว้|บูชา|องค์เทพ|เทพ|สิ่งศักดิ์สิทธิ์|ขอพร|สิ่งยึดเหนี่ยว|ไหว้พระ/;
+export function isColorsDirQuestion(message?: string | null): boolean {
+  return typeof message === "string" && COLORS_DIR_RE.test(message);
+}
+export function isDeityQuestion(message?: string | null): boolean {
+  return typeof message === "string" && DEITY_RE.test(message);
+}
+
+// ยาม (時辰) → ช่วงเวลาไทย เพื่อให้แชทพูดได้ว่า เช้า/สาย/บ่าย/เย็น/ค่ำ/ดึก + เวลาเป็นโมง
+function dayPeriodLabel(range: string): string {
+  const startHour = Number((range.split("-")[0] ?? "").split(":")[0]);
+  if (!Number.isFinite(startHour)) {
+    return "";
+  }
+  if (startHour >= 5 && startHour < 9) return "เช้า";
+  if (startHour >= 9 && startHour < 11) return "สาย";
+  if (startHour >= 11 && startHour < 16) return "บ่าย";
+  if (startHour >= 16 && startHour < 19) return "เย็น";
+  if (startHour >= 19 && startHour < 23) return "ค่ำ";
+  return "ดึก";
+}
+
+// ยามมงคล (黃道) ของวันหนึ่ง จากปฏิทินฤกษ์ — เดียวกับที่หน้าปฏิทินใช้. คืน 2-3 ยามเด่นเป็นข้อความ.
+function renderLuckyHours(dateISO: string): string {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(dateISO);
+  if (!m) {
+    return "";
+  }
+  let hours: LuckyHour[];
+  try {
+    hours = buildAlmanacDay(Number(m[1]), Number(m[2]), Number(m[3])).luckyHours ?? [];
+  } catch {
+    return "";
+  }
+  // เอาแค่ช่วงเวลา + โมง ให้อ่านง่าย — ไม่ใส่ชื่อยาม/คำจีน (ผู้ใช้อ่านแล้วงง)
+  const parts = hours.slice(0, 3).map((h) => {
+    const period = dayPeriodLabel(h.range);
+    return `${period ? `${period} ` : ""}${h.range} น.`;
+  });
+  return parts.join(", ");
+}
+
 type ManVsDayDay = {
   date?: string;
   dayOfMonth?: number;
@@ -127,43 +196,69 @@ type ManVsDayDay = {
   grade?: string | null;
 };
 
-// Good-day seam: ground บนปฏิทินเฉพาะบุคคล (/api/bazi/man-vs-day โหมดเดือน) — ตัวเดียวกับที่หน้าปฏิทินใช้.
-// คืน top 5 วันคะแนนสูงสุดของ "เดือนนี้" เป็น prose ให้ LLM ตอบเป็นวันจริง; "" = ไม่มีข้อมูล → ตกไปทางเดิม.
-async function fetchGoodDaysThisMonth(
+// Personal-calendar seam: ground บนปฏิทินเฉพาะบุคคล (/api/bazi/man-vs-day โหมดเดือน) — ตัวเดียวกับที่
+// หน้าปฏิทินใช้. หน้าต่าง 2 เดือน (เดือนนี้ + เดือนหน้า เผื่อคำถาม "อีกเดือนสองเดือน"), คืน top วันคะแนนสูงสุด
+// พร้อม "ยามมงคล (時辰)" ของแต่ละวัน เพื่อให้ LLM ฟันธงได้ถึงระดับวันจริง + เช้า/สาย/บ่าย/เย็น/ค่ำ/ดึก.
+// "" = ไม่มีข้อมูล → ตกไปทางเดิม.
+async function fetchOneMonthTopDays(
   origin: string,
-  { rawInput }: { rawInput: RawInputValue },
-): Promise<string> {
+  rawInput: RawInputValue,
+  month: string,
+): Promise<ManVsDayDay[]> {
   try {
-    const now = new Date();
-    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const res = await fetch(`${origin}/api/bazi/man-vs-day`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ person: rawInput, month }),
     });
     if (!res.ok) {
-      return "";
+      return [];
     }
     const json = (await res.json()) as { days?: ManVsDayDay[] };
-    const days = Array.isArray(json.days) ? json.days : [];
-    const top = days
+    return Array.isArray(json.days) ? json.days : [];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchPersonalDayCalendar(
+  origin: string,
+  { rawInput }: { rawInput: RawInputValue },
+): Promise<string> {
+  const now = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const months = [
+    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`,
+    `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`,
+  ];
+
+  const perMonth = await Promise.all(months.map((month) => fetchOneMonthTopDays(origin, rawInput, month)));
+  const sections: string[] = [];
+
+  for (let i = 0; i < months.length; i += 1) {
+    const top = perMonth[i]
       .filter((d) => typeof d.overallPercent === "number")
       .sort((a, b) => (b.overallPercent as number) - (a.overallPercent as number))
-      .slice(0, 5);
+      .slice(0, i === 0 ? 5 : 3); // เดือนนี้เอา 5, เดือนหน้าเอา 3
     if (!top.length) {
-      return "";
+      continue;
     }
-    const lines = top.map(
-      (d) => `- ${d.date ?? d.dayOfMonth}${d.weekday ? ` (${d.weekday})` : ""}${d.dayGanzhi ? ` ${d.dayGanzhi}` : ""}: เหมาะ ${d.overallPercent}%${d.grade ? ` เกรด ${d.grade}` : ""}`,
-    );
-    return [
-      `วันดีที่สุดในเดือนนี้ (${month}) จากปฏิทินดวงเฉพาะบุคคล เรียงจากคะแนนสูงสุด:`,
-      ...lines,
-      "ให้แนะนำวันเหล่านี้เป็นวันจริงได้เลย (นี่คือ 流日 เฉพาะบุคคล ไม่ใช่การเดา).",
-    ].join("\n");
-  } catch {
+    const lines = top.map((d) => {
+      const hours = typeof d.date === "string" ? renderLuckyHours(d.date) : "";
+      return `- ${d.date ?? d.dayOfMonth}${d.weekday ? ` (${d.weekday})` : ""}${d.dayGanzhi ? ` ${d.dayGanzhi}` : ""}: เหมาะ ${d.overallPercent}%${d.grade ? ` เกรด ${d.grade}` : ""}${hours ? ` · ยามมงคล: ${hours}` : ""}`;
+    });
+    sections.push([`เดือน ${months[i]}${i === 0 ? " (เดือนนี้)" : " (เดือนหน้า)"} — วันเด่นเรียงจากคะแนนสูงสุด:`, ...lines].join("\n"));
+  }
+
+  if (!sections.length) {
     return "";
   }
+
+  return [
+    "ปฏิทินดวงเฉพาะบุคคล (流日 + ยามมงคล 時辰 จริง ไม่ใช่การเดา) — ใช้ฟันธงวันจริงและช่วงเวลาในวันได้เลย:",
+    ...sections,
+    "ตอบเจาะจงได้ถึงระดับวัน + ยาม (เช้า/สาย/บ่าย/เย็น/ค่ำ/ดึก พร้อมเวลาเป็นโมง). อย่าตอบกว้างเป็นแค่ 'ช่วงอายุ' เมื่อมีข้อมูลนี้แล้ว.",
+  ].join("\n\n");
 }
 
 type NewdataChapter = {
@@ -272,21 +367,15 @@ async function fetchTopicReading(
   return null;
 }
 
-// Dual-seam grounded reading. Picks newdata (natal) vs turning_points (time) per the plan, with
-// graceful degradation. Returns prose, or null on total failure (caller uses the truth packet).
-export async function fetchGroundedReading(
+// Ground ONE topic via the dual-seam plan (newdata natal vs turning_points time), with graceful
+// degradation. Returns prose or null. This is the single-topic primitive the compound path reuses.
+async function groundOneTopic(
   origin: string,
-  { topicId, timeframe, rawInput, calculatedState, message }: GroundArgs,
+  topicId: string,
+  timeframe: TriageTimeframe | null | undefined,
+  rawInput: RawInputValue,
+  calculatedState?: CalculatedStateValue | null,
 ): Promise<string | null> {
-  // คำถาม "วันไหนดี/วันมงคล" → ตอบด้วยวันจริงจากปฏิทิน (man-vs-day) แทนการเลี่ยงไปพูดวัยจร/ปีจร
-  if (isGoodDayQuestion(message)) {
-    const goodDays = await fetchGoodDaysThisMonth(origin, { rawInput });
-    if (goodDays) {
-      return goodDays;
-    }
-    // ไม่มีข้อมูลวันดี → ตกไปใช้ seam ปกติ
-  }
-
   const plan = resolveGroundingPlan(topicId, timeframe);
   if (!plan) {
     return null;
@@ -303,4 +392,91 @@ export async function fetchGroundedReading(
 
   // Time seam: ground on the turning_points topic reading (liuNian forecast + ปีชง + วัยจร).
   return fetchTopicReading(origin, { topicId: plan.topicId, rawInput, calculatedState });
+}
+
+function trimSection(text: string, max = 800): string {
+  return text.length <= max ? text : `${text.slice(0, max).trimEnd()} …`;
+}
+
+// Compound grounding: a question that pairs the main topic with สี/ทิศ (colors_directions) และ/หรือ
+// องค์เทพ-การไหว้ (guardian_deities) — เช่น "ขึ้นศาลชนะไหม ไหว้อะไร ใส่สีอะไร". ดึงผลอ่านของแต่ละ
+// หัวข้อ "จาก engine จริง" มาต่อกันเป็นก้อนเดียว เพื่อไม่ให้ LLM เดาสี/ทิศ/องค์เอง.
+async function fetchCompoundReading(
+  origin: string,
+  { topicId, timeframe, rawInput, calculatedState, message }: GroundArgs,
+  flags: { wantCalendar: boolean; wantColors: boolean; wantDeities: boolean },
+): Promise<string | null> {
+  const jobs: Array<Promise<{ head: string; body: string } | null>> = [];
+
+  if (flags.wantCalendar) {
+    jobs.push(
+      fetchPersonalDayCalendar(origin, { rawInput }).then((t) =>
+        t ? { head: "จังหวะวัน/เวลาเฉพาะบุคคล", body: t } : null),
+    );
+  }
+  if (flags.wantColors) {
+    jobs.push(
+      groundOneTopic(origin, "colors_directions", "none", rawInput, calculatedState).then((t) =>
+        t ? { head: "สีมงคล & ทิศมงคล (จากผลอ่าน)", body: trimSection(t) } : null),
+    );
+  }
+  if (flags.wantDeities) {
+    jobs.push(
+      groundOneTopic(origin, "guardian_deities", "none", rawInput, calculatedState).then((t) =>
+        t ? { head: "องค์อุปถัมภ์ / สิ่งที่ควรไหว้ (จากผลอ่าน)", body: trimSection(t) } : null),
+    );
+  }
+
+  // ประเด็นหลักที่ถาม (เช่น โอกาสชนะคดี → turning_points) — ข้ามถ้าซ้ำกับหัวข้อเสริมที่ดึงไปแล้ว
+  // หรือถ้าเป็น turning_points ทั้งที่ดึงปฏิทินวันมาแล้ว (ปฏิทินครอบคลุมจังหวะเวลาอยู่แล้ว).
+  const primary = isValidTopicId(topicId) ? topicId : null;
+  const alreadyCovered = new Set<string>();
+  if (flags.wantColors) alreadyCovered.add("colors_directions");
+  if (flags.wantDeities) alreadyCovered.add("guardian_deities");
+  const skipPrimary =
+    !primary ||
+    alreadyCovered.has(primary) ||
+    (primary === TIME_TOPIC_ID && flags.wantCalendar);
+  if (!skipPrimary && primary) {
+    jobs.push(
+      groundOneTopic(origin, primary, timeframe, rawInput, calculatedState).then((t) =>
+        t ? { head: "ประเด็นหลักที่ถาม (จากผลอ่าน)", body: trimSection(t) } : null),
+    );
+  }
+
+  const parts = (await Promise.all(jobs)).filter((p): p is { head: string; body: string } => p !== null);
+  if (!parts.length) {
+    // ทุกหัวข้อว่าง → ตกไปทาง single-topic ปกติ
+    return groundOneTopic(origin, topicId, timeframe, rawInput, calculatedState);
+  }
+  void message;
+  return parts.map((p) => `【${p.head}】\n${p.body}`).join("\n\n");
+}
+
+// Grounded reading entry point. Single-topic by default; switches to multi-topic (compound) grounding
+// when the question also asks about สี/ทิศ or องค์เทพ/การไหว้. Returns null on total failure.
+export async function fetchGroundedReading(
+  origin: string,
+  args: GroundArgs,
+): Promise<string | null> {
+  const { topicId, timeframe, rawInput, calculatedState, message } = args;
+  const wantCalendar = needsPersonalDayCalendar(message, timeframe);
+  const wantColors = isColorsDirQuestion(message);
+  const wantDeities = isDeityQuestion(message);
+
+  // คำถามพ่วงหลายด้าน (มี สี/ทิศ หรือ องค์เทพ) → multi-topic grounding
+  if (wantColors || wantDeities) {
+    return fetchCompoundReading(origin, args, { wantCalendar, wantColors, wantDeities });
+  }
+
+  // คำถามที่ต้องการจังหวะเจาะจง (วันดี/ตัดสินใจ/เมื่อไหร่/อีกเดือนสองเดือน) → วันจริง + ยามมงคล
+  if (wantCalendar) {
+    const calendar = await fetchPersonalDayCalendar(origin, { rawInput });
+    if (calendar) {
+      return calendar;
+    }
+    // ไม่มีข้อมูลปฏิทิน → ตกไปใช้ seam ปกติ
+  }
+
+  return groundOneTopic(origin, topicId, timeframe, rawInput, calculatedState);
 }

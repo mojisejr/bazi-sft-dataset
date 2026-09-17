@@ -4,9 +4,11 @@ import { type ChatRunnerSuccess, runChatPipeline } from "@/features/open-webui/c
 import {
   generateGeminiAssistantReply,
   isHonestPrecisionReframe,
+  isOtherChartRequest,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
+import { detectRelationship, fetchCompatibilityReading } from "@/features/open-webui/compatibility-bridge";
 import {
   type OpenWebUiIntentClassification,
   type OpenWebUiTriageResult,
@@ -17,9 +19,9 @@ import {
   topicIdToDomain,
 } from "@/features/open-webui/triage";
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
-import { fetchGroundedReading, resolveGroundingTopicId, isGoodDayQuestion, isValidTopicId } from "@/features/open-webui/reading-bridge";
+import { fetchGroundedReading, resolveGroundingTopicId, needsPersonalDayCalendar, isValidTopicId } from "@/features/open-webui/reading-bridge";
 import { resolveStaticKnowledge } from "@/features/open-webui/static-knowledge";
-import { type RawInputValue } from "@/lib/bazi/schema-types";
+import { RawInputSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 import { qiGate } from "@/lib/bazi/qi/quota";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
 import { logMateChatMeta } from "@/lib/bazi/mate-chat-meta";
@@ -72,7 +74,7 @@ export async function buildOpenWebUiExecutionContext(
   const { classification, extraction, topicId, timeframe } = triage;
   // ข้อความผู้ใช้ล่าสุด → ตรวจว่าเป็นคำถาม "วันไหนดี" (ground ด้วย man-vs-day + ปิด honest-precision reframe)
   const message = result.latestUserMessage?.content ?? null;
-  const isGoodDay = isGoodDayQuestion(message);
+  const isGoodDay = needsPersonalDayCalendar(message, timeframe);
   const base = { intentClassification: classification, topicId, timeframe };
 
   if (!classification.requiresBaziConsult) {
@@ -101,6 +103,7 @@ export async function buildOpenWebUiExecutionContext(
     return {
       ...base,
       hasDailyGoodDayData: isGoodDay,
+      chartFacts: formatChartFacts(calculatedState),
       baziConsult: {
         rawInput: extraction.rawInput,
         truthPacket,
@@ -135,6 +138,9 @@ export async function buildOpenWebUiExecutionContext(
     return {
       ...base,
       hasDailyGoodDayData: isGoodDay,
+      chartFacts: result.baziConsult.calculatedState
+        ? formatChartFacts(result.baziConsult.calculatedState)
+        : null,
       baziConsult: {
         rawInput: result.baziConsult.rawInput,
         truthPacket,
@@ -176,6 +182,86 @@ async function groundOrFallback(args: {
     message,
   });
   return grounded ?? fallback;
+}
+
+// สรุปผังดวงจริงแบบสั้น — ให้ LLM อ้างหลักวิชาตอบเรื่องคู่ครอง/บุตร/จังหวะได้โดยไม่กุเสาขึ้นเอง.
+function formatChartFacts(state: BaziStatePayload | null | undefined): string | null {
+  const fp = state?.fourPillars;
+  if (!fp?.year || !fp.month || !fp.day || !fp.hour) {
+    return null;
+  }
+  const gz = (p: { stem: string; branch: string }) => `${p.stem}${p.branch}`;
+  const dayMaster = state?.dayMaster ?? fp.day.stem;
+  const hourHidden = fp.hour.hiddenStems?.length
+    ? ` (ราศีแฝงในเสายาม: ${fp.hour.hiddenStems.join("")})`
+    : "";
+  return [
+    "ผังดวงจริง (อ้างหลักวิชาได้ ห้ามกุเสาใหม่):",
+    `- เสาสี่: ปี ${gz(fp.year)} · เดือน ${gz(fp.month)} · วัน ${gz(fp.day)} · ยาม ${gz(fp.hour)}`,
+    `- ดิถี(日主)=${dayMaster}; วิมานคู่ครอง(日支)=${fp.day.branch}; วิมานบุตร(時柱)=${gz(fp.hour)}${hourHidden}`,
+  ].join("\n");
+}
+
+// เพศตรงข้ามของผู้ใช้ (เดาให้ personB เมื่อไม่ได้ระบุ — เพศแทบไม่กระทบการเทียบเสาในดวงคู่).
+function oppositeGender(gender: string): string {
+  return /ชาย|male|ผู้ชาย/i.test(gender) ? "หญิง" : "ชาย";
+}
+
+// ดูดวงคู่/สมพงศ์ในแชต: ผู้ใช้ให้วันเกิดอีกฝ่ายมา → คำนวณ 2 ดวงจริงผ่าน pair engine แล้ว ground.
+// คืน null เมื่อทำไม่ได้ (ไม่เข้าเงื่อนไข/สกัดวันเกิดอีกฝ่ายไม่ได้/engine ล้ม) → caller ใช้ flow ปกติ (guard เดิม).
+async function tryCompatibilityContext(args: {
+  result: ChatRunnerSuccess;
+  triage: OpenWebUiTriageResult;
+  origin?: string | null;
+  message: string;
+}): Promise<OpenWebUiGeminiExecutionContext | null> {
+  const { result, triage, origin, message } = args;
+  const personA = result.baziConsult?.rawInput ?? null;
+  if (!origin || !personA || !isOtherChartRequest(message)) {
+    return null;
+  }
+
+  // สกัดวันเกิด "อีกฝ่าย" จากข้อความ โดยไม่ seed โปรไฟล์ผู้ใช้ → extraction = ของอีกฝ่ายล้วน
+  let partnerFields: { birthDate: string | null; birthTime: string | null; gender: string | null; province: string | null };
+  try {
+    const partnerTriage = await runOpenWebUiTriage(result);
+    partnerFields = partnerTriage.extraction.fields;
+  } catch {
+    return null;
+  }
+  if (!partnerFields.birthDate) {
+    return null; // ไม่มีวันเกิดอีกฝ่ายที่ชัดเจน → ปล่อยให้ guard เดิมจัดการ
+  }
+
+  const partnerTimeAssumed = !partnerFields.birthTime;
+  let personB: RawInputValue;
+  try {
+    personB = RawInputSchema.parse({
+      birthDate: partnerFields.birthDate,
+      birthTime: partnerFields.birthTime ?? "12:00",
+      gender: partnerFields.gender ?? oppositeGender(personA.gender),
+      province: partnerFields.province ?? personA.province,
+    });
+  } catch {
+    return null;
+  }
+
+  const relationship = detectRelationship(message);
+  const reading = await fetchCompatibilityReading(origin, { personA, personB, relationship, partnerTimeAssumed });
+  if (!reading) {
+    return null;
+  }
+
+  return {
+    intentClassification: triage.classification,
+    topicId: triage.topicId,
+    timeframe: triage.timeframe,
+    hasCompatibilityData: true,
+    chartFacts: result.baziConsult?.calculatedState
+      ? formatChartFacts(result.baziConsult.calculatedState)
+      : null,
+    baziConsult: { rawInput: personA, truthPacket: reading },
+  };
 }
 
 // Glass Box (Track B1): assemble the observability trace from data the pipeline already produced —
@@ -292,12 +378,14 @@ export async function POST(req: Request) {
       calculatedState = await calculateBaziStateFromRawInput(triage.extraction.rawInput);
     }
 
-    const executionContext = await buildOpenWebUiExecutionContext({
-      result,
-      triage,
-      calculatedState,
-      origin,
-    });
+    const executionContext =
+      (await tryCompatibilityContext({ result, triage, origin, message: result.latestUserMessage.content })) ??
+      (await buildOpenWebUiExecutionContext({
+        result,
+        triage,
+        calculatedState,
+        origin,
+      }));
 
     // ความรู้เสริม fix จากซินแส (เช่น ฮวงจุ้ยกระเป๋าตังค์) — แนบเมื่อคำถามเข้า keyword
     executionContext.staticKnowledge = await resolveStaticKnowledge(result.latestUserMessage.content);

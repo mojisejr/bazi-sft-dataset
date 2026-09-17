@@ -6,6 +6,8 @@ import {
   DEFAULT_OPEN_WEBUI_GEMINI_MODEL,
   generateGeminiAssistantReply,
   getOpenWebUiGeminiConfig,
+  isCrisisMessage,
+  isOtherChartRequest,
   MUMATE_PERSONA_INSTRUCTION,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
@@ -179,7 +181,7 @@ describe("buildOpenWebUiGeminiPromptPayload", () => {
 });
 
 describe("buildOpenWebUiGeminiPromptPayload — Phase 3 verdict + token discipline", () => {
-  test("off_topic routes a polite refusal, not a normal answer", () => {
+  test("off_topic redirects to sibling tools instead of a dead refusal", () => {
     const payload = buildOpenWebUiGeminiPromptPayload({
       ...readyChatInput,
       executionContext: {
@@ -191,7 +193,10 @@ describe("buildOpenWebUiGeminiPromptPayload — Phase 3 verdict + token discipli
     });
 
     expect(payload.userPrompt).toContain("Consult mode: off_topic_refusal.");
-    expect(payload.userPrompt).toContain("ไม่เกี่ยวกับการดูดวง");
+    // No longer a flat "ช่วยไม่ได้" refusal — it routes to the app's other tools.
+    expect(payload.userPrompt).toContain("เปิดไพ่");
+    expect(payload.userPrompt).toContain("เบอร์มงคล");
+    expect(payload.userPrompt).toContain("ห้ามปฏิเสธแบบตัดจบ");
     expect(payload.userPrompt).not.toContain("This request does not require Bazi chart analysis.");
   });
 
@@ -210,7 +215,9 @@ describe("buildOpenWebUiGeminiPromptPayload — Phase 3 verdict + token discipli
     });
 
     expect(payload.userPrompt).toContain("ความแม่นเรื่องเวลา");
-    expect(payload.userPrompt).toContain("ห้ามรับปากความแม่นระดับวัน");
+    expect(payload.userPrompt).toContain("ห้ามรับปากความแม่นรายวัน");
+    // Depth: layers วัยจร → ปีจร → เดือนจร instead of stopping at the life-stage.
+    expect(payload.userPrompt).toContain("เดือนจร");
   });
 
   test("a year-level question does NOT trigger the same-day reframe", () => {
@@ -332,5 +339,79 @@ describe("persona (เสี่ยวมู่/เสี่ยวมี่)", ()
   test("ไม่ระบุ persona → default เสี่ยวมู่", () => {
     const payload = buildOpenWebUiGeminiPromptPayload(readyChatInput);
     expect(payload.systemInstruction).toContain("เสี่ยวมู่");
+  });
+});
+
+describe("crisis / self-harm safety guard", () => {
+  test("isCrisisMessage detects distress signals", () => {
+    expect(isCrisisMessage("ชีวิตผมแย่มาก ควรจบๆมันไป")).toBe(true);
+    expect(isCrisisMessage("ไม่อยากมีชีวิตอยู่แล้ว")).toBe(true);
+    expect(isCrisisMessage("อยากตาย")).toBe(true);
+    expect(isCrisisMessage("ปีนี้จะมีแฟนไหม")).toBe(false);
+  });
+
+  test("a crisis message forces the helpline directive and drops day-precision", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [{ role: "user", content: "ชีวิตผมแย่มาก ควรจบๆมันไป" }] as NormalizedChatMessage[],
+      triageMessages: [{ role: "user", content: "ชีวิตผมแย่มาก ควรจบๆมันไป" }] as NormalizedChatMessage[],
+      latestUserMessage: { role: "user", content: "ชีวิตผมแย่มาก ควรจบๆมันไป" },
+      executionContext: {
+        intentClassification: { intent: "general_reading", requiresBaziConsult: true, confidence: 0.8 },
+        topicId: "turning_points",
+        timeframe: "this_month",
+        hasDailyGoodDayData: true, // even with calendar data attached, crisis must suppress it
+        baziConsult: null,
+      },
+    });
+
+    expect(payload.userPrompt).toContain("ภาวะเปราะบาง");
+    expect(payload.userPrompt).toContain("1323");
+    // day/period precision instructions must NOT fire during a crisis
+    expect(payload.userPrompt).not.toContain("ฟันธงเจาะจงถึง");
+    expect(payload.userPrompt).not.toContain("ความแม่นเรื่องเวลา");
+  });
+});
+
+describe("chartFacts injection (marriage/children answerable from real pillars)", () => {
+  test("injects the chart-facts summary into the consult prompt when present", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        ...sampleExecutionContext,
+        chartFacts: "ผังดวงจริง (อ้างหลักวิชาได้ ห้ามกุเสาใหม่):\n- เสาสี่: ปี 戊辰 · เดือน 甲子 · วัน 癸? · ยาม 丙辰",
+      },
+    });
+    expect(payload.userPrompt).toContain("ผังดวงจริง");
+    expect(payload.userPrompt).toContain("丙辰");
+  });
+
+  test("omits chart-facts cleanly when not provided (no stray 'null')", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: sampleExecutionContext,
+    });
+    expect(payload.userPrompt).not.toContain("ผังดวงจริง");
+    expect(payload.userPrompt).not.toContain("\nnull\n");
+  });
+});
+
+
+describe("compatibility / other-person chart guard", () => {
+  test("isOtherChartRequest fires only when a partner birth-year is given with a compat keyword", () => {
+    expect(isOtherChartRequest("แฟนเกิด 2535 เข้ากันไหม")).toBe(true);
+    expect(isOtherChartRequest("ดวงสมพงศ์เราสองคน แฟนเกิดปี 1992")).toBe(true);
+    expect(isOtherChartRequest("เนื้อคู่ฉันเป็นคนแบบไหน")).toBe(false); // own chart, no other DOB
+    expect(isOtherChartRequest("เข้ากันไหม")).toBe(false); // no birth year
+  });
+
+  test("an other-chart request injects the no-fabrication directive + ดูดวงคู่รัก redirect", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      normalizedMessages: [{ role: "user", content: "แฟนเกิด 5 พ.ค. 2535 เข้ากันไหม" }] as NormalizedChatMessage[],
+      triageMessages: [{ role: "user", content: "แฟนเกิด 5 พ.ค. 2535 เข้ากันไหม" }] as NormalizedChatMessage[],
+      latestUserMessage: { role: "user", content: "แฟนเกิด 5 พ.ค. 2535 เข้ากันไหม" },
+      executionContext: sampleExecutionContext,
+    });
+    expect(payload.userPrompt).toContain("ห้ามอ่าน วิเคราะห์ บรรยาย หรือกุดวง");
+    expect(payload.userPrompt).toContain("ดูดวงคู่รัก");
   });
 });

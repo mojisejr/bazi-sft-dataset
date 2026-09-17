@@ -276,6 +276,8 @@ export function buildOpenWebUiTriagePromptPayload(
       // #6 (2026-09-13): กัน false off_topic — คำถามชีวิตประจำวันสั้น ๆ ยังเป็นการดูดวง อย่าปัดเป็น off_topic
       "IMPORTANT: DEFAULT to one of the 15 reading topics. Use off_topic ONLY when the message is clearly unrelated to fortune-telling (เขียนโค้ด/ข่าว/คณิต/แปลภาษา/ความรู้ทั่วไป).",
       "Short day questions like 'วันนี้ดีไหม' / 'พรุ่งนี้เป็นไง' / 'ช่วงนี้ดวงเป็นยังไง' / 'ดูดวงให้หน่อย' → turning_points (NOT off_topic, NOT chit_chat).",
+      // #7 (2026-09-17): คำถามปลายเปิดเรื่องการตัดสินใจ/วางแผนชีวิต = งานหลักของซินแส อย่าปัดเป็น chit_chat
+      "Open-ended life-decision questions — 'ช่วงนี้ควรทำอะไร' / 'วางแผนยังไงดี' / 'ตัดสินใจยังไงดี' / 'เอายังไงดี' / 'ควรไปต่อหรือพอ' — route to turning_points (or chart_foundation if it is about who they are), NOT chit_chat/off_topic. requiresBaziConsult=true.",
       "'วันนี้ใส่เสื้อสีอะไรดี' / 'สีอะไรมงคล' / 'ควรไปทิศไหน' → colors_directions. 'ควรกินอะไร/ดูแลสุขภาพ' → health.",
       "When unsure between a reading topic and off_topic/chit_chat for a fortune-flavored question, choose the reading topic.",
       "requiresBaziConsult=true for any of the 15 reading topics; false only for off_topic/chit_chat.",

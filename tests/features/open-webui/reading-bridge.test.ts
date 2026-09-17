@@ -14,6 +14,8 @@ const {
   resolveTopicId,
   resolveGroundingTopicId,
   resolveGroundingPlan,
+  needsPersonalDayCalendar,
+  isGoodDayQuestion,
   INTENT_TO_TOPIC,
   isValidTopicId,
 } = await import("@/features/open-webui/reading-bridge");
@@ -236,5 +238,74 @@ describe("fetchGroundedReading — degradation", () => {
     await expect(
       fetchGroundedReading(ORIGIN, { topicId: "chart_foundation", timeframe: "none", rawInput: RAW_INPUT }),
     ).resolves.toBeNull();
+  });
+});
+
+describe("needsPersonalDayCalendar — broaden beyond 'วันไหนดี'", () => {
+  test("still fires for explicit good-day questions", () => {
+    expect(isGoodDayQuestion("เดือนนี้วันไหนดีสุด")).toBe(true);
+    expect(needsPersonalDayCalendar("เดือนนี้วันไหนดีสุด", "this_month")).toBe(true);
+  });
+
+  test("fires for decision/timing questions (no 'วันดี' keyword)", () => {
+    expect(needsPersonalDayCalendar("อีกเดือนสองเดือนจะตัดสินใจย้ายงาน ควรทำตอนไหนดี", "none")).toBe(true);
+    expect(needsPersonalDayCalendar("ควรเซ็นสัญญาเมื่อไหร่", "none")).toBe(true);
+    expect(needsPersonalDayCalendar("จะเอายังไงดีกับเรื่องนี้", "none")).toBe(true);
+  });
+
+  test("fires for sub-year timeframes even without keywords", () => {
+    expect(needsPersonalDayCalendar("ดวงเป็นไง", "today")).toBe(true);
+    expect(needsPersonalDayCalendar("เป็นไงบ้าง", "this_month")).toBe(true);
+  });
+
+  test("does not fire for a broad life-stage question", () => {
+    expect(needsPersonalDayCalendar("ดวงชะตาโดยรวมเป็นยังไง", "period")).toBe(false);
+    expect(needsPersonalDayCalendar("เล่าเรื่องนิสัยฉันหน่อย", "none")).toBe(false);
+  });
+});
+
+describe("fetchGroundedReading — multi-topic (compound) grounding", () => {
+  test("a court-style question grounds colors + deities from the engine, combined with headers", async () => {
+    getGeminiApiKeyMock.mockImplementation(() => { throw new Error("no key"); });
+    // Every newdata-reading call returns both chapters; each groundOneTopic finds its own.
+    const fetchMock = vi.fn().mockResolvedValue(
+      newdataResponse(true, [
+        { id: "colors_directions", title: "สีมงคล", hasContent: true, boxes: [{ title: "สี", body: "สีขาว-ทองเสริมดวง" }] },
+        { id: "guardian_deities", title: "องค์อุปถัมภ์", hasContent: true, boxes: [{ title: "ไหว้", body: "ไหว้เจ้าแม่กวนอิม" }] },
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchGroundedReading(ORIGIN, {
+      topicId: "colors_directions", // primary covered by wantColors → not duplicated
+      timeframe: "none",
+      rawInput: RAW_INPUT,
+      message: "พรุ่งนี้ขึ้นศาล ควรใส่สีอะไร ไหว้อะไรดี",
+    });
+
+    expect(result).toContain("สีมงคล & ทิศมงคล (จากผลอ่าน)");
+    expect(result).toContain("สีขาว-ทองเสริมดวง");
+    expect(result).toContain("องค์อุปถัมภ์ / สิ่งที่ควรไหว้ (จากผลอ่าน)");
+    expect(result).toContain("ไหว้เจ้าแม่กวนอิม");
+  });
+
+  test("a plain single-topic question does NOT trigger the compound path", async () => {
+    getGeminiApiKeyMock.mockImplementation(() => { throw new Error("no key"); });
+    const fetchMock = vi.fn().mockResolvedValue(
+      newdataResponse(true, [
+        { id: "love_partner", title: "ความรัก", hasContent: true, boxes: [{ title: "ภาพรวม", body: "เนื้อคู่เป็นคนสุขุม" }] },
+      ]),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await fetchGroundedReading(ORIGIN, {
+      topicId: "love_partner",
+      timeframe: "none",
+      rawInput: RAW_INPUT,
+      message: "ปีนี้จะมีแฟนไหม",
+    });
+
+    expect(result).toBe("ความรัก\n- ภาพรวม: เนื้อคู่เป็นคนสุขุม");
+    expect(result).not.toContain("【");
   });
 });
