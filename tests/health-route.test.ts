@@ -1,4 +1,8 @@
+import path from "node:path";
+
 import { describe, expect, test, vi } from "vitest";
+
+const REPO_ROOT = path.resolve(__dirname, "..");
 
 // The readiness route must run a REAL query through the repo's single DB client factory, not return a
 // constant. Mocking that factory lets the test drive both branches without a database.
@@ -25,7 +29,7 @@ function withEnv<T>(patch: Record<string, string | undefined>, fn: () => Promise
 describe("GET /api/health (mumate-infra-move-001 slice 1)", () => {
   test("in the container: 200 only after `select 1` succeeded and the runtime files are present; legacy fields kept", async () => {
     sqlMock.mockResolvedValueOnce([{ "?column?": 1 }]);
-    await withEnv({ APP_RUNTIME: "container" }, async () => {
+    await withEnv({ APP_RUNTIME: "container", APP_RUNTIME_ROOT: REPO_ROOT }, async () => {
       const { GET } = await import("@/app/api/health/route");
       const res = await GET();
       const body = await res.json();
@@ -46,7 +50,7 @@ describe("GET /api/health (mumate-infra-move-001 slice 1)", () => {
 
   test("outside the container (Vercel): the manifest is not checked and never degrades the status", async () => {
     sqlMock.mockResolvedValueOnce([{ "?column?": 1 }]);
-    await withEnv({ APP_RUNTIME: undefined }, async () => {
+    await withEnv({ APP_RUNTIME: undefined, APP_RUNTIME_ROOT: undefined }, async () => {
       const { GET } = await import("@/app/api/health/route");
       const res = await GET();
       const body = await res.json();
@@ -72,7 +76,7 @@ describe("GET /api/health (mumate-infra-move-001 slice 1)", () => {
       checkRuntimeFiles: () => ({ ok: false, root: "/app", missing: ["knownlage/extracted"] }),
     }));
     try {
-      await withEnv({ APP_RUNTIME: "container" }, async () => {
+      await withEnv({ APP_RUNTIME: "container", APP_RUNTIME_ROOT: "/app" }, async () => {
         const { GET } = await import("@/app/api/health/route");
         const res = await GET();
         const body = await res.json();

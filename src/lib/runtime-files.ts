@@ -1,5 +1,4 @@
-import { existsSync } from "node:fs";
-import path from "node:path";
+import * as nodeFs from "node:fs";
 
 /**
  * Files the SERVER reads from disk at request time, relative to process.cwd() (mumate-infra-move-001 slice 1).
@@ -40,7 +39,24 @@ export type RuntimeFilesReport = {
   missing: string[];
 };
 
-export function checkRuntimeFiles(root: string = process.cwd()): RuntimeFilesReport {
-  const missing = RUNTIME_FILE_MANIFEST.filter((rel) => !existsSync(path.join(root, rel)));
+/**
+ * Three deliberate oddities, all for the build-time file tracer (Vercel, and Next standalone):
+ *   1. `root` is REQUIRED and comes from the caller (container: APP_RUNTIME_ROOT=/app; tests: the repo root) —
+ *      no `process.cwd()` default.
+ *   2. The path is joined by string concatenation, not `path.join`.
+ *   3. `existsSync` is looked up by a computed name, not called as a literal.
+ * The tracer answers `path.join(<non-constant>, …)` AND a literal `existsSync(<non-constant>)` with a
+ * conservative `cwd/**` glob, so the /api/health function carried the whole repository — 307 MB on Vercel
+ * (PR #36 preview, over the 250 MB cap), 322 MB reproduced locally. Each was measured on its own: removing
+ * only path.join → still 321 MB; both removed → 2 MB. At runtime this is exactly fs.existsSync on
+ * `${root}/${rel}`; the Dockerfile copies the tree explicitly, so the container check sees real files.
+ */
+export function checkRuntimeFiles(root: string): RuntimeFilesReport {
+  const base = root.endsWith("/") ? root.slice(0, -1) : root;
+  const missing = RUNTIME_FILE_MANIFEST.filter((rel) => !fileExists(`${base}/${rel}`));
   return { ok: missing.length === 0, root, missing: [...missing] };
 }
+
+const fileExists: (p: string) => boolean = (nodeFs as unknown as Record<string, (p: string) => boolean>)[
+  ["exists", "Sync"].join("")
+];

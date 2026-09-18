@@ -45,11 +45,13 @@ RUN set -eu; mkdir -p /runtime-data/knownlage /runtime-data/src/lib/louise-hay \
 # ── runner ────────────────────────────────────────────────────────────────────────────────────────────────────
 FROM ${BASE} AS runner
 ARG APP_GIT_SHA=unknown
-# APP_RUNTIME=container turns on the runtime-file manifest check in /api/health (it is "not-checked" on Vercel).
+# APP_RUNTIME=container + APP_RUNTIME_ROOT turn on the runtime-file manifest check in /api/health against the
+# standalone root below (it is "not-checked" on Vercel, where neither is set).
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     APP_GIT_SHA=${APP_GIT_SHA} \
     APP_RUNTIME=container \
+    APP_RUNTIME_ROOT=/app \
     HOSTNAME=0.0.0.0 \
     PORT=3000
 WORKDIR /app
