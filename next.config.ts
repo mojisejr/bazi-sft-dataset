@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
 	turbopack: {
 		root: projectRoot,
 	},
+	// Container build only (mumate-infra-move-001 slice 1): the Dockerfile sets NEXT_OUTPUT_STANDALONE=1 so
+	// `next build` emits .next/standalone (server.js + traced node_modules) for `node server.js` in the image.
+	// Deliberately NOT unconditional — the Vercel build keeps exactly the output it has today.
+	output: process.env.NEXT_OUTPUT_STANDALONE === "1" ? "standalone" : undefined,
 	// sharp (native binary หลาย platform ~19MB/ตัว) + @google/genai (~14MB + google-auth)
 	// ถ้าปล่อยให้ bundle เข้า function จะบวมเกินเพดาน Vercel 250MB (เคสจริง divine-cards/images 352MB).
 	// ประกาศเป็น external → โหลดจาก node_modules ตอน runtime แทนการ bundle เข้าทุก route.
