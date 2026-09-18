@@ -1,0 +1,38 @@
+# Nothing that holds a credential or machine-local state may enter the build context.
+.env
+.env.*
+*.testenv-shadowed
+.env.disabled
+# Produced inside the image.
+node_modules
+.next
+out
+coverage
+*.log
+# Repository plumbing, authoring material and tooling the server never reads at runtime.
+.git
+.github
+.githooks
+.claude
+.playwright-mcp
+.vercel
+.DS_Store
+docs
+dev
+example
+memory
+Goal
+tests
+scripts
+drizzle
+*.md
+questions-for-sinsae.md
+# knownlage: only the text the server reads is copied (see Dockerfile "runtime data"); the source documents
+# (docx / xlsx / pdf / images, ~225 MB) are authoring inputs, not runtime files.
+knownlage/**/*.docx
+knownlage/**/*.xlsx
+knownlage/**/*.pdf
+knownlage/**/*.png
+knownlage/**/*.jpg
+knownlage/**/*.jpeg
+knownlage/**/*.py

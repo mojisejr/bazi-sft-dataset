@@ -1,0 +1,25 @@
+name: container-build
+# Proves the image still builds from this revision, is hygienic, and carries every runtime-file manifest entry
+# (mumate-infra-move-001 slice 1). Runs scripts/container-smoke.sh --no-db — the SAME script a developer runs
+# locally. The database / engine / webhook legs need the arena and run locally before a PR is marked ready;
+# CI says so explicitly instead of printing a green it did not earn.
+#
+# Cost discipline: one job, no image push, no registry login.
+# Pushing images is the control room's job (slice 2), not this repo's.
+# MANUAL ONLY (owner decision 2026-09-19): the launch lane must not see this job on its pull requests and CI
+# minutes are paid. Run it from the Actions tab when a container change needs a second machine's proof.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: build + hygiene + runtime-file manifest (no database in CI)
+        run: bash scripts/container-smoke.sh --no-db
