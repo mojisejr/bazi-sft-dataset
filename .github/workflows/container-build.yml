@@ -4,20 +4,11 @@ name: container-build
 # locally. The database / engine / webhook legs need the arena and run locally before a PR is marked ready;
 # CI says so explicitly instead of printing a green it did not earn.
 #
-# Cost discipline: path-filtered to container-relevant files, one job, no image push, no registry login.
+# Cost discipline: one job, no image push, no registry login.
 # Pushing images is the control room's job (slice 2), not this repo's.
+# MANUAL ONLY (owner decision 2026-09-19): the launch lane must not see this job on its pull requests and CI
+# minutes are paid. Run it from the Actions tab when a container change needs a second machine's proof.
 on:
-  pull_request:
-    paths:
-      - Dockerfile
-      - .dockerignore
-      - next.config.ts
-      - package.json
-      - package-lock.json
-      - src/app/api/health/**
-      - src/lib/runtime-files.ts
-      - scripts/container-smoke.sh
-      - .github/workflows/container-build.yml
   workflow_dispatch:
 
 permissions:

@@ -9,10 +9,14 @@ export const dynamic = "force-dynamic";
 // Until this change the route returned four constants, which proved only that Node was up. A container
 // orchestrator routing on that would happily send traffic to an engine whose database is unreachable or
 // whose runtime knowledge files were never copied into the image. Now the route runs a real `select 1`
-// through the same client every API route uses, checks the runtime-file manifest against process.cwd(),
-// and answers 503 when either fails. The original fields are kept so nothing that read them breaks.
-// Nothing about the connection is echoed; the SHA is the build argument, so every running container
-// names the revision it was built from.
+// through the same client every API route uses and answers 503 when it fails. The original fields are
+// kept so nothing that read them breaks. Nothing about the connection is echoed; the SHA is the build
+// argument, so every running container names the revision it was built from.
+//
+// The runtime-file manifest is checked ONLY inside the container (Dockerfile sets APP_RUNTIME=container),
+// where process.cwd() is the standalone root the Dockerfile populated. On Vercel each function carries its
+// own traced files and this route's function does not carry the knowledge tree, so the check would report
+// "missing" for files the real routes do have; there it says "not-checked" and never affects the status.
 export async function GET() {
   const startedAt = Date.now();
   let db: "ok" | "error" = "ok";
@@ -21,8 +25,9 @@ export async function GET() {
   } catch {
     db = "error";
   }
-  const files = checkRuntimeFiles();
-  const healthy = db === "ok" && files.ok;
+  const inContainer = process.env.APP_RUNTIME === "container";
+  const files = inContainer ? checkRuntimeFiles() : null;
+  const healthy = db === "ok" && (files ? files.ok : true);
 
   return Response.json(
     {
@@ -32,8 +37,8 @@ export async function GET() {
       routes: ["/api/health", "/api/bazi/calculate"],
       db,
       dbLatencyMs: Date.now() - startedAt,
-      runtimeFiles: files.ok ? "ok" : "missing",
-      runtimeFilesMissing: files.missing,
+      runtimeFiles: files ? (files.ok ? "ok" : "missing") : "not-checked",
+      runtimeFilesMissing: files ? files.missing : [],
       sha: process.env.APP_GIT_SHA ?? null,
       uptimeSec: Math.round(process.uptime()),
     },
