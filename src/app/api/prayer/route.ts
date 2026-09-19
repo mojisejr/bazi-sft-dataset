@@ -24,11 +24,15 @@ const BirthSchema = z.object({
 });
 
 const BodySchema = z.object({
-  topic: z.enum(["love", "wealth", "career", "health", "study", "fixluck", "general"]),
+  topic: z.enum(["love", "wealth", "career", "health", "study", "fixluck", "general"]).optional(),
   birth: BirthSchema.optional(),
   placeName: z.string().trim().max(120).optional(),
   deity: z.string().trim().max(120).optional(),
   dateTimeLabel: z.string().trim().max(120).optional(),
+  /** โหมดเจาะจงประตู/เทพ (ปุ่มในป๊อปอัพประตู) — อักษรจีนของประตู/เทพ */
+  gates: z.array(z.string().trim().min(1).max(4)).max(4).optional(),
+  gods: z.array(z.string().trim().min(1).max(4)).max(4).optional(),
+  title: z.string().trim().max(120).optional(),
 });
 
 export async function POST(req: Request) {
@@ -46,7 +50,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { topic, birth, placeName, deity, dateTimeLabel } = parsed.data;
+  const { topic, birth, placeName, deity, dateTimeLabel, gates, gods, title } = parsed.data;
 
   // มี birth → หาธาตุเสริมดวง (用神) เพื่อเสริมประตู/เทพให้ตรงดวงเจ้าตัว (พังก็ข้าม ใช้พรตามเรื่องล้วน)
   let fav: ReturnType<typeof favorableElements> = [];
@@ -63,7 +67,16 @@ export async function POST(req: Request) {
     }
   }
 
-  const prayer = buildPrayer({ topic, favorableElements: fav, placeName, deity, dateTimeLabel });
+  const prayer = buildPrayer({
+    topic: topic ?? "general",
+    favorableElements: fav,
+    placeName,
+    deity,
+    dateTimeLabel,
+    gates,
+    gods,
+    title,
+  });
   return Response.json(prayer, {
     headers: { "Cache-Control": "no-store" },
   });

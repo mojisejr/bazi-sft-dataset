@@ -38,6 +38,21 @@ describe("buildPrayer", () => {
     expect(p.text).not.toContain("๔.");
   });
 
+  it("โหมดเจาะจงประตู/เทพ → ใช้ blessing ของประตู+เทพนั้น + คง ward ได้", () => {
+    const p = buildPrayer({ topic: "general", gates: ["開"], gods: ["合"], title: "ขอพรความสัมพันธ์" })
+    expect(p.title).toBe("ขอพรความสัมพันธ์")
+    expect(p.used.gates).toContain("開")
+    expect(p.used.gods).toContain("合")
+    expect(p.text).toContain("คู่บุญคู่บารมี") // blessing ของเทพ 合
+    expect(p.text).toContain("ประตูชีวิตของข้าพเจ้าเปิดกว้าง") // blessing ของประตู 開
+  })
+
+  it("โหมดเจาะจงประตู ward (驚) → ยังสร้างบทพรกันภัยได้ (ไม่ถูกตัดทิ้ง)", () => {
+    const p = buildPrayer({ topic: "general", gates: ["驚"] })
+    expect(p.used.gates).toContain("驚")
+    expect(p.text).toContain("พ้นจากความหวาดกลัว")
+  })
+
   it("ใส่สถานที่/องค์เทพ/วันเวลา ในหัวบท", () => {
     const p = buildPrayer({
       topic: "love",
