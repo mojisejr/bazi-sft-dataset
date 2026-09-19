@@ -14,6 +14,7 @@ import {
   wantsDailyLifestyle,
   wantsDayPicker,
   wantsMonthDayScan,
+  wantsSpecificPersonReading,
 } from "@/lib/louise-hay/grounding-router";
 
 describe("extractPhone", () => {
@@ -43,6 +44,19 @@ describe("wantsDayPicker", () => {
   it("'วันไหนดี' → true", () => expect(wantsDayPicker("แต่งงานวันไหนดี")).toBe(true));
   it("'หาฤกษ์' → true", () => expect(wantsDayPicker("หาฤกษ์เปิดร้าน")).toBe(true));
   it("ถามวันเดียว 'วันนี้ฤกษ์ดีไหม' → false", () => expect(wantsDayPicker("วันนี้ฤกษ์ดีไหม")).toBe(false));
+});
+
+describe("wantsSpecificPersonReading (ความรักเจาะจงคน → ปิดท้ายด้วยไพ่)", () => {
+  it("'คนนี้เค้าชอบเราไหม' → true", () =>
+    expect(wantsSpecificPersonReading("คนนี้เค้าชอบเราไหม")).toBe(true));
+  it("'เขาคิดยังไงกับเรา' → true", () =>
+    expect(wantsSpecificPersonReading("เขาคิดยังไงกับเรากันแน่")).toBe(true));
+  it("'แฟนเก่าจะกลับมาไหม' → true", () =>
+    expect(wantsSpecificPersonReading("แฟนเก่าจะกลับมาไหม")).toBe(true));
+  it("ถามความรักภาพรวม 'เหมาะมีคู่ไหม' (ไม่เจาะจงคน) → false", () =>
+    expect(wantsSpecificPersonReading("ดวงความรักเป็นยังไง เหมาะมีคู่ไหม")).toBe(false));
+  it("คำถามต่อเนื่อง 'ทำไมล่ะ' (ไม่มีคน+ความรู้สึก) → false", () =>
+    expect(wantsSpecificPersonReading("ทำไมล่ะ")).toBe(false));
 });
 
 describe("ageFromBirthDate (อายุจริง ณ วันนี้)", () => {

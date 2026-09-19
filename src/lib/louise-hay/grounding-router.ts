@@ -648,6 +648,53 @@ function groundCard(question: string): GroundingCore {
   };
 }
 
+/**
+ * คำถามความรักที่ "เจาะจงถึงคนใดคนหนึ่ง" (เขาชอบเราไหม / คิดยังไงกับเรา / จะกลับมาไหม / จริงใจไหม) —
+ * พื้นดวงตอบได้แค่ "ภาพรวมความรักของผู้ถาม" ตอบเรื่อง 'คนคนนั้น' เจาะจงไม่ได้ ต้องปิดท้ายด้วยการเสี่ยงทายไพ่.
+ * เงื่อนไข: ต้องมีทั้ง "การอ้างถึงคน" + "คำถามเชิงความรู้สึก/แนวโน้มความสัมพันธ์" พร้อมกัน (กันจับกว้างเกิน).
+ */
+export function wantsSpecificPersonReading(question: string): boolean {
+  const person =
+    /คนนี้|คน ?ๆ ?นี้|ผู้ชายคนนี้|ผู้หญิงคนนี้|คนที่(ชอบ|คุย|แอบ|ปลื้ม|คบ|จีบ|เดต|รู้จัก|หมายตา)|คนคุย|แฟน(เก่า|ใหม่)?|กิ๊ก|สามี|ภรรยา|เขา|เค้า/.test(
+      question,
+    );
+  const feeling =
+    /ชอบ(เรา|ฉัน|ผม|หนู|เค้า|ไหม|มั้ย|รึ|หรือ|ป่าว|ปะ)|รัก(เรา|ฉัน|ผม|หนู|ไหม|มั้ย|จริง|ป่าว)|คิด(ยังไง|ไง|อะไร|ถึงเรา|ดี)|สนใจ(เรา|ไหม|มั้ย)?|จริงใจ|หลอก|นอกใจ|มีคนอื่น|มือที่สาม|จะกลับมา|จะคืนดี|จะคบ|จะเลิก|จะแต่ง|จะไปต่อ|ได้ไปต่อ|เลิกกัน|ห่างเหิน|หายไป|จะเท|หึง|คิดถึงเรา/.test(
+      question,
+    );
+  return person && feeling;
+}
+
+/**
+ * ความรักเจาะจง 'คนใดคนหนึ่ง' — พื้นดวงความรัก (ภาพรวม) + ปิดท้ายด้วยไพ่เสี่ยงทายที่ตอบเจาะจงคนคนนั้น.
+ * ซินแสสั่ง: พื้นดวงไม่ผิด แต่ตอบ 'คนนี้' ไม่ได้ จึงต้อง "ตัดเข้าการเสี่ยงทายด้วยไพ่เป็นการปิดท้าย".
+ */
+async function groundSpecificPersonLove(
+  question: string,
+  birth: LouiseHayBirthInput,
+  now: Date,
+): Promise<GroundingCore | null> {
+  const base = await groundChartFull("love_partner", birth, now);
+  if (!base) return null;
+  const drawn = drawRandom(3);
+  const reading = buildOracleReading([drawn[0], drawn[1], drawn[2]] as const, question);
+  const names = drawn.map((c) => `#${c.no} ${c.name}`).join(", ");
+  const cardBlock =
+    `[ไพ่เสี่ยงทายปิดท้าย — ตอบเจาะจง "คนที่ผู้ใช้ถามถึง"]\nไพ่ที่จั่วได้: ${names}\n${reading.engineProse}`;
+  return {
+    route: "chart",
+    sourceLabel: `${base.sourceLabel} + เสี่ยงทายไพ่`,
+    text: `${base.text}\n\n———\n\n${cardBlock}`,
+    note:
+      (base.note ? `${base.note} ` : "") +
+      "คำถามนี้ถามเจาะจงถึง 'คนใดคนหนึ่ง' (เช่น เขาชอบเราไหม/คิดยังไงกับเรา/จะกลับมาไหม) — " +
+      "พื้นดวงบอกได้แค่ 'ภาพรวมชีวิตรักของผู้ถาม' ตอบเรื่องคนคนนั้นเจาะจงไม่ได้. " +
+      "ให้เล่า 'ภาพรวมความรักจากดวง' ก่อนสั้น ๆ (ตามผลอ่านดวงด้านบน) แล้ว 'ปิดท้าย' ด้วยการเปิดไพ่เสี่ยงทาย " +
+      "เพื่อตอบเจาะจงถึงคนที่ถาม — บอกชื่อไพ่ที่จั่วได้ แล้วฟันธงแนวโน้มของคนคนนี้ให้ชัด. " +
+      "ทำให้ผู้ใช้เห็นเป็น 2 ส่วนต่อเนื่องกัน: ภาพรวมจากดวง แล้วจึงเสี่ยงทายไพ่เป็นคำตอบเจาะจงปิดท้าย.",
+  };
+}
+
 /** ไพ่โหมดเซียน (deck แยกจากออราเคิล) */
 function groundDivine(question: string): GroundingCore {
   const drawn = drawDivine(3);
@@ -1164,6 +1211,26 @@ export async function resolveLouiseHayGrounding(
   if (!classification.date) {
     const rel = parseRelativeDate(question, now);
     if (rel) classification.date = rel;
+  }
+
+  // คำถามความรักเจาะจง 'คนใดคนหนึ่ง' (เขาชอบเราไหม/คิดยังไงกับเรา) → บังคับเส้นทาง:
+  // พื้นดวงความรักภาพรวม + ปิดท้ายด้วยเสี่ยงทายไพ่ (ก่อน route dispatch — กัน classifier จัดไป
+  // chart/offscope/chat แล้วตอบพื้นดวงอย่างเดียวโดยไม่มีไพ่ปิดท้าย ตามที่ซินแสสั่ง)
+  if (!phone && wantsSpecificPersonReading(question)) {
+    if (birth) {
+      try {
+        const g = await groundSpecificPersonLove(question, birth, now);
+        if (g) return withClassify(g);
+      } catch {
+        /* engine ล้ม → ตกไปจั่วไพ่ด้านล่าง */
+      }
+    }
+    return withClassify({
+      ...groundCard(question),
+      note:
+        "คำถามนี้ถามเจาะจงถึงคนใดคนหนึ่ง — ตอบจากไพ่เสี่ยงทายที่จั่วได้ให้เต็มที่ ฟันธงแนวโน้มของคนคนนี้ให้ชัด " +
+        "แล้วชวนอบอุ่นสั้น ๆ ว่า ถ้าผูกวันเกิดที่ปุ่ม 🔮 จะเสริมภาพรวมดวงความรักของคุณให้ลึกขึ้นได้",
+    });
   }
 
   let route: LouiseHayRoute = classification.route;
