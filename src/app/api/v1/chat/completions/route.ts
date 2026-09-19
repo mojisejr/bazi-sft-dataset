@@ -5,9 +5,12 @@ import {
   generateGeminiAssistantReply,
   isHonestPrecisionReframe,
   isOtherChartRequest,
+  wantsSpecificPersonLove,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
+import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
+import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { detectRelationship, fetchCompatibilityReading } from "@/features/open-webui/compatibility-bridge";
 import {
   type OpenWebUiIntentClassification,
@@ -389,6 +392,25 @@ export async function POST(req: Request) {
 
     // ความรู้เสริม fix จากซินแส (เช่น ฮวงจุ้ยกระเป๋าตังค์) — แนบเมื่อคำถามเข้า keyword
     executionContext.staticKnowledge = await resolveStaticKnowledge(result.latestUserMessage.content);
+
+    // ความรักเจาะจง "คนนี้" (ซินแสนุ้ยสั่ง): พื้นดวงตอบภาพรวมได้ แต่ตอบ 'คนคนนั้น' ไม่ได้ → จั่วไพ่เสี่ยงทาย
+    // แนบท้ายผลอ่าน แล้วสั่งให้ปิดท้ายด้วยไพ่ (ไม่ชวนไปเมนูเปิดไพ่). ทำเมื่อมีผลอ่านดวงจริงแนบมาแล้วเท่านั้น.
+    if (
+      wantsSpecificPersonLove(result.latestUserMessage.content) &&
+      !executionContext.hasCompatibilityData &&
+      executionContext.baziConsult?.truthPacket
+    ) {
+      try {
+        const drawn = drawOracle(3);
+        const reading = buildOracleReading([drawn[0], drawn[1], drawn[2]] as const, result.latestUserMessage.content);
+        const names = drawn.map((c) => `#${c.no} ${c.name}`).join(", ");
+        executionContext.baziConsult.truthPacket +=
+          `\n\n———\n\n[ไพ่เสี่ยงทายปิดท้าย — ตอบเจาะจง "คนที่ผู้ใช้ถามถึง"]\nไพ่ที่จั่วได้: ${names}\n${reading.engineProse}`;
+        executionContext.hasDrawnCardData = true;
+      } catch {
+        /* จั่วไพ่/อ่านไพ่พัง → ข้าม (ตอบจากพื้นดวงตามปกติ) */
+      }
+    }
 
     const reply = await generateGeminiAssistantReply(result, { executionContext });
 
