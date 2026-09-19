@@ -66,6 +66,15 @@ export type BuildPrayerInput = {
   dateTimeLabel?: string;
   /** จำกัดจำนวนข้อพร (ค่าเริ่มต้น 5) */
   maxWishes?: number;
+  /**
+   * โหมด "เจาะจงประตู/เทพ" (สำหรับปุ่มในป๊อปอัพประตูของปฏิทิน) — ส่งอักษรจีน (cn) ของประตู/เทพช่องนั้นมา
+   * เช่น gates=["開"], gods=["合"] → สร้างบทจาก blessing ของประตู/เทพนั้นโดยตรง (แทนการเลือกตามหมวด).
+   * ถ้าส่งมา จะคง blessing แบบ ward ไว้ด้วย เพราะผู้ใช้เลือกช่องนั้นเอง.
+   */
+  gates?: string[];
+  gods?: string[];
+  /** override ชื่อบท (โหมดเจาะจง) */
+  title?: string;
 };
 
 export type BuiltPrayer = {
@@ -90,8 +99,10 @@ export function buildPrayer(input: BuildPrayerInput): BuiltPrayer {
   const map = TOPIC_MAP[input.topic] ?? TOPIC_MAP.general;
   const maxWishes = input.maxWishes ?? 5;
 
-  const gates = pick(map.gates, GATE_BY_CN);
-  const gods = pick(map.gods, GOD_BY_CN);
+  // โหมดเจาะจงประตู/เทพ (ปุ่มในป๊อปอัพประตู) — เลือกจาก cn ที่ส่งมา แทนการเลือกตามหมวด
+  const focus = Boolean(input.gates?.length || input.gods?.length);
+  const gates = focus ? pick(input.gates ?? [], GATE_BY_CN) : pick(map.gates, GATE_BY_CN);
+  const gods = focus ? pick(input.gods ?? [], GOD_BY_CN) : pick(map.gods, GOD_BY_CN);
 
   // เสริม "ตามธาตุเสริมดวง": ประตู/เทพด้านบวก (ไม่ใช่ ward) ที่ธาตุตรงกับ用神 และยังไม่ถูกเลือก
   if (fav.length) {
@@ -104,8 +115,9 @@ export function buildPrayer(input: BuildPrayerInput): BuiltPrayer {
     }
   }
 
-  // เรื่องสะเดาะเคราะห์ → คงพรกันภัย (ward) ไว้ได้; เรื่องอื่นตัด ward ทิ้ง (พรควรเป็นด้านบวก)
-  const keepWard = input.topic === "fixluck";
+  // เรื่องสะเดาะเคราะห์ หรือ โหมดเจาะจงประตู → คงพรกันภัย (ward) ไว้ (ผู้ใช้เลือกช่องนั้นเอง);
+  // เรื่องหมวดทั่วไปตัด ward ทิ้ง (พรควรเป็นด้านบวก)
+  const keepWard = focus || input.topic === "fixluck";
   const ordered = [...gates, ...gods].filter((e) => keepWard || !e.ward);
 
   // dedup blessing + จำกัดจำนวนข้อ
@@ -118,7 +130,8 @@ export function buildPrayer(input: BuildPrayerInput): BuiltPrayer {
     if (blessings.length >= maxWishes) break;
   }
 
-  const title = PRAYER_TOPIC_TITLE[input.topic] ?? PRAYER_TOPIC_TITLE.general;
+  const title =
+    input.title ?? (focus ? "คำอธิษฐานเปิดทางมงคล" : PRAYER_TOPIC_TITLE[input.topic] ?? PRAYER_TOPIC_TITLE.general);
 
   // ── ประกอบข้อความ ──
   const header: string[] = [`คำอธิษฐาน${title}`];
