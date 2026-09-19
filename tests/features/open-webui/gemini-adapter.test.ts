@@ -8,6 +8,7 @@ import {
   getOpenWebUiGeminiConfig,
   isCrisisMessage,
   isOtherChartRequest,
+  wantsSpecificPersonLove,
   MUMATE_PERSONA_INSTRUCTION,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
@@ -51,6 +52,45 @@ const sampleExecutionContext: OpenWebUiGeminiExecutionContext = {
     }, null, 2),
   },
 };
+
+describe("wantsSpecificPersonLove (ความรักเจาะจงคน → ปิดท้ายด้วยไพ่)", () => {
+  test("'คนนี้เค้าชอบเราไหม' → true", () => {
+    expect(wantsSpecificPersonLove("คนนี้เค้าชอบเราไหม")).toBe(true);
+  });
+  test("'เขาจะกลับมาไหม' → true", () => {
+    expect(wantsSpecificPersonLove("เขาจะกลับมาหาเราไหม")).toBe(true);
+  });
+  test("ความรักภาพรวม 'ดวงความรักเป็นยังไง' (ไม่เจาะจงคน) → false", () => {
+    expect(wantsSpecificPersonLove("ดวงความรักปีนี้เป็นยังไง")).toBe(false);
+  });
+  test("ดวงคู่ + วันเกิดอีกฝ่าย (compatibility) → false", () => {
+    expect(wantsSpecificPersonLove("เขาเกิด 2535 เข้ากันกับเราไหม")).toBe(false);
+  });
+});
+
+describe("buildOpenWebUiGeminiPromptPayload — ปิดท้ายด้วยไพ่ (hasDrawnCardData)", () => {
+  test("มี hasDrawnCardData → สั่งปิดท้ายด้วยไพ่ที่จั่วให้ และห้ามชวนไปเมนูเปิดไพ่", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      latestUserMessage: { role: "user", content: "คนนี้เค้าชอบเราไหม" },
+      executionContext: {
+        intentClassification: { intent: "love", requiresBaziConsult: true, confidence: 0.9 },
+        topicId: "love_partner",
+        baziConsult: {
+          rawInput: {
+            birthDate: "1995-06-15", birthTime: "14:30", gender: "female",
+            province: "Bangkok", calendarSystem: "solar", timezone: "Asia/Bangkok",
+          },
+          truthPacket: "ความรักภาพรวม...\n\n[ไพ่เสี่ยงทายปิดท้าย] ไพ่ที่จั่วได้: #1 ...",
+        },
+        hasDrawnCardData: true,
+      },
+    });
+    expect(payload.userPrompt).toContain("ปิดท้าย");
+    expect(payload.userPrompt).toContain("ไพ่เสี่ยงทาย");
+    expect(payload.userPrompt).toContain("ห้ามชวน");
+  });
+});
 
 describe("getOpenWebUiGeminiConfig", () => {
   test("uses the default Open WebUI Gemini model when no model override is provided", () => {

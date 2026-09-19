@@ -51,6 +51,20 @@ export function isOtherChartRequest(message?: string | null): boolean {
   return typeof message === "string" && COMPAT_RE.test(message) && BIRTH_YEAR_RE.test(message);
 }
 
+// คำถามความรักที่ "เจาะจงถึงคนใดคนหนึ่ง" (เขาชอบเราไหม/จะกลับมาไหม/คิดยังไงกับเรา) — พื้นดวงตอบได้แค่
+// ภาพรวมชีวิตรักของผู้ถาม ตอบ "คนคนนั้น" เจาะจงไม่ได้ ต้องปิดท้ายด้วยการเสี่ยงทายไพ่ (ซินแสนุ้ยสั่ง).
+// เงื่อนไข: ต้องมีทั้ง "การอ้างถึงคน" + "คำถามเชิงความรู้สึก/แนวโน้มความสัมพันธ์" พร้อมกัน. ต้องไม่ใช่คำถาม
+// ดวงคู่ที่ให้วันเกิดอีกฝ่าย (นั่นเป็นเส้นทาง compatibility คนละแบบ).
+const SPECIFIC_PERSON_RE =
+  /คนนี้|คน ?ๆ ?นี้|ผู้ชายคนนี้|ผู้หญิงคนนี้|คนที่(ชอบ|คุย|แอบ|ปลื้ม|คบ|จีบ|เดต|รู้จัก|หมายตา)|คนคุย|แฟน(เก่า|ใหม่)?|กิ๊ก|สามี|ภรรยา|เขา|เค้า/;
+const PERSON_FEELING_RE =
+  /ชอบ(เรา|ฉัน|ผม|หนู|เค้า|ไหม|มั้ย|รึ|หรือ|ป่าว|ปะ)|รัก(เรา|ฉัน|ผม|หนู|ไหม|มั้ย|จริง|ป่าว)|คิด(ยังไง|ไง|อะไร|ถึงเรา|ดี)|สนใจ(เรา|ไหม|มั้ย)?|จริงใจ|หลอก|นอกใจ|มีคนอื่น|มือที่สาม|จะกลับมา|จะคืนดี|จะคบ|จะเลิก|จะแต่ง|จะไปต่อ|ได้ไปต่อ|เลิกกัน|ห่างเหิน|หายไป|จะเท|หึง|คิดถึงเรา/;
+export function wantsSpecificPersonLove(message?: string | null): boolean {
+  if (typeof message !== "string") return false;
+  if (isOtherChartRequest(message)) return false; // ดวงคู่+วันเกิดอีกฝ่าย = compatibility ไม่ใช่เคสนี้
+  return SPECIFIC_PERSON_RE.test(message) && PERSON_FEELING_RE.test(message);
+}
+
 // Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
 // inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
 export function isHonestPrecisionReframe(
@@ -215,6 +229,11 @@ export type OpenWebUiGeminiExecutionContext = {
    * อ่านดวงคนที่สอง และให้ตอบสมพงศ์จากก้อนที่แนบได้เลย.
    */
   hasCompatibilityData?: boolean;
+  /**
+   * true = คำถามความรักเจาะจง "คนนี้" และได้จั่วไพ่เสี่ยงทายแนบไว้ในผลอ่านแล้ว (ต่อท้าย truthPacket) →
+   * สั่งให้ปิดท้ายคำตอบด้วยไพ่ที่จั่วให้ ไม่ต้องชวนไปเมนูเปิดไพ่ (จั่วให้แล้ว). ซินแสนุ้ยสั่ง.
+   */
+  hasDrawnCardData?: boolean;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -322,6 +341,7 @@ export function buildOpenWebUiGeminiPromptPayload(
   // ภาวะเปราะบาง: ปิดโหมดทำนายวัน/ยาม ไม่ให้ข้อมูลปฏิทินไปกลบการช่วยเหลือ
   const crisis = isCrisisMessage(input.latestUserMessage?.content);
   const hasCompatibilityData = input.executionContext?.hasCompatibilityData ?? false;
+  const hasDrawnCardData = input.executionContext?.hasDrawnCardData ?? false;
   // เจอคำถามดวงคู่ + วันเกิดอีกฝ่าย แต่ "ยังไม่มี" ผลวิเคราะห์คู่จริงแนบมา → กัน LLM มั่วดวงคนที่สอง
   const otherChart = isOtherChartRequest(input.latestUserMessage?.content) && !hasCompatibilityData;
   const hasDailyGoodDayData = rawHasDailyGoodDayData && !crisis;
@@ -356,6 +376,9 @@ export function buildOpenWebUiGeminiPromptPayload(
     userPrompt: [
       hasCompatibilityData
         ? "มีผลวิเคราะห์ดวงคู่/สมพงศ์ (คำนวณ 2 ดวงจริงผ่าน engine) แนบมาในผลอ่านแล้ว — ให้ฟันธงความเข้ากันจากก้อนนั้นได้เลย (เข้ากันแค่ไหน จุดหนุน-จุดปะทะ วิธีปรับเข้าหากัน). ห้ามแต่งเสา/ดวงเพิ่มเอง."
+        : null,
+      hasDrawnCardData
+        ? "คำถามนี้ถามเจาะจงถึง 'คนใดคนหนึ่ง' (เช่น เขาชอบเราไหม/จะกลับมาไหม) — พื้นดวงบอกได้แค่ 'ภาพรวมชีวิตรักของผู้ถาม' ตอบเรื่องคนคนนั้นเจาะจงไม่ได้. ระบบจั่ว 'ไพ่เสี่ยงทาย' มาแนบไว้ท้ายผลอ่านแล้ว. ให้ตอบเป็น 2 ส่วนต่อเนื่อง: (1) เล่าภาพรวมความรักจากดวงสั้น ๆ ก่อน แล้ว (2) 'ปิดท้าย' ด้วยการเปิดไพ่เสี่ยงทายที่จั่วให้ — บอกชื่อไพ่ที่ได้ แล้วฟันธงแนวโน้มของคนคนนี้ให้ชัด. **ห้ามชวนผู้ใช้ไปเมนู 'เปิดไพ่'/'เสี่ยงเซียมซี' เพราะจั่วไพ่ให้แล้วในผลอ่าน** — ใช้ไพ่ก้อนนั้นตอบเลย."
         : null,
       otherChart
         ? "⚠️ ผู้ใช้ให้วันเกิดของอีกฝ่ายมาเพื่อดูดวงคู่/สมพงศ์. แชตนี้มีเฉพาะดวงของผู้ใช้ — **ห้ามอ่าน วิเคราะห์ บรรยาย หรือกุดวง/เสา/ดิถี/นิสัย/ชะตาของอีกฝ่ายเด็ดขาด** (จะเป็นการเดามั่ว). ให้ตอบจากดวงของผู้ใช้ว่าตัวเขาเข้ากับคู่แบบไหน/ควรวางตัวอย่างไร แล้วชวนไปเมนู \"ดูดวงคู่รัก\" เพื่อแมทช์ 2 ดวงจริง (ที่นั่นคำนวณดวงอีกฝ่ายได้จริง)."
