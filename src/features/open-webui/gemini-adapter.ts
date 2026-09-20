@@ -34,6 +34,8 @@ export const OPEN_WEBUI_TOP_P = 0.95;
 // Timeframes finer than the engine's real resolution (year / da-yun). Same-day & monthly questions
 // must be answered as an honest disposition-plus-period trend, never as literal daily precision.
 const SUB_YEAR_TIMEFRAMES = new Set(["today", "tomorrow", "this_month"]);
+// กรอบเวลาที่ถือว่าเป็น "ดวงมีกรอบเวลา" → ตอบตรง ๆ เหมือนเสี่ยงทายประจำวัน (รวมปีจร/เดือนจร)
+const NEAR_TERM_TIMEFRAMES = new Set(["today", "tomorrow", "this_month", "this_year", "next_year"]);
 
 // สัญญาณภาวะเปราะบาง/อยากทำร้ายตัวเอง — ตรวจแบบ deterministic เพื่อ "ปิดโหมดทำนาย" (วันมงคล/ฤกษ์/ตัวเลข)
 // แล้วบังคับให้ตอบเชิงห่วงใย + ให้สายด่วน ไม่ให้ข้อมูลปฏิทิน/ยามไปกลบการช่วยเหลือ.
@@ -234,6 +236,13 @@ export type OpenWebUiGeminiExecutionContext = {
    * สั่งให้ปิดท้ายคำตอบด้วยไพ่ที่จั่วให้ ไม่ต้องชวนไปเมนูเปิดไพ่ (จั่วให้แล้ว). ซินแสนุ้ยสั่ง.
    */
   hasDrawnCardData?: boolean;
+  /**
+   * ผลจั่ว "ไพ่เซียมซีเคี้ยงคุง" 1 ใบ (สถานการณ์/ข้อควรระวัง/คำแนะนำ) — แนบเมื่อ triage route = card_reading
+   * (คำถามที่พื้นดวงตอบไม่ได้: ลี้ลับ/ของหาย/เหตุการณ์เฉพาะจุด/ขอเสี่ยงทาย). เป็นแหล่งความจริงของคำตอบนี้.
+   */
+  cardReading?: string | null;
+  /** true = คำถามนี้ตอบด้วยไพ่เซียมซีเคี้ยงคุง (ไม่ขึ้นดวง) — คู่กับ cardReading. */
+  hasCardReadingData?: boolean;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -342,11 +351,17 @@ export function buildOpenWebUiGeminiPromptPayload(
   const crisis = isCrisisMessage(input.latestUserMessage?.content);
   const hasCompatibilityData = input.executionContext?.hasCompatibilityData ?? false;
   const hasDrawnCardData = input.executionContext?.hasDrawnCardData ?? false;
+  // ไพ่เซียมซีเคี้ยงคุง — คำถามที่พื้นดวงตอบไม่ได้ จั่วไพ่ 1 ใบมาแล้ว ตอบจากไพ่ (ไม่ขึ้นดวง)
+  const cardReading = input.executionContext?.cardReading ?? null;
+  const hasCardReadingData = (input.executionContext?.hasCardReadingData ?? false) && Boolean(cardReading);
   // เจอคำถามดวงคู่ + วันเกิดอีกฝ่าย แต่ "ยังไม่มี" ผลวิเคราะห์คู่จริงแนบมา → กัน LLM มั่วดวงคนที่สอง
-  const otherChart = isOtherChartRequest(input.latestUserMessage?.content) && !hasCompatibilityData;
+  // card_reading จั่วไพ่ตอบแล้ว อย่าให้ guard ดวงคู่มาทับ
+  const otherChart =
+    isOtherChartRequest(input.latestUserMessage?.content) && !hasCompatibilityData && !hasCardReadingData;
   const hasDailyGoodDayData = rawHasDailyGoodDayData && !crisis;
   // มีความรู้เสริมจากซินแสแนบมา = คำถามนี้อยู่ในขอบเขตที่ซินแสให้ตอบ ห้ามปัดเป็น off-topic
-  const isOffTopic = topicId === "off_topic" && !staticKnowledge;
+  // card_reading ตอบด้วยไพ่ ไม่เข้า off-topic/non-bazi-bypass
+  const isOffTopic = topicId === "off_topic" && !staticKnowledge && !hasCardReadingData;
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -362,6 +377,13 @@ export function buildOpenWebUiGeminiPromptPayload(
     !hasDailyGoodDayData &&
     !crisis &&
     isHonestPrecisionReframe(intentClassification?.requiresBaziConsult, timeframe);
+  // ซินแสนุ้ย: พื้นดวงที่ "มีกรอบเวลา" (วันนี้/พรุ่งนี้/เดือนนี้/ปีนี้/ปีหน้า) ให้ตอบตรง ๆ เหมือนเสี่ยงทายประจำวัน
+  // ฟันธงช่วงนั้นก่อน แล้วไล่ ปีจร→เดือนจร→วัน จากผลอ่าน/ปฏิทินที่แนบ (ไม่ทับ crisis/ยังไม่แต่งวันรายวันเกินจริง)
+  const dailyFortuneTone =
+    Boolean(intentClassification?.requiresBaziConsult) &&
+    !crisis &&
+    typeof timeframe === "string" &&
+    NEAR_TERM_TIMEFRAMES.has(timeframe);
 
   return {
     systemInstruction: [
@@ -385,6 +407,19 @@ export function buildOpenWebUiGeminiPromptPayload(
         : null,
       crisis
         ? "⛑️ สัญญาณภาวะเปราะบาง/อยากทำร้ายตัวเอง: ห้ามตอบด้วยวันมงคล/ฤกษ์/ยาม/ตัวเลข หรือทำนายดวงดี-ร้าย. ให้ตอบแบบห่วงใย รับฟัง ไม่ตัดสิน + ให้สายด่วนสุขภาพจิต 1323 (24 ชม.) หรือสะมาริตันส์ 02-113-6789 (ฉุกเฉิน 1669) และชวนให้คุยกับคนที่ไว้ใจ/ผู้เชี่ยวชาญ."
+        : null,
+      hasCardReadingData && !crisis
+        ? [
+          "คำถามนี้เป็นเรื่องที่ \"พื้นดวงปาจื่อตอบไม่ได้\" (ลี้ลับ/ของหาย/เหตุการณ์เฉพาะจุด/ผู้ใช้ขอเสี่ยงทาย) — ระบบจั่ว \"ไพ่เซียมซีเคี้ยงคุง\" มาให้ 1 ใบแล้ว. **ห้ามขึ้นดวง/ห้ามอ้างผังชะตา/ห้ามมโนเสา-ธาตุ-ปีจร** ให้ตอบจาก \"ไพ่ใบนี้\" เท่านั้น:",
+          cardReading ?? "",
+          [
+            "วิธีตอบ:",
+            "- เปิดด้วยชื่อไพ่ที่จั่วได้ (เช่น \"ไพ่ที่หยิบได้คือ ...\") แล้วฟันธงตอบคำถามตรง ๆ จากสถานการณ์/ข้อควรระวัง/คำแนะนำของไพ่ใบนี้",
+            "- โทนแบบ \"รู้ใจ\" เหมือนผู้ใหญ่/เพื่อนที่ทักตรงใจ อบอุ่นแต่ชัดเจน ไม่ใช่บอกลอย ๆ ว่า \"อย่าคิดมาก\"",
+            "- เนื้อไพ่ไม่ต้องลอกเป๊ะ กร่อนคำ/เรียบเรียงใหม่เป็นภาษาพูดได้ แต่ใจความต้องตรงกับไพ่ ห้ามเพิ่มคำทำนายนอกไพ่",
+            "- สั้น กระชับ ไม่กี่ประโยค **ห้ามชวนไปเมนู \"เปิดไพ่\"/\"เสี่ยงเซียมซี\"** เพราะจั่วไพ่ให้แล้วในนี้",
+          ].join("\n"),
+        ].join("\n\n")
         : null,
       formatSystemClockLine(now),
       "Continue the conversation from this transcript.",
@@ -424,6 +459,9 @@ export function buildOpenWebUiGeminiPromptPayload(
       honestPrecisionReframe
         ? "ความแม่นเรื่องเวลา: ผู้ใช้ถามเจาะจงระดับวัน/เดือน. ให้อ่านจังหวะแบบไล่ชั้น วัยจร → ปีจร (จากผลอ่าน) → แล้วต่อยอดเป็น \"แนวโน้มระดับเดือน (เดือนจร)\" ของช่วงนี้อย่างซื่อสัตย์ว่าโน้มไปทางไหน. ระดับเดือน/วันตอบเป็นแนวโน้ม+คำแนะนำได้ แต่ห้ามรับปากความแม่นรายวันเป๊ะ และห้ามแต่งดวงรายวันขึ้นมาเอง."
         : null,
+      dailyFortuneTone
+        ? "โหมดเสี่ยงทายประจำวัน: ผู้ใช้ถามดวงแบบมีกรอบเวลา (วันนี้/พรุ่งนี้/เดือนนี้/ปีนี้/ปีหน้า). ให้ตอบ \"ตรง ๆ\" เหมือนคำเสี่ยงทายประจำวัน — เปิดด้วยการฟันธงภาพของช่วงนั้นชัด ๆ (ช่วงนี้/วันนี้เป็นยังไง เด่นเรื่องไหน ควรทำอะไร ระวังอะไร) แล้วค่อยหนุนด้วยบริบทไล่ชั้น ปีจร → เดือนจร → วัน จากผลอ่าน/ปฏิทินที่แนบมา. กระชับ อบอุ่น ไม่อ้อมค้อม ไม่ต้องเป็นรายงาน (ยังคงกฎห้ามแต่งวัน/ตัวเลขที่ไม่มีในผลอ่าน)."
+        : null,
       intentClassification?.requiresBaziConsult && !baziConsult?.truthPacket
         ? "No verified Bazi chart context is attached. Do not invent chart details; ask for the missing birth data or chart payload first."
         : null,
@@ -436,7 +474,7 @@ export function buildOpenWebUiGeminiPromptPayload(
           "- ถ้าไม่เกี่ยวกับดวงเลยจริงๆ (โค้ด/ข่าว/คณิต/แปลภาษา) → บอกสั้นๆ อย่างอบอุ่นว่าไม่ถนัดเรื่องนี้ แล้วชวนกลับมาคุยเรื่องจังหวะชีวิต/การตัดสินใจที่ซินแสช่วยได้.",
           "คงคาแรกเตอร์ซินแสไว้เสมอ ห้ามตอบห้วนหรือเหมือนหุ่นยนต์ปฏิเสธ.",
         ].join("\n")
-        : intentClassification && !intentClassification.requiresBaziConsult
+        : intentClassification && !intentClassification.requiresBaziConsult && !hasCardReadingData
           ? "This request does not require Bazi chart analysis. Reply normally without claiming chart-specific insights."
           : null,
       `Latest user message: ${input.latestUserMessage.content}`,

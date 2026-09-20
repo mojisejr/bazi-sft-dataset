@@ -22,8 +22,11 @@ export const TRIAGE_TOPIC_IDS: readonly string[] = TOPIC_PATH
   .filter((topic) => topic.kind === "predict")
   .map((topic) => topic.id);
 
+// "card_reading" is NOT a chart-reading topic — it is a sibling of off_topic/chit_chat that routes
+// the question to an oracle-card draw instead of a Bazi consult. It carries requiresBaziConsult=false.
 export const TRIAGE_ROUTE_VALUES: readonly string[] = [
   ...TRIAGE_TOPIC_IDS,
+  "card_reading",
   "off_topic",
   "chit_chat",
 ];
@@ -270,17 +273,27 @@ export function buildOpenWebUiTriagePromptPayload(
       "",
       "## topicId — route the question to ONE reading topic, or refuse/smalltalk:",
       ...TOPIC_CATALOG_LINES,
+      // ไพ่เสี่ยงทาย: คำถามที่ "ผังปาจื่อตอบเป็นรูปธรรมไม่ได้" — ต้องเปิดไพ่แทน ไม่ใช่ขึ้นดวง (ซินแสนุ้ยสั่ง)
+      "card_reading = เรื่องที่วิชาปาจื่ออ่านจากผังชะตาไม่ได้ ต้องเสี่ยงทายด้วยไพ่ — ตั้ง requiresBaziConsult=false. ครอบคลุม:",
+      "  • ลี้ลับ/วิญญาณ/ลาง/ของขลัง/สิ่งเร้นลับ เช่น 'รถมีสิ่งไม่ดีตามมาไหม' / 'ในรถมีอะไรผิดปกติไหม' / 'บ้านมีอะไรไหม'",
+      "  • ของ/คน/สัตว์หาย จะได้คืน/เจอไหม เช่น 'ของหายจะได้คืนไหม' / 'แมวหายจะกลับมาไหม'",
+      "  • การกระทำ/ความรู้สึกที่ซ่อนอยู่ของคนอื่น 'เฉพาะเรื่องหนึ่ง ๆ' เช่น 'เขาจะโทรมาไหม' / 'ดีลนี้อีกฝ่ายจะเอาด้วยไหม'",
+      "  • เหตุการณ์ yes/no เฉพาะจุดครั้งเดียว เช่น 'จะได้งานนี้ไหม' / 'สอบผ่านไหม' / 'ดีลนี้จะปิดได้ไหม' / 'จะถูกหวยไหม'",
+      "  • ตัวเลือกเฉพาะกิจ 'เอาอันไหนดี/ควรทำสิ่งนี้ไหม' ที่ผังดวงให้ได้แค่แนวโน้มกว้าง ไม่ชี้ผลจริง",
+      "  • ผู้ใช้ขอเสี่ยงทาย/เปิดไพ่/จับไพ่ตรง ๆ เช่น 'ขอเปิดไพ่หน่อย' / 'เสี่ยงทายให้หน่อย' / 'จับไพ่ให้ที'",
       "off_topic = คำถามที่ไม่เกี่ยวกับการดูดวงปาจื่อเลย (เช่น เขียนโค้ด, ข่าว, ความรู้ทั่วไป, คำนวณเลข, แปลภาษา) — ตั้ง requiresBaziConsult=false.",
       "chit_chat = ทักทาย/คุยเล่น/ขอบคุณ/ถามว่าคุยอะไรได้บ้าง — ตั้ง requiresBaziConsult=false.",
       "Routing hints: ลูกค้า/การขาย→wealth_and_investment; เจ้านาย/หัวหน้า→career_potential; สีเสื้อ/สีรถ/สีมงคล/สีอะไรดี→colors_directions; อนาคต/ปีนี้/ปีหน้า/ช่วงนี้→turning_points.",
       // #6 (2026-09-13): กัน false off_topic — คำถามชีวิตประจำวันสั้น ๆ ยังเป็นการดูดวง อย่าปัดเป็น off_topic
       "IMPORTANT: DEFAULT to one of the 15 reading topics. Use off_topic ONLY when the message is clearly unrelated to fortune-telling (เขียนโค้ด/ข่าว/คณิต/แปลภาษา/ความรู้ทั่วไป).",
-      "Short day questions like 'วันนี้ดีไหม' / 'พรุ่งนี้เป็นไง' / 'ช่วงนี้ดวงเป็นยังไง' / 'ดูดวงให้หน่อย' → turning_points (NOT off_topic, NOT chit_chat).",
+      // ซินแสนุ้ย 2026-09-20: ข้อยกเว้นของ 'default เข้าดวง' — เหตุการณ์เฉพาะจุด/ลี้ลับ ต้องเข้า card_reading
+      "EXCEPTION to the default: if the question is a one-off yes/no event, a supernatural/hidden matter, a lost item, or another person's concealed action on a specific matter — things the birth chart cannot pin down (only vague tendencies) — route to card_reading (NOT a chart topic). The chart reads life patterns over time; cards read a specific point-in-time or off-destiny matter.",
+      "Short day questions like 'วันนี้ดีไหม' / 'พรุ่งนี้เป็นไง' / 'ช่วงนี้ดวงเป็นยังไง' / 'ดูดวงให้หน่อย' → turning_points (NOT off_topic, NOT chit_chat, NOT card_reading — these are chart tendencies).",
       // #7 (2026-09-17): คำถามปลายเปิดเรื่องการตัดสินใจ/วางแผนชีวิต = งานหลักของซินแส อย่าปัดเป็น chit_chat
-      "Open-ended life-decision questions — 'ช่วงนี้ควรทำอะไร' / 'วางแผนยังไงดี' / 'ตัดสินใจยังไงดี' / 'เอายังไงดี' / 'ควรไปต่อหรือพอ' — route to turning_points (or chart_foundation if it is about who they are), NOT chit_chat/off_topic. requiresBaziConsult=true.",
+      "Open-ended life-decision questions — 'ช่วงนี้ควรทำอะไร' / 'วางแผนยังไงดี' / 'ตัดสินใจยังไงดี' / 'เอายังไงดี' / 'ควรไปต่อหรือพอ' — route to turning_points (or chart_foundation if it is about who they are), NOT chit_chat/off_topic/card_reading. requiresBaziConsult=true. (These are broad life direction, which the chart reads — cards are only for a single concrete event the chart cannot determine.)",
       "'วันนี้ใส่เสื้อสีอะไรดี' / 'สีอะไรมงคล' / 'ควรไปทิศไหน' → colors_directions. 'ควรกินอะไร/ดูแลสุขภาพ' → health.",
-      "When unsure between a reading topic and off_topic/chit_chat for a fortune-flavored question, choose the reading topic.",
-      "requiresBaziConsult=true for any of the 15 reading topics; false only for off_topic/chit_chat.",
+      "When unsure between a reading topic and off_topic/chit_chat for a fortune-flavored question, choose the reading topic. But when a fortune-flavored question is a concrete one-off event / supernatural / lost-item / another-person's-secret matter, choose card_reading over a chart topic.",
+      "requiresBaziConsult=true for any of the 15 reading topics; false for card_reading, off_topic, and chit_chat.",
       "",
       "## timeframe — when is the user asking about:",
       "today=วันนี้, tomorrow=พรุ่งนี้, this_month=เดือนนี้, this_year=ปีนี้, next_year=ปีหน้า, in_n_years=อีกหลายปี/ปีเฉพาะข้างหน้า, period=ช่วงวัย/วัยจร/ช่วงนี้แบบกว้าง, none=ไม่ระบุเวลา.",
@@ -388,7 +401,8 @@ export function normalizeTriageDraft(
   draft: OpenWebUiTriageDraft,
   existing?: Partial<OpenWebUiBaziExtraction["fields"]>,
 ): OpenWebUiTriageResult {
-  const isReadingTopic = draft.topicId !== "off_topic" && draft.topicId !== "chit_chat";
+  const isReadingTopic =
+    draft.topicId !== "off_topic" && draft.topicId !== "chit_chat" && draft.topicId !== "card_reading";
   const requiresBaziConsult = isReadingTopic && draft.requiresBaziConsult !== false;
   const extraction = buildBaziExtractionResult(mergeBirthFields(draft, existing));
   const domain: OpenWebUiTruthPacketDomain = isReadingTopic

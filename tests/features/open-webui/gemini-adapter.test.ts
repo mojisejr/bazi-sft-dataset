@@ -92,6 +92,53 @@ describe("buildOpenWebUiGeminiPromptPayload — ปิดท้ายด้ว�
   });
 });
 
+describe("buildOpenWebUiGeminiPromptPayload — ตอบจากไพ่เซียมซีเคี้ยงคุง (hasCardReadingData)", () => {
+  test("ดวงตอบไม่ได้ → ตอบจากไพ่ที่จั่ว ห้ามขึ้นดวง ไม่ชวนไปเมนู และไม่มี bazi bypass ปน", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      latestUserMessage: { role: "user", content: "รถพี่มีสิ่งไม่ดีตามมาไหม" },
+      executionContext: {
+        intentClassification: { intent: "general_reading", requiresBaziConsult: false, confidence: 0.8 },
+        topicId: "card_reading",
+        cardReading: "ไพ่ที่จั่วได้: #9 เมฆบังพระจันทร์ — ความคลุมเครือ...\n\nสถานการณ์: ...",
+        hasCardReadingData: true,
+      },
+    });
+    expect(payload.userPrompt).toContain("ไพ่เซียมซีเคี้ยงคุง");
+    expect(payload.userPrompt).toContain("เมฆบังพระจันทร์");
+    expect(payload.userPrompt).toContain("ห้ามขึ้นดวง");
+    // ต้องไม่ปล่อยข้อความ non-bazi bypass มาสั่งให้ "ตอบปกติ" ทับโหมดไพ่
+    expect(payload.userPrompt).not.toContain("does not require Bazi chart analysis");
+  });
+});
+
+describe("buildOpenWebUiGeminiPromptPayload — โหมดเสี่ยงทายประจำวัน (dailyFortuneTone)", () => {
+  test("ดวงมีกรอบเวลา (วันนี้) → สั่งตอบตรง ๆ เหมือนเสี่ยงทายประจำวัน", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      latestUserMessage: { role: "user", content: "วันนี้ดวงเป็นยังไง" },
+      executionContext: {
+        ...sampleExecutionContext,
+        topicId: "turning_points",
+        timeframe: "today",
+      },
+    });
+    expect(payload.userPrompt).toContain("เสี่ยงทายประจำวัน");
+  });
+
+  test("คำถามไม่มีกรอบเวลา (none) → ไม่ใส่โหมดเสี่ยงทายประจำวัน", () => {
+    const payload = buildOpenWebUiGeminiPromptPayload({
+      ...readyChatInput,
+      executionContext: {
+        ...sampleExecutionContext,
+        topicId: "career_potential",
+        timeframe: "none",
+      },
+    });
+    expect(payload.userPrompt).not.toContain("โหมดเสี่ยงทายประจำวัน");
+  });
+});
+
 describe("getOpenWebUiGeminiConfig", () => {
   test("uses the default Open WebUI Gemini model when no model override is provided", () => {
     expect(getOpenWebUiGeminiConfig({ GEMINI_API_KEY: "gemini_test_demo" })).toEqual({

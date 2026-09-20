@@ -8,6 +8,7 @@ import {
   normalizeTriageDraft,
   OpenWebUiTriageError,
   runOpenWebUiTriage,
+  TRIAGE_ROUTE_VALUES,
   TRIAGE_TOPIC_IDS,
   topicIdToDomain,
 } from "@/features/open-webui/triage";
@@ -79,6 +80,20 @@ describe("buildOpenWebUiTriagePromptPayload", () => {
     expect(payload.systemInstruction).toContain("timeframe");
     expect(payload.systemInstruction).toContain("พ.ศ.");
   });
+
+  test("offers the card_reading route for questions the chart cannot answer", () => {
+    const payload = buildOpenWebUiTriagePromptPayload(colorInput);
+    expect(payload.systemInstruction).toContain("card_reading");
+    // ครอบคลุมเรื่องลี้ลับ/ของหาย — ตัวอย่างที่ต้องเข้าไพ่ ไม่ใช่ขึ้นดวง
+    expect(payload.systemInstruction).toContain("ของหาย");
+  });
+});
+
+describe("triage route vocab includes card_reading", () => {
+  test("card_reading is a sibling of off_topic/chit_chat, not a chart topic", () => {
+    expect(TRIAGE_ROUTE_VALUES).toContain("card_reading");
+    expect(TRIAGE_TOPIC_IDS).not.toContain("card_reading");
+  });
 });
 
 describe("normalizeTriageDraft", () => {
@@ -95,6 +110,25 @@ describe("normalizeTriageDraft", () => {
     });
 
     expect(result.requiresBaziConsult).toBe(false);
+    expect(result.classification.intent).toBe("chit_chat");
+  });
+
+  test("card_reading is a non-consult route (no chart) even if the model says requiresBaziConsult=true", () => {
+    const result = normalizeTriageDraft({
+      topicId: "card_reading",
+      requiresBaziConsult: true,
+      timeframe: "none",
+      confidence: 0.7,
+      birthDate: null,
+      birthTime: null,
+      gender: null,
+      province: null,
+    });
+
+    expect(result.topicId).toBe("card_reading");
+    expect(result.requiresBaziConsult).toBe(false);
+    expect(result.classification.requiresBaziConsult).toBe(false);
+    // เป็น non-reading route → domain fallback = chit_chat (ไม่ถูกใช้ เพราะไม่ ground ดวง)
     expect(result.classification.intent).toBe("chit_chat");
   });
 

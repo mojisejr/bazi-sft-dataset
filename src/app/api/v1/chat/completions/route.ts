@@ -11,6 +11,8 @@ import {
 } from "@/features/open-webui/gemini-adapter";
 import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
+import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
+import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
 import { detectRelationship, fetchCompatibilityReading } from "@/features/open-webui/compatibility-bridge";
 import {
   type OpenWebUiIntentClassification,
@@ -392,6 +394,20 @@ export async function POST(req: Request) {
 
     // ความรู้เสริม fix จากซินแส (เช่น ฮวงจุ้ยกระเป๋าตังค์) — แนบเมื่อคำถามเข้า keyword
     executionContext.staticKnowledge = await resolveStaticKnowledge(result.latestUserMessage.content);
+
+    // ไพ่เซียมซีเคี้ยงคุง (ซินแสนุ้ยสั่ง): คำถามที่ "พื้นดวงตอบไม่ได้" — ลี้ลับ/ของหาย/เหตุการณ์เฉพาะจุด/
+    // ขอเสี่ยงทายตรง ๆ → triage route เป็น card_reading (requiresBaziConsult=false ไม่ขึ้นดวง). จั่วไพ่ 1 ใบ
+    // แล้วตอบจากเนื้อไพ่ (สถานการณ์/ข้อควรระวัง/คำแนะนำ) แบบรู้ใจ ไม่ใช่ขึ้นดวง.
+    if (triage.topicId === "card_reading" && !executionContext.hasCardReadingData) {
+      try {
+        const card = drawSiamsi();
+        const reading = buildSiamsiReading(card, result.latestUserMessage.content);
+        executionContext.cardReading = reading.engineProse;
+        executionContext.hasCardReadingData = true;
+      } catch {
+        /* จั่ว/อ่านไพ่พัง → ข้าม (ตอบตามปกติ) */
+      }
+    }
 
     // ความรักเจาะจง "คนนี้" (ซินแสนุ้ยสั่ง): พื้นดวงตอบภาพรวมได้ แต่ตอบ 'คนคนนั้น' ไม่ได้ → จั่วไพ่เสี่ยงทาย
     // แนบท้ายผลอ่าน แล้วสั่งให้ปิดท้ายด้วยไพ่ (ไม่ชวนไปเมนูเปิดไพ่). ทำเมื่อมีผลอ่านดวงจริงแนบมาแล้วเท่านั้น.
