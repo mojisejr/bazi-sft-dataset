@@ -235,6 +235,28 @@ async function fetchPersonalDayCalendar(
   const perMonth = await Promise.all(months.map((month) => fetchOneMonthTopDays(origin, rawInput, month)));
   const sections: string[] = [];
 
+  // 2026-09-20 (เอ็ม live-test): คำถาม "วันนี้/พรุ่งนี้ดวงเป็นไง" เดิมได้แค่ "วันเด่นในเดือน" (top-N คะแนนสูงสุด)
+  // ซึ่งวันนี้/พรุ่งนี้อาจไม่ติดโผ (คะแนนไม่สูงพอ) — โมเดลเลยไม่มีเลขวันนี้จริงให้อ้าง ตอบกว้างแทนที่จะฟันธง.
+  // ดึงคะแนน "วันนี้" + "พรุ่งนี้" ออกมาเป็นบรรทัดแยกเสมอ (ไม่ผ่านการกรอง top-N) ไม่ว่าจะติดโผหรือไม่.
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const tomorrowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const tomorrowStr = `${tomorrowDate.getFullYear()}-${String(tomorrowDate.getMonth() + 1).padStart(2, "0")}-${String(tomorrowDate.getDate()).padStart(2, "0")}`;
+  const allDaysThisMonth = perMonth[0] ?? [];
+  const allDaysNextMonth = perMonth[1] ?? [];
+  const findDay = (date: string) =>
+    allDaysThisMonth.find((d) => d.date === date) ?? allDaysNextMonth.find((d) => d.date === date);
+  const renderOwnDay = (label: string, day: ManVsDayDay | undefined) => {
+    if (!day || typeof day.overallPercent !== "number") return null;
+    const hours = typeof day.date === "string" ? renderLuckyHours(day.date) : "";
+    return `${label} (${day.date}${day.weekday ? ` ${day.weekday}` : ""}${day.dayGanzhi ? ` ${day.dayGanzhi}` : ""}): เหมาะ ${day.overallPercent}%${day.grade ? ` เกรด ${day.grade}` : ""}${hours ? ` · ยามมงคล: ${hours}` : ""}`;
+  };
+  const ownDayLines = [renderOwnDay("วันนี้", findDay(todayStr)), renderOwnDay("พรุ่งนี้", findDay(tomorrowStr))].filter(
+    (l): l is string => l !== null,
+  );
+  if (ownDayLines.length) {
+    sections.push(["คะแนนวันนี้/พรุ่งนี้ (คะแนนจริงของวันนั้น ไม่ใช่วันเด่นในเดือน):", ...ownDayLines].join("\n"));
+  }
+
   for (let i = 0; i < months.length; i += 1) {
     const top = perMonth[i]
       .filter((d) => typeof d.overallPercent === "number")

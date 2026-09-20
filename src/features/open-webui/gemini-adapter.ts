@@ -67,6 +67,26 @@ export function wantsSpecificPersonLove(message?: string | null): boolean {
   return SPECIFIC_PERSON_RE.test(message) && PERSON_FEELING_RE.test(message);
 }
 
+// ไพ่เซียมซีเคี้ยงคุง (ซินแสนุ้ยสั่ง): 2026-09-20 live-test พบว่า LLM triage (gemini-3.1-flash-lite) จัด
+// คำถาม "ของหาย/สัตว์เลี้ยงหาย" ผิดเป็นหัวข้อดวงแบบสุ่มบ่อยครั้ง (colors_directions/chit_chat/education
+// สลับกันไปมา แม้จะเติม few-shot ในพร้อมท์ triage แล้วก็ไม่ช่วย) — เคสที่ชัดเจนระดับนี้ (ของ/สัตว์/คนหาย,
+// ลี้ลับ, ขอเสี่ยงทายตรงๆ) ไม่ควรฝากไว้กับความไม่แน่นอนของ LLM classifier เลย ตัดสินด้วย regex ตรงๆ
+// (deterministic) แทน มิเรอร์ pattern เดียวกับ wantsSpecificPersonLove ด้านบน — ใช้ "บังคับ override"
+// topicId หลัง triage รันเสร็จใน route.ts (ให้ love-hybrid ที่มีอยู่แล้วมาก่อนเสมอ กันชนกัน).
+const LOST_RE = /(ของ|เงิน|กระเป๋า|โทรศัพท์|มือถือ|แมว|หมา|สัตว์เลี้ยง|เอกสาร|กุญแจ|บัตร)?\s*หาย(ไป)?/;
+const LOST_OUTCOME_RE = /(ได้คืน|จะเจอ|จะกลับมา|หาเจอ|เจอไหม|เจอมั้ย|เจอรึเปล่า|เจอหรือเปล่า|คืนไหม|คืนมั้ย|คืนรึเปล่า)/;
+const SUPERNATURAL_RE = /(สิ่งไม่ดี|ของไม่ดี|อาถรรพ์|ผี|วิญญาณ|สิ่งลี้ลับ|พลังงานไม่ดี|มีอะไรผิดปกติ)/;
+const SUPERNATURAL_TAIL_RE = /(ตามมา|ติดตาม|หรือเปล่า|รึเปล่า|ไหม|มั้ย)/;
+const EXPLICIT_CARD_ASK_RE = /(เปิดไพ่|จับไพ่|เสี่ยงทาย(ให้|หน่อย|ดู)?|ขอไพ่|ดูไพ่)/;
+export function wantsCardReading(message?: string | null): boolean {
+  if (typeof message !== "string") return false;
+  if (wantsSpecificPersonLove(message)) return false; // love-hybrid (ดวง+ไพ่ปิดท้าย) มาก่อนเสมอ ไม่ชน
+  if (EXPLICIT_CARD_ASK_RE.test(message)) return true;
+  if (SUPERNATURAL_RE.test(message) && SUPERNATURAL_TAIL_RE.test(message)) return true;
+  if (LOST_RE.test(message) && LOST_OUTCOME_RE.test(message)) return true;
+  return false;
+}
+
 // Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
 // inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
 export function isHonestPrecisionReframe(

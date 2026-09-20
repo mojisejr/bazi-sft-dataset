@@ -5,6 +5,7 @@ import {
   generateGeminiAssistantReply,
   isHonestPrecisionReframe,
   isOtherChartRequest,
+  wantsCardReading,
   wantsSpecificPersonLove,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
@@ -375,6 +376,30 @@ export async function POST(req: Request) {
       triage.requiresBaziConsult = true;
       triage.classification.requiresBaziConsult = true;
       triage.classification.intent = topicIdToDomain(hint);
+    }
+
+    // 2026-09-20 (เอ็ม live-test): LLM triage จัดคำถาม "ของหาย/ลี้ลับ" ผิดบ่อย (สุ่มไปหัวข้ออื่นแม้มี few-shot
+    // ในพร้อมท์แล้ว) — เคสที่ชัดเจนระดับนี้บังคับด้วย regex ตรงๆ แทนพึ่ง LLM (มิเรอร์ topic-hint override ด้านบน).
+    if (wantsCardReading(result.latestUserMessage.content) && triage.topicId !== "card_reading") {
+      console.log("[open-webui] deterministic card_reading override", {
+        was: triage.topicId,
+      });
+      triage.topicId = "card_reading";
+      triage.requiresBaziConsult = false;
+      triage.classification.requiresBaziConsult = false;
+    }
+
+    // 2026-09-20 (เอ็ม live-test พบ): เคสกลับด้าน — LLM triage เองบางครั้งจัดคำถามความรักเจาะจงคน ("คนนี้เค้า
+    // ชอบเราไหม") เข้า card_reading ตรงๆ (คาบเกี่ยวกับ bullet "การกระทำ/ความรู้สึกที่ซ่อนอยู่ของคนอื่น") ซึ่ง
+    // ทำให้ requiresBaziConsult=false ไม่มีการคำนวณดวงเลย → hybrid เดิม (ดวงภาพรวม+ไพ่ปิดท้าย, wantsSpecificPersonLove
+    // ด้านล่าง) ไม่ทำงานเพราะไม่มี baziConsult.truthPacket ให้ต่อท้าย เหลือแค่ตอบจากไพ่ล้วนไม่มีบริบทดวงเลย —
+    // ผิดจากที่ซินแสนุ้ยสั่งไว้ (ต้องมีทั้งดวง+ไพ่). บังคับกลับเข้า love_partner ให้ hybrid ทำงานตามเดิมเสมอ.
+    if (wantsSpecificPersonLove(result.latestUserMessage.content) && triage.topicId === "card_reading") {
+      console.log("[open-webui] specific-person-love reclaims from card_reading", { was: triage.topicId });
+      triage.topicId = "love_partner";
+      triage.requiresBaziConsult = true;
+      triage.classification.requiresBaziConsult = true;
+      triage.classification.intent = topicIdToDomain("love_partner");
     }
 
     let calculatedState: BaziStatePayload | null = null;

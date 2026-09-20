@@ -8,6 +8,7 @@ import {
   getOpenWebUiGeminiConfig,
   isCrisisMessage,
   isOtherChartRequest,
+  wantsCardReading,
   wantsSpecificPersonLove,
   MUMATE_PERSONA_INSTRUCTION,
   type OpenWebUiGeminiExecutionContext,
@@ -65,6 +66,37 @@ describe("wantsSpecificPersonLove (ความรักเจาะจงคน
   });
   test("ดวงคู่ + วันเกิดอีกฝ่าย (compatibility) → false", () => {
     expect(wantsSpecificPersonLove("เขาเกิด 2535 เข้ากันกับเราไหม")).toBe(false);
+  });
+});
+
+// 2026-09-20 (เอ็ม live-test): LLM triage จัดคำถามกลุ่มนี้ผิดบ่อยแบบสุ่ม (colors_directions/chit_chat/
+// education สลับกันไปมา) แม้เติม few-shot ในพร้อมท์ triage แล้วก็ไม่ช่วย — ต้องตัดสินด้วย regex ตรงๆ
+describe("wantsCardReading (deterministic override — ของหาย/ลี้ลับ/ขอเสี่ยงทายตรงๆ)", () => {
+  test("ของ/สัตว์เลี้ยงหาย + ถามผล → true", () => {
+    expect(wantsCardReading("แมวหายไปสองวันแล้ว จะได้เจอไหม")).toBe(true);
+    expect(wantsCardReading("หมาหายไปเมื่อวาน จะเจอไหม")).toBe(true);
+    expect(wantsCardReading("กระเป๋าตังค์หาย จะได้คืนไหม")).toBe(true);
+    expect(wantsCardReading("แมวหายจะกลับมาไหม")).toBe(true); // ตัวอย่าง literal ที่ LLM เคยพลาด
+  });
+  test("ลี้ลับ/สิ่งไม่ดีตามมา → true", () => {
+    expect(wantsCardReading("รถมีสิ่งไม่ดีตามมาไหม")).toBe(true);
+    expect(wantsCardReading("บ้านมีอะไรผิดปกติไหม รู้สึกไม่ดีเลย")).toBe(true);
+  });
+  test("ขอเสี่ยงทาย/เปิดไพ่ตรงๆ → true", () => {
+    expect(wantsCardReading("ขอเสี่ยงทายให้หน่อยได้ไหม")).toBe(true);
+    expect(wantsCardReading("ขอเปิดไพ่หน่อย")).toBe(true);
+  });
+  test("คำถามดวงปกติ (ไม่มีของหาย/ลี้ลับ) → false", () => {
+    expect(wantsCardReading("ปีนี้การเงินเป็นยังไงบ้าง")).toBe(false);
+    expect(wantsCardReading("นิสัยพื้นฐานของฉันเป็นแบบไหน")).toBe(false);
+    expect(wantsCardReading("วันนี้ดวงเป็นยังไงบ้าง")).toBe(false);
+  });
+  test("ความรักเจาะจงคน (love-hybrid) มาก่อนเสมอ ไม่ชนกับ card_reading override", () => {
+    expect(wantsCardReading("คนนี้เค้าชอบเราไหม")).toBe(false); // เข้า wantsSpecificPersonLove แทน
+  });
+  test("null/undefined → false (ไม่พัง)", () => {
+    expect(wantsCardReading(null)).toBe(false);
+    expect(wantsCardReading(undefined)).toBe(false);
   });
 });
 
