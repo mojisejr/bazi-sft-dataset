@@ -105,8 +105,13 @@ describe("buildOpenWebUiGeminiPromptPayload — ตอบจากไพ่เ�
       },
     });
     expect(payload.userPrompt).toContain("ไพ่เซียมซีเคี้ยงคุง");
-    expect(payload.userPrompt).toContain("เมฆบังพระจันทร์");
+    expect(payload.userPrompt).toContain("เมฆบังพระจันทร์"); // ชื่อไพ่ยังอยู่ในก้อนข้อมูลจริงที่แนบ (สำหรับโมเดลอ่าน) — ไม่ใช่สิ่งที่สั่งให้พูดออกไป
     expect(payload.userPrompt).toContain("ห้ามขึ้นดวง");
+    // ซินแสนุ้ย 2026-09-20: ต้องบอกว่า "เสี่ยงทาย" (บังคับ ไม่ใช่แค่ตัวเลือก) แต่ห้ามระบุว่าเป็น "ไพ่"
+    // (แชทข้อความ บอกไพ่แล้วคนจะเอ๊ะว่ารู้ได้ไง). verified live 3/3 runs: มี "เสี่ยงทาย" ไม่มี "ไพ่" เลย
+    expect(payload.userPrompt).toContain("ต้องเปิดคำตอบด้วยคำว่า \"เสี่ยงทาย\"");
+    expect(payload.userPrompt).toContain("ห้ามบอกชื่อไพ่");
+    expect(payload.userPrompt).toContain("ห้ามระบุว่าเป็น \"ไพ่\"");
     // ต้องไม่ปล่อยข้อความ non-bazi bypass มาสั่งให้ "ตอบปกติ" ทับโหมดไพ่
     expect(payload.userPrompt).not.toContain("does not require Bazi chart analysis");
   });
