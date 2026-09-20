@@ -282,11 +282,49 @@ export default function OpsAdminPage() {
               <FeatureAccessCard anonId={selected.anonId} secret={secret} status={chatStatus} ledger={ledger} reload={() => { void loadChatStatus(selected.anonId); void loadEntitlements(selected.anonId); }} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
               <EntitlementCard anonId={selected.anonId} secret={secret} entitlements={entitlements} reload={() => loadEntitlements(selected.anonId)} onSaved={(m) => note(true, m)} onError={(m) => note(false, m)} />
               <UserAttributionCard anonId={selected.anonId} secret={secret} />
+              <DeleteAccountCard
+                user={selected}
+                secret={secret}
+                onDeleted={(m) => { note(true, m); setSelected(null); void loadUsers(q, page, providerFilter); }}
+                onError={(m) => note(false, m)}
+              />
             </>
           )}
         </div>
       </div>
     </main>
+  );
+}
+
+function DeleteAccountCard({ user, secret, onDeleted, onError }: { user: UserRow; secret: string; onDeleted: (m: string) => void; onError: (m: string) => void }) {
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const ok = typed.trim() === user.anonId;
+  const del = async () => {
+    if (!ok) return;
+    if (!window.confirm("ลบบัญชีนี้ถาวร? กู้คืนไม่ได้ (ผู้ใช้ต้องสมัครใหม่)")) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/user-delete", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, anonId: user.anonId }) });
+      const j = await r.json();
+      if (!r.ok) return onError(j.error ?? "ลบบัญชีไม่สำเร็จ");
+      const n = Object.values((j.deleted ?? {}) as Record<string, number>).reduce((a, b) => a + Number(b), 0);
+      onDeleted(`ลบบัญชีแล้ว (${n} แถว) — ให้ผู้ใช้สมัคร LINE ใหม่ได้เลย`);
+    } catch { onError("เชื่อมต่อไม่ได้"); } finally { setBusy(false); }
+  };
+  return (
+    <div style={{ ...box, borderColor: "#7d3b3b", background: "#2a1a1a" }}>
+      <h2 style={{ fontSize: 15, margin: 0, color: "#e88" }}>ลบบัญชี (ลบออกจาก data — สมัครใหม่เท่านั้น)</h2>
+      <p style={{ fontSize: 12, color: C.sub, margin: "8px 0 4px" }}>
+        ลบ mapping LINE + สมาชิก + สิทธิ์ + QI + โปรไฟล์ + identity. <b>ลบถาวร กู้คืนไม่ได้.</b>
+        {user.lineId ? <> · LINE id <code>{user.lineId}</code></> : null}
+      </p>
+      <div style={{ fontSize: 11, color: C.sub, marginBottom: 4 }}>พิมพ์ anonId ให้ตรงเพื่อยืนยัน: <code style={{ userSelect: "all" }}>{user.anonId}</code></div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input style={{ ...input, minWidth: 280 }} value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="วาง anonId ที่นี่" />
+        <button style={{ ...btn(ok ? "#c0392b" : "#5a3535"), fontWeight: 700, cursor: ok && !busy ? "pointer" : "not-allowed" }} disabled={!ok || busy} onClick={del}>{busy ? "กำลังลบ…" : "ลบบัญชีถาวร"}</button>
+      </div>
+    </div>
   );
 }
 
