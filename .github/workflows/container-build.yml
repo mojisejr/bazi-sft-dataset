@@ -4,15 +4,22 @@ name: container-build
 # locally. The database / engine / webhook legs need the arena and run locally before a PR is marked ready;
 # CI says so explicitly instead of printing a green it did not earn.
 #
-# Cost discipline: one job, no image push, no registry login.
-# Pushing images is the control room's job (slice 2), not this repo's.
 # MANUAL ONLY (owner decision 2026-09-19): the launch lane must not see this job on its pull requests and CI
-# minutes are paid. Run it from the Actions tab when a container change needs a second machine's proof.
+# minutes are paid. Run it from the Actions tab when a container change needs a second machine's proof, or with
+# push=true to publish ghcr.io/mojisejr/bazi-sft-dataset:<sha> for the control room (mumate-infra-move-001 slice 3;
+# tag = the exact commit, never latest — #637 §8.3). GITHUB_TOKEN with packages:write is enough for GHCR on
+# this repository; no PAT, no secret added. Default input is false, so a plain dispatch changes nothing.
 on:
   workflow_dispatch:
+    inputs:
+      push:
+        description: "push ghcr.io/mojisejr/bazi-sft-dataset:<sha> (owner decision per slice; false = build + smoke only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   image:
@@ -23,3 +30,20 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: build + hygiene + runtime-file manifest (no database in CI)
         run: bash scripts/container-smoke.sh --no-db
+      - name: login to GHCR
+        if: ${{ inputs.push }}
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: push by SHA (the smoke-tested image, retagged — not a rebuild)
+        if: ${{ inputs.push }}
+        run: |
+          set -euo pipefail
+          sha="$(git rev-parse HEAD)"
+          src="bazi:smoke-${sha:0:12}"
+          dst="ghcr.io/mojisejr/bazi-sft-dataset:${sha}"
+          docker tag "$src" "$dst"
+          docker push "$dst"
+          echo "pushed $dst" >> "$GITHUB_STEP_SUMMARY"
