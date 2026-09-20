@@ -13,9 +13,14 @@ on:
   workflow_dispatch:
     inputs:
       push:
-        description: "push ghcr.io/mojisejr/bazi-sft-dataset:<sha> (owner decision per slice; false = build + smoke only)"
+        description: "push ghcr.io/mojisejr/bazi-sft-dataset:<sha>[-target] (owner decision per slice; false = build + smoke only)"
         type: boolean
         default: false
+      target:
+        description: "which public values to inline (GitHub Environment variables): staging -> tag <sha>-staging, production -> tag <sha>"
+        type: choice
+        options: [staging, production]
+        default: staging
 
 permissions:
   contents: read
@@ -24,6 +29,9 @@ permissions:
 jobs:
   image:
     runs-on: ubuntu-latest
+    # Environment variables (Settings -> Environments -> staging|production -> Variables) hold the PUBLIC values Next
+    # inlines at build time; they are publishable keys / ids, never secrets. Referencing the environment creates it.
+    environment: ${{ inputs.target || 'staging' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -37,13 +45,17 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: push by SHA (the smoke-tested image, retagged — not a rebuild)
+      - name: release build for ${{ inputs.target }} (Next inlines NEXT_PUBLIC_* at build time, so the smoke image cannot ship) + push by SHA
         if: ${{ inputs.push }}
         run: |
           set -euo pipefail
           sha="$(git rev-parse HEAD)"
-          src="bazi:smoke-${sha:0:12}"
-          dst="ghcr.io/mojisejr/bazi-sft-dataset:${sha}"
-          docker tag "$src" "$dst"
+          suffix=""; [ "${{ inputs.target }}" = production ] || suffix="-${{ inputs.target }}"
+          dst="ghcr.io/mojisejr/bazi-sft-dataset:${sha}${suffix}"
+          # same Dockerfile the smoke just proved; only the public build values differ (tag = exact commit [+ target], never latest)
+          docker build --build-arg "APP_GIT_SHA=${sha}" \
+            --build-arg NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="${{ vars.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}" \
+            --build-arg NEXT_PUBLIC_LIFF_ID="${{ vars.NEXT_PUBLIC_LIFF_ID }}" \
+            -t "$dst" . | tail -3
           docker push "$dst"
-          echo "pushed $dst" >> "$GITHUB_STEP_SUMMARY"
+          echo "pushed $dst (target=${{ inputs.target }})" >> "$GITHUB_STEP_SUMMARY"
