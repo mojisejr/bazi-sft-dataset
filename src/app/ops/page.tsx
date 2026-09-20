@@ -93,6 +93,20 @@ function btn(bg: string): React.CSSProperties {
   return { background: bg, color: "#fff", border: "none", borderRadius: 8, padding: "9px 14px", fontSize: 14, fontWeight: 600, cursor: "pointer" };
 }
 
+// เอ็ม 2026-09-20: ให้ /ops ใช้บนมือถือได้ — hook เช็คจอแคบ (matchMedia) เพื่อสลับ layout เป็น 1 คอลัมน์.
+// inline style ชนะ CSS media query (specificity) จึงต้องคำนวณค่าใน JS แทน @media.
+function useIsMobile(breakpoint = 760): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const on = () => setIsMobile(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 export default function OpsAdminPage() {
   const [secret, setSecret] = useState("");
   const [ready, setReady] = useState(false);
@@ -113,6 +127,7 @@ export default function OpsAdminPage() {
   const [flash, setFlash] = useState<{ ok: boolean; msg: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [providerFilter, setProviderFilter] = useState(""); // '' | 'LINE' | 'GOOGLE'
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("ops_secret") : "";
@@ -134,11 +149,17 @@ export default function OpsAdminPage() {
     } catch { note(false, "เชื่อมต่อไม่ได้"); } finally { setBusy(false); }
   }, [secret]);
 
-  const search = (query: string) => { void loadUsers(query, 0, providerFilter); };
+  const search = (query: string) => { void loadUsers(query, 0, providerFilter); }; // ทันที (ปุ่ม/Enter)
   const goPage = (p: number) => { void loadUsers(q, p, providerFilter); };
-  const changeProvider = (prov: string) => { setProviderFilter(prov); void loadUsers(q, 0, prov); };
+  const changeProvider = (prov: string) => { setProviderFilter(prov); }; // effect ด้านล่าง reload ให้
 
-  useEffect(() => { if (ready) void loadUsers("", 0, ""); }, [ready, loadUsers]);
+  // ค้นหาแบบ live: พิมพ์/เปลี่ยน provider แล้วค้นเองหลัง 250ms (เอ็ม 2026-09-20 "กดค้นหาให้ไวๆ") — ไม่ต้องกดปุ่ม.
+  // effect นี้เป็น trigger เดียวสำหรับ q/provider (รวมโหลดครั้งแรกตอน ready) → ไม่ยิงซ้ำ. pagination แยก (goPage).
+  useEffect(() => {
+    if (!ready) return;
+    const t = window.setTimeout(() => { void loadUsers(q, 0, providerFilter); }, 250);
+    return () => window.clearTimeout(t);
+  }, [q, providerFilter, ready, loadUsers]);
 
   const login = async () => {
     setLoginErr("");
@@ -193,7 +214,7 @@ export default function OpsAdminPage() {
   if (!ready) {
     return (
       <main style={{ minHeight: "100vh", background: C.bg, color: C.text, display: "grid", placeItems: "center", fontFamily: "system-ui, sans-serif" }}>
-        <div style={{ ...box, width: 360 }}>
+        <div style={{ ...box, width: "min(360px, 92vw)", boxSizing: "border-box" }}>
           <h1 style={{ fontSize: 18, margin: "0 0 4px" }}>Admin หลังบ้าน · engine</h1>
           <p style={{ color: C.sub, fontSize: 13, margin: "0 0 14px" }}>เข้าสู่ระบบด้วยบัญชีของคุณ</p>
           <label style={label}>Username</label>
@@ -208,9 +229,9 @@ export default function OpsAdminPage() {
   }
 
   return (
-    <main style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "system-ui, sans-serif", padding: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-        <h1 style={{ fontSize: 20, margin: 0 }}>Admin หลังบ้าน · จัดการผู้ใช้</h1>
+    <main style={{ minHeight: "100vh", background: C.bg, color: C.text, fontFamily: "system-ui, sans-serif", padding: isMobile ? 12 : 20 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: isMobile ? 17 : 20, margin: 0 }}>Admin หลังบ้าน · จัดการผู้ใช้</h1>
         <span style={{ color: C.sub, fontSize: 12 }}>เขียน DB ตรง</span>
         {adminName && <span style={{ color: C.accent, fontSize: 13 }}>· {adminName}</span>}
         <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => { window.localStorage.removeItem("ops_secret"); window.localStorage.removeItem("ops_name"); setReady(false); setUsers([]); setSelected(null); }}>ออกจากระบบ</button>
@@ -226,7 +247,7 @@ export default function OpsAdminPage() {
       {/* คูปองกิจกรรม (global — ไม่ผูก user) */}
       <CouponManager secret={secret} onNote={note} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
         <div style={box}>
           <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -254,7 +275,7 @@ export default function OpsAdminPage() {
               </div>
             );
           })()}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "72vh", overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: isMobile ? "48vh" : "72vh", overflowY: "auto" }}>
             {users.map((u) => (
               <button key={u.anonId} onClick={() => select(u)} style={{ textAlign: "left", background: selected?.anonId === u.anonId ? "#1e2a40" : C.inputBg, border: `1px solid ${selected?.anonId === u.anonId ? C.accent : C.border}`, borderRadius: 8, padding: "9px 11px", color: C.text, cursor: "pointer" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
@@ -1041,6 +1062,7 @@ function AnalyticsPanel({ secret }: { secret: string }) {
 }
 
 function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<CouponRow[]>([]);
   const [discRows, setDiscRows] = useState<DiscountRow[]>([]);
@@ -1171,7 +1193,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
       </div>
       {open && (
         <div style={{ marginTop: 12 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
             <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="SONGKRAN" /></div>
             <div><span style={label}>ประเภท</span>
               <select style={input} value={rewardKind} onChange={(e) => setRewardKind(e.target.value as RewardKind)}>
