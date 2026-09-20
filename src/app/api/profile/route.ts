@@ -6,6 +6,7 @@ import { baziCorrectionRequest, baziQiClaim, baziUserProfile } from "@/db/schema
 import { spendQi, QiError } from "@/lib/bazi/qi/engine";
 import { isFeatureUnlimited } from "@/lib/bazi/qi/entitlements";
 import { QI_SPEND_BY_CODE } from "@/lib/bazi/qi/catalog";
+import { didBirthChange } from "@/lib/bazi/profile/birth-change";
 
 export const runtime = "nodejs";
 
@@ -108,7 +109,12 @@ export async function PATCH(request: Request) {
     // แถวโปรไฟล์ต้องมีอยู่ก่อน (@name สร้างขึ้นตอนสมัคร); ไม่มี = ยังไม่เคยตั้ง @name → สร้างเงื่อนไข
     // ไม่ได้เพราะ displayName NOT NULL — ตอบ 409 ให้ FE พาไปตั้ง @name ก่อน (หน้าสมัคร)
     const [existing] = await db
-      .select({ anonId: baziUserProfile.anonId, birthDate: baziUserProfile.birthDate })
+      .select({
+        anonId: baziUserProfile.anonId,
+        birthDate: baziUserProfile.birthDate,
+        birthTime: baziUserProfile.birthTime,
+        timeUnknown: baziUserProfile.timeUnknown,
+      })
       .from(baziUserProfile)
       .where(eq(baziUserProfile.anonId, body.anonId))
       .limit(1);
@@ -116,12 +122,11 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "ยังไม่มีโปรไฟล์ — ตั้ง @name ก่อน (หน้าสมัคร)" }, { status: 409 });
     }
 
-    // "กรอกครั้งแรก" (ยังไม่มีวันเกิดในระบบ) ไม่ใช่การ "แก้" → ไม่แตะสิทธิ์ฟรี/ไม่หัก QI.
-    // ใช้ตอน backfill จาก legacy (mootech `user.dob`) และตอนผู้ใช้ใหม่กรอกครั้งแรก — ไม่งั้นสิทธิ์ฟรีตลอดชีพ
-    // ถูกเผาไปกับการกรอกครั้งแรกทั้งที่ยังไม่เคย "แก้" อะไรเลย
-    const firstFill = existing.birthDate == null;
-    const birthChanged =
-      !firstFill && body.birth !== undefined && (body.birth !== existing.birthDate || body.timeUnknown === true);
+    // "กรอกครั้งแรก" (ยังไม่มีวันเกิดในระบบ) ไม่ใช่การ "แก้" → ไม่แตะสิทธิ์ฟรี/ไม่หัก QI (backfill legacy/สมัครใหม่).
+    // 🔴 เอ็มพบ 2026-09-20: เดิมเช็คแค่ "วันเกิด" + timeUnknown===true → "แก้เวลาเกิดอย่างเดียว" (วันเดิม) ไม่ถูกนับ
+    // → ไม่กินสิทธิ์ฟรี/ไม่หัก QI ทั้งที่เวลาเกิดเปลี่ยน = ดวงเปลี่ยนทั้งดวง. ย้ายไปเทียบ วัน+เวลา+ไม่ทราบเวลา ใน
+    // didBirthChange (pure, เทสต์ได้).
+    const birthChanged = didBirthChange(existing, body);
 
     // ── โควตาแก้วันเกิด (เกิดที่เดียว ใน flow เดียว) ────────────────────────────────────────────
     let birthEditMode: "free" | "qi" | null = null;
