@@ -106,8 +106,6 @@ export async function PATCH(request: Request) {
     const body = PostSchema.parse(await request.json());
     const db = createDbClient();
 
-    // แถวโปรไฟล์ต้องมีอยู่ก่อน (@name สร้างขึ้นตอนสมัคร); ไม่มี = ยังไม่เคยตั้ง @name → สร้างเงื่อนไข
-    // ไม่ได้เพราะ displayName NOT NULL — ตอบ 409 ให้ FE พาไปตั้ง @name ก่อน (หน้าสมัคร)
     const [existing] = await db
       .select({
         anonId: baziUserProfile.anonId,
@@ -118,8 +116,14 @@ export async function PATCH(request: Request) {
       .from(baziUserProfile)
       .where(eq(baziUserProfile.anonId, body.anonId))
       .limit(1);
+    // 🔴 เอ็ม/Janjarat 2026-09-20: "แก้วันเกิดไม่จำเป็นต้องตั้ง @name ก่อน". เดิมบัญชี legacy (ยังไม่ตั้ง @name →
+    // ไม่มีแถว bazi_user_profile เพราะ displayName NOT NULL+unique) ถูกตอบ 409 "ตั้ง @name ก่อน" → แก้วันเกิดไม่ได้
+    // (FE ยังเผลอเหมาเป็น "QI ไม่พอ"). ปลดบล็อก: ไม่บังคับ @name — ตอบ 200 ไม่หัก QI และ "ไม่เขียน bazi_user_profile"
+    // (เขียนไม่ได้เพราะต้องมี displayName). ฝั่ง FE (BFF /api/profile) จะ sync วันเกิดกลับ legacy "user".dob เอง →
+    // destiny/chart อ่าน legacy (mergeEngineBirth) อัปเดตตาม. พอ user ตั้ง @name ภายหลังจะมีโปรไฟล์จริง แล้วแก้
+    // แบบผูกโควตา/หัก QI ปกติ (birthEditMode="legacy" = FE โชว์ "บันทึกแล้ว" ไม่โชว์ "หัก QI").
     if (!existing) {
-      return Response.json({ error: "ยังไม่มีโปรไฟล์ — ตั้ง @name ก่อน (หน้าสมัคร)" }, { status: 409 });
+      return Response.json({ anonId: body.anonId, birthEditMode: "legacy", profile: null }, { status: 200 });
     }
 
     // "กรอกครั้งแรก" (ยังไม่มีวันเกิดในระบบ) ไม่ใช่การ "แก้" → ไม่แตะสิทธิ์ฟรี/ไม่หัก QI (backfill legacy/สมัครใหม่).
