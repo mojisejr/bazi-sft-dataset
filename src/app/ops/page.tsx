@@ -268,9 +268,9 @@ export default function OpsAdminPage() {
                 <span style={{ fontSize: 12, color: C.text }}>{busy ? "กำลังโหลด…" : <>ทั้งหมด <b>{total.toLocaleString()}</b> คน {q ? "(ตรงคำค้น)" : "ที่สมัคร"}</>}</span>
                 <span style={{ fontSize: 12, color: C.sub }}>· แสดง {from}–{to}</span>
                 <span style={{ marginLeft: "auto", display: "flex", gap: 6, alignItems: "center" }}>
-                  <button style={{ ...btn(C.border), padding: "4px 10px", fontSize: 12, opacity: page <= 0 ? 0.4 : 1 }} disabled={page <= 0 || busy} onClick={() => goPage(page - 1)}>‹ ก่อนหน้า</button>
+                  <button style={{ ...btn(C.border), padding: isMobile ? "8px 14px" : "4px 10px", fontSize: isMobile ? 13 : 12, opacity: page <= 0 ? 0.4 : 1 }} disabled={page <= 0 || busy} onClick={() => goPage(page - 1)}>‹ ก่อนหน้า</button>
                   <span style={{ fontSize: 12, color: C.sub }}>{page + 1}/{pages}</span>
-                  <button style={{ ...btn(C.border), padding: "4px 10px", fontSize: 12, opacity: page + 1 >= pages ? 0.4 : 1 }} disabled={page + 1 >= pages || busy} onClick={() => goPage(page + 1)}>ถัดไป ›</button>
+                  <button style={{ ...btn(C.border), padding: isMobile ? "8px 14px" : "4px 10px", fontSize: isMobile ? 13 : 12, opacity: page + 1 >= pages ? 0.4 : 1 }} disabled={page + 1 >= pages || busy} onClick={() => goPage(page + 1)}>ถัดไป ›</button>
                 </span>
               </div>
             );
@@ -1224,7 +1224,9 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
           </div>
 
           <p style={{ ...label, marginBottom: 4 }}>แจกรางวัล (แลกที่หน้า /v2/qi)</p>
-          <table style={{ borderCollapse: "collapse", width: "100%", marginBottom: 18 }}>
+          {/* มือถือ: ครอบ overflow-x ให้ตารางเลื่อนแนวนอนแทนบีบจนอ่านไม่ออก (6 คอลัมน์) */}
+          <div style={{ overflowX: "auto", marginBottom: 18, WebkitOverflowScrolling: "touch" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: isMobile ? 560 : undefined }}>
             <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>โค้ด</th><th style={td}>รางวัล</th><th style={td}>ช่วงเวลา</th><th style={td}>ใช้แล้ว</th><th style={td}>สถานะ</th><th style={td} /></tr></thead>
             <tbody>
               {rows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีคูปองรางวัล</td></tr>}
@@ -1243,9 +1245,11 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
               ))}
             </tbody>
           </table>
+          </div>
 
           <p style={{ ...label, marginBottom: 4 }}>ลดราคา (กรอกตอนจ่ายเงิน)</p>
-          <table style={{ borderCollapse: "collapse", width: "100%" }}>
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ borderCollapse: "collapse", width: "100%", minWidth: isMobile ? 560 : undefined }}>
             <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>โค้ด</th><th style={td}>ส่วนลด</th><th style={td}>ช่วงเวลา</th><th style={td}>ใช้แล้ว</th><th style={td}>สถานะ</th><th style={td} /></tr></thead>
             <tbody>
               {discRows.length === 0 && <tr><td style={td} colSpan={6}>ยังไม่มีโค้ดส่วนลด</td></tr>}
@@ -1290,6 +1294,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>
