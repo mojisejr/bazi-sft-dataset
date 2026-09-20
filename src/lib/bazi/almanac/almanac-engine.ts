@@ -436,6 +436,11 @@ export function buildAlmanacDay(
   const m = DAY_MONTH_TABLE[`${dayPillar.ganzhi}|${monthPillar.branch}`] ?? null; // ตรงตามฤดู (exact)
   const d = DAY_TABLE[dayPillar.ganzhi] ?? null; // fallback
   const rec = m ?? d;
+  // officer_desc ของ "เสาวันเดียวกัน" เปลี่ยนความหมายไปตามเดือนจริงในต้นฉบับ (ปฏิทิน 2569.xlsx มีแค่ ม.ค.-ก.ค.)
+  // → เมื่อไม่มี exact (day,month) match (m เป็น null) การ fallback ไปตาราง day-only (d) จะหยิบ officer_desc
+  // ของ "เดือนอื่น" มาโชว์เป็นความหมายวันนี้ ซึ่งขัดกับดวง/คะแนนวันได้ (ซินแสนุ้ยพบ 20 ก.ย. 2569). ซ่อน
+  // officerDesc เมื่อไม่มีข้อมูลเดือนจริง — officer (ป้ายชื่อ) กับ jianchu ยังโชว์ได้ (คงที่/คำนวณสูตรได้).
+  const officerDescIsMonthAccurate = m !== null;
   // กัน gates/spirits เพี้ยน (บางเสาคอลัมน์เลื่อนตอนสกัด) → fallback ไป day-pillar-table
   const gatesOk = (g: AlmanacRecord["gates"]) => !!g && g.length > 0 && g.every((x) => x && x[0] && GATE_SET.has(x[0]));
   const spiritsOk = (s: AlmanacRecord["spirits"]) => !!s && s.length > 0 && s.every((x) => x && SPIRIT_SET.has(x));
@@ -495,7 +500,7 @@ export function buildAlmanacDay(
     monthPillar,
     yearPillar,
     officer: rec?.officer ?? null,
-    officerDesc: rec?.officer_desc ?? null,
+    officerDesc: officerDescIsMonthAccurate ? (rec?.officer_desc ?? null) : null,
     jianchu: jianchuInfo(monthPillar.branch, dayPillar.branch),
     deities: (rec?.deities && rec.deities.length
       ? rec.deities

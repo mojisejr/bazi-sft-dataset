@@ -115,6 +115,25 @@ describe("almanac engine — เวลามงคล (黃道 rule)", () => {
   });
 });
 
+describe("almanac engine — officerDesc ต้องมาจากเดือนจริงเท่านั้น (ซินแสนุ้ย 2026-09-20)", () => {
+  // ปฏิทิน 2569.xlsx ต้นฉบับมีแค่ ม.ค.-ก.ค. — เดือนที่ไม่มีข้อมูล (申酉戌亥 ≈ ส.ค.-ธ.ค.) ต้อง "ซ่อน" officerDesc
+  // แทนที่จะ fallback ไปหยิบ officer_desc ของเดือนอื่นมาโชว์เป็นวันนี้ (เคยขัดกับ officer label + คะแนนวัน)
+  test("เดือนที่ไม่มี exact (day,month) match → officerDesc เป็น null (officer label ยังโชว์)", () => {
+    // 20 ก.ย. 2569 = เสาวัน 丁酉, เสาเดือน 酉 — day-month-table.json ไม่มีคีย์ "丁酉|酉"
+    const day = buildAlmanacDay(2026, 9, 20);
+    expect(day.dayPillar.ganzhi).toBe("丁酉");
+    expect(day.officerDesc).toBeNull();
+    expect(day.officer).not.toBeNull(); // ป้ายชื่อ officer (คงที่ข้ามเดือนเกือบทุกกรณี) ยังโชว์ได้
+  });
+
+  test("เดือนที่มีข้อมูลจริง (ม.ค.-ก.ค. 2569) → officerDesc ยังโชว์ตามปกติ (ไม่ regress)", () => {
+    const day = buildAlmanacDay(2026, 1, 23); // sheet jan มีบล็อก 丁酉 จริงที่วันที่ 23
+    if (day.dayPillar.ganzhi === "丁酉") {
+      expect(day.officerDesc).toBe("อับโชค เสียหาย เดียวดาย ทุกข์โศก");
+    }
+  });
+});
+
 describe("almanac engine — ทิศอสูร (三煞 rule)", () => {
   const SANSHA: Record<string, string> = {
     申: "S", 子: "S", 辰: "S", 寅: "N", 午: "N", 戌: "N",
