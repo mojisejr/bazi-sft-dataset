@@ -1179,7 +1179,19 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
               </select>
             </div>
             {isDiscount && <div><span style={label}>ชนิดส่วนลด</span><select style={input} value={dkind} onChange={(e) => setDkind(e.target.value as "PERCENT" | "FIXED")}><option value="PERCENT">เปอร์เซ็นต์ %</option><option value="FIXED">จำนวนเงิน ฿</option></select></div>}
-            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : undefined} /></div>
+            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : rewardKind === "tier" ? "เช่น 30" : undefined} />
+              {/* ปุ่มลัด top-up tier — กดเติมจำนวนวันมาตรฐาน (เอ็ม 2026-09-20: 30/60/90/180/365) ไม่ต้องพิมพ์เอง */}
+              {rewardKind === "tier" && (
+                <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+                  {[[30, "1 เดือน"], [60, "2 เดือน"], [90, "3 เดือน"], [180, "6 เดือน"], [365, "1 ปี"]].map(([d, lbl]) => (
+                    <button key={d} type="button" onClick={() => setAmount(String(d))}
+                      style={{ ...btn(amount === String(d) ? C.accent : C.inputBg), border: `1px solid ${amount === String(d) ? "transparent" : C.border}`, fontSize: 12, fontWeight: 600, padding: "3px 9px", minWidth: 0 }}>
+                      {lbl}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
             <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder={isDiscount ? "เว้น=ไม่จำกัด" : "เว้น=1 ครั้ง/คน"} /></div>
