@@ -27,8 +27,9 @@ export function qiCostOf(feature: QuotaFeature): number {
 }
 
 /** โควตาฟรีต่อวันตาม tier */
-// 2026-09-07 ตามแพลนที่ขายจริง (mootech-fe features/v2-shop/packages.ts): Free ไพ่ 2/วัน · แชท 1/วัน,
-// Plus ไพ่ 10/วัน · แชท 5/วัน, Pro ไม่จำกัดแชท (isUnlimited) · ไพ่ 20/วัน (แพลนไม่ระบุ — คงเพดานเดิม)
+// ตามแพลน (mootech-fe features/v2-shop/packages.ts): Free ไพ่ 2/วัน·แชท 1/วัน, Plus ไพ่ 10/วัน·แชท 5/วัน
+// (จำกัด นับถอยได้), Pro ไม่จำกัดทั้งคู่ (isUnlimited=pro เท่านั้น — เอ็ม 2026-09-21). pro row = dead value
+// (isUnlimited ตัดก่อนถึง FREE_LIMIT) คงไว้กันพัง.
 const FREE_LIMIT: Record<QuotaFeature, Record<Tier, number>> = {
   card: { free: 2, plus: 10, pro: 20 },
   chat: { free: 1, plus: 5, pro: 100 },
@@ -39,13 +40,10 @@ export function freeLimitOf(feature: QuotaFeature, tier: Tier): number {
 }
 
 /** สมาชิกจ่ายเงินได้ไม่จำกัด — ไม่หัก QI, ไม่ตัดโควตา
- *  - แชท: plus + pro ไม่จำกัด (เดิม)
- *  - ไพ่ (เซียมซี/oracle/divine): PRO ไม่จำกัด (เอ็ม 2026-09-21 — เดิม pro เพดาน 20/วัน ทำให้ป้าย
- *    "PRO ไม่จำกัด" ในหน้าไพ่ไม่จริง). PLUS ไพ่ยังเพดาน 10/วันตามแพลน. */
+ *  เอ็ม 2026-09-21: **เฉพาะ PRO เท่านั้นไม่จำกัด** (ทั้งแชทและไพ่). PLUS ตามแพลน = จำกัด นับถอยได้
+ *  (แชท 5/วัน โชว์ 5/5→4/5, ไพ่ 10/วัน), free (แชท 1, ไพ่ 2). เดิม PLUS แชทไม่จำกัด = ผิดแพลน. */
 export function isUnlimited(feature: QuotaFeature, tier: Tier): boolean {
-  if (feature === "chat") return tier === "plus" || tier === "pro";
-  if (feature === "card") return tier === "pro";
-  return false;
+  return tier === "pro";
 }
 
 /** จำนวนที่ใช้ไปแล้ววันนี้ (เขตไทย) ต่อฟีเจอร์ — สำหรับโชว์ badge "เหลือ N/limit วันนี้" ในหน้าแพ็กเกจ */
