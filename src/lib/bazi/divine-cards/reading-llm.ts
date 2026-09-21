@@ -7,7 +7,7 @@
  * server-only (ใช้ใน route)
  */
 import type { DivineReading } from "@/lib/bazi/divine-cards/reading-engine";
-import type { DivineTopics } from "@/lib/bazi/divine-cards/deck";
+import { aspect15Lines } from "@/lib/bazi/aspect15";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 
 type GeminiGenerate = (request: {
@@ -45,31 +45,10 @@ const SYSTEM_INSTRUCTION = [
   "ตอบเป็นคำทำนายร้อยแก้วที่ไหลต่อเนื่องตาม 3 จังหวะ ไม่ต้องมีหัวข้อ ไม่ต้องมี JSON",
 ].join("\n");
 
-const DIVINE_TOPIC_LABELS: Record<keyof DivineTopics, string> = {
-  finance: "การเงิน",
-  career: "การงาน",
-  love: "ความรัก",
-  health: "สุขภาพ",
-  travel: "การเดินทาง",
-  other: "อื่นๆ",
-};
-
-function topicLines(card: DivineReading["slots"][number]["card"]): string {
-  const t = card.topics;
-  if (!t) return "";
-  const parts = (Object.keys(DIVINE_TOPIC_LABELS) as Array<keyof typeof DIVINE_TOPIC_LABELS>)
-    .map((k) => {
-      const v = t[k]?.trim();
-      return v ? `${DIVINE_TOPIC_LABELS[k]}: ${v}` : null;
-    })
-    .filter((l): l is string => l !== null);
-  return parts.length ? `คำทำนายรายด้าน:\n${parts.join("\n")}` : "";
-}
-
 function buildUserPrompt(reading: DivineReading, question?: string): string {
   const cards = reading.slots
     .map((slot) => {
-      const aspects = topicLines(slot.card);
+      const aspects = aspect15Lines(slot.card.topics);
       return (
         `[ไพ่ที่ ${slot.position} • น้ำหนัก ${slot.weight}% • ${slot.role}] ` +
         `${slot.card.name} (${slot.card.keywordEn})\n` +

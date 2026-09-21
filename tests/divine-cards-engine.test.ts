@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import type { DivineCard, DivineDraw } from "@/lib/bazi/divine-cards/deck";
+import { EMPTY_ASPECT15 } from "@/lib/bazi/aspect15";
 import { buildDivineReading, DIVINE_WEIGHTS } from "@/lib/bazi/divine-cards/reading-engine";
 import { polishDivineReading } from "@/lib/bazi/divine-cards/reading-llm";
 
@@ -13,7 +14,7 @@ function card(no: number, name: string, prophecy: string): DivineCard {
     keywords: `คำสำคัญ${no}`,
     lifeImage: `ภาพ${no}`,
     prophecy,
-    topics: { finance: "", career: "", love: "", health: "", travel: "", other: "" },
+    topics: { ...EMPTY_ASPECT15 },
   };
 }
 

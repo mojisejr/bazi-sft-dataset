@@ -9,6 +9,7 @@
 import type { FortuneStick, TopicKey } from "@/lib/bazi/fortune-sage/deck";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 import { stripGenderedEnding } from "@/lib/bazi/oracle-cards/reading-llm";
+import { aspect15Lines } from "@/lib/bazi/aspect15";
 
 const TOPIC_LABELS: Record<TopicKey, string> = {
   career: "การงาน",
@@ -37,20 +38,27 @@ const SYSTEM_INSTRUCTION = [
 ].join("\n");
 
 function buildUserPrompt(stick: FortuneStick, question: string): string {
-  const topicLines = (Object.keys(TOPIC_LABELS) as TopicKey[])
-    .map((k) => {
-      const v = stick.topics[k]?.trim();
-      return v ? `${TOPIC_LABELS[k]}: ${v}` : null;
-    })
-    .filter((l): l is string => l !== null)
-    .join("\n");
+  // ใช้คลัง 15 ด้าน (รวม 5 ด้านจริงไว้แล้ว) ถ้ามี; ถ้ายังว่าง fallback 5 ด้านจากแหล่งเดิม
+  const aspectBlock = aspect15Lines(stick.aspects);
+  const topicLines = aspectBlock
+    ? aspectBlock
+    : (() => {
+        const lines = (Object.keys(TOPIC_LABELS) as TopicKey[])
+          .map((k) => {
+            const v = stick.topics[k]?.trim();
+            return v ? `${TOPIC_LABELS[k]}: ${v}` : null;
+          })
+          .filter((l): l is string => l !== null)
+          .join("\n");
+        return lines ? `คำทำนายรายด้าน:\n${lines}` : "";
+      })();
   return [
     `คำถามจากผู้ถาม: ${question}`,
     "ตอบคำถามนี้ในฐานะซินแส โดยตีความเนื้อเซี่ยงแซด้านล่างให้เข้ากับคำถาม:",
     "",
     `หัวเซี่ยงแซที่จั่วได้: ${stick.pillar} · ${stick.nayin} · องค์เทพ ${stick.deity}`,
     `นิสัย/ภาพรวม: ${stick.personality?.trim() ?? ""}`,
-    topicLines ? `คำทำนายรายด้าน:\n${topicLines}` : "",
+    topicLines,
   ].filter(Boolean).join("\n");
 }
 

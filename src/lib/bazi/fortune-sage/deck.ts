@@ -5,6 +5,8 @@
  * จาก knownlage/เซียนเสี่ยงทาย/เซียนเสี่ยงทาย.xlsx) — แสดงข้อความดิบ ไม่แต่งคำ
  */
 import sticksJson from "@/lib/bazi/data/fortune-sage.json";
+import aspectsJson from "@/lib/bazi/data/fortune-sage-topics.json";
+import { type Aspect15, coerceAspect15, EMPTY_ASPECT15 } from "@/lib/bazi/aspect15";
 
 export type TopicKey = "career" | "finance" | "health" | "love" | "family";
 
@@ -17,6 +19,8 @@ export type FortuneStick = {
   personality: string;
   deity: string;
   topics: Record<TopicKey, string>;
+  /** คำทำนายรายด้าน 15 ด้าน (gen อ้างอิงจากนิสัย+5 ด้านจริง; ซินแสแก้ทับได้) */
+  aspects: Aspect15;
   imageUrl: string | null;
 };
 
@@ -29,7 +33,12 @@ export const TOPICS: readonly { key: TopicKey; label: string }[] = [
   { key: "family", label: "ครอบครัว" },
 ];
 
-const STICKS: readonly FortuneStick[] = sticksJson as FortuneStick[];
+const ASPECTS_BANK = aspectsJson as Record<string, Partial<Aspect15>>;
+
+const STICKS: readonly FortuneStick[] = (sticksJson as Omit<FortuneStick, "aspects">[]).map((s) => ({
+  ...s,
+  aspects: ASPECTS_BANK[String(s.no)] ? coerceAspect15(ASPECTS_BANK[String(s.no)]) : EMPTY_ASPECT15,
+}));
 const BY_NO = new Map<number, FortuneStick>(STICKS.map((s) => [s.no, s]));
 
 export function getAllSticks(): readonly FortuneStick[] {

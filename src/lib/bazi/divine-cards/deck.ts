@@ -6,16 +6,10 @@
  */
 import cardsJson from "@/lib/bazi/data/divine-cards.json";
 import topicsJson from "@/lib/bazi/data/divine-cards-topics.json";
+import { type Aspect15, coerceAspect15, EMPTY_ASPECT15, hasAspect15 } from "@/lib/bazi/aspect15";
 
-/** keyword รายด้านต่อใบ (คลังที่ซินแสเติมทีหลัง; ว่าง = ให้ AI ตีความจาก prophecy เอง) */
-export type DivineTopics = {
-  finance: string; // การเงิน
-  career: string; // การงาน
-  love: string; // ความรัก
-  health: string; // สุขภาพ
-  travel: string; // การเดินทาง
-  other: string; // อื่นๆ
-};
+/** keyword รายด้านต่อใบ = 15 ด้าน canonical (gen อ้างอิงจากเนื้อไพ่; ซินแสแก้ทับได้) */
+export type DivineTopics = Aspect15;
 
 export type DivineCard = {
   no: number;
@@ -25,23 +19,21 @@ export type DivineCard = {
   keywords: string;
   lifeImage: string;
   prophecy: string;
-  /** keyword รายด้าน (อาจว่างทุกด้านถ้าซินแสยังไม่เติม) */
+  /** keyword รายด้าน 15 ด้าน (อาจว่างถ้ายังไม่ gen/เติม) */
   topics: DivineTopics;
 };
 
-const EMPTY_TOPICS: DivineTopics = { finance: "", career: "", love: "", health: "", travel: "", other: "" };
-
-/** true ถ้ามีอย่างน้อย 1 ด้านที่ซินแสเติมแล้ว */
+/** true ถ้ามีอย่างน้อย 1 ด้านที่เติมแล้ว */
 export function hasTopics(topics: DivineTopics): boolean {
-  return Object.values(topics).some((v) => v.trim().length > 0);
+  return hasAspect15(topics);
 }
 
 type RawCard = Omit<DivineCard, "topics">;
-const TOPICS_BANK = topicsJson as Record<string, Partial<DivineTopics>>;
+const TOPICS_BANK = topicsJson as Record<string, Partial<Aspect15>>;
 
 function topicsForCard(no: number): DivineTopics {
   const raw = TOPICS_BANK[String(no)];
-  return raw ? { ...EMPTY_TOPICS, ...raw } : EMPTY_TOPICS;
+  return raw ? coerceAspect15(raw) : EMPTY_ASPECT15;
 }
 
 export type DivineDraw = readonly [DivineCard, DivineCard, DivineCard];
