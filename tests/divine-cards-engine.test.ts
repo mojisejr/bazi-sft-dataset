@@ -47,9 +47,11 @@ describe("buildDivineReading", () => {
     expect(prose).toContain("20%");
   });
 
-  test("มีคำถาม → engineProse ขึ้นต้นด้วยบรรทัดคำถาม", () => {
+  // 2026-09-21: เลิก prepend "คำถามที่ถาม:" (ทำ FE map ย่อหน้า→ใบเลื่อน) — engineProse = 3 ย่อหน้าเสมอ
+  test("มีคำถาม → engineProse ไม่ prepend คำถาม (คง 3 ย่อหน้าต่อไพ่)", () => {
     const reading = buildDivineReading(DRAW, "ปีนี้การงานเป็นอย่างไร");
-    expect(reading.engineProse.startsWith("คำถามที่ถาม: ปีนี้การงานเป็นอย่างไร")).toBe(true);
+    expect(reading.engineProse).not.toContain("คำถามที่ถาม:");
+    expect(reading.engineProse.split("\n\n").filter(Boolean).length).toBe(3);
   });
 
   test("ไม่มีคำถาม → ไม่มีบรรทัดคำถาม", () => {

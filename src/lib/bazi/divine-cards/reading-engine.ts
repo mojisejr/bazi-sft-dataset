@@ -45,9 +45,9 @@ export function buildDivineReading(cards: DivineDraw, question?: string): Divine
 
   const [lead, expand1, expand2] = slots;
 
-  const q = question?.trim();
+  // engineProse = 3 ย่อหน้า (ต่อไพ่) เสมอ — ไม่ prepend "คำถามที่ถาม:" (เดิมทำ index ย่อหน้าเลื่อน
+  // ทำให้ FE map ย่อหน้า→ใบผิด). question ยังส่งต่อ LLM แยกไป tailor สรุป.
   const paragraphs = [
-    ...(q ? [`คำถามที่ถาม: ${q}`] : []),
     `ไพ่หลัก (น้ำหนัก ${lead.weight}%) — ${cardLabel(lead.card)}\n${lead.card.prophecy}`,
     `ขยายชุดที่ 1 (น้ำหนัก ${expand1.weight}%) — ${cardLabel(expand1.card)}\n` +
       `เสริมและต่อยอดธีมของไพ่หลัก: ${expand1.card.prophecy}`,

@@ -9,6 +9,7 @@ import {
 } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { polishDivineReading } from "@/lib/bazi/divine-cards/reading-llm";
+import { seedFromQuestion } from "@/lib/bazi/seed";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
@@ -72,7 +73,9 @@ export async function POST(req: Request) {
     if (picked.some((c) => !c)) return badRequest("มีเลขไพ่ที่ไม่อยู่ในสำรับ");
     cards = [picked[0]!, picked[1]!, picked[2]!];
   } else {
-    const drawn = drawRandom(3);
+    // seed จากคำถาม → คำถามต่างกันได้ไพ่ต่างกัน (ปอง 2026-09-21)
+    const seed = question?.trim() ? seedFromQuestion(question) : undefined;
+    const drawn = drawRandom(3, seed);
     cards = [drawn[0], drawn[1], drawn[2]];
   }
 
@@ -114,24 +117,13 @@ export async function POST(req: Request) {
   }
 
   // mode === "llm": เกลาคำจาก engine
+  const slots = reading.slots.map((s) => ({ position: s.position, weight: s.weight, role: s.role, no: s.card.no }));
   try {
     const llm = await polishDivineReading({ reading, question, apiKey, model, provider });
-    return Response.json({
-      source: "llm",
-      cards: cardPayload,
-      slots: reading.slots.map((s) => ({
-        position: s.position,
-        weight: s.weight,
-        role: s.role,
-        no: s.card.no,
-      })),
-      engineProse: reading.engineProse,
-      llmProse: llm.text,
-      model: llm.model,
-      qi,
-    });
-  } catch (error) {
-    return badRequest(error instanceof Error ? error.message : "LLM ตอบไม่สำเร็จ", 502);
+    return Response.json({ source: "llm", cards: cardPayload, slots, engineProse: reading.engineProse, llmProse: llm.text, model: llm.model, qi });
+  } catch {
+    // LLM ล่ม → fallback engine payload (ไม่ 502) — FE โชว์สรุปจาก engine
+    return Response.json({ source: "engine", cards: cardPayload, slots, engineProse: reading.engineProse, qi });
   }
 }
 

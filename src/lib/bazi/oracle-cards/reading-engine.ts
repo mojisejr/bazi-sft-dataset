@@ -51,9 +51,9 @@ export function buildOracleReading(cards: OracleDraw, question?: string): Oracle
 
   const [lead, expand1, expand2] = slots;
 
-  const q = question?.trim();
+  // engineProse = 3 ย่อหน้า (ต่อไพ่) เสมอ — ไม่ prepend "คำถามที่ถาม:" อีกแล้ว (เดิมทำ index ย่อหน้า
+  // เลื่อน 1 ทำให้ FE map ย่อหน้า→ใบผิด). question ยังส่งต่อ LLM (polish) เพื่อ tailor สรุปแยกต่างหาก.
   const paragraphs = [
-    ...(q ? [`คำถามที่ถาม: ${q}`] : []),
     `ไพ่หลัก (น้ำหนัก ${lead.weight}%) — ${cardLabel(lead.card)}\n${cardProphecy(lead.card)}`,
     `ขยายชุดที่ 1 (น้ำหนัก ${expand1.weight}%) — ${cardLabel(expand1.card)}\n` +
       `เสริมและต่อยอดธีมของไพ่หลัก: ${cardProphecy(expand1.card)}`,
