@@ -13,6 +13,7 @@ function card(no: number, name: string, prophecy: string): DivineCard {
     keywords: `คำสำคัญ${no}`,
     lifeImage: `ภาพ${no}`,
     prophecy,
+    topics: { finance: "", career: "", love: "", health: "", travel: "", other: "" },
   };
 }
 

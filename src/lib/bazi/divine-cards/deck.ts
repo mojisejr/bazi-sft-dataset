@@ -5,6 +5,17 @@
  * จาก knownlage/ไพ่เทพ/ไพ่จิตวิญญาณแดนสวรรค์.xlsx)
  */
 import cardsJson from "@/lib/bazi/data/divine-cards.json";
+import topicsJson from "@/lib/bazi/data/divine-cards-topics.json";
+
+/** keyword รายด้านต่อใบ (คลังที่ซินแสเติมทีหลัง; ว่าง = ให้ AI ตีความจาก prophecy เอง) */
+export type DivineTopics = {
+  finance: string; // การเงิน
+  career: string; // การงาน
+  love: string; // ความรัก
+  health: string; // สุขภาพ
+  travel: string; // การเดินทาง
+  other: string; // อื่นๆ
+};
 
 export type DivineCard = {
   no: number;
@@ -14,11 +25,31 @@ export type DivineCard = {
   keywords: string;
   lifeImage: string;
   prophecy: string;
+  /** keyword รายด้าน (อาจว่างทุกด้านถ้าซินแสยังไม่เติม) */
+  topics: DivineTopics;
 };
+
+const EMPTY_TOPICS: DivineTopics = { finance: "", career: "", love: "", health: "", travel: "", other: "" };
+
+/** true ถ้ามีอย่างน้อย 1 ด้านที่ซินแสเติมแล้ว */
+export function hasTopics(topics: DivineTopics): boolean {
+  return Object.values(topics).some((v) => v.trim().length > 0);
+}
+
+type RawCard = Omit<DivineCard, "topics">;
+const TOPICS_BANK = topicsJson as Record<string, Partial<DivineTopics>>;
+
+function topicsForCard(no: number): DivineTopics {
+  const raw = TOPICS_BANK[String(no)];
+  return raw ? { ...EMPTY_TOPICS, ...raw } : EMPTY_TOPICS;
+}
 
 export type DivineDraw = readonly [DivineCard, DivineCard, DivineCard];
 
-const CARDS: readonly DivineCard[] = cardsJson as DivineCard[];
+const CARDS: readonly DivineCard[] = (cardsJson as RawCard[]).map((c) => ({
+  ...c,
+  topics: topicsForCard(c.no),
+}));
 const BY_NO = new Map<number, DivineCard>(CARDS.map((card) => [card.no, card]));
 
 export function getAllCards(): readonly DivineCard[] {
