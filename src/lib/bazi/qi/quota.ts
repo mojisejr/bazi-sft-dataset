@@ -38,9 +38,14 @@ export function freeLimitOf(feature: QuotaFeature, tier: Tier): number {
   return FREE_LIMIT[feature][tier];
 }
 
-/** สมาชิกจ่ายเงิน (plus/pro) แชทได้ไม่จำกัด — ไม่หัก QI, ไม่ตัดโควตา (นโยบายเฉพาะ chat) */
+/** สมาชิกจ่ายเงินได้ไม่จำกัด — ไม่หัก QI, ไม่ตัดโควตา
+ *  - แชท: plus + pro ไม่จำกัด (เดิม)
+ *  - ไพ่ (เซียมซี/oracle/divine): PRO ไม่จำกัด (เอ็ม 2026-09-21 — เดิม pro เพดาน 20/วัน ทำให้ป้าย
+ *    "PRO ไม่จำกัด" ในหน้าไพ่ไม่จริง). PLUS ไพ่ยังเพดาน 10/วันตามแพลน. */
 export function isUnlimited(feature: QuotaFeature, tier: Tier): boolean {
-  return feature === "chat" && (tier === "plus" || tier === "pro");
+  if (feature === "chat") return tier === "plus" || tier === "pro";
+  if (feature === "card") return tier === "pro";
+  return false;
 }
 
 /** จำนวนที่ใช้ไปแล้ววันนี้ (เขตไทย) ต่อฟีเจอร์ — สำหรับโชว์ badge "เหลือ N/limit วันนี้" ในหน้าแพ็กเกจ */
