@@ -7,10 +7,12 @@ import {
   isOtherChartRequest,
   wantsCardReading,
   wantsFengshui,
+  wantsPhoneNumber,
   wantsSpecificPersonLove,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
+import { readPhoneNumber, type PhoneReading } from "@/lib/bazi/phone-number";
 import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
@@ -39,6 +41,31 @@ import {
   createGuardedOpenAiSseStream,
   type GlassBoxTrace,
 } from "@/features/open-webui/sse-streamer";
+
+// เลขศาสตร์เบอร์ (เอ็ม 2026-09-22): ดึงเบอร์มือถือไทยจากข้อความ (0xx-xxx-xxxx / 0xxxxxxxxx / 66xxxxxxxxx)
+function extractThaiPhone(msg: string): string | null {
+  const m = msg.match(/0\s?\d[\s-]?\d{3}[\s-]?\d{4}|0\d{9}|66\d{9}/);
+  if (!m) return null;
+  const d = m[0].replace(/\D/g, "");
+  return d.length >= 10 ? d : null;
+}
+// ย่อผลถอดเลขศาสตร์ให้ LLM อธิบายต่อ (คู่ปิดท้าย = น้ำหนักมากสุด + คู่เด่น 2 + เลขที่พบบ่อย พร้อมความหมาย งาน/เงิน/รัก)
+function formatPhoneReadingForChat(r: PhoneReading): string {
+  const lines: string[] = [`เบอร์ (9 หลักนัยสำคัญ): ${r.normalized}`];
+  const c = r.closing;
+  lines.push(`คู่ปิดท้าย ${c.pair} (น้ำหนักมากสุด): ${c.meaning.analysis || c.meaning.feeling}`);
+  if (c.meaning.work) lines.push(`  • การงาน: ${c.meaning.work}`);
+  if (c.meaning.money) lines.push(`  • การเงิน: ${c.meaning.money}`);
+  if (c.meaning.love) lines.push(`  • ความรัก: ${c.meaning.love}`);
+  const others = [...r.pairs].sort((a, b) => b.weight - a.weight).filter((p) => p.position !== c.position).slice(0, 2);
+  if (others.length) {
+    lines.push("คู่เด่นอื่น:");
+    for (const p of others) lines.push(`  • ${p.pair}: ${p.meaning.analysis || p.meaning.feeling}`);
+  }
+  const freq = r.digitTally.slice(0, 2).filter((d) => d.count > 1).map((d) => `${d.digit} (${d.planet}/${d.element} ${d.keyword}) ×${d.count}`).join(", ");
+  if (freq) lines.push(`เลขที่พบบ่อย: ${freq}`);
+  return lines.join("\n");
+}
 
 export const runtime = "nodejs";
 
@@ -450,6 +477,22 @@ export async function POST(req: Request) {
         executionContext.hasFengshuiData = true;
       } catch {
         /* จั่ว/อ่านไพ่ฮวงจุ้ยพัง → ข้าม (ตอบตามปกติ) */
+      }
+    }
+
+    // เลขศาสตร์เบอร์ (เอ็ม 2026-09-22): ถามเรื่องเบอร์ + ให้เบอร์มา → ถอดจริง (readPhoneNumber) แนบให้ LLM อธิบาย
+    // (ไม่ขึ้นดวงปาจื่อ). ถ้าไม่ให้เบอร์ → gemini-adapter สั่งขอเบอร์ 10 หลักก่อน (ไม่มโน).
+    if (!executionContext.hasPhoneData && wantsPhoneNumber(result.latestUserMessage.content)) {
+      const num = extractThaiPhone(result.latestUserMessage.content);
+      if (num) {
+        try {
+          executionContext.phoneReading = formatPhoneReadingForChat(readPhoneNumber(num));
+          executionContext.hasPhoneData = true;
+          triage.requiresBaziConsult = false;
+          triage.classification.requiresBaziConsult = false;
+        } catch {
+          /* เบอร์ไม่ครบ 10 หลัก → ปล่อยให้ instruction ขอเบอร์ใหม่ */
+        }
       }
     }
 
