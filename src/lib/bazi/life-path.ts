@@ -20,15 +20,10 @@ import {
   type ChartFacts,
 } from "@/lib/bazi/newdata-lookup";
 import { resolveDisplayTwelveQiStage } from "@/lib/bazi/pillar-display";
+import { pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
 
-export type LifePathStageWord =
-  | "เริ่มใหม่"
-  | "สะสม"
-  | "ฟื้นฟู"
-  | "ทดลอง"
-  | "เก็บเกี่ยว"
-  | "โชว์สกิล"
-  | "ถดถอย";
+/** ป้ายช่วง = "คำไทยของ 12 เชี่ยงแซ" ตามที่ซินแสนุ้ยกำหนด (2026-09-22) — ไม่ใช่คำที่ AI คิดเอง */
+export type LifePathStageWord = string;
 
 export type LifePathPoint = {
   label: string;
@@ -72,22 +67,22 @@ const QI_SCORE: Record<string, number> = {
 };
 const DEFAULT_SCORE = 60;
 
-/** แผนที่ 12 เชี่ยงแซ → 1 ใน 7 คำ stage ตามเฟสวงจรชีวิต (growth → peak → decline). */
+/** แผนที่ 12 เชี่ยงแซ → "คำไทย" ตามที่ซินแสนุ้ยกำหนด (2026-09-22) — 1 เชี่ยงแซ = 1 คำ (ไม่ยุบเป็น 7) */
 const QI_STAGE: Record<string, LifePathStageWord> = {
-  ทอ: "เริ่มใหม่", // 胎
-  เอี้ยง: "สะสม", // 養
-  เชี่ยงแซ: "ฟื้นฟู", // 長生
-  หมอ: "ฟื้นฟู", // 沐浴
-  กวงตั่ว: "ทดลอง", // 冠帶
-  ลิ่มกัว: "เก็บเกี่ยว", // 臨官
-  ตี้อ๋วง: "โชว์สกิล", // 帝旺
-  ซวย: "ถดถอย", // 衰
-  แป่: "ถดถอย", // 病
-  ซี่: "ถดถอย", // 死
-  หมกยก: "ถดถอย", // 墓
-  เจ๊าะ: "ถดถอย", // 絶
+  เชี่ยงแซ: "พัฒนา", // 長生
+  หมกยก: "สะสาง", // 墓 (ซินแส: สะสาง/ลุ่มหลง)
+  กวงตั่ว: "บัณฑิต", // 冠帶
+  ลิ่มกัว: "ตำแหน่ง", // 臨官
+  ตี้อ๋วง: "อำนาจ", // 帝旺
+  ซวย: "เสื่อมถอย", // 衰
+  แป่: "แปรเปลี่ยน", // 病
+  ซี่: "สูญเสีย", // 死
+  หมอ: "คงที่", // 沐浴
+  เจ๊าะ: "สูญสิ้น", // 絶
+  ทอ: "ก่อเกิด", // 胎
+  เอี้ยง: "บ่มเพาะ", // 養
 };
-const DEFAULT_STAGE: LifePathStageWord = "สะสม";
+const DEFAULT_STAGE: LifePathStageWord = "คงที่";
 
 function scoreOfQi(qi: string | null | undefined): number {
   if (!qi) return DEFAULT_SCORE;
@@ -228,72 +223,73 @@ function buildBands(
   return points;
 }
 
-// ── annual (1y) ─────────────────────────────────────────────────────────────
-type YearInfo = { year: number; age: number | null; qi: string | null };
-
-function collectYears(state: CalculatedStateValue, facts: ChartFacts): YearInfo[] {
-  return (state.liuNianSeries ?? []).map((y) => ({
-    year: y.year,
-    age: y.age ?? null,
-    qi: y.twelveQiDisplay ?? resolveDisplayTwelveQiStage(facts.dayMaster, y.branch) ?? null,
-  }));
-}
-
-function buildAnnual(years: YearInfo[], currentAge: number): LifePathPoint[] {
-  // หน้าต่าง currentAge-4 .. currentAge+12
-  const lo = currentAge - 4;
-  const hi = currentAge + 12;
-  return years
-    .filter((y) => y.age != null && y.age >= lo && y.age <= hi)
-    .map((y) => ({
-      label: String(y.year),
-      score: clampScore(scoreOfQi(y.qi)),
-      stage: stageOfQi(y.qi),
-      ageStart: y.age ?? undefined,
-      ageEnd: y.age ?? undefined,
-      isCurrent: y.age === currentAge,
-    }));
-}
-
-// ── monthly (1m) ────────────────────────────────────────────────────────────
+// ── monthly (1y = 12 เดือนของปีนี้) — ซินแสนุ้ย: "1 ปี" ต้องโชว์ 12 เดือน ────────────
 const TH_MONTHS = [
   "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
   "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค.",
 ];
 
-/** 12 เดือนของปีปัจจุบัน — แกว่งเบา ๆ รอบคะแนนปีปัจจุบัน (derive placeholder). */
-function buildMonthly(base: number, nowMonthIdx: number): LifePathPoint[] {
+/** 12 เดือนของปีปัจจุบัน — เชี่ยงแซจริงของเสาเดือน (กิ่งเดือน) เทียบดิถี. */
+function buildMonthly(dayMaster: string, year: number, nowMonthIdx: number): LifePathPoint[] {
   return TH_MONTHS.map((label, i) => {
-    // แกว่ง ±8 แบบไซน์เบา ๆ ให้เส้นไม่แบน (deterministic)
-    const wobble = Math.round(8 * Math.sin((i / 12) * Math.PI * 2));
+    // เสาเดือนจริงกลางเดือน (วันที่ 15) — เอากิ่งเดือนมาคิด 12 เชี่ยงแซเทียบดิถี
+    let qi: string | null = null;
+    try {
+      const branch = pillarsForDate(year, i + 1, 15).monthPillar.branch;
+      qi = resolveDisplayTwelveQiStage(dayMaster, branch) ?? null;
+    } catch {
+      qi = null;
+    }
     return {
       label,
-      score: clampScore(base + wobble),
-      stage: stageOfQi(null), // เดือนไม่มี 12 เชี่ยงแซแยก — ใช้ค่ากลาง
+      score: clampScore(scoreOfQi(qi)),
+      stage: stageOfQi(qi),
       isCurrent: i === nowMonthIdx,
     };
   });
 }
 
+// ── daily (1m = ~30 วันของเดือนนี้) — ซินแสนุ้ย: "1 เดือน" ต้องโชว์วันของเดือนนี้ ────────
+/** วันของเดือนปัจจุบัน — เชี่ยงแซจริงของเสาวัน (กิ่งวัน) เทียบดิถี. */
+function buildDaily(dayMaster: string, year: number, month: number, nowDay: number): LifePathPoint[] {
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const out: LifePathPoint[] = [];
+  for (let d = 1; d <= daysInMonth; d += 1) {
+    let qi: string | null = null;
+    try {
+      const branch = pillarsForDate(year, month, d).dayPillar.branch;
+      qi = resolveDisplayTwelveQiStage(dayMaster, branch) ?? null;
+    } catch {
+      qi = null;
+    }
+    out.push({
+      label: String(d),
+      score: clampScore(scoreOfQi(qi)),
+      stage: stageOfQi(qi),
+      isCurrent: d === nowDay,
+    });
+  }
+  return out;
+}
+
 /** สร้าง Life-Path (4 ความละเอียด) จาก state ที่คำนวณแล้ว. */
 export function buildLifePath(
   state: CalculatedStateValue,
-  opts: { gender?: string; birthYear?: number; nowYear?: number; nowMonth?: number } = {},
+  opts: { gender?: string; birthYear?: number; nowYear?: number; nowMonth?: number; nowDay?: number } = {},
 ): LifePath {
   const facts = extractChartFacts(state, opts.gender, opts.birthYear);
   const currentAge = state.ageSnapshot?.thaiAge ?? 0;
   const favTh = favorableElements(facts);
 
   const bands = buildBands(facts, currentAge);
-  const years = collectYears(state, facts);
-  const annual = buildAnnual(years, currentAge);
 
-  // ฐานคะแนนรายเดือน = คะแนนปีปัจจุบัน (ไม่มีก็ใช้ band ปัจจุบัน)
-  const curYearPt = annual.find((p) => p.isCurrent);
-  const curBandPt = bands.find((p) => p.isCurrent);
-  const monthlyBase = curYearPt?.score ?? curBandPt?.score ?? DEFAULT_SCORE;
-  const nowMonthIdx = (opts.nowMonth ?? new Date().getMonth() + 1) - 1;
-  const monthly = buildMonthly(monthlyBase, Math.max(0, Math.min(11, nowMonthIdx)));
+  const now = new Date();
+  const nowYear = opts.nowYear ?? now.getFullYear();
+  const nowMonth = opts.nowMonth ?? now.getMonth() + 1; // 1-based
+  const nowDay = opts.nowDay ?? now.getDate();
+  // "1 ปี" = 12 เดือนของปีนี้ · "1 เดือน" = วันของเดือนนี้ (ซินแสนุ้ย 2026-09-22)
+  const monthly = buildMonthly(facts.dayMaster, nowYear, Math.max(0, Math.min(11, nowMonth - 1)));
+  const daily = buildDaily(facts.dayMaster, nowYear, nowMonth, nowDay);
 
   return {
     currentAge,
@@ -301,8 +297,8 @@ export function buildLifePath(
     series: {
       all: bands,
       "5y": bands, // ความละเอียด 5 ปีเท่ากับ all
-      "1y": annual,
-      "1m": monthly,
+      "1y": monthly, // 12 เดือนของปีนี้
+      "1m": daily, // วันของเดือนนี้
     },
   };
 }
