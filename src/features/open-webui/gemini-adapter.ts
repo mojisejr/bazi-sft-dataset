@@ -108,6 +108,18 @@ export function wantsFengshui(message?: string | null): boolean {
   return false;
 }
 
+// โหมดเบอร์โทร/เลขศาสตร์ (เอ็ม 2026-09-22: "แชทถามเบอร์ ตอบมั่ว ไม่เอาวิชาเบอร์"): วิชาเบอร์เป็นเลขศาสตร์
+// คนละวิชากับปาจื่อ — แชทต้องไม่ทำนายเบอร์เอง (มั่ว) แต่ชวนไปเมนู "ดูดวงเบอร์มือถือ" ที่คำนวณจริง.
+// ยิงเมื่อ: ส่งเบอร์ไทยมาตรง ๆ (0xx-xxx-xxxx) หรือ มีคำ "เบอร์/เลขมงคล/เลขศาสตร์" + เจตนา (ดู/ทำนาย/ดีไหม/ความหมาย).
+const PHONE_WORD_RE = /(เบอร์(โทร|มือถือ|โทรศัพท์)?|เลข(มงคล|ศาสตร์|เด็ด)|หมายเลข(โทร)?|ดูเบอร์|ทำนายเบอร์)/;
+const PHONE_INTENT_RE = /(ดู|ทำนาย|วิเคราะห์|เช็ค|เช็ก|ดีไหม|ดีมั้ย|ดีรึ|มงคล|เสริม|เปลี่ยน|เลือก|ความหมาย|แปล|บอก|อ่าน|ถอด|เป็น(ยัง|อย่าง)ไง)/;
+const PHONE_DIGITS_RE = /0\d{1,2}[-\s]?\d{3}[-\s]?\d{4}/; // เบอร์มือถือไทย 10 หลัก (มี/ไม่มีขีด)
+export function wantsPhoneNumber(message?: string | null): boolean {
+  if (typeof message !== "string") return false;
+  if (PHONE_DIGITS_RE.test(message)) return true;
+  return PHONE_WORD_RE.test(message) && PHONE_INTENT_RE.test(message);
+}
+
 // Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
 // inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
 export function isHonestPrecisionReframe(
@@ -462,6 +474,9 @@ export function buildOpenWebUiGeminiPromptPayload(
         : null,
       crisis
         ? "⛑️ สัญญาณภาวะเปราะบาง/อยากทำร้ายตัวเอง: ห้ามตอบด้วยวันมงคล/ฤกษ์/ยาม/ตัวเลข หรือทำนายดวงดี-ร้าย. ให้ตอบแบบห่วงใย รับฟัง ไม่ตัดสิน + ให้สายด่วนสุขภาพจิต 1323 (24 ชม.) หรือสะมาริตันส์ 02-113-6789 (ฉุกเฉิน 1669) และชวนให้คุยกับคนที่ไว้ใจ/ผู้เชี่ยวชาญ."
+        : null,
+      !crisis && wantsPhoneNumber(input.latestUserMessage.content)
+        ? "⚠️ ผู้ใช้ถามเรื่อง \"เบอร์โทร/เลขศาสตร์/เลขมงคล\" — เป็นคนละวิชากับปาจื่อ (เลขศาสตร์ ไม่ใช่ดวงจากวันเกิด). **ห้ามทำนาย/วิเคราะห์/ให้ความหมายของเบอร์เองเด็ดขาด** (จะเป็นการมั่ว) และห้ามขึ้นดวง/มโนธาตุ-ตัวเลขให้. ให้ตอบสั้น ๆ อย่างเป็นกันเองว่าเรื่องดูเบอร์เป็นวิชาเลขศาสตร์ มีเมนูเฉพาะ \"ดูดวงเบอร์มือถือ\" ในหน้าบริการ ที่คำนวณให้แม่นกว่า แล้วชวนให้ไปกดใช้ที่นั่น (ห้ามชวนไปเปิดไพ่/เซียมซี)."
         : null,
       hasCardReadingData && !crisis
         ? [

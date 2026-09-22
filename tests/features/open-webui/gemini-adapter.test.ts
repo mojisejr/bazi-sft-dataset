@@ -9,6 +9,7 @@ import {
   isCrisisMessage,
   isOtherChartRequest,
   wantsCardReading,
+  wantsPhoneNumber,
   wantsSpecificPersonLove,
   MUMATE_PERSONA_INSTRUCTION,
   type OpenWebUiGeminiExecutionContext,
@@ -71,6 +72,26 @@ describe("wantsSpecificPersonLove (ความรักเจาะจงคน
 
 // 2026-09-20 (เอ็ม live-test): LLM triage จัดคำถามกลุ่มนี้ผิดบ่อยแบบสุ่ม (colors_directions/chit_chat/
 // education สลับกันไปมา) แม้เติม few-shot ในพร้อมท์ triage แล้วก็ไม่ช่วย — ต้องตัดสินด้วย regex ตรงๆ
+describe("wantsPhoneNumber (เบอร์/เลขศาสตร์ → ชวนไปเมนู ไม่ทำนายเอง)", () => {
+  test("คำ 'เบอร์/เลขมงคล' + เจตนา → true", () => {
+    expect(wantsPhoneNumber("ดูเบอร์โทรให้หน่อย")).toBe(true);
+    expect(wantsPhoneNumber("เบอร์มือถือนี้ดีไหม")).toBe(true);
+    expect(wantsPhoneNumber("อยากรู้ความหมายเลขศาสตร์ในเบอร์")).toBe(true);
+    expect(wantsPhoneNumber("เลขมงคลของฉันคือเบอร์อะไร")).toBe(true);
+  });
+  test("ส่งเบอร์ไทยมาตรง ๆ → true", () => {
+    expect(wantsPhoneNumber("0812345678 ดีไหม")).toBe(true);
+    expect(wantsPhoneNumber("081-234-5678")).toBe(true);
+    expect(wantsPhoneNumber("เบอร์ผม 089 123 4567")).toBe(true);
+  });
+  test("คำถามดวงทั่วไป (ไม่เกี่ยวเบอร์) → false", () => {
+    expect(wantsPhoneNumber("ปีนี้การเงินเป็นยังไง")).toBe(false);
+    expect(wantsPhoneNumber("ดวงความรักเป็นแบบไหน")).toBe(false);
+    expect(wantsPhoneNumber(null)).toBe(false);
+    expect(wantsPhoneNumber(undefined)).toBe(false);
+  });
+});
+
 describe("wantsCardReading (deterministic override — ของหาย/ลี้ลับ/ขอเสี่ยงทายตรงๆ)", () => {
   test("ของ/สัตว์เลี้ยงหาย + ถามผล → true", () => {
     expect(wantsCardReading("แมวหายไปสองวันแล้ว จะได้เจอไหม")).toBe(true);
