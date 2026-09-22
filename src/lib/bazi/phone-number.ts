@@ -141,3 +141,29 @@ export function readPhoneNumber(raw: string): PhoneReading {
 
   return { input: raw, normalized, pairs, closing, digitTally };
 }
+
+// ── บ้านเลขที่/เลขสั้น (เลขศาสตร์ผลรวม) ────────────────────────────────────────────
+// วิธี: บวกทุกหลัก → ถ้าได้ 2 หลัก (10–99) ใช้ความหมาย "คู่เลข" (รวย/งาน/รัก) เหมือนเบอร์; ยุบเป็นเลขเดี่ยว
+// (digital root) เพื่ออ่านความหมายเลขหลักเดียว (ดาว/ธาตุ/คีย์เวิร์ด). ใช้ data ชุดเดียวกับเบอร์ — ไม่แต่งตำราใหม่.
+export type HouseNumberReading = {
+  input: string;
+  digits: string;
+  /** ผลบวกทุกหลัก (เช่น 135 → 9) */
+  sum: number;
+  /** ยุบเป็นเลขหลักเดียว (digital root) */
+  root: number;
+  rootMeaning: DigitInfo;
+  /** ความหมายคู่เลขของผลรวม (เฉพาะเมื่อ sum อยู่ 10–99) */
+  pairMeaning?: PairMeaning;
+};
+
+export function readHouseNumber(raw: string): HouseNumberReading {
+  const digits = (raw ?? "").replace(/\D/g, "");
+  if (!digits) throw new PhoneNumberError("กรุณากรอกเลขที่ (ตัวเลข) เช่น 135");
+  const sum = digits.split("").reduce((a, c) => a + Number(c), 0);
+  let root = sum;
+  while (root > 9) root = String(root).split("").reduce((a, c) => a + Number(c), 0);
+  const pairMeaning =
+    sum >= 10 && sum <= 99 ? PAIR_MEANINGS[canonicalKey(Math.floor(sum / 10), sum % 10)] : undefined;
+  return { input: raw, digits, sum, root, rootMeaning: digitInfo(root), pairMeaning };
+}

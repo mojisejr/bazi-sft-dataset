@@ -9,6 +9,7 @@ import {
   isCrisisMessage,
   isOtherChartRequest,
   wantsCardReading,
+  wantsHouseNumber,
   wantsPhoneNumber,
   wantsSpecificPersonLove,
   MUMATE_PERSONA_INSTRUCTION,
@@ -89,6 +90,19 @@ describe("wantsPhoneNumber (เบอร์/เลขศาสตร์ → ช�
     expect(wantsPhoneNumber("ดวงความรักเป็นแบบไหน")).toBe(false);
     expect(wantsPhoneNumber(null)).toBe(false);
     expect(wantsPhoneNumber(undefined)).toBe(false);
+  });
+});
+
+describe("wantsHouseNumber (บ้านเลขที่ → เลขศาสตร์ผลรวม)", () => {
+  test("คำบ้านเลขที่/เลขห้อง → true", () => {
+    expect(wantsHouseNumber("บ้านเลขที่ 135 ดีไหม")).toBe(true);
+    expect(wantsHouseNumber("เลขที่บ้านของฉันดีมั้ย")).toBe(true);
+    expect(wantsHouseNumber("เลขห้อง 512 เป็นยังไง")).toBe(true);
+  });
+  test("เบอร์มือถือ / คำถามทั่วไป → false", () => {
+    expect(wantsHouseNumber("เบอร์มือถือนี้ดีไหม")).toBe(false);
+    expect(wantsHouseNumber("ปีนี้การเงินเป็นยังไง")).toBe(false);
+    expect(wantsHouseNumber(null)).toBe(false);
   });
 });
 

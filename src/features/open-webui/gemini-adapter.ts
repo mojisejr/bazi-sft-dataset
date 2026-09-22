@@ -120,6 +120,14 @@ export function wantsPhoneNumber(message?: string | null): boolean {
   return PHONE_WORD_RE.test(message) && PHONE_INTENT_RE.test(message);
 }
 
+// โหมดบ้านเลขที่/เลขสั้น (เอ็ม 2026-09-22): เลขศาสตร์ผลรวม (คนละสูตรกับเบอร์มือถือ) — คำเจาะจงว่า "บ้านเลขที่/
+// เลขห้อง/เลขทะเบียนบ้าน" (มี number หรือไม่ก็ได้ — ถ้าไม่มี route จะขอเลขก่อน).
+const HOUSE_WORD_RE = /(บ้านเลขที่|เลขที่บ้าน|บ้านเลข|เลขห้อง|เลขที่ห้อง|เลขทะเบียนบ้าน|บ้านเลขไหน)/;
+export function wantsHouseNumber(message?: string | null): boolean {
+  if (typeof message !== "string") return false;
+  return HOUSE_WORD_RE.test(message);
+}
+
 // Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
 // inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
 export function isHonestPrecisionReframe(
@@ -310,6 +318,10 @@ export type OpenWebUiGeminiExecutionContext = {
   phoneReading?: string | null;
   /** true = คำถามนี้ตอบด้วยเลขศาสตร์เบอร์ — คู่กับ phoneReading. */
   hasPhoneData?: boolean;
+  /** ผลถอด "บ้านเลขที่/เลขสั้น" (readHouseNumber) — ผลรวม/เลขเดี่ยว/ความหมายคู่. คนละสูตรกับเบอร์มือถือ. */
+  houseReading?: string | null;
+  /** true = คำถามนี้ตอบด้วยเลขศาสตร์บ้านเลขที่ — คู่กับ houseReading. */
+  hasHouseData?: boolean;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -429,6 +441,10 @@ export function buildOpenWebUiGeminiPromptPayload(
   const hasPhoneData = (input.executionContext?.hasPhoneData ?? false) && Boolean(phoneReading);
   // ถามเรื่องเบอร์ แต่ยังไม่ได้ให้เบอร์ 10 หลัก → ต้องขอเบอร์ก่อน (ไม่มโน)
   const phoneAskNoNumber = !crisis && !hasPhoneData && wantsPhoneNumber(input.latestUserMessage?.content);
+  // บ้านเลขที่/เลขสั้น (เลขศาสตร์ผลรวม)
+  const houseReading = input.executionContext?.houseReading ?? null;
+  const hasHouseData = (input.executionContext?.hasHouseData ?? false) && Boolean(houseReading);
+  const houseAskNoNumber = !crisis && !hasHouseData && wantsHouseNumber(input.latestUserMessage?.content);
   // การ์ดจากไพ่ (เซียมซี/ฮวงจุ้ย) ตอบแทนดวงแล้ว → อย่าให้ guard อื่นมาทับ
   const hasAnyCardData = hasCardReadingData || hasFengshuiData;
   // เจอคำถามดวงคู่ + วันเกิดอีกฝ่าย แต่ "ยังไม่มี" ผลวิเคราะห์คู่จริงแนบมา → กัน LLM มั่วดวงคนที่สอง
@@ -502,6 +518,16 @@ export function buildOpenWebUiGeminiPromptPayload(
         : null,
       phoneAskNoNumber
         ? "ผู้ใช้อยากดูเลขศาสตร์เบอร์ แต่ยังไม่ได้ให้เบอร์มา. **ห้ามทำนาย/มโนเบอร์เอง** ให้ถามกลับอย่างเป็นกันเองว่าขอเบอร์มือถือ 10 หลัก (เช่น 0812345678) มาก่อน เดี๋ยวถอดเลขศาสตร์ให้ (เป็นวิชาเลขศาสตร์ คนละวิชากับดวงปาจื่อ)."
+        : null,
+      hasHouseData && !crisis
+        ? [
+          "ผู้ใช้ถามเรื่อง \"บ้านเลขที่/เลขสั้น\" — วิชาเลขศาสตร์ผลรวม (ไม่ใช่ปาจื่อ). ระบบถอดให้แล้ว **ห้ามขึ้นดวง/มโน** ตอบจากผลถอดนี้เท่านั้น:",
+          houseReading ?? "",
+          "วิธีตอบ: อธิบายอบอุ่นแบบซินแสถอดเลข — สรุปว่าเลขนี้พลังโน้มไปทางไหน (จากความหมายเลขเดี่ยว/คู่ผลรวม) เด่นเรื่องอะไร ควรระวังอะไร. ใช้เฉพาะเนื้อจากผลถอด ห้ามเพิ่มความหมายที่ไม่มี. กระชับ.",
+        ].join("\n\n")
+        : null,
+      houseAskNoNumber
+        ? "ผู้ใช้อยากดูเลขศาสตร์บ้านเลขที่ แต่ยังไม่ได้ให้เลขมา. **ห้ามมโน** ให้ถามกลับว่าขอเลขที่บ้าน (ตัวเลข เช่น 135) มาก่อน เดี๋ยวถอดเลขศาสตร์ผลรวมให้."
         : null,
       hasCardReadingData && !crisis
         ? [

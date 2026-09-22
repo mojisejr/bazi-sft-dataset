@@ -7,12 +7,13 @@ import {
   isOtherChartRequest,
   wantsCardReading,
   wantsFengshui,
+  wantsHouseNumber,
   wantsPhoneNumber,
   wantsSpecificPersonLove,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
-import { readPhoneNumber, type PhoneReading } from "@/lib/bazi/phone-number";
+import { readHouseNumber, readPhoneNumber, type HouseNumberReading, type PhoneReading } from "@/lib/bazi/phone-number";
 import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
@@ -64,6 +65,23 @@ function formatPhoneReadingForChat(r: PhoneReading): string {
   }
   const freq = r.digitTally.slice(0, 2).filter((d) => d.count > 1).map((d) => `${d.digit} (${d.planet}/${d.element} ${d.keyword}) ×${d.count}`).join(", ");
   if (freq) lines.push(`เลขที่พบบ่อย: ${freq}`);
+  return lines.join("\n");
+}
+// บ้านเลขที่/เลขสั้น: ดึงตัวเลข 1–6 หลัก (รองรับ 135/2) + ย่อผลถอด (ผลรวม/เลขเดี่ยว/ความหมายคู่ผลรวม)
+function extractShortNumber(msg: string): string | null {
+  const m = msg.match(/\d{1,4}(?:[/\-]\d{1,3})?/);
+  if (!m) return null;
+  const d = m[0].replace(/\D/g, "");
+  return d.length >= 1 && d.length <= 6 ? d : null;
+}
+function formatHouseReadingForChat(r: HouseNumberReading): string {
+  const lines: string[] = [`เลขที่: ${r.digits} → ผลรวม ${r.sum}${r.sum !== r.root ? ` (ยุบเหลือ ${r.root})` : ""}`];
+  if (r.pairMeaning) {
+    lines.push(`ความหมายผลรวม ${r.sum}: ${r.pairMeaning.analysis || r.pairMeaning.feeling}`);
+    if (r.pairMeaning.money) lines.push(`  • การเงิน: ${r.pairMeaning.money}`);
+    if (r.pairMeaning.love) lines.push(`  • ความรัก: ${r.pairMeaning.love}`);
+  }
+  lines.push(`เลขเดี่ยว ${r.root}: ${r.rootMeaning.planet}/${r.rootMeaning.element} — ${r.rootMeaning.keyword}`);
   return lines.join("\n");
 }
 
@@ -492,6 +510,21 @@ export async function POST(req: Request) {
           triage.classification.requiresBaziConsult = false;
         } catch {
           /* เบอร์ไม่ครบ 10 หลัก → ปล่อยให้ instruction ขอเบอร์ใหม่ */
+        }
+      }
+    }
+
+    // บ้านเลขที่/เลขสั้น (เอ็ม 2026-09-22): เลขศาสตร์ผลรวม → ถอดจริง (readHouseNumber) แนบให้ LLM อธิบาย
+    if (!executionContext.hasHouseData && wantsHouseNumber(result.latestUserMessage.content)) {
+      const num = extractShortNumber(result.latestUserMessage.content);
+      if (num) {
+        try {
+          executionContext.houseReading = formatHouseReadingForChat(readHouseNumber(num));
+          executionContext.hasHouseData = true;
+          triage.requiresBaziConsult = false;
+          triage.classification.requiresBaziConsult = false;
+        } catch {
+          /* เลขไม่ถูก → ปล่อยให้ instruction ขอเลขใหม่ */
         }
       }
     }
