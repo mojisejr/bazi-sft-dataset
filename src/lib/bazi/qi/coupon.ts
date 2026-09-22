@@ -1,6 +1,8 @@
 // src/lib/bazi/qi/coupon.ts — คูปองกิจกรรม (#2 Phase 2 · ซินแสนุ้ย 2026-09-14).
 // admin สร้าง/พัก (จาก /ops) + user แลกโค้ดรับรางวัล (QI/เครดิตแชท·เปิดไพ่/tier). กันรับซ้ำ 1 คูปอง/บัญชี
 // (UNIQUE coupon_id+anon_id) + เพดานรวม (used_count conditional). รางวัลใช้ primitive เดิม (applyLedger/grantEntitlement).
+import { randomUUID } from "node:crypto";
+
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
@@ -167,6 +169,35 @@ export async function deleteCoupon(id: string): Promise<{ ok: true } | { ok: fal
   return { ok: true };
 }
 
+// คูปอง tier: มิเรอร์ลง member_subscription (แหล่งความจริง tier ฝั่ง mootech-fe) เพื่อให้ badge/gating/
+// วันหมดอายุ โชว์ PRO/PLUS เหมือนซื้อจริง. FE (`/api/user` → resolveMembershipFromRows) อ่าน tier จากตารางนี้
+// เท่านั้น ไม่เคยอ่าน bazi_entitlement — ถ้า grant ลง bazi_entitlement อย่างเดียว FE จะโชว์ Free (บั๊ก 2026-09-22).
+// เขียนเป็นแถว ACTIVE, amount 0, package "COUPON:<code>", start=วันนี้(กทม.) expire=+tierDays (คอลัมน์ date กทม.
+// ให้ตรงกับ reader ที่เทียบ expire_at >= today(Asia/Bangkok)). ไม่แตะ payment_id/v2_payment_id (คูปองไม่มีใบเสร็จ).
+async function mirrorTierToMemberSubscription(
+  anonId: string,
+  sku: "plus" | "pro",
+  days: number,
+  couponCode: string,
+): Promise<void> {
+  const db = createDbClient();
+  await db.execute(sql`
+    insert into member_subscription
+      (id, user_id, tier_code, package_code, amount_satang, start_at, expire_at, status, created_at)
+    values (
+      ${randomUUID()},
+      ${anonId},
+      ${sku.toUpperCase()},
+      ${`COUPON:${couponCode}`},
+      0,
+      (now() at time zone 'Asia/Bangkok')::date,
+      ((now() at time zone 'Asia/Bangkok')::date + ${`${days} days`}::interval)::date,
+      'ACTIVE',
+      now()
+    )
+  `);
+}
+
 // ── user: แลกโค้ด ───────────────────────────────────────────────────────────────
 function rewardSummary(c: typeof activityCoupon.$inferSelect): string {
   if (c.rewardKind === "qi") return `QI +${c.rewardQi}`;
@@ -231,7 +262,10 @@ export async function redeemCoupon(anonId: string, codeInput: string): Promise<R
     } else if (c.rewardKind === "matching") {
       await grantEntitlement(anonId, { type: "credit", kind: "matching_slot", credits: c.creditCount });
     } else {
-      await grantEntitlement(anonId, { type: "tier", sku: (c.tierSku as "plus" | "pro") ?? "plus", durationDays: c.tierDays });
+      const sku = (c.tierSku as "plus" | "pro") ?? "plus";
+      await grantEntitlement(anonId, { type: "tier", sku, durationDays: c.tierDays });
+      // มิเรอร์ลง member_subscription ให้ FE เห็น tier จริง (badge/gating/วันหมดอายุ) — bazi_entitlement อย่างเดียว FE อ่านไม่เห็น
+      await mirrorTierToMemberSubscription(anonId, sku, c.tierDays, c.code);
     }
     return { ok: true, reward: rewardSummary(c), qi };
   } catch {
