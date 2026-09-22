@@ -844,6 +844,58 @@ function pairIn(set: Set<string>, a: string, b: string): boolean {
  * แต่ละปี: กะจื่อ + บทบาทธาตุ (ก้านปีเทียบดิถี) + เชี่ยงแซ (ดิถี×กิ่งปี)
  * อายุ = นับแบบจีน (ปี - ปีเกิด + 1) โชว์เมื่อ facts.birthYear มี · nowYear ฉีดได้เพื่อเทสต์
  */
+// ── คำอธิบายจังหวะปีจร/เดือนจร เป็นคำไทยเข้าใจง่าย (เอ็ม 2026-09-22: "อธิบายเพิ่มว่าดี/เสีย/ระวัง/เพิ่ม-ลดอะไร")
+// บทบาทธาตุที่เข้ามา (ดิถีเทียบก้านปี/เดือน) → ผลต่อเจ้าชะตา + ข้อควรระวัง/สิ่งที่ควรเพิ่ม-ลด
+const RELATION_LUCK_TH: Record<string, { good: string; watch: string }> = {
+  resource: {
+    good: "มีแรงหนุนเข้ามา — ผู้ใหญ่ ครูบาอาจารย์ ความรู้ หรือโอกาสเรียนรู้คอยช่วยเหลือ ทำอะไรมักมีคนสนับสนุน",
+    watch: "ระวังพึ่งพาคนอื่นจนขาดการลงมือเอง — ควรเพิ่มการลงมือทำจริง ลดการรอความช่วยเหลือ",
+  },
+  same: {
+    good: "มั่นใจ กล้าตัดสินใจ มีเพื่อนพ้อง/หุ้นส่วนร่วมแรงร่วมใจ เหมาะร่วมมือทำงาน",
+    watch: "ระวังการแข่งขัน แย่งโอกาส หรือเสียเงินให้เพื่อน/หุ้นส่วน — ควรตกลงเรื่องเงินให้ชัดเจน",
+  },
+  output: {
+    good: "พลังสร้างสรรค์สูง เหมาะแสดงออก ทำผลงาน สื่อสาร โชว์ฝีมือ ปล่อยของได้เต็มที่",
+    watch: "ระวังใช้พลังจนหมดแรง หรือพูด/ทำเกินตัว — ควรเพิ่มการพักผ่อน ลดการรับงานล้นมือ",
+  },
+  wealth: {
+    good: "จังหวะด้านทรัพย์ดี มีโอกาสหาเงิน ลงทุน และงานที่ให้ผลตอบแทนเป็นกอบเป็นกำ",
+    watch: "ต้องออกแรงจัดการเอง ระวังความโลภหรือเสี่ยงเกินตัว — ควรวางแผนการเงินให้รอบคอบ",
+  },
+  power: {
+    good: "ถ้ารับมือดีจะได้ตำแหน่ง การยอมรับ และความมีวินัย เหมาะรับผิดชอบงานใหญ่",
+    watch: "มีแรงกดดัน กฎเกณฑ์ เจ้านาย/ภาระมาก — ระวังความเครียด ความขัดแย้งกับผู้มีอำนาจหรือเรื่องกฎหมาย",
+  },
+};
+// จังหวะพลัง 12 เชี่ยงแซ (คีย์ = ชื่อไทยที่ resolveDisplayTwelveQiStage คายออกมา) — ขึ้น/ทรง/ลง + สิ่งที่ควรทำ
+const QI_LUCK_TH: Record<string, string> = {
+  เชี่ยงแซ: "ช่วงเริ่มต้นสิ่งใหม่ พลังงานสดใหม่ เหมาะบุกเบิก วางรากฐาน (จังหวะขาขึ้น)",
+  หมกยก: "ช่วงปรับตัว ยังไม่นิ่ง ต้องระวังและค่อยเป็นค่อยไป อย่าเพิ่งเสี่ยงใหญ่",
+  กวงตั่ว: "ช่วงเตรียมพร้อม สะสมกำลัง ใกล้ได้ผล เหมาะลงมือต่อยอด",
+  ลิ่มกัว: "ช่วงกำลังขึ้น มีอำนาจ จัดการได้ เหมาะรุกงานใหญ่และก้าวหน้า (จังหวะแข็ง)",
+  ตี้อ๋วง: "ช่วงรุ่งเรืองสูงสุด พลังเต็มที่ — คว้าโอกาสให้ได้ แต่ระวังหักโหม/ประมาท",
+  ซวย: "ช่วงเริ่มถดถอย พลังลด — เน้นรักษาของเดิม ไม่รุกหนัก ประคองตัว",
+  แป่: "ช่วงติดขัด มีปัญหาให้แก้ — ดูแลสุขภาพและเคลียร์งานค้าง เลี่ยงตัดสินใจใหญ่",
+  ซี่: "ช่วงพลังต่ำ อ่อนแรง — พักฟื้น ตั้งหลัก อย่าฝืนดันเรื่องหนัก",
+  หมอ: "ช่วงเก็บซ่อน สะสม — เหมาะเก็บออม ทบทวน วางแผน มากกว่าเริ่มใหม่",
+  เจ๊าะ: "ช่วงขาดช่วง ว่างเปล่า — ปล่อยวางของเก่า เตรียมตัวเริ่มรอบใหม่",
+  ทอ: "ช่วงก่อตัว สิ่งใหม่กำลังฟักตัว — เหมาะวางแผน บ่มไอเดีย ยังไม่ต้องรีบ",
+  เอี้ยง: "ช่วงบ่มเพาะ เตรียมพร้อม — สะสมกำลังรอจังหวะเติบโต",
+}
+/** คำอธิบายจังหวะ (ปีจร/เดือนจร) เพิ่มเติมเป็นคำไทย: ผลต่อเจ้าชะตา + ข้อควรระวัง + จังหวะพลังเชี่ยงแซ */
+function luckExplainTh(relKey: string, qiTh: string): string {
+  const r = RELATION_LUCK_TH[relKey];
+  const q = QI_LUCK_TH[qiTh];
+  const lines: string[] = [];
+  if (r) {
+    lines.push(`• ผลต่อคุณ: ${r.good}`);
+    lines.push(`• ข้อควรระวัง: ${r.watch}`);
+  }
+  if (q) lines.push(`• จังหวะพลัง “${qiTh}”: ${q}`);
+  return lines.join("\n");
+}
+
 export function matchAnnualYears(
   facts: ChartFacts,
   nowYear: number = new Date().getFullYear(),
@@ -855,9 +907,10 @@ export function matchAnnualYears(
   const yearInfo = (y: number) => {
     const { stem, branch } = annualGanzhi(y);
     const stemElEn = STEM_TO_ELEMENT[stem as keyof typeof STEM_TO_ELEMENT];
-    const role = stemElEn ? RELATION_ROLE_TH[elementRelationKey(dayEl, stemElEn)] : "";
+    const relKey = stemElEn ? elementRelationKey(dayEl, stemElEn) : "";
+    const role = relKey ? RELATION_ROLE_TH[relKey] : "";
     const qi = resolveDisplayTwelveQiStage(facts.dayMaster, branch);
-    return { stem, branch, role, qi };
+    return { stem, branch, role, qi, relKey };
   };
 
   const out: NewdataBlock[] = [];
@@ -867,7 +920,7 @@ export function matchAnnualYears(
     group: "annual_year",
     itemKey: `${cur.stem}${cur.branch}`,
     label: `ปีจรปัจจุบัน ${cur.stem}${cur.branch} (พ.ศ. ${nowYear + 543}, ${ageTxt(nowYear)}ค.ศ. ${nowYear})`,
-    text: `ก้านปีธาตุ${EN_TO_TH_ELEMENT[STEM_TO_ELEMENT[cur.stem as keyof typeof STEM_TO_ELEMENT]] ?? ""} เป็น${cur.role} → ${cur.qi}`,
+    text: `ก้านปีธาตุ${EN_TO_TH_ELEMENT[STEM_TO_ELEMENT[cur.stem as keyof typeof STEM_TO_ELEMENT]] ?? ""} เป็น${cur.role} → ${cur.qi}\n${luckExplainTh(cur.relKey, cur.qi)}`,
   });
   // 2) พยากรณ์รายปีย่อ 10 ปี (ข้อเท็จจริงต่อปี ให้ AI ขยายเป็นคำทำนาย)
   const lines: string[] = [];
@@ -917,7 +970,8 @@ export function matchMonthLuck(
   const dayBranch = facts.pillars.find((p) => p.position === "day")?.branch;
   const stemElEn = STEM_TO_ELEMENT[monthStem as keyof typeof STEM_TO_ELEMENT];
   if (!dayEl || !dayBranch || !stemElEn) return null;
-  const role = RELATION_ROLE_TH[elementRelationKey(dayEl, stemElEn)] ?? "";
+  const relKey = elementRelationKey(dayEl, stemElEn)
+  const role = RELATION_ROLE_TH[relKey] ?? "";
   const qi = resolveDisplayTwelveQiStage(facts.dayMaster, monthBranch);
   const flags = [
     pairIn(CLASH_PAIRS, monthBranch, dayBranch) ? ` · ชง (冲) กับหลักวัน (${monthBranch}-${dayBranch})` : "",
@@ -928,7 +982,7 @@ export function matchMonthLuck(
     group: "month_luck",
     itemKey: `${monthStem}${monthBranch}`,
     label,
-    text: `ก้านเดือนธาตุ${EN_TO_TH_ELEMENT[stemElEn] ?? ""} เป็น${role} → ${qi}${flags}`,
+    text: `ก้านเดือนธาตุ${EN_TO_TH_ELEMENT[stemElEn] ?? ""} เป็น${role} → ${qi}${flags}\n${luckExplainTh(relKey, qi)}`,
   };
 }
 
