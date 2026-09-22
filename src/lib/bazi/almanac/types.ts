@@ -210,6 +210,8 @@ export type AlmanacDay = {
   officerDesc: string | null;
   /** 建除 (jianchu) ของวัน — ชื่อ + ความหมาย (คำนวณจากกิ่งเดือน → กิ่งวัน) */
   jianchu: { name: string; meaning: string } | null;
+  /** 黃道 (รหัส B — เทพประจำวัน) ของวัน — ชื่อเทพ + ความหมาย + ดี/ร้าย (คำนวณจากกิ่งเดือน → กิ่งวัน, มีทุกวัน) */
+  huangdao: { god: string; meaning: string; good: boolean } | null;
   /** เทพประจำวัน (อาจมี 1–2 องค์) */
   deities: string[];
   deity: string | null;

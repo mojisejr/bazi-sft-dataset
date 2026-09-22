@@ -231,6 +231,22 @@ function jianchuInfo(monthBranch: string, dayBranch: string): { name: string; me
   return { name: rec.name, meaning: rec.meaning ?? "" };
 }
 
+/**
+ * 黃道 (รหัส B — เทพประจำวัน 12 องค์) ของ (กิ่งเดือน → กิ่งวัน) — ชื่อเทพ + ความหมาย + ดี/ร้าย
+ * คำนวณจากสูตร (青龍 起 ที่ QINGLONG_START(กิ่งเดือน)) → ใช้ได้ทุกเดือน/ทุกปี ไม่พึ่งตารางสกัด
+ * ต่างจาก officerDesc ที่มีเฉพาะเดือนต้นฉบับ → เติมเต็ม "วันนี้มีความหมาย" ให้มีเนื้อหาเสมอ
+ */
+function huangdaoInfo(
+  monthBranch: string,
+  dayBranch: string,
+): { god: string; meaning: string; good: boolean } | null {
+  const idx = huangdaoIndex(monthBranch, dayBranch);
+  if (idx < 0) return null;
+  const rec = HOUR_GOD_LEGEND[`B${idx + 1}`];
+  if (!rec) return null;
+  return { god: rec.god ?? "", meaning: rec.meaning ?? "", good: rec.good };
+}
+
 /** 建除 เต็มของวัน (ชื่อ/ความหมาย/กิจกรรมที่เหมาะ-ห้าม/คะแนน) — ใช้จัดอันดับ "วันฤกษ์ดี" */
 export function jianchuFor(
   year: number,
@@ -502,6 +518,7 @@ export function buildAlmanacDay(
     officer: rec?.officer ?? null,
     officerDesc: officerDescIsMonthAccurate ? (rec?.officer_desc ?? null) : null,
     jianchu: jianchuInfo(monthPillar.branch, dayPillar.branch),
+    huangdao: huangdaoInfo(monthPillar.branch, dayPillar.branch),
     deities: (rec?.deities && rec.deities.length
       ? rec.deities
       : [rec?.deity].filter((x): x is string => Boolean(x))),

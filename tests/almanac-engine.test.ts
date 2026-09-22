@@ -134,6 +134,38 @@ describe("almanac engine — officerDesc ต้องมาจากเดือ
   });
 });
 
+describe("almanac engine — 黃道 (รหัส B — เทพประจำวัน) มีทุกวัน แม้ officerDesc ซ่อน", () => {
+  // 黃道 คำนวณจากสูตร (青龍 起 ที่กิ่งเดือน → กิ่งวัน) → มีทุกเดือน/ทุกปี ไม่พึ่งตารางสกัด
+  // จึงเติมเต็ม "วันนี้มีความหมาย" ให้มีเนื้อหาเสมอ แม้เดือนนั้น officerDesc = null
+  test("20 ก.ย. 2569 (officerDesc=null) → huangdao ยังมี god + meaning ครบ", () => {
+    const day = buildAlmanacDay(2026, 9, 20);
+    expect(day.officerDesc).toBeNull();
+    expect(day.huangdao).not.toBeNull();
+    expect(day.huangdao?.god).not.toBe("");
+    expect(day.huangdao?.meaning).not.toBe("");
+    expect(typeof day.huangdao?.good).toBe("boolean");
+  });
+
+  test("huangdao มีทุกวันข้ามหลายปี (สูตรคำนวณ ไม่พึ่งตาราง)", () => {
+    for (const date of ["2026-01-01", "2027-08-20", "2031-11-03", "2040-12-31"]) {
+      const day = buildAlmanacDay(...parts(date));
+      expect(day.huangdao, `${date} ต้องมี huangdao`).not.toBeNull();
+      expect(day.huangdao?.meaning).not.toBe("");
+    }
+  });
+
+  test("huangdao ตรงกับ HOUR_GOD_LEGEND ตามกฎ 青龍起(กิ่งเดือน)→กิ่งวัน", () => {
+    // 20 ก.ย. 2569: เสาวัน 丁酉 (กิ่ง 酉), เสาเดือน กิ่ง 酉 → 青龍 起 寅 (QINGLONG_START[酉]=寅)
+    // idx = (酉 - 寅) = (9-2)=7 → B8 = เหง็กอ๋วง "มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์"
+    const day = buildAlmanacDay(2026, 9, 20);
+    expect(day.monthPillar.branch).toBe("酉");
+    expect(day.dayPillar.branch).toBe("酉");
+    expect(day.huangdao?.god).toBe("เหง็กอ๋วง");
+    expect(day.huangdao?.meaning).toBe("มีลาภผล ทรัพย์สิน เงินทอง ยศศักดิ์");
+    expect(day.huangdao?.good).toBe(true);
+  });
+});
+
 describe("almanac engine — ทิศอสูร (三煞 rule)", () => {
   const SANSHA: Record<string, string> = {
     申: "S", 子: "S", 辰: "S", 寅: "N", 午: "N", 戌: "N",
