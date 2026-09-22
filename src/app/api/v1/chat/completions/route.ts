@@ -6,6 +6,7 @@ import {
   isHonestPrecisionReframe,
   isOtherChartRequest,
   wantsCardReading,
+  wantsFengshui,
   wantsSpecificPersonLove,
   type OpenWebUiGeminiExecutionContext,
   OpenWebUiGeminiError,
@@ -14,6 +15,9 @@ import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
 import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
+import { drawRandom as drawFengshui } from "@/lib/bazi/fengshui/deck";
+import { buildFengshuiReading } from "@/lib/bazi/fengshui/reading-engine";
+import { seedFromQuestion } from "@/lib/bazi/seed";
 import { detectRelationship, fetchCompatibilityReading } from "@/features/open-webui/compatibility-bridge";
 import {
   type OpenWebUiIntentClassification,
@@ -378,9 +382,21 @@ export async function POST(req: Request) {
       triage.classification.intent = topicIdToDomain(hint);
     }
 
+    // โหมดฮวงจุ้ย (ซินแสนุ้ย 2026-09-22): คำถามเรื่องสถานที่/ชัยภูมิ (บ้าน/ที่ดิน/ที่ทำงาน/ห้อง) → ไม่ขึ้นดวง
+    // จั่วไพ่อาถรรพ์ฮวงจุ้ย 3 ใบ ตอบจากตำรา. บังคับ card_reading (bucket "ไม่ใช่หัวข้อดวง") ด้วย regex ตรง ๆ
+    // (มิเรอร์ card_reading override) — มาก่อน card_reading เพื่อให้คำถามสถานที่ไปฮวงจุ้ย ไม่ตกไปเซียมซี.
+    let isFengshui = false;
+    if (wantsFengshui(result.latestUserMessage.content)) {
+      console.log("[open-webui] deterministic fengshui override", { was: triage.topicId });
+      triage.topicId = "card_reading";
+      triage.requiresBaziConsult = false;
+      triage.classification.requiresBaziConsult = false;
+      isFengshui = true;
+    }
+
     // 2026-09-20 (เอ็ม live-test): LLM triage จัดคำถาม "ของหาย/ลี้ลับ" ผิดบ่อย (สุ่มไปหัวข้ออื่นแม้มี few-shot
     // ในพร้อมท์แล้ว) — เคสที่ชัดเจนระดับนี้บังคับด้วย regex ตรงๆ แทนพึ่ง LLM (มิเรอร์ topic-hint override ด้านบน).
-    if (wantsCardReading(result.latestUserMessage.content) && triage.topicId !== "card_reading") {
+    if (!isFengshui && wantsCardReading(result.latestUserMessage.content) && triage.topicId !== "card_reading") {
       console.log("[open-webui] deterministic card_reading override", {
         was: triage.topicId,
       });
@@ -423,7 +439,21 @@ export async function POST(req: Request) {
     // ไพ่เซียมซีเคี้ยงคุง (ซินแสนุ้ยสั่ง): คำถามที่ "พื้นดวงตอบไม่ได้" — ลี้ลับ/ของหาย/เหตุการณ์เฉพาะจุด/
     // ขอเสี่ยงทายตรง ๆ → triage route เป็น card_reading (requiresBaziConsult=false ไม่ขึ้นดวง). จั่วไพ่ 1 ใบ
     // แล้วตอบจากเนื้อไพ่ (สถานการณ์/ข้อควรระวัง/คำแนะนำ) แบบรู้ใจ ไม่ใช่ขึ้นดวง.
-    if (triage.topicId === "card_reading" && !executionContext.hasCardReadingData) {
+    // ไพ่อาถรรพ์ฮวงจุ้ย (ซินแสนุ้ย 2026-09-22): คำถามเรื่องสถานที่ → จั่ว 3 ใบ (สถานที่มักผิดฮวงจุ้ยหลายจุด)
+    // seed จากคำถาม (สถานที่/คำถามเดิม = ไพ่เดิม). ตอบจากตำรา ประเมินดี/เสียเอง — มาก่อนเซียมซี (กันจั่วซ้อน).
+    if (isFengshui && !executionContext.hasFengshuiData) {
+      try {
+        const q = result.latestUserMessage.content;
+        const cards = drawFengshui(3, seedFromQuestion(q));
+        const reading = buildFengshuiReading(cards, q);
+        executionContext.fengshuiReading = reading.engineProse;
+        executionContext.hasFengshuiData = true;
+      } catch {
+        /* จั่ว/อ่านไพ่ฮวงจุ้ยพัง → ข้าม (ตอบตามปกติ) */
+      }
+    }
+
+    if (triage.topicId === "card_reading" && !isFengshui && !executionContext.hasCardReadingData) {
       try {
         const card = drawSiamsi();
         const reading = buildSiamsiReading(card, result.latestUserMessage.content);

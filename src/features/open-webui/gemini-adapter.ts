@@ -94,6 +94,20 @@ export function wantsCardReading(message?: string | null): boolean {
   return false;
 }
 
+// โหมดฮวงจุ้ย/ชัยภูมิ (ซินแสนุ้ย 2026-09-22): คำถามเรื่อง "สถานที่" (บ้าน/ที่ดิน/ที่ทำงาน/ห้อง) ว่าฮวงจุ้ย
+// เป็นยังไง/ติดขัดตรงไหน/แก้ยังไง → จั่วไพ่อาถรรพ์ฮวงจุ้ย 3 ใบ ตอบจากตำราชัยภูมิ (ไม่ขึ้นดวงปาจื่อ).
+// เจาะจงด้วย regex (มิเรอร์ wantsCardReading) — คำว่า "ฮวงจุ้ย/ชัยภูมิ/ทำเล" ยิงตรง; ไม่งั้นต้องมี
+// "คำสถานที่ + เจตนาถามสภาพ/ปัญหาของที่นั้น" (เลี่ยงชนคำถามดวงทั่วไปเช่น "ควรซื้อบ้านไหม").
+const FENGSHUI_WORD_RE = /(ฮวงจุ้ย|ฮวงจุ้ยย?|ชัยภูมิ|ทำเล(ที่ตั้ง)?)/;
+const PLACE_RE = /(บ้าน|ที่ดิน|ที่ทำงาน|ออฟฟิศ|ที่พัก|ที่อยู่อาศัย|คอนโด|ห้องนอน|ห้องน้ำ|ห้องครัว|ห้องรับแขก|ห้องทำงาน|หน้าบ้าน|ตัวตึก|อาคาร|หน้าร้าน|ร้านค้า|เตาไฟ|เตียงนอน|โต๊ะทำงาน|ประตูบ้าน)/;
+const PLACE_CONDITION_RE = /(เป็น(ยัง|อย่าง)ไง|เป็นอย่างไร|ดีไหม|ดีมั้ย|ดีรึเปล่า|ติดขัด|มีปัญหา|ผิด(ตรงไหน|หลัก)|จุดเสีย|มีอะไร(ไม่ดี|ผิด)|แก้(ยังไง|อย่างไร|ไหม)|ควรปรับ|พลังงาน|อับโชค|ตำแหน่ง)/;
+export function wantsFengshui(message?: string | null): boolean {
+  if (typeof message !== "string") return false;
+  if (FENGSHUI_WORD_RE.test(message)) return true;
+  if (PLACE_RE.test(message) && PLACE_CONDITION_RE.test(message)) return true;
+  return false;
+}
+
 // Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
 // inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
 export function isHonestPrecisionReframe(
@@ -270,6 +284,13 @@ export type OpenWebUiGeminiExecutionContext = {
   cardReading?: string | null;
   /** true = คำถามนี้ตอบด้วยไพ่เซียมซีเคี้ยงคุง (ไม่ขึ้นดวง) — คู่กับ cardReading. */
   hasCardReadingData?: boolean;
+  /**
+   * ผลจั่ว "ไพ่อาถรรพ์ฮวงจุ้ยเคี้ยงคุง" 3 ใบ (แต่ละใบ = จุด/ตำแหน่งฮวงจุ้ยของสถานที่) — แนบเมื่อคำถามเป็น
+   * เรื่องสถานที่/ชัยภูมิ (บ้าน/ที่ดิน/ที่ทำงาน/ห้อง). เป็นแหล่งความจริงของคำตอบนี้ (ไม่ขึ้นดวงปาจื่อ).
+   */
+  fengshuiReading?: string | null;
+  /** true = คำถามนี้ตอบด้วยไพ่ฮวงจุ้ย 3 ใบ — คู่กับ fengshuiReading. */
+  hasFengshuiData?: boolean;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -381,14 +402,19 @@ export function buildOpenWebUiGeminiPromptPayload(
   // ไพ่เซียมซีเคี้ยงคุง — คำถามที่พื้นดวงตอบไม่ได้ จั่วไพ่ 1 ใบมาแล้ว ตอบจากไพ่ (ไม่ขึ้นดวง)
   const cardReading = input.executionContext?.cardReading ?? null;
   const hasCardReadingData = (input.executionContext?.hasCardReadingData ?? false) && Boolean(cardReading);
+  // ไพ่อาถรรพ์ฮวงจุ้ย — คำถามเรื่องสถานที่/ชัยภูมิ จั่ว 3 ใบมาแล้ว ตอบจากตำราฮวงจุ้ย (ไม่ขึ้นดวง)
+  const fengshuiReading = input.executionContext?.fengshuiReading ?? null;
+  const hasFengshuiData = (input.executionContext?.hasFengshuiData ?? false) && Boolean(fengshuiReading);
+  // การ์ดจากไพ่ (เซียมซี/ฮวงจุ้ย) ตอบแทนดวงแล้ว → อย่าให้ guard อื่นมาทับ
+  const hasAnyCardData = hasCardReadingData || hasFengshuiData;
   // เจอคำถามดวงคู่ + วันเกิดอีกฝ่าย แต่ "ยังไม่มี" ผลวิเคราะห์คู่จริงแนบมา → กัน LLM มั่วดวงคนที่สอง
   // card_reading จั่วไพ่ตอบแล้ว อย่าให้ guard ดวงคู่มาทับ
   const otherChart =
-    isOtherChartRequest(input.latestUserMessage?.content) && !hasCompatibilityData && !hasCardReadingData;
+    isOtherChartRequest(input.latestUserMessage?.content) && !hasCompatibilityData && !hasAnyCardData;
   const hasDailyGoodDayData = rawHasDailyGoodDayData && !crisis;
   // มีความรู้เสริมจากซินแสแนบมา = คำถามนี้อยู่ในขอบเขตที่ซินแสให้ตอบ ห้ามปัดเป็น off-topic
-  // card_reading ตอบด้วยไพ่ ไม่เข้า off-topic/non-bazi-bypass
-  const isOffTopic = topicId === "off_topic" && !staticKnowledge && !hasCardReadingData;
+  // card_reading/ฮวงจุ้ย ตอบด้วยไพ่ ไม่เข้า off-topic/non-bazi-bypass
+  const isOffTopic = topicId === "off_topic" && !staticKnowledge && !hasAnyCardData;
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -447,6 +473,20 @@ export function buildOpenWebUiGeminiPromptPayload(
             "- โทนแบบ \"รู้ใจ\" เหมือนผู้ใหญ่/เพื่อนที่ทักตรงใจ อบอุ่นแต่ชัดเจน ไม่ใช่บอกลอย ๆ ว่า \"อย่าคิดมาก\"",
             "- เนื้อไพ่ไม่ต้องลอกเป๊ะ กร่อนคำ/เรียบเรียงใหม่เป็นภาษาพูดได้ แต่ใจความต้องตรงกับไพ่ ห้ามเพิ่มคำทำนายนอกไพ่",
             "- สั้น กระชับ ไม่กี่ประโยค **ห้ามชวนไปเมนู \"เปิดไพ่\"/\"เสี่ยงเซียมซี\"** เพราะตอบให้เสร็จในนี้แล้ว",
+          ].join("\n"),
+        ].join("\n\n")
+        : null,
+      hasFengshuiData && !crisis
+        ? [
+          "คำถามนี้เป็นเรื่อง \"สถานที่/ฮวงจุ้ย (ชัยภูมิ)\" ที่พื้นดวงปาจื่อตอบไม่ได้ — ระบบจั่ว \"ไพ่อาถรรพ์ฮวงจุ้ย\" มาให้ 3 จุดแล้ว. **ห้ามขึ้นดวง/ห้ามอ้างผังชะตา/ห้ามมโนเสา-ธาตุ-ปีจร** ให้ตอบจากตำราฮวงจุ้ย 3 จุดนี้เท่านั้น:",
+          fengshuiReading ?? "",
+          [
+            "วิธีตอบ:",
+            `- **เปิดคำตอบด้วยคำทำนองว่า "${fortuneOpener}" สักครั้ง** แล้ว \"ประเมินภาพรวม\" ของสถานที่นี้ก่อนว่าฮวงจุ้ย \"ดีมาก / ดีน้อย / เสียน้อย / เสียมาก\" (ตีความเอาเองจาก 3 จุดที่จั่วได้ ว่าโน้มไปทางจุดเสียหรือจุดดีมากกว่า) — ซินแสนุ้ยสั่ง: ทุกที่ไม่มีฮวงจุ้ยดีที่สุด มีแต่เสียมาก-เสียน้อย`,
+            "- ไล่ทีละจุด (3 จุด): จุดนั้นคือตำแหน่ง/สภาพอะไร ส่งผลอะไร (จากความหมาย+ข้อควรระวัง) แล้วฟันธง \"วิธีแก้\" ที่จับต้องได้ (จากคำแนะนำแก้ไขของจุดนั้น). ถ้าจุดไหนเป็นมงคล (เช่น หงส์แดง/เสือขาว/มังกรเขียว/สิงโตคู่) ให้บอกว่าเป็นด้านดี เสริมอะไร",
+            "- **ห้ามบอกที่มา/วิธี — ห้ามระบุว่าเป็น \"ไพ่\" ห้ามบอกชื่อไพ่ ห้ามพูดว่า \"จั่วไพ่ได้...\"/\"เปิดไพ่\"** (ซินแสนุ้ยสั่ง: ในแชทบอกว่าเป็นไพ่แล้วคนจะเอ๊ะว่ารู้ได้ไง) — พูดเหมือนซินแสตรวจชัยภูมิให้ ใช้เนื้อจุดเหล่านี้เป็นคำตอบ",
+            "- โทนซินแสตรวจฮวงจุ้ย อบอุ่นแต่ฟันธง เนื้อไม่ต้องลอกเป๊ะ เรียบเรียงเป็นภาษาพูดได้ **ห้ามเพิ่มจุดเสีย/คำแนะนำนอกเหนือจาก 3 จุดที่ให้มา**",
+            "- **ห้ามชวนไปเมนูอื่น** ตอบให้เสร็จในนี้ ถ้าผู้ใช้อยากตรวจห้อง/จุดอื่นต่อ ให้บอกว่าถามมาได้เลย (จะตรวจให้ใหม่)",
           ].join("\n"),
         ].join("\n\n")
         : null,
