@@ -25,6 +25,8 @@ const LOGGED_FEATURES = new Set<LlmUsageFeature>([
 const BodySchema = z.object({
   engineText: z.string().trim().min(1).max(12000),
   domainLabel: z.string().trim().max(120).default("ผลวิเคราะห์"),
+  /** คำถามผู้ใช้ (ถ้ามี → ตอบให้ตรงคำถาม โดยอิง engine-truth เท่านั้น) — เอ็ม 2026-09-22 */
+  question: z.string().trim().max(300).optional(),
   /** ใช้แยกสถิติ/rate-limit ต่อฟีเจอร์ เช่น fortune_sage, almanac, man_vs_day, phone_reading, reaction_chamber */
   feature: z.string().trim().max(40).default("narrate"),
   apiKey: z.string().trim().min(1).optional(),
@@ -58,7 +60,8 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { engineText, domainLabel, feature, apiKey, model, provider } = parsed.data;
+  const { engineText, domainLabel, question, feature, apiKey, model, provider } = parsed.data;
+  const q = (question ?? "").trim();
 
   // โหมด AI (gemini) ใช้คีย์เซิร์ฟเวอร์ได้เลย — guard กันยิงรัว/โควตา/เพดานต้นทุน
   const usedOwnKey = Boolean(apiKey);
@@ -71,12 +74,15 @@ export async function POST(req: Request) {
 
   const userPrompt = [
     `หัวข้อ: ${domainLabel}`,
+    q ? `\nคำถามของผู้ใช้ (ตอบให้ "ตรงคำถามนี้" เป็นหลัก โดยอิงข้อมูลด้านล่างเท่านั้น ห้ามแต่งเพิ่ม): "${q}"` : "",
     "",
     "ข้อมูลจาก engine (ground truth — เรียบเรียงจากสิ่งนี้เท่านั้น):",
     engineText,
     "",
-    "โปรดเรียบเรียงเป็นคำทำนายร้อยแก้วอบอุ่น อ่านลื่น คงตัวเลข/ข้อเท็จจริงครบถ้วน",
-  ].join("\n");
+    q
+      ? "โปรดฟันธงตอบคำถามข้างต้นตรง ๆ อบอุ่นเป็นกันเอง โดยหยิบเฉพาะส่วนที่เกี่ยวกับคำถาม (คงตัวเลข/ข้อเท็จจริงครบถ้วน)"
+      : "โปรดเรียบเรียงเป็นคำทำนายร้อยแก้วอบอุ่น อ่านลื่น คงตัวเลข/ข้อเท็จจริงครบถ้วน",
+  ].filter((l) => l !== "").join("\n");
 
   try {
     // log usage ต่อฟีเจอร์ (โผล่ใน /stats) เฉพาะ feature ที่มีตารางรองรับ
@@ -84,7 +90,9 @@ export async function POST(req: Request) {
       ? (feature as LlmUsageFeature)
       : undefined;
     const result = await generateProseLlm({
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: q
+        ? `${SYSTEM_INSTRUCTION}\n- มีคำถามจากผู้ใช้: ตอบคำถามนั้นเป็นหลัก ไม่ต้องเล่าผลทั้งหมด`
+        : SYSTEM_INSTRUCTION,
       userPrompt,
       apiKey: provider === "anthropic" ? apiKey ?? "local" : apiKey,
       model,
