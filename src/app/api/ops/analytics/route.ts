@@ -117,6 +117,39 @@ export async function GET(request: Request) {
         FROM share_snapshot WHERE created_at >= now() - (${days} || ' days')::interval
        GROUP BY 1 ORDER BY shares DESC`);
 
+    // ── รายชื่อ "รายคน" สำหรับกดการ์ดในภาพรวมดูแยกคน (join identity, wrap try/catch) ──
+    let dauUsers: unknown[] = [];
+    let discountRecent: unknown[] = [];
+    let shareByUser: unknown[] = [];
+    try {
+      const r = await db.execute(sql.raw(`
+        SELECT g.anon_id, g.days, u.name AS u_name, u.surname AS u_surname, u.email, prov.provider, prov.provider_name
+          FROM (SELECT anon_id, COUNT(DISTINCT d)::int AS days FROM (${dauUnion}) x WHERE anon_id IS NOT NULL GROUP BY anon_id ORDER BY days DESC LIMIT 200) g
+          LEFT JOIN "user" u ON u.user_id = g.anon_id
+          LEFT JOIN LATERAL (SELECT provider, name AS provider_name FROM user_provider up WHERE up.user_id = g.anon_id ORDER BY up.update_at DESC LIMIT 1) prov ON true`));
+      dauUsers = rowsOf(r);
+    } catch { dauUsers = []; }
+    try {
+      const r = await db.execute(sql`
+        SELECT dc.code, ROUND(r.discount_satang / 100.0, 2) AS baht, r.user_id AS anon_id,
+               to_char(r.redeemed_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS day,
+               u.name AS u_name, u.surname AS u_surname, u.email, prov.provider, prov.provider_name
+          FROM discount_redemption r JOIN discount_code dc ON dc.id = r.code_id
+          LEFT JOIN "user" u ON u.user_id = r.user_id
+          LEFT JOIN LATERAL (SELECT provider, name AS provider_name FROM user_provider up WHERE up.user_id = r.user_id ORDER BY up.update_at DESC LIMIT 1) prov ON true
+         WHERE r.redeemed_at >= now() - (${days} || ' days')::interval ORDER BY r.redeemed_at DESC LIMIT 100`);
+      discountRecent = rowsOf(r);
+    } catch { discountRecent = []; }
+    try {
+      const r = await db.execute(sql`
+        SELECT g.anon_id, g.shares, g.last_day, u.name AS u_name, u.surname AS u_surname, u.email, prov.provider, prov.provider_name
+          FROM (SELECT user_id AS anon_id, COUNT(*)::int AS shares, MAX(to_char(created_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD')) AS last_day
+                  FROM share_snapshot WHERE created_at >= now() - (${days} || ' days')::interval AND user_id IS NOT NULL GROUP BY user_id ORDER BY shares DESC LIMIT 200) g
+          LEFT JOIN "user" u ON u.user_id = g.anon_id
+          LEFT JOIN LATERAL (SELECT provider, name AS provider_name FROM user_provider up WHERE up.user_id = g.anon_id ORDER BY up.update_at DESC LIMIT 1) prov ON true`);
+      shareByUser = rowsOf(r);
+    } catch { shareByUser = []; }
+
     // QI economy (เดิม): รวม qi_delta แยกหมวดของ reason
     const qi = await db.execute(sql`
       SELECT split_part(reason, ':', 2) AS category, COUNT(*)::int AS txns,
@@ -125,6 +158,15 @@ export async function GET(request: Request) {
         FROM bazi_ledger_txn
        WHERE qi_delta <> 0 AND created_at >= now() - (${days} || ' days')::interval
        GROUP BY 1 ORDER BY txns DESC`);
+    // QI เข้า/ออก/ซื้อ รายวัน (เอ็ม 2026-09-23) — in=ได้/ซื้อ, out=ใช้ไป, buy=เฉพาะ reason ซื้อ/เติม
+    const qiByDay = await db.execute(sql`
+      SELECT to_char((created_at AT TIME ZONE 'Asia/Bangkok')::date, 'YYYY-MM-DD') AS day,
+             COALESCE(SUM(GREATEST(qi_delta, 0)), 0)::int AS qi_in,
+             COALESCE(SUM(LEAST(qi_delta, 0)), 0)::int AS qi_out,
+             COALESCE(SUM(CASE WHEN reason ILIKE '%purchase%' OR reason ILIKE '%topup%' OR reason ILIKE '%buy%' THEN GREATEST(qi_delta, 0) ELSE 0 END), 0)::int AS qi_buy
+        FROM bazi_ledger_txn
+       WHERE qi_delta <> 0 AND created_at >= now() - (${days} || ' days')::interval
+       GROUP BY 1 ORDER BY 1 DESC LIMIT 60`);
 
     // ถามอะไรบ้าง (แชท, PDPA-safe: หัวข้อ ไม่ใช่ข้อความ)
     const chatByPersona = await db.execute(sql`
@@ -139,15 +181,16 @@ export async function GET(request: Request) {
     return Response.json(
       {
         days,
-        dau: { total: (rowsOf(dauTotal)[0] as { users?: number })?.users ?? 0, byDay: rowsOf(dauByDay) },
+        dau: { total: (rowsOf(dauTotal)[0] as { users?: number })?.users ?? 0, byDay: rowsOf(dauByDay), users: dauUsers },
         features: rowsOf(features),
         revenue: { total: rowsOf(revTotal)[0] ?? { orders: 0, baht: 0 }, byDay: rowsOf(revByDay), byPackage: rowsOf(revByPackage), recent: recentOrders },
         coupons: {
-          discount: { total: rowsOf(discountTotal)[0] ?? { uses: 0, baht: 0, users: 0 }, byCode: rowsOf(discountByCode) },
+          discount: { total: rowsOf(discountTotal)[0] ?? { uses: 0, baht: 0, users: 0 }, byCode: rowsOf(discountByCode), recent: discountRecent },
           reward: rowsOf(rewardRedeemed)[0] ?? { uses: 0, users: 0 },
         },
-        shares: { total: rowsOf(shareTotal)[0] ?? { shares: 0, users: 0 }, byTag: rowsOf(shareByTag) },
+        shares: { total: rowsOf(shareTotal)[0] ?? { shares: 0, users: 0 }, byTag: rowsOf(shareByTag), byUser: shareByUser },
         qiEconomy: rowsOf(qi),
+        qiByDay: rowsOf(qiByDay),
         chat: { byPersona: rowsOf(chatByPersona), topTopics: rowsOf(chatTopTopics) },
       },
       { status: 200 },

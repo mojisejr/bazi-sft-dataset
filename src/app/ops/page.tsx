@@ -936,14 +936,22 @@ type OrderRow = { at: string; package_code: string; tier_code: string | null; me
 type SegmentRow = { anon_id: string; tier_code: string | null; expire_at: string | null; qi: number; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
 type RewardKind = "qi" | "chat" | "card" | "matching" | "tier" | "discount";
 
+// รายคน (base) สำหรับ list กดดูแยกคน
+type PersonBase = { anon_id: string; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
+type DauRow = PersonBase & { days: number };
+type DiscountUseRow = PersonBase & { code: string; baht: number | string; day: string };
+type ShareUserRow = PersonBase & { shares: number; last_day: string };
+type QiDayRow = { day: string; qi_in: number; qi_out: number; qi_buy: number };
+
 type Analytics = {
   days: number;
-  dau: { total: number; byDay: { day: string; users: number }[] };
+  dau: { total: number; byDay: { day: string; users: number }[]; users?: DauRow[] };
   features: { feature: string; uses: number; users: number }[];
   revenue: { total: { orders: number; baht: number }; byDay: { day: string; orders: number; baht: number }[]; byPackage: { package_code: string; orders: number; baht: number }[]; recent?: OrderRow[] };
-  coupons: { discount: { total: { uses: number; baht: number; users: number }; byCode: { code: string; uses: number; baht: number }[] }; reward: { uses: number; users: number } };
-  shares: { total: { shares: number; users: number }; byTag: { tag: string; shares: number; users: number }[] };
+  coupons: { discount: { total: { uses: number; baht: number; users: number }; byCode: { code: string; uses: number; baht: number }[]; recent?: DiscountUseRow[] }; reward: { uses: number; users: number } };
+  shares: { total: { shares: number; users: number }; byTag: { tag: string; shares: number; users: number }[]; byUser?: ShareUserRow[] };
   chat: { topTopics: { topic_id: string; replies: number }[]; byPersona: { persona: string; replies: number }[] };
+  qiByDay?: QiDayRow[];
 };
 
 // หากลุ่มลูกค้า: ปุ่ม PLUS / PRO / QI>500 → โหลดจาก /api/ops/segment → ตารางค้นได้ + กดแถวเปิด detail
@@ -1020,9 +1028,10 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
   const [data, setData] = useState<Analytics | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  // ย่อ/ขยาย + ค้นหา ตาราง "ใครซื้ออะไร" (เอ็ม 2026-09-23) — default ย่อไว้
-  const [ordersOpen, setOrdersOpen] = useState(false);
-  const [ordersQ, setOrdersQ] = useState("");
+  // กดการ์ดสรุป → เปิด list รายคนของหัวข้อนั้น (accordion อันเดียว) + ค้นหา (เอ็ม 2026-09-23)
+  const [expanded, setExpanded] = useState<"dau" | "orders" | "discount" | "shares" | "qi" | null>(null);
+  const [expQ, setExpQ] = useState("");
+  const toggleExp = (k: "dau" | "orders" | "discount" | "shares" | "qi") => { setExpanded((v) => (v === k ? null : k)); setExpQ(""); };
   const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
   const th: React.CSSProperties = { ...td, textAlign: "left", color: C.sub };
   // ชื่อผู้ใช้ที่อ่านง่าย (LINE name / ชื่อ-สกุล / email / anonId ย่อ)
@@ -1035,7 +1044,6 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
     return fields.some((f) => (f ?? "").toLowerCase().includes(s));
   };
   const searchInput: React.CSSProperties = { ...input, maxWidth: 260, fontSize: 12, padding: "6px 10px" };
-  const caret: React.CSSProperties = { display: "flex", alignItems: "center", gap: 6, cursor: "pointer", userSelect: "none" };
 
   const load = useCallback(async () => {
     if (!secret) return;
@@ -1050,12 +1058,22 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
   useEffect(() => { if (open) void load(); }, [open, load]);
 
   const baht = (n: number) => `฿${Number(n ?? 0).toLocaleString("th-TH")}`;
-  const stat = (labelText: string, value: string) => (
-    <div style={{ ...box, padding: 12, minWidth: 130 }}>
-      <div style={{ fontSize: 12, color: C.sub }}>{labelText}</div>
-      <div style={{ fontSize: 22, fontWeight: 700, marginTop: 2 }}>{value}</div>
-    </div>
-  );
+  // การ์ดสรุปที่ "กดได้" → เปิด list รายคน (มี key); การ์ดเฉย ๆ (ไม่มี key) = แสดงอย่างเดียว
+  const stat = (labelText: string, value: string, key?: "dau" | "orders" | "discount" | "shares" | "qi") => {
+    const active = key != null && expanded === key;
+    const clickable = key != null;
+    return (
+      <button
+        type="button"
+        onClick={clickable ? () => toggleExp(key!) : undefined}
+        disabled={!clickable}
+        style={{ ...box, padding: 12, minWidth: 130, textAlign: "left", cursor: clickable ? "pointer" : "default", borderColor: active ? C.accent : C.border, background: active ? "#16233a" : C.panel }}
+      >
+        <div style={{ fontSize: 12, color: C.sub, display: "flex", alignItems: "center", gap: 4 }}>{labelText}{clickable ? <span style={{ color: C.accent }}>{active ? "▾" : "▸"}</span> : null}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, marginTop: 2, color: C.text }}>{value}</div>
+      </button>
+    );
+  };
 
   return (
     <div style={{ ...box, marginBottom: 16 }}>
@@ -1074,14 +1092,116 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
         <div style={{ marginTop: 12 }}>
           {busy && !data ? <p style={{ color: C.sub }}>กำลังโหลด…</p> : err ? <p style={{ color: C.warn }}>{err}</p> : data ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* การ์ดสรุป */}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                {stat(`ผู้ใช้ไม่ซ้ำ (${data.days} วัน)`, `${data.dau.total.toLocaleString("th-TH")} คน`)}
-                {stat(`รายรับ (${data.days} วัน)`, baht(data.revenue.total.baht))}
-                {stat("ออเดอร์ที่จ่ายสำเร็จ", `${data.revenue.total.orders.toLocaleString("th-TH")}`)}
-                {stat("ส่วนลดที่ให้ไป", baht(data.coupons.discount.total.baht))}
-                {stat("กดแชร์", `${data.shares.total.shares.toLocaleString("th-TH")} ครั้ง · ${data.shares.total.users} คน`)}
-              </div>
+              {/* การ์ดสรุป — กดเพื่อดูรายคน (▸) */}
+              {(() => {
+                const qiIn = (data.qiByDay ?? []).reduce((n, d) => n + (d.qi_in ?? 0), 0);
+                const qiOut = (data.qiByDay ?? []).reduce((n, d) => n + (d.qi_out ?? 0), 0);
+                return (
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    {stat(`ผู้ใช้ไม่ซ้ำ (${data.days} วัน)`, `${data.dau.total.toLocaleString("th-TH")} คน`, "dau")}
+                    {stat(`รายรับ (${data.days} วัน)`, baht(data.revenue.total.baht), "orders")}
+                    {stat("ออเดอร์ที่จ่ายสำเร็จ", `${data.revenue.total.orders.toLocaleString("th-TH")}`, "orders")}
+                    {stat("ส่วนลดที่ให้ไป", baht(data.coupons.discount.total.baht), "discount")}
+                    {stat("กดแชร์", `${data.shares.total.shares.toLocaleString("th-TH")} ครั้ง · ${data.shares.total.users} คน`, "shares")}
+                    {stat("QI เข้า/ออก", `+${qiIn.toLocaleString("th-TH")} / ${qiOut.toLocaleString("th-TH")}`, "qi")}
+                  </div>
+                );
+              })()}
+
+              {/* accordion รายคน ตามการ์ดที่กด */}
+              {expanded && (() => {
+                const person = (o: PersonBase) => (
+                  <td style={td}>
+                    <div style={{ fontWeight: 600, color: C.accent }}>{nameOf(o)}</div>
+                    <div style={{ fontSize: 11, color: C.sub }}>{[o.provider ? o.provider.toUpperCase() : null, o.email].filter(Boolean).join(" · ") || o.anon_id}</div>
+                  </td>
+                );
+                const clickRow = (anon: string) => ({ onClick: () => onOpenUser(anon), style: { cursor: "pointer" } as React.CSSProperties, title: "กดเพื่อดู/แก้ไขผู้ใช้" });
+                let title = ""; let body: React.ReactNode = null; let showSearch = true;
+                if (expanded === "dau") {
+                  const all = data.dau.users ?? [];
+                  const rows = all.filter((o) => matchRow(expQ, nameOf(o), o.email, o.anon_id));
+                  title = `ผู้ใช้ไม่ซ้ำ — ${all.length} คน (กดแถวเพื่อดู/แก้ไข)`;
+                  body = (
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 480 }}>
+                      <thead><tr><th style={th}>บัญชี</th><th style={{ ...th, textAlign: "right" }}>วันที่ active</th></tr></thead>
+                      <tbody>
+                        {rows.length === 0 && <tr><td style={td} colSpan={2}>{all.length === 0 ? "ไม่มีข้อมูล" : "ไม่พบตามคำค้น"}</td></tr>}
+                        {rows.map((o, i) => (<tr key={`${o.anon_id}-${i}`} {...clickRow(o.anon_id)}>{person(o)}<td style={{ ...td, textAlign: "right" }}>{o.days}</td></tr>))}
+                      </tbody>
+                    </table>
+                  );
+                } else if (expanded === "orders") {
+                  const all = data.revenue.recent ?? [];
+                  const rows = all.filter((o) => matchRow(expQ, nameOf(o), o.email, o.anon_id, o.package_code, o.tier_code));
+                  title = `ใครซื้ออะไร — ${all.length} ออเดอร์ (กดแถวเพื่อดู/แก้ไข)`;
+                  body = (
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 640 }}>
+                      <thead><tr><th style={th}>เมื่อไหร่</th><th style={th}>บัญชีผู้ซื้อ</th><th style={th}>แพ็ก</th><th style={th}>วิธี</th><th style={{ ...th, textAlign: "right" }}>บาท</th></tr></thead>
+                      <tbody>
+                        {rows.length === 0 && <tr><td style={td} colSpan={5}>{all.length === 0 ? "ยังไม่มีออเดอร์" : "ไม่พบตามคำค้น"}</td></tr>}
+                        {rows.map((o, i) => (
+                          <tr key={`${o.anon_id}-${o.at}-${i}`} {...clickRow(o.anon_id)}>
+                            <td style={{ ...td, whiteSpace: "nowrap" }}>{o.at}</td>
+                            {person(o)}
+                            <td style={td}>{o.package_code}{o.tier_code ? <span style={{ color: C.sub }}> · {o.tier_code}</span> : null}</td>
+                            <td style={{ ...td, color: C.sub }}>{o.method ?? "—"}</td>
+                            <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{baht(o.baht)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                } else if (expanded === "discount") {
+                  const all = data.coupons.discount.recent ?? [];
+                  const rows = all.filter((o) => matchRow(expQ, nameOf(o), o.email, o.anon_id, o.code));
+                  title = `ใครใช้ส่วนลด — ${all.length} ครั้ง (กดแถวเพื่อดู/แก้ไข)`;
+                  body = (
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 560 }}>
+                      <thead><tr><th style={th}>วันที่</th><th style={th}>บัญชี</th><th style={th}>โค้ด</th><th style={{ ...th, textAlign: "right" }}>ลดไป</th></tr></thead>
+                      <tbody>
+                        {rows.length === 0 && <tr><td style={td} colSpan={4}>{all.length === 0 ? "ยังไม่มีการใช้ส่วนลด" : "ไม่พบตามคำค้น"}</td></tr>}
+                        {rows.map((o, i) => (<tr key={`${o.anon_id}-${i}`} {...clickRow(o.anon_id)}><td style={{ ...td, whiteSpace: "nowrap" }}>{o.day}</td>{person(o)}<td style={td}><code>{o.code}</code></td><td style={{ ...td, textAlign: "right", color: C.good }}>−฿{o.baht}</td></tr>))}
+                      </tbody>
+                    </table>
+                  );
+                } else if (expanded === "shares") {
+                  const all = data.shares.byUser ?? [];
+                  const rows = all.filter((o) => matchRow(expQ, nameOf(o), o.email, o.anon_id));
+                  title = `ใครกดแชร์ — ${all.length} คน (กดแถวเพื่อดู/แก้ไข)`;
+                  body = (
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 520 }}>
+                      <thead><tr><th style={th}>บัญชี</th><th style={{ ...th, textAlign: "right" }}>ครั้ง</th><th style={th}>ล่าสุด</th></tr></thead>
+                      <tbody>
+                        {rows.length === 0 && <tr><td style={td} colSpan={3}>{all.length === 0 ? "ยังไม่มีการแชร์" : "ไม่พบตามคำค้น"}</td></tr>}
+                        {rows.map((o, i) => (<tr key={`${o.anon_id}-${i}`} {...clickRow(o.anon_id)}>{person(o)}<td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{o.shares}</td><td style={{ ...td, color: C.sub, whiteSpace: "nowrap" }}>{o.last_day}</td></tr>))}
+                      </tbody>
+                    </table>
+                  );
+                } else {
+                  showSearch = false;
+                  const all = data.qiByDay ?? [];
+                  title = "QI ซื้อ/เข้า/ออก รายวัน";
+                  body = (
+                    <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 480 }}>
+                      <thead><tr><th style={th}>วัน</th><th style={{ ...th, textAlign: "right" }}>ซื้อ (QI)</th><th style={{ ...th, textAlign: "right" }}>เข้า (รวม)</th><th style={{ ...th, textAlign: "right" }}>ใช้ไป</th></tr></thead>
+                      <tbody>
+                        {all.length === 0 && <tr><td style={td} colSpan={4}>ยังไม่มีข้อมูล</td></tr>}
+                        {all.map((d) => (<tr key={d.day}><td style={{ ...td, whiteSpace: "nowrap" }}>{d.day}</td><td style={{ ...td, textAlign: "right", color: C.accent }}>{d.qi_buy ? `+${d.qi_buy.toLocaleString("th-TH")}` : "—"}</td><td style={{ ...td, textAlign: "right", color: C.good }}>+{d.qi_in.toLocaleString("th-TH")}</td><td style={{ ...td, textAlign: "right", color: C.warn }}>{d.qi_out.toLocaleString("th-TH")}</td></tr>))}
+                      </tbody>
+                    </table>
+                  );
+                }
+                return (
+                  <div style={{ ...box, background: C.inputBg }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+                      <span style={{ ...label }}>{title}</span>
+                      {showSearch && <input style={searchInput} value={expQ} onChange={(e) => setExpQ(e.target.value)} placeholder="ค้น ชื่อ / อีเมล / anonId" />}
+                    </div>
+                    <div style={{ overflowX: "auto", maxHeight: "56vh", overflowY: "auto" }}>{body}</div>
+                  </div>
+                );
+              })()}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
                 {/* ใช้อะไรบ้าง */}
@@ -1126,48 +1246,6 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
                   </div>
                 </div>
               </div>
-
-              {/* ใครซื้ออะไร (บัญชี) — ย่อได้ · ค้นได้ · กดแถวเพื่อเปิด detail/แก้ไข */}
-              {(() => {
-                const all = data.revenue.recent ?? [];
-                const rows = all.filter((o) => matchRow(ordersQ, nameOf(o), o.email, o.anon_id, o.package_code, o.tier_code));
-                return (
-                  <div>
-                    <div style={{ marginBottom: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <button type="button" onClick={() => setOrdersOpen((v) => !v)} style={{ ...caret, ...label, background: "none", border: "none", padding: 0, color: C.text }}>
-                        <span>{ordersOpen ? "▾" : "▸"}</span> ใครซื้ออะไร (บัญชี · แพ็ก · เมื่อไหร่) — ล่าสุด {all.length} ออเดอร์
-                      </button>
-                      {ordersOpen && <input style={searchInput} value={ordersQ} onChange={(e) => setOrdersQ(e.target.value)} placeholder="ค้น ชื่อ / อีเมล / แพ็ก / anonId" />}
-                    </div>
-                    {ordersOpen && (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 640 }}>
-                          <thead><tr>
-                            <th style={th}>เมื่อไหร่</th><th style={th}>บัญชีผู้ซื้อ</th><th style={th}>แพ็ก</th>
-                            <th style={th}>วิธี</th><th style={{ ...th, textAlign: "right" }}>บาท</th>
-                          </tr></thead>
-                          <tbody>
-                            {rows.length === 0 && <tr><td style={td} colSpan={5}>{all.length === 0 ? "ยังไม่มีออเดอร์" : "ไม่พบตามคำค้น"}</td></tr>}
-                            {rows.map((o, i) => (
-                              <tr key={`${o.anon_id}-${o.at}-${i}`} onClick={() => onOpenUser(o.anon_id)} style={{ cursor: "pointer" }} title="กดเพื่อดู/แก้ไขผู้ใช้">
-                                <td style={{ ...td, whiteSpace: "nowrap" }}>{o.at}</td>
-                                <td style={td}>
-                                  <div style={{ fontWeight: 600, color: C.accent }}>{nameOf(o)}</div>
-                                  <div style={{ fontSize: 11, color: C.sub }}>{[o.provider ? o.provider.toUpperCase() : null, o.email].filter(Boolean).join(" · ") || o.anon_id}</div>
-                                </td>
-                                <td style={td}>{o.package_code}{o.tier_code ? <span style={{ color: C.sub }}> · {o.tier_code}</span> : null}</td>
-                                <td style={{ ...td, color: C.sub }}>{o.method ?? "—"}</td>
-                                <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{baht(o.baht)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
-
 
               {/* ส่วนลด/คูปองที่ใช้ · กดแชร์อะไร · แชทแนวไหน */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
