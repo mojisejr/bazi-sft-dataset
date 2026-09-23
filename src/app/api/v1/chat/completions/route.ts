@@ -6,6 +6,7 @@ import {
   isHonestPrecisionReframe,
   isOtherChartRequest,
   wantsCardReading,
+  wantsDream,
   wantsFengshui,
   wantsHouseNumber,
   wantsPhoneNumber,
@@ -14,6 +15,7 @@ import {
   OpenWebUiGeminiError,
 } from "@/features/open-webui/gemini-adapter";
 import { readHouseNumber, readPhoneNumber, type HouseNumberReading, type PhoneReading } from "@/lib/bazi/phone-number";
+import { readDream, type DreamReading } from "@/lib/bazi/dream/engine";
 import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
@@ -82,6 +84,25 @@ function formatHouseReadingForChat(r: HouseNumberReading): string {
     if (r.pairMeaning.love) lines.push(`  • ความรัก: ${r.pairMeaning.love}`);
   }
   lines.push(`เลขเดี่ยว ${r.root}: ${r.rootMeaning.planet}/${r.rootMeaning.element} — ${r.rootMeaning.keyword}`);
+  return lines.join("\n");
+}
+
+// ทำนายฝัน (เอ็ม 2026-09-23): ย่อผลถอดสัญลักษณ์ในฝัน + เลขนำโชค ให้ LLM เรียบเรียงต่อ (ไม่ใช่ปาจื่อ)
+function formatDreamReadingForChat(r: DreamReading): string {
+  const lines: string[] = [`ความฝันที่เล่ามา: ${r.query}`];
+  if (r.matched.length === 0) {
+    lines.push("สัญลักษณ์ในคลัง: ไม่พบสัญลักษณ์ตรง ๆ — ให้ตีความตามหลักตำราฝันไทยทั่วไปอย่างระมัดระวัง (บอกผู้ใช้ว่าเป็นการตีความกว้าง ๆ)");
+    return lines.join("\n");
+  }
+  lines.push(`พบสัญลักษณ์ ${r.matched.length} อย่าง:`);
+  for (const m of r.matched) {
+    lines.push(`• ${m.symbol}: ${m.general}`);
+    if (m.love) lines.push(`   - ความรัก: ${m.love}`);
+    if (m.work) lines.push(`   - การงาน: ${m.work}`);
+    if (m.money) lines.push(`   - การเงิน: ${m.money}`);
+    if (m.warn) lines.push(`   - ข้อควรระวัง: ${m.warn}`);
+  }
+  if (r.luckyNumbers.length) lines.push(`เลขนำโชคตามตำรา (เพื่อความบันเทิง): ${r.luckyNumbers.join(", ")}`);
   return lines.join("\n");
 }
 
@@ -529,7 +550,21 @@ export async function POST(req: Request) {
       }
     }
 
-    if (triage.topicId === "card_reading" && !isFengshui && !executionContext.hasCardReadingData) {
+    // ทำนายฝัน (ซินแสนุ้ย/เอ็ม 2026-09-23): ผู้ใช้เล่าความฝัน → ถอดสัญลักษณ์จากตำราฝันไทย (readDream) แนบให้ LLM
+    // เรียบเรียง + ปิดด้วยเลขนำโชค (disclaimer บันเทิง). ไม่ขึ้นดวงปาจื่อ. ตำราฝันเป็น folklore สาธารณะ — จับได้เสมอ
+    // แม้ไม่มีสัญลักษณ์ในคลัง (LLM ตีความจากหลักทั่วไป). มาก่อน card_reading เพื่อไม่ให้ "ฝัน" ตกไปเซียมซี.
+    if (!executionContext.hasDreamData && wantsDream(result.latestUserMessage.content)) {
+      try {
+        executionContext.dreamReading = formatDreamReadingForChat(readDream(result.latestUserMessage.content));
+        executionContext.hasDreamData = true;
+        triage.requiresBaziConsult = false;
+        triage.classification.requiresBaziConsult = false;
+      } catch {
+        /* ถอดฝันพัง → ปล่อยตอบตามปกติ */
+      }
+    }
+
+    if (triage.topicId === "card_reading" && !isFengshui && !executionContext.hasDreamData && !executionContext.hasCardReadingData) {
       try {
         const card = drawSiamsi();
         const reading = buildSiamsiReading(card, result.latestUserMessage.content);

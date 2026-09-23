@@ -128,6 +128,15 @@ export function wantsHouseNumber(message?: string | null): boolean {
   return HOUSE_WORD_RE.test(message);
 }
 
+// โหมดทำนายฝัน (ซินแสนุ้ย/เอ็ม 2026-09-23): ตำราฝันไทยพื้นบ้าน (ไม่ใช่ปาจื่อ). ยิงเมื่อผู้ใช้เล่าความฝัน
+// ("ฝันว่า/ฝันเห็น/ฝันถึง...") หรือขอทำนายฝันตรง ๆ. เลี่ยงชน "ความฝัน/ใฝ่ฝัน" (เป้าหมายชีวิต) จึงจับเฉพาะรูปที่
+// สื่อว่านอนหลับแล้วฝัน. Chat only.
+const DREAM_RE = /(ทำนายฝัน|แก้ฝัน|ฝันว่า|ฝันเห็น|ฝันถึง|ฝันร้าย|นอนฝัน|คืนฝัน|(ผม|ฉัน|หนู|เรา|ดิฉัน|กู)ฝัน)/;
+export function wantsDream(message?: string | null): boolean {
+  if (typeof message !== "string") return false;
+  return DREAM_RE.test(message);
+}
+
 // Single source of truth for the same-day honest-precision reframe. The compose prompt uses it to
 // inject the reframe instruction; the Glass Box trace uses it to report whether the filter fired.
 export function isHonestPrecisionReframe(
@@ -322,6 +331,13 @@ export type OpenWebUiGeminiExecutionContext = {
   houseReading?: string | null;
   /** true = คำถามนี้ตอบด้วยเลขศาสตร์บ้านเลขที่ — คู่กับ houseReading. */
   hasHouseData?: boolean;
+  /**
+   * ผลถอด "ทำนายฝัน" (readDream) — สัญลักษณ์ในฝัน + ความหมาย + เลขนำโชค จากคลังตำราฝันไทย (folklore, ไม่ใช่
+   * ปาจื่อ). แนบเมื่อผู้ใช้เล่าความฝัน. เป็นแหล่งความจริงของคำตอบนี้ (LLM เรียบเรียง + ปิดด้วยเลขนำโชค+disclaimer).
+   */
+  dreamReading?: string | null;
+  /** true = คำถามนี้ตอบด้วยตำราทำนายฝัน — คู่กับ dreamReading. */
+  hasDreamData?: boolean;
 };
 
 export type OpenWebUiGeminiConfig = {
@@ -445,6 +461,9 @@ export function buildOpenWebUiGeminiPromptPayload(
   const houseReading = input.executionContext?.houseReading ?? null;
   const hasHouseData = (input.executionContext?.hasHouseData ?? false) && Boolean(houseReading);
   const houseAskNoNumber = !crisis && !hasHouseData && wantsHouseNumber(input.latestUserMessage?.content);
+  // ทำนายฝัน (ตำราฝันไทย) — ผู้ใช้เล่าความฝัน ถอดสัญลักษณ์+เลขนำโชคมาแล้ว ตอบจากตำรานี้ (ไม่ขึ้นดวง)
+  const dreamReading = input.executionContext?.dreamReading ?? null;
+  const hasDreamData = (input.executionContext?.hasDreamData ?? false) && Boolean(dreamReading);
   // การ์ดจากไพ่ (เซียมซี/ฮวงจุ้ย) ตอบแทนดวงแล้ว → อย่าให้ guard อื่นมาทับ
   const hasAnyCardData = hasCardReadingData || hasFengshuiData;
   // เจอคำถามดวงคู่ + วันเกิดอีกฝ่าย แต่ "ยังไม่มี" ผลวิเคราะห์คู่จริงแนบมา → กัน LLM มั่วดวงคนที่สอง
@@ -454,7 +473,7 @@ export function buildOpenWebUiGeminiPromptPayload(
   const hasDailyGoodDayData = rawHasDailyGoodDayData && !crisis;
   // มีความรู้เสริมจากซินแสแนบมา = คำถามนี้อยู่ในขอบเขตที่ซินแสให้ตอบ ห้ามปัดเป็น off-topic
   // card_reading/ฮวงจุ้ย ตอบด้วยไพ่ ไม่เข้า off-topic/non-bazi-bypass
-  const isOffTopic = topicId === "off_topic" && !staticKnowledge && !hasAnyCardData;
+  const isOffTopic = topicId === "off_topic" && !staticKnowledge && !hasAnyCardData && !hasPhoneData && !hasHouseData && !hasDreamData;
   const consultMode = intentClassification?.requiresBaziConsult
     ? baziConsult?.truthPacket
       ? "bazi_consult"
@@ -528,6 +547,20 @@ export function buildOpenWebUiGeminiPromptPayload(
         : null,
       houseAskNoNumber
         ? "ผู้ใช้อยากดูเลขศาสตร์บ้านเลขที่ แต่ยังไม่ได้ให้เลขมา. **ห้ามมโน** ให้ถามกลับว่าขอเลขที่บ้าน (ตัวเลข เช่น 135) มาก่อน เดี๋ยวถอดเลขศาสตร์ผลรวมให้."
+        : null,
+      hasDreamData && !crisis
+        ? [
+          "ผู้ใช้ \"เล่าความฝัน\" มา — เป็นวิชา \"ทำนายฝัน\" (ตำราฝันไทยพื้นบ้าน คนละวิชากับปาจื่อ). ระบบถอดสัญลักษณ์ในฝัน + ความหมาย + เลขนำโชคมาให้แล้ว. **ห้ามขึ้นดวง/ห้ามมโนเสา-ธาตุ-ปีจร** ตอบจากผลถอดนี้เท่านั้น:",
+          dreamReading ?? "",
+          [
+            "วิธีตอบ:",
+            "- **ต้องเปิดด้วยการทวนความฝันสั้น ๆ** ว่าผู้ใช้ฝันถึงอะไร (เช่น \"ที่พี่ฝันเห็น...\") แล้วค่อยไล่ความหมายตามตำรา",
+            "- อธิบายอบอุ่นแบบซินแสทำนายฝัน: สัญลักษณ์นี้ตามตำราหมายถึงอะไร ส่งผลด้านไหน (ความรัก/การงาน/การเงิน) ตามผลถอด. ถ้ามีข้อควรระวังให้เตือนอย่างนุ่มนวล",
+            "- ใช้เฉพาะเนื้อจากผลถอดด้านบน **ห้ามเพิ่มความหมายสัญลักษณ์ที่ไม่มีในนี้ (ห้ามมโน)**. ถ้าไม่มีสัญลักษณ์ตรง ๆ (คลังไม่พบ) ให้ตีความตามหลักตำราฝันไทยทั่วไปอย่างระมัดระวัง และบอกตามตรงว่าเป็นการตีความกว้าง ๆ",
+            "- **ปิดท้ายด้วยเลขนำโชค** ที่ให้มา (ถ้ามี) โดยพูดว่าเป็น \"เลขจากตำราฝัน ไว้เสี่ยงโชคเพื่อความบันเทิง\" — **ต้องมี disclaimer ทุกครั้งว่า \"เป็นความเชื่อส่วนบุคคล เพื่อความบันเทิง โปรดใช้วิจารณญาณ ไม่สนับสนุนการพนัน\"** และห้ามรับประกันว่าถูกรางวัล",
+            "- กระชับ อบอุ่น ไม่กี่ย่อหน้า",
+          ].join("\n"),
+        ].join("\n\n")
         : null,
       hasCardReadingData && !crisis
         ? [
