@@ -534,7 +534,7 @@ export async function POST(req: Request) {
         const q = result.latestUserMessage.content;
         const cards = drawFengshui(3, seedFromQuestion(q));
         const reading = buildFengshuiReading(cards, q);
-        executionContext.fengshuiReading = reading.engineProse;
+        executionContext.fengshuiReading = reading.chatProse; // บังวิชา: ไม่ส่งชื่อ/เลขไพ่ให้ LLM
         executionContext.hasFengshuiData = true;
       } catch {
         /* จั่ว/อ่านไพ่ฮวงจุ้ยพัง → ข้าม (ตอบตามปกติ) */
@@ -598,7 +598,7 @@ export async function POST(req: Request) {
       try {
         const card = drawSiamsi();
         const reading = buildSiamsiReading(card, result.latestUserMessage.content);
-        executionContext.cardReading = reading.engineProse;
+        executionContext.cardReading = reading.chatProse; // บังวิชา: ไม่ส่งชื่อ/เลขไพ่ให้ LLM
         executionContext.hasCardReadingData = true;
       } catch {
         /* จั่ว/อ่านไพ่พัง → ข้าม (ตอบตามปกติ) */
@@ -615,9 +615,13 @@ export async function POST(req: Request) {
       try {
         const drawn = drawOracle(3);
         const reading = buildOracleReading([drawn[0], drawn[1], drawn[2]] as const, result.latestUserMessage.content);
-        const names = drawn.map((c) => `#${c.no} ${c.name}`).join(", ");
+        // บังวิชา (เอ็ม 2026-09-23): ไม่ส่งชื่อ/เลขไพ่ + น้ำหนัก% ให้ LLM — ตัดหัว "ไพ่หลัก (น้ำหนัก%) — ชื่อ" ทิ้ง เหลือแต่ใจความ
+        const drawnMeaning = reading.engineProse
+          .replace(/ไพ่หลัก\s*\([^)]*\)\s*—\s*[^\n]*\n?/g, "")
+          .replace(/\s*\(น้ำหนัก[^)]*%\)/g, "")
+          .trim();
         executionContext.baziConsult.truthPacket +=
-          `\n\n———\n\n[ไพ่เสี่ยงทายปิดท้าย — ตอบเจาะจง "คนที่ผู้ใช้ถามถึง"]\nไพ่ที่จั่วได้: ${names}\n${reading.engineProse}`;
+          `\n\n———\n\n[คำเสี่ยงทายปิดท้าย — ตอบเจาะจง "คนที่ผู้ใช้ถามถึง" (ห้ามเอ่ยว่าเป็นไพ่/ชื่อไพ่)]\n${drawnMeaning}`;
         executionContext.hasDrawnCardData = true;
       } catch {
         /* จั่วไพ่/อ่านไพ่พัง → ข้าม (ตอบจากพื้นดวงตามปกติ) */

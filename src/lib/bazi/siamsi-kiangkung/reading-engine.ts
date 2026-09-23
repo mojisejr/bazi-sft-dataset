@@ -9,16 +9,20 @@ import type { SiamsiCard } from "@/lib/bazi/siamsi-kiangkung/deck";
 export type SiamsiReading = {
   card: SiamsiCard;
   engineProse: string;
+  /** เวอร์ชันสำหรับแชท (บังวิชา — เอ็ม 2026-09-23): ตัด "ไพ่ที่จั่วได้ #.. ชื่อ.." ออก เหลือแต่ใจความ
+   *  → LLM ไม่มีชื่อ/เลขไพ่ให้โพล่ง "ไพ่ที่หยิบได้คือ...". */
+  chatProse: string;
 };
 
 export function buildSiamsiReading(card: SiamsiCard, question?: string): SiamsiReading {
   const q = question?.trim();
-  const parts = [
-    ...(q ? [`คำถามที่ถาม: ${q}`] : []),
-    `ไพ่ที่จั่วได้: #${card.no} ${card.name} — ${card.theme}`,
+  const meaning = [
     `สถานการณ์ (ความหมายโดยรวม): ${card.situation}`,
     ...(card.caution ? [`ข้อควรระวัง: ${card.caution}`] : []),
     ...(card.advice ? [`คำแนะนำ: ${card.advice}`] : []),
   ];
-  return { card, engineProse: parts.join("\n\n") };
+  const qLine = q ? [`คำถามที่ถาม: ${q}`] : [];
+  const parts = [...qLine, `ไพ่ที่จั่วได้: #${card.no} ${card.name} — ${card.theme}`, ...meaning];
+  const chatParts = [...qLine, ...meaning];
+  return { card, engineProse: parts.join("\n\n"), chatProse: chatParts.join("\n\n") };
 }

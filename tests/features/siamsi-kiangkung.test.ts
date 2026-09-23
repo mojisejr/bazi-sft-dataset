@@ -37,4 +37,14 @@ describe("ไพ่เซียมซีเคี้ยงคุง deck", () =>
     expect(reading.engineProse).toContain("สถานการณ์");
     expect(reading.engineProse).toContain("คำถามที่ถาม: รถมีสิ่งไม่ดีตามมาไหม");
   });
+
+  test("chatProse บังวิชา — ไม่มีชื่อ/เลขไพ่ แต่คงใจความ + คำถาม (เอ็ม 2026-09-23)", () => {
+    const card = getCardByNo(1)!;
+    const reading = buildSiamsiReading(card, "รถมีสิ่งไม่ดีตามมาไหม");
+    expect(reading.chatProse).not.toContain(card.name);
+    expect(reading.chatProse).not.toContain(`#${card.no}`);
+    expect(reading.chatProse).not.toContain("ไพ่ที่จั่วได้");
+    expect(reading.chatProse).toContain(card.situation); // ใจความยังอยู่
+    expect(reading.chatProse).toContain("คำถามที่ถาม: รถมีสิ่งไม่ดีตามมาไหม");
+  });
 });
