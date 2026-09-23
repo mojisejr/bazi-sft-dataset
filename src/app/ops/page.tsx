@@ -898,16 +898,21 @@ type DiscountRow = {
   usedCount: number; distinctUsers: number; status: string; createdAt: string;
 };
 type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null };
+// รายออเดอร์จ่ายสำเร็จ + ชื่อบัญชีผู้ซื้อ ("ใครซื้ออะไร") จาก /api/ops/analytics revenue.recent
+type OrderRow = { at: string; package_code: string; tier_code: string | null; method: string | null; baht: number; anon_id: string; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
+// คน PLUS/PRO ที่ QI > 500 ("ดูง่าย") จาก /api/ops/analytics highValueUsers
+type HighValueRow = { anon_id: string; tier_code: string; expire_at: string | null; qi: number; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
 type RewardKind = "qi" | "chat" | "card" | "matching" | "tier" | "discount";
 
 type Analytics = {
   days: number;
   dau: { total: number; byDay: { day: string; users: number }[] };
   features: { feature: string; uses: number; users: number }[];
-  revenue: { total: { orders: number; baht: number }; byDay: { day: string; orders: number; baht: number }[]; byPackage: { package_code: string; orders: number; baht: number }[] };
+  revenue: { total: { orders: number; baht: number }; byDay: { day: string; orders: number; baht: number }[]; byPackage: { package_code: string; orders: number; baht: number }[]; recent?: OrderRow[] };
   coupons: { discount: { total: { uses: number; baht: number; users: number }; byCode: { code: string; uses: number; baht: number }[] }; reward: { uses: number; users: number } };
   shares: { total: { shares: number; users: number }; byTag: { tag: string; shares: number; users: number }[] };
   chat: { topTopics: { topic_id: string; replies: number }[]; byPersona: { persona: string; replies: number }[] };
+  highValueUsers?: HighValueRow[];
 };
 
 function AnalyticsPanel({ secret }: { secret: string }) {
@@ -1006,6 +1011,71 @@ function AnalyticsPanel({ secret }: { secret: string }) {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+
+              {/* ใครซื้ออะไร (บัญชี) — รายออเดอร์จ่ายสำเร็จ + ชื่อผู้ซื้อ */}
+              <div>
+                <p style={{ ...label, marginBottom: 4 }}>ใครซื้ออะไร (บัญชี · แพ็ก · เมื่อไหร่) — ล่าสุด {(data.revenue.recent?.length ?? 0)} ออเดอร์</p>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 640 }}>
+                    <thead><tr>
+                      <th style={th}>เมื่อไหร่</th><th style={th}>บัญชีผู้ซื้อ</th><th style={th}>แพ็ก</th>
+                      <th style={th}>วิธี</th><th style={{ ...th, textAlign: "right" }}>บาท</th>
+                    </tr></thead>
+                    <tbody>
+                      {(!data.revenue.recent || data.revenue.recent.length === 0) && <tr><td style={td} colSpan={5}>ยังไม่มีออเดอร์</td></tr>}
+                      {(data.revenue.recent ?? []).map((o, i) => {
+                        const full = [o.u_name, o.u_surname].filter(Boolean).join(" ").trim();
+                        const who = o.provider_name || full || o.email || `${o.anon_id.slice(0, 8)}…`;
+                        const sub = [o.provider ? o.provider.toUpperCase() : null, o.email && o.email !== who ? o.email : null].filter(Boolean).join(" · ");
+                        return (
+                          <tr key={`${o.anon_id}-${o.at}-${i}`}>
+                            <td style={{ ...td, whiteSpace: "nowrap" }}>{o.at}</td>
+                            <td style={td}>
+                              <div style={{ fontWeight: 600 }}>{who}</div>
+                              <div style={{ fontSize: 11, color: C.sub }}>{sub || o.anon_id}</div>
+                            </td>
+                            <td style={td}>{o.package_code}{o.tier_code ? <span style={{ color: C.sub }}> · {o.tier_code}</span> : null}</td>
+                            <td style={{ ...td, color: C.sub }}>{o.method ?? "—"}</td>
+                            <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{baht(o.baht)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* PLUS/PRO ที่มี QI > 500 — ลูกค้าตัวจริง ดูง่าย */}
+              <div>
+                <p style={{ ...label, marginBottom: 4 }}>สมาชิก PLUS/PRO ที่มี QI &gt; 500 — {(data.highValueUsers?.length ?? 0)} คน</p>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 560 }}>
+                    <thead><tr>
+                      <th style={th}>บัญชี</th><th style={th}>tier</th>
+                      <th style={{ ...th, textAlign: "right" }}>QI</th><th style={th}>หมดอายุ</th>
+                    </tr></thead>
+                    <tbody>
+                      {(!data.highValueUsers || data.highValueUsers.length === 0) && <tr><td style={td} colSpan={4}>ยังไม่มีใครเข้าเงื่อนไข</td></tr>}
+                      {(data.highValueUsers ?? []).map((o, i) => {
+                        const full = [o.u_name, o.u_surname].filter(Boolean).join(" ").trim();
+                        const who = o.provider_name || full || o.email || `${o.anon_id.slice(0, 8)}…`;
+                        const sub = [o.provider ? o.provider.toUpperCase() : null, o.email && o.email !== who ? o.email : null].filter(Boolean).join(" · ");
+                        return (
+                          <tr key={`${o.anon_id}-${i}`}>
+                            <td style={td}>
+                              <div style={{ fontWeight: 600 }}>{who}</div>
+                              <div style={{ fontSize: 11, color: C.sub }}>{sub || o.anon_id}</div>
+                            </td>
+                            <td style={td}><span style={{ fontWeight: 700, color: o.tier_code === "PRO" ? C.warn : C.accent }}>{o.tier_code}</span></td>
+                            <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{Number(o.qi ?? 0).toLocaleString("th-TH")}</td>
+                            <td style={{ ...td, color: C.sub, whiteSpace: "nowrap" }}>{o.expire_at ? o.expire_at.slice(0, 10) : "ไม่หมดอายุ"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 

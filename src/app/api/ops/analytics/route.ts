@@ -70,6 +70,56 @@ export async function GET(request: Request) {
       SELECT package_code, COUNT(*)::int AS orders, ROUND(SUM(amount_satang) / 100.0, 2) AS baht
         FROM v2_payment WHERE status = 'APPROVED' AND created_at >= now() - (${days} || ' days')::interval
        GROUP BY 1 ORDER BY baht DESC`);
+    // "ใครซื้ออะไร" — รายออเดอร์จ่ายสำเร็จ + ชื่อบัญชีผู้ซื้อ (join "user" + provider ล่าสุด).
+    // wrap try/catch: บาง env ไม่มีตาราง "user"/user_provider → คืน [] แทนที่จะพังทั้ง dashboard.
+    let recentOrders: unknown[] = [];
+    try {
+      const r = await db.execute(sql`
+        SELECT to_char((vp.created_at AT TIME ZONE 'Asia/Bangkok'), 'YYYY-MM-DD HH24:MI') AS at,
+               vp.package_code, vp.tier_code, vp.method,
+               ROUND(vp.amount_satang / 100.0, 2) AS baht,
+               vp.user_id AS anon_id,
+               u.name AS u_name, u.surname AS u_surname, u.email,
+               prov.provider, prov.provider_name
+          FROM v2_payment vp
+          LEFT JOIN "user" u ON u.user_id = vp.user_id
+          LEFT JOIN LATERAL (
+            SELECT provider, name AS provider_name FROM user_provider up
+             WHERE up.user_id = vp.user_id ORDER BY up.update_at DESC LIMIT 1
+          ) prov ON true
+         WHERE vp.status = 'APPROVED' AND vp.created_at >= now() - (${days} || ' days')::interval
+         ORDER BY vp.created_at DESC LIMIT 100`);
+      recentOrders = rowsOf(r);
+    } catch {
+      recentOrders = [];
+    }
+
+    // "ดูง่าย" — คนที่ tier PLUS/PRO (member_subscription ACTIVE ยังไม่หมดอายุ) และมี QI > 500 (bazi_wallet).
+    // wrap try/catch เผื่อ env ไม่มีตาราง → คืน [] ไม่ให้ dashboard พัง. DISTINCT ON กันแถว sub ซ้ำต่อ user.
+    let highValueUsers: unknown[] = [];
+    try {
+      const r = await db.execute(sql`
+        SELECT t.* FROM (
+          SELECT DISTINCT ON (ms.user_id)
+                 ms.user_id AS anon_id, upper(ms.tier_code) AS tier_code, ms.expire_at::text AS expire_at,
+                 w.qi::int AS qi, u.name AS u_name, u.surname AS u_surname, u.email,
+                 prov.provider, prov.provider_name
+            FROM member_subscription ms
+            JOIN bazi_wallet w ON w.anon_id = ms.user_id
+            LEFT JOIN "user" u ON u.user_id = ms.user_id
+            LEFT JOIN LATERAL (
+              SELECT provider, name AS provider_name FROM user_provider up
+               WHERE up.user_id = ms.user_id ORDER BY up.update_at DESC LIMIT 1
+            ) prov ON true
+           WHERE ms.status = 'ACTIVE' AND upper(ms.tier_code) IN ('PLUS', 'PRO')
+             AND (ms.expire_at IS NULL OR ms.expire_at > now())
+             AND w.qi > 500
+           ORDER BY ms.user_id, ms.expire_at DESC NULLS LAST
+        ) t ORDER BY t.qi DESC LIMIT 100`);
+      highValueUsers = rowsOf(r);
+    } catch {
+      highValueUsers = [];
+    }
 
     // ส่วนลด/คูปองที่ใช้: discount_redemption (฿ ส่วนลดที่ให้ไป + แยกโค้ด) + activity_coupon (คูปองรางวัล)
     const discountTotal = await db.execute(sql`
@@ -117,7 +167,7 @@ export async function GET(request: Request) {
         days,
         dau: { total: (rowsOf(dauTotal)[0] as { users?: number })?.users ?? 0, byDay: rowsOf(dauByDay) },
         features: rowsOf(features),
-        revenue: { total: rowsOf(revTotal)[0] ?? { orders: 0, baht: 0 }, byDay: rowsOf(revByDay), byPackage: rowsOf(revByPackage) },
+        revenue: { total: rowsOf(revTotal)[0] ?? { orders: 0, baht: 0 }, byDay: rowsOf(revByDay), byPackage: rowsOf(revByPackage), recent: recentOrders },
         coupons: {
           discount: { total: rowsOf(discountTotal)[0] ?? { uses: 0, baht: 0, users: 0 }, byCode: rowsOf(discountByCode) },
           reward: rowsOf(rewardRedeemed)[0] ?? { uses: 0, users: 0 },
@@ -125,6 +175,7 @@ export async function GET(request: Request) {
         shares: { total: rowsOf(shareTotal)[0] ?? { shares: 0, users: 0 }, byTag: rowsOf(shareByTag) },
         qiEconomy: rowsOf(qi),
         chat: { byPersona: rowsOf(chatByPersona), topTopics: rowsOf(chatTopTopics) },
+        highValueUsers,
       },
       { status: 200 },
     );
