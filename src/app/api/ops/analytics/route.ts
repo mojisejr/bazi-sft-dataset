@@ -93,33 +93,7 @@ export async function GET(request: Request) {
     } catch {
       recentOrders = [];
     }
-
-    // "ดูง่าย" — คนที่ tier PLUS/PRO (member_subscription ACTIVE ยังไม่หมดอายุ) และมี QI > 500 (bazi_wallet).
-    // wrap try/catch เผื่อ env ไม่มีตาราง → คืน [] ไม่ให้ dashboard พัง. DISTINCT ON กันแถว sub ซ้ำต่อ user.
-    let highValueUsers: unknown[] = [];
-    try {
-      const r = await db.execute(sql`
-        SELECT t.* FROM (
-          SELECT DISTINCT ON (ms.user_id)
-                 ms.user_id AS anon_id, upper(ms.tier_code) AS tier_code, ms.expire_at::text AS expire_at,
-                 w.qi::int AS qi, u.name AS u_name, u.surname AS u_surname, u.email,
-                 prov.provider, prov.provider_name
-            FROM member_subscription ms
-            JOIN bazi_wallet w ON w.anon_id = ms.user_id
-            LEFT JOIN "user" u ON u.user_id = ms.user_id
-            LEFT JOIN LATERAL (
-              SELECT provider, name AS provider_name FROM user_provider up
-               WHERE up.user_id = ms.user_id ORDER BY up.update_at DESC LIMIT 1
-            ) prov ON true
-           WHERE ms.status = 'ACTIVE' AND upper(ms.tier_code) IN ('PLUS', 'PRO')
-             AND (ms.expire_at IS NULL OR ms.expire_at > now())
-             AND w.qi > 500
-           ORDER BY ms.user_id, ms.expire_at DESC NULLS LAST
-        ) t ORDER BY t.qi DESC LIMIT 100`);
-      highValueUsers = rowsOf(r);
-    } catch {
-      highValueUsers = [];
-    }
+    // (กลุ่มลูกค้า PLUS/PRO/QI>500 ย้ายไป /api/ops/segment — เป็นปุ่มกรองในหน้า /ops)
 
     // ส่วนลด/คูปองที่ใช้: discount_redemption (฿ ส่วนลดที่ให้ไป + แยกโค้ด) + activity_coupon (คูปองรางวัล)
     const discountTotal = await db.execute(sql`
@@ -175,7 +149,6 @@ export async function GET(request: Request) {
         shares: { total: rowsOf(shareTotal)[0] ?? { shares: 0, users: 0 }, byTag: rowsOf(shareByTag) },
         qiEconomy: rowsOf(qi),
         chat: { byPersona: rowsOf(chatByPersona), topTopics: rowsOf(chatTopTopics) },
-        highValueUsers,
       },
       { status: 200 },
     );

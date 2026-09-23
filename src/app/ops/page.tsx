@@ -257,6 +257,9 @@ export default function OpsAdminPage() {
       {/* ภาพรวมรายวัน (DAU / ใช้อะไร / รายรับ / ถามอะไร) */}
       <AnalyticsPanel secret={secret} onOpenUser={openUserById} />
 
+      {/* หากลุ่มลูกค้า (ปุ่ม PLUS / PRO / QI>500) → กดแถวเปิด detail/แก้ไข */}
+      <SegmentPanel secret={secret} onOpenUser={openUserById} />
+
       {/* คูปองกิจกรรม (global — ไม่ผูก user) */}
       <CouponManager secret={secret} onNote={note} />
 
@@ -929,8 +932,8 @@ type DiscountRow = {
 type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null };
 // รายออเดอร์จ่ายสำเร็จ + ชื่อบัญชีผู้ซื้อ ("ใครซื้ออะไร") จาก /api/ops/analytics revenue.recent
 type OrderRow = { at: string; package_code: string; tier_code: string | null; method: string | null; baht: number; anon_id: string; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
-// คน PLUS/PRO ที่ QI > 500 ("ดูง่าย") จาก /api/ops/analytics highValueUsers
-type HighValueRow = { anon_id: string; tier_code: string; expire_at: string | null; qi: number; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
+// กลุ่มลูกค้า (PLUS/PRO/QI>500) จาก /api/ops/segment — เป็นปุ่มกรอง (tier อาจ null สำหรับ qi500 ที่เป็น FREE)
+type SegmentRow = { anon_id: string; tier_code: string | null; expire_at: string | null; qi: number; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
 type RewardKind = "qi" | "chat" | "card" | "matching" | "tier" | "discount";
 
 type Analytics = {
@@ -941,8 +944,75 @@ type Analytics = {
   coupons: { discount: { total: { uses: number; baht: number; users: number }; byCode: { code: string; uses: number; baht: number }[] }; reward: { uses: number; users: number } };
   shares: { total: { shares: number; users: number }; byTag: { tag: string; shares: number; users: number }[] };
   chat: { topTopics: { topic_id: string; replies: number }[]; byPersona: { persona: string; replies: number }[] };
-  highValueUsers?: HighValueRow[];
 };
+
+// หากลุ่มลูกค้า: ปุ่ม PLUS / PRO / QI>500 → โหลดจาก /api/ops/segment → ตารางค้นได้ + กดแถวเปิด detail
+function SegmentPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (anonId: string) => void }) {
+  const [type, setType] = useState<"plus" | "pro" | "qi500" | "">("");
+  const [rows, setRows] = useState<SegmentRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
+  const th: React.CSSProperties = { ...td, textAlign: "left", color: C.sub };
+  const nameOf = (o: SegmentRow) => o.provider_name || [o.u_name, o.u_surname].filter(Boolean).join(" ").trim() || o.email || `${o.anon_id.slice(0, 8)}…`;
+
+  const load = async (t: "plus" | "pro" | "qi500") => {
+    setType(t); setBusy(true); setErr(null); setRows([]); setQ("");
+    try {
+      const r = await fetch(`/api/ops/segment?type=${t}`, { headers: { "x-ops-secret": secret } });
+      const j = await r.json();
+      if (r.ok) setRows(j.users ?? []); else setErr(j.error ?? "โหลดไม่สำเร็จ");
+    } catch { setErr("เชื่อมต่อไม่ได้"); } finally { setBusy(false); }
+  };
+
+  const filtered = rows.filter((o) => { const s = q.trim().toLowerCase(); return !s || [nameOf(o), o.email, o.anon_id, o.tier_code].some((f) => (f ?? "").toLowerCase().includes(s)); });
+  const BTNS: { v: "plus" | "pro" | "qi500"; l: string }[] = [{ v: "plus", l: "PLUS" }, { v: "pro", l: "PRO" }, { v: "qi500", l: "QI > 500" }];
+
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <strong style={{ fontSize: 15 }}>👥 หากลุ่มลูกค้า</strong>
+      <div style={{ display: "flex", gap: 8, margin: "10px 0", flexWrap: "wrap" }}>
+        {BTNS.map((b) => (
+          <button key={b.v} onClick={() => load(b.v)} style={{ ...btn(type === b.v ? C.accent : C.inputBg), border: `1px solid ${type === b.v ? "transparent" : C.border}`, fontWeight: 700, padding: "7px 16px" }}>{b.l}</button>
+        ))}
+      </div>
+      {!type ? (
+        <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>เลือกกลุ่มที่ต้องการดู (กดปุ่มด้านบน)</p>
+      ) : busy ? (
+        <p style={{ color: C.sub, fontSize: 13, margin: 0 }}>กำลังโหลด…</p>
+      ) : err ? (
+        <p style={{ color: C.danger, fontSize: 13, margin: 0 }}>{err}</p>
+      ) : (
+        <>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 12, color: C.text }}>พบ <b>{rows.length}</b> คน{q ? ` · ตรงคำค้น ${filtered.length}` : ""}</span>
+            <input style={{ ...input, maxWidth: 260, fontSize: 12, padding: "6px 10px", marginLeft: "auto" }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้น ชื่อ / อีเมล / anonId" />
+          </div>
+          <div style={{ overflowX: "auto", maxHeight: "56vh", overflowY: "auto" }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 560 }}>
+              <thead><tr><th style={th}>บัญชี</th><th style={th}>tier</th><th style={{ ...th, textAlign: "right" }}>QI</th><th style={th}>หมดอายุ</th></tr></thead>
+              <tbody>
+                {filtered.length === 0 && <tr><td style={td} colSpan={4}>{rows.length === 0 ? "ไม่มีใครในกลุ่มนี้" : "ไม่พบตามคำค้น"}</td></tr>}
+                {filtered.map((o, i) => (
+                  <tr key={`${o.anon_id}-${i}`} onClick={() => onOpenUser(o.anon_id)} style={{ cursor: "pointer" }} title="กดเพื่อดู/แก้ไขผู้ใช้">
+                    <td style={td}>
+                      <div style={{ fontWeight: 600, color: C.accent }}>{nameOf(o)}</div>
+                      <div style={{ fontSize: 11, color: C.sub }}>{[o.provider ? o.provider.toUpperCase() : null, o.email].filter(Boolean).join(" · ") || o.anon_id}</div>
+                    </td>
+                    <td style={td}><span style={{ fontWeight: 700, color: o.tier_code === "PRO" ? C.warn : o.tier_code === "PLUS" ? C.accent : C.sub }}>{o.tier_code ?? "FREE"}</span></td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{Number(o.qi ?? 0).toLocaleString("th-TH")}</td>
+                    <td style={{ ...td, color: C.sub, whiteSpace: "nowrap" }}>{o.expire_at ? o.expire_at.slice(0, 10) : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (anonId: string) => void }) {
   const [open, setOpen] = useState(false);
@@ -950,11 +1020,9 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
   const [data, setData] = useState<Analytics | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  // ย่อ/ขยาย + ค้นหา ต่อ 2 ตาราง (เอ็ม 2026-09-23) — default ย่อไว้ (ตารางยาว)
+  // ย่อ/ขยาย + ค้นหา ตาราง "ใครซื้ออะไร" (เอ็ม 2026-09-23) — default ย่อไว้
   const [ordersOpen, setOrdersOpen] = useState(false);
   const [ordersQ, setOrdersQ] = useState("");
-  const [hvOpen, setHvOpen] = useState(false);
-  const [hvQ, setHvQ] = useState("");
   const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
   const th: React.CSSProperties = { ...td, textAlign: "left", color: C.sub };
   // ชื่อผู้ใช้ที่อ่านง่าย (LINE name / ชื่อ-สกุล / email / anonId ย่อ)
@@ -1065,10 +1133,10 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
                 const rows = all.filter((o) => matchRow(ordersQ, nameOf(o), o.email, o.anon_id, o.package_code, o.tier_code));
                 return (
                   <div>
-                    <div style={{ ...label, marginBottom: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <span style={caret} onClick={() => setOrdersOpen((v) => !v)}>
+                    <div style={{ marginBottom: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <button type="button" onClick={() => setOrdersOpen((v) => !v)} style={{ ...caret, ...label, background: "none", border: "none", padding: 0, color: C.text }}>
                         <span>{ordersOpen ? "▾" : "▸"}</span> ใครซื้ออะไร (บัญชี · แพ็ก · เมื่อไหร่) — ล่าสุด {all.length} ออเดอร์
-                      </span>
+                      </button>
                       {ordersOpen && <input style={searchInput} value={ordersQ} onChange={(e) => setOrdersQ(e.target.value)} placeholder="ค้น ชื่อ / อีเมล / แพ็ก / anonId" />}
                     </div>
                     {ordersOpen && (
@@ -1100,45 +1168,6 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
                 );
               })()}
 
-              {/* PLUS/PRO ที่มี QI > 500 — ย่อได้ · ค้นได้ · กดแถวเพื่อเปิด detail/แก้ไข */}
-              {(() => {
-                const all = data.highValueUsers ?? [];
-                const rows = all.filter((o) => matchRow(hvQ, nameOf(o), o.email, o.anon_id, o.tier_code));
-                return (
-                  <div>
-                    <div style={{ ...label, marginBottom: 6, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <span style={caret} onClick={() => setHvOpen((v) => !v)}>
-                        <span>{hvOpen ? "▾" : "▸"}</span> สมาชิก PLUS/PRO ที่มี QI &gt; 500 — {all.length} คน
-                      </span>
-                      {hvOpen && <input style={searchInput} value={hvQ} onChange={(e) => setHvQ(e.target.value)} placeholder="ค้น ชื่อ / อีเมล / tier / anonId" />}
-                    </div>
-                    {hvOpen && (
-                      <div style={{ overflowX: "auto" }}>
-                        <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 560 }}>
-                          <thead><tr>
-                            <th style={th}>บัญชี</th><th style={th}>tier</th>
-                            <th style={{ ...th, textAlign: "right" }}>QI</th><th style={th}>หมดอายุ</th>
-                          </tr></thead>
-                          <tbody>
-                            {rows.length === 0 && <tr><td style={td} colSpan={4}>{all.length === 0 ? "ยังไม่มีใครเข้าเงื่อนไข" : "ไม่พบตามคำค้น"}</td></tr>}
-                            {rows.map((o, i) => (
-                              <tr key={`${o.anon_id}-${i}`} onClick={() => onOpenUser(o.anon_id)} style={{ cursor: "pointer" }} title="กดเพื่อดู/แก้ไขผู้ใช้">
-                                <td style={td}>
-                                  <div style={{ fontWeight: 600, color: C.accent }}>{nameOf(o)}</div>
-                                  <div style={{ fontSize: 11, color: C.sub }}>{[o.provider ? o.provider.toUpperCase() : null, o.email].filter(Boolean).join(" · ") || o.anon_id}</div>
-                                </td>
-                                <td style={td}><span style={{ fontWeight: 700, color: o.tier_code === "PRO" ? C.warn : C.accent }}>{o.tier_code}</span></td>
-                                <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{Number(o.qi ?? 0).toLocaleString("th-TH")}</td>
-                                <td style={{ ...td, color: C.sub, whiteSpace: "nowrap" }}>{o.expire_at ? o.expire_at.slice(0, 10) : "ไม่หมดอายุ"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()}
 
               {/* ส่วนลด/คูปองที่ใช้ · กดแชร์อะไร · แชทแนวไหน */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
