@@ -30,6 +30,11 @@ export async function GET(request: Request) {
     const rewards = await db.execute(sql`
       SELECT ac.code, ac.reward_kind AS kind, to_char(r.redeemed_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS day
         FROM activity_coupon_redemption r JOIN activity_coupon ac ON ac.id = r.coupon_id WHERE r.anon_id = ${id} ORDER BY r.redeemed_at DESC LIMIT 50`);
+    // แชร์รายคน: แชร์อะไร (tag) กี่ครั้ง ครั้งล่าสุดเมื่อไหร่ (share_snapshot.user_id) — "แชร์ที่ไหน/กี่ครั้ง"
+    const shares = await db.execute(sql`
+      SELECT COALESCE(NULLIF(tag, ''), '—') AS tag, COUNT(*)::int AS shares,
+             MAX(to_char(created_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD')) AS last_day
+        FROM share_snapshot WHERE user_id = ${id} GROUP BY 1 ORDER BY shares DESC LIMIT 50`);
     const providers = await db.execute(sql`SELECT provider FROM user_provider WHERE user_id = ${id}`);
     const referredBy = await db.execute(sql`
       SELECT ffg.refer_user_id AS id, u.name FROM user_friend_get_friend ffg
@@ -46,6 +51,7 @@ export async function GET(request: Request) {
         payments: rowsOf(payments),
         discounts: rowsOf(discounts),
         rewards: rowsOf(rewards),
+        shares: { total: rowsOf(shares).reduce((n, s) => n + Number((s as { shares?: number }).shares ?? 0), 0), byTag: rowsOf(shares) },
         providers: rowsOf(providers).map((p) => (p as { provider?: string }).provider),
         referredBy: rowsOf(referredBy)[0] ?? null,
         referred: { count: list.length, list: list.slice(0, 20) },
