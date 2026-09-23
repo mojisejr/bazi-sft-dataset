@@ -37,6 +37,7 @@ import {
 import { stringifyOpenWebUiTruthPacket } from "@/features/open-webui/truth-packet";
 import { fetchGroundedReading, resolveGroundingTopicId, needsPersonalDayCalendar, isValidTopicId } from "@/features/open-webui/reading-bridge";
 import { resolveStaticKnowledge } from "@/features/open-webui/static-knowledge";
+import { retrieveChatKnowledge } from "@/lib/bazi/chat-knowledge/retrieve";
 import { RawInputSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 import { qiGate } from "@/lib/bazi/qi/quota";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
@@ -523,6 +524,12 @@ export async function POST(req: Request) {
 
     // ความรู้เสริม fix จากซินแส (เช่น ฮวงจุ้ยกระเป๋าตังค์) — แนบเมื่อคำถามเข้า keyword
     executionContext.staticKnowledge = await resolveStaticKnowledge(result.latestUserMessage.content);
+    // ความรู้ซินแสสำหรับแชท (ฮวงจุ้ย/ประเพณี/วิชาการ — ซินแสนุ้ย 2026-09-23): ดึงบทความที่ตรงคำถามมาแนบ
+    // รวมกับ staticKnowledge (การมีความรู้แนบ = ทับ off_topic → คำถาม "คืออะไร" ตอบได้)
+    const chatKb = retrieveChatKnowledge(result.latestUserMessage.content);
+    if (chatKb) {
+      executionContext.staticKnowledge = [executionContext.staticKnowledge, chatKb].filter(Boolean).join("\n\n———\n\n");
+    }
 
     // ไพ่เซียมซีเคี้ยงคุง (ซินแสนุ้ยสั่ง): คำถามที่ "พื้นดวงตอบไม่ได้" — ลี้ลับ/ของหาย/เหตุการณ์เฉพาะจุด/
     // ขอเสี่ยงทายตรง ๆ → triage route เป็น card_reading (requiresBaziConsult=false ไม่ขึ้นดวง). จั่วไพ่ 1 ใบ
