@@ -16,6 +16,7 @@ import {
 } from "@/features/open-webui/gemini-adapter";
 import { readHouseNumber, readPhoneNumber, type HouseNumberReading, type PhoneReading } from "@/lib/bazi/phone-number";
 import { readDream, type DreamReading } from "@/lib/bazi/dream/engine";
+import { readHoneycomb, type HoneycombReading } from "@/lib/bazi/honeycomb/pyramid";
 import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
@@ -67,6 +68,27 @@ function formatPhoneReadingForChat(r: PhoneReading): string {
   }
   const freq = r.digitTally.slice(0, 2).filter((d) => d.count > 1).map((d) => `${d.digit} (${d.planet}/${d.element} ${d.keyword}) ×${d.count}`).join(", ");
   if (freq) lines.push(`เลขที่พบบ่อย: ${freq}`);
+  return lines.join("\n");
+}
+// เบอร์ปิรามิด/รังผึ้ง (เอ็ม 2026-09-23: "ทำทั้งสอง — ปิรามิด + คู่เลข"): ย่อผลปิรามิดให้ LLM เสริมกับคู่เลข.
+// เน้น "ยอดปิรามิด" (แก่นรวมของทั้งเบอร์) + คู่แก่นชั้นใกล้ยอด (โซนตัวเรา) — ส่วนที่วิชาคู่เลขปกติไม่ได้ให้.
+function clip(s: string, n = 110): string {
+  const t = (s ?? "").replace(/\s+/g, " ").trim();
+  return t.length > n ? `${t.slice(0, n)}…` : t;
+}
+function formatHoneycombForChat(h: HoneycombReading): string {
+  const lines: string[] = ["[ปิรามิดเบอร์ (เบอร์รังผึ้ง) — ภาพรวมทั้งเบอร์ยุบรวมลงหายอด]"];
+  const apex = h.layers.find((l) => l.layerNo === 1);
+  if (apex?.digitMeaning) {
+    const d = apex.digitMeaning;
+    lines.push(`ยอดปิรามิด (แก่นรวมของเบอร์นี้): เลข ${d.digit} — ${d.planet}/${d.element} ${d.keyword}`);
+  }
+  // ชั้นใกล้ยอด (โซน "ตัวเรา") = แก่นนิสัย/พลังของเจ้าของเบอร์ (layerNo 2,3) — เลือกคู่เด่นชั้นละ 1 คู่
+  for (const layerNo of [2, 3]) {
+    const layer = h.layers.find((l) => l.layerNo === layerNo);
+    const p = layer?.pairs[0];
+    if (p) lines.push(`ชั้นแก่น (โซนตัวเรา) คู่ ${p.pair}: ${clip(p.meaning.analysis || p.meaning.feeling)}`);
+  }
   return lines.join("\n");
 }
 // บ้านเลขที่/เลขสั้น: ดึงตัวเลข 1–6 หลัก (รองรับ 135/2) + ย่อผลถอด (ผลรวม/เลขเดี่ยว/ความหมายคู่ผลรวม)
@@ -525,7 +547,15 @@ export async function POST(req: Request) {
       const num = extractThaiPhone(result.latestUserMessage.content);
       if (num) {
         try {
-          executionContext.phoneReading = formatPhoneReadingForChat(readPhoneNumber(num));
+          // ทั้งสองวิชา (เอ็ม 2026-09-23): คู่เลข (readPhoneNumber) + ปิรามิด/รังผึ้ง (readHoneycomb) แนบรวมกัน
+          const pairPart = formatPhoneReadingForChat(readPhoneNumber(num));
+          let pyramidPart = "";
+          try {
+            pyramidPart = formatHoneycombForChat(readHoneycomb(num));
+          } catch {
+            /* ปิรามิดพัง → ใช้เฉพาะคู่เลข */
+          }
+          executionContext.phoneReading = pyramidPart ? `${pairPart}\n\n${pyramidPart}` : pairPart;
           executionContext.hasPhoneData = true;
           triage.requiresBaziConsult = false;
           triage.classification.requiresBaziConsult = false;
