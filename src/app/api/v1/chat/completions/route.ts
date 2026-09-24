@@ -16,7 +16,8 @@ import {
 } from "@/features/open-webui/gemini-adapter";
 import { readHouseNumber, readPhoneNumber, type HouseNumberReading, type PhoneReading } from "@/lib/bazi/phone-number";
 import { readDream, type DreamReading } from "@/lib/bazi/dream/engine";
-import { readHoneycomb, type HoneycombReading } from "@/lib/bazi/honeycomb/pyramid";
+import { readHoneycomb, detectLuckyCombos, type HoneycombReading } from "@/lib/bazi/honeycomb/pyramid";
+import phoneDigitJson from "@/lib/bazi/data/phone/phone-digit-meanings.json";
 import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
@@ -77,18 +78,36 @@ function clip(s: string, n = 110): string {
   const t = (s ?? "").replace(/\s+/g, " ").trim();
   return t.length > n ? `${t.slice(0, n)}…` : t;
 }
+const PHONE_DIGIT_KW = phoneDigitJson as Record<string, { keyword: string }>;
+/** นัยเลขทุกตัวในกลุ่ม (ให้ LLM อ่าน "ทั้งกลุ่มเลข" เป็นเรื่องเดียวแบบซินแส) */
+function groupKw(digitString: string): string {
+  return Array.from(new Set(digitString.split("")))
+    .map((d) => `${d}=${PHONE_DIGIT_KW[d]?.keyword ?? "-"}`)
+    .join(", ");
+}
 function formatHoneycombForChat(h: HoneycombReading): string {
-  const lines: string[] = ["[ปิรามิดเบอร์ (เบอร์รังผึ้ง) — ภาพรวมทั้งเบอร์ยุบรวมลงหายอด]"];
+  const lines: string[] = ["[ปิรามิดเบอร์ (เบอร์รังผึ้ง) — อ่านแต่ละชั้นเป็น 'ทั้งกลุ่มเลข' เป็นเรื่องเดียว]"];
   const apex = h.layers.find((l) => l.layerNo === 1);
   if (apex?.digitMeaning) {
     const d = apex.digitMeaning;
     lines.push(`ยอดปิรามิด (แก่นรวมของเบอร์นี้): เลข ${d.digit} — ${d.planet}/${d.element} ${d.keyword}`);
   }
-  // ชั้นใกล้ยอด (โซน "ตัวเรา") = แก่นนิสัย/พลังของเจ้าของเบอร์ (layerNo 2,3) — เลือกคู่เด่นชั้นละ 1 คู่
-  for (const layerNo of [2, 3]) {
+  // ชั้นแก่น (โซนตัวเรา 2,3,4) = อ่านเป็นกลุ่มเลข + นัยรวม
+  for (const layerNo of [3, 2, 4]) {
     const layer = h.layers.find((l) => l.layerNo === layerNo);
-    const p = layer?.pairs[0];
-    if (p) lines.push(`ชั้นแก่น (โซนตัวเรา) คู่ ${p.pair}: ${clip(p.meaning.analysis || p.meaning.feeling)}`);
+    if (layer && layer.digits.length > 1) {
+      lines.push(`ชั้น${layerNo} (โซนตัวเรา) กลุ่ม ${layer.digitString} — นัย: ${groupKw(layer.digitString)}`);
+    }
+  }
+  // แถวฐานกว้าง (โซนคนรอบข้าง 7-9) — สรุปสั้น ว่าจะเจอคนแบบไหน
+  const env = h.layers.filter((l) => l.layerNo >= 7 && l.layerNo <= 9);
+  for (const layer of env) {
+    lines.push(`คนรอบข้าง (${layer.digitString}) — นัย: ${groupKw(layer.digitString)}`);
+  }
+  // เลขมงคลสายจีน
+  const combos = detectLuckyCombos(h);
+  if (combos.length > 0) {
+    lines.push(`เลขมงคลสายจีนที่พบ (ทักเป็นจุดเด่น): ${combos.map((c) => `${c.combo}=${c.meaning}`).join(" · ")}`);
   }
   return lines.join("\n");
 }

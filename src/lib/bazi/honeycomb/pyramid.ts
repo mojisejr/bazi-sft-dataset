@@ -16,10 +16,14 @@
  */
 import pairJson from "@/lib/bazi/data/phone/phone-pair-meanings.json";
 import digitJson from "@/lib/bazi/data/phone/phone-digit-meanings.json";
+import luckyJson from "@/lib/bazi/data/phone/phone-lucky-combos.json";
 import type { PairMeaning, DigitInfo } from "@/lib/bazi/phone-number";
 
 const PAIR_MEANINGS = pairJson as Record<string, PairMeaning>;
 const DIGIT_MEANINGS = digitJson as Record<string, DigitInfo>;
+const LUCKY_COMBOS: Record<string, string> = Object.fromEntries(
+  Object.entries(luckyJson as Record<string, string>).filter(([k]) => !k.startsWith("_")),
+);
 
 const SIGNIFICANT_DIGITS = 9;
 const TARGET_DIGITS = SIGNIFICANT_DIGITS + 2; // 11 (รวม 66)
@@ -175,6 +179,41 @@ export function readShortNumber(raw: string): {
   }
   const sum = reduceToSingleDigit(nums.reduce((acc, n) => acc + n, 0));
   return { digits, pairs, sum, sumMeaning: digitInfo(sum) };
+}
+
+export type LuckyComboHit = {
+  /** ลำดับเลขมงคลที่พบ เช่น "168" */
+  combo: string;
+  meaning: string;
+  /** พบที่ไหน: "number" = ในเบอร์, หรือ "layerN" = ในแถวพีระมิดชั้น N */
+  where: string;
+};
+
+/**
+ * สแกนหา "เลขมงคลสายจีน" (ลำดับเลขเรียง) ในตัวเบอร์และทุกแถวพีระมิด (substring)
+ * — ใช้เสริมคำอ่านให้ตรงสไตล์ซินแส (จับกลุ่มเลข ไม่ใช่แค่คู่ติดกัน).
+ * ไม่ซ้ำ combo เดียวกันในที่เดียว; เรียง combo ยาวก่อน (เจาะจงกว่า).
+ */
+export function detectLuckyCombos(reading: HoneycombReading): LuckyComboHit[] {
+  const combos = Object.keys(LUCKY_COMBOS).sort((a, b) => b.length - a.length);
+  const hits: LuckyComboHit[] = [];
+  const seen = new Set<string>();
+  const scan = (haystack: string, where: string) => {
+    for (const combo of combos) {
+      if (haystack.includes(combo)) {
+        const dedupe = `${combo}@${where}`;
+        if (!seen.has(dedupe)) {
+          seen.add(dedupe);
+          hits.push({ combo, meaning: LUCKY_COMBOS[combo], where });
+        }
+      }
+    }
+  };
+  // เบอร์จริง (9 หลักสำคัญ ไม่รวม 66 นำหน้า)
+  scan(reading.normalized.slice(2), "number");
+  // ทุกแถวพีระมิด
+  for (const layer of reading.layers) scan(layer.digitString, `layer${layer.layerNo}`);
+  return hits;
 }
 
 /** คำนวณคำอ่านเบอร์รังผึ้งเต็มรูปแบบ (deterministic). throw HoneycombNumberError ถ้า input ไม่ถูกต้อง */

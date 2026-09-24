@@ -6,6 +6,7 @@ import {
   buildPyramid,
   readHoneycomb,
   HoneycombNumberError,
+  detectLuckyCombos,
 } from "@/lib/bazi/honeycomb/pyramid";
 
 describe("reduceToSingleDigit", () => {
@@ -85,5 +86,21 @@ describe("readHoneycomb", () => {
     expect(zoneOf(5)).toBe("near");
     expect(zoneOf(6)).toBe("near");
     expect(zoneOf(7)).toBe("far");
+  });
+});
+
+describe("detectLuckyCombos", () => {
+  test("ตรวจพบเลขมงคลในเบอร์และแถวพีระมิด", () => {
+    const reading = readHoneycomb("66808619156");
+    const hits = detectLuckyCombos(reading);
+    // 9156 อยู่ท้ายเบอร์ (808619156)
+    expect(hits.some((h) => h.combo === "9156" && h.where === "number")).toBe(true);
+    expect(hits.every((h) => typeof h.meaning === "string" && h.meaning.length > 0)).toBe(true);
+  });
+
+  test("เบอร์ที่มี 168 ตรง ๆ ถูกตรวจพบ", () => {
+    const reading = readHoneycomb("0168000000");
+    const hits = detectLuckyCombos(reading);
+    expect(hits.some((h) => h.combo === "168")).toBe(true);
   });
 });
