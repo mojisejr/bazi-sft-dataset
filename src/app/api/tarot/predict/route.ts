@@ -3,7 +3,7 @@ import { z } from "zod";
 import { drawRandom, getAllCards, getCardByNo, type TarotCard } from "@/lib/bazi/tarot/deck";
 import { buildTarotReading } from "@/lib/bazi/tarot/reading-engine";
 import { polishTarotReading } from "@/lib/bazi/tarot/reading-llm";
-import { seedFromQuestion } from "@/lib/bazi/seed";
+import { seedForDraw } from "@/lib/bazi/seed";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     cards = picked as TarotCard[];
   } else {
     // seed จากคำถาม → คำถามต่างกันได้ไพ่ต่างกัน (คำถามเดิม = ไพ่เดิม)
-    const seed = question?.trim() ? seedFromQuestion(question) : undefined;
+    const seed = seedForDraw(question, anonId); // เอ็ม 2026-09-26: ผูกผู้ใช้+nonce กันไพ่ชนข้ามคน
     cards = drawRandom(count, seed);
   }
 

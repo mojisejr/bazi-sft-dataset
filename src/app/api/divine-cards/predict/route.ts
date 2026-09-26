@@ -9,7 +9,7 @@ import {
 } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { polishDivineReading } from "@/lib/bazi/divine-cards/reading-llm";
-import { seedFromQuestion } from "@/lib/bazi/seed";
+import { seedForDraw } from "@/lib/bazi/seed";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     cards = [picked[0]!, picked[1]!, picked[2]!];
   } else {
     // seed จากคำถาม → คำถามต่างกันได้ไพ่ต่างกัน (ปอง 2026-09-21)
-    const seed = question?.trim() ? seedFromQuestion(question) : undefined;
+    const seed = seedForDraw(question, anonId); // เอ็ม 2026-09-26: ผูกผู้ใช้+nonce กันไพ่ชนข้ามคน
     const drawn = drawRandom(3, seed);
     cards = [drawn[0], drawn[1], drawn[2]];
   }

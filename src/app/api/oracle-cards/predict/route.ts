@@ -9,7 +9,7 @@ import {
 } from "@/lib/bazi/oracle-cards/deck";
 import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
 import { polishOracleReading } from "@/lib/bazi/oracle-cards/reading-llm";
-import { seedFromQuestion } from "@/lib/bazi/seed";
+import { seedForDraw } from "@/lib/bazi/seed";
 import { createDbOracleCardImageRepository } from "@/lib/bazi/oracle-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
@@ -74,8 +74,8 @@ export async function POST(req: Request) {
     if (picked.some((c) => !c)) return badRequest("มีเลขไพ่ที่ไม่อยู่ในสำรับ");
     cards = [picked[0]!, picked[1]!, picked[2]!];
   } else {
-    // seed จากคำถาม → คำถามต่างกันได้ไพ่ต่างกัน (ปอง 2026-09-21: จั่วเปล่าทุกคนได้กล่องเหมือนกัน)
-    const seed = question?.trim() ? seedFromQuestion(question) : undefined;
+    // จั่วผูก คำถาม+ผู้ใช้+nonce → คนละคน/คนละครั้งได้ไพ่ต่างกัน (เอ็ม 2026-09-26; เดิม seed คำถามอย่างเดียว = ชนกันข้ามคน)
+    const seed = seedForDraw(question, anonId);
     const drawn = drawRandom(3, seed);
     cards = [drawn[0], drawn[1], drawn[2]];
   }

@@ -24,7 +24,7 @@ import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
 import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
 import { drawRandom as drawFengshui } from "@/lib/bazi/fengshui/deck";
 import { buildFengshuiReading } from "@/lib/bazi/fengshui/reading-engine";
-import { seedFromQuestion } from "@/lib/bazi/seed";
+import { seedForDraw } from "@/lib/bazi/seed";
 import { detectRelationship, fetchCompatibilityReading } from "@/features/open-webui/compatibility-bridge";
 import {
   type OpenWebUiIntentClassification,
@@ -558,7 +558,7 @@ export async function POST(req: Request) {
     if (isFengshui && !executionContext.hasFengshuiData) {
       try {
         const q = result.latestUserMessage.content;
-        const cards = drawFengshui(3, seedFromQuestion(q));
+        const cards = drawFengshui(3, seedForDraw(q, effectiveUserId)); // เอ็ม 2026-09-26: ผูกผู้ใช้+nonce กันไพ่ชนข้ามคน
         const reading = buildFengshuiReading(cards, q);
         executionContext.fengshuiReading = reading.chatProse; // บังวิชา: ไม่ส่งชื่อ/เลขไพ่ให้ LLM
         executionContext.hasFengshuiData = true;

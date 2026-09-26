@@ -4,7 +4,7 @@ import { drawRandom, getAllSticks, getStickByNo } from "@/lib/bazi/fortune-sage/
 import { polishSageReading } from "@/lib/bazi/fortune-sage/reading-llm";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
-import { seedFromQuestion } from "@/lib/bazi/seed";
+import { seedForDraw } from "@/lib/bazi/seed";
 
 export const runtime = "nodejs";
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     if (!stick) return badRequest("ไม่พบหัวเซี่ยงแซตามเลขที่ระบุ");
   } else {
     // seed จากคำถาม → คำถามต่างกันได้หัวเซี่ยงแซต่างกัน (ปอง 2026-09-21)
-    stick = drawRandom(question?.trim() ? seedFromQuestion(question) : undefined);
+    stick = drawRandom(seedForDraw(question, anonId)); // เอ็ม 2026-09-26: ผูกผู้ใช้+nonce กันชนข้ามคน
   }
 
   // มีคำถาม + โหมด llm → เกลาคำตอบตรงคำถาม (1 ย่อหน้า) จากเนื้อเซี่ยงแซ; ล่ม → คงผลปกติ (ไม่ 502)

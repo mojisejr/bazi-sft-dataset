@@ -14,3 +14,11 @@ export function seedFromQuestion(question: string, salt = ""): number {
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return h1 >>> 0;
 }
+
+// seed จั่วไพ่จริง (เอ็ม 2026-09-26): ผูกคำถาม + ผู้ใช้ + nonce(เวลา+สุ่ม) → "คนละคน/คนละครั้ง ได้ไพ่ต่างกัน".
+// เดิม seed จากคำถามอย่างเดียว ทำให้คนละคนถามคำถามเดียวกันได้ไพ่ชุดเดียวกัน (เอ็มทักว่าไม่ควรเป็นแบบนั้น).
+// ยังส่งเป็น seed ให้ drawRandom เพื่อคงพฤติกรรม "ส่ง seed → จั่วครั้งนี้คงที่" (กันเส้นทาง no-seed เดิมที่เคยมีปัญหา).
+export function seedForDraw(question?: string | null, anonId?: string | null): number {
+  const nonce = `\u0001${anonId ?? ""}:${Date.now()}:${Math.random()}`;
+  return seedFromQuestion(question ?? "", nonce);
+}
