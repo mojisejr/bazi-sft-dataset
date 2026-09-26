@@ -2,7 +2,8 @@ import { describe, expect, test } from "vitest";
 
 import { buildFacets, mainFacetOf } from "@/lib/bazi/pair-matching";
 import type { DayPillar, PillarPos } from "@/lib/bazi/pair-types";
-import { buildManVsDay, buildManVsDayMonth, buildManVsDayYear } from "@/lib/bazi/manvsday";
+import { buildManVsDay, buildManVsDayMonth, buildManVsDayYear, isBranchClash } from "@/lib/bazi/manvsday";
+import { pillarsForDate } from "@/lib/bazi/almanac/almanac-engine";
 
 const sp = (stem: string, branch: string): DayPillar => ({ stem, branch });
 
@@ -100,5 +101,44 @@ describe("buildManVsDay (compose กับปฏิทิน)", () => {
     expect(y.months.map((m) => m.month)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     const total = y.months.reduce((s, m) => s + m.days.length, 0);
     expect(total).toBe(365);
+  });
+});
+
+// วันชงดิถี (地支相冲) — เตือนวันชงที่ %เฉลี่ย 4 ด้านกลบไม่เห็น (ซินแส/เอ็ม 2026-09-26)
+describe("วันชงดิถี (地支相冲)", () => {
+  test("isBranchClash: 6 คู่ชงคืน true (สองทาง), อื่นคืน false", () => {
+    const pairs: [string, string][] = [["子", "午"], ["丑", "未"], ["寅", "申"], ["卯", "酉"], ["辰", "戌"], ["巳", "亥"]];
+    for (const [a, b] of pairs) {
+      expect(isBranchClash(a, b)).toBe(true);
+      expect(isBranchClash(b, a)).toBe(true);
+    }
+    expect(isBranchClash("子", "丑")).toBe(false); // ไม่ใช่คู่ชง
+    expect(isBranchClash("酉", "酉")).toBe(false); // ตัวเดียวกันไม่ชง
+    expect(isBranchClash(null, "午")).toBe(false);
+    expect(isBranchClash("午", "")).toBe(false);
+  });
+
+  test("buildManVsDay ตั้ง dayClash=true เมื่อกิ่งเสาวันเจ้าของ (酉) ชงกิ่งเสาวันของวัน (卯)", () => {
+    // MAN.day = 己酉 → หาวันในปี 2026 ที่เสาวันมีกิ่ง 卯 (卯酉冲) และวันที่ไม่ชง เทียบ
+    let clashDay: { m: number; d: number } | null = null;
+    let calmDay: { m: number; d: number } | null = null;
+    outer: for (let m = 1; m <= 12; m += 1) {
+      const dim = new Date(2026, m, 0).getDate();
+      for (let d = 1; d <= dim; d += 1) {
+        const br = pillarsForDate(2026, m, d).dayPillar.branch;
+        if (br === "卯" && !clashDay) clashDay = { m, d };
+        if (br !== "卯" && br !== "酉" && !calmDay) calmDay = { m, d };
+        if (clashDay && calmDay) break outer;
+      }
+    }
+    expect(clashDay).not.toBeNull();
+    expect(calmDay).not.toBeNull();
+    const rc = buildManVsDay(MAN, MAN.day, 2026, clashDay!.m, clashDay!.d);
+    expect(rc.dayClash).toBe(true);
+    expect(rc.summaryItems.some((it) => it.key === "clash")).toBe(true);
+    expect(rc.summaryHeadline).toContain("วันชงดิถี");
+    const rn = buildManVsDay(MAN, MAN.day, 2026, calmDay!.m, calmDay!.d);
+    expect(rn.dayClash).toBe(false);
+    expect(rn.summaryItems.some((it) => it.key === "clash")).toBe(false);
   });
 });

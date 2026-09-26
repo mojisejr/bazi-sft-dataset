@@ -42,6 +42,17 @@ export type ManVsDayAlmanac = Pick<
 /** ระดับความเหมาะของวัน (ใช้เลือกสี/อีโมจิ/โทน). */
 export type DayVerdict = "good" | "neutral" | "caution";
 
+/** 地支六冲 — คู่กิ่งที่ "ชง" กัน (子午 丑未 寅申 卯酉 辰戌 巳亥). */
+const BRANCH_CLASH: Record<string, string> = {
+  子: "午", 午: "子", 丑: "未", 未: "丑", 寅: "申", 申: "寅",
+  卯: "酉", 酉: "卯", 辰: "戌", 戌: "辰", 巳: "亥", 亥: "巳",
+};
+/** จริงเมื่อกิ่ง a ชงกิ่ง b (地支相冲). ใช้เช็ค "วันชงดิถี" — กิ่งเสาวันของเจ้าของ ชง กิ่งเสาวันของวันนั้น. */
+export function isBranchClash(a?: string | null, b?: string | null): boolean {
+  if (!a || !b) return false;
+  return BRANCH_CLASH[a.normalize("NFKC").trim()] === b.normalize("NFKC").trim();
+}
+
 export type ManVsDayResult = {
   /** วันที่ (ค.ศ. ISO) ที่นำมาเทียบ */
   date: string;
@@ -61,6 +72,8 @@ export type ManVsDayResult = {
   almanac: ManVsDayAlmanac;
   /** ป้ายสรุปสั้น เช่น "วันนี้ดี" / "วันนี้พอใช้" / "วันนี้ควรระวัง" */
   verdict: DayVerdict;
+  /** วันชงดิถี — กิ่งเสาวันของเจ้าของ "ชง" กิ่งเสาวันของวันนั้น (地支相冲). แยกจาก % ที่เฉลี่ยกลบวันชงได้ */
+  dayClash: boolean;
   /** ประโยคสรุปคำทำนายของวัน (รวมบรรทัดเดียว / ใช้ตอบ chat) */
   summary: string;
   /** หัวข้อสรุป (บรรทัดเด่น) */
@@ -100,6 +113,7 @@ function buildDaySummary(
   dayStrength: number,
   elementRelation: ElementInteractionAB,
   officer: string | null,
+  dayClash: boolean,
 ): {
   verdict: DayVerdict;
   summary: string;
@@ -109,8 +123,10 @@ function buildDaySummary(
   const verdict = verdictOf(overall);
   const { best, worst } = bestWorstFacet(facets);
   const pctText = overall == null ? "-" : `${Math.round(overall)}%`;
-  const headline =
-    verdict === "good"
+  // วันชงดิถี: %เฉลี่ยอาจสูง (ด้านอื่นกลบ) แต่ต้องเตือนก่อน ไม่เรียก "วันดี" (ซินแส/เอ็ม 2026-09-26)
+  const headline = dayClash
+    ? `วันนี้เป็น “วันชงดิถี” กับดวงคุณ ควรระมัดระวังเป็นพิเศษ (คะแนนรวม ${pctText})`
+    : verdict === "good"
       ? `วันนี้เป็นวันที่ดีสำหรับคุณ (เหมาะ ${pctText})`
       : verdict === "neutral"
         ? `วันนี้พอไปได้ ไม่หวือหวา (เหมาะ ${pctText})`
@@ -125,6 +141,8 @@ function buildDaySummary(
         : `${strengthPct}% — ค่อนข้างอ่อน ควรตั้งรับมากกว่ารุก`;
 
   const items: { key: string; icon: string; label: string; text: string }[] = [];
+  // วันชงดิถีขึ้นก่อนสุด — เป็นสัญญาณเตือนที่ %เฉลี่ยกลบไม่เห็น (地支相冲)
+  if (dayClash) items.push({ key: "clash", icon: "⚠️", label: "วันชงดิถี", text: "กิ่งเสาวันชงกับดิถีคุณ (地支相冲) — เลี่ยงเริ่มงานใหญ่ เซ็นสัญญา หรือตัดสินใจสำคัญ" });
   if (best) items.push({ key: "best", icon: "⭐", label: "เรื่องที่ส่งเสริมที่สุด", text: stripEmoji(best.label) });
   if (worst) items.push({ key: "worst", icon: "⚠️", label: "ควรเลี่ยง / ระวัง", text: stripEmoji(worst.label) });
   items.push({ key: "strength", icon: "🔋", label: "กำลังของวัน (ปฏิทิน)", text: strengthText });
@@ -172,12 +190,15 @@ export function buildManVsDay(
 
   const almanacDay = buildAlmanacDay(y, m, d);
   const elementRelation = buildElementInteractionAB(personDayMaster.stem, dayPillar.stem);
+  // วันชงดิถี = กิ่งเสาวันเจ้าของ ชง กิ่งเสาวันของวันนั้น (地支相冲) — elementRelation เทียบแค่ก้าน จับชงกิ่งไม่ได้
+  const dayClash = isBranchClash(personDayMaster.branch, dayPillar.branch);
   const { verdict, summary, summaryHeadline, summaryItems } = buildDaySummary(
     overallPercent,
     facets,
     almanacDay.strength.ratioDay,
     elementRelation,
     almanacDay.officer,
+    dayClash,
   );
 
   return {
@@ -189,6 +210,7 @@ export function buildManVsDay(
     mainFacet: mainFacetOf(facets),
     overallPercent,
     verdict,
+    dayClash,
     summary,
     summaryHeadline,
     summaryItems,
@@ -224,6 +246,8 @@ export type ManVsDayDaySummary = {
   overallPercent: number | null;
   /** กำลังดิถีของวัน (ปฏิทิน) 0–1 */
   dayStrength: number;
+  /** วันชงดิถี (地支相冲) — ให้ปฏิทินติดแท็กแยกจากสี %  */
+  dayClash: boolean;
 };
 
 export type ManVsDayMonth = {
@@ -259,6 +283,7 @@ export function buildManVsDayMonth(
       dayGanzhi: r.dayGanzhi,
       overallPercent: r.overallPercent,
       dayStrength: r.almanac.dayStrength,
+      dayClash: r.dayClash,
     });
   }
   return { year, month, days };
