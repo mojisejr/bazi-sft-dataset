@@ -25,6 +25,7 @@ import gateKeywordJson from "@/lib/bazi/data/almanac/gate-keyword.json";
 import gateInfoJson from "@/lib/bazi/data/almanac/gate-info.json";
 import spiritInfoJson from "@/lib/bazi/data/almanac/spirit-info.json";
 import hourGodLegendJson from "@/lib/bazi/data/almanac/hour-god-legend.json";
+import activityRecommendJson from "@/lib/bazi/data/almanac/activity-recommend.json";
 import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
 import dayStarsJson from "@/lib/bazi/data/almanac/day-stars.json";
@@ -245,6 +246,28 @@ function huangdaoInfo(
   const rec = HOUR_GOD_LEGEND[`B${idx + 1}`];
   if (!rec) return null;
   return { god: rec.god ?? "", meaning: rec.meaning ?? "", good: rec.good };
+}
+
+// กิจกรรมพิเศษแนะนำ (Calendar#3 ซินแสนุ้ย) — key ต่อเดือน = ก้าน(天干) หรือ กิ่ง(地支);
+//   วันแนะนำเมื่อ "เสาวัน" มีก้านหรือกิ่งตรง key ของเดือนนั้น. ***ไม่ใช่ฤกษ์ยาม*** — ใช้ร่วม % วันดีกับดวง (ยิ่งสูงยิ่งดี).
+type ActivityRec = { key: string; title: string; dayLabel: string; desc: string; byMonth: Record<string, string> };
+const ACTIVITY_RECOMMEND = (activityRecommendJson as { activities: ActivityRec[] }).activities;
+export type RecommendedActivity = { key: string; title: string; dayLabel: string; desc: string };
+/** กิจกรรมแนะนำของวัน จาก (กิ่งเดือน + เสาวัน ก้าน/กิ่ง) */
+export function recommendActivitiesFor(
+  monthBranch: string,
+  dayStem: string,
+  dayBranch: string,
+): RecommendedActivity[] {
+  const mb = monthBranch.normalize("NFKC").trim();
+  const ds = dayStem.normalize("NFKC").trim();
+  const db = dayBranch.normalize("NFKC").trim();
+  const out: RecommendedActivity[] = [];
+  for (const a of ACTIVITY_RECOMMEND) {
+    const key = a.byMonth[mb];
+    if (key && (key === ds || key === db)) out.push({ key: a.key, title: a.title, dayLabel: a.dayLabel, desc: a.desc });
+  }
+  return out;
 }
 
 /** 建除 เต็มของวัน (ชื่อ/ความหมาย/กิจกรรมที่เหมาะ-ห้าม/คะแนน) — ใช้จัดอันดับ "วันฤกษ์ดี" */
@@ -519,6 +542,7 @@ export function buildAlmanacDay(
     officerDesc: officerDescIsMonthAccurate ? (rec?.officer_desc ?? null) : null,
     jianchu: jianchuInfo(monthPillar.branch, dayPillar.branch),
     huangdao: huangdaoInfo(monthPillar.branch, dayPillar.branch),
+    recommendedActivities: recommendActivitiesFor(monthPillar.branch, dayPillar.stem, dayPillar.branch),
     deities: (rec?.deities && rec.deities.length
       ? rec.deities
       : [rec?.deity].filter((x): x is string => Boolean(x))),

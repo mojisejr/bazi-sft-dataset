@@ -212,6 +212,8 @@ export type AlmanacDay = {
   jianchu: { name: string; meaning: string } | null;
   /** 黃道 (รหัส B — เทพประจำวัน) ของวัน — ชื่อเทพ + ความหมาย + ดี/ร้าย (คำนวณจากกิ่งเดือน → กิ่งวัน, มีทุกวัน) */
   huangdao: { god: string; meaning: string; good: boolean } | null;
+  /** กิจกรรมพิเศษแนะนำของวัน (Calendar#3) — ***ไม่ใช่ฤกษ์ยาม*** ใช้ร่วม % วันดีกับดวง; โหมด Advance */
+  recommendedActivities: { key: string; title: string; dayLabel: string; desc: string }[];
   /** เทพประจำวัน (อาจมี 1–2 องค์) */
   deities: string[];
   deity: string | null;
