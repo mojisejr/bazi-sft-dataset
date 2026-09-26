@@ -68,6 +68,7 @@
     "db:apply:manifest-ledger": "node --env-file=.env --import tsx scripts/apply-manifest-ledger-migration.ts",
     "db:apply:mission-referral": "node --env-file=.env --import tsx scripts/apply-mission-referral-migration.ts",
     "db:apply:manifest-insights": "node --env-file=.env --import tsx scripts/apply-manifest-insights-migration.ts",
+    "db:apply:manifest-photo": "node --env-file=.env --import tsx scripts/apply-manifest-photo-table.ts",
     "db:apply:what-if-usage": "node --env-file=.env --import tsx scripts/apply-what-if-usage-migration.ts",
     "db:seed:spouse-knowledge-60": "node --env-file=.env --import tsx scripts/seed-spouse-knowledge-60.ts",
     "db:apply:sacred-map": "node --env-file=.env --import tsx scripts/apply-sacred-map-migration.ts",
