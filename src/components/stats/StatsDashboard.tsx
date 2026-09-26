@@ -261,7 +261,7 @@ export function StatsDashboard() {
           <div className="stats-compare__bars">
             <div className="stats-compare__row">
               <span className="stats-compare__lbl">
-                gemini-2.5-flash-lite <span className="stats-compare__badge is-now">ใช้อยู่</span>
+                gemini-3.1-flash-lite <span className="stats-compare__badge is-now">ใช้อยู่</span>
               </span>
               <div className="stats-compare__track">
                 <div
@@ -273,7 +273,7 @@ export function StatsDashboard() {
             </div>
             <div className="stats-compare__row">
               <span className="stats-compare__lbl">
-                gemini-2.5-flash <span className="stats-compare__badge is-old">เดิม</span>
+                gemini-3-flash <span className="stats-compare__badge is-old">ตัวเต็ม</span>
               </span>
               <div className="stats-compare__track">
                 <div className="stats-compare__fill is-flash" style={{ width: "100%" }} />

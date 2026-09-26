@@ -163,17 +163,17 @@ export async function GET(req: Request) {
       }
       if (calls > 0) {
         byFeature.push({ feature: "louise_hay", label: FEATURE_LABEL.louise_hay, calls, tokens, costUsd, costThb: usdToThb(costUsd) });
-        // เทียบต้นทุนแชทเดียวกัน (โทเคนเท่ากัน) ระหว่าง gen = flash vs flash-lite
+        // เทียบต้นทุนแชทเดียวกัน (โทเคนเท่ากัน) ระหว่าง gen = flash (ตัวเต็ม) vs flash-lite (ใช้อยู่)
         const chatTok = { classifyInTokens: sCi, classifyOutTokens: sCo, embedTokens: sE, genInTokens: sGi, genOutTokens: sGo };
-        const flashUsd = costUsdOf({ model: "gemini-2.5-flash", ...chatTok });
-        const liteUsd = costUsdOf({ model: "gemini-2.5-flash-lite", ...chatTok });
+        const flashUsd = costUsdOf({ model: "gemini-3-flash", ...chatTok });
+        const liteUsd = costUsdOf({ model: "gemini-3.1-flash-lite", ...chatTok });
         chatCompare = {
           calls,
           flashThb: usdToThb(flashUsd),
           flashLiteThb: usdToThb(liteUsd),
           savedThb: usdToThb(flashUsd - liteUsd),
           savedPct: flashUsd > 0 ? ((flashUsd - liteUsd) / flashUsd) * 100 : 0,
-          currentModel: "gemini-2.5-flash-lite",
+          currentModel: "gemini-3.1-flash-lite",
         };
       }
     }

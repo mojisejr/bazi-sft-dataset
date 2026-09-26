@@ -462,7 +462,7 @@ describe("generateGeminiAssistantReply", () => {
         systemInstruction: expect.stringContaining("You are a practical Bazi guide."),
         temperature: 0.6,
         topP: 0.95,
-        maxOutputTokens: 512,
+        maxOutputTokens: 1024,
       }),
     });
     expect(generateContent).toHaveBeenCalledWith(expect.objectContaining({
