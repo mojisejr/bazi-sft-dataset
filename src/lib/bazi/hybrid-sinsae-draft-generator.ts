@@ -21,6 +21,7 @@ import {
   type RawInputValue,
 } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 const MAX_GENERATION_ATTEMPTS = 6;
@@ -266,7 +267,7 @@ export async function generateFallbackDimensionWithGemini(input: {
   apiKey?: string;
 }): Promise<DraftDimensionValue> {
   const apiKey = input.apiKey ?? getGeminiApiKey();
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(apiKey));
   const prompt = buildFallbackUserPrompt(input);
   let lastError: unknown;
   let retryDelayMs = INITIAL_RETRY_DELAY_MS;

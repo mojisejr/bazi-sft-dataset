@@ -18,6 +18,7 @@ import { CRISIS_RESPONSE, screenCrisis, screenCrisisLlm } from "@/lib/louise-hay
 import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
 import { checkRateLimit, clientIp, tryChargeDailyBudget, reconcileDailyBudget } from "@/lib/rate-limit";
 import { qiGate } from "@/lib/bazi/qi/quota";
+import { llmFetchSignal } from "@/lib/llm-timeout";
 
 export const runtime = "nodejs";
 
@@ -357,7 +358,8 @@ export async function POST(req: Request) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(requestBody),
-      signal: req.signal,
+      // client ตัดเมื่อไหร่ก็หยุด (เดิม) + ไม่ค้างเกิน timeout ของ LLM (src/lib/llm-timeout.ts)
+      signal: AbortSignal.any([req.signal, llmFetchSignal()]),
     });
   } catch (error) {
     return badRequest(error instanceof Error ? error.message : "เรียก Gemini ไม่สำเร็จ", 502);
