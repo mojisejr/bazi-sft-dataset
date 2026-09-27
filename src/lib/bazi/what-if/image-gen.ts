@@ -9,6 +9,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 import { compressCardImage } from "@/lib/bazi/divine-cards/image-gen";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 export const DEFAULT_WHATIF_IMAGEN_MODEL = "imagen-4.0-generate-001";
 
@@ -89,7 +90,7 @@ export async function generateWhatIfImage(
   const prompt = buildWhatIfImagePrompt(input);
   const generateImages: GenerateImages =
     deps.generateImages ??
-    ((request) => new GoogleGenAI({ apiKey: input.apiKey }).models.generateImages(request));
+    ((request) => new GoogleGenAI(genAiClientOptions(input.apiKey)).models.generateImages(request));
 
   const response = await generateImages({
     model,

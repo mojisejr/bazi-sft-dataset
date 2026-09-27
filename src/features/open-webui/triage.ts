@@ -12,6 +12,7 @@ import { type ChatRunnerSuccess, type NormalizedChatMessage } from "@/features/o
 import { RawInputSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { getGeminiApiKey } from "@/lib/env";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 export const DEFAULT_OPEN_WEBUI_TRIAGE_MODEL = "gemini-3.1-flash-lite";
 
@@ -342,7 +343,7 @@ export function getOpenWebUiTriageConfig(
 }
 
 function createTriageGenerateContent(config: OpenWebUiTriageConfig): GeminiTriageGenerateContent {
-  const ai = new GoogleGenAI({ apiKey: config.apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(config.apiKey));
 
   return async (request) => ai.models.generateContent(request);
 }

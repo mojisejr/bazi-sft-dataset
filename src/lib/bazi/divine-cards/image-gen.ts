@@ -7,6 +7,7 @@ import sharp from "sharp";
 import { GoogleGenAI } from "@google/genai";
 
 import type { DivineCard } from "@/lib/bazi/divine-cards/deck";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 export const DEFAULT_IMAGEN_MODEL = "imagen-4.0-generate-001";
 
@@ -62,7 +63,7 @@ export async function generateCardImage(
   const prompt = buildImagePrompt(card);
   const generateImages: GenerateImages =
     deps.generateImages ??
-    ((request) => new GoogleGenAI({ apiKey: options.apiKey }).models.generateImages(request));
+    ((request) => new GoogleGenAI(genAiClientOptions(options.apiKey)).models.generateImages(request));
 
   const response = await generateImages({
     model,

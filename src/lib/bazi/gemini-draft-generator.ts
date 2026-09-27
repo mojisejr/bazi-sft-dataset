@@ -21,6 +21,7 @@ import {
 } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 import { ELEMENT_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 const MAX_REFERENCE_EXCERPT_CHARS = 1_100;
@@ -611,7 +612,7 @@ export async function generateGeminiDraftAnnotation(
   const referenceCaseExamples = useReferenceCases && referenceCasePaths.length > 0
     ? await loadReferenceCaseExamples(referenceCasePaths)
     : [];
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(apiKey));
   const generationSeed = buildStableReferenceSelectorSeed(options.rawInput);
   const prompt = buildUserPrompt(
     options.rawInput,

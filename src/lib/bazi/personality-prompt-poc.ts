@@ -18,6 +18,7 @@ import {
 } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
 import { ELEMENT_LABELS_TH } from "@/lib/bazi/symbolic-engine.constants";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 export const DEFAULT_PERSONALITY_POC_MODEL = "gemini-3-flash-preview";
 
@@ -371,7 +372,7 @@ export async function generatePersonalityPromptPoc(options: {
 }) {
   const apiKey = options.apiKey ?? getGeminiApiKey();
   const model = options.model?.trim() || DEFAULT_PERSONALITY_POC_MODEL;
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(apiKey));
   const prompt = buildPersonalityPocUserPrompt(options.rawInput, options.calculatedState);
   const response = await ai.models.generateContent({
     model,

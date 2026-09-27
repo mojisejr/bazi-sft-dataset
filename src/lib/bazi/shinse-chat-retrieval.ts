@@ -9,6 +9,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 
 import { getGeminiApiKey } from "@/lib/env";
+import { llmFetchSignal } from "@/lib/llm-timeout";
 
 type IndexChunk = { id: string; book: string; title: string; text: string; embedding: number[] };
 type ShinseIndex = { model: string; dim: number; queryTaskType: string; count: number; chunks: IndexChunk[] };
@@ -30,6 +31,7 @@ async function embedQuery(text: string, model: string, dim: number, taskType: st
   const key = apiKey?.trim() || getGeminiApiKey();
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/${model}:embedContent?key=${key}`, {
     method: "POST",
+    signal: llmFetchSignal(),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ model, content: { parts: [{ text }] }, taskType, outputDimensionality: dim }),
   });

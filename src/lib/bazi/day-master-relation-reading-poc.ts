@@ -30,6 +30,7 @@ import type { CalculatedStateValue, RawInputValue, SupportedElementValue } from 
 import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-strength";
 import { resolveBranchInteractionEffects } from "@/lib/bazi/symbolic-engine.interactions";
 import { getGeminiApiKey } from "@/lib/env";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 export const DEFAULT_DAY_MASTER_RELATION_POC_MODEL = "gemini-3-flash-preview";
 
@@ -2313,7 +2314,7 @@ export async function generateDayMasterRelationReadingPoc(options: {
   const packet = buildDayMasterRelationPacket(options.calculatedState);
   const brief = buildDayMasterRelationBrief(options.rawInput, packet);
   const prompt = buildDayMasterRelationPocUserPrompt(options.rawInput, brief);
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(apiKey));
   const response = await ai.models.generateContent({
     model,
     contents: prompt,
