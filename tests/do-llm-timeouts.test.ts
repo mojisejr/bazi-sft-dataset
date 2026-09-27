@@ -60,8 +60,9 @@ describe("every LLM call site uses the timeout", () => {
       .filter(Boolean);
 
   test("every new GoogleGenAI(...) goes through genAiClientOptions", () => {
-    const offenders = src("new GoogleGenAI\\(").filter((f) =>
-      /new GoogleGenAI\((?!genAiClientOptions\()/.test(readFileSync(f, "utf8")),
+    // the helper names the constructor in its own doc comment; every other file must go through it
+    const offenders = src("new GoogleGenAI\\(").filter(
+      (f) => f !== "src/lib/llm-timeout.ts" && /new GoogleGenAI\((?!genAiClientOptions\()/.test(readFileSync(f, "utf8")),
     );
     expect(offenders).toEqual([]);
   });
