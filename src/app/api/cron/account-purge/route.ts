@@ -1,4 +1,4 @@
-import { lte, eq } from "drizzle-orm";
+import { and, lte, eq } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import {
@@ -41,7 +41,9 @@ export async function GET(request: Request) {
   const pending = await db
     .select({ anonId: baziAccountDeletion.anonId })
     .from(baziAccountDeletion)
-    .where(lte(baziAccountDeletion.purgeAt, now));
+    // เฉพาะ status "pending": ยกเลิกการลบ (DELETE /api/account/delete) เปลี่ยนแค่ status เป็น canceled
+    // แต่ purgeAt เดิมยังอยู่ — ถ้ากรองแค่ purgeAt คนที่ยกเลิกแล้วจะโดนล้างตามวันเดิม และแถว purged ถูกวนซ้ำทุกคืน
+    .where(and(eq(baziAccountDeletion.status, "pending"), lte(baziAccountDeletion.purgeAt, now)));
 
   const purged: string[] = [];
   for (const { anonId } of pending) {
