@@ -4,15 +4,14 @@ import { getAllCards, getCardByNo } from "@/lib/bazi/divine-cards/deck";
 import { generateCardImage } from "@/lib/bazi/divine-cards/image-gen";
 import { createDbDivineCardImageRepository } from "@/lib/bazi/divine-cards/image-repository";
 import { uploadDivineCardImage } from "@/lib/supabase/storage";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 /** gen รูปหลายใบใช้เวลานาน — ขยายเพดาน (Vercel/Node) */
 export const maxDuration = 300;
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true; // local dev
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 function badRequest(message: string, status = 400) {

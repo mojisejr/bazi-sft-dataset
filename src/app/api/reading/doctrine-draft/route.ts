@@ -17,6 +17,7 @@ import { publishAllDrafts, publishDraft } from "@/lib/bazi/doctrine-publish.serv
 import { getCatalogEntry } from "@/lib/bazi/knowledge/knowledge-catalog";
 import { getStandaloneEntry } from "@/lib/bazi/knowledge/standalone-tables";
 import { BAZI_TOPIC_REGISTRY_BY_ID } from "@/lib/bazi/knowledge/topic-registry";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
@@ -31,9 +32,7 @@ function badRequest(message: string, status = 400) {
   return Response.json({ error: { message } }, { status });
 }
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true;
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 /** ตรวจ value ของร่างตาม surface/entityKey — คืน validated value หรือ null */

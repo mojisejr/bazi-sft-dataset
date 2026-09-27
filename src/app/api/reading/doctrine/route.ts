@@ -8,6 +8,7 @@ import {
   invalidateReadingDoctrineCache,
 } from "@/lib/bazi/reading-doctrine.server";
 import { appendDoctrineAuditSafe } from "@/lib/bazi/doctrine-audit-repository";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
@@ -24,15 +25,11 @@ function badRequest(message: string, status = 400) {
 }
 
 /**
- * Guard แบบ token: ถ้าตั้ง env ADMIN_DOCTRINE_TOKEN จะบังคับให้ส่ง header x-admin-token ตรงกัน
- * ถ้าไม่ได้ตั้ง env (เช่น local dev) จะปล่อยผ่าน (สอดคล้องกับ /api/reading/rules เดิม)
+ * Guard แบบ token: header x-admin-token ต้องตรงกับ env ADMIN_DOCTRINE_TOKEN
+ * ไม่ตั้ง env = ปิด ยกเว้น next dev (NODE_ENV=development) — src/lib/admin-token.ts
  */
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) {
-    return true;
-  }
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 /** GET — คืนนิยามบท merged (default + override) + รายการ override ดิบ เพื่อให้ UI แสดง default/override */

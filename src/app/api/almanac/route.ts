@@ -19,6 +19,7 @@ import {
   ALMANAC_KIND_RULE,
   type AlmanacOverrides,
 } from "@/lib/bazi/almanac/almanac-override-repository";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
@@ -27,9 +28,7 @@ function badRequest(message: string, status = 400) {
 }
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true; // ไม่ตั้ง token = อนุญาต (dev)
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 /** โหลด override จาก DB — ถ้า DB ใช้ไม่ได้ คืนกฎฐาน (ปฏิทินยังทำงาน) */

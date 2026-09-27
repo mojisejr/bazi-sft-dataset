@@ -9,13 +9,12 @@ import { NEWDATA_GROUPS } from "@/lib/bazi/newdata-groups";
 import { createDbNewdataRepository } from "@/lib/bazi/newdata-repository";
 import { invalidateNewdataCache } from "@/lib/bazi/newdata.server";
 import type { NewdataValue } from "@/db/schema";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true;
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 function actorOf(req: Request): string | undefined {

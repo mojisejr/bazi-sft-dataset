@@ -13,13 +13,12 @@ import { STANDALONE_EDITABLE_TABLES } from "@/lib/bazi/knowledge/standalone-tabl
 import { createDbKnowledgeOverrideRepository } from "@/lib/bazi/knowledge-override-repository";
 import { EMPTY_OVERLAY, type KnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
 import { createDbDoctrineDraftRepository } from "@/lib/bazi/doctrine-draft-repository";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true;
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 const PREDICT_TOPICS = TOPIC_PATH.filter((topic) => topic.kind === "predict");

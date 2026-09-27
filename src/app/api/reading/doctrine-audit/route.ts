@@ -5,6 +5,7 @@ import {
   type DoctrineAuditSurface,
 } from "@/lib/bazi/doctrine-audit-repository";
 import { restoreDoctrineAudit } from "@/lib/bazi/doctrine-audit.service";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
@@ -13,11 +14,7 @@ function badRequest(message: string, status = 400) {
 }
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) {
-    return true;
-  }
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 /** GET — ประวัติการแก้ (ล่าสุดก่อน) ?surface=&key=&limit= */

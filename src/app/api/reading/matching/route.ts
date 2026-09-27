@@ -9,13 +9,12 @@ import { MATCHING_GROUPS } from "@/lib/bazi/matching-groups";
 import { createDbMatchingRepository } from "@/lib/bazi/matching-repository";
 import { invalidateMatchingCache } from "@/lib/bazi/matching.server";
 import type { MatchingValue } from "@/db/schema";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true;
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 function actorOf(req: Request): string | undefined {

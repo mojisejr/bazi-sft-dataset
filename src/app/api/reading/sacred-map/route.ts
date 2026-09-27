@@ -5,7 +5,7 @@
  *   PUT   { id, ...input }   → แก้ไขสถานที่
  *   PATCH { id, status }     → เปลี่ยนสถานะ (verified/pending/rejected)
  *   DELETE ?id=              → ลบ
- * auth: x-admin-token = ADMIN_DOCTRINE_TOKEN (ถ้าไม่ตั้ง env → เปิดให้ทุกคน เหมือน matching)
+ * auth: x-admin-token = ADMIN_DOCTRINE_TOKEN (ไม่ตั้ง env → ปิด ยกเว้น next dev — src/lib/admin-token.ts)
  */
 import { SACRED_STATUSES, SacredLocationInputSchema } from "@/lib/bazi/sacred-map/constants";
 import type { SacredStatus } from "@/lib/bazi/sacred-map/constants";
@@ -16,13 +16,12 @@ import {
   setStatus,
   updateLocation,
 } from "@/lib/bazi/sacred-map/repository";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true;
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 function unauthorized() {

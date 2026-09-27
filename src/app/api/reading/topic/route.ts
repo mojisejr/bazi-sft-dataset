@@ -39,6 +39,7 @@ import { createDbSubstitutionRuleRepository } from "@/lib/bazi/substitution-rule
 import { getKnowledgeOverlay } from "@/lib/bazi/knowledge-override.server";
 import { runWithKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 import { mergeKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
@@ -136,9 +137,7 @@ export async function POST(req: Request) {
 
   // preview=1 (เฉพาะผู้มีสิทธิ์): วาง "ฉบับร่าง" ทับ published เพื่อดูตัวอย่างก่อนเผยแพร่
   const previewRequested = new URL(req.url).searchParams.get("preview") === "1";
-  const expectedToken = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  const previewAuthorized =
-    !expectedToken || req.headers.get("x-admin-token")?.trim() === expectedToken;
+  const previewAuthorized = isAdminAuthorized(req);
   const usePreview = previewRequested && previewAuthorized;
   const drafts = usePreview ? await loadDraftsSafe() : null;
 

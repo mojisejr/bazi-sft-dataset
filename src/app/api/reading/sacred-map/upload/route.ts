@@ -2,18 +2,17 @@
  * Sacred Map — อัปโหลดรูปสถานที่ขึ้น Supabase Storage (แอดมิน)
  *   POST  multipart/form-data: file=<image>, id?=<location id>
  *      → { ok, imageUrl }  (เอา imageUrl ไปเก็บใน image_url ผ่าน POST/PUT ปกติ)
- * auth: x-admin-token = ADMIN_DOCTRINE_TOKEN (ถ้าไม่ตั้ง env → เปิดให้ทุกคน เหมือน route หลัก)
+ * auth: x-admin-token = ADMIN_DOCTRINE_TOKEN (ไม่ตั้ง env → ปิด ยกเว้น next dev — src/lib/admin-token.ts)
  */
 import { ensureSacredBucket, uploadSacredMapImage } from "@/lib/supabase/storage";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
 const MAX_BYTES = 8 * 1024 * 1024; // 8MB
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) return true;
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 export async function POST(req: Request) {
