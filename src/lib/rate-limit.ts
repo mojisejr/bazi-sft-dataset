@@ -9,6 +9,8 @@
  * server-only.
  */
 
+import { timingSafeEqual } from "node:crypto";
+
 type Bucket = { count: number; resetAt: number };
 const store = new Map<string, Bucket>();
 let ops = 0;
@@ -87,8 +89,28 @@ export function reconcileDailyBudget(actualThb: number): void {
   }
 }
 
-/** ดึง IP ผู้เรียกจาก proxy headers (Vercel/Cloudflare ตั้ง x-forwarded-for) */
-export function clientIp(req: Request): string {
+/**
+ * IP ของผู้ใช้ปลายทางที่ FE ส่งมาให้ — เชื่อเฉพาะเมื่อ x-mumate-client-secret ตรงกับ BAZI_CLIENT_ID_SECRET
+ * (mumate-vercel-to-do-001 slice 2). เหตุผล: FE เรียก bazi จากฝั่ง server เสมอ ดังนั้น x-forwarded-for ที่ bazi เห็น
+ * คือ IP ของ FE ไม่ใช่ของผู้ใช้ — บน Vercel คือ egress IP ไม่กี่ตัวที่ผู้ใช้ทุกคนแชร์กัน, ใน container บน DO
+ * (FE → http://bazi:3000) ไม่มี header เลยและทุกคนกลายเป็น "unknown" — โควตาต่อคนจึงเป็นโควตาของทั้งระบบ.
+ * ไม่ตั้ง secret = ไม่เชื่อ header นี้เลย (พฤติกรรมเดิมทุกตัวอักษร) · header ปลอมที่ไม่มี secret ถูกละทิ้ง
+ */
+function trustedClientIp(req: Request, env: Partial<NodeJS.ProcessEnv>): string | null {
+  const secret = env.BAZI_CLIENT_ID_SECRET?.trim();
+  if (!secret) return null;
+  const given = Buffer.from(req.headers.get("x-mumate-client-secret")?.trim() ?? "");
+  const want = Buffer.from(secret);
+  if (given.length !== want.length || !timingSafeEqual(given, want)) return null;
+  const ip = req.headers.get("x-mumate-client-ip")?.trim() ?? "";
+  // IPv4 / IPv6 เท่านั้น — กันค่าแปลก ๆ มาเป็น key ของ bucket
+  return ip.length > 0 && ip.length <= 45 && /^[0-9A-Fa-f:.]+$/.test(ip) ? ip : null;
+}
+
+/** ดึง IP ผู้เรียก: IP ที่ FE ยืนยันด้วย secret ก่อน แล้วค่อย proxy headers (Vercel/Cloudflare ตั้ง x-forwarded-for) */
+export function clientIp(req: Request, env: Partial<NodeJS.ProcessEnv> = process.env): string {
+  const trusted = trustedClientIp(req, env);
+  if (trusted) return trusted;
   const xff = req.headers.get("x-forwarded-for");
   if (xff) return xff.split(",")[0]!.trim();
   return req.headers.get("x-real-ip")?.trim() || "unknown";
