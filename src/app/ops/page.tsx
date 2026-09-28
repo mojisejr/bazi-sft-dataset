@@ -1374,27 +1374,29 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
     setRewardKind("discount"); setAmount(""); setDMaxBaht(""); setMaxUsePerUser(""); setMaxUseTotal(""); setStartsAt(""); setEndsAt("");
   };
 
-  // สร้างโค้ด → เขียนเข้าระบบคูปอง (โผล่ในการ์ดคูปองด้วย) โดย reuse API เดียวกับการ์ดคูปอง
-  const createCode = async () => {
-    if (!code.trim() || !amount) { onNote(false, "ใส่โค้ด + จำนวน ก่อนสร้าง"); return; }
-    setBusy(true);
-    try {
-      const common = { secret, action: "create", code, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined };
-      const url = isDiscount ? "/api/ops/discount" : "/api/ops/coupon";
-      const body = isDiscount
-        ? { ...common, kind: dkind, value: Number(amount), maxDiscountBaht: dkind === "PERCENT" && dMaxBaht ? Number(dMaxBaht) : undefined }
-        : { ...common, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined };
-      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-      const j = (await r.json().catch(() => ({}))) as { reason?: string; error?: string };
-      if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างโค้ดไม่สำเร็จ"); return; }
-      onNote(true, `สร้างโค้ด ${code.trim().toUpperCase()} แล้ว (ดู/แก้เพิ่มที่การ์ดคูปอง)`);
-    } finally { setBusy(false); }
+  // สร้างโค้ด → เขียนเข้าระบบคูปอง (โผล่ในการ์ดคูปองด้วย) โดย reuse API เดียวกับการ์ดคูปอง. คืน true ถ้าสำเร็จ
+  const createCodeInner = async (): Promise<boolean> => {
+    const common = { secret, action: "create", code, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined };
+    const url = isDiscount ? "/api/ops/discount" : "/api/ops/coupon";
+    const body = isDiscount
+      ? { ...common, kind: dkind, value: Number(amount), maxDiscountBaht: dkind === "PERCENT" && dMaxBaht ? Number(dMaxBaht) : undefined }
+      : { ...common, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined };
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const j = (await r.json().catch(() => ({}))) as { reason?: string; error?: string };
+    if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างโค้ดไม่สำเร็จ (โค้ดซ้ำ?)"); return false; }
+    return true;
   };
 
+  // ปุ่มเดียวจบ: (สร้างใหม่) สร้างโค้ด → บันทึกแคมเปญ+ลิงก์ · (แก้ไข) อัปเดตลิงก์อย่างเดียว ไม่แตะโค้ด
   const save = async () => {
     if (!name.trim()) { onNote(false, "ใส่ชื่อกิจกรรมก่อน"); return; }
+    if (!editingId && (!code.trim() || !amount)) { onNote(false, "ใส่โค้ด + จำนวน ก่อนบันทึก"); return; }
     setBusy(true);
     try {
+      if (!editingId) {
+        const ok = await createCodeInner();
+        if (!ok) return; // โค้ดซ้ำ/พลาด — หยุด ไม่บันทึกลิงก์
+      }
       const r = await fetch("/api/ops/campaign-link", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ secret, action: editingId ? "update" : "create", id: editingId ?? undefined, name, packageCode: pkg, code: code.trim() || null, host, liffId: liffId.trim() || null }),
@@ -1402,7 +1404,7 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
       const j = (await r.json().catch(() => ({}))) as { links?: CampaignLinkRow[]; error?: string };
       if (!r.ok) { onNote(false, j.error ?? "บันทึกไม่สำเร็จ"); return; }
       setRows(j.links ?? []);
-      onNote(true, editingId ? "บันทึกการแก้ไขแล้ว" : `บันทึกแคมเปญ "${name.trim()}" แล้ว`);
+      onNote(true, editingId ? "บันทึกการแก้ไขแล้ว" : `สร้างโค้ด ${code.trim().toUpperCase()} + บันทึกแคมเปญแล้ว (โค้ดโผล่ในการ์ดคูปองด้วย)`);
       resetForm();
     } finally { setBusy(false); }
   };
@@ -1447,11 +1449,11 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
       {open && (
         <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
           <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>
-            ตั้งชื่อ + เลือกประเภท/จำนวน/ลิมิต + โค้ด → กด “สร้างโค้ด” (โค้ดจะไปโผล่ในการ์ดคูปองด้วย) → ได้ลิงก์กรอกโค้ดอัตโนมัติ ·
-            กด “บันทึกแคมเปญ” เก็บลิงก์ไว้กลับมาแก้/ก็อปทีหลัง
+            กรอกโค้ด + ประเภท/จำนวน/ลิมิต + ชื่อ (โค้ดส่วนลดใส่แพ็ก/LIFF ด้วย) → กดปุ่มเดียว “บันทึกแคมเปญ”
+            = สร้างโค้ด (โผล่ในการ์ดคูปอง) + บันทึกลิงก์ที่กรอกโค้ดอัตโนมัติ · กลับมาแก้/ก็อปทีหลังได้
           </p>
 
-          {/* ── ส่วนสร้างโค้ด (ประเภท + จำนวน + ลิมิต) ── */}
+          {/* ── ส่วนกรอกโค้ด (ประเภท + จำนวน + ลิมิต) — สร้างจริงตอนกด "บันทึกแคมเปญ" ── */}
           <p style={{ ...label, margin: 0 }}>โค้ด (สร้างแล้วไปโผล่ในการ์ดคูปอง)</p>
           <div style={{ display: "grid", gridTemplateColumns: cols, gap: 10 }}>
             <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="MUMATE100" /></div>
@@ -1468,7 +1470,6 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
             <div><span style={label}>หมดอายุ</span><input style={input} type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} /></div>
-            <div style={{ display: "flex", alignItems: "flex-end" }}><button style={btn(C.accent)} disabled={busy || !code.trim() || !amount} onClick={createCode}>{busy ? "…" : "สร้างโค้ด"}</button></div>
           </div>
 
           {/* ── ส่วนลิงก์ + บันทึกแคมเปญ ── */}
