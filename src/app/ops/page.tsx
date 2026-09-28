@@ -263,6 +263,9 @@ export default function OpsAdminPage() {
       {/* คูปองกิจกรรม (global — ไม่ผูก user) */}
       <CouponManager secret={secret} onNote={note} />
 
+      {/* สร้างลิงก์แคมเปญสำหรับ broadcast (generic — ใช้ซ้ำได้ทุกกิจกรรม) */}
+      <CampaignLinkBuilder onNote={note} />
+
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
         <div style={box}>
@@ -1293,6 +1296,95 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
               </div>
             </div>
           ) : null}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ตัวสร้างลิงก์แคมเปญ (broadcast) ────────────────────────────────────────────────────────────────
+// generic — เลือกแพ็ก + ใส่โค้ดส่วนลด + ตั้งชื่อกิจกรรม → ได้ลิงก์ checkout ที่ "กรอกโค้ดให้อัตโนมัติ"
+// (หน้า checkout FE อ่าน ?code= แล้ว auto-apply). ใช้ซ้ำได้ทุกกิจกรรมในอนาคต — แค่เปลี่ยนค่าในฟอร์ม.
+// ไม่ผูก DB/secret (สร้างสตริงล้วน). LIFF link = เปิดค้างในแอป LINE (LINE login ลื่น ไม่โดนเตะออก).
+const CAMPAIGN_PACKAGES: { code: string; label: string }[] = [
+  { code: "V2_PRO_YEARLY", label: "Mumate Pro · รายปี (฿1,590)" },
+  { code: "V2_PRO_MONTHLY", label: "Mumate Pro · รายเดือน" },
+  { code: "V2_PLUS_YEARLY", label: "Mumate + · รายปี" },
+  { code: "V2_PLUS_MONTHLY", label: "Mumate + · รายเดือน" },
+];
+const DEFAULT_APP_HOST = "https://bazichart.mumate.co";
+const DEFAULT_LIFF_ID = "2011679472-sNcCbR2K"; // NEXT_PUBLIC_LIFF_ID (default) — เปลี่ยนได้ในฟอร์ม
+
+function CampaignLinkBuilder({ onNote }: { onNote: (ok: boolean, m: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [host, setHost] = useState(DEFAULT_APP_HOST);
+  const [pkg, setPkg] = useState(CAMPAIGN_PACKAGES[0].code);
+  const [code, setCode] = useState("");
+  const [liffId, setLiffId] = useState(DEFAULT_LIFF_ID);
+
+  const cleanHost = host.trim().replace(/\/+$/, "");
+  const query = `package_code=${encodeURIComponent(pkg)}${code.trim() ? `&code=${encodeURIComponent(code.trim().toUpperCase())}` : ""}`;
+  const directLink = `${cleanHost}/v2/shop/checkout?${query}`;
+  const liffLink = liffId.trim() ? `https://liff.line.me/${liffId.trim()}/v2/shop/checkout?${query}` : "";
+
+  const copy = async (text: string, what: string) => {
+    try { await navigator.clipboard.writeText(text); onNote(true, `คัดลอก${what}แล้ว`); }
+    catch { onNote(false, "คัดลอกไม่สำเร็จ"); }
+  };
+
+  const linkRow = (title: string, hint: string, link: string) => (
+    <div style={{ ...box, background: C.inputBg }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
+        <b style={{ fontSize: 13 }}>{title}</b>
+        <span style={{ fontSize: 11, color: C.sub }}>{hint}</span>
+      </div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <code style={{ flex: 1, wordBreak: "break-all", fontSize: 12, color: C.accent }}>{link}</code>
+        <button style={{ ...btn(C.accent), flex: "none" }} onClick={() => void copy(link, title)}>คัดลอก</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>🔗 สร้างลิงก์แคมเปญ (broadcast)</h2>
+        <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((v) => !v)}>
+          {open ? "ซ่อน" : "เปิด"}
+        </button>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+          <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>
+            สร้างลิงก์ให้คนกดจาก broadcast แล้ว “กรอกโค้ดส่วนลดอัตโนมัติ” เข้าหน้าจ่ายเงินเลย · ใช้ซ้ำได้ทุกกิจกรรม
+            (โค้ดส่วนลดสร้างที่การ์ด “คูปอง/ส่วนลด” ด้านบน)
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <label style={label}>ชื่อกิจกรรม (ไว้จำเอง)
+              <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น โปร Pro 90% ต.ค." />
+            </label>
+            <label style={label}>โค้ดส่วนลด
+              <input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="เช่น MUMATE100" />
+            </label>
+            <label style={label}>แพ็กเกจ
+              <select style={input} value={pkg} onChange={(e) => setPkg(e.target.value)}>
+                {CAMPAIGN_PACKAGES.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}
+              </select>
+            </label>
+            <label style={label}>โดเมนแอป
+              <input style={input} value={host} onChange={(e) => setHost(e.target.value)} />
+            </label>
+            <label style={{ ...label, gridColumn: "1 / -1" }}>LIFF ID (เปิดค้างในแอป LINE — เว้นว่างถ้าไม่ใช้)
+              <input style={input} value={liffId} onChange={(e) => setLiffId(e.target.value)} placeholder={DEFAULT_LIFF_ID} />
+            </label>
+          </div>
+
+          {linkRow("ลิงก์ตรง", "เว็บ/เบราว์เซอร์ทั่วไป", directLink)}
+          {liffLink ? linkRow("ลิงก์ LIFF", "แนะนำสำหรับ broadcast ใน LINE (เปิดค้างในแอป)", liffLink) : null}
+
+          {name.trim() ? <p style={{ fontSize: 11, color: C.sub, margin: 0 }}>กิจกรรม: {name.trim()}</p> : null}
         </div>
       )}
     </div>
