@@ -1374,8 +1374,9 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
     setRewardKind("discount"); setAmount(""); setDMaxBaht(""); setMaxUsePerUser(""); setMaxUseTotal(""); setStartsAt(""); setEndsAt("");
   };
 
-  // สร้างโค้ด → เขียนเข้าระบบคูปอง (โผล่ในการ์ดคูปองด้วย) โดย reuse API เดียวกับการ์ดคูปอง. คืน true ถ้าสำเร็จ
-  const createCodeInner = async (): Promise<boolean> => {
+  // สร้างโค้ด → เขียนเข้าระบบคูปอง (โผล่ในการ์ดคูปองด้วย) โดย reuse API เดียวกับการ์ดคูปอง.
+  // คืน "created" (สร้างใหม่สำเร็จ) · "exists" (โค้ดมีอยู่แล้ว — ไม่ถือเป็น error, บันทึกลิงก์ต่อได้) · "failed"
+  const createCodeInner = async (): Promise<"created" | "exists" | "failed"> => {
     const common = { secret, action: "create", code, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined };
     const url = isDiscount ? "/api/ops/discount" : "/api/ops/coupon";
     const body = isDiscount
@@ -1383,19 +1384,23 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
       : { ...common, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined };
     const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = (await r.json().catch(() => ({}))) as { reason?: string; error?: string };
-    if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างโค้ดไม่สำเร็จ (โค้ดซ้ำ?)"); return false; }
-    return true;
+    if (r.ok) return "created";
+    const reason = j.reason ?? j.error ?? "";
+    if (/อยู่แล้ว|มีโค้ด|exists|ซ้ำ/i.test(reason)) return "exists"; // โค้ดมีแล้ว → ใช้ต่อได้ ไม่ต้องสร้างซ้ำ
+    onNote(false, reason || "สร้างโค้ดไม่สำเร็จ");
+    return "failed";
   };
 
-  // ปุ่มเดียวจบ: (สร้างใหม่) สร้างโค้ด → บันทึกแคมเปญ+ลิงก์ · (แก้ไข) อัปเดตลิงก์อย่างเดียว ไม่แตะโค้ด
+  // ปุ่มเดียวจบ: (สร้างใหม่) สร้างโค้ด(ถ้ายังไม่มี) → บันทึกแคมเปญ+ลิงก์ · (แก้ไข) อัปเดตลิงก์อย่างเดียว ไม่แตะโค้ด
   const save = async () => {
     if (!name.trim()) { onNote(false, "ใส่ชื่อกิจกรรมก่อน"); return; }
     if (!editingId && (!code.trim() || !amount)) { onNote(false, "ใส่โค้ด + จำนวน ก่อนบันทึก"); return; }
     setBusy(true);
     try {
+      let codeState: "created" | "exists" | "failed" = "created";
       if (!editingId) {
-        const ok = await createCodeInner();
-        if (!ok) return; // โค้ดซ้ำ/พลาด — หยุด ไม่บันทึกลิงก์
+        codeState = await createCodeInner();
+        if (codeState === "failed") return; // พลาดจริง (ค่าผิด) — หยุด
       }
       const r = await fetch("/api/ops/campaign-link", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -1404,7 +1409,9 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
       const j = (await r.json().catch(() => ({}))) as { links?: CampaignLinkRow[]; error?: string };
       if (!r.ok) { onNote(false, j.error ?? "บันทึกไม่สำเร็จ"); return; }
       setRows(j.links ?? []);
-      onNote(true, editingId ? "บันทึกการแก้ไขแล้ว" : `สร้างโค้ด ${code.trim().toUpperCase()} + บันทึกแคมเปญแล้ว (โค้ดโผล่ในการ์ดคูปองด้วย)`);
+      onNote(true, editingId ? "บันทึกการแก้ไขแล้ว"
+        : codeState === "exists" ? `โค้ด ${code.trim().toUpperCase()} มีอยู่แล้ว — บันทึกแคมเปญแล้ว`
+        : `สร้างโค้ด ${code.trim().toUpperCase()} + บันทึกแคมเปญแล้ว (โค้ดโผล่ในการ์ดคูปองด้วย)`);
       resetForm();
     } finally { setBusy(false); }
   };
@@ -1509,9 +1516,14 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
             </p>
           )}
 
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={btn(C.good)} disabled={busy || !name.trim()} onClick={save}>{busy ? "…" : editingId ? "บันทึกการแก้ไข" : "บันทึกแคมเปญ"}</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <button style={btn(C.good)} disabled={busy} onClick={save}>{busy ? "…" : editingId ? "บันทึกการแก้ไข" : "บันทึกแคมเปญ"}</button>
             {editingId ? <button style={{ ...btn(C.border), fontWeight: 500 }} onClick={resetForm}>ยกเลิก</button> : null}
+            {!editingId && (!name.trim() || !code.trim() || !amount) ? (
+              <span style={{ fontSize: 12, color: C.warn }}>
+                ต้องกรอก: {[!code.trim() ? "โค้ด" : null, !amount ? "จำนวน" : null, !name.trim() ? "ชื่อกิจกรรม" : null].filter(Boolean).join(" · ")}
+              </span>
+            ) : null}
           </div>
 
           {/* รายการแคมเปญที่บันทึกไว้ */}
@@ -1523,15 +1535,25 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
                   const rLiff = liffLinkOf(row.liffId, row.packageCode, row.code);
                   const rDirect = directLinkOf(row.host, row.packageCode, row.code);
                   return (
-                    <div key={row.id} style={{ ...box, background: C.inputBg }}>
+                    <div key={row.id} style={{ ...box, background: C.inputBg, display: "grid", gap: 6 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         <b style={{ fontSize: 13 }}>{row.name}</b>
-                        <span style={{ fontSize: 11, color: C.sub }}>{row.packageCode}{row.code ? ` · ${row.code}` : " · ไม่มีโค้ด"}</span>
+                        <span style={{ fontSize: 11, color: C.sub }}>{row.packageCode}{row.code ? ` · โค้ด ${row.code}` : " · ไม่มีโค้ด"}</span>
                         <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                          <button style={{ ...btn(C.accent), fontWeight: 500 }} onClick={() => void copy(rLiff || rDirect, "ลิงก์")}>คัดลอกลิงก์</button>
                           <button style={{ ...btn(C.border), fontWeight: 500 }} onClick={() => edit(row)}>แก้ไข</button>
                           <button style={{ ...btn(C.warn), fontWeight: 500 }} disabled={busy} onClick={() => void del(row)}>ลบ</button>
                         </span>
+                      </div>
+                      {/* ลิงก์เต็ม + ปุ่มก็อป (LIFF แนะนำสำหรับ broadcast · ลิงก์ตรงสำรอง) */}
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: C.accent, flex: "none", width: 40 }}>LIFF</span>
+                        <code style={{ flex: 1, wordBreak: "break-all", fontSize: 11, color: C.text }}>{rLiff || "— (ไม่มี LIFF ID)"}</code>
+                        {rLiff ? <button style={{ ...btn(C.accent), fontWeight: 500, flex: "none" }} onClick={() => void copy(rLiff, "ลิงก์ LIFF")}>ก็อป</button> : null}
+                      </div>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span style={{ fontSize: 10, color: C.sub, flex: "none", width: 40 }}>ตรง</span>
+                        <code style={{ flex: 1, wordBreak: "break-all", fontSize: 11, color: C.sub }}>{rDirect}</code>
+                        <button style={{ ...btn(C.border), fontWeight: 500, flex: "none" }} onClick={() => void copy(rDirect, "ลิงก์ตรง")}>ก็อป</button>
                       </div>
                     </div>
                   );

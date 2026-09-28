@@ -177,8 +177,17 @@ export async function setStatus(id: string, status: "ACTIVE" | "PAUSED" | "EXPIR
 /** ลบโค้ดส่วนลด — เฉพาะที่ "ยังไม่ถูกใช้" (used_count = 0) กัน FK discount_redemption + กันลบประวัติ. */
 export async function deleteDiscount(id: string): Promise<{ ok: true } | { ok: false; reason: string }> {
   const db = createDbClient();
-  const r = await db.execute(sql`DELETE FROM discount_code WHERE id = ${id} AND used_count = 0 RETURNING id`);
-  if (rowsOf(r).length > 0) return { ok: true };
+  try {
+    const r = await db.execute(sql`DELETE FROM discount_code WHERE id = ${id} AND used_count = 0 RETURNING id`);
+    if (rowsOf(r).length > 0) return { ok: true };
+  } catch (e) {
+    // 23503 = FK violation: มี payment_quote / v2_payment อ้างอิง code_id อยู่ (มักเกิดจากพรีวิว/ทดสอบชำระ) →
+    // ลบไม่ได้เพราะจะทำลายลิงก์กับรายการชำระ. ให้ "พัก" (PAUSED) แทน — โค้ดจะใช้ไม่ได้แต่ประวัติยังอยู่.
+    if ((e as { code?: string }).code === "23503") {
+      return { ok: false, reason: "มีใบเสนอราคา/รายการชำระอ้างอิงอยู่ (เช่นจากการทดสอบ) — ลบไม่ได้ ให้กด 'พัก' แทน" };
+    }
+    throw e;
+  }
   const ex = await db.execute(sql`SELECT used_count FROM discount_code WHERE id = ${id} LIMIT 1`);
   if (rowsOf(ex).length === 0) return { ok: false, reason: "ไม่พบโค้ด" };
   return { ok: false, reason: "โค้ดถูกใช้ไปแล้ว ลบไม่ได้ (พักแทนได้)" };
