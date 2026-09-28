@@ -1328,15 +1328,29 @@ function liffLinkOf(liffId: string | null, pkg: string, code: string | null): st
 }
 
 function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
+  const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<CampaignLinkRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // ลิงก์
   const [name, setName] = useState("");
   const [host, setHost] = useState(DEFAULT_APP_HOST);
   const [pkg, setPkg] = useState(CAMPAIGN_PACKAGES[0].code);
   const [code, setCode] = useState("");
   const [liffId, setLiffId] = useState(DEFAULT_LIFF_ID);
+  // โค้ด (สร้างแล้วไปโผล่ในการ์ดคูปอง — reuse /api/ops/discount|coupon)
+  const [rewardKind, setRewardKind] = useState<RewardKind>("discount");
+  const [amount, setAmount] = useState("");
+  const [tierSku, setTierSku] = useState<"plus" | "pro">("pro");
+  const [dkind, setDkind] = useState<"PERCENT" | "FIXED">("PERCENT");
+  const [dMaxBaht, setDMaxBaht] = useState("");
+  const [maxUsePerUser, setMaxUsePerUser] = useState("");
+  const [maxUseTotal, setMaxUseTotal] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [endsAt, setEndsAt] = useState("");
+  const isDiscount = rewardKind === "discount";
+  const amountLabel = isDiscount ? (dkind === "PERCENT" ? "ลด (%)" : "ลด (บาท)") : rewardKind === "tier" ? "จำนวนวัน" : rewardKind === "qi" ? "จำนวน QI" : rewardKind === "matching" ? "จำนวนแมทช์" : "จำนวนเครดิต";
 
   const load = useCallback(async () => {
     if (!secret) return;
@@ -1355,7 +1369,27 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
     catch { onNote(false, "คัดลอกไม่สำเร็จ"); }
   };
 
-  const resetForm = () => { setEditingId(null); setName(""); setHost(DEFAULT_APP_HOST); setPkg(CAMPAIGN_PACKAGES[0].code); setCode(""); setLiffId(DEFAULT_LIFF_ID); };
+  const resetForm = () => {
+    setEditingId(null); setName(""); setHost(DEFAULT_APP_HOST); setPkg(CAMPAIGN_PACKAGES[0].code); setCode(""); setLiffId(DEFAULT_LIFF_ID);
+    setRewardKind("discount"); setAmount(""); setDMaxBaht(""); setMaxUsePerUser(""); setMaxUseTotal(""); setStartsAt(""); setEndsAt("");
+  };
+
+  // สร้างโค้ด → เขียนเข้าระบบคูปอง (โผล่ในการ์ดคูปองด้วย) โดย reuse API เดียวกับการ์ดคูปอง
+  const createCode = async () => {
+    if (!code.trim() || !amount) { onNote(false, "ใส่โค้ด + จำนวน ก่อนสร้าง"); return; }
+    setBusy(true);
+    try {
+      const common = { secret, action: "create", code, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined };
+      const url = isDiscount ? "/api/ops/discount" : "/api/ops/coupon";
+      const body = isDiscount
+        ? { ...common, kind: dkind, value: Number(amount), maxDiscountBaht: dkind === "PERCENT" && dMaxBaht ? Number(dMaxBaht) : undefined }
+        : { ...common, rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined };
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const j = (await r.json().catch(() => ({}))) as { reason?: string; error?: string };
+      if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างโค้ดไม่สำเร็จ"); return; }
+      onNote(true, `สร้างโค้ด ${code.trim().toUpperCase()} แล้ว (ดู/แก้เพิ่มที่การ์ดคูปอง)`);
+    } finally { setBusy(false); }
+  };
 
   const save = async () => {
     if (!name.trim()) { onNote(false, "ใส่ชื่อกิจกรรมก่อน"); return; }
@@ -1400,6 +1434,7 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
     </div>
   );
 
+  const cols = isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)";
   return (
     <div style={{ ...box, marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -1412,17 +1447,37 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
       {open && (
         <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
           <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>
-            ตั้งชื่อ + เลือกแพ็ก + ใส่โค้ดส่วนลด (สร้างโค้ดที่การ์ด “คูปอง” ด้านบน) → ได้ลิงก์ที่กรอกโค้ดอัตโนมัติ เข้าหน้าจ่ายเงินเลย ·
-            กด “บันทึก” เก็บไว้กลับมาแก้/ก็อปทีหลังได้
+            ตั้งชื่อ + เลือกประเภท/จำนวน/ลิมิต + โค้ด → กด “สร้างโค้ด” (โค้ดจะไปโผล่ในการ์ดคูปองด้วย) → ได้ลิงก์กรอกโค้ดอัตโนมัติ ·
+            กด “บันทึกแคมเปญ” เก็บลิงก์ไว้กลับมาแก้/ก็อปทีหลัง
           </p>
+
+          {/* ── ส่วนสร้างโค้ด (ประเภท + จำนวน + ลิมิต) ── */}
+          <p style={{ ...label, margin: 0 }}>โค้ด (สร้างแล้วไปโผล่ในการ์ดคูปอง)</p>
+          <div style={{ display: "grid", gridTemplateColumns: cols, gap: 10 }}>
+            <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="MUMATE100" /></div>
+            <div><span style={label}>ประเภท</span>
+              <select style={input} value={rewardKind} onChange={(e) => setRewardKind(e.target.value as RewardKind)}>
+                <option value="discount">ลดราคา (ตอนจ่ายเงิน)</option><option value="qi">QI</option><option value="chat">เครดิตแชท</option><option value="card">เครดิตเปิดไพ่</option><option value="matching">แมทช์สมพงศ์</option><option value="tier">Tier (วัน)</option>
+              </select>
+            </div>
+            {isDiscount && <div><span style={label}>ชนิดส่วนลด</span><select style={input} value={dkind} onChange={(e) => setDkind(e.target.value as "PERCENT" | "FIXED")}><option value="PERCENT">เปอร์เซ็นต์ %</option><option value="FIXED">จำนวนเงิน ฿</option></select></div>}
+            <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : rewardKind === "tier" ? "เช่น 30" : undefined} /></div>
+            {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
+            {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
+            <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder={isDiscount ? "เว้น=ไม่จำกัด" : "เว้น=1/คน"} /></div>
+            <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
+            <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
+            <div><span style={label}>หมดอายุ</span><input style={input} type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} /></div>
+            <div style={{ display: "flex", alignItems: "flex-end" }}><button style={btn(C.accent)} disabled={busy || !code.trim() || !amount} onClick={createCode}>{busy ? "…" : "สร้างโค้ด"}</button></div>
+          </div>
+
+          {/* ── ส่วนลิงก์ + บันทึกแคมเปญ ── */}
+          <p style={{ ...label, margin: "6px 0 0" }}>ลิงก์ broadcast</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label style={label}>ชื่อกิจกรรม
               <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น โปร Pro 90% ต.ค." />
             </label>
-            <label style={label}>โค้ดส่วนลด
-              <input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="เช่น MUMATE100" />
-            </label>
-            <label style={label}>แพ็กเกจ
+            <label style={label}>แพ็กเกจ (ปลายทางลิงก์)
               <select style={input} value={pkg} onChange={(e) => setPkg(e.target.value)}>
                 {CAMPAIGN_PACKAGES.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}
               </select>
@@ -1430,13 +1485,21 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
             <label style={label}>โดเมนแอป
               <input style={input} value={host} onChange={(e) => setHost(e.target.value)} />
             </label>
-            <label style={{ ...label, gridColumn: "1 / -1" }}>LIFF ID (เปิดค้างในแอป LINE — เว้นว่างถ้าไม่ใช้)
+            <label style={label}>LIFF ID (เปิดค้างในแอป LINE)
               <input style={input} value={liffId} onChange={(e) => setLiffId(e.target.value)} placeholder={DEFAULT_LIFF_ID} />
             </label>
           </div>
 
-          {linkRow("ลิงก์ตรง", "เว็บ/เบราว์เซอร์ทั่วไป", directLink)}
-          {liffLink ? linkRow("ลิงก์ LIFF", "แนะนำสำหรับ broadcast ใน LINE (เปิดค้างในแอป)", liffLink) : null}
+          {isDiscount ? (
+            <>
+              {linkRow("ลิงก์ตรง", "เว็บ/เบราว์เซอร์ทั่วไป", directLink)}
+              {liffLink ? linkRow("ลิงก์ LIFF", "แนะนำสำหรับ broadcast ใน LINE (เปิดค้างในแอป)", liffLink) : null}
+            </>
+          ) : (
+            <p style={{ fontSize: 12, color: C.warn, margin: 0 }}>
+              * โค้ดประเภทนี้ไม่ได้กรอกตอนจ่ายเงิน — ผู้ใช้แลกที่หน้า “แลกโค้ด” ในแอป (/v2/qi) จึงไม่มีลิงก์ checkout อัตโนมัติ (บันทึกชื่อ+โค้ดไว้อ้างอิงได้)
+            </p>
+          )}
 
           <div style={{ display: "flex", gap: 8 }}>
             <button style={btn(C.good)} disabled={busy || !name.trim()} onClick={save}>{busy ? "…" : editingId ? "บันทึกการแก้ไข" : "บันทึกแคมเปญ"}</button>
