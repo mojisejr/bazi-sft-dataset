@@ -263,8 +263,8 @@ export default function OpsAdminPage() {
       {/* คูปองกิจกรรม (global — ไม่ผูก user) */}
       <CouponManager secret={secret} onNote={note} />
 
-      {/* สร้างลิงก์แคมเปญสำหรับ broadcast (generic — ใช้ซ้ำได้ทุกกิจกรรม) */}
-      <CampaignLinkBuilder onNote={note} />
+      {/* สร้างลิงก์แคมเปญสำหรับ broadcast (generic — ใช้ซ้ำได้ทุกกิจกรรม · บันทึก/แก้ไขได้) */}
+      <CampaignLinkBuilder secret={secret} onNote={note} />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
@@ -1303,9 +1303,9 @@ function AnalyticsPanel({ secret, onOpenUser }: { secret: string; onOpenUser: (a
 }
 
 // ── ตัวสร้างลิงก์แคมเปญ (broadcast) ────────────────────────────────────────────────────────────────
-// generic — เลือกแพ็ก + ใส่โค้ดส่วนลด + ตั้งชื่อกิจกรรม → ได้ลิงก์ checkout ที่ "กรอกโค้ดให้อัตโนมัติ"
-// (หน้า checkout FE อ่าน ?code= แล้ว auto-apply). ใช้ซ้ำได้ทุกกิจกรรมในอนาคต — แค่เปลี่ยนค่าในฟอร์ม.
-// ไม่ผูก DB/secret (สร้างสตริงล้วน). LIFF link = เปิดค้างในแอป LINE (LINE login ลื่น ไม่โดนเตะออก).
+// แยกจากการ์ดคูปองชัดเจน — การ์ดนี้ทำแค่ "สร้างลิงก์ + บันทึก/แก้ไข" ไม่สร้างโค้ด (โค้ดสร้างที่การ์ดคูปอง).
+// เลือกแพ็ก + ใส่โค้ดส่วนลด + ตั้งชื่อ → ได้ลิงก์ checkout ที่ "กรอกโค้ดให้อัตโนมัติ" (FE อ่าน ?code= แล้ว auto-apply).
+// บันทึกเก็บไว้ (promo_campaign_link) กลับมาก็อป/แก้ทีหลังได้ — ใช้ซ้ำทุกกิจกรรม. LIFF link = เปิดค้างในแอป LINE.
 const CAMPAIGN_PACKAGES: { code: string; label: string }[] = [
   { code: "V2_PRO_YEARLY", label: "Mumate Pro · รายปี (฿1,590)" },
   { code: "V2_PRO_MONTHLY", label: "Mumate Pro · รายเดือน" },
@@ -1315,22 +1315,76 @@ const CAMPAIGN_PACKAGES: { code: string; label: string }[] = [
 const DEFAULT_APP_HOST = "https://bazichart.mumate.co";
 const DEFAULT_LIFF_ID = "2011679472-sNcCbR2K"; // NEXT_PUBLIC_LIFF_ID (default) — เปลี่ยนได้ในฟอร์ม
 
-function CampaignLinkBuilder({ onNote }: { onNote: (ok: boolean, m: string) => void }) {
+type CampaignLinkRow = { id: string; name: string; packageCode: string; code: string | null; host: string; liffId: string | null };
+
+function checkoutQuery(pkg: string, code: string | null): string {
+  return `package_code=${encodeURIComponent(pkg)}${code && code.trim() ? `&code=${encodeURIComponent(code.trim().toUpperCase())}` : ""}`;
+}
+function directLinkOf(host: string, pkg: string, code: string | null): string {
+  return `${host.trim().replace(/\/+$/, "")}/v2/shop/checkout?${checkoutQuery(pkg, code)}`;
+}
+function liffLinkOf(liffId: string | null, pkg: string, code: string | null): string {
+  return liffId && liffId.trim() ? `https://liff.line.me/${liffId.trim()}/v2/shop/checkout?${checkoutQuery(pkg, code)}` : "";
+}
+
+function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<CampaignLinkRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [host, setHost] = useState(DEFAULT_APP_HOST);
   const [pkg, setPkg] = useState(CAMPAIGN_PACKAGES[0].code);
   const [code, setCode] = useState("");
   const [liffId, setLiffId] = useState(DEFAULT_LIFF_ID);
 
-  const cleanHost = host.trim().replace(/\/+$/, "");
-  const query = `package_code=${encodeURIComponent(pkg)}${code.trim() ? `&code=${encodeURIComponent(code.trim().toUpperCase())}` : ""}`;
-  const directLink = `${cleanHost}/v2/shop/checkout?${query}`;
-  const liffLink = liffId.trim() ? `https://liff.line.me/${liffId.trim()}/v2/shop/checkout?${query}` : "";
+  const load = useCallback(async () => {
+    if (!secret) return;
+    try {
+      const r = await fetch(`/api/ops/campaign-link?secret=${encodeURIComponent(secret)}`);
+      if (r.ok) setRows((((await r.json()) as { links?: CampaignLinkRow[] }).links ?? []));
+    } catch { /* ignore */ }
+  }, [secret]);
+  useEffect(() => { if (open) void load(); }, [open, load]);
+
+  const directLink = directLinkOf(host, pkg, code);
+  const liffLink = liffLinkOf(liffId, pkg, code);
 
   const copy = async (text: string, what: string) => {
     try { await navigator.clipboard.writeText(text); onNote(true, `คัดลอก${what}แล้ว`); }
     catch { onNote(false, "คัดลอกไม่สำเร็จ"); }
+  };
+
+  const resetForm = () => { setEditingId(null); setName(""); setHost(DEFAULT_APP_HOST); setPkg(CAMPAIGN_PACKAGES[0].code); setCode(""); setLiffId(DEFAULT_LIFF_ID); };
+
+  const save = async () => {
+    if (!name.trim()) { onNote(false, "ใส่ชื่อกิจกรรมก่อน"); return; }
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/campaign-link", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret, action: editingId ? "update" : "create", id: editingId ?? undefined, name, packageCode: pkg, code: code.trim() || null, host, liffId: liffId.trim() || null }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { links?: CampaignLinkRow[]; error?: string };
+      if (!r.ok) { onNote(false, j.error ?? "บันทึกไม่สำเร็จ"); return; }
+      setRows(j.links ?? []);
+      onNote(true, editingId ? "บันทึกการแก้ไขแล้ว" : `บันทึกแคมเปญ "${name.trim()}" แล้ว`);
+      resetForm();
+    } finally { setBusy(false); }
+  };
+
+  const edit = (row: CampaignLinkRow) => {
+    setEditingId(row.id); setName(row.name); setHost(row.host); setPkg(row.packageCode); setCode(row.code ?? ""); setLiffId(row.liffId ?? "");
+  };
+
+  const del = async (row: CampaignLinkRow) => {
+    if (!window.confirm(`ลบแคมเปญ "${row.name}"?`)) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/campaign-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, action: "delete", id: row.id }) });
+      const j = (await r.json().catch(() => ({}))) as { links?: CampaignLinkRow[]; error?: string };
+      if (r.ok) { setRows(j.links ?? []); onNote(true, "ลบแล้ว"); if (editingId === row.id) resetForm(); } else onNote(false, j.error ?? "ลบไม่สำเร็จ");
+    } finally { setBusy(false); }
   };
 
   const linkRow = (title: string, hint: string, link: string) => (
@@ -1358,11 +1412,11 @@ function CampaignLinkBuilder({ onNote }: { onNote: (ok: boolean, m: string) => v
       {open && (
         <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
           <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>
-            สร้างลิงก์ให้คนกดจาก broadcast แล้ว “กรอกโค้ดส่วนลดอัตโนมัติ” เข้าหน้าจ่ายเงินเลย · ใช้ซ้ำได้ทุกกิจกรรม
-            (โค้ดส่วนลดสร้างที่การ์ด “คูปอง/ส่วนลด” ด้านบน)
+            ตั้งชื่อ + เลือกแพ็ก + ใส่โค้ดส่วนลด (สร้างโค้ดที่การ์ด “คูปอง” ด้านบน) → ได้ลิงก์ที่กรอกโค้ดอัตโนมัติ เข้าหน้าจ่ายเงินเลย ·
+            กด “บันทึก” เก็บไว้กลับมาแก้/ก็อปทีหลังได้
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <label style={label}>ชื่อกิจกรรม (ไว้จำเอง)
+            <label style={label}>ชื่อกิจกรรม
               <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น โปร Pro 90% ต.ค." />
             </label>
             <label style={label}>โค้ดส่วนลด
@@ -1384,7 +1438,36 @@ function CampaignLinkBuilder({ onNote }: { onNote: (ok: boolean, m: string) => v
           {linkRow("ลิงก์ตรง", "เว็บ/เบราว์เซอร์ทั่วไป", directLink)}
           {liffLink ? linkRow("ลิงก์ LIFF", "แนะนำสำหรับ broadcast ใน LINE (เปิดค้างในแอป)", liffLink) : null}
 
-          {name.trim() ? <p style={{ fontSize: 11, color: C.sub, margin: 0 }}>กิจกรรม: {name.trim()}</p> : null}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={btn(C.good)} disabled={busy || !name.trim()} onClick={save}>{busy ? "…" : editingId ? "บันทึกการแก้ไข" : "บันทึกแคมเปญ"}</button>
+            {editingId ? <button style={{ ...btn(C.border), fontWeight: 500 }} onClick={resetForm}>ยกเลิก</button> : null}
+          </div>
+
+          {/* รายการแคมเปญที่บันทึกไว้ */}
+          <div>
+            <p style={{ ...label, marginBottom: 4 }}>แคมเปญที่บันทึกไว้</p>
+            {rows.length === 0 ? <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>ยังไม่มีแคมเปญที่บันทึก</p> : (
+              <div style={{ display: "grid", gap: 8 }}>
+                {rows.map((row) => {
+                  const rLiff = liffLinkOf(row.liffId, row.packageCode, row.code);
+                  const rDirect = directLinkOf(row.host, row.packageCode, row.code);
+                  return (
+                    <div key={row.id} style={{ ...box, background: C.inputBg }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                        <b style={{ fontSize: 13 }}>{row.name}</b>
+                        <span style={{ fontSize: 11, color: C.sub }}>{row.packageCode}{row.code ? ` · ${row.code}` : " · ไม่มีโค้ด"}</span>
+                        <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                          <button style={{ ...btn(C.accent), fontWeight: 500 }} onClick={() => void copy(rLiff || rDirect, "ลิงก์")}>คัดลอกลิงก์</button>
+                          <button style={{ ...btn(C.border), fontWeight: 500 }} onClick={() => edit(row)}>แก้ไข</button>
+                          <button style={{ ...btn(C.warn), fontWeight: 500 }} disabled={busy} onClick={() => void del(row)}>ลบ</button>
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>
