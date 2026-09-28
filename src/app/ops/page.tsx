@@ -266,6 +266,9 @@ export default function OpsAdminPage() {
       {/* สร้างลิงก์แคมเปญสำหรับ broadcast (generic — ใช้ซ้ำได้ทุกกิจกรรม · บันทึก/แก้ไขได้) */}
       <CampaignLinkBuilder secret={secret} onNote={note} />
 
+      {/* ตั้งค่าแชร์เพื่อน (Pro ฟรี 1 เดือน) — เปิด/ปิด + เพดานคน/แอค + รวม */}
+      <PromoShareSettings secret={secret} onNote={note} />
+
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
         <div style={box}>
@@ -1561,6 +1564,82 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
               </div>
             )}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ตั้งค่าแชร์เพื่อน (Pro ฟรี 1 เดือน) ──────────────────────────────────────────────────────────────
+// เปิด/ปิดการแชร์ต่อ + เพดานคน/ผู้แชร์ + สิทธิ์รวม (แก้ค่าใน promo_share_campaign ผ่าน /api/ops/promo-share).
+type ShareSettingsRow = { enabled: boolean; maxPerIssuer: number; maxTotal: number; usedTotal: number };
+function PromoShareSettings({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [missing, setMissing] = useState(false); // ยังไม่รัน migration 0038
+  const [enabled, setEnabled] = useState(true);
+  const [maxPerIssuer, setMaxPerIssuer] = useState("10");
+  const [maxTotal, setMaxTotal] = useState("1000");
+  const [usedTotal, setUsedTotal] = useState(0);
+
+  const load = useCallback(async () => {
+    if (!secret) return;
+    try {
+      const r = await fetch(`/api/ops/promo-share?secret=${encodeURIComponent(secret)}`);
+      const j = (await r.json().catch(() => ({}))) as { settings?: ShareSettingsRow | null };
+      if (r.ok && j.settings) {
+        setEnabled(j.settings.enabled); setMaxPerIssuer(String(j.settings.maxPerIssuer)); setMaxTotal(String(j.settings.maxTotal)); setUsedTotal(j.settings.usedTotal); setMissing(false);
+      } else { setMissing(true); }
+    } catch { setMissing(true); } finally { setLoaded(true); }
+  }, [secret]);
+  useEffect(() => { if (open) void load(); }, [open, load]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/promo-share", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret, enabled, maxPerIssuer: Number(maxPerIssuer) || 0, maxTotal: Number(maxTotal) || 0 }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { settings?: ShareSettingsRow | null; error?: string };
+      if (!r.ok) { onNote(false, j.error ?? "บันทึกไม่สำเร็จ"); return; }
+      if (j.settings) { setUsedTotal(j.settings.usedTotal); }
+      onNote(true, enabled ? "บันทึกตั้งค่าแชร์แล้ว" : "ปิดการแชร์ต่อแล้ว (เอาแค่คนที่ซื้อ)");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>🎁 ตั้งค่าแชร์เพื่อน (Pro ฟรี 1 เดือน)</h2>
+        <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((v) => !v)}>{open ? "ซ่อน" : "เปิด"}</button>
+      </div>
+      {open && (
+        <div style={{ marginTop: 12, display: "grid", gap: 12 }}>
+          {!loaded ? <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>กำลังโหลด…</p> : missing ? (
+            <p style={{ fontSize: 12, color: C.warn, margin: 0 }}>ยังปรับไม่ได้ — ต้องรัน migration <code>0038_promo_share_settings.sql</code> (ฝั่ง FE) บน Supabase ก่อน</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: C.sub, margin: 0 }}>ใช้ไปแล้ว {usedTotal} / {maxTotal} สิทธิ์รวม</p>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <button type="button" onClick={() => setEnabled((v) => !v)}
+                  style={{ ...btn(enabled ? C.good : C.sub), fontWeight: 700 }}>
+                  {enabled ? "เปิดแชร์ต่อ ✓" : "ปิดแชร์ต่อ ✗"}
+                </button>
+                <span style={{ fontSize: 12, color: C.sub }}>{enabled ? "คนที่ซื้อแชร์ต่อให้เพื่อนได้" : "เอาแค่คนที่ซื้อ — ปุ่มแชร์จะไม่ขึ้น"}</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <label style={label}>เพดานคน/ผู้แชร์ (0=ปิด)
+                  <input style={input} type="number" value={maxPerIssuer} onChange={(e) => setMaxPerIssuer(e.target.value)} />
+                </label>
+                <label style={label}>สิทธิ์รวมทั้งแคมเปญ
+                  <input style={input} type="number" value={maxTotal} onChange={(e) => setMaxTotal(e.target.value)} />
+                </label>
+              </div>
+              <div><button style={btn(C.good)} disabled={busy} onClick={save}>{busy ? "…" : "บันทึกตั้งค่า"}</button></div>
+            </>
+          )}
         </div>
       )}
     </div>
