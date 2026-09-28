@@ -1472,22 +1472,29 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
           </div>
 
           {/* ── ส่วนลิงก์ + บันทึกแคมเปญ ── */}
-          <p style={{ ...label, margin: "6px 0 0" }}>ลิงก์ broadcast</p>
+          {/* "แพ็กเกจ/ลิงก์" เกี่ยวเฉพาะโค้ด "ลดราคา" (กรอกตอน checkout) — ประเภทอื่นแลกในแอป ไม่มีลิงก์ จึงซ่อนไป กันงง */}
+          <p style={{ ...label, margin: "6px 0 0" }}>{isDiscount ? "ลิงก์ broadcast (สำหรับโค้ดส่วนลด)" : "บันทึกอ้างอิง"}</p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <label style={label}>ชื่อกิจกรรม
               <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น โปร Pro 90% ต.ค." />
             </label>
-            <label style={label}>แพ็กเกจ (ปลายทางลิงก์)
-              <select style={input} value={pkg} onChange={(e) => setPkg(e.target.value)}>
-                {CAMPAIGN_PACKAGES.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}
-              </select>
-            </label>
-            <label style={label}>โดเมนแอป
-              <input style={input} value={host} onChange={(e) => setHost(e.target.value)} />
-            </label>
-            <label style={label}>LIFF ID (เปิดค้างในแอป LINE)
-              <input style={input} value={liffId} onChange={(e) => setLiffId(e.target.value)} placeholder={DEFAULT_LIFF_ID} />
-            </label>
+            {isDiscount && (
+              <label style={label}>แพ็กเกจ (ลิงก์พาไปจ่ายค่าอะไร)
+                <select style={input} value={pkg} onChange={(e) => setPkg(e.target.value)}>
+                  {CAMPAIGN_PACKAGES.map((p) => <option key={p.code} value={p.code}>{p.label}</option>)}
+                </select>
+              </label>
+            )}
+            {isDiscount && (
+              <label style={label}>โดเมนแอป
+                <input style={input} value={host} onChange={(e) => setHost(e.target.value)} />
+              </label>
+            )}
+            {isDiscount && (
+              <label style={label}>LIFF ID (เปิดค้างในแอป LINE)
+                <input style={input} value={liffId} onChange={(e) => setLiffId(e.target.value)} placeholder={DEFAULT_LIFF_ID} />
+              </label>
+            )}
           </div>
 
           {isDiscount ? (
@@ -1497,7 +1504,7 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
             </>
           ) : (
             <p style={{ fontSize: 12, color: C.warn, margin: 0 }}>
-              * โค้ดประเภทนี้ไม่ได้กรอกตอนจ่ายเงิน — ผู้ใช้แลกที่หน้า “แลกโค้ด” ในแอป (/v2/qi) จึงไม่มีลิงก์ checkout อัตโนมัติ (บันทึกชื่อ+โค้ดไว้อ้างอิงได้)
+              * โค้ดประเภทนี้ไม่ได้กรอกตอนจ่ายเงิน — ผู้ใช้แลกที่หน้า “แลกโค้ด” ในแอป (/v2/qi) จึงไม่มีลิงก์ checkout (จึงไม่มีช่องแพ็กเกจ) · บันทึกชื่อ+โค้ดไว้อ้างอิงได้
             </p>
           )}
 
