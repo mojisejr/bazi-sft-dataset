@@ -32,6 +32,8 @@ type PredictResult = {
   cards: Card[];
   slots: Slot[];
   engineProse: string;
+  llmProseEn?: string | null;
+  llmProseTh?: string | null;
   llmProse?: string;
   model?: string;
 };
@@ -63,10 +65,9 @@ export function TarotWorkspace() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [apiKey, setApiKey] = useState("");
   const [lang, setLang] = useState<"en" | "th">("en");
   const [llmLoading, setLlmLoading] = useState(false);
-  const [llmText, setLlmText] = useState<string | null>(null);
+  const [llmText, setLlmText] = useState<{ en: string | null; th: string | null } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -114,6 +115,8 @@ export function TarotWorkspace() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "อ่านไพ่ไม่สำเร็จ");
       setResult(data as PredictResult);
+      const d = data as PredictResult;
+      setLlmText(d.llmProseEn || d.llmProseTh ? { en: d.llmProseEn ?? null, th: d.llmProseTh ?? null } : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "อ่านไพ่ไม่สำเร็จ");
       setResult(null);
@@ -125,7 +128,7 @@ export function TarotWorkspace() {
   function onDraw() {
     const q = question.trim() || undefined;
     if (mode === "random") {
-      void predict({ random: true, mode: "engine", question: q, count });
+      void predict({ random: true, mode: "llm", lang: "both", question: q, count });
     } else {
       if (selected.length !== count) {
         setError(`เลือกไพ่ให้ครบ ${count} ใบ`);
@@ -135,7 +138,8 @@ export function TarotWorkspace() {
       void predict({
         cardNos: selected,
         reversed: selected.map(() => Math.random() < 0.5),
-        mode: "engine",
+        mode: "llm",
+        lang: "both",
         question: q,
       });
     }
@@ -152,15 +156,14 @@ export function TarotWorkspace() {
         body: JSON.stringify({
           cardNos: result.cards.map((c) => c.no),
           reversed: result.slots.map((s) => s.reversed),
-          lang,
+          lang: "both",
           mode: "llm",
-          ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
           question: question.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "LLM ตอบไม่สำเร็จ");
-      setLlmText(data.llmProse ?? null);
+      setLlmText({ en: data.llmProseEn ?? null, th: data.llmProseTh ?? null });
     } catch (e) {
       setError(e instanceof Error ? e.message : "LLM ตอบไม่สำเร็จ");
     } finally {
@@ -259,7 +262,7 @@ export function TarotWorkspace() {
         </div>
       )}
 
-      <div>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <button
           type="button"
           onClick={onDraw}
@@ -274,7 +277,7 @@ export function TarotWorkspace() {
             fontSize: 15,
           }}
         >
-          {loading ? "กำลังอ่าน…" : mode === "random" ? `🎲 จั่ว ${count} ใบ` : "🔮 อ่านไพ่ที่เลือก"}
+          {loading ? "กำลังเปิดไพ่และอ่าน…" : mode === "random" ? `🎲 จั่ว ${count} ใบ` : "🔮 อ่านไพ่ที่เลือก"}
         </button>
       </div>
 
@@ -324,33 +327,9 @@ export function TarotWorkspace() {
             })}
           </div>
 
-          <div style={box}>
-            <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>คำอ่าน (engine)</h2>
-            <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>
-              {result.engineProse}
-            </div>
-          </div>
 
           <div style={{ display: "grid", gap: 8 }}>
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={{ fontSize: 13, color: "#6b6455" }}>
-                API key (Gemini) — ไม่บังคับ (ใส่เองเพื่อไม่จำกัดโควตา)
-              </span>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="วาง API key ที่นี่"
-                style={{ padding: 10, borderRadius: 8, border: "1px solid #d8d2c4", font: "inherit" }}
-              />
-            </label>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <button type="button" onClick={() => setLang("en")} style={tab(lang === "en")}>
-                English
-              </button>
-              <button type="button" onClick={() => setLang("th")} style={tab(lang === "th")}>
-                ไทย
-              </button>
+            <div>
               <button
                 type="button"
                 onClick={onAskLlm}
@@ -364,15 +343,36 @@ export function TarotWorkspace() {
                   fontSize: 14,
                 }}
               >
-                {llmLoading ? "กำลังเกลาคำ…" : "✨ อ่านด้วย AI + สรุป"}
+                {llmLoading ? "กำลังอ่าน…" : "🔄 ให้ AI อ่านไพ่ชุดนี้ใหม่"}
               </button>
             </div>
-            {llmText && (
+            {llmText ? (
               <div style={box}>
-                <h2 style={{ margin: "0 0 8px", fontSize: 15 }}>คำอ่าน (เกลาด้วย LLM)</h2>
-                <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>{llmText}</div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <button type="button" onClick={() => setLang("en")} style={tab(lang === "en")}>
+                    English
+                  </button>
+                  <button type="button" onClick={() => setLang("th")} style={tab(lang === "th")}>
+                    ไทย
+                  </button>
+                </div>
+                <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>
+                  {llmText[lang] ?? (lang === "th" ? "ฉบับภาษาไทยยังไม่มา — กดอ่านใหม่" : "English reading unavailable — try again")}
+                </div>
               </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: 13, color: "#6b6455" }}>
+                AI อ่านไม่สำเร็จ — แสดงความหมายไพ่ดิบด้านล่างแทน กดอ่านใหม่ได้
+              </p>
             )}
+            <details style={box}>
+              <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+                ความหมายไพ่ดิบ (จากคู่มือ)
+              </summary>
+              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.7, marginTop: 8 }}>
+                {result.engineProse}
+              </div>
+            </details>
           </div>
         </div>
       )}

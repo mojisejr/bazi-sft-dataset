@@ -23,7 +23,7 @@ const PredictSchema = z
     /** กลับหัวต่อใบ (เลือกเอง/ส่งซ้ำจากผลเดิม) — ไม่ส่ง + สุ่ม = สุ่มกลับหัวจาก seed */
     reversed: z.array(z.boolean()).max(3).optional(),
     /** ภาษาคำอ่าน LLM — ค่าเริ่มต้นอังกฤษ (ซินแสนุ้ย: เวอร์ชันต่างประเทศเทสต์ก่อน) */
-    lang: z.enum(["en", "th"]).default("en"),
+    lang: z.enum(["en", "th", "both"]).default("both"),
     /** จำนวนใบเมื่อสุ่ม (ค่าเริ่มต้น 3) */
     count: z.union([z.literal(1), z.literal(3)]).default(3),
     /** ผูกระบบแต้ม Qi (ตัดโควตาต่อ user) — ไม่ส่งมา = ไม่ตัดโควตา */
@@ -103,13 +103,24 @@ export async function POST(req: Request) {
 
   // mode === "llm": เกลาคำจาก engine
   try {
-    const llm = await polishTarotReading({ reading, question, lang, apiKey, model, provider });
+    // both = อ่านอังกฤษ + ไทยขนานกัน (หน้าเทสต์มี 2 แท็บ) — ไทยพังไม่ล้มอังกฤษ
+    const langs = lang === "both" ? (["en", "th"] as const) : ([lang] as const);
+    const outs = await Promise.allSettled(
+      langs.map((l) => polishTarotReading({ reading, question, lang: l, apiKey, model, provider })),
+    );
+    const byLang = Object.fromEntries(
+      langs.map((l, i) => [l, outs[i].status === "fulfilled" ? outs[i].value : null]),
+    ) as Partial<Record<"en" | "th", { text: string; model: string } | null>>;
+    const llm = byLang.en ?? byLang.th;
+    if (!llm) throw new Error("llm failed");
     return Response.json({
       source: "llm",
       cards: cardPayload,
       slots,
       engineProse: reading.engineProse,
       llmProse: llm.text,
+      llmProseEn: byLang.en?.text ?? null,
+      llmProseTh: byLang.th?.text ?? null,
       model: llm.model,
       qi,
     });
