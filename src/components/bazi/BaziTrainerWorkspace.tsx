@@ -93,6 +93,15 @@ const HUB_CARDS: HubCard[] = [
     cta: "เริ่มเสี่ยงทาย",
   },
   {
+    href: "/tarot",
+    icon: "🃏",
+    kicker: "Tarot",
+    title: "The Oriental Charm Tarot",
+    description:
+      "ทาโรต์วิถีเต๋า 78 ใบ มีรูปไพ่ — เปิด 3 ใบถ่วงน้ำหนัก 50/30/20 + กลับหัว แล้วให้ AI อ่านและสรุป (ภาษาอังกฤษก่อน)",
+    cta: "เปิดไพ่ทาโรต์",
+  },
+  {
     href: "/fengshui",
     icon: "🧭",
     kicker: "อาถรรพ์ฮวงจุ้ย",

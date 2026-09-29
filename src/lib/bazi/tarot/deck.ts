@@ -37,6 +37,8 @@ export type TarotCard = {
   universalReversed: string;
   /** โน้ตเทียบสองระบบ (เต๋า vs สากล ต่าง/เหมือนตรงไหน) */
   integration: string;
+  /** รูปไพ่บน Supabase Storage (bucket tarot-cards) — scripts/import-tarot-images.ts */
+  imageUrl?: string | null;
 };
 
 const CARDS: readonly TarotCard[] = cardsJson as TarotCard[];
@@ -82,4 +84,12 @@ export function drawRandom(count = 3, seed?: number): TarotCard[] {
     [pool[i], pool[j]] = [pool[j], pool[i]];
   }
   return pool.slice(0, count);
+}
+
+/**
+ * สุ่มกลับหัวต่อใบ (โอกาส 50%) — seed เดียวกัน = ผลเดียวกัน (ใช้ seed คนละช่วงกับ drawRandom ให้ไม่ผูกกัน)
+ */
+export function drawReversals(count: number, seed?: number): boolean[] {
+  const rng = seed === undefined ? Math.random : mulberry32((seed ^ 0x9e3779b9) >>> 0);
+  return Array.from({ length: count }, () => rng() < 0.5);
 }

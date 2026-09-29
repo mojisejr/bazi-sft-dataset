@@ -15,9 +15,17 @@ type Card = {
   universalUpright: string;
   universalReversed: string;
   integration: string;
+  imageUrl?: string | null;
 };
 
-type Slot = { position: number; role: string; no: number };
+type Slot = {
+  position: number;
+  role: string;
+  weight: number;
+  reversed: boolean;
+  no: number;
+  imageUrl?: string | null;
+};
 
 type PredictResult = {
   source: "engine" | "llm";
@@ -56,6 +64,7 @@ export function TarotWorkspace() {
   const [error, setError] = useState<string | null>(null);
 
   const [apiKey, setApiKey] = useState("");
+  const [lang, setLang] = useState<"en" | "th">("en");
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmText, setLlmText] = useState<string | null>(null);
 
@@ -122,7 +131,13 @@ export function TarotWorkspace() {
         setError(`เลือกไพ่ให้ครบ ${count} ใบ`);
         return;
       }
-      void predict({ cardNos: selected, mode: "engine", question: q });
+      // เลือกเองก็ให้มีกลับหัวเหมือนจั่วจริง (สุ่มฝั่ง client)
+      void predict({
+        cardNos: selected,
+        reversed: selected.map(() => Math.random() < 0.5),
+        mode: "engine",
+        question: q,
+      });
     }
   }
 
@@ -136,6 +151,8 @@ export function TarotWorkspace() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           cardNos: result.cards.map((c) => c.no),
+          reversed: result.slots.map((s) => s.reversed),
+          lang,
           mode: "llm",
           ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
           question: question.trim() || undefined,
@@ -158,7 +175,7 @@ export function TarotWorkspace() {
           🎴 ไพ่ทาโรต์วิถีเต๋า — The Oriental Charm Tarot
         </h1>
         <p style={{ margin: 0, color: "#6b6455", fontSize: 14 }}>
-          78 ใบ (RWS + ปรัชญาเต๋า/กตัญญู) · สเปรด อดีต/ปัจจุบัน/อนาคต · หน้าเทสต์ภายใน (ยังไม่ผูกแชท)
+          78 ใบ (RWS + ปรัชญาเต๋า/กตัญญู) · 3 ใบถ่วงน้ำหนัก 50/30/20 + กลับหัว · หน้าเทสต์ภายใน (ยังไม่ขึ้นหน้าบ้าน)
         </p>
       </header>
 
@@ -277,8 +294,22 @@ export function TarotWorkspace() {
               const full = byNo.get(card.no) ?? card;
               return (
                 <article key={card.no} style={box}>
+                  {(slot?.imageUrl ?? full.imageUrl) && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={(slot?.imageUrl ?? full.imageUrl) as string}
+                      alt={full.name}
+                      style={{
+                        width: "100%",
+                        borderRadius: 8,
+                        marginBottom: 8,
+                        transform: slot?.reversed ? "rotate(180deg)" : undefined,
+                      }}
+                    />
+                  )}
                   <div style={{ fontSize: 12, color: "#a67c2e", fontWeight: 600 }}>
-                    {slot?.role} · {GROUP_LABEL[full.group] ?? full.group}
+                    {slot?.role} · {slot?.weight}% · {slot?.reversed ? "🔃 กลับหัว" : "หงาย"} ·{" "}
+                    {GROUP_LABEL[full.group] ?? full.group}
                   </div>
                   <h3 style={{ margin: "4px 0", fontSize: 15 }}>
                     {full.rank ? `${full.rank} · ` : ""}
@@ -313,7 +344,13 @@ export function TarotWorkspace() {
                 style={{ padding: 10, borderRadius: 8, border: "1px solid #d8d2c4", font: "inherit" }}
               />
             </label>
-            <div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <button type="button" onClick={() => setLang("en")} style={tab(lang === "en")}>
+                English
+              </button>
+              <button type="button" onClick={() => setLang("th")} style={tab(lang === "th")}>
+                ไทย
+              </button>
               <button
                 type="button"
                 onClick={onAskLlm}
@@ -327,7 +364,7 @@ export function TarotWorkspace() {
                   fontSize: 14,
                 }}
               >
-                {llmLoading ? "กำลังเกลาคำ…" : "✨ ตอบแบบ LLM (เกลาคำ)"}
+                {llmLoading ? "กำลังเกลาคำ…" : "✨ อ่านด้วย AI + สรุป"}
               </button>
             </div>
             {llmText && (

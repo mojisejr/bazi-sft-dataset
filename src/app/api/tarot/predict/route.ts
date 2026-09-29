@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { drawRandom, getAllCards, getCardByNo, type TarotCard } from "@/lib/bazi/tarot/deck";
+import { drawRandom, drawReversals, getAllCards, getCardByNo, type TarotCard } from "@/lib/bazi/tarot/deck";
 import { buildTarotReading } from "@/lib/bazi/tarot/reading-engine";
 import { polishTarotReading } from "@/lib/bazi/tarot/reading-llm";
 import { seedForDraw } from "@/lib/bazi/seed";
@@ -20,6 +20,10 @@ const PredictSchema = z
     /** เลือกเอง 1 หรือ 3 ใบ (สเปรด อดีต/ปัจจุบัน/อนาคต) */
     cardNos: z.array(z.number().int()).min(1).max(3).optional(),
     random: z.boolean().optional(),
+    /** กลับหัวต่อใบ (เลือกเอง/ส่งซ้ำจากผลเดิม) — ไม่ส่ง + สุ่ม = สุ่มกลับหัวจาก seed */
+    reversed: z.array(z.boolean()).max(3).optional(),
+    /** ภาษาคำอ่าน LLM — ค่าเริ่มต้นอังกฤษ (ซินแสนุ้ย: เวอร์ชันต่างประเทศเทสต์ก่อน) */
+    lang: z.enum(["en", "th"]).default("en"),
     /** จำนวนใบเมื่อสุ่ม (ค่าเริ่มต้น 3) */
     count: z.union([z.literal(1), z.literal(3)]).default(3),
     /** ผูกระบบแต้ม Qi (ตัดโควตาต่อ user) — ไม่ส่งมา = ไม่ตัดโควตา */
@@ -46,7 +50,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
-  const { mode, question, cardNos, random, count, anonId, apiKey, model, provider } = parsed.data;
+  const { mode, question, cardNos, random, reversed, lang, count, anonId, apiKey, model, provider } = parsed.data;
 
   // ตัดสิทธิ์เปิดไพ่ (ฟรีรายวัน → credit → หัก QI) เมื่อผูก anonId — ใช้โควตากลุ่ม "card" เดียวกับเด็คอื่น
   const { blocked, result: gate } = await gateFeature(anonId, "card");
@@ -61,20 +65,30 @@ export async function POST(req: Request) {
 
   // เลือกไพ่: random หรือเลือกเอง
   let cards: TarotCard[];
+  let flips: boolean[];
   if (cardNos && !random) {
     const unique = new Set(cardNos);
     if (unique.size !== cardNos.length) return badRequest("ไพ่แต่ละใบต้องไม่ซ้ำกัน");
     const picked = cardNos.map((no) => getCardByNo(no));
     if (picked.some((c) => !c)) return badRequest("มีเลขไพ่ที่ไม่อยู่ในสำรับ");
     cards = picked as TarotCard[];
+    flips = reversed ?? cards.map(() => false);
   } else {
     // seed จากคำถาม → คำถามต่างกันได้ไพ่ต่างกัน (คำถามเดิม = ไพ่เดิม)
     const seed = seedForDraw(question, anonId); // เอ็ม 2026-09-26: ผูกผู้ใช้+nonce กันไพ่ชนข้ามคน
     cards = drawRandom(count, seed);
+    flips = reversed ?? drawReversals(count, seed);
   }
 
-  const reading = buildTarotReading(cards, question);
-  const slots = reading.slots.map((s) => ({ position: s.position, role: s.role, no: s.card.no }));
+  const reading = buildTarotReading(cards, question, flips);
+  const slots = reading.slots.map((s) => ({
+    position: s.position,
+    role: s.role,
+    weight: s.weight,
+    reversed: s.reversed,
+    no: s.card.no,
+    imageUrl: s.card.imageUrl ?? null,
+  }));
   const cardPayload: CardPayload[] = cards;
 
   if (mode === "engine") {
@@ -89,7 +103,7 @@ export async function POST(req: Request) {
 
   // mode === "llm": เกลาคำจาก engine
   try {
-    const llm = await polishTarotReading({ reading, question, apiKey, model, provider });
+    const llm = await polishTarotReading({ reading, question, lang, apiKey, model, provider });
     return Response.json({
       source: "llm",
       cards: cardPayload,

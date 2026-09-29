@@ -296,3 +296,46 @@ export async function uploadMascotV2Image(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+/* ───────────── ไพ่ทาโรต์ Oriental Charm (tarot-tao) — แยก bucket ───────────── */
+
+export const DEFAULT_TAROT_BUCKET = "tarot-cards";
+
+export function getTarotBucket(): string {
+  return process.env.SUPABASE_TAROT_BUCKET?.trim() || DEFAULT_TAROT_BUCKET;
+}
+
+/** สร้าง bucket รูปไพ่ทาโรต์ (public) ถ้ายังไม่มี — idempotent */
+export async function ensureTarotBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getTarotBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/** อัปโหลดรูปไพ่ทาโรต์ (upsert) คืน public URL — path = cards/<no>.jpg */
+export async function uploadTarotCardImage(
+  cardNo: number,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getTarotBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `cards/${cardNo}.${ext}`;
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปไพ่ทาโรต์ #${cardNo} ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}

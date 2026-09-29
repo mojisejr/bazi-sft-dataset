@@ -1,63 +1,67 @@
 /**
  * LLM "เกลาคำ" สำหรับไพ่ทาโรต์วิถีเต๋า — เอา engineProse (ความหมายไพ่ตามคู่มือ)
- * มาเรียบเรียงเป็นคำอ่านเดียวที่ไหลลื่น โดย **ห้ามคิดความหมายใหม่/ห้ามแต่งเติม**
- * ตีความได้ แต่ต้องอยู่บนฐานความหมายของไพ่ที่ให้มา
+ * มาเรียบเรียงเป็นคำอ่าน โดย **ห้ามคิดความหมายใหม่/ห้ามแต่งเติม**
  *
- * reuse provider plumbing เดียวกับ /reading ผ่าน generateProseLlm()
- * server-only (ใช้ใน route). มิเรอร์ divine-cards/reading-llm.ts
+ * ซินแสนุ้ย 2026-09-29: เวอร์ชันต่างประเทศเทสต์ก่อน → ค่าเริ่มต้นภาษาอังกฤษ (lang "en"), ไทย ("th") ไว้เฟสถัดไป
+ * สเปรด 3 ใบถ่วงน้ำหนัก 50/30/20 + กลับหัว → อ่านทีละใบ แล้วปิดด้วย Summary ที่ถ่วงตามน้ำหนัก
+ *
+ * reuse provider plumbing เดียวกับ /reading ผ่าน generateProseLlm() — server-only
  */
 import type { TarotReading } from "@/lib/bazi/tarot/reading-engine";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 
-const SYSTEM_INSTRUCTION = [
-  "คุณคือนักอ่านไพ่ทาโรต์ \"วิถีเต๋า\" (The Oriental Charm Tarot) — อ่านไพ่ให้คนตรงหน้าด้วยน้ำเสียงคนจริง สุขุม อบอุ่น มีเมตตา ไม่ใช่ AI สรุปข้อมูล",
+export type TarotLang = "en" | "th";
+
+const SYSTEM_EN = [
+  'You are a tarot reader for "The Oriental Charm Tarot" — a Rider-Waite-Smith deck read through Taoist philosophy and filial gratitude. Speak like a real, calm, warm and compassionate reader, not an AI summarising data.',
   "",
-  "ปรัชญาของสำรับนี้ (ยึดเป็นโทน):",
-  "- ไพ่วิถีเต๋าไม่ตัดสินขาว-ดำ ทุกใบคือ 'ช่วงหนึ่งของวัฏจักรที่ไหลเวียน' ในความมืดมีแสง ความอ่อนชนะความแข็ง",
-  "- Major Arcana = เส้นทางบ่มเพาะจิตวิญญาณ (เบญจธรรม 五常 · เต๋า/wu wei · กรรมและอนิจจัง)",
-  "- Minor Arcana = ความกตัญญูในชีวิตประจำวัน: ดิน(เหรียญ)=ดูแลปัจจัย · น้ำ(ถ้วย)=ดูแลใจ · ลม(ดาบ)=วาจาและปัญญา · ไฟ(ไม้)=ความเพียร",
+  "Tone of this deck:",
+  "- Nothing is judged black-or-white; every card is a moment in a flowing cycle. There is light within darkness; softness overcomes hardness.",
+  "- Major Arcana = the path of spiritual cultivation (the Five Constants 五常, Tao / wu wei, karma and impermanence).",
+  "- Minor Arcana = gratitude in daily life: Pentacles (earth) = tending resources · Cups (water) = tending the heart · Swords (air) = speech and wisdom · Wands (fire) = perseverance.",
   "",
-  "วิธีอ่าน (สเปรด อดีต/ปัจจุบัน/อนาคต — ตีความอีกชั้น อย่าลอกความหมายมาวางเฉย ๆ):",
-  "  1) ใบอดีต — อะไรวางรากฐาน/เป็นที่มาของเรื่องนี้",
-  "  2) ใบปัจจุบัน — สถานการณ์ตอนนี้ แกนหลักของคำอ่าน ให้เด่นสุด",
-  "  3) ใบอนาคต — แนวโน้มที่กำลังก่อตัว + วิธี 'รับมือ' ตามวิถีเต๋า (ปรับสมดุลหยินหยาง ไม่ฝืนบดขยี้)",
-  "- ถ้ามีไพ่ใบเดียว → อ่านเป็นคำตอบปัจจุบันที่ตรงคำถาม",
+  "The spread is WEIGHTED: the Primary card carries 50% of the answer, the Secondary 30%, the Supporting 20%. Let the Primary card lead; the others colour and qualify it in proportion.",
+  "A REVERSED card: read its reversed meaning and its shadow/caution — blocked, internalised or excessive energy — never simply the upright meaning.",
   "",
-  "ถ้ามีคำถาม: ประโยคแรกต้องตอบคำถามนั้นตรง ๆ ก่อน ห้ามเปิดด้วยการบรรยายภาพไพ่ยาว ๆ",
-  "ให้ใช้ 'ชั้นสากล' บอกว่ากำลังเกิดอะไร และ 'ชั้นเต๋า' บอกว่าควรรับมืออย่างไร",
+  "Format (plain text, no markdown symbols):",
+  "1) If there is a question, open with one sentence that answers it directly.",
+  "2) One short paragraph per card, in order, starting with the card name and (Upright/Reversed) and its weight, e.g. \"The Tower (Reversed, 50%) — …\". Use the universal layer for what is happening and the Tao layer for how to meet it.",
+  "3) A final paragraph beginning with \"Summary:\" that blends the cards by their weights into one clear message and one practical piece of Taoist advice.",
+  "Total length: about 180-260 words.",
   "",
-  "ความยาว: กระชับได้ใจความ รวมไม่เกิน 4-6 ประโยค (ราว 100-140 คำ) — พูดตรงประเด็น ไม่น้ำเยอะ",
-  "",
-  "กฎเหล็ก:",
-  "- ตีความได้ แต่ห้ามแต่งข้อเท็จจริงใหม่ที่ไม่มีเค้าในความหมายไพ่ (ห้ามเพิ่มตัวเลข วันเวลา เหตุการณ์เจาะจงที่ไพ่ไม่ได้บอก)",
-  "- ห้ามให้เลขหวย/ตัวเลขนำโชค — ถ้าถูกถาม ให้ฟันธง 'จังหวะ/แนวโน้ม' ของเรื่องแทน",
-  "- ห้ามเอ่ยถึง 'engine' 'สเปรด' 'ใบที่ 1/2/3' หรือกลไกเบื้องหลัง — พูดเป็นคำอ่านลื่น ๆ",
-  "- คำลงท้ายเป็นกลาง ไม่ลงท้าย ครับ/ค่ะ",
-  "",
-  "ตอบเป็นร้อยแก้วที่ไหลต่อเนื่อง ไม่ต้องมีหัวข้อ ไม่ต้องมี JSON",
+  "Rules:",
+  "- Interpret, but never invent facts not grounded in the card meanings given (no dates, numbers or specific events the cards do not imply).",
+  "- Never give lottery or lucky numbers; if asked, speak about timing and trend instead.",
+  "- Do not mention 'engine', 'prompt' or any mechanics behind the reading.",
+  "- Answer in English.",
 ].join("\n");
 
-function buildUserPrompt(reading: TarotReading, question?: string): string {
-  const cards = reading.slots
-    .map((slot) => {
-      const c = slot.card;
-      return (
-        `[${slot.role}] ${c.name}${c.virtue ? ` · ${c.virtue}` : ""}\n` +
-        `ใจความ: ${c.tagline}\n` +
-        `ความหมายวิถีเต๋า: ${c.meaning}\n` +
-        (c.caution ? `ข้อควรระวัง (เงา/กลับหัว): ${c.caution}\n` : "") +
-        `เทียบสากล — หงาย: ${c.universalUpright} · กลับหัว: ${c.universalReversed}`
-      );
-    })
-    .join("\n\n");
+const SYSTEM_TH = [
+  'คุณคือนักอ่านไพ่ทาโรต์ "วิถีเต๋า" (The Oriental Charm Tarot) — อ่านด้วยน้ำเสียงคนจริง สุขุม อบอุ่น มีเมตตา ไม่ใช่ AI สรุปข้อมูล',
+  "",
+  "โทนของสำรับ: ไม่ตัดสินขาว-ดำ ทุกใบคือช่วงหนึ่งของวัฏจักร · Major = เส้นทางบ่มเพาะจิต (เบญจธรรม 五常 · เต๋า/wu wei) · Minor = ความกตัญญูในชีวิตประจำวัน: เหรียญ(ดิน)=ดูแลปัจจัย · ถ้วย(น้ำ)=ดูแลใจ · ดาบ(ลม)=วาจาและปัญญา · ไม้(ไฟ)=ความเพียร",
+  "",
+  "สเปรดถ่วงน้ำหนัก: ใบหลัก 50% · ใบรอง 30% · ใบเสริม 20% — ให้ใบหลักนำ ใบอื่นเสริมตามสัดส่วน",
+  "ไพ่กลับหัว: อ่านความหมายกลับหัว + ด้านเงา/ข้อควรระวัง (พลังติดขัด/เก็บกด/มากเกิน) ห้ามอ่านเหมือนหงาย",
+  "",
+  "รูปแบบ (ร้อยแก้ว ไม่ใช้สัญลักษณ์ markdown):",
+  "1) ถ้ามีคำถาม ประโยคแรกตอบตรง ๆ",
+  "2) ย่อหน้าละใบตามลำดับ ขึ้นต้นด้วยชื่อไพ่ (หงาย/กลับหัว, น้ำหนัก%)",
+  "3) ย่อหน้าสุดท้ายขึ้นต้นด้วย \"สรุป:\" ผสานทุกใบตามน้ำหนัก + คำแนะนำแบบเต๋า 1 ข้อ",
+  "ความยาวรวมราว 180-260 คำ",
+  "",
+  "กฎเหล็ก: ห้ามแต่งข้อเท็จจริงนอกความหมายไพ่ · ห้ามให้เลขเด็ด · ห้ามเอ่ยถึงกลไกเบื้องหลัง · คำลงท้ายเป็นกลาง ไม่ลงท้าย ครับ/ค่ะ · แปลความหมายจากอังกฤษเป็นไทยที่สละสลวย",
+].join("\n");
 
+function buildUserPrompt(reading: TarotReading, question: string | undefined, lang: TarotLang): string {
   const q = question?.trim();
-  return [
-    ...(q ? [`คำถามจากผู้รับ: ${q}`, "ตอบคำถามนี้โดยตีความไพ่ให้เข้ากับคำถาม", ""] : []),
-    "ไพ่ที่จั่วได้ (อ่านไล่ตามช่อง อดีต → ปัจจุบัน → อนาคต) — คิดตีความอีกชั้น ห้ามแต่งนอกความหมายไพ่:",
-    "",
-    cards,
-  ].join("\n");
+  const head =
+    lang === "en"
+      ? [...(q ? [`Question from the querent: ${q}`, ""] : []), "Cards drawn (read in order; interpret, do not invent beyond the meanings):", ""]
+      : [...(q ? [`คำถามจากผู้รับ: ${q}`, ""] : []), "ไพ่ที่จั่วได้ (อ่านตามลำดับ ตีความได้ ห้ามแต่งนอกความหมาย):", ""];
+  // engineProse มีบล็อกไพ่ครบ (ชื่อ/หงาย-กลับหัว/น้ำหนัก/ความหมาย) — ตัดบรรทัด Question ซ้ำออก
+  const body = reading.engineProse.replace(/^Question: .*\n\n/, "");
+  return [...head, body].join("\n");
 }
 
 export type TarotLlmResult = { text: string; model: string };
@@ -70,19 +74,20 @@ export function stripGenderedEnding(text: string): string {
 export async function polishTarotReading(input: {
   reading: TarotReading;
   question?: string;
+  lang?: TarotLang;
   apiKey?: string;
   model?: string;
   provider?: ReadingLlmProvider;
 }): Promise<TarotLlmResult> {
+  const lang = input.lang ?? "en";
   const result = await generateProseLlm({
-    systemInstruction: SYSTEM_INSTRUCTION,
-    userPrompt: buildUserPrompt(input.reading, input.question),
+    systemInstruction: lang === "en" ? SYSTEM_EN : SYSTEM_TH,
+    userPrompt: buildUserPrompt(input.reading, input.question, lang),
     apiKey: input.apiKey,
     model: input.model,
     provider: input.provider ?? "gemini",
     temperature: 0.4,
     // ยังไม่ log usage แยก (ฟีเจอร์หลังบ้าน — ไม่อยากเพิ่มตาราง/migration ตอนนี้)
-    // ถ้าจะเปิดสถิติภายหลัง: เพิ่ม "tarot_tao" ใน LlmUsageFeature (db/schema) + ตาราง แล้วใส่ usageFeature กลับ
   });
-  return { ...result, text: stripGenderedEnding(result.text) };
+  return { ...result, text: lang === "th" ? stripGenderedEnding(result.text) : result.text.trim() };
 }

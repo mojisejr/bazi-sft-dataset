@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { drawRandom, getAllCards, getCardByNo, getCardsByGroup } from "@/lib/bazi/tarot/deck";
+import { drawRandom, drawReversals, getAllCards, getCardByNo, getCardsByGroup } from "@/lib/bazi/tarot/deck";
 import { buildTarotReading } from "@/lib/bazi/tarot/reading-engine";
 
 describe("tarot-tao deck", () => {
@@ -34,13 +34,33 @@ describe("tarot-tao deck", () => {
     expect(new Set(a).size).toBe(3);
   });
 
-  test("buildTarotReading: 3 ใบ = อดีต/ปัจจุบัน/อนาคต, 1 ใบ = ปัจจุบัน", () => {
+  test("buildTarotReading: 3 ใบ = Primary/Secondary/Supporting, 1 ใบ = Primary", () => {
     const three = buildTarotReading(drawRandom(3, 1));
-    expect(three.slots.map((s) => s.role)).toEqual(["อดีต", "ปัจจุบัน", "อนาคต"]);
+    expect(three.slots.map((s) => s.role)).toEqual(["Primary", "Secondary", "Supporting"]);
     expect(three.engineProse.length).toBeGreaterThan(0);
 
     const one = buildTarotReading(drawRandom(1, 1));
     expect(one.slots).toHaveLength(1);
-    expect(one.slots[0].role).toBe("ปัจจุบัน");
+    expect(one.slots[0].role).toBe("Primary");
+    expect(one.slots[0].weight).toBe(100);
+  });
+
+  test("น้ำหนัก 50/30/20 และกลับหัวใช้ความหมาย reversed", () => {
+    const cards = drawRandom(3, 7);
+    const r = buildTarotReading(cards, undefined, [true, false, false]);
+    expect(r.slots.map((s) => s.weight)).toEqual([50, 30, 20]);
+    expect(r.slots[0].reversed).toBe(true);
+    expect(r.engineProse).toContain("REVERSED");
+    expect(r.engineProse).toContain(cards[0].universalReversed);
+  });
+
+  test("drawReversals deterministic ตาม seed", () => {
+    expect(drawReversals(3, 42)).toEqual(drawReversals(3, 42));
+    expect(drawReversals(3, 42)).toHaveLength(3);
+  });
+
+  test("รูปไพ่ครบ 78 ใบ (อัปขึ้น Supabase แล้ว)", () => {
+    const noImage = getAllCards().filter((c) => !c.imageUrl?.startsWith("https://"));
+    expect(noImage.map((c) => c.name)).toEqual([]);
   });
 });
