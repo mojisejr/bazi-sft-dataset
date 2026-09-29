@@ -12,6 +12,8 @@
  * server-only.
  */
 
+import { llmFetchSignal } from "@/lib/llm-timeout";
+
 // ════════════════════════════════════════════════════════════════════════════
 // ⚠️⚠️  รอจิตแพทย์ / นักจิตวิทยา sign-off — แก้ได้เฉพาะ 2 ค่านี้  ⚠️⚠️
 //
@@ -124,6 +126,7 @@ export async function screenCrisisLlm(text: string, apiKey: string): Promise<boo
       `https://generativelanguage.googleapis.com/v1beta/models/${CRISIS_LLM_MODEL}:generateContent?key=${apiKey}`,
       {
         method: "POST",
+        signal: llmFetchSignal(),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: CRISIS_LLM_PROMPT }] },

@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { getGeminiApiKey } from "@/lib/env";
 import { checkRateLimit, clientIp } from "@/lib/rate-limit";
+import { llmFetchSignal } from "@/lib/llm-timeout";
 
 export const runtime = "nodejs";
 
@@ -120,7 +121,8 @@ export async function POST(req: Request) {
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } },
           },
         }),
-        signal: req.signal,
+        // client ตัดเมื่อไหร่ก็หยุด (เดิม) + ไม่ค้างเกิน timeout ของ LLM (src/lib/llm-timeout.ts)
+        signal: AbortSignal.any([req.signal, llmFetchSignal()]),
       },
     );
   } catch (error) {

@@ -9,6 +9,7 @@ import {
 } from "@/features/open-webui/triage";
 import { type RawInputValue } from "@/lib/bazi/schema-types";
 import { getGeminiApiKey } from "@/lib/env";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 export const DEFAULT_OPEN_WEBUI_GEMINI_MODEL = "gemini-3.1-flash-lite";
 const DEFAULT_OPEN_WEBUI_SYSTEM_INSTRUCTION = [
@@ -657,7 +658,7 @@ export function buildOpenWebUiGeminiPromptPayload(
 }
 
 function createGeminiGenerateContent(config: OpenWebUiGeminiConfig): GeminiGenerateContent {
-  const ai = new GoogleGenAI({ apiKey: config.apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(config.apiKey));
 
   return async (request) => ai.models.generateContent(request);
 }

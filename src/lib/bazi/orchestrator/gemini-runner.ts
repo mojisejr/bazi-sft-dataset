@@ -19,6 +19,7 @@ import {
   EMPTY_OVERLAY,
   type KnowledgeOverlay,
 } from "@/lib/bazi/knowledge/knowledge-overlay";
+import { genAiClientOptions } from "@/lib/llm-timeout";
 
 const DEFAULT_MODEL = "gemini-3-flash-preview";
 const DEFAULT_MAX_ATTEMPTS = 6;
@@ -168,7 +169,7 @@ async function executeChunkWithGemini(
   apiKey: string,
   request: ChunkRunnerRequest,
 ) {
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI(genAiClientOptions(apiKey));
   const response = await ai.models.generateContent({
     model: request.model,
     contents: request.promptBundle.userPrompt,

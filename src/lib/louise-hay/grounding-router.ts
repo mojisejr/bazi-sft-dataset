@@ -41,6 +41,7 @@ import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.reposito
 import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { buildXiangshaBoard, formatXiangshaBoard } from "@/lib/bazi/xiangsha-verdict";
 import { getGeminiApiKey } from "@/lib/env";
+import { llmFetchSignal } from "@/lib/llm-timeout";
 
 export type LouiseHayBirthInput = {
   birthDate: string;
@@ -219,6 +220,7 @@ async function classifyRoute(
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${CLASSIFY_MODEL}:generateContent?key=${key}`;
   const res = await fetch(url, {
     method: "POST",
+    signal: llmFetchSignal(),
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],

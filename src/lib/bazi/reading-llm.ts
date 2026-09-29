@@ -4,6 +4,7 @@ import { getChapterOutline } from "@/lib/bazi/chapter-outline";
 import { logLlmUsage, type LlmUsageProvider } from "@/lib/llm-usage/logger";
 import type { LlmUsageFeature } from "@/db/schema";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
+import { genAiClientOptions, llmFetchSignal } from "@/lib/llm-timeout";
 
 /**
  * LLM เรียบเรียงคำทำนายรายหัวข้อ ให้เป็นร้อยแก้วสไตล์ 1.docx (รายงานลูกค้าอ่าน)
@@ -241,6 +242,7 @@ async function generateViaOpenCode(
   }
   const response = await fetchImpl(`${OPENCODE_BASE_URL}/chat/completions`, {
     method: "POST",
+    signal: llmFetchSignal(),
     headers: {
       "content-type": "application/json",
       authorization: `Bearer ${apiKey}`,
@@ -288,6 +290,7 @@ async function generateViaAnthropic(
   const rejectsTemperature = /claude-opus-4-(?:7|8)/.test(request.model);
   const response = await fetchImpl(`${ANTHROPIC_BASE_URL}/v1/messages`, {
     method: "POST",
+    signal: llmFetchSignal(),
     headers: {
       "content-type": "application/json",
       "x-api-key": apiKey,
@@ -347,7 +350,7 @@ function resolveLlmGenerator(provider: ReadingLlmProvider, apiKey: string | unde
     return (request) => generateViaAnthropic(request, apiKey);
   }
   return async (request) => {
-    const r = await new GoogleGenAI({ apiKey }).models.generateContent(request);
+    const r = await new GoogleGenAI(genAiClientOptions(apiKey)).models.generateContent(request);
     return {
       text: r.text,
       // Gemini คิดเงิน thinking (thoughtsTokenCount) เป็น output ด้วย → ต้องรวม ไม่งั้นต้นทุนต่ำกว่าจริง

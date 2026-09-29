@@ -11,6 +11,8 @@
  * server-only.
  */
 
+import { llmFetchSignal } from "@/lib/llm-timeout";
+
 const TTL_SECONDS = 3600; // 1 ชม.
 const REFRESH_MARGIN_MS = 5 * 60 * 1000; // ต่ออายุก่อนหมด 5 นาที
 const FAIL_BACKOFF_MS = 15 * 60 * 1000; // สร้างไม่สำเร็จ → พักไม่ retry 15 นาที
@@ -35,6 +37,7 @@ async function createCache(apiKey: string, model: string, persona: string): Prom
       `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${apiKey}`,
       {
         method: "POST",
+        signal: llmFetchSignal(),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: `models/${model}`,
