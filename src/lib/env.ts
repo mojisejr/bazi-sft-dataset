@@ -22,7 +22,23 @@ const envSchema = z.object({
 
 export type AppEnv = z.infer<typeof envSchema>;
 
-export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
+/**
+ * ค่าว่าง = ไม่ได้ตั้ง. Vercel ไม่เคยส่งค่าว่าง แต่ docker env_file ที่มีบรรทัด `KEY=` ส่งสตริงว่าง
+ * แล้ว .url()/.min(1) ของ schema โยน error ทั้งก้อน — ทุก getter ล้ม และ /api/health รายงานว่า DB พัง
+ * ทั้งที่ต้นเหตุคือ env บรรทัดเดียว (mumate-vercel-to-do-001 slice 2, research bazi finding 2)
+ */
+function blankToUndefined(
+  raw: Partial<NodeJS.ProcessEnv>,
+): Partial<NodeJS.ProcessEnv> {
+  const out: Partial<NodeJS.ProcessEnv> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    out[k] = typeof v === "string" && v.trim() === "" ? undefined : v;
+  }
+  return out;
+}
+
+export function readEnv(input: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
+  const raw = blankToUndefined(input);
   return envSchema.parse({
     APP_DATABASE_URL: raw.APP_DATABASE_URL,
     DATABASE_URL: raw.DATABASE_URL,
@@ -46,13 +62,15 @@ export function readEnv(raw: Partial<NodeJS.ProcessEnv> = process.env): AppEnv {
 
 export function getDatabaseUrl(raw: Partial<NodeJS.ProcessEnv> = process.env): string {
   const env = readEnv(raw);
-  const databaseUrl = env.APP_DATABASE_URL ?? env.DATABASE_URL;
 
-  if (!databaseUrl) {
-    throw new Error("APP_DATABASE_URL or DATABASE_URL is required for database operations.");
+  // APP_DATABASE_URL เท่านั้น: เดิม fallback ไป DATABASE_URL (ของ Neon integration บน Vercel) — ถ้า APP_DATABASE_URL
+  // หายไป แอปจะต่อฐานอื่นแบบเงียบ ๆ และ /api/health ยังเขียว. ตอนนี้ขาด = error ที่บอกชื่อตัวแปรตรง ๆ
+  // (mumate-vercel-to-do-001 slice 2). DATABASE_URL ยังอยู่ใน schema เพื่อให้ tooling (drizzle.config.ts) อ่านได้
+  if (!env.APP_DATABASE_URL) {
+    throw new Error("APP_DATABASE_URL is required for database operations.");
   }
 
-  return databaseUrl;
+  return env.APP_DATABASE_URL;
 }
 
 export function getGeminiApiKey(raw: Partial<NodeJS.ProcessEnv> = process.env): string {

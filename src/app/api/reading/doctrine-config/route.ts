@@ -16,6 +16,7 @@ import {
   invalidateDoctrineConfigCache,
 } from "@/lib/bazi/doctrine-config.server";
 import { appendDoctrineAuditSafe } from "@/lib/bazi/doctrine-audit-repository";
+import { isAdminAuthorized } from "@/lib/admin-token";
 
 export const runtime = "nodejs";
 
@@ -24,11 +25,7 @@ function badRequest(message: string, status = 400) {
 }
 
 function authorized(req: Request): boolean {
-  const expected = process.env.ADMIN_DOCTRINE_TOKEN?.trim();
-  if (!expected) {
-    return true;
-  }
-  return req.headers.get("x-admin-token")?.trim() === expected;
+  return isAdminAuthorized(req);
 }
 
 const ScopeSchema = z.enum(DOCTRINE_CONFIG_SCOPES);
