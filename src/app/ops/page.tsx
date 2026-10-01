@@ -1580,7 +1580,14 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
 // ── ตั้งค่าแชร์เพื่อน (Pro ฟรี 1 เดือน) ──────────────────────────────────────────────────────────────
 // เปิด/ปิดการแชร์ต่อ + เพดานคน/ผู้แชร์ + สิทธิ์รวม (แก้ค่าใน promo_share_campaign ผ่าน /api/ops/promo-share).
 type ShareSettingsRow = { enabled: boolean; maxPerIssuer: number; maxTotal: number; usedTotal: number };
-/** คอร์สปฏิทิน Mumate (FE /course/calendar) — วางลิงก์ YouTube (unlisted) ทีละ EP. EP 1-7 ฟรี · 8-13 ต้องมีสิทธิ์ */
+/** คอร์สออนไลน์ (FE /course/…) — วางลิงก์ YouTube (unlisted) ทีละบท. Win the Day: 1-7 ฟรี · 8-13 ต้องมีสิทธิ์ · Life Matrix: 15 บท ต้องมีสิทธิ์ทั้งหมด */
+const MATRIX_EP_TITLES = [
+  "รื้อถอนโครงสร้างตัวเอง (1/3)", "รื้อถอนโครงสร้างตัวเอง (2/3)", "รื้อถอนโครงสร้างตัวเอง (3/3)",
+  "สแกนมนุษย์ & เซฟตัวเอง (1/3)", "สแกนมนุษย์ & เซฟตัวเอง (2/3)", "สแกนมนุษย์ & เซฟตัวเอง (3/3)",
+  "เช็กพลังดวง (1/4)", "เช็กพลังดวง (2/4)", "เช็กพลังดวง (3/4)", "เช็กพลังดวง (4/4)",
+  "อาชีพ & การเงิน (1/2)", "อาชีพ & การเงิน (2/2)",
+  "ปรับ Vibe & แมชชิ่ง (1/3)", "ปรับ Vibe & แมชชิ่ง (2/3)", "ปรับ Vibe & แมชชิ่ง (3/3)",
+];
 const COURSE_EP_TITLES = [
   "ปฏิทิน Mumate คืออะไร", "เกรด A-F", "สีมงคลเฉพาะคุณ", "ทิศ เทพประจำวัน", "เวลามงคล / นาทีทอง", "อ่านปฏิทินใน 60 วินาที", "เกรด F แต่เลื่อนนัดไม่ได้",
   "คนอุปถัมภ์ (กุ้ยหนั้น)", "4 มิติชีวิต", "8 ประตู 10 เทพ", "วันนี้มีความหมาย / วันพิเศษ", "ปฏิทิน + ธาตุกำเนิด", "เคสธุรกิจ",
@@ -1590,13 +1597,15 @@ function CourseVideoEditor({ secret, onNote }: { secret: string; onNote: (ok: bo
   const [missing, setMissing] = useState(false);
   const [urls, setUrls] = useState<Record<number, string>>({});
   const [busyEp, setBusyEp] = useState<number | null>(null);
+  const [course, setCourse] = useState<"calendar" | "life-matrix">("calendar");
+  const titles = course === "calendar" ? COURSE_EP_TITLES : MATRIX_EP_TITLES;
 
   const load = useCallback(async () => {
     if (!secret) return;
-    const r = await fetch(`/api/ops/course-video?secret=${encodeURIComponent(secret)}`);
+    const r = await fetch(`/api/ops/course-video?secret=${encodeURIComponent(secret)}&course=${course}`);
     const j = (await r.json().catch(() => ({}))) as { videos?: Record<number, string>; missing?: boolean };
     setUrls(j.videos ?? {}); setMissing(Boolean(j.missing));
-  }, [secret]);
+  }, [secret, course]);
   useEffect(() => { if (open) void load(); }, [open, load]);
 
   const save = async (ep: number) => {
@@ -1604,7 +1613,7 @@ function CourseVideoEditor({ secret, onNote }: { secret: string; onNote: (ok: bo
     try {
       const r = await fetch("/api/ops/course-video", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret, ep, url: (urls[ep] ?? "").trim() }),
+        body: JSON.stringify({ secret, course, ep, url: (urls[ep] ?? "").trim() }),
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string };
       onNote(r.ok, r.ok ? `บันทึกลิงก์ EP ${ep} แล้ว` : (j.error ?? "บันทึกไม่สำเร็จ"));
@@ -1614,19 +1623,23 @@ function CourseVideoEditor({ secret, onNote }: { secret: string; onNote: (ok: bo
   return (
     <div style={{ ...box, marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <h2 style={{ fontSize: 15, margin: 0 }}>🎓 คอร์สปฏิทิน — ลิงก์วิดีโอ</h2>
-        <a href="https://bazichart.mumate.co/course/calendar" target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.sub }}>เปิดหน้าคอร์ส ↗</a>
+        <h2 style={{ fontSize: 15, margin: 0 }}>🎓 คอร์สออนไลน์ — ลิงก์วิดีโอ</h2>
+        <a href={`https://bazichart.mumate.co/course/${course}`} target="_blank" rel="noreferrer" style={{ fontSize: 12, color: C.sub }}>เปิดหน้าคอร์ส ↗</a>
         <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((v) => !v)}>{open ? "ซ่อน" : "เปิด"}</button>
       </div>
       {open && (
         <div style={{ marginTop: 10 }}>
           {missing && <p style={{ color: C.warn, fontSize: 13 }}>⚠️ ยังไม่มีตาราง course_video — รัน migration lib/db/0039_course_calendar.sql ของ mootech-fe ใน Supabase ก่อน</p>}
+          <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+            <button style={btn(course === "calendar" ? C.accent : C.border)} onClick={() => setCourse("calendar")}>Win the Day (คอร์สปฏิทิน 13 บท)</button>
+            <button style={btn(course === "life-matrix" ? C.accent : C.border)} onClick={() => setCourse("life-matrix")}>Bazi Life Matrix (15 บท)</button>
+          </div>
           <p style={{ fontSize: 12, color: C.sub, margin: "0 0 8px" }}>วางลิงก์ YouTube แบบ “ไม่เป็นสาธารณะ (Unlisted)” · EP 1-7 ดูฟรี · EP 8-13 เฉพาะคนซื้อคอร์ส/สมาชิก · เว้นว่างแล้วบันทึก = ลบลิงก์</p>
-          {COURSE_EP_TITLES.map((t, i) => {
+          {titles.map((t, i) => {
             const ep = i + 1;
             return (
               <div key={ep} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
-                <span style={{ width: 230, fontSize: 13 }}>{ep <= 7 ? "🆓" : "🔒"} EP {ep} · {t}</span>
+                <span style={{ width: 230, fontSize: 13 }}>{course === "calendar" && ep <= 7 ? "🆓" : "🔒"} บท {ep} · {t}</span>
                 <input style={{ ...input, flex: 1 }} placeholder="https://youtu.be/…" value={urls[ep] ?? ""} onChange={(e) => setUrls((u) => ({ ...u, [ep]: e.target.value }))} />
                 <button style={btn(C.accent)} disabled={busyEp === ep} onClick={() => save(ep)}>{busyEp === ep ? "…" : "บันทึก"}</button>
               </div>
