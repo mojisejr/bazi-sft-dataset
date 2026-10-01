@@ -16,9 +16,11 @@ const MODEL_PRICES: Record<string, ModelPrice> = {
   "gemini-2.5-flash-lite": { inPerM: 0.1, outPerM: 0.4 },
   "gemini-2.5-pro": { inPerM: 1.25, outPerM: 10 },
   "gemini-2.0-flash": { inPerM: 0.1, outPerM: 0.4 },
-  // Gemini 3 (ราคาจริง พ.ค.–ก.ค. 2026)
-  "gemini-3-flash-preview": { inPerM: 0.3, outPerM: 2.5 },
-  "gemini-3-flash": { inPerM: 0.3, outPerM: 2.5 },
+  // Gemini 3 — ตรวจกับ ai.google.dev/gemini-api/docs/pricing (2026-10-01)
+  "gemini-3-flash-preview": { inPerM: 0.5, outPerM: 3 },
+  "gemini-3-flash": { inPerM: 0.5, outPerM: 3 },
+  "gemini-3.8-flash": { inPerM: 0.75, outPerM: 3.75 }, // ราคาถึง 31 ธ.ค. 2026 (ปีหน้า x2)
+  "gemini-3.1-pro-preview": { inPerM: 2, outPerM: 12 },
   "gemini-3.1-flash-lite": { inPerM: 0.25, outPerM: 1.5 },
   "gemini-3-flash-lite": { inPerM: 0.25, outPerM: 1.5 },
   "gemini-embedding-001": { inPerM: 0.15, outPerM: 0 },
