@@ -22,6 +22,9 @@ export type OpsDiscount = {
   status: string;
   usedCount: number;
   distinctUsers: number; // จำนวน "คน" ที่ใช้ (นับ user ไม่ซ้ำ) — ต่างจาก usedCount (จำนวนครั้ง)
+  /** usedCount นับตั้งแต่ "กดชำระเงิน" (จองสิทธิ์) — แยกตามสถานะการจ่ายจริงใน v2_payment (เอ็ม 2026-10-01) */
+  paidCount: number; // APPROVED = จ่ายสำเร็จ
+  pendingCount: number; // PENDING = กดจ่ายแล้ว ยังไม่จ่าย (QR ค้าง ฯลฯ — ยังจองสิทธิ์อยู่)
   createdAt: string;
 };
 
@@ -31,6 +34,8 @@ export type DiscountRedemptionRow = {
   name: string; // @name / ชื่อไลน์ / อีเมล / user_id (อย่างใดอย่างหนึ่งที่มี)
   discountSatang: number;
   redeemedAt: string | null;
+  /** สถานะการจ่ายของรายการนี้ (v2_payment.status): APPROVED / PENDING / REJECT / EXPIRED / null */
+  paymentStatus: string | null;
 };
 
 const iso = (d: unknown): string | null => (d ? new Date(d as string).toISOString() : null);
@@ -44,7 +49,11 @@ export async function listDiscounts(): Promise<OpsDiscount[]> {
   const r = await db.execute(
     sql`SELECT dc.id, dc.code, dc.kind, dc.value, dc.max_discount_satang, dc.starts_at, dc.ends_at,
                dc.max_use_total, dc.max_use_per_user, dc.status, dc.used_count, dc.created_at,
-               (SELECT COUNT(DISTINCT user_id) FROM discount_redemption WHERE code_id = dc.id) AS distinct_users
+               (SELECT COUNT(DISTINCT user_id) FROM discount_redemption WHERE code_id = dc.id) AS distinct_users,
+               (SELECT COUNT(*) FROM discount_redemption r JOIN v2_payment p ON p.id = r.payment_id
+                 WHERE r.code_id = dc.id AND p.status = 'APPROVED') AS paid_count,
+               (SELECT COUNT(*) FROM discount_redemption r JOIN v2_payment p ON p.id = r.payment_id
+                 WHERE r.code_id = dc.id AND p.status = 'PENDING') AS pending_count
         FROM discount_code dc ORDER BY dc.created_at DESC LIMIT 300`,
   );
   return rowsOf(r).map((x) => ({
@@ -60,6 +69,8 @@ export async function listDiscounts(): Promise<OpsDiscount[]> {
     status: String(x.status),
     usedCount: Number(x.used_count ?? 0),
     distinctUsers: Number(x.distinct_users ?? 0),
+    paidCount: Number(x.paid_count ?? 0),
+    pendingCount: Number(x.pending_count ?? 0),
     createdAt: iso(x.created_at) ?? "",
   }));
 }
@@ -69,8 +80,9 @@ export async function listRedemptions(codeId: string): Promise<DiscountRedemptio
   const db = createDbClient();
   const r = await db.execute(
     sql`SELECT r.user_id, r.discount_satang, r.redeemed_at,
-               u.name AS line_name, u.email, p.display_name
+               u.name AS line_name, u.email, p.display_name, pay.status AS payment_status
         FROM discount_redemption r
+        LEFT JOIN v2_payment pay ON pay.id = r.payment_id
         LEFT JOIN "user" u ON u.user_id = r.user_id
         LEFT JOIN bazi_user_profile p ON p.anon_id = r.user_id
         WHERE r.code_id = ${codeId}
@@ -84,6 +96,7 @@ export async function listRedemptions(codeId: string): Promise<DiscountRedemptio
       name,
       discountSatang: Number(x.discount_satang ?? 0),
       redeemedAt: iso(x.redeemed_at),
+      paymentStatus: x.payment_status ? String(x.payment_status) : null,
     };
   });
 }

@@ -933,9 +933,15 @@ type CouponRow = {
 type DiscountRow = {
   id: string; code: string; kind: "PERCENT" | "FIXED"; value: number; maxDiscountSatang: number | null;
   startsAt: string | null; endsAt: string | null; maxUseTotal: number | null; maxUsePerUser: number | null;
-  usedCount: number; distinctUsers: number; status: string; createdAt: string;
+  usedCount: number; distinctUsers: number; paidCount?: number; pendingCount?: number; status: string; createdAt: string;
 };
-type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null };
+type RedemptionRow = { userId: string; name: string; discountSatang: number; redeemedAt: string | null; paymentStatus?: string | null };
+const PAY_STATUS: Record<string, { text: string; color: string }> = {
+  APPROVED: { text: "✅ จ่ายแล้ว", color: "#3fb27f" },
+  PENDING: { text: "⏳ รอจ่าย", color: "#e0a030" },
+  REJECT: { text: "❌ ไม่สำเร็จ", color: "#e06060" },
+  EXPIRED: { text: "⌛ หมดเวลา", color: "#8a8f98" },
+};
 // รายออเดอร์จ่ายสำเร็จ + ชื่อบัญชีผู้ซื้อ ("ใครซื้ออะไร") จาก /api/ops/analytics revenue.recent
 type OrderRow = { at: string; package_code: string; tier_code: string | null; method: string | null; baht: number; anon_id: string; u_name: string | null; u_surname: string | null; email: string | null; provider: string | null; provider_name: string | null };
 // กลุ่มลูกค้า (PLUS/PRO/QI>500) จาก /api/ops/segment — เป็นปุ่มกรอง (tier อาจ null สำหรับ qi500 ที่เป็น FREE)
@@ -1844,7 +1850,15 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
                   <td style={td}><code>{d.code}</code></td>
                   <td style={td}>{discText(d)}{d.maxUsePerUser ? ` · จำกัด ${d.maxUsePerUser}/คน` : ""}</td>
                   <td style={td}>{d.startsAt ? new Date(d.startsAt).toLocaleDateString("th-TH") : "—"} → {d.endsAt ? new Date(d.endsAt).toLocaleDateString("th-TH") : "—"}</td>
-                  <td style={td}>{d.usedCount}/{d.maxUseTotal ?? "∞"} ครั้ง · {d.distinctUsers} คน</td>
+                  <td style={td}>
+                    {d.usedCount}/{d.maxUseTotal ?? "∞"} ครั้ง · {d.distinctUsers} คน
+                    {/* นับตั้งแต่กดชำระเงิน (จองสิทธิ์) — แยกให้เห็นว่าจ่ายจริงกี่ครั้ง */}
+                    <div style={{ fontSize: 12, marginTop: 2 }}>
+                      <span style={{ color: "#3fb27f" }}>จ่ายสำเร็จ {d.paidCount ?? 0}</span>
+                      {" · "}
+                      <span style={{ color: "#e0a030" }}>รอจ่าย {d.pendingCount ?? 0}</span>
+                    </div>
+                  </td>
                   <td style={{ ...td, color: d.status === "ACTIVE" ? C.good : d.status === "PAUSED" ? C.warn : C.sub }}>{d.status}</td>
                   <td style={{ ...td, whiteSpace: "nowrap" }}>
                     <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={redBusy && redFor === d.id} onClick={() => viewRedemptions(d)}>{redFor === d.id ? "ซ่อน" : "ดูผู้ใช้"}</button>
@@ -1859,11 +1873,14 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
                         <div>
                           <div style={{ ...label, marginBottom: 6 }}>ผู้ใช้โค้ด {d.code} — {new Set(redRows.map((x) => x.userId)).size} คน · {redRows.length} ครั้ง</div>
                           <table style={{ borderCollapse: "collapse", width: "100%" }}>
-                            <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>ผู้ใช้</th><th style={td}>ลดไป</th><th style={td}>เมื่อ</th></tr></thead>
+                            <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>ผู้ใช้</th><th style={td}>สถานะจ่าย</th><th style={td}>ลดไป</th><th style={td}>เมื่อ</th></tr></thead>
                             <tbody>
                               {redRows.map((u, i) => (
                                 <tr key={`${u.userId}-${i}`}>
                                   <td style={td}>{u.name}</td>
+                                  <td style={{ ...td, color: PAY_STATUS[u.paymentStatus ?? ""]?.color ?? C.sub }}>
+                                    {PAY_STATUS[u.paymentStatus ?? ""]?.text ?? (u.paymentStatus || "—")}
+                                  </td>
                                   <td style={td}>{(u.discountSatang / 100).toLocaleString("th-TH")}฿</td>
                                   <td style={td}>{u.redeemedAt ? new Date(u.redeemedAt).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—"}</td>
                                 </tr>
