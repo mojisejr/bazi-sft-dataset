@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziLedgerTxn } from "@/db/schema";
 import { applyLedger, getWallet, levelOfXp } from "@/lib/bazi/manifest/ledger";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ const PostSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const anonId = url.searchParams.get("anonId")?.trim();
@@ -47,6 +50,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     if (body.coinDelta === 0 && body.xpDelta === 0) {

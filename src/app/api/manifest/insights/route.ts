@@ -11,6 +11,7 @@ import {
 import { computeStreak, todayBangkok } from "@/lib/bazi/manifest/dates";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,8 @@ function moodLabel(m: number | null): string {
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = Schema.parse(await request.json());
     const usedOwnKey = Boolean(body.apiKey);

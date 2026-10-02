@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziLedgerTxn, baziQiClaim } from "@/db/schema";
 import { spendQi, QiError } from "@/lib/bazi/qi/engine";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,8 @@ function weekKey(todayStr: string): string {
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const { anonId } = PostSchema.parse(await request.json());
     const db = createDbClient();

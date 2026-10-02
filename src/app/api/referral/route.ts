@@ -7,6 +7,7 @@ import { createDbClient } from "@/db/client";
 import { baziReferralCode, baziReferralRedemption, baziUserProfile } from "@/db/schema";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
 import { earnQi } from "@/lib/bazi/qi/engine";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -72,6 +73,8 @@ const PostSchema = z.object({
 });
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
 
@@ -137,6 +140,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const db = createDbClient();

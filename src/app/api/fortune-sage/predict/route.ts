@@ -5,6 +5,7 @@ import { polishSageReading } from "@/lib/bazi/fortune-sage/reading-llm";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
 import { seedForDraw } from "@/lib/bazi/seed";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,11 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
   const { mode, question, topic, no, anonId, apiKey, model, provider } = parsed.data;
+  // hardening slice 1: naming a member needs the FE server's secret; anonymous use is unchanged
+  if (anonId) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
 
   // ตัดโควตาเสี่ยงทาย (ฟรีรายวัน → credit ที่แลกด้วย Qi) เมื่อผูก anonId
   const { blocked, result: gate } = await gateFeature(anonId, "card");

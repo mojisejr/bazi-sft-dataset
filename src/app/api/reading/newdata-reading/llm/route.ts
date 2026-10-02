@@ -18,6 +18,7 @@ import {
   buildComposeUserPrompt,
 } from "@/lib/bazi/shinse-compose";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -52,6 +53,11 @@ const REFINE_SYSTEM = [
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as LlmRequestBody;
+    // hardening slice 1: naming a member needs the FE server's secret
+    if (body.anonId) {
+      const denied = requireMumateClient(request);
+      if (denied) return denied;
+    }
     const topicId = body.topicId;
     const prompt = topicId ? READING_TOPIC_PROMPTS[topicId] : undefined;
 

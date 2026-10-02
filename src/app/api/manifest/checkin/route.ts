@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziManifestCheckin, baziManifestTask } from "@/db/schema";
 import { DATE_RE, todayBangkok } from "@/lib/bazi/manifest/dates";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -20,6 +21,8 @@ const Schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = Schema.parse(await request.json());
     const entryDate = body.date ?? todayBangkok();

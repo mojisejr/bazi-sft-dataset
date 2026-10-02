@@ -2,6 +2,7 @@ import { z, ZodError } from "zod";
 
 import { earnQi, QiError } from "@/lib/bazi/qi/engine";
 import { levelOfXp } from "@/lib/bazi/manifest/ledger";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -18,6 +19,8 @@ const PostSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const result = await earnQi(body.anonId, body.code, body.ref ?? null);

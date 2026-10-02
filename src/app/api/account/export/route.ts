@@ -17,6 +17,7 @@ import {
   baziUserProfile,
   baziWallet,
 } from "@/db/schema";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -72,6 +73,8 @@ async function collectExport(db: ReturnType<typeof createDbClient>, anonId: stri
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const body = (await request.json().catch(() => ({}))) as { anonId?: string; email?: string };
@@ -105,6 +108,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const anonId = url.searchParams.get("anonId")?.trim();

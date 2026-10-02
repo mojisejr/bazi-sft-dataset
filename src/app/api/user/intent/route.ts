@@ -3,6 +3,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziUserIntent } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ const PostSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const { anonId, focus } = PostSchema.parse(await request.json());
     // กันค่าซ้ำ + รักษาลำดับที่เลือก
@@ -47,6 +50,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) {

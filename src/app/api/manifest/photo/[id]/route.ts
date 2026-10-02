@@ -6,12 +6,15 @@ import { and, eq } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import { baziManifestPhoto } from "@/db/schema";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const { id } = await ctx.params;
     if (!UUID_RE.test(id)) return Response.json({ error: "id ไม่ถูกต้อง" }, { status: 400 });

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { drawOne, getAllCards, getCardByNo, type SiamsiCard } from "@/lib/bazi/siamsi-kiangkung/deck";
 import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
 import { gateFeature } from "@/lib/bazi/qi/quota";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -36,6 +37,11 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
   const { question, cardNo, random, anonId } = parsed.data;
+  // hardening slice 1: naming a member needs the FE server's secret; anonymous use is unchanged
+  if (anonId) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
 
   // ตัดสิทธิ์เปิดไพ่ (ฟรีรายวัน → credit → หัก QI) เมื่อผูก anonId — โควตาเดียวกับไพ่ใบอื่น
   const { blocked, result: gate } = await gateFeature(anonId, "card");

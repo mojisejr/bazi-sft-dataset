@@ -10,6 +10,7 @@ import { ELEMENT_ORDER, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/l
 import { earnQi } from "@/lib/bazi/qi/engine";
 import { STEM_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -43,6 +44,8 @@ const rowsOf = (r: unknown): Record<string, unknown>[] =>
   (Array.isArray(r) ? r : (r as { rows?: Record<string, unknown>[] })?.rows ?? []) as Record<string, unknown>[];
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
@@ -188,6 +191,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const def = MISSION_BY_ID.get(body.missionId);

@@ -5,6 +5,7 @@ import { createDbClient } from "@/db/client";
 import { baziManifestEntry } from "@/db/schema";
 import { computeStreak, DATE_RE, todayBangkok } from "@/lib/bazi/manifest/dates";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -25,6 +26,8 @@ const PostSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const entryDate = body.date ?? todayBangkok();
@@ -78,6 +81,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const anonId = url.searchParams.get("anonId")?.trim();

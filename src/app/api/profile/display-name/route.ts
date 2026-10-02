@@ -2,6 +2,7 @@ import { and, eq, ne, sql } from "drizzle-orm";
 
 import { createDbClient } from "@/db/client";
 import { baziUserProfile } from "@/db/schema";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,8 @@ function cleanName(raw: unknown): string {
 }
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const anonId = url.searchParams.get("anonId")?.trim();
@@ -60,6 +63,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = (await request.json().catch(() => ({}))) as {
       anonId?: unknown;

@@ -3,6 +3,7 @@ import { and, desc, eq, ne } from "drizzle-orm";
 import { createDbClient } from "@/db/client";
 import { baziLedgerTxn } from "@/db/schema";
 import { getWallet, levelOfXp } from "@/lib/bazi/manifest/ledger";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -11,6 +12,8 @@ export const runtime = "nodejs";
  *   GET ?anonId=...&history=20 → { anonId, qi, coins, xp, level, history[] }
  */
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const url = new URL(request.url);
     const anonId = url.searchParams.get("anonId")?.trim();

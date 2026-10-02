@@ -4,6 +4,7 @@
 import { z, ZodError } from "zod";
 
 import { redeemCoupon } from "@/lib/bazi/qi/coupon";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ const REASON_MSG: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   let body: z.infer<typeof PostSchema>;
   try {
     body = PostSchema.parse(await request.json());

@@ -1,6 +1,7 @@
 import { z, ZodError } from "zod";
 
 import { consumeCredit } from "@/lib/bazi/qi/entitlements";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,8 @@ const KINDS = ["card_use", "chat_question", "matching_slot", "phone_reading", "h
 const PostSchema = z.object({ anonId: z.string().trim().min(1).max(128), kind: z.enum(KINDS) });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const { anonId, kind } = PostSchema.parse(await request.json());
     const remaining = await consumeCredit(anonId, kind);
