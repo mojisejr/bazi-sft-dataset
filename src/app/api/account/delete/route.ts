@@ -3,6 +3,7 @@ import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziAccountDeletion } from "@/db/schema";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -30,6 +31,8 @@ const PatchSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const db = createDbClient();
@@ -67,6 +70,8 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
@@ -84,6 +89,8 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
@@ -104,6 +111,8 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PatchSchema.parse(await request.json());
     const db = createDbClient();

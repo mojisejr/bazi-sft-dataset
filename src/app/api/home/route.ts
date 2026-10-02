@@ -22,6 +22,7 @@ import { gradeForPercent } from "@/lib/bazi/pair-matching";
 import { buildHomePersona, type HomePersona } from "@/lib/bazi/home-persona";
 import { type BaziKnowledgeRepository } from "@/lib/bazi/symbolic-engine";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -59,6 +60,8 @@ function facetPillarsOf(state: BaziState): ManPillars {
 
 export function createHomeHandler(options: HandlerOptions = {}) {
   return async function POST(request: Request) {
+    const denied = requireMumateClient(request);
+    if (denied) return denied;
     try {
       const body = Schema.parse(await request.json());
       const today = todayBangkok();

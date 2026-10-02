@@ -9,6 +9,7 @@ import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
 import { baziManifestPhoto } from "@/db/schema";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -22,6 +23,8 @@ const Schema = z.object({
 const MAX_BYTES = 6 * 1024 * 1024;
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = Schema.parse(await request.json());
     const b64 = body.imageBase64.replace(/^data:[^;]+;base64,/, "");

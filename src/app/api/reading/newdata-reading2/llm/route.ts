@@ -9,6 +9,7 @@
 import { generateProseLlm, READING_TOPIC_PROMPTS } from "@/lib/bazi/reading-llm";
 import { buildLouiseReadingPrompt, type LouiseReadingBox } from "@/lib/bazi/louise-reading";
 import type { CalculatedStateValue, RawInputValue } from "@/lib/bazi/schema-types";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -28,6 +29,11 @@ function toBoxMarkdown(title: string, body: string): string {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as LlmRequestBody;
+    // hardening slice 1: naming a member needs the FE server's secret
+    if (body.anonId) {
+      const denied = requireMumateClient(request);
+      if (denied) return denied;
+    }
     const topicId = body.topicId;
     const prompt = topicId ? READING_TOPIC_PROMPTS[topicId] : undefined;
 

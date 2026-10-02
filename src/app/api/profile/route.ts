@@ -7,6 +7,7 @@ import { spendQi, QiError } from "@/lib/bazi/qi/engine";
 import { isFeatureUnlimited } from "@/lib/bazi/qi/entitlements";
 import { QI_SPEND_BY_CODE } from "@/lib/bazi/qi/catalog";
 import { didBirthChange } from "@/lib/bazi/profile/birth-change";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,8 @@ async function freeBirthEditUsed(anonId: string): Promise<boolean> {
 }
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
@@ -102,6 +105,8 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const db = createDbClient();
@@ -207,6 +212,8 @@ export async function PATCH(request: Request) {
 
 /** คำขอพิจารณาแก้วันเกิด (เฟรม correction request sheet) — เก็บเหตุผลถึงทีม, idempotent ต่อ pending */
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = z
       .object({ anonId: z.string().trim().min(1).max(128), reason: z.string().trim().min(1).max(500) })

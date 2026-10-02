@@ -6,6 +6,7 @@ import { polishTarotReading } from "@/lib/bazi/tarot/reading-llm";
 import { seedForDraw } from "@/lib/bazi/seed";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,11 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
   const { mode, question, cardNos, random, reversed, lang, count, anonId, apiKey, model, provider } = parsed.data;
+  // hardening slice 1: naming a member needs the FE server's secret; anonymous use is unchanged
+  if (anonId) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
 
   // ตัดสิทธิ์เปิดไพ่ (ฟรีรายวัน → credit → หัก QI) เมื่อผูก anonId — ใช้โควตากลุ่ม "card" เดียวกับเด็คอื่น
   const { blocked, result: gate } = await gateFeature(anonId, "card");

@@ -19,6 +19,7 @@ import { costUsdOf, usdToThb } from "@/lib/louise-hay/pricing";
 import { checkRateLimit, clientIp, tryChargeDailyBudget, reconcileDailyBudget } from "@/lib/rate-limit";
 import { qiGate } from "@/lib/bazi/qi/quota";
 import { llmFetchSignal } from "@/lib/llm-timeout";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -214,6 +215,11 @@ export async function POST(req: Request) {
   }
 
   const anonIdForLog = parsed.data.anonId?.trim() || "anon";
+  // hardening slice 1: naming a member needs the FE server's secret; anonymous use is unchanged
+  if (parsed.data.anonId?.trim()) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
 
   // ── ชั้นคัดกรองความปลอดภัย ชั้น 1: regex (RED crisis hard-stop) ──
   // คัดกรองก่อนทุกอย่าง (ก่อน key/rate-limit/quota/Gemini). พบสัญญาณวิกฤต = หยุดบททันที

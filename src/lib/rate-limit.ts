@@ -9,7 +9,7 @@
  * server-only.
  */
 
-import { timingSafeEqual } from "node:crypto";
+import { isMumateClient } from "@/lib/mumate-client";
 
 type Bucket = { count: number; resetAt: number };
 const store = new Map<string, Bucket>();
@@ -97,11 +97,7 @@ export function reconcileDailyBudget(actualThb: number): void {
  * ไม่ตั้ง secret = ไม่เชื่อ header นี้เลย (พฤติกรรมเดิมทุกตัวอักษร) · header ปลอมที่ไม่มี secret ถูกละทิ้ง
  */
 function trustedClientIp(req: Request, env: Partial<NodeJS.ProcessEnv>): string | null {
-  const secret = env.BAZI_CLIENT_ID_SECRET?.trim();
-  if (!secret) return null;
-  const given = Buffer.from(req.headers.get("x-mumate-client-secret")?.trim() ?? "");
-  const want = Buffer.from(secret);
-  if (given.length !== want.length || !timingSafeEqual(given, want)) return null;
+  if (!isMumateClient(req, env)) return null;
   const ip = req.headers.get("x-mumate-client-ip")?.trim() ?? "";
   // IPv4 / IPv6 เท่านั้น — กันค่าแปลก ๆ มาเป็น key ของ bucket
   return ip.length > 0 && ip.length <= 45 && /^[0-9A-Fa-f:.]+$/.test(ip) ? ip : null;

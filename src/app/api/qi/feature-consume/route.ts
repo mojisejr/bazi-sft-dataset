@@ -1,6 +1,7 @@
 import { z, ZodError } from "zod";
 
 import { consumeUse, type QuotaFeature } from "@/lib/bazi/qi/quota";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -16,6 +17,8 @@ const PostSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
     const result = await consumeUse(body.anonId, body.feature as QuotaFeature);

@@ -13,6 +13,7 @@ import { seedForDraw } from "@/lib/bazi/seed";
 import { createDbOracleCardImageRepository } from "@/lib/bazi/oracle-cards/image-repository";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -51,6 +52,11 @@ export async function POST(req: Request) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
   const { mode, question, cardNos, random, anonId, apiKey, model, provider } = parsed.data;
+  // hardening slice 1: naming a member needs the FE server's secret; anonymous use is unchanged
+  if (anonId) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
 
   // ตัดสิทธิ์เปิดการ์ด (ฟรีรายวัน → credit → หัก QI) เมื่อผูก anonId
   const { blocked, result: gate } = await gateFeature(anonId, "card");

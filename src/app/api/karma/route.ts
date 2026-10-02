@@ -10,6 +10,7 @@ import {
 import { getWallet, levelOfXp } from "@/lib/bazi/manifest/ledger";
 import { MISSION_DEFS } from "@/lib/bazi/manifest/missions";
 import { todayBangkok } from "@/lib/bazi/manifest/dates";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -19,6 +20,8 @@ export const runtime = "nodejs";
  */
 
 export async function GET(request: Request) {
+  const denied = requireMumateClient(request);
+  if (denied) return denied;
   try {
     const anonId = new URL(request.url).searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "anonId is required." }, { status: 400 });
