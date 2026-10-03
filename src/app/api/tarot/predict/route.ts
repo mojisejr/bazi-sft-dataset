@@ -97,6 +97,7 @@ export async function POST(req: Request) {
     imageUrl: s.card.imageUrl ?? null,
     // ตำราซินแสนุ้ย (เล่ม 2): ออราเคิลหน้าไพ่ + ด้านดี/ด้านลบ + % (ตามหงาย/กลับหัว)
     sinsae: sinsaeCardView(s.card.no, s.reversed),
+    sinsaeEn: sinsaeCardView(s.card.no, s.reversed, "en"),
   }));
   const cardPayload: CardPayload[] = cards;
 

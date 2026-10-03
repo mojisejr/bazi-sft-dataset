@@ -69,12 +69,12 @@ function buildUserPrompt(reading: TarotReading, question: string | undefined, la
   const body = reading.engineProse.replace(/^Question: .*\n\n/, "");
   // เล่ม 2: ตำราซินแสนุ้ย — เฉพาะหัวข้อตามคำถาม (การเงิน/การงาน/สุขภาพ/ครอบครัว/ความรัก/ทั่วไป)
   const topic = topicOfQuestion(q);
-  const book2 = reading.slots.map((slot) => sinsaeBlock(slot, topic)).filter(Boolean).join("\n\n");
+  const book2 = reading.slots.map((slot) => sinsaeBlock(slot, topic, lang)).filter(Boolean).join("\n\n");
   return [
     ...head,
     "=== เล่ม 1: คู่มือวิถีเต๋า (Book 1) ===",
     body,
-    ...(book2 ? ["", `=== เล่ม 2: ตำราซินแสนุ้ย (Book 2) · หัวข้อ ${sinsaeTopicLabel(topic)} ===`, book2] : []),
+    ...(book2 ? ["", `=== เล่ม 2: ตำราซินแสนุ้ย (Book 2) · ${lang === "en" ? "topic" : "หัวข้อ"} ${sinsaeTopicLabel(topic, lang)} ===`, book2] : []),
   ].join("\n");
 }
 

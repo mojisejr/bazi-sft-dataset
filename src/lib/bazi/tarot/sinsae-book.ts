@@ -5,6 +5,7 @@
  * server-only (ไฟล์ ~1.8MB — อย่า import ใน client component)
  */
 import bookJson from "@/lib/bazi/data/tarot-sinsae.json";
+import bookEnJson from "@/lib/bazi/data/tarot-sinsae.en.json";
 import type { TarotSlot } from "@/lib/bazi/tarot/reading-engine";
 
 export type Energy = { positive: number; negative: number; note: string } | null;
@@ -28,6 +29,11 @@ export type SinsaeTarotCard = {
 
 const BOOK = bookJson as SinsaeTarotCard[];
 const BY_NO = new Map(BOOK.map((c) => [c.no, c]));
+// ฉบับอังกฤษ (scripts/translate-tarot-sinsae.ts, พี่โบตรวจสำนวน) — ใบที่ยังไม่แปลใช้ไทยแทน
+const BY_NO_EN = new Map((bookEnJson as SinsaeTarotCard[]).map((c) => [c.no, c]));
+
+export type SinsaeLang = "th" | "en";
+const cardOf = (no: number, lang: SinsaeLang) => (lang === "en" ? BY_NO_EN.get(no) : undefined) ?? BY_NO.get(no);
 
 export function getSinsaeCard(no: number): SinsaeTarotCard | undefined {
   return BY_NO.get(no);
@@ -55,11 +61,23 @@ export function topicOfQuestion(question?: string): SinsaeTopic {
   return "general";
 }
 
-const pct = (e: Energy) => (e ? `บวก ${e.positive}% / ลบ ${e.negative}%` : "ตำราไม่ระบุ %");
+const TOPIC_LABEL_EN: Record<SinsaeTopic, string> = {
+  finance: "Finance",
+  career: "Career",
+  health: "Health",
+  family: "Family",
+  love: "Love & relationships",
+  general: "General meaning & way of life",
+};
+
+const pct = (e: Energy, lang: SinsaeLang = "th") =>
+  lang === "en"
+    ? e ? `positive ${e.positive}% / negative ${e.negative}%` : "no % in the book"
+    : e ? `บวก ${e.positive}% / ลบ ${e.negative}%` : "ตำราไม่ระบุ %";
 
 /** สรุปสำหรับหน้าหลังบ้าน (ไม่ส่งทั้งเล่มให้ client) */
-export function sinsaeCardView(no: number, reversed: boolean) {
-  const c = BY_NO.get(no);
+export function sinsaeCardView(no: number, reversed: boolean, lang: SinsaeLang = "th") {
+  const c = cardOf(no, lang);
   if (!c) return null;
   const side = reversed ? c.reversedCore : c.core;
   return {
@@ -71,11 +89,22 @@ export function sinsaeCardView(no: number, reversed: boolean) {
 }
 
 /** บล็อกตำราซินแสของ 1 ใบสำหรับ prompt — เฉพาะส่วนที่เกี่ยว (ความหมาย/ด้าน + หัวข้อตามคำถาม + ออราเคิลย่อ) */
-export function sinsaeBlock(slot: TarotSlot, topic: SinsaeTopic): string {
-  const c = BY_NO.get(slot.card.no);
+export function sinsaeBlock(slot: TarotSlot, topic: SinsaeTopic, lang: SinsaeLang = "th"): string {
+  const c = cardOf(slot.card.no, lang);
   if (!c) return "";
   const side = slot.reversed ? c.reversedCore : c.core;
   const topicText = c[topic] || c.general;
+  if (lang === "en") {
+    return [
+      `[${slot.role} · ${slot.weight}%] ${c.name} — ${slot.reversed ? "reversed" : "upright"}`,
+      slot.reversed ? `Reversed meaning (Master Nui): ${c.reversed}` : `Meaning (Master Nui): ${c.meaning}`,
+      `Good side: ${side.positive}`,
+      `Bad side: ${side.negative}`,
+      `Card energy: ${pct(side.energy, "en")}${side.energy?.note ? ` — ${side.energy.note}` : ""}`,
+      `Topic "${TOPIC_LABEL_EN[topic]}" (Master Nui):\n${topicText}`,
+      `Oracle symbols on the card: ${c.oracle.map((o) => `${o.symbol} (${pct(o.energy, "en")}) good: ${o.positive} · bad: ${o.negative}`).join(" | ")}`,
+    ].join("\n");
+  }
   return [
     `[${slot.role} · ${slot.weight}%] ${c.name} — ${slot.reversed ? "กลับหัว" : "หงาย"}`,
     slot.reversed ? `ความหมายกลับหัว (ตำราซินแส): ${c.reversed}` : `ความหมาย (ตำราซินแส): ${c.meaning}`,
@@ -87,6 +116,6 @@ export function sinsaeBlock(slot: TarotSlot, topic: SinsaeTopic): string {
   ].join("\n");
 }
 
-export function sinsaeTopicLabel(t: SinsaeTopic): string {
-  return TOPIC_LABEL[t];
+export function sinsaeTopicLabel(t: SinsaeTopic, lang: SinsaeLang = "th"): string {
+  return (lang === "en" ? TOPIC_LABEL_EN : TOPIC_LABEL)[t];
 }

@@ -27,6 +27,7 @@ type Slot = {
   imageUrl?: string | null;
   /** ตำราซินแสนุ้ย (เล่ม 2) — ตามหงาย/กลับหัว */
   sinsae?: SinsaeView | null;
+  sinsaeEn?: SinsaeView | null;
 };
 
 type Energy = { positive: number; negative: number; note: string } | null;
@@ -374,7 +375,7 @@ export function TarotWorkspace() {
                     <p style={{ margin: "0 0 6px", fontSize: 12, color: "#6b6455" }}>{full.virtue}</p>
                   )}
                   <p style={{ margin: 0, fontSize: 13 }}>{full.tagline}</p>
-                  {slot?.sinsae && <SinsaePanel v={slot.sinsae} />}
+                  {slot?.sinsae && <SinsaePanel v={(lang === "en" && slot.sinsaeEn) || slot.sinsae} />}
                 </article>
               );
             })}
