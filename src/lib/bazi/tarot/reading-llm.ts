@@ -9,6 +9,7 @@
  */
 import type { TarotReading } from "@/lib/bazi/tarot/reading-engine";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
+import { sinsaeBlock, sinsaeTopicLabel, topicOfQuestion } from "@/lib/bazi/tarot/sinsae-book";
 
 export type TarotLang = "en" | "th";
 
@@ -29,6 +30,7 @@ const SYSTEM_EN = [
   "3) A final paragraph beginning with \"Summary:\" that answers the question directly, blending the cards by their weights. Any advice must come from the given Caution/Shadow/Koan text.",
   "Total length: about 180-260 words.",
   "",
+  "TWO BOOKS: each card comes with Book 1 (Oriental Charm Tao manual) and Book 2 (Master Nui's own tarot text: meaning, good side, bad side, energy % and the oracle symbols on the card face, plus the section for the question's topic). Use both: Book 2 leads on the question's topic and the good/bad balance; Book 1 adds the Tao layer. When they differ, follow Book 2.",
   "SOURCE RULE (most important): use ONLY the card texts provided below. Do NOT bring in outside knowledge — no other tarot traditions or symbolism not in the text, no astrology, numerology, BaZi, I Ching, psychology or quotes from elsewhere. If the given text does not say it, do not say it.",
   "Rules:",
   "- Interpret, but never invent facts not grounded in the card meanings given (no dates, numbers or specific events the cards do not imply).",
@@ -52,6 +54,7 @@ const SYSTEM_TH = [
   "3) ย่อหน้าสุดท้ายขึ้นต้นด้วย \"สรุป:\" ตอบคำถามตรง ๆ โดยผสานทุกใบตามน้ำหนัก คำแนะนำต้องมาจาก Caution/Shadow/Koan ที่ให้มาเท่านั้น",
   "ความยาวรวมราว 180-260 คำ",
   "",
+  "ตำรา 2 เล่ม: ไพ่แต่ละใบมีเล่ม 1 (คู่มือวิถีเต๋า) และเล่ม 2 (ตำราของซินแสนุ้ย: ความหมาย ด้านดี ด้านลบ % พลังงาน ออราเคิลหน้าไพ่ และหัวข้อตามคำถาม) — ใช้ทั้งสองเล่ม ให้เล่ม 2 นำในหัวข้อที่ถามและสมดุลดี/ลบ เล่ม 1 เสริมมุมเต๋า ถ้าขัดกันให้ยึดเล่ม 2",
   "กฎแหล่งที่มา (สำคัญที่สุด): ใช้เฉพาะข้อความไพ่ที่ให้มาด้านล่าง ห้ามใช้วิชานอก — ห้ามดึงความหมายทาโรต์สายอื่นหรือสัญลักษณ์ที่ไม่มีในข้อความ ห้ามโหราศาสตร์ เลขศาสตร์ ปาจื้อ อี้จิง จิตวิทยา หรือคำคมจากที่อื่น ถ้าข้อความไพ่ไม่ได้บอก ห้ามพูด",
   "กฎเหล็ก: ห้ามแต่งข้อเท็จจริงนอกความหมายไพ่ · ห้ามให้เลขเด็ด · ห้ามเอ่ยถึงกลไกเบื้องหลัง · คำลงท้ายเป็นกลาง ไม่ลงท้าย ครับ/ค่ะ · แปลความหมายจากอังกฤษเป็นไทยที่สละสลวย",
 ].join("\n");
@@ -64,7 +67,15 @@ function buildUserPrompt(reading: TarotReading, question: string | undefined, la
       : [...(q ? [`คำถามจากผู้รับ: ${q}`, ""] : []), "ไพ่ที่จั่วได้ (อ่านตามลำดับ ตีความได้ ห้ามแต่งนอกความหมาย):", ""];
   // engineProse มีบล็อกไพ่ครบ (ชื่อ/หงาย-กลับหัว/น้ำหนัก/ความหมาย) — ตัดบรรทัด Question ซ้ำออก
   const body = reading.engineProse.replace(/^Question: .*\n\n/, "");
-  return [...head, body].join("\n");
+  // เล่ม 2: ตำราซินแสนุ้ย — เฉพาะหัวข้อตามคำถาม (การเงิน/การงาน/สุขภาพ/ครอบครัว/ความรัก/ทั่วไป)
+  const topic = topicOfQuestion(q);
+  const book2 = reading.slots.map((slot) => sinsaeBlock(slot, topic)).filter(Boolean).join("\n\n");
+  return [
+    ...head,
+    "=== เล่ม 1: คู่มือวิถีเต๋า (Book 1) ===",
+    body,
+    ...(book2 ? ["", `=== เล่ม 2: ตำราซินแสนุ้ย (Book 2) · หัวข้อ ${sinsaeTopicLabel(topic)} ===`, book2] : []),
+  ].join("\n");
 }
 
 export type TarotLlmResult = { text: string; model: string };

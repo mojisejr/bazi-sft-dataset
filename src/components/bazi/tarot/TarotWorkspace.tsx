@@ -25,7 +25,59 @@ type Slot = {
   reversed: boolean;
   no: number;
   imageUrl?: string | null;
+  /** ตำราซินแสนุ้ย (เล่ม 2) — ตามหงาย/กลับหัว */
+  sinsae?: SinsaeView | null;
 };
+
+type Energy = { positive: number; negative: number; note: string } | null;
+type SinsaeView = {
+  energy: Energy;
+  positive: string;
+  negative: string;
+  oracle: { symbol: string; description: string; positive: string; negative: string; energy: Energy }[];
+};
+
+/** แถบ % พลังงานบวก/ลบ */
+function EnergyBar({ e }: { e: Energy }) {
+  if (!e) return <span style={{ fontSize: 11, color: "#8a8170" }}>ตำราไม่ระบุ %</span>;
+  return (
+    <div style={{ display: "grid", gap: 2 }}>
+      <div style={{ display: "flex", height: 8, borderRadius: 4, overflow: "hidden", background: "#eee" }}>
+        <div style={{ width: `${e.positive}%`, background: "#5aa469" }} />
+        <div style={{ width: `${e.negative}%`, background: "#c95f4f" }} />
+      </div>
+      <span style={{ fontSize: 11, color: "#6b6455" }}>ดี {e.positive}% · ลบ {e.negative}%</span>
+    </div>
+  );
+}
+
+/** ออราเคิลหน้าไพ่ + ด้านดี/ด้านลบ + % (ตำราซินแสนุ้ย) */
+function SinsaePanel({ v }: { v: SinsaeView }) {
+  return (
+    <div style={{ marginTop: 8, display: "grid", gap: 6, fontSize: 12, lineHeight: 1.55 }}>
+      <div style={{ fontWeight: 700, color: "#a67c2e" }}>ตำราซินแส · พลังงานของใบ</div>
+      <EnergyBar e={v.energy} />
+      {v.positive && <div>✅ <b>ด้านดี:</b> {v.positive}</div>}
+      {v.negative && <div>⚠️ <b>ด้านลบ:</b> {v.negative}</div>}
+      {v.oracle.length > 0 && (
+        <details>
+          <summary style={{ cursor: "pointer", fontWeight: 700, color: "#a67c2e" }}>ออราเคิลหน้าไพ่ ({v.oracle.length})</summary>
+          <div style={{ display: "grid", gap: 8, marginTop: 6 }}>
+            {v.oracle.map((o) => (
+              <div key={o.symbol} style={{ borderLeft: "3px solid #d8c59a", paddingLeft: 8 }}>
+                <div style={{ fontWeight: 700 }}>{o.symbol}</div>
+                {o.description && <div style={{ color: "#6b6455" }}>{o.description}</div>}
+                {o.positive && <div>✅ {o.positive}</div>}
+                {o.negative && <div>⚠️ {o.negative}</div>}
+                <EnergyBar e={o.energy} />
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
 
 type PredictResult = {
   source: "engine" | "llm";
@@ -322,6 +374,7 @@ export function TarotWorkspace() {
                     <p style={{ margin: "0 0 6px", fontSize: 12, color: "#6b6455" }}>{full.virtue}</p>
                   )}
                   <p style={{ margin: 0, fontSize: 13 }}>{full.tagline}</p>
+                  {slot?.sinsae && <SinsaePanel v={slot.sinsae} />}
                 </article>
               );
             })}

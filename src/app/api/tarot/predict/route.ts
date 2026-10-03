@@ -3,6 +3,7 @@ import { z } from "zod";
 import { drawRandom, drawReversals, getAllCards, getCardByNo, type TarotCard } from "@/lib/bazi/tarot/deck";
 import { buildTarotReading } from "@/lib/bazi/tarot/reading-engine";
 import { polishTarotReading } from "@/lib/bazi/tarot/reading-llm";
+import { sinsaeCardView } from "@/lib/bazi/tarot/sinsae-book";
 import { seedForDraw } from "@/lib/bazi/seed";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
 import { gateFeature } from "@/lib/bazi/qi/quota";
@@ -94,6 +95,8 @@ export async function POST(req: Request) {
     reversed: s.reversed,
     no: s.card.no,
     imageUrl: s.card.imageUrl ?? null,
+    // ตำราซินแสนุ้ย (เล่ม 2): ออราเคิลหน้าไพ่ + ด้านดี/ด้านลบ + % (ตามหงาย/กลับหัว)
+    sinsae: sinsaeCardView(s.card.no, s.reversed),
   }));
   const cardPayload: CardPayload[] = cards;
 
