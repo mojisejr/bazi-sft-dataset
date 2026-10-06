@@ -241,11 +241,17 @@ function pillarLabel(facts: ChartFacts, position: PillarPosition, qi?: string | 
 const STRENGTH_ID_ORDER = ["very-weak", "weak", "balanced", "strong", "very-strong"] as const;
 
 /** ดิถีเกิดถูกฤดูไหม — กิ่งเดือนเป็นธาตุเดียวกับดิถี (旺) */
+// เดือนท้ายฤดู 辰/未 = ธาตุดิน "แฝง" ธาตุของฤดูที่กำลังจบ → ดิถีธาตุนั้นเกิดถูกฤดูด้วย
+// (ซินแสนุ้ย 2026-10-06: 辰 ท้ายฤดูไม้ → ดิถีไม้ถูกฤดู · 未 ท้ายฤดูไฟ → ดิถีไฟถูกฤดู)
+// 戌/丑 ไม่เพิ่ม: 戌 ท้ายฤดูทอง แต่ 庚 ใน 戌 ผั่ว+ซวย "แข็งไม่จริง" (ground-truth เดิม) · 丑 ท้ายฤดูน้ำ ซินแสไม่นับดิถีน้ำ
+const SEASON_END_HIDDEN: Record<string, string> = { 辰: "wood", 未: "fire" };
+
 export function isInSeason(facts: ChartFacts): boolean {
   const month = facts.pillars.find((p) => p.position === "month");
   if (!month) return false;
   const dayEl = STEM_TO_ELEMENT[facts.dayMaster as keyof typeof STEM_TO_ELEMENT];
   const monthEl = BRANCH_TO_ELEMENT[month.branch as keyof typeof BRANCH_TO_ELEMENT];
+  if (dayEl && SEASON_END_HIDDEN[month.branch] === dayEl) return true;
   return Boolean(dayEl && monthEl && dayEl === monthEl);
 }
 
