@@ -101,7 +101,8 @@
     "dataset:regenerate": "tsx scripts/regenerate-dataset-records.ts",
     "dataset:metadata:backfill": "tsx scripts/backfill-dataset-metadata-from-csv.ts",
     "dataset:export:sft": "tsx scripts/export-sft-dataset.ts",
-    "test:referral-db": "REFERRAL_REQUIRE_DB=1 vitest run tests/referral-route-db.test.ts"
+    "test:referral-db": "REFERRAL_REQUIRE_DB=1 vitest run tests/referral-route-db.test.ts",
+    "test:db-stall": "DB_STALL_REQUIRE_DB=1 vitest run tests/db-resilient-sql-pg.test.ts"
   },
   "dependencies": {
     "@google/genai": "^1.50.1",
