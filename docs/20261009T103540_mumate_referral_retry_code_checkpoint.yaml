@@ -1,0 +1,78 @@
+schema_version: ciel.event.v0.1
+id: evt_20261009T103540_mumate_referral_retry_code_checkpoint
+type: closeout
+recorded_at: 2026-10-09T10:35:40+07:00
+recorded_by:
+  human: owner
+  agent: codex
+
+workstream:
+  id: mumate-referral-release-001
+  lane: single
+  objective: Present the referral retry code and proofs for owner review before the merged-SHA staging release.
+  scope:
+    - Referral GET allocation and safe failures, focused tests and test-gate registration.
+    - Non-publishing container smoke on GitHub Actions and read-only release readiness checks.
+  out_of_scope:
+    - Code merge, staging deployment of the merged SHA, production build/release and unrelated lint repairs.
+
+outcome:
+  status: recorded
+  checkpoint: code-prepared-staging-pending
+  change: The insert handles both existing unique constraints, reads back a concurrent allocation and retries another member's occupied code. Ten collisions return a safe 503; other GET errors remain safe 500 with bounded metadata logs. POST reward logic and existing code format are unchanged.
+  regression: On the original implementation, a forced real PostgreSQL code collision returned 500 and failed the expected-200 test. On the fix it returned 200 after the next candidate.
+  validation:
+    focused: 12 passed, including seven PostgreSQL 17.6 tests and five route-contract tests.
+    default_tests: 107 passed across 12 files.
+    production_build: Passed on Node 22.18.0, including Next TypeScript.
+    scoped_lint: Changed route and test files passed.
+    full_default_gate: Failed in repository-wide lint, with 35 errors and 139 warnings; all 35 errors are in 14 files byte-identical to the fetched integration baseline. No exception is claimed as approved.
+    additional_tsc: Standalone tsc encountered a stale ignored .next/dev validator for a removed sign-in page; the build-generated production types passed. No source or configuration fix was made for that cache finding.
+    container_smoke: GitHub Actions build, hygiene and runtime-file manifest passed on the tested code SHA; GHCR login and publish were skipped because push=false. This is not a shipping image or a database test.
+  data_safety: Real-DB fixtures proved GET leaves wallet, ledger, redemption and claims unchanged; existing-code redemption awards owner 50 QI and referee 30 QI plus 50 XP once, and self-use/repeated use remain 409. The disposable loopback fixture container and its tmpfs data were removed after tests.
+  slice_status: R1-R5 proved locally; R6 is partial because full lint is red; R7-R8 await the owner merge and authorized staging release. Slice 1 is not delivered by this checkpoint.
+
+evidence:
+  plan: ciel-os/workstreams/mumate-referral-release-001/PLAN.md
+  plan_revision: "0.1"
+  slice: "1"
+  repository:
+    head: "0974346c009288e7dd52fd3dee92d55418a024db"
+    branch: fix/mumate-referral-retry
+    base: "40e8ebf7db0e574b3352c2a745ab04a3b110f04e"
+  pull_request:
+    number: 48
+    url: https://github.com/mojisejr/bazi-sft-dataset/pull/48
+    base: pdf-dev
+  tests:
+    route: tests/referral-route.test.ts
+    database: tests/referral-route-db.test.ts
+    repeat_database_proof: REFERRAL_TEST_DATABASE_URL=<disposable-loopback-referral_proof-url> npm run test:referral-db
+  container_run:
+    url: https://github.com/mojisejr/bazi-sft-dataset/actions/runs/37879807981
+    head: "0974346c009288e7dd52fd3dee92d55418a024db"
+    result: success
+    push: false
+    target: staging
+  release_readiness:
+    fe_source: "83ed2f10a6649874a32dfbfcec9c02220a2b5b52"
+    previous_bazi_source: "40e8ebf7db0e574b3352c2a745ab04a3b110f04e"
+    previous_fe_production_digest: sha256:e421a37a688f3f6de69b48d260f72dcdb9d6b4f0816dc34fc5c5509a5e06c283
+    previous_bazi_production_digest: sha256:4ecbc4590263842d8bc372bf5748159ed40ebfef0f5ae5a9b78b6441f19378fd
+    staging: Current FE and bazi point to pgstaging; affected schema columns are present. release-check accepts the previous SHA pair, not yet the new fix.
+    release_actor: mojisejr
+    authority: Production build/release is owner-operated; manual rollback needs an explicit owner instruction.
+
+unresolved:
+  - Owner acceptance of the unchanged full-lint baseline, or separate remediation, is required before proceeding. Do not report the full default gate as green.
+  - Owner merge to pdf-dev precedes the normal staging image build/push and release; use the actual merged SHA and recheck the selected FE baseline.
+  - No shipping image, staging acceptance or production change is completed by this checkpoint.
+  - The 900-code namespace remains; the historical request's precise database cause remains inferred.
+  - Staging restore reports two historical psql errors; affected columns exist, but functional acceptance on staging remains to be performed.
+  - Human approval, review and external rules remain unknown beyond explicit recorded decisions.
+
+next_action:
+  action: Owner reviews PR 48 and decides how to handle the existing lint baseline. After acceptance and owner merge, build/push the merged SHA for staging and release it with the verified FE SHA, then perform R7-R8 before requesting slice 2.
+  acceptance_check:
+    - PR head contains this checkpoint and the tested code ancestor, with no unreported code change after the recorded proofs.
+    - Slice-1 R7-R8 remain visibly pending until staging evidence exists.
