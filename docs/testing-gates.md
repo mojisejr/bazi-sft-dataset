@@ -20,6 +20,23 @@ It expands to:
 
 When the changed surface already has a nearby fast test, run that focused slice on top of the default gate with `npx vitest run <affected test file>`.
 
+## Referral Database Proof
+
+The default runtime-critical gate includes `tests/referral-route.test.ts` for
+authentication, input validation and safe failure responses. Changes to referral
+code allocation must also pass `npm run test:referral-db` with
+`REFERRAL_TEST_DATABASE_URL` pointing to a disposable loopback PostgreSQL
+database named `referral_proof`. The database suite truncates its fixture tables;
+never use a member database. It refuses non-loopback hosts and other database
+names, and never reads `APP_DATABASE_URL`.
+
+The database proof uses the repository migrations, actual Drizzle and PostgreSQL
+unique constraints. It forces code collisions and concurrent inserts, checks the
+retry limit and non-collision errors, and checks unchanged wallet/ledger state on
+GET and one-time rewards on POST. Ordinary full-suite runs skip this proof when
+the fixture URL is absent; the explicit `test:referral-db` command fails instead
+of skipping. Container smoke without a database is separate evidence.
+
 ## Heavy Verification Lane
 
 Use `npm run gate:heavy-lane` only after `npm run gate:default` passes and the change touches corpus-wide, build-wide, or broad deterministic-generation surfaces.
