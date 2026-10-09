@@ -29,7 +29,27 @@ function randomCode(): string {
   return `MUMATE${randomInt(100, 1000)}`;
 }
 
-async function getOrCreateCode(anonId: string): Promise<string> {
+class ReferralCodeExhaustedError extends Error {}
+
+/** Only bounded metadata goes to logs; Drizzle messages contain SQL and member IDs. */
+function databaseFailureFields(error: unknown): { sqlstate?: string; constraint?: string } {
+  let current = error;
+  for (let depth = 0; depth < 5 && current && typeof current === "object"; depth++) {
+    const failure = current as { code?: unknown; constraint_name?: unknown; cause?: unknown };
+    if (typeof failure.code === "string" && /^[0-9A-Z]{5}$/.test(failure.code)) {
+      return {
+        sqlstate: failure.code,
+        ...(typeof failure.constraint_name === "string" && /^bazi_referral_[a-z0-9_]{1,48}$/.test(failure.constraint_name)
+          ? { constraint: failure.constraint_name }
+          : {}),
+      };
+    }
+    current = failure.cause;
+  }
+  return {};
+}
+
+async function getOrCreateCode(anonId: string, diagnostics: { attempts: number }): Promise<string> {
   const db = createDbClient();
   const existing = await db
     .select()
@@ -39,28 +59,24 @@ async function getOrCreateCode(anonId: string): Promise<string> {
   if (existing[0]) return existing[0].code;
 
   for (let attempt = 0; attempt < 10; attempt++) {
+    diagnostics.attempts = attempt + 1;
     const code = randomCode();
-    try {
-      const inserted = await db
-        .insert(baziReferralCode)
-        .values({ anonId, code })
-        .onConflictDoNothing({ target: baziReferralCode.anonId })
-        .returning({ code: baziReferralCode.code });
-      if (inserted[0]) return inserted[0].code;
-      // แถว anonId มีแล้ว (แข่งกับ request อื่น) — อ่านกลับ
-      const again = await db
-        .select()
-        .from(baziReferralCode)
-        .where(eq(baziReferralCode.anonId, anonId))
-        .limit(1);
-      if (again[0]) return again[0].code;
-    } catch (error) {
-      // โค้ดชน unique(code) — วนสุ่มใหม่
-      const code = error && typeof error === "object" ? (error as { code?: string }).code : undefined;
-      if (code !== "23505") throw error;
-    }
+    const inserted = await db
+      .insert(baziReferralCode)
+      .values({ anonId, code })
+      // Cover both unique(code) and the member primary key. Other DB errors still throw.
+      .onConflictDoNothing()
+      .returning({ code: baziReferralCode.code });
+    if (inserted[0]) return inserted[0].code;
+    // A concurrent request may have made this member's code; otherwise retry the code collision.
+    const again = await db
+      .select()
+      .from(baziReferralCode)
+      .where(eq(baziReferralCode.anonId, anonId))
+      .limit(1);
+    if (again[0]) return again[0].code;
   }
-  throw new Error("สร้างโค้ดแนะนำไม่สำเร็จ (ชนซ้ำหลายครั้ง)");
+  throw new ReferralCodeExhaustedError();
 }
 
 const PostSchema = z.object({
@@ -75,6 +91,7 @@ const PostSchema = z.object({
 export async function GET(request: Request) {
   const denied = requireMumateClient(request);
   if (denied) return denied;
+  const diagnostics = { attempts: 0 };
   try {
     const url = new URL(request.url);
 
@@ -108,7 +125,7 @@ export async function GET(request: Request) {
     const anonId = url.searchParams.get("anonId")?.trim();
     if (!anonId) return Response.json({ error: "ไม่พบบัญชีผู้ใช้ กรุณาเข้าสู่ระบบใหม่" }, { status: 400 });
 
-    const code = await getOrCreateCode(anonId);
+    const code = await getOrCreateCode(anonId, diagnostics);
     const db = createDbClient();
     // รายชื่อเพื่อนที่ชวนสำเร็จ (+ displayName ถ้ามี) เรียงใหม่→เก่า — สำหรับลิสต์ "เพื่อนที่ชวน" ในหน้า referral
     const redemptions = await db
@@ -134,8 +151,20 @@ export async function GET(request: Request) {
       { status: 200 },
     );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown referral error.";
-    return Response.json({ error: message }, { status: 500 });
+    const exhausted = error instanceof ReferralCodeExhaustedError;
+    const requestId = request.headers.get("x-request-id");
+    console.error(JSON.stringify({
+      event: exhausted ? "referral_code_exhausted" : "referral_get_failed",
+      attempts: diagnostics.attempts,
+      ...databaseFailureFields(error),
+      ...(requestId && /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(requestId)
+        ? { request_id: requestId }
+        : {}),
+    }));
+    return Response.json(
+      { error: exhausted ? "สร้างโค้ดแนะนำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" : "เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง" },
+      { status: exhausted ? 503 : 500 },
+    );
   }
 }
 
