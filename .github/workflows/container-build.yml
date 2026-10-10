@@ -9,7 +9,13 @@ name: container-build
 # push=true to publish ghcr.io/mojisejr/bazi-sft-dataset:<sha> for the control room (mumate-infra-move-001 slice 3;
 # tag = the exact commit, never latest — #637 §8.3). GITHUB_TOKEN with packages:write is enough for GHCR on
 # this repository; no PAT, no secret added. Default input is false, so a plain dispatch changes nothing.
+# ON MERGE (mumate-team-release-001 slice 2, owner decision 2026-10-11): a push to pdf-dev — a merged PR — builds and
+# pushes BOTH targets, so staging can follow pdf-dev by itself (mumate-infra staging follower) and the owner's
+# promote-production finds the production image already there. Still nothing on pull requests. Public repository:
+# standard runners cost no Actions minutes (GitHub billing docs), which retires the "minutes are paid" reason above.
 on:
+  push:
+    branches: [pdf-dev]
   workflow_dispatch:
     inputs:
       push:
@@ -26,31 +32,41 @@ permissions:
   contents: read
   packages: write
 
+concurrency:
+  group: container-build-${{ github.sha }}-${{ github.event_name }}-${{ inputs.target || 'both' }}
+  cancel-in-progress: false
+
 jobs:
   image:
     runs-on: ubuntu-latest
     # Environment variables (Settings -> Environments -> staging|production -> Variables) hold the PUBLIC values Next
     # inlines at build time; they are publishable keys / ids, never secrets. Referencing the environment creates it.
-    environment: ${{ inputs.target || 'staging' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # a merge builds both targets; a manual run builds the one it was asked for
+        target: ${{ github.event_name == 'push' && fromJSON('["staging","production"]') || fromJSON(format('["{0}"]', inputs.target || 'staging')) }}
+    environment: ${{ matrix.target }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - name: build + hygiene + runtime-file manifest (no database in CI)
+        if: ${{ github.event_name != 'push' || matrix.target == 'staging' }}
         run: bash scripts/container-smoke.sh --no-db
       - name: login to GHCR
-        if: ${{ inputs.push }}
+        if: ${{ inputs.push || github.event_name == 'push' }}
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: release build for ${{ inputs.target }} (Next inlines NEXT_PUBLIC_* at build time, so the smoke image cannot ship) + push by SHA
-        if: ${{ inputs.push }}
+      - name: release build for ${{ matrix.target }} (Next inlines NEXT_PUBLIC_* at build time, so the smoke image cannot ship) + push by SHA
+        if: ${{ inputs.push || github.event_name == 'push' }}
         run: |
           set -euo pipefail
           sha="$(git rev-parse HEAD)"
-          suffix=""; [ "${{ inputs.target }}" = production ] || suffix="-${{ inputs.target }}"
+          suffix=""; [ "${{ matrix.target }}" = production ] || suffix="-${{ matrix.target }}"
           dst="ghcr.io/mojisejr/bazi-sft-dataset:${sha}${suffix}"
           # same Dockerfile the smoke just proved; only the public build values differ (tag = exact commit [+ target], never latest)
           docker build --build-arg "APP_GIT_SHA=${sha}" \
@@ -58,4 +74,4 @@ jobs:
             --build-arg NEXT_PUBLIC_LIFF_ID="${{ vars.NEXT_PUBLIC_LIFF_ID }}" \
             -t "$dst" . | tail -3
           docker push "$dst"
-          echo "pushed $dst (target=${{ inputs.target }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "pushed $dst (target=${{ matrix.target }})" >> "$GITHUB_STEP_SUMMARY"
