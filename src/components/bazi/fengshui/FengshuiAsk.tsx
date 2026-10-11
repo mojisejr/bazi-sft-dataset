@@ -36,7 +36,7 @@ export function FengshuiAsk() {
       const res = await fetch("/api/fengshui/predict", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ random: true, count, persona, mode: q ? "llm" : "engine", question: q || undefined }),
+        body: JSON.stringify({ random: true, count, persona, style: "chat", mode: q ? "llm" : "engine", question: q || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "จั่วไพ่ไม่สำเร็จ");

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { answerFengshuiChat } from "@/features/open-webui/card-answer";
+import { summarizeFengshuiReading } from "@/lib/bazi/fengshui/reading-llm";
 import { drawRandom, getAllCards, getCardByNo, getEnglishCard, type FengshuiCard } from "@/lib/bazi/fengshui/deck";
 import { seedForDraw } from "@/lib/bazi/seed";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
@@ -23,7 +24,9 @@ const PredictSchema = z
     random: z.boolean().optional(),
     /** จำนวนใบเมื่อสุ่ม (ค่าเริ่มต้น 3) */
     count: z.union([z.literal(1), z.literal(3)]).default(3),
-    /** เสี่ยวมู่ (ครับ) / เสี่ยวมี่ (ค่ะ) — ใช้กับคำตอบ LLM */
+    /** summary = สรุปคำทำนายแบบไพ่อื่น (หน้าบ้าน) · chat = ตอบแบบแชทเสี่ยวมู่/มี่ (หลังบ้าน) — ซินแสนุ้ย 2026-10-11 */
+    style: z.enum(["summary", "chat"]).default("summary"),
+    /** เสี่ยวมู่ (ครับ) / เสี่ยวมี่ (ค่ะ) — ใช้กับ style chat */
     persona: z.enum(["mu", "mi"]).default("mu"),
     /** ผูกระบบแต้ม Qi (ตัดโควตาต่อ user) — ไม่ส่งมา = ไม่ตัดโควตา */
     anonId: z.string().trim().min(1).max(128).optional(),
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
   }
   const parsed = PredictSchema.safeParse(payload);
   if (!parsed.success) return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
-  const { mode, question, cardNos, random, count, persona, anonId, apiKey, model, provider } = parsed.data;
+  const { mode, question, cardNos, random, count, style, persona, anonId, apiKey, model, provider } = parsed.data;
 
   // hardening: naming a member needs the FE server's secret; anonymous use is unchanged
   if (anonId) {
@@ -69,7 +72,8 @@ export async function POST(req: Request) {
   if (blocked) return blocked;
   const qi = gate && gate.ok ? { source: gate.source, cost: gate.cost } : null;
 
-  const wantsLlm = mode === "llm" && Boolean(question);
+  // summary สรุปได้แม้ไม่มีคำถาม (ภาพรวมสถานที่) · chat ต้องมีคำถาม
+  const wantsLlm = mode === "llm" && (style === "summary" || Boolean(question));
   if (wantsLlm && provider === "gemini") {
     const guardBlocked = guardServerLlm(req, "fengshui_llm", Boolean(apiKey));
     if (guardBlocked) return guardBlocked;
@@ -89,6 +93,10 @@ export async function POST(req: Request) {
   if (!wantsLlm) return Response.json({ source: "engine", ...base });
 
   try {
+    if (style === "summary") {
+      const out = await summarizeFengshuiReading({ cards, question, apiKey, model, provider });
+      return Response.json({ source: "llm", ...base, summary: out.text, model: out.model });
+    }
     const out = await answerFengshuiChat(cards, { question: question as string, persona, apiKey, model, provider });
     return Response.json({ source: "llm", ...base, answer: out.text, model: out.model });
   } catch {
