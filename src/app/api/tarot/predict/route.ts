@@ -3,6 +3,7 @@ import { z } from "zod";
 import { drawRandom, drawReversals, getAllCards, getCardByNo, type TarotCard } from "@/lib/bazi/tarot/deck";
 import { buildTarotReading } from "@/lib/bazi/tarot/reading-engine";
 import { polishTarotReading } from "@/lib/bazi/tarot/reading-llm";
+import { answerTarotChat } from "@/features/open-webui/card-answer";
 import { sinsaeCardView } from "@/lib/bazi/tarot/sinsae-book";
 import { seedForDraw } from "@/lib/bazi/seed";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
@@ -26,6 +27,9 @@ const PredictSchema = z
     reversed: z.array(z.boolean()).max(3).optional(),
     /** ภาษาคำอ่าน LLM — ค่าเริ่มต้นอังกฤษ (ซินแสนุ้ย: เวอร์ชันต่างประเทศเทสต์ก่อน) */
     lang: z.enum(["en", "th", "both"]).default("both"),
+    /** ตอบแบบแชท (สูตรเดียวกับแชทหน้าบ้าน: เสี่ยวมู่/มี่ + ตำราซินแส) — ต้องมี question และจั่ว 3 ใบ */
+    chat: z.boolean().default(false),
+    persona: z.enum(["mu", "mi"]).default("mu"),
     /** จำนวนใบเมื่อสุ่ม (ค่าเริ่มต้น 3) */
     count: z.union([z.literal(1), z.literal(3)]).default(3),
     /** ผูกระบบแต้ม Qi (ตัดโควตาต่อ user) — ไม่ส่งมา = ไม่ตัดโควตา */
@@ -52,7 +56,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid payload.");
   }
-  const { mode, question, cardNos, random, reversed, lang, count, anonId, apiKey, model, provider } = parsed.data;
+  const { mode, question, cardNos, random, reversed, lang, count, chat, persona, anonId, apiKey, model, provider } = parsed.data;
   // hardening slice 1: naming a member needs the FE server's secret; anonymous use is unchanged
   if (anonId) {
     const denied = requireMumateClient(req);
@@ -123,6 +127,15 @@ export async function POST(req: Request) {
     ) as Partial<Record<"en" | "th", { text: string; model: string } | null>>;
     const llm = byLang.en ?? byLang.th;
     if (!llm) throw new Error("llm failed");
+    // คำตอบแบบแชท (สูตรเดียวกับแชทหน้าบ้าน) — ล้มไม่ล้มทั้งคำตอบ
+    let chatAnswer: string | null = null;
+    if (chat && question && cards.length === 3) {
+      try {
+        chatAnswer = (await answerTarotChat(cards, flips, { question, persona, apiKey, model, provider })).text;
+      } catch {
+        chatAnswer = null;
+      }
+    }
     return Response.json({
       source: "llm",
       cards: cardPayload,
@@ -131,6 +144,7 @@ export async function POST(req: Request) {
       llmProse: llm.text,
       llmProseEn: byLang.en?.text ?? null,
       llmProseTh: byLang.th?.text ?? null,
+      chatAnswer,
       model: llm.model,
       qi,
     });

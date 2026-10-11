@@ -6,6 +6,7 @@ import {
   isHonestPrecisionReframe,
   isOtherChartRequest,
   wantsCardReading,
+  wantsSiamsi,
   wantsDream,
   wantsFengshui,
   wantsHouseNumber,
@@ -18,8 +19,7 @@ import { readHouseNumber, readPhoneNumber, type HouseNumberReading, type PhoneRe
 import { readDream, type DreamReading } from "@/lib/bazi/dream/engine";
 import { readHoneycomb, detectLuckyCombos, type HoneycombReading } from "@/lib/bazi/honeycomb/pyramid";
 import phoneDigitJson from "@/lib/bazi/data/phone/phone-digit-meanings.json";
-import { drawRandom as drawOracle } from "@/lib/bazi/oracle-cards/deck";
-import { buildOracleReading } from "@/lib/bazi/oracle-cards/reading-engine";
+import { buildTarotChatReading } from "@/lib/bazi/tarot/chat-reading";
 import { drawOne as drawSiamsi } from "@/lib/bazi/siamsi-kiangkung/deck";
 import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
 import { drawRandom as drawFengshui } from "@/lib/bazi/fengshui/deck";
@@ -620,14 +620,31 @@ export async function POST(req: Request) {
       }
     }
 
-    if (triage.topicId === "card_reading" && !isFengshui && !executionContext.hasDreamData && !executionContext.hasCardReadingData) {
-      try {
-        const card = drawSiamsi();
-        const reading = buildSiamsiReading(card, result.latestUserMessage.content);
-        executionContext.cardReading = reading.chatProse; // บังวิชา: ไม่ส่งชื่อ/เลขไพ่ให้ LLM
-        executionContext.hasCardReadingData = true;
-      } catch {
-        /* จั่ว/อ่านไพ่พัง → ข้าม (ตอบตามปกติ) */
+    // ซินแสนุ้ย 2026-10-07: ไพ่ในแชทเหลือ 3 ชุด — ทาโรต์ (ทุกคำถามที่ไม่ใช่ดวงปาจื่อ) · ฮวงจุ้ย (สถานที่) · เซียมซี (ขอเซียมซี/เสี่ยงทายตรง ๆ)
+    if (
+      triage.topicId === "card_reading" &&
+      !isFengshui &&
+      !executionContext.hasDreamData &&
+      !executionContext.hasCardReadingData &&
+      !executionContext.hasTarotData
+    ) {
+      const q = result.latestUserMessage.content;
+      if (wantsSiamsi(q)) {
+        try {
+          const card = drawSiamsi();
+          const reading = buildSiamsiReading(card, q);
+          executionContext.cardReading = reading.chatProse; // บังวิชา: ไม่ส่งชื่อ/เลขไพ่ให้ LLM
+          executionContext.hasCardReadingData = true;
+        } catch {
+          /* จั่ว/อ่านไพ่พัง → ข้าม (ตอบตามปกติ) */
+        }
+      } else {
+        try {
+          executionContext.tarotReading = buildTarotChatReading(q, seedForDraw(q, effectiveUserId)).chatProse; // ผูกผู้ใช้+nonce เหมือนฮวงจุ้ย
+          executionContext.hasTarotData = true;
+        } catch {
+          /* จั่ว/อ่านไพ่ทาโรต์พัง → ข้าม (ตอบตามปกติ) */
+        }
       }
     }
 
@@ -639,13 +656,8 @@ export async function POST(req: Request) {
       executionContext.baziConsult?.truthPacket
     ) {
       try {
-        const drawn = drawOracle(3);
-        const reading = buildOracleReading([drawn[0], drawn[1], drawn[2]] as const, result.latestUserMessage.content);
-        // บังวิชา (เอ็ม 2026-09-23): ไม่ส่งชื่อ/เลขไพ่ + น้ำหนัก% ให้ LLM — ตัดหัว "ไพ่หลัก (น้ำหนัก%) — ชื่อ" ทิ้ง เหลือแต่ใจความ
-        const drawnMeaning = reading.engineProse
-          .replace(/ไพ่หลัก\s*\([^)]*\)\s*—\s*[^\n]*\n?/g, "")
-          .replace(/\s*\(น้ำหนัก[^)]*%\)/g, "")
-          .trim();
+        // ซินแสนุ้ย 2026-10-07: ออราเคิลถอดจากแชท → ปิดท้ายด้วยไพ่ทาโรต์ (ซ่อนชื่อ/เลขไพ่ + น้ำหนัก%)
+        const drawnMeaning = buildTarotChatReading(result.latestUserMessage.content, seedForDraw(result.latestUserMessage.content, effectiveUserId)).chatProse;
         executionContext.baziConsult.truthPacket +=
           `\n\n———\n\n[คำเสี่ยงทายปิดท้าย — ตอบเจาะจง "คนที่ผู้ใช้ถามถึง" (ห้ามเอ่ยว่าเป็นไพ่/ชื่อไพ่)]\n${drawnMeaning}`;
         executionContext.hasDrawnCardData = true;

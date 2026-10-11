@@ -87,6 +87,8 @@ type PredictResult = {
   engineProse: string;
   llmProseEn?: string | null;
   llmProseTh?: string | null;
+  /** คำตอบแบบแชท (สูตรเดียวกับแชทหน้าบ้าน) — เฉพาะ 3 ใบ + มีคำถาม */
+  chatAnswer?: string | null;
   llmProse?: string;
   model?: string;
 };
@@ -121,6 +123,9 @@ export function TarotWorkspace() {
   const [lang, setLang] = useState<"en" | "th">("en");
   const [llmLoading, setLlmLoading] = useState(false);
   const [llmText, setLlmText] = useState<{ en: string | null; th: string | null } | null>(null);
+  // คำตอบแบบแชท: เสี่ยวมู่ (ครับ) / เสี่ยวมี่ (ค่ะ) — สูตรเดียวกับแชทหน้าบ้าน (ซินแสนุ้ย 2026-10-07)
+  const [persona, setPersona] = useState<"mu" | "mi">("mu");
+  const [chatText, setChatText] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -159,17 +164,19 @@ export function TarotWorkspace() {
     setLoading(true);
     setError(null);
     setLlmText(null);
+    setChatText(null);
     try {
       const res = await fetch("/api/tarot/predict", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...body, chat: true, persona }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "อ่านไพ่ไม่สำเร็จ");
       setResult(data as PredictResult);
       const d = data as PredictResult;
       setLlmText(d.llmProseEn || d.llmProseTh ? { en: d.llmProseEn ?? null, th: d.llmProseTh ?? null } : null);
+      setChatText(d.chatAnswer ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "อ่านไพ่ไม่สำเร็จ");
       setResult(null);
@@ -211,12 +218,15 @@ export function TarotWorkspace() {
           reversed: result.slots.map((s) => s.reversed),
           lang: "both",
           mode: "llm",
+          chat: true,
+          persona,
           question: question.trim() || undefined,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "LLM ตอบไม่สำเร็จ");
       setLlmText({ en: data.llmProseEn ?? null, th: data.llmProseTh ?? null });
+      setChatText(data.chatAnswer ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "LLM ตอบไม่สำเร็จ");
     } finally {
@@ -419,6 +429,24 @@ export function TarotWorkspace() {
                 AI อ่านไม่สำเร็จ — แสดงความหมายไพ่ดิบด้านล่างแทน กดอ่านใหม่ได้
               </p>
             )}
+            <div style={box}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+                <b style={{ fontSize: 14 }}>💬 คำตอบแบบแชท (สูตรเดียวกับแชทหน้าบ้าน)</b>
+                {(["mu", "mi"] as const).map((p) => (
+                  <button key={p} type="button" onClick={() => setPersona(p)} style={tab(persona === p)}>
+                    {p === "mu" ? "เสี่ยวมู่ (ครับ)" : "เสี่ยวมี่ (ค่ะ)"}
+                  </button>
+                ))}
+                <span style={{ fontSize: 12, color: "#6b6455" }}>เปลี่ยนคนตอบแล้วกด “ให้ AI อ่านไพ่ชุดนี้ใหม่”</span>
+              </div>
+              {chatText ? (
+                <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>{chatText}</div>
+              ) : (
+                <p style={{ margin: 0, fontSize: 13, color: "#6b6455" }}>
+                  ต้องพิมพ์คำถาม และจั่ว 3 ใบ ถึงจะได้คำตอบแบบแชท
+                </p>
+              )}
+            </div>
             <details style={box}>
               <summary style={{ cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
                 ความหมายไพ่ดิบ (จากคู่มือ)

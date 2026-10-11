@@ -1,5 +1,6 @@
 import { LuckyDrawWorkspace, type DrawCard } from "@/components/bazi/lucky-draw/LuckyDrawWorkspace";
 import { getAllCards } from "@/lib/bazi/fengshui/deck";
+import { FengshuiAsk } from "@/components/bazi/fengshui/FengshuiAsk";
 import enJson from "@/lib/bazi/data/fengshui-cards.en.json";
 
 export const metadata = {
@@ -38,6 +39,8 @@ export default function FengshuiPage() {
         deck={deck}
         deckEn={deckEn}
       />
+      <div style={{ height: 32 }} />
+      <FengshuiAsk />
     </main>
   );
 }

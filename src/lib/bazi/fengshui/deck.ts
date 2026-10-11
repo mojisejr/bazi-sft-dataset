@@ -8,6 +8,7 @@
  * มิเรอร์โครงสร้าง divine-cards/deck.ts (จั่วไม่ซ้ำ count ใบ)
  */
 import cardsJson from "@/lib/bazi/data/fengshui-cards.json";
+import cardsEnJson from "@/lib/bazi/data/fengshui-cards.en.json";
 
 export type FengshuiCard = {
   no: number;
@@ -24,6 +25,12 @@ export type FengshuiCard = {
 };
 
 const CARDS: readonly FengshuiCard[] = cardsJson as FengshuiCard[];
+const CARDS_EN = new Map((cardsEnJson as { no: number; name: string; meaning: string; caution: string; advice: string }[]).map((c) => [c.no, c]));
+
+/** ฉบับอังกฤษของไพ่ใบนั้น (พี่โบตรวจสำนวน) — ไม่มี = undefined */
+export function getEnglishCard(no: number) {
+  return CARDS_EN.get(no);
+}
 const BY_NO = new Map<number, FengshuiCard>(CARDS.map((card) => [card.no, card]));
 
 export function getAllCards(): readonly FengshuiCard[] {
