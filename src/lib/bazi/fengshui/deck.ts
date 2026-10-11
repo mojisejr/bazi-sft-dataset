@@ -19,6 +19,8 @@ export type FengshuiCard = {
   caution: string;
   /** คำแนะนำแก้ไข */
   advice: string;
+  /** รูปไพ่ (Supabase bucket fengshui-cards; scripts/import-fengshui-images.ts) */
+  imageUrl?: string | null;
 };
 
 const CARDS: readonly FengshuiCard[] = cardsJson as FengshuiCard[];

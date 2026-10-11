@@ -6,7 +6,7 @@
 import { useState } from "react";
 
 export type DrawField = { label: string; value: string };
-export type DrawCard = { no: number; name: string; fields: DrawField[] };
+export type DrawCard = { no: number; name: string; fields: DrawField[]; imageUrl?: string | null };
 
 function shuffle<T>(arr: readonly T[]): T[] {
   const a = [...arr];
@@ -27,19 +27,26 @@ const box: React.CSSProperties = {
 export function LuckyDrawWorkspace({
   title,
   subtitle,
-  deck,
+  deck: deckTh,
+  deckEn,
   accent = "#a67c2e",
 }: {
   title: string;
   subtitle: string;
   deck: readonly DrawCard[];
+  /** ฉบับอังกฤษ (เลขไพ่ตรงกับ deck) — มี = แสดงปุ่มสลับ ไทย/EN */
+  deckEn?: readonly DrawCard[];
   accent?: string;
 }) {
+  const [lang, setLang] = useState<"th" | "en">("th");
+  // ไพ่ที่จั่วเก็บเป็นเลขไพ่ → สลับภาษาแล้วใบเดิมเปลี่ยนภาษาได้ทันที
+  const deck = deckTh;
+  const view = (c: DrawCard): DrawCard => (lang === "en" ? deckEn?.find((e) => e.no === c.no) ?? c : c);
   // สำรับที่สับแล้ว (ยังไม่เปิด) + ใบที่เปิดไปแล้ว (ล่าสุดอยู่ท้าย). สับตอน mount ฝั่ง client เท่านั้น
   // ไม่โชว์ลำดับสำรับก่อนเปิด → ไม่มี hydration mismatch (ก่อนเปิดใบแรก drawn ว่างเปล่า)
   const [pile, setPile] = useState<DrawCard[]>(() => shuffle(deck));
   const [drawn, setDrawn] = useState<DrawCard[]>([]);
-  const current = drawn[drawn.length - 1] ?? null;
+  const current = drawn[drawn.length - 1] ? view(drawn[drawn.length - 1]) : null;
   const empty = pile.length === 0;
 
   function draw() {
@@ -60,6 +67,29 @@ export function LuckyDrawWorkspace({
       </header>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+        {deckEn && (
+          <span style={{ display: "inline-flex", gap: 4 }}>
+            {(["th", "en"] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setLang(l)}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 999,
+                  border: `1px solid ${accent}`,
+                  background: lang === l ? accent : "#fff",
+                  color: lang === l ? "#fff" : "#2f2a20",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {l === "th" ? "ไทย" : "EN"}
+              </button>
+            ))}
+          </span>
+        )}
         <button
           type="button"
           onClick={draw}
@@ -98,8 +128,16 @@ export function LuckyDrawWorkspace({
 
       {current ? (
         <article style={{ ...box, borderColor: accent }}>
-          <div style={{ fontSize: 13, color: accent, fontWeight: 700 }}>ไพ่ใบที่ {current.no}</div>
+          <div style={{ fontSize: 13, color: accent, fontWeight: 700 }}>{lang === "en" ? `Card #${current.no}` : `ไพ่ใบที่ ${current.no}`}</div>
           <h2 style={{ margin: "4px 0 12px", fontSize: 20 }}>{current.name}</h2>
+          {current.imageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={current.imageUrl}
+              alt={current.name}
+              style={{ display: "block", width: "100%", maxWidth: 280, borderRadius: 12, margin: "0 0 14px" }}
+            />
+          )}
           <div style={{ display: "grid", gap: 12 }}>
             {current.fields
               .filter((f) => f.value && f.value.trim())
@@ -124,7 +162,7 @@ export function LuckyDrawWorkspace({
             {drawn.map((c, i) => (
               <span
                 key={`${c.no}-${i}`}
-                title={c.name}
+                title={view(c).name}
                 style={{
                   padding: "4px 10px",
                   borderRadius: 999,
@@ -133,7 +171,7 @@ export function LuckyDrawWorkspace({
                   fontSize: 12,
                 }}
               >
-                {i + 1}. #{c.no} {c.name}
+                {i + 1}. #{c.no} {view(c).name}
               </span>
             ))}
           </div>

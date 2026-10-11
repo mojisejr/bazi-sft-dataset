@@ -339,3 +339,45 @@ export async function uploadTarotCardImage(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+// ── รูปไพ่อาถรรพ์ฮวงจุ้ย (ซินแสนุ้ย 2026-10-07) — มิเรอร์ tarot-cards ──────────────────────
+export const DEFAULT_FENGSHUI_BUCKET = "fengshui-cards";
+
+export function getFengshuiBucket(): string {
+  return process.env.SUPABASE_FENGSHUI_BUCKET?.trim() || DEFAULT_FENGSHUI_BUCKET;
+}
+
+/** สร้าง bucket รูปไพ่ฮวงจุ้ย (public) ถ้ายังไม่มี — idempotent */
+export async function ensureFengshuiBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getFengshuiBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/** อัปโหลดรูปไพ่ฮวงจุ้ย (upsert) คืน public URL — path = cards/<no>.jpg */
+export async function uploadFengshuiCardImage(
+  cardNo: number,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getFengshuiBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `cards/${cardNo}.${ext}`;
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปไพ่ฮวงจุ้ย #${cardNo} ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
