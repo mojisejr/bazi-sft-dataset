@@ -8,7 +8,7 @@ import { FIVE_ELEMENT_ORDER, GENERATES } from "./symbolic-engine.constants";
 
 export type SupportedElement = (typeof FIVE_ELEMENT_ORDER)[number];
 export type NisaiTier = "strong" | "weak";
-export type ElementNisai = { element: SupportedElement; tier: NisaiTier; text: string };
+export type ElementNisai = { element: SupportedElement; tier: NisaiTier; text: string; strongText?: string; weakText?: string };
 
 // ธาตุที่ generate X (ผกผันของ GENERATES): wood←water, fire←wood, earth←fire, metal←earth, water←metal
 const SUPPORTER: Record<SupportedElement, SupportedElement> = (() => {
@@ -52,7 +52,7 @@ export const ELEMENT_NISAI: Record<SupportedElement, { strong: string; weak: str
 
 export function nisaiForElement(element: SupportedElement, totalCounts: Record<string, number>): ElementNisai {
   const tier = elementTier(element, totalCounts);
-  return { element, tier, text: ELEMENT_NISAI[element][tier] };
+  return { element, tier, text: ELEMENT_NISAI[element][tier], strongText: ELEMENT_NISAI[element].strong, weakText: ELEMENT_NISAI[element].weak };
 }
 
 export function buildElementNisai(totalCounts: Record<string, number>): ElementNisai[] {

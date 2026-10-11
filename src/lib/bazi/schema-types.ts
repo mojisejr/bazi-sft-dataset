@@ -186,6 +186,9 @@ export const ElementNisaiSchema = z.object({
   element: SupportedElementSchema,
   tier: z.enum(["strong", "weak"]),
   text: z.string(),
+  // ข้อความทั้ง 2 ระดับ — ให้ FE เลือกระดับเองจากการนับ 8 ตัวของ 4 หลัก (engine totalCounts = ก้าน+ไส้แฝง ไม่ใช่ 8 ตัว)
+  strongText: z.string().optional(),
+  weakText: z.string().optional(),
 });
 
 export const ElementAnalysisSchema = z.object({
