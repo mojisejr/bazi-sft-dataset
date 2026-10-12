@@ -11,10 +11,15 @@ name: container-build
 # this repository; no PAT, no secret added. Default input is false, so a plain dispatch changes nothing.
 # ON MERGE (mumate-team-release-001 slice 2, owner decision 2026-10-11): a push to pdf-dev — a merged PR — builds and
 # pushes BOTH targets, so staging can follow pdf-dev by itself (mumate-infra staging follower) and the owner's
-# promote-production finds the production image already there. Still nothing on pull requests. Public repository:
+# promote-production finds the production image already there. Public repository:
 # standard runners cost no Actions minutes (GitHub billing docs), which retires the "minutes are paid" reason above.
+# ON PULL REQUEST (mumate-vercel-to-do-001 slice 7, owner decision 2026-10-12): Vercel's preview build was the only
+# check a PR had, and Vercel is retired, so a PR to pdf-dev runs the build + hygiene smoke only — one job, no registry
+# login, no push, no environment — and a PR that breaks the image is red before merge instead of after.
 on:
   push:
+    branches: [pdf-dev]
+  pull_request:
     branches: [pdf-dev]
   workflow_dispatch:
     inputs:
@@ -44,9 +49,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # a merge builds both targets; a manual run builds the one it was asked for
+        # a merge builds both targets; a manual run builds the one it was asked for; a PR smokes once
         target: ${{ github.event_name == 'push' && fromJSON('["staging","production"]') || fromJSON(format('["{0}"]', inputs.target || 'staging')) }}
-    environment: ${{ matrix.target }}
+    # a PR needs no build values (the smoke inlines placeholders) and must not record a deployment on the PR
+    environment: ${{ github.event_name != 'pull_request' && matrix.target || '' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
