@@ -46,8 +46,10 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       if (!given || !sameSecret(await cookieValueFor(given), expected)) {
         return html(loginFormHtml(next, true), 401);
       }
-      // relative Location: behind Caddy the container's own idea of its URL (http, internal host) must not leak in
-      const res = new NextResponse(null, { status: 303, headers: { location: next } });
+      // Absolute Location built from the public host: the Next runtime rejects a relative one ("Invalid URL", a 500 seen
+      // on staging 2026-10-12), and request.url carries the container's own http/internal address behind Caddy.
+      // Host is safe here: Caddy only routes a request to this app when Host is the backstage site's name.
+      const res = new NextResponse(null, { status: 303, headers: { location: absoluteBack(request, next) } });
       res.cookies.set(BACKSTAGE_COOKIE, expected, {
         httpOnly: true,
         secure: true,
@@ -59,6 +61,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
       return res;
     }
   }
+}
+
+function absoluteBack(request: NextRequest, next: string): string {
+  const host = request.headers.get("host");
+  return host ? `https://${host}${next}` : new URL(next, request.nextUrl.origin).toString();
 }
 
 function html(body: string, status: number): NextResponse {

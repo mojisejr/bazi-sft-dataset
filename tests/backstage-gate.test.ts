@@ -12,6 +12,7 @@ function req(path: string, init: { method?: string; stamped?: boolean; cookie?: 
   if (init.stamped !== false) headers.set(BACKSTAGE_HEADER, "1");
   if (init.cookie) headers.set("cookie", `${BACKSTAGE_COOKIE}=${init.cookie}`);
   headers.set("accept", init.accept ?? "text/html,application/xhtml+xml");
+  headers.set("host", "bazi-sft.staging.mumate.co");
   if (init.body instanceof URLSearchParams) headers.set("content-type", "application/x-www-form-urlencoded");
   return new NextRequest(`${HOST}${path}`, { method: init.method ?? "GET", headers, body: init.body });
 }
@@ -63,10 +64,12 @@ describe("backstage passkey gate (src/proxy.ts)", () => {
     expect(await res.text()).toContain("passkey ไม่ถูกต้อง");
   });
 
-  it("accepts the right passkey: a hashed cookie, never the key, and a relative redirect back", async () => {
+  it("accepts the right passkey: a hashed cookie, never the key, and an absolute redirect back on the public host", async () => {
     const res = await proxy(req(BACKSTAGE_LOGIN_PATH, { method: "POST", body: new URLSearchParams({ key: KEY, next: "/almanac" }) }));
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe("/almanac");
+    // absolute: the Next runtime rejects a relative Location with "Invalid URL" (500 on staging, 2026-10-12)
+    expect(res.headers.get("location")).toBe("https://bazi-sft.staging.mumate.co/almanac");
+    expect(() => new URL(res.headers.get("location")!)).not.toThrow();
     const setCookie = res.headers.get("set-cookie") ?? "";
     expect(setCookie).toContain(`${BACKSTAGE_COOKIE}=${await cookieValueFor(KEY)}`);
     expect(setCookie).not.toContain(KEY);
@@ -84,6 +87,6 @@ describe("backstage passkey gate (src/proxy.ts)", () => {
       expect(safeNext(next)).toBe("/");
     }
     const res = await proxy(req(BACKSTAGE_LOGIN_PATH, { method: "POST", body: new URLSearchParams({ key: KEY, next: "//evil.example" }) }));
-    expect(res.headers.get("location")).toBe("/");
+    expect(res.headers.get("location")).toBe("https://bazi-sft.staging.mumate.co/");
   });
 });
