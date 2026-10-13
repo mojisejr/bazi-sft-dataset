@@ -1,27 +1,30 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import {
-  BACKSTAGE_COOKIE,
   BACKSTAGE_COOKIE_MAX_AGE,
   cookieValueFor,
   decide,
-  isStamped,
+  DOORS,
+  doorOf,
   loginFormHtml,
   safeNext,
   sameSecret,
   usableKey,
 } from "@/lib/backstage/gate";
 
-// Next 16 "proxy" (formerly middleware). Its only job today is the backstage passkey gate; see src/lib/backstage/gate.ts.
-// Unstamped requests (the FE's internal calls, staging, tests) return NextResponse.next() at once.
+// Next 16 "proxy" (formerly middleware). Its only job today is the passkey gate (backstage and bdash doors); see
+// src/lib/backstage/gate.ts. Unstamped requests (the FE's internal calls, staging, tests) return NextResponse.next() at once.
 export async function proxy(request: NextRequest): Promise<NextResponse> {
+  const door = doorOf(request.headers) ?? "backstage";
+  const cfg = DOORS[door];
   const decision = await decide({
-    stamped: isStamped(request.headers),
-    key: process.env.BACKSTAGE_KEY,
+    stamped: doorOf(request.headers) !== null,
+    door,
+    key: process.env[cfg.envKey],
     method: request.method,
     pathname: request.nextUrl.pathname,
     search: request.nextUrl.search,
-    cookie: request.cookies.get(BACKSTAGE_COOKIE)?.value,
+    cookie: request.cookies.get(cfg.cookie)?.value,
     wantsHtml: (request.headers.get("accept") ?? "").includes("text/html"),
   });
 
@@ -33,24 +36,30 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         status: 503,
         headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
       });
+    case "not-found":
+      return new NextResponse("not found", {
+        status: 404,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+      });
     case "login-form":
-      return html(loginFormHtml(decision.next, false), decision.status);
+      return html(loginFormHtml(decision.next, false, door), decision.status);
     case "api-denied":
       return NextResponse.json({ error: "backstage passkey required" }, { status: 401, headers: { "cache-control": "no-store" } });
     case "login-check": {
-      const key = usableKey(process.env.BACKSTAGE_KEY)!;
+      const key = usableKey(process.env[cfg.envKey])!;
       const form = await request.formData().catch(() => null);
       const given = String(form?.get("key") ?? "").trim();
-      const next = safeNext(String(form?.get("next") ?? "/"));
-      const expected = await cookieValueFor(key);
-      if (!given || !sameSecret(await cookieValueFor(given), expected)) {
-        return html(loginFormHtml(next, true), 401);
+      const asked = safeNext(String(form?.get("next") ?? cfg.home));
+      const next = asked === "/" ? cfg.home : asked;
+      const expected = await cookieValueFor(key, door);
+      if (!given || !sameSecret(await cookieValueFor(given, door), expected)) {
+        return html(loginFormHtml(next, true, door), 401);
       }
       // Absolute Location built from the public host: the Next runtime rejects a relative one ("Invalid URL", a 500 seen
       // on staging 2026-10-12), and request.url carries the container's own http/internal address behind Caddy.
       // Host is safe here: Caddy only routes a request to this app when Host is the backstage site's name.
       const res = new NextResponse(null, { status: 303, headers: { location: absoluteBack(request, next) } });
-      res.cookies.set(BACKSTAGE_COOKIE, expected, {
+      res.cookies.set(cfg.cookie, expected, {
         httpOnly: true,
         secure: true,
         sameSite: "lax",
