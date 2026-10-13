@@ -157,7 +157,7 @@ function Body({ s }: { s: BdashSnapshot }) {
           <div className="bd-card">
             <h3>คนสมัครฟรี ยอมจ่ายเงินไหม</h3>
             <p className="bd-hint">
-              แต่ละแท่ง = คนที่สมัครในสัปดาห์นั้น จ่ายเงินครั้งแรกภายใน 5 สัปดาห์กี่ % · แท่งเส้นประ = ยังไม่ครบ 5 สัปดาห์ ตัวเลขยังขึ้นได้อีก · เส้นทอง = ค่ากลางของแอปแบบนี้ในแถบเรา · ชี้ที่แท่งเพื่อดูว่ากี่วันกว่าจะจ่าย
+              แต่ละแท่ง = คนที่สมัครในสัปดาห์นั้น จ่ายเงินครั้งแรกภายใน 5 สัปดาห์กี่ % · แท่งเส้นประ = ยังไม่ครบ 5 สัปดาห์ ตัวเลขยังขึ้นได้อีก · เส้นทอง = ค่ากลางของแอปแบบนี้ในแถบเรา (1.4%) · ชี้ที่แท่งเพื่อดูว่ากี่วันกว่าจะจ่าย
             </p>
             <ConvChart cohorts={s.cohorts} />
           </div>
@@ -406,8 +406,9 @@ function ConvChart({ cohorts }: { cohorts: BdashCohort[] }) {
             </g>
           );
         })}
-        <line className="ref" x1={m.l} x2={W - m.r} y1={y(SEA_FREE_TO_PAID)} y2={y(SEA_FREE_TO_PAID)} />
-        <text className="tick" x={W - m.r} y={y(SEA_FREE_TO_PAID) - 6} textAnchor="end">ค่ากลางแถบเรา 1.4%</text>
+        <line className="ref" x1={m.l} x2={W - m.r} y1={y(SEA_FREE_TO_PAID)} y2={y(SEA_FREE_TO_PAID)}>
+          <title>ค่ากลางแอปแบบนี้ในเอเชียตะวันออกเฉียงใต้ 1.4% (RevenueCat 2026)</title>
+        </line>
       </svg>
     </div>
   );
