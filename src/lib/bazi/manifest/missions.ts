@@ -10,7 +10,8 @@
  */
 
 export type MissionPeriod = "daily" | "once";
-export type MissionCategory = "daily" | "once" | "longterm";
+// guide = "เส้นทางมือใหม่" (ไกด์สอนเล่นบนหน้าหลัก FE) — ไม่โชว์บน mission-board (FE กรองตาม category อยู่แล้ว)
+export type MissionCategory = "daily" | "once" | "longterm" | "guide";
 
 export type MissionDef = {
   id: string;
@@ -27,6 +28,12 @@ export type MissionDef = {
   /** ปุ่ม "ทำเลย" → เส้นทางในแอป (เว้นว่าง = เสร็จเองจากที่อื่น) */
   actionHref?: string;
 };
+
+/** รางวัลเส้นทางมือใหม่ (QI) — ต่อขั้น / โบนัสจบครบ (เปลี่ยนตัวเลขที่นี่ที่เดียว) */
+export const GUIDE_STEP_QI = 10;
+export const GUIDE_COMPLETE_QI = 50;
+/** ภารกิจขั้นของเส้นทางมือใหม่ (ไม่รวม guide_complete) — ต้องรับครบก่อนจ่ายโบนัสจบ */
+export const GUIDE_STEP_IDS = ["guide_destiny", "guide_calendar", "guide_chat", "guide_fortune", "guide_compat", "guide_qi"] as const;
 
 export const MISSION_DEFS: readonly MissionDef[] = [
   // ── ทำได้ทุกวัน (reset เที่ยงคืนไทย) ──────────────────────────────────────
@@ -85,6 +92,84 @@ export const MISSION_DEFS: readonly MissionDef[] = [
     rewardCoins: 10,
     rewardXp: 10,
     actionHref: "/v2/settings/notifications",
+  },
+  // ── เส้นทางมือใหม่ (เอ็ม 2026-10-13): ไกด์สอนเล่น 6 ขั้น — FE ยิงเมื่อผู้ใช้ทำตามปุ่มที่ไกด์พากด ──
+  {
+    id: "guide_destiny",
+    title: "มือใหม่: รู้จักดวงของฉัน",
+    description: "ดูจุดแข็ง-จุดอ่อน 5 ด้านในหน้าดวง",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_STEP_QI,
+    rewardXp: 5,
+    actionHref: "/v2/destiny",
+  },
+  {
+    id: "guide_calendar",
+    title: "มือใหม่: เช็กวันดีในปฏิทิน",
+    description: "แตะดูวันในปฏิทินส่วนตัว",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_STEP_QI,
+    rewardXp: 5,
+    actionHref: "/v2/calendar",
+  },
+  {
+    id: "guide_chat",
+    title: "มือใหม่: ถามเสี่ยวมู่/เสี่ยวมี่",
+    description: "เปิดช่องแชทแล้วถามคำถามแรก",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_STEP_QI,
+    rewardXp: 5,
+    actionHref: "/v2/chat",
+  },
+  {
+    id: "guide_fortune",
+    title: "มือใหม่: ลองเสี่ยงเซียมซี",
+    description: "พิมพ์คำถามแล้วเสี่ยงทาย",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_STEP_QI,
+    rewardXp: 5,
+    actionHref: "/v2/fortune/sage",
+  },
+  {
+    id: "guide_compat",
+    title: "มือใหม่: ดูดวงสมพงศ์",
+    description: "เลือกคนที่จะดูความเข้ากัน",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_STEP_QI,
+    rewardXp: 5,
+    actionHref: "/v2/service/compatibility/love",
+  },
+  {
+    id: "guide_qi",
+    title: "มือใหม่: รู้จักพลังชี่",
+    description: "เช็คอินรับ QI",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_STEP_QI,
+    rewardXp: 5,
+    actionHref: "/v2/qi",
+  },
+  {
+    id: "guide_complete",
+    title: "จบเส้นทางมือใหม่",
+    description: "ทำภารกิจมือใหม่ครบทั้ง 6 ขั้น",
+    period: "once",
+    category: "guide",
+    target: 1,
+    rewardCoins: GUIDE_COMPLETE_QI,
+    rewardXp: 30,
+    actionHref: "/v2",
   },
   // ── เป้าหมายระยะยาว (รางวัลก้อนใหญ่) ─────────────────────────────────────
   {

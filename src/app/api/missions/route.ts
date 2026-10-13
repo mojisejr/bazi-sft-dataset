@@ -6,7 +6,7 @@ import { baziMissionProgress, baziReferralRedemption, baziUserProfile } from "@/
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { todayBangkok } from "@/lib/bazi/manifest/dates";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
-import { ELEMENT_ORDER, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
+import { ELEMENT_ORDER, GUIDE_STEP_IDS, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
 import { earnQi } from "@/lib/bazi/qi/engine";
 import { STEM_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
@@ -201,6 +201,23 @@ export async function POST(request: Request) {
     const today = todayBangkok();
     const periodKey = periodKeyOf(def, today);
     const db = createDbClient();
+
+    // โบนัสจบเส้นทางมือใหม่: จ่ายเฉพาะเมื่อรับครบทุกขั้นแล้วจริง (กันยิงตรงเอาโบนัส)
+    if (def.id === "guide_complete") {
+      const steps = await db
+        .select({ missionId: baziMissionProgress.missionId })
+        .from(baziMissionProgress)
+        .where(
+          and(
+            eq(baziMissionProgress.anonId, body.anonId),
+            inArray(baziMissionProgress.missionId, [...GUIDE_STEP_IDS]),
+            sql`${baziMissionProgress.claimedAt} is not null`,
+          ),
+        );
+      if (new Set(steps.map((r) => r.missionId)).size < GUIDE_STEP_IDS.length) {
+        return Response.json({ error: "ยังทำภารกิจมือใหม่ไม่ครบ", missionId: def.id, rewarded: false }, { status: 409 });
+      }
+    }
 
     // upsert + เพิ่ม count (cap ที่ target)
     const [row] = await db
