@@ -6,7 +6,7 @@ import { baziMissionProgress, baziReferralRedemption, baziUserProfile } from "@/
 import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
 import { todayBangkok } from "@/lib/bazi/manifest/dates";
 import { applyLedger } from "@/lib/bazi/manifest/ledger";
-import { ELEMENT_ORDER, GUIDE_STEP_IDS, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
+import { ELEMENT_ORDER, GUIDE_CHAPTER_BONUS, MISSION_BY_ID, MISSION_DEFS, type MissionDef } from "@/lib/bazi/manifest/missions";
 import { earnQi } from "@/lib/bazi/qi/engine";
 import { STEM_TO_ELEMENT } from "@/lib/bazi/symbolic-engine.constants";
 import { createDbKnowledgeRepository } from "@/lib/bazi/symbolic-engine.repository";
@@ -202,19 +202,22 @@ export async function POST(request: Request) {
     const periodKey = periodKeyOf(def, today);
     const db = createDbClient();
 
-    // โบนัสจบเส้นทางมือใหม่: จ่ายเฉพาะเมื่อรับครบทุกขั้นแล้วจริง (กันยิงตรงเอาโบนัส)
-    if (def.id === "guide_complete") {
-      const steps = await db
+    // โบนัสเส้นทางมือใหม่: จบบท (guide_ch<n>) ต้องรับครบทุกขั้นในบท · จบทั้งหมด (guide_complete) ต้องรับโบนัสครบทุกบท
+    // ตรวจจากที่ "รับรางวัลแล้วจริง" ใน DB (กันยิงตรงเอาโบนัส)
+    const guideRequired =
+      def.id === "guide_complete" ? [...GUIDE_CHAPTER_BONUS.keys()] : GUIDE_CHAPTER_BONUS.get(def.id) ?? null;
+    if (guideRequired) {
+      const got = await db
         .select({ missionId: baziMissionProgress.missionId })
         .from(baziMissionProgress)
         .where(
           and(
             eq(baziMissionProgress.anonId, body.anonId),
-            inArray(baziMissionProgress.missionId, [...GUIDE_STEP_IDS]),
+            inArray(baziMissionProgress.missionId, [...guideRequired]),
             sql`${baziMissionProgress.claimedAt} is not null`,
           ),
         );
-      if (new Set(steps.map((r) => r.missionId)).size < GUIDE_STEP_IDS.length) {
+      if (new Set(got.map((r) => r.missionId)).size < guideRequired.length) {
         return Response.json({ error: "ยังทำภารกิจมือใหม่ไม่ครบ", missionId: def.id, rewarded: false }, { status: 409 });
       }
     }
