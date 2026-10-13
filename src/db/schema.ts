@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  date,
   doublePrecision,
   index,
   integer,
@@ -1528,3 +1529,15 @@ export const baziDataExportRequest = pgTable("bazi_data_export_request", {
 });
 
 export type SelectBaziDataExportRequest = typeof baziDataExportRequest.$inferSelect;
+
+/** ภาพรวมธุรกิจ (bdash, mumate-business-metrics-001) — ตัวเลขที่คำนวณไว้ทุกคืนโดย /api/cron/bdash-snapshot.
+ *  หน้า /bdash อ่านแถวล่าสุดแถวเดียว ไม่ query ตารางของสมาชิกตอนเปิดหน้า (สมาชิกจึงไม่รอ analytics).
+ *  as_of = วันไทยวันสุดท้ายที่ตัวเลขครอบคลุม (เมื่อวาน ณ ตอนคำนวณ) · payload = BdashSnapshot (src/lib/bdash/types.ts). */
+export const bdashSnapshot = pgTable("bdash_snapshot", {
+  asOf: date("as_of").primaryKey(),
+  computedAt: timestamp("computed_at", { withTimezone: true }).defaultNow().notNull(),
+  durationMs: integer("duration_ms").notNull(),
+  payload: jsonb("payload").notNull(),
+});
+
+export type SelectBdashSnapshot = typeof bdashSnapshot.$inferSelect;
