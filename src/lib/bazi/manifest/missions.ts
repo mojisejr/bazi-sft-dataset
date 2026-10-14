@@ -33,6 +33,9 @@ export type MissionDef = {
 export const GUIDE_STEP_QI = 5;
 export const GUIDE_CHAPTER_QI = 20;
 export const GUIDE_COMPLETE_QI = 50;
+/** ทัวร์แนะนำแอป 8 ขั้น (FE OnboardingTour) — กด "เริ่มต้นใช้งาน" จบทัวร์ = รับครั้งเดียว · กด "ไว้คราวหลัง" ไม่ได้รางวัล */
+export const TOUR_MISSION_ID = "guide_tour";
+export const TOUR_QI = 10;
 
 /** เส้นทางมือใหม่ 6 บท (เอ็ม 2026-10-13 "ทำเลยตามที่เสนอ") — ต้องตรงกับ FE features/v2-guide/quests.ts */
 export const GUIDE_CHAPTERS: readonly { id: string; title: string; steps: readonly { id: string; title: string; href: string }[] }[] = [
@@ -66,6 +69,7 @@ const GUIDE_MISSIONS: MissionDef[] = [
   ...GUIDE_CHAPTERS.flatMap((c) => c.steps.map((s) => guideMission(s.id, `มือใหม่: ${s.title}`, `เส้นทางมือใหม่ บท${c.title}`, GUIDE_STEP_QI, s.href))),
   ...GUIDE_CHAPTERS.map((c) => guideMission(`guide_${c.id}`, `จบบท ${c.title}`, `ทำภารกิจบท${c.title}ครบทุกข้อ`, GUIDE_CHAPTER_QI, "/v2")),
   guideMission("guide_complete", "จบเส้นทางมือใหม่", "ทำครบทุกบท — ศิษย์เอกเสี่ยวมู่", GUIDE_COMPLETE_QI, "/v2"),
+  guideMission(TOUR_MISSION_ID, "จบทัวร์แนะนำแอป", "ดูทัวร์แนะนำ 8 ขั้นกับเสี่ยวมู่จนจบ", TOUR_QI, "/v2"),
 ];
 
 export const MISSION_DEFS: readonly MissionDef[] = [
