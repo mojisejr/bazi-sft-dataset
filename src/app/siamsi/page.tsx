@@ -1,15 +1,17 @@
 import { LuckyDrawWorkspace, type DrawCard } from "@/components/bazi/lucky-draw/LuckyDrawWorkspace";
 import { getAllCards } from "@/lib/bazi/siamsi-kiangkung/deck";
+import { SiamsiAsk } from "@/components/bazi/siamsi/SiamsiAsk";
 
 export const metadata = {
   title: "ไพ่เซียมซีเคี้ยงคุง — หน้าจั่วหลังบ้าน",
 };
 
-/** หน้าหลังบ้าน: จั่วไพ่เซียมซีเคี้ยงคุง (80 ใบ) ทีละใบ — ซินแสนุ้ย 2026-09-28 */
+/** หน้าหลังบ้าน: จั่วไพ่เซียมซีเคี้ยงคุง (80 ใบ) ทีละใบ — ซินแสนุ้ย 2026-09-28 · + รูปไพ่ + ถามแล้วทำนายด้วย AI (2026-10-15) */
 export default function SiamsiPage() {
   const deck: DrawCard[] = getAllCards().map((c) => ({
     no: c.no,
     name: c.name,
+    imageUrl: c.imageUrl ?? null,
     fields: [
       { label: "แก่นของไพ่", value: c.theme },
       { label: "สถานการณ์", value: c.situation },
@@ -25,6 +27,8 @@ export default function SiamsiPage() {
         deck={deck}
         accent="#2e7d5b"
       />
+      <div style={{ height: 32 }} />
+      <SiamsiAsk />
     </main>
   );
 }

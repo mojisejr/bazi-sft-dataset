@@ -292,6 +292,8 @@ export function buildOpenWebUiTriagePromptPayload(
       "Short day questions like 'วันนี้ดีไหม' / 'พรุ่งนี้เป็นไง' / 'ช่วงนี้ดวงเป็นยังไง' / 'ดูดวงให้หน่อย' → turning_points (NOT off_topic, NOT chit_chat, NOT card_reading — these are chart tendencies).",
       // #7 (2026-09-17): คำถามปลายเปิดเรื่องการตัดสินใจ/วางแผนชีวิต = งานหลักของซินแส อย่าปัดเป็น chit_chat
       "Open-ended life-decision questions — 'ช่วงนี้ควรทำอะไร' / 'วางแผนยังไงดี' / 'ตัดสินใจยังไงดี' / 'เอายังไงดี' / 'ควรไปต่อหรือพอ' — route to turning_points (or chart_foundation if it is about who they are), NOT chit_chat/off_topic/card_reading. requiresBaziConsult=true. (These are broad life direction, which the chart reads — cards are only for a single concrete event the chart cannot determine.)",
+      // ซินแสนุ้ย 2026-10-15: ชี้แนะ/แผนงาน/ตัดสินใจ/ขอความเห็น "เรื่องเจาะจง" → เซียมซีเคี้ยงคุง (card_reading)
+      "BUT a decision / plan / opinion about a SPECIFIC matter — 'ควรลาออกไหม' / 'ควรรับงานนี้ไหม' / 'แผนเปิดร้านกาแฟดีไหม' / 'เลือกงาน A หรือ B ดี' / 'ขอความเห็นเรื่องเปลี่ยนสายงาน' — route to card_reading (requiresBaziConsult=false). Only vague life-direction questions with no concrete matter stay on turning_points.",
       "'วันนี้ใส่เสื้อสีอะไรดี' / 'สีอะไรมงคล' / 'ควรไปทิศไหน' → colors_directions. 'ควรกินอะไร/ดูแลสุขภาพ' → health.",
       "When unsure between a reading topic and off_topic/chit_chat for a fortune-flavored question, choose the reading topic. But when a fortune-flavored question is a concrete one-off event / supernatural / lost-item / another-person's-secret matter, choose card_reading over a chart topic.",
       "requiresBaziConsult=true for any of the 15 reading topics; false for card_reading, off_topic, and chit_chat.",

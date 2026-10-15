@@ -6,7 +6,7 @@ import {
   isHonestPrecisionReframe,
   isOtherChartRequest,
   wantsCardReading,
-  wantsSiamsi,
+  wantsSiamsi, wantsGuidance,
   wantsDream,
   wantsFengshui,
   wantsHouseNumber,
@@ -526,6 +526,21 @@ export async function POST(req: Request) {
       triage.classification.intent = topicIdToDomain("love_partner");
     }
 
+    // ซินแสนุ้ย 2026-10-15: คำถามชี้แนะ/แผนงาน/ตัดสินใจ/ขอความเห็น "เรื่องเจาะจง" → เซียมซีเคี้ยงคุง 80 ใบ (ไม่ขึ้นดวง)
+    // ฮวงจุ้ย (สถานที่) และความรักเจาะจงคน (ดวง+ทาโรต์ปิดท้าย) มาก่อนเสมอ · คำถามดวงกว้าง ๆ ยังไปดวงปาจื่อ
+    let isGuidance = false;
+    if (
+      !isFengshui &&
+      !wantsSpecificPersonLove(result.latestUserMessage.content) &&
+      wantsGuidance(result.latestUserMessage.content)
+    ) {
+      console.log("[open-webui] deterministic guidance (siamsi) override", { was: triage.topicId });
+      triage.topicId = "card_reading";
+      triage.requiresBaziConsult = false;
+      triage.classification.requiresBaziConsult = false;
+      isGuidance = true;
+    }
+
     let calculatedState: BaziStatePayload | null = null;
 
     if (triage.requiresBaziConsult && triage.extraction.isComplete && triage.extraction.rawInput) {
@@ -621,6 +636,7 @@ export async function POST(req: Request) {
     }
 
     // ซินแสนุ้ย 2026-10-07: ไพ่ในแชทเหลือ 3 ชุด — ทาโรต์ (ทุกคำถามที่ไม่ใช่ดวงปาจื่อ) · ฮวงจุ้ย (สถานที่) · เซียมซี (ขอเซียมซี/เสี่ยงทายตรง ๆ)
+    // + 2026-10-15: เซียมซีเคี้ยงคุงตอบคำถามชี้แนะ/แผนงาน/ตัดสินใจ/ขอความเห็นเรื่องเจาะจงด้วย (isGuidance)
     if (
       triage.topicId === "card_reading" &&
       !isFengshui &&
@@ -629,9 +645,9 @@ export async function POST(req: Request) {
       !executionContext.hasTarotData
     ) {
       const q = result.latestUserMessage.content;
-      if (wantsSiamsi(q)) {
+      if (isGuidance || wantsSiamsi(q)) {
         try {
-          const card = drawSiamsi();
+          const card = drawSiamsi(seedForDraw(q, effectiveUserId)); // ผูกผู้ใช้+nonce เหมือนฮวงจุ้ย/ทาโรต์
           const reading = buildSiamsiReading(card, q);
           executionContext.cardReading = reading.chatProse; // บังวิชา: ไม่ส่งชื่อ/เลขไพ่ให้ LLM
           executionContext.hasCardReadingData = true;

@@ -21,6 +21,8 @@ export type SiamsiCard = {
   caution: string;
   /** คำแนะนำ */
   advice: string;
+  /** รูปไพ่ (Supabase bucket "siamsi-cards") — ซินแสนุ้ยส่งมา 2026-10-15 · scripts/import-siamsi-images.ts */
+  imageUrl?: string | null;
 };
 
 const CARDS: readonly SiamsiCard[] = cardsJson as SiamsiCard[];

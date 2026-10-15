@@ -381,3 +381,45 @@ export async function uploadFengshuiCardImage(
   const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
   return pub.publicUrl;
 }
+
+// ── รูปไพ่เซียมซีเคี้ยงคุง 80 ใบ (ซินแสนุ้ย 2026-10-15) — มิเรอร์ fengshui-cards ─────────────────
+export const DEFAULT_SIAMSI_BUCKET = "siamsi-cards";
+
+export function getSiamsiBucket(): string {
+  return process.env.SUPABASE_SIAMSI_BUCKET?.trim() || DEFAULT_SIAMSI_BUCKET;
+}
+
+/** สร้าง bucket รูปไพ่เซียมซีเคี้ยงคุง (public) ถ้ายังไม่มี — idempotent */
+export async function ensureSiamsiBucket(
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<void> {
+  const bucket = getSiamsiBucket();
+  const { data: existing } = await client.storage.getBucket(bucket);
+  if (existing) return;
+  const { error } = await client.storage.createBucket(bucket, { public: true });
+  if (error && !/exist/i.test(error.message)) {
+    throw new Error(`สร้าง bucket "${bucket}" ไม่สำเร็จ: ${error.message}`);
+  }
+}
+
+/** อัปโหลดรูปไพ่เซียมซีเคี้ยงคุง (upsert) คืน public URL — path = cards/<no>.jpg */
+export async function uploadSiamsiCardImage(
+  cardNo: number,
+  data: Buffer | Uint8Array,
+  mime: string,
+  client: SupabaseClient = createSupabaseAdmin(),
+): Promise<string> {
+  const bucket = getSiamsiBucket();
+  const ext = mime.includes("png") ? "png" : "jpg";
+  const objectPath = `cards/${cardNo}.${ext}`;
+  const { error } = await client.storage.from(bucket).upload(objectPath, data, {
+    contentType: mime,
+    upsert: true,
+    cacheControl: "31536000",
+  });
+  if (error) {
+    throw new Error(`อัปโหลดรูปไพ่เซียมซีเคี้ยงคุง #${cardNo} ขึ้น Supabase ไม่สำเร็จ: ${error.message}`);
+  }
+  const { data: pub } = client.storage.from(bucket).getPublicUrl(objectPath);
+  return pub.publicUrl;
+}
