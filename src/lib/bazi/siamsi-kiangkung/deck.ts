@@ -53,6 +53,20 @@ function mulberry32(seed: number): () => number {
  * - ไม่ส่ง seed → สุ่มจริง
  * - ส่ง seed → ผลคงที่ (เทสต์/server)
  */
+/** จั่วหลายใบไม่ซ้ำ (หลังบ้าน: สุ่ม 1 หรือ 3 ใบแบบไพ่ฮวงจุ้ย — เอ็ม 2026-10-15) */
+export function drawRandom(count = 3, seed?: number): SiamsiCard[] {
+  if (count > CARDS.length) {
+    throw new Error(`drawRandom: requested ${count} cards but deck has ${CARDS.length}`);
+  }
+  const rng = seed === undefined ? Math.random : mulberry32(seed);
+  const pool = CARDS.slice();
+  for (let i = 0; i < count; i += 1) {
+    const j = i + Math.floor(rng() * (pool.length - i));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
+
 export function drawOne(seed?: number): SiamsiCard {
   const rng = seed === undefined ? Math.random : mulberry32(seed);
   const index = Math.floor(rng() * CARDS.length);

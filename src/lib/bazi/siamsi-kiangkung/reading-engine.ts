@@ -14,6 +14,22 @@ export type SiamsiReading = {
   chatProse: string;
 };
 
+/** หลายใบ (1 หรือ 3): chatProse เรียก "มุมที่ N" แทนชื่อ/เลขไพ่ — มุมที่ 1 = แกนหลักของเรื่อง */
+export function buildSiamsiMultiReading(cards: SiamsiCard[], question?: string): { engineProse: string; chatProse: string } {
+  if (cards.length === 1) {
+    const r = buildSiamsiReading(cards[0], question);
+    return { engineProse: r.engineProse, chatProse: r.chatProse };
+  }
+  const q = question?.trim();
+  const qLine = q ? [`คำถามที่ถาม: ${q}`] : [];
+  const role = (i: number) => (i === 0 ? "แกนหลักของเรื่อง" : i === 1 ? "สิ่งที่ส่งผล/ต้องระวัง" : "ทางออก/สิ่งที่ควรทำ");
+  const body = (c: SiamsiCard) =>
+    [`สถานการณ์: ${c.situation}`, ...(c.caution ? [`ข้อควรระวัง: ${c.caution}`] : []), ...(c.advice ? [`คำแนะนำ: ${c.advice}`] : [])].join("\n");
+  const engineParts = cards.map((c, i) => [`ไพ่ใบที่ ${i + 1}: #${c.no} ${c.name} — ${c.theme} (${role(i)})`, body(c)].join("\n"));
+  const chatParts = cards.map((c, i) => [`มุมที่ ${i + 1} (${role(i)})`, body(c)].join("\n"));
+  return { engineProse: [...qLine, ...engineParts].join("\n\n"), chatProse: [...qLine, ...chatParts].join("\n\n") };
+}
+
 export function buildSiamsiReading(card: SiamsiCard, question?: string): SiamsiReading {
   const q = question?.trim();
   const meaning = [

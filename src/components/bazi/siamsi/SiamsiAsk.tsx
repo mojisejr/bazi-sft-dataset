@@ -1,12 +1,12 @@
 "use client";
 
-// หลังบ้านไพ่เซียมซีเคี้ยงคุง 80 ใบ: ถามเรื่องชี้แนะ/แผนงาน/ตัดสินใจ/ขอความเห็น แล้วเสี่ยง 1 ใบ (ซินแสนุ้ย 2026-10-15)
+// หลังบ้านไพ่เซียมซีเคี้ยงคุง 80 ใบ: ถามเรื่องชี้แนะ/แผนงาน/ตัดสินใจ/ขอความเห็น แล้วสุ่ม 1 หรือ 3 ใบ (แบบหลังบ้านไพ่ฮวงจุ้ย — เอ็ม 2026-10-15)
 // "ตอบแบบแชท" = สูตรเดียวกับแชทหน้าบ้าน (เสี่ยวมู่/เสี่ยวมี่ ไม่เอ่ยถึงไพ่) · "สรุปคำทำนาย" = แบบหน้าเปิดไพ่
 // ผ่าน /api/siamsi-kiangkung/predict (mode llm). inline styles self-contained (มิเรอร์ FengshuiAsk)
 import { useState } from "react";
 
 type Card = { no: number; name: string; theme: string; situation: string; caution: string; advice: string; imageUrl: string | null };
-type Result = { card: Card; answer?: string | null; summary?: string | null; source?: string };
+type Result = { cards: Card[]; answer?: string | null; summary?: string | null };
 
 const box: React.CSSProperties = { border: "1px solid #cfe0d6", borderRadius: 12, padding: 16, background: "#f6fbf8" };
 const pill = (on: boolean): React.CSSProperties => ({
@@ -23,11 +23,12 @@ const pill = (on: boolean): React.CSSProperties => ({
 export function SiamsiAsk() {
   const [question, setQuestion] = useState("");
   const [persona, setPersona] = useState<"mu" | "mi">("mu");
+  const [style, setStyle] = useState<"chat" | "summary">("chat");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function draw(style: "chat" | "summary") {
+  async function draw(count: 1 | 3) {
     setLoading(true);
     setError(null);
     try {
@@ -36,7 +37,7 @@ export function SiamsiAsk() {
       const res = await fetch("/api/siamsi-kiangkung/predict", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ random: true, persona, style, mode: llm ? "llm" : "engine", question: q || undefined }),
+        body: JSON.stringify({ random: true, count, persona, style, mode: llm ? "llm" : "engine", question: q || undefined }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error?.message ?? "เสี่ยงไพ่ไม่สำเร็จ");
@@ -56,7 +57,7 @@ export function SiamsiAsk() {
       <header>
         <h2 style={{ margin: "0 0 4px", fontSize: 18 }}>💬 ถามเรื่องชี้แนะ / แผนงาน / ตัดสินใจ / ขอความเห็น</h2>
         <p style={{ margin: 0, color: "#55665c", fontSize: 13 }}>
-          พิมพ์คำถาม แล้วเสี่ยง 1 ใบ — &quot;ตอบแบบแชท&quot; ใช้สูตรเดียวกับแชทเสี่ยวมู่/เสี่ยวมี่ (ไม่เอ่ยถึงไพ่) · &quot;สรุปคำทำนาย&quot; แบบหน้าเปิดไพ่
+          พิมพ์คำถาม แล้วสุ่ม 1 หรือ 3 ใบ — &quot;แบบแชท&quot; = สูตรเดียวกับแชทเสี่ยวมู่/เสี่ยวมี่ (ไม่เอ่ยถึงไพ่) · &quot;สรุปคำทำนาย&quot; = แบบหน้าเปิดไพ่
         </p>
       </header>
       <textarea
@@ -67,12 +68,15 @@ export function SiamsiAsk() {
         style={{ width: "100%", padding: 10, borderRadius: 10, border: "1px solid #cfe0d6", fontSize: 14 }}
       />
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button type="button" disabled={loading} onClick={() => draw("chat")} style={pill(true)}>
-          💬 ตอบแบบแชท
+        <button type="button" disabled={loading} onClick={() => draw(1)} style={pill(false)}>
+          🎴 สุ่ม 1 ใบ
         </button>
-        <button type="button" disabled={loading} onClick={() => draw("summary")} style={pill(false)}>
-          📜 สรุปคำทำนาย
+        <button type="button" disabled={loading} onClick={() => draw(3)} style={pill(true)}>
+          🎴🎴🎴 สุ่ม 3 ใบ
         </button>
+        <span style={{ marginLeft: 6, fontSize: 12, color: "#55665c" }}>แบบ:</span>
+        <button type="button" onClick={() => setStyle("chat")} style={pill(style === "chat")}>แชท</button>
+        <button type="button" onClick={() => setStyle("summary")} style={pill(style === "summary")}>สรุปคำทำนาย</button>
         <span style={{ marginLeft: 6, fontSize: 12, color: "#55665c" }}>คนตอบ:</span>
         <button type="button" onClick={() => setPersona("mu")} style={pill(persona === "mu")}>เสี่ยวมู่ (ครับ)</button>
         <button type="button" onClick={() => setPersona("mi")} style={pill(persona === "mi")}>เสี่ยวมี่ (ค่ะ)</button>
@@ -90,27 +94,33 @@ export function SiamsiAsk() {
               <div style={{ whiteSpace: "pre-wrap", fontSize: 14, lineHeight: 1.7 }}>{text}</div>
             </div>
           )}
-          <article style={box}>
-            <div style={{ fontSize: 13, color: "#2e7d5b", fontWeight: 700 }}>เลข {result.card.no}</div>
-            <h3 style={{ margin: "4px 0 10px", fontSize: 18 }}>{result.card.name}</h3>
-            {result.card.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={result.card.imageUrl} alt={result.card.name} style={{ display: "block", width: 160, borderRadius: 12, margin: "0 0 12px" }} />
-            )}
-            {[
-              ["แก่นของไพ่", result.card.theme],
-              ["สถานการณ์", result.card.situation],
-              ["ข้อควรระวัง", result.card.caution],
-              ["คำแนะนำ", result.card.advice],
-            ].map(([label, t]) =>
-              t ? (
-                <div key={label} style={{ marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, color: "#2e7d5b", fontWeight: 600 }}>{label}</div>
-                  <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{t}</div>
+          <div style={{ display: "grid", gap: 12 }}>
+            {result.cards.map((c, i) => (
+              <article key={c.no} style={box}>
+                <div style={{ fontSize: 13, color: "#2e7d5b", fontWeight: 700 }}>
+                  {result.cards.length > 1 ? `ใบที่ ${i + 1}${i === 0 ? " (แกนหลัก)" : ""} · ` : ""}เลข {c.no}
                 </div>
-              ) : null,
-            )}
-          </article>
+                <h3 style={{ margin: "4px 0 10px", fontSize: 18 }}>{c.name}</h3>
+                {c.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={c.imageUrl} alt={c.name} style={{ display: "block", width: 140, borderRadius: 12, margin: "0 0 12px" }} />
+                )}
+                {[
+                  ["แก่นของไพ่", c.theme],
+                  ["สถานการณ์", c.situation],
+                  ["ข้อควรระวัง", c.caution],
+                  ["คำแนะนำ", c.advice],
+                ].map(([label, t]) =>
+                  t ? (
+                    <div key={label} style={{ marginBottom: 10 }}>
+                      <div style={{ fontSize: 12, color: "#2e7d5b", fontWeight: 600 }}>{label}</div>
+                      <div style={{ fontSize: 14, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{t}</div>
+                    </div>
+                  ) : null,
+                )}
+              </article>
+            ))}
+          </div>
         </>
       )}
     </section>

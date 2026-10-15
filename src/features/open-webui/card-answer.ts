@@ -9,7 +9,7 @@ import type { FengshuiCard } from "@/lib/bazi/fengshui/deck";
 import { buildFengshuiReading } from "@/lib/bazi/fengshui/reading-engine";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 import type { SiamsiCard } from "@/lib/bazi/siamsi-kiangkung/deck";
-import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
+import { buildSiamsiMultiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
 import type { TarotCard } from "@/lib/bazi/tarot/deck";
 import { tarotChatProseFor } from "@/lib/bazi/tarot/chat-reading";
 
@@ -33,13 +33,15 @@ export function answerFengshuiChat(cards: FengshuiCard[], c: Common) {
   return ask(buildMumatePersonaInstruction(c.persona ?? "mu"), block, c.question, c);
 }
 
-/** เซียมซีเคี้ยงคุง: ตอบคำถามชี้แนะ/ตัดสินใจจากไพ่ 1 ใบ (ไม่เอ่ยถึงไพ่) */
-export function answerSiamsiChat(card: SiamsiCard, c: Common) {
+/** เซียมซีเคี้ยงคุง: ตอบคำถามชี้แนะ/ตัดสินใจจากไพ่ 1 หรือ 3 ใบ (ไม่เอ่ยถึงไพ่) */
+export function answerSiamsiChat(cards: SiamsiCard[], c: Common) {
   const mi = (c.persona ?? "mu") === "mi";
-  const block = siamsiAnswerBlock(buildSiamsiReading(card, c.question).chatProse, pickFortuneOpener(), {
-    polite: mi ? "ค่ะ" : "ครับ",
-    soft: mi ? "นะคะ" : "นะครับ",
-  });
+  const block = siamsiAnswerBlock(
+    buildSiamsiMultiReading(cards, c.question).chatProse,
+    pickFortuneOpener(),
+    { polite: mi ? "ค่ะ" : "ครับ", soft: mi ? "นะคะ" : "นะครับ" },
+    cards.length,
+  );
   return ask(buildMumatePersonaInstruction(c.persona ?? "mu"), block, c.question, c);
 }
 

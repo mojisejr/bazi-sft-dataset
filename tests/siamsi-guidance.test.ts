@@ -2,8 +2,8 @@ import { describe, expect, test } from "vitest";
 
 import { siamsiAnswerBlock } from "@/features/open-webui/card-blocks";
 import { wantsFengshui, wantsGuidance, wantsSpecificPersonLove } from "@/features/open-webui/gemini-adapter";
-import { drawOne, getAllCards } from "@/lib/bazi/siamsi-kiangkung/deck";
-import { buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
+import { drawOne, drawRandom, getAllCards } from "@/lib/bazi/siamsi-kiangkung/deck";
+import { buildSiamsiMultiReading, buildSiamsiReading } from "@/lib/bazi/siamsi-kiangkung/reading-engine";
 
 // ซินแสนุ้ย 2026-10-15: เซียมซีเคี้ยงคุง 80 ใบ = การชี้แนะ แผนงาน การตัดสินใจ ขอความเห็น (เรื่องเจาะจง) → แชทตอบจากเซียมซี
 describe("wantsGuidance — คำถามชี้แนะ/ตัดสินใจเรื่องเจาะจง", () => {
@@ -64,5 +64,40 @@ describe("siamsi 80 ใบ — รูป + บล็อกตอบ", () => {
     expect(block).toContain(card.advice.slice(0, 20));
     expect(block).toContain("ห้ามบอกชื่อไพ่");
     expect(block).toContain("ขอทำนาย");
+  });
+});
+
+// หลังบ้าน: สุ่ม 1 หรือ 3 ใบแบบไพ่ฮวงจุ้ย (เอ็ม 2026-10-15)
+describe("siamsi หลายใบ (หลังบ้าน 1|3 ใบ)", () => {
+  test("drawRandom 3 ใบไม่ซ้ำ + seed คงที่", () => {
+    const a = drawRandom(3, 99);
+    expect(new Set(a.map((c) => c.no)).size).toBe(3);
+    expect(drawRandom(3, 99).map((c) => c.no)).toEqual(a.map((c) => c.no));
+  });
+
+  test("3 ใบ: chatProse เรียก มุมที่ 1-3 ไม่มีชื่อ/เลขไพ่ · engineProse มีชื่อครบ", () => {
+    const cards = drawRandom(3, 5);
+    const r = buildSiamsiMultiReading(cards, "ควรขยายสาขาไหม");
+    const body = cards.map((c) => [c.situation, c.caution, c.advice].join(" ")).join(" ");
+    for (const c of cards) {
+      // ชื่อไพ่บางใบเป็นวลีที่อยู่ในเนื้อความไพ่เองด้วย (เช่น ความสุขเรียบง่าย) — ข้ามกรณีนั้น
+      if (!body.includes(c.name)) expect(r.chatProse).not.toContain(c.name);
+      expect(r.engineProse).toContain(c.name);
+    }
+    expect(r.chatProse).toContain("มุมที่ 1 (แกนหลักของเรื่อง)");
+    expect(r.chatProse).toContain("มุมที่ 3");
+  });
+
+  test("1 ใบ = เหมือน buildSiamsiReading เดิม", () => {
+    const c = drawOne(3);
+    expect(buildSiamsiMultiReading([c], "q").chatProse).toBe(buildSiamsiReading(c, "q").chatProse);
+  });
+
+  test("บล็อกตอบ 3 ใบ: บอกจำนวน + ร้อยเป็นเรื่องเดียว · 1 ใบไม่เปลี่ยน", () => {
+    const three = siamsiAnswerBlock("x", "ขอทำนาย", undefined, 3);
+    expect(three).toContain("มาให้ 3 ใบแล้ว");
+    expect(three).toContain("มุมที่ 1 เป็นแกนหลัก");
+    expect(three).not.toContain("มาให้ 1 ใบแล้ว");
+    expect(siamsiAnswerBlock("x", "ขอทำนาย")).toContain("มาให้ 1 ใบแล้ว");
   });
 });

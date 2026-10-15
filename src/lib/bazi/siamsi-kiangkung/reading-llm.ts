@@ -7,10 +7,10 @@ import type { SiamsiCard } from "@/lib/bazi/siamsi-kiangkung/deck";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 
 const SYSTEM_INSTRUCTION = [
-  "คุณคือ \"ซินแส\" ที่ให้คำชี้แนะคนตรงหน้าเรื่องแผนงาน การตัดสินใจ หรือขอความเห็น จากไพ่เซียมซีเคี้ยงคุงที่เสี่ยงได้ 1 ใบ — พูดด้วยน้ำเสียงคนจริง อบอุ่น มั่นใจ ไม่ใช่ AI สรุปข้อมูล",
+  "คุณคือ \"ซินแส\" ที่ให้คำชี้แนะคนตรงหน้าเรื่องแผนงาน การตัดสินใจ หรือขอความเห็น จากไพ่เซียมซีเคี้ยงคุงที่เสี่ยงได้ — พูดด้วยน้ำเสียงคนจริง อบอุ่น มั่นใจ ไม่ใช่ AI สรุปข้อมูล",
   "",
   "วิธีคิดก่อนตอบ:",
-  "- ไพ่ใบนี้บอก \"สถานการณ์\" ที่คนถามกำลังเจอ + \"ข้อควรระวัง\" + \"คำแนะนำ\" — ตีความให้เข้ากับเรื่องที่ถาม",
+  "- ไพ่ (1 หรือ 3 ใบ) บอก \"สถานการณ์\" ที่คนถามกำลังเจอ + \"ข้อควรระวัง\" + \"คำแนะนำ\" — ตีความให้เข้ากับเรื่องที่ถาม",
   "- ไล่ให้เป็นเรื่องเดียว: ตอบตรงคำถาม (ไปต่อ/รอก่อน/ปรับแผน) → สิ่งที่ต้องระวัง → สิ่งที่ควรทำจากคำแนะนำของไพ่",
   "",
   "ความยาว (สำคัญ): สั้น กระชับ ได้ใจความ — รวมทั้งหมดไม่เกิน 3-5 ประโยค (ราว 80-130 คำ)",
@@ -28,25 +28,29 @@ const SYSTEM_INSTRUCTION = [
 ].join("\n");
 
 export async function summarizeSiamsiReading(input: {
-  card: SiamsiCard;
+  cards: SiamsiCard[];
   question?: string;
   apiKey?: string;
   model?: string;
   provider?: ReadingLlmProvider;
 }): Promise<{ text: string; model: string }> {
   const q = input.question?.trim();
-  const c = input.card;
-  const userPrompt = [
-    q ? `คำถาม: ${q}` : "ไม่มีคำถามเฉพาะ — ให้คำชี้แนะภาพรวมจากไพ่ที่เสี่ยงได้",
+  const one = (c: SiamsiCard, i: number) =>
     [
-      `ไพ่ที่เสี่ยงได้: ${c.name} — ${c.theme}`,
+      input.cards.length > 1 ? `ไพ่ใบที่ ${i + 1}${i === 0 ? " (แกนหลัก)" : ""}: ${c.name} — ${c.theme}` : `ไพ่ที่เสี่ยงได้: ${c.name} — ${c.theme}`,
       `สถานการณ์: ${c.situation}`,
       c.caution ? `ข้อควรระวัง: ${c.caution}` : null,
       c.advice ? `คำแนะนำ: ${c.advice}` : null,
     ]
       .filter((l): l is string => l !== null)
-      .join("\n"),
-  ].join("\n\n");
+      .join("\n");
+  const userPrompt = [
+    q ? `คำถาม: ${q}` : "ไม่มีคำถามเฉพาะ — ให้คำชี้แนะภาพรวมจากไพ่ที่เสี่ยงได้",
+    input.cards.length > 1 ? `ไพ่ที่เสี่ยงได้ ${input.cards.length} ใบ (ใบแรกเป็นแกนหลัก ใบอื่นเสริม/เตือน/บอกทางออก — ร้อยเป็นเรื่องเดียว):` : "",
+    ...input.cards.map(one),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
   const result = await generateProseLlm({
     systemInstruction: SYSTEM_INSTRUCTION,
     userPrompt,
