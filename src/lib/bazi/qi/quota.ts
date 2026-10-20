@@ -27,11 +27,11 @@ export function qiCostOf(feature: QuotaFeature): number {
 }
 
 /** โควตาฟรีต่อวันตาม tier */
-// ตามแพลน (mootech-fe features/v2-shop/packages.ts): Free ไพ่ 2/วัน·แชท 1/วัน, Plus ไพ่ 10/วัน·แชท 5/วัน
+// ตามแพลน (mootech-fe features/v2-shop/packages.ts): Free ไพ่ 1/วัน (เดิม 2)·แชท 1/วัน, Plus ไพ่ 10/วัน·แชท 5/วัน
 // (จำกัด นับถอยได้), Pro ไม่จำกัดทั้งคู่ (isUnlimited=pro เท่านั้น — เอ็ม 2026-09-21). pro row = dead value
 // (isUnlimited ตัดก่อนถึง FREE_LIMIT) คงไว้กันพัง.
 const FREE_LIMIT: Record<QuotaFeature, Record<Tier, number>> = {
-  card: { free: 2, plus: 10, pro: 20 },
+  card: { free: 1, plus: 10, pro: 20 }, // ฟรี 1 ครั้ง/วัน รวมทุกไพ่+เซียมซี+เบอร์มงคล (gafiw/Kittipon 2026-10-20)
   chat: { free: 1, plus: 5, pro: 100 },
 };
 

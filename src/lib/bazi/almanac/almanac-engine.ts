@@ -29,6 +29,7 @@ import activityRecommendJson from "@/lib/bazi/data/almanac/activity-recommend.js
 import stageLegendJson from "@/lib/bazi/data/almanac/stage-legend.json";
 import jianchuLegendJson from "@/lib/bazi/data/almanac/jianchu-legend.json";
 import dayStarsJson from "@/lib/bazi/data/almanac/day-stars.json";
+import { dayUniversalScore } from "@/lib/bazi/almanac/universal-score";
 import qimen2569Json from "@/lib/bazi/data/almanac/qimen-2569.json";
 import qimenYearMonthJson from "@/lib/bazi/data/almanac/qimen-year-month-2569.json";
 import worshipDeityJson from "@/lib/bazi/data/almanac/worship-deity-60.json";
@@ -581,11 +582,13 @@ export function buildAlmanacDay(
       monthBranch: monthPillar.branch,
       yearBranch: yearPillar.branch,
     }),
+    universal: { score: 0, label: "ระวัง" },
   };
 
   // แก้รายวันแบบ generic: patch ทับ "ฟิลด์ใดก็ได้" ของวันนั้น (officer/deities/colors/…)
   const patch = overrides?.dayPatches?.[dateStr];
   if (patch) Object.assign(day_, patch);
+  day_.universal = dayUniversalScore(day_.strength); // หลัง patch — ถ้าแก้ strength รายวัน คะแนนสากลตามด้วย
   return day_;
 }
 

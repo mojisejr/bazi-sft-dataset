@@ -244,6 +244,8 @@ export type AlmanacDay = {
   /** หมายเหตุที่ผู้ใช้แก้รายวัน (override) — null ถ้าไม่มี */
   note: string | null;
   strength: StrengthScore;
+  /** คะแนนสากล (คุณภาพวัน ไม่ขึ้นกับดวงใคร) = กำลังดิถีวัน — universal-score.ts */
+  universal: { score: number; label: "ดีเยี่ยม" | "ดี" | "พอใช้" | "ระวัง" };
 };
 
 export type AlmanacMonth = {

@@ -42,13 +42,13 @@ describe("guide missions", () => {
 });
 
 describe("tour mission", () => {
-  test("guide_tour ทำครั้งเดียว 10 QI ไม่ผูกบท", async () => {
+  test("guide_tour ทำครั้งเดียว 2 QI ไม่ผูกบท", async () => {
     const { TOUR_MISSION_ID, TOUR_QI } = await import("@/lib/bazi/manifest/missions");
     const def = MISSION_BY_ID.get(TOUR_MISSION_ID);
     expect(def?.category).toBe("guide");
     expect(def?.period).toBe("once");
     expect(def?.rewardCoins).toBe(TOUR_QI);
-    expect(TOUR_QI).toBe(10);
+    expect(TOUR_QI).toBe(2);
     expect(GUIDE_CHAPTER_BONUS.has(TOUR_MISSION_ID)).toBe(false);
   });
 });

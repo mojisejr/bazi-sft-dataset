@@ -30,12 +30,12 @@ export type MissionDef = {
 };
 
 /** รางวัลเส้นทางมือใหม่ (QI) — ต่อภารกิจ / จบแต่ละบท / จบทุกบท (เปลี่ยนตัวเลขที่นี่ที่เดียว · FE โชว์ตาม quests.ts) */
-export const GUIDE_STEP_QI = 5;
-export const GUIDE_CHAPTER_QI = 20;
-export const GUIDE_COMPLETE_QI = 50;
+export const GUIDE_STEP_QI = 1; // เอ็ม 2026-10-20: รางวัลไกด์เยอะเกิน → รวม ~305 เหลือ ~55 (เดิม 5/20/50, ทัวร์ 10)
+export const GUIDE_CHAPTER_QI = 3;
+export const GUIDE_COMPLETE_QI = 10;
 /** ทัวร์แนะนำแอป 8 ขั้น (FE OnboardingTour) — กด "เริ่มต้นใช้งาน" จบทัวร์ = รับครั้งเดียว · กด "ไว้คราวหลัง" ไม่ได้รางวัล */
 export const TOUR_MISSION_ID = "guide_tour";
-export const TOUR_QI = 10;
+export const TOUR_QI = 2;
 
 /** เส้นทางมือใหม่ 6 บท (เอ็ม 2026-10-13 "ทำเลยตามที่เสนอ") — ต้องตรงกับ FE features/v2-guide/quests.ts */
 export const GUIDE_CHAPTERS: readonly { id: string; title: string; steps: readonly { id: string; title: string; href: string }[] }[] = [
