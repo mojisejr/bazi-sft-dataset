@@ -45,7 +45,10 @@ export type BdashKpis = {
 
 const rate = (c: BdashCohort, n: number | null) => (n === null ? null : ratio(n, c.signups));
 
-export function kpis(s: BdashSnapshot): BdashKpis {
+/** ตัวเลขที่ KPI ต้องใช้ — มาจาก snapshot หรือจากการอ่านสดตามช่วงก็ได้ */
+export type KpiInput = Pick<BdashSnapshot, "cohorts" | "payments"> & { ai: { totalThb: number; activeMembers: number } };
+
+export function kpis(s: KpiInput): BdashKpis {
   const withD7 = s.cohorts.filter((c) => c.d7 !== null && c.signups > 0);
   const last = withD7.at(-1);
   const prev = withD7.at(-2);
@@ -75,4 +78,41 @@ export function kpis(s: BdashSnapshot): BdashKpis {
 export function points(delta: number): string {
   const sign = delta > 0 ? "+" : delta < 0 ? "−" : "±";
   return `${sign}${Math.abs(delta * 100).toFixed(1)} จุด`;
+}
+
+/** "21 ก.ย. – 20 ต.ค. 2569" (ปี พ.ศ.; ข้ามปีจึงใส่ปีทั้งสองฝั่ง) */
+export function thRange(from: string, to: string): string {
+  const y = (d: string) => Number(d.slice(0, 4)) + 543;
+  if (from === to) return `${thDate(to)} ${y(to)}`;
+  return y(from) === y(to) ? `${thDate(from)} – ${thDate(to)} ${y(to)}` : `${thDate(from)} ${y(from)} – ${thDate(to)} ${y(to)}`;
+}
+
+/** วิธีจ่ายที่ควรดู: กดจ่ายอย่างน้อย 5 ครั้ง สำเร็จต่ำกว่า 70% — เลือกอันที่ไม่สำเร็จมากสุด พร้อมเหตุหลัก */
+export function paymentToWatch(payments: BdashPaymentRow[]): { method: string; reason: "expired" | "rejected"; n: number; created: number } | null {
+  const weak = payments
+    .filter((p) => p.created >= 5 && p.approved / p.created < 0.7)
+    .sort((a, b) => b.expired + b.rejected - (a.expired + a.rejected));
+  const p = weak[0];
+  if (!p) return null;
+  const reason = p.expired >= p.rejected ? "expired" : "rejected";
+  return { method: METHOD_TH[p.method] ?? p.method, reason, n: reason === "expired" ? p.expired : p.rejected, created: p.created };
+}
+
+/** QI รายวัน → รายสัปดาห์ (วันจันทร์) เมื่อช่วงยาว */
+export function qiByWeek(days: BdashQiDay[]): BdashQiDay[] {
+  const out = new Map<string, BdashQiDay>();
+  for (const d of days) {
+    const dow = new Date(`${d.day}T00:00:00Z`).getUTCDay();
+    const w = addDays(d.day, -((dow + 6) % 7));
+    const acc = out.get(w) ?? { day: w, buy: 0, missions: 0, daily: 0, referral: 0, team: 0, other: 0, spend: 0 };
+    acc.buy += d.buy;
+    acc.missions += d.missions;
+    acc.daily += d.daily;
+    acc.referral += d.referral;
+    acc.team += d.team;
+    acc.other += d.other;
+    acc.spend += d.spend;
+    out.set(w, acc);
+  }
+  return [...out.values()];
 }

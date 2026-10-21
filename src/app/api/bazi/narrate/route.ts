@@ -23,6 +23,10 @@ const LOGGED_FEATURES = new Set<LlmUsageFeature>([
   "reaction_chamber",
 ]);
 
+/** ฟีเจอร์ที่ label บอกสิ่งที่สมาชิกกรอกเอง (ทำนายเบอร์ = "วิเคราะห์เบอร์ <เบอร์>") — log นับคนจาก member id แล้ว
+ *  จึงไม่เก็บ label ไม่ให้เบอร์อยู่คู่กับตัวคน (mumate-bdash-v2-001 slice 2, owner 2026-10-21) */
+const NO_LABEL_FEATURES = new Set<string>(["phone_reading"]);
+
 const BodySchema = z.object({
   engineText: z.string().trim().min(1).max(12000),
   domainLabel: z.string().trim().max(120).default("ผลวิเคราะห์"),
@@ -107,7 +111,7 @@ export async function POST(req: Request) {
       model,
       provider,
       usageFeature,
-      usageLabel: domainLabel.slice(0, 200),
+      usageLabel: NO_LABEL_FEATURES.has(feature) ? null : domainLabel.slice(0, 200),
       usageAnonId: anonId ?? null,
     });
     return Response.json({ text: result.text, model: result.model });
