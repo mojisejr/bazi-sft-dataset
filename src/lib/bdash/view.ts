@@ -1,7 +1,7 @@
 // bdash — คำพูดและตัวเลขที่หน้า /bdash แสดง (ไม่แตะฐานข้อมูล · ทดสอบใน tests/bdash-shape.test.ts).
 // ภาษาไทยง่ายๆ ตามที่ owner อนุมัติบน mock (2026-10-13): หัวข้อเป็นคำถาม, บอกว่ายิ่งสูงหรือยิ่งต่ำยิ่งดี.
-import { addDays } from "./shape";
-import type { BdashCohort, BdashPaymentRow, BdashQiDay, BdashSnapshot } from "./types";
+import { addDays, type PayerSqlRow } from "./shape";
+import type { BdashCohort, BdashPayer, BdashPayerSummary, BdashPaymentRow, BdashQiDay, BdashSnapshot } from "./types";
 
 const TH_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
 
@@ -9,6 +9,11 @@ const TH_MON = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค."
 export function thDate(day: string): string {
   const [, m, d] = day.split("-").map(Number);
   return `${d} ${TH_MON[m - 1]}`;
+}
+
+/** "2027-10-12" → "12 ต.ค. 70" (ปี พ.ศ. สองหลัก — วันหมดสมาชิกอยู่คนละปีได้) */
+export function thDateYy(day: string): string {
+  return `${thDate(day)} ${String((Number(day.slice(0, 4)) + 543) % 100).padStart(2, "0")}`;
 }
 
 export const pct = (v: number | null): string => (v === null || !Number.isFinite(v) ? "—" : `${(v * 100).toFixed(1)}%`);
@@ -25,6 +30,66 @@ export function failureTh(code: string | null): string {
   if (code === "payment_rejected") return "ธนาคาร/บัตรปฏิเสธ";
   if (code === "unknown") return "ไม่ทราบสาเหตุ";
   return code;
+}
+
+/** แพ็กที่ขายอยู่ → ชื่อสั้นที่ทีมอ่านเข้าใจ · แพ็กอื่นใช้ description ใน payment_package · ไม่มีอีกใช้รหัส */
+export const PACKAGE_TH: Record<string, string> = {
+  V2_PRO_YEARLY: "Pro รายปี",
+  V2_PRO_MONTHLY: "Pro รายเดือน",
+  V2_PLUS_YEARLY: "Plus รายปี",
+  V2_PLUS_MONTHLY: "Plus รายเดือน",
+  QI_60: "ชี่ 90",
+  QI_200: "ชี่ 300",
+  QI_500: "ชี่ 900",
+  QI_1200: "ชี่ 2,100",
+  SINSAE_30: "จองซินแส 30 นาที",
+  SINSAE_60: "จองซินแส 60 นาที",
+  SINSAE_90: "จองซินแส 90 นาที",
+  BOOK_PDF: "หนังสือ PDF",
+  BOOK_PHYSICAL: "หนังสือเล่ม",
+};
+
+export const packageTh = (code: string, description: string | null): string => PACKAGE_TH[code] ?? (description?.trim() || code);
+
+/** ชื่อบนจอยาวได้แค่นี้ (นับเป็นตัวอักษรที่เห็น ไม่ตัดสระ/วรรณยุกต์ไทยออกจากตัวของมัน) — CSS ตัดเพิ่มอีกชั้นเมื่อจอแคบ */
+export const NAME_MAX = 20;
+const graphemes = new Intl.Segmenter("th", { granularity: "grapheme" });
+
+/**
+ * ชื่อที่ bdash แสดงได้: ชื่ออย่างเดียว (owner 2026-10-21). ถ้าคนตั้งชื่อเป็นอีเมลหรือเบอร์โทร ไม่แสดง
+ * เพราะ bdash ต้องไม่มีอีเมลหรือเบอร์ (นับเลขติดกันตั้งแต่ 6 ตัว ข้ามช่องว่างและขีด).
+ */
+export function payerName(raw: string | null): string {
+  const s = (raw ?? "").replace(/\s+/g, " ").trim();
+  if (!s) return "ไม่มีชื่อ";
+  if (s.includes("@") || /\d{6,}/.test(s.replace(/[\s\-().+]/g, ""))) return "ไม่แสดงชื่อ";
+  const g = [...graphemes.segment(s)].map((x) => x.segment);
+  return g.length > NAME_MAX ? `${g.slice(0, NAME_MAX - 1).join("").trimEnd()}…` : s;
+}
+
+/** แถวจาก SQL → สรุปและรายชื่อ. ชื่อผ่าน payerName ที่นี่ ชื่อดิบจึงไม่ไปถึงหน้า */
+export function shapePayers(rows: PayerSqlRow[]): { summary: BdashPayerSummary; payers: BdashPayer[] } {
+  const n = (v: unknown) => (v === null || v === undefined || v === "" ? 0 : Number(v));
+  const again = rows.filter((r) => n(r.buy_days) >= 2);
+  const gaps = again.reduce((s, r) => s + n(r.buy_days) - 1, 0);
+  return {
+    summary: {
+      payers: rows.length,
+      payments: rows.reduce((s, r) => s + n(r.times), 0),
+      once: rows.length - again.length,
+      again: again.length,
+      avgGapDays: gaps > 0 ? again.reduce((s, r) => s + n(r.span_days), 0) / gaps : null,
+      yearly: rows.reduce((s, r) => s + n(r.yearly), 0),
+    },
+    payers: rows.map((r) => ({
+      name: payerName(r.name),
+      times: n(r.times),
+      baht: n(r.satang) / 100,
+      lastDay: r.last_day,
+      lastPackage: packageTh(r.last_package, r.last_package_desc),
+      memberEnd: r.member_end,
+    })),
+  };
 }
 
 /** QI ที่ระบบแจกเอง (ภารกิจ + กิจกรรมรายวัน + ชวนเพื่อน + อื่นๆ) — ไม่รวมที่ซื้อ และที่ทีมแจกมือ (แสดงแยก) */

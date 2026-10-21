@@ -36,6 +36,33 @@ export type BdashPaymentRow = {
   topFailure: string | null;
 };
 
+/**
+ * คนหนึ่งคนในรายชื่อคนจ่าย (mumate-bdash-v2-001 slice 3) — ชื่ออย่างเดียว ไม่มี id อีเมล หรือเบอร์
+ * (owner 2026-10-21). ตัวเลขทุกช่องเป็นของช่วงที่เลือก ยกเว้นวันหมดสมาชิก.
+ */
+export type BdashPayer = {
+  name: string;
+  times: number;
+  baht: number;
+  lastDay: string;
+  lastPackage: string;
+  /** วันหมดสมาชิก (YYYY-MM-DD) จาก member_payment — null = ไม่มีแถวสมาชิก (เช่นซื้อแค่ชี่) */
+  memberEnd: string | null;
+};
+
+/** ใครจ่ายเงิน และกลับมาซื้ออีกไหม — ของช่วงที่เลือก */
+export type BdashPayerSummary = {
+  payers: number;
+  payments: number;
+  once: number;
+  /** จ่ายในช่วงนี้ และจ่ายสำเร็จมาแล้วอย่างน้อยสองวัน (นับถึงวันสุดท้ายของช่วง) — จ่ายสองครั้งวันเดียวกันไม่นับ */
+  again: number;
+  /** วันเฉลี่ยระหว่างการซื้อแต่ละครั้งของคนที่ซื้ออีก — null = ยังไม่มีใครซื้ออีก */
+  avgGapDays: number | null;
+  /** จำนวนครั้งที่จ่ายเป็นสมาชิกรายปีในช่วงนี้ (ต่ออายุเห็นหลังครบปี) */
+  yearly: number;
+};
+
 export type BdashQiDay = {
   day: string;
   buy: number;

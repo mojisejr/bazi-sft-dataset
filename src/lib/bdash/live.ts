@@ -10,6 +10,7 @@ import { createDbClient } from "@/db/client";
 import {
   queryActiveMembers,
   queryCohorts,
+  queryPayers,
   queryPayments,
   queryQiBalance,
   queryQiDays,
@@ -18,8 +19,8 @@ import {
 import { queryAiBuckets, queryPeople, queryPeopleTotals, shapeFeatureCard, type FeatureCard } from "./features";
 import type { BdashRange } from "./range";
 import { fillQiDays, shapeCohorts, shapePayments } from "./shape";
-import type { BdashCohort, BdashPaymentRow, BdashQiDay } from "./types";
-import { byMethod } from "./view";
+import type { BdashCohort, BdashPayer, BdashPayerSummary, BdashPaymentRow, BdashQiDay } from "./types";
+import { byMethod, shapePayers } from "./view";
 
 export const STATEMENT_TIMEOUT_MS = 3_000;
 export const CACHE_MS = 10 * 60_000;
@@ -105,7 +106,7 @@ export function clearBdashCache(): void {
 // ── ข้อมูลของแต่ละเมนู ──
 
 export type StayData = { cohorts: BdashCohort[] };
-export type MoneyData = { payments: BdashPaymentRow[] };
+export type MoneyData = { payments: BdashPaymentRow[]; payerSummary: BdashPayerSummary; payers: BdashPayer[] };
 export type FeaturesData = {
   card: FeatureCard;
   activeMembers: number;
@@ -123,7 +124,16 @@ export const loadStay = (range: BdashRange, opts?: Parameters<typeof cached>[3])
   cached<StayData>("stay", range, async (q) => ({ cohorts: shapeCohorts(await queryCohorts(q("cohorts"), range.to), range.to) }), opts);
 
 export const loadMoney = (range: BdashRange, opts?: Parameters<typeof cached>[3]) =>
-  cached<MoneyData>("money", range, async (q) => ({ payments: byMethod(shapePayments(await queryPayments(q("payments"), range.from, range.to))) }), opts);
+  cached<MoneyData>(
+    "money",
+    range,
+    async (q) => {
+      const payments = byMethod(shapePayments(await queryPayments(q("payments"), range.from, range.to)));
+      const { summary, payers } = shapePayers(await queryPayers(q("payers"), range.from, range.to));
+      return { payments, payerSummary: summary, payers };
+    },
+    opts,
+  );
 
 export const loadFeatures = (range: BdashRange, opts?: Parameters<typeof cached>[3]) =>
   cached<FeaturesData>(

@@ -28,8 +28,8 @@
 
 .bd-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .bd-brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.bd-logo { width: 44px; height: 44px; border-radius: 22px; flex: none; display: grid; place-items: center;
-  background: linear-gradient(135deg, var(--bd-gold-a), var(--bd-gold-b)); color: #1F2937; font-family: var(--bd-num); font-weight: 600; font-size: 15px; }
+.bd-logo { width: 44px; height: 44px; border-radius: 22px; flex: none; display: block; object-fit: cover;
+  background: linear-gradient(135deg, var(--bd-gold-a), var(--bd-gold-b)); }
 .bd-brand h1 { margin: 0; font-size: 22px; font-weight: 600; line-height: 1.2; text-wrap: balance; }
 .bd-brand p { margin: 0; font-size: 13px; color: var(--bd-muted); }
 .bd-chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -221,3 +221,8 @@ b .bd-sub { display: inline; }
   .bd-card:has(.bd-showall:checked) .bd-more { display: none; }
 }
 .bd-pay td:nth-child(4) { min-width: 9rem; }
+
+/* รายชื่อคนจ่าย (slice 3): ชื่อยาวถูกตัดด้วย … ไม่ดันหน้าให้กว้าง · ตาราง 6 คอลัมน์จึงเปลี่ยนเป็นรายการเร็วกว่าการ์ดอื่น */
+.bd td.bd-name { max-width: 14rem; overflow: hidden; text-overflow: ellipsis; }
+.bd-item-head > b.bd-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@container (max-width: 639px) { .bd-payers .bd-wide { display: none; } .bd-payers .bd-narrow { display: grid; } }

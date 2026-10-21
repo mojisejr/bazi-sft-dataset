@@ -1,9 +1,9 @@
 // bdash (mumate-business-metrics-001) — the parts that need no database: cohort windows, QI days, AI pricing, KPIs.
 import { describe, expect, it } from "vitest";
 
-import { addDays, fillQiDays, priceAi, shapeCohorts, shapePayments } from "@/lib/bdash/shape";
+import { addDays, fillQiDays, priceAi, shapeCohorts, shapePayments, type PayerSqlRow } from "@/lib/bdash/shape";
 import type { BdashSnapshot } from "@/lib/bdash/types";
-import { failureTh, kpis, points, thDate } from "@/lib/bdash/view";
+import { failureTh, kpis, NAME_MAX, packageTh, payerName, points, shapePayers, thDate, thDateYy } from "@/lib/bdash/view";
 import { priceCall, usdToThb } from "@/lib/llm-usage/pricing";
 
 const row = (week: string, over: Partial<Record<string, unknown>> = {}) => ({
@@ -137,5 +137,71 @@ describe("Thai wording", () => {
     expect(failureTh("card_declined_x")).toBe("card_declined_x");
     expect(points(0.023)).toBe("+2.3 จุด");
     expect(points(-0.01)).toBe("−1.0 จุด");
+  });
+});
+
+describe("payers (slice 3)", () => {
+  const row = (o: Partial<PayerSqlRow>): PayerSqlRow => ({
+    name: "สมใจ",
+    times: "1",
+    satang: "29900",
+    yearly: "0",
+    last_day: "2026-10-12",
+    last_package: "V2_PRO_MONTHLY",
+    last_package_desc: "Mumate Pro (รายเดือน)",
+    member_end: "2026-11-12",
+    buy_days: "1",
+    span_days: "0",
+    ...o,
+  });
+
+  it("counts buying again by purchase days, so two payments on one day are not a repeat", () => {
+    const { summary } = shapePayers([
+      row({ times: "2", buy_days: "1", yearly: "1" }), // PLUS + PRO on the same day
+      row({ times: "1", buy_days: "3", span_days: "40" }), // bought on three days, 40 days apart in all
+      row({ times: "2", buy_days: "2", span_days: "30" }),
+    ]);
+    expect(summary).toEqual({ payers: 3, payments: 5, once: 1, again: 2, avgGapDays: 70 / 3, yearly: 1 });
+  });
+
+  it("has no average gap when nobody bought again, and an empty range is all zero", () => {
+    expect(shapePayers([row({})]).summary.avgGapDays).toBeNull();
+    expect(shapePayers([]).summary).toEqual({ payers: 0, payments: 0, once: 0, again: 0, avgGapDays: null, yearly: 0 });
+  });
+
+  it("hands the page a name and figures only, never an id", () => {
+    const { payers } = shapePayers([row({ satang: "1470700" })]);
+    expect(Object.keys(payers[0]).sort()).toEqual(["baht", "lastDay", "lastPackage", "memberEnd", "name", "times"]);
+    expect(payers[0]).toMatchObject({ name: "สมใจ", baht: 14707, lastPackage: "Pro รายเดือน", memberEnd: "2026-11-12" });
+  });
+
+  it("never shows an email or a phone number as a name", () => {
+    expect(payerName("someone@example.com")).toBe("ไม่แสดงชื่อ");
+    expect(payerName("081-234-5678")).toBe("ไม่แสดงชื่อ");
+    expect(payerName("โทร 08 1234 5678")).toBe("ไม่แสดงชื่อ");
+    expect(payerName("  ")).toBe("ไม่มีชื่อ");
+    expect(payerName(null)).toBe("ไม่มีชื่อ");
+    expect(payerName("Nok 2526")).toBe("Nok 2526");
+  });
+
+  it("cuts a long name by visible characters, keeping Thai marks on their letter", () => {
+    const long = "กิ่งก้านใบไม้ที่พลิ้วไหวในสายลมยามเช้า";
+    const out = payerName(long);
+    const seen = [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(out)].length;
+    expect(out.endsWith("…")).toBe(true);
+    expect(seen).toBe(NAME_MAX);
+    expect(long.startsWith(out.slice(0, -1))).toBe(true);
+    expect(payerName("สมใจ ใจดี")).toBe("สมใจ ใจดี");
+  });
+
+  it("names packages in Thai, falling back to the package description, then the code", () => {
+    expect(packageTh("V2_PRO_YEARLY", null)).toBe("Pro รายปี");
+    expect(packageTh("COURSE_MATRIX_199", "คอร์ส Bazi Life Matrix (downsell)")).toBe("คอร์ส Bazi Life Matrix (downsell)");
+    expect(packageTh("NEW_THING", null)).toBe("NEW_THING");
+  });
+
+  it("writes a membership end with a two-digit Buddhist year", () => {
+    expect(thDateYy("2027-10-12")).toBe("12 ต.ค. 70");
+    expect(thDateYy("2026-01-03")).toBe("3 ม.ค. 69");
   });
 });

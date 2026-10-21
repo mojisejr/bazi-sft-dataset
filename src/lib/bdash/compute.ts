@@ -4,7 +4,18 @@ import { sql, type SQL } from "drizzle-orm";
 
 import type { createDbClient } from "@/db/client";
 
-import { addDays, fillQiDays, priceAi, shapeCohorts, shapePayments, type AiSqlRow, type CohortSqlRow, type PaymentSqlRow, type QiSqlRow } from "./shape";
+import {
+  addDays,
+  fillQiDays,
+  priceAi,
+  shapeCohorts,
+  shapePayments,
+  type AiSqlRow,
+  type CohortSqlRow,
+  type PayerSqlRow,
+  type PaymentSqlRow,
+  type QiSqlRow,
+} from "./shape";
 import { BDASH_RETENTION_FROM, type BdashSnapshot } from "./types";
 
 export const rowsOf = <T>(r: unknown): T[] => (Array.isArray(r) ? r : ((r as { rows?: unknown[] })?.rows ?? [])) as T[];
@@ -108,6 +119,45 @@ export async function queryPayments(db: Exec, from: string, to: string): Promise
              FILTER (WHERE status NOT IN ('APPROVED', 'PENDING')) AS top_failure
       FROM v GROUP BY 1, 2`);
   return rowsOf<PaymentSqlRow>(rows);
+}
+
+/**
+ * ใครจ่ายเงินในช่วงนี้ (slice 3): แถวละคน เรียงตามยอดในช่วง. ไม่ส่ง user_id ออกจาก SQL เลย — หน้าได้แค่ชื่อ.
+ * buy_days/span_days นับทุกการจ่ายสำเร็จจนถึงวันสุดท้ายของช่วง (ไม่ใช่แค่ในช่วง) เพื่อบอกว่าคนนี้เคยกลับมาซื้ออีกไหม;
+ * นับเป็น "วันที่ซื้อ" เพื่อให้การจ่ายสองครั้งในวันเดียวกัน (อัปเกรดหรือจ่ายซ้ำ) ไม่ถูกนับว่าซื้ออีก.
+ * วันหมดสมาชิกมาจาก member_payment (แถวเดียวต่อคน ระบบจ่ายเงินเขียนด้วย GREATEST).
+ */
+export async function queryPayers(db: Exec, from: string, to: string): Promise<PayerSqlRow[]> {
+  const start = bkkStart(from);
+  const end = bkkStart(addDays(to, 1));
+  const rows = await db.execute(sql`
+    WITH a AS (
+      SELECT user_id, created_at, amount_satang, package_code, expire, tier_code, ${bkkDay(sql`created_at`)} AS d
+        FROM v2_payment WHERE status = 'APPROVED' AND created_at < ${end}
+    ),
+    r AS (
+      SELECT user_id, count(*) AS times, sum(amount_satang) AS satang, max(created_at) AS last_at,
+             count(*) FILTER (WHERE expire = '1Y' AND tier_code IN ('PLUS', 'PRO')) AS yearly
+        FROM a WHERE created_at >= ${start} GROUP BY 1
+    ),
+    h AS (
+      SELECT user_id, count(DISTINCT d) AS buy_days, max(d) - min(d) AS span_days
+        FROM a WHERE user_id IN (SELECT user_id FROM r) GROUP BY 1
+    ),
+    l AS (
+      SELECT DISTINCT ON (user_id) user_id, package_code FROM a WHERE created_at >= ${start} ORDER BY user_id, created_at DESC
+    )
+    SELECT coalesce(nullif(btrim(u.name), ''), nullif(btrim(u.account_name), '')) AS name,
+           r.times, r.satang, r.yearly, to_char(r.last_at AT TIME ZONE 'Asia/Bangkok', 'YYYY-MM-DD') AS last_day,
+           l.package_code AS last_package, pp.description AS last_package_desc,
+           CASE WHEN m.expire_at ~ '^\\d{4}-\\d\\d-\\d\\d' THEN left(m.expire_at, 10) END AS member_end,
+           h.buy_days, h.span_days
+      FROM r JOIN h ON h.user_id = r.user_id JOIN l ON l.user_id = r.user_id
+      LEFT JOIN "user" u ON u.user_id = r.user_id
+      LEFT JOIN member_payment m ON m.user_id = r.user_id
+      LEFT JOIN LATERAL (SELECT description FROM payment_package p WHERE p.package_code = l.package_code LIMIT 1) pp ON true
+     ORDER BY r.satang DESC, r.last_at DESC`);
+  return rowsOf<PayerSqlRow>(rows);
 }
 
 /** QI เข้า/ออกต่อวัน แยกที่มา */
