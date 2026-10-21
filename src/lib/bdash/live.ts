@@ -19,6 +19,7 @@ import { queryAiBuckets, queryPeople, queryPeopleTotals, shapeFeatureCard, type 
 import type { BdashRange } from "./range";
 import { fillQiDays, shapeCohorts, shapePayments } from "./shape";
 import type { BdashCohort, BdashPaymentRow, BdashQiDay } from "./types";
+import { byMethod } from "./view";
 
 export const STATEMENT_TIMEOUT_MS = 3_000;
 export const CACHE_MS = 10 * 60_000;
@@ -122,7 +123,7 @@ export const loadStay = (range: BdashRange, opts?: Parameters<typeof cached>[3])
   cached<StayData>("stay", range, async (q) => ({ cohorts: shapeCohorts(await queryCohorts(q("cohorts"), range.to), range.to) }), opts);
 
 export const loadMoney = (range: BdashRange, opts?: Parameters<typeof cached>[3]) =>
-  cached<MoneyData>("money", range, async (q) => ({ payments: shapePayments(await queryPayments(q("payments"), range.from, range.to)) }), opts);
+  cached<MoneyData>("money", range, async (q) => ({ payments: byMethod(shapePayments(await queryPayments(q("payments"), range.from, range.to))) }), opts);
 
 export const loadFeatures = (range: BdashRange, opts?: Parameters<typeof cached>[3]) =>
   cached<FeaturesData>(
@@ -146,7 +147,7 @@ export const loadOverview = (range: BdashRange, opts?: Parameters<typeof cached>
     range,
     async (q) => {
       const cohorts = shapeCohorts(await queryCohorts(q("cohorts"), range.to), range.to);
-      const payments = shapePayments(await queryPayments(q("payments"), range.from, range.to));
+      const payments = byMethod(shapePayments(await queryPayments(q("payments"), range.from, range.to)));
       const activeMembers = await queryActiveMembers(q("active_members"), range.from, range.to);
       const aiBuckets = await queryAiBuckets(q("ai_buckets"), range);
       const totals = await queryPeopleTotals(q("people_totals"), range);

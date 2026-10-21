@@ -17,7 +17,6 @@ export const baht = (v: number): string => v.toLocaleString("en-US", { minimumFr
 export const ratio = (a: number, b: number): number | null => (b > 0 ? a / b : null);
 
 export const METHOD_TH: Record<string, string> = { promptpay: "PromptPay", card: "บัตรเครดิต/เดบิต" };
-export const GATEWAY_TH: Record<string, string> = { beam: "Beam", omise: "Omise" };
 
 /** failure_code → เหตุผลที่ทีมอ่านเข้าใจ (code ที่ไม่รู้จักแสดงตามเดิม) */
 export function failureTh(code: string | null): string {
@@ -85,6 +84,35 @@ export function thRange(from: string, to: string): string {
   const y = (d: string) => Number(d.slice(0, 4)) + 543;
   if (from === to) return `${thDate(to)} ${y(to)}`;
   return y(from) === y(to) ? `${thDate(from)} – ${thDate(to)} ${y(to)}` : `${thDate(from)} ${y(from)} – ${thDate(to)} ${y(to)}`;
+}
+
+/**
+ * รวมผู้รับเงินเข้าด้วยกัน เหลือแถวละวิธีจ่าย (owner 2026-10-21: จ่ายผ่าน Beam อย่างเดียวแล้ว ไม่ต้องแยก Omise บน bdash).
+ * รายการเก่าที่ผ่าน Omise (ถึง 2026-09-09) ยังนับรวมในวิธีจ่ายของมัน เพราะเป็นเงินที่เข้ามาจริง.
+ * สาเหตุที่ไม่สำเร็จบ่อยสุด = ของแถวที่ไม่สำเร็จมากที่สุด.
+ */
+export function byMethod(payments: BdashPaymentRow[]): BdashPaymentRow[] {
+  const out = new Map<string, BdashPaymentRow>();
+  const worst = new Map<string, number>();
+  for (const p of payments) {
+    const failed = p.created - p.approved - p.waiting;
+    const acc = out.get(p.method);
+    if (!acc) {
+      out.set(p.method, { ...p, gateway: "all" });
+      worst.set(p.method, failed);
+      continue;
+    }
+    acc.created += p.created;
+    acc.approved += p.approved;
+    acc.rejected += p.rejected;
+    acc.expired += p.expired;
+    acc.waiting += p.waiting;
+    if (failed > (worst.get(p.method) ?? 0) && p.topFailure) {
+      worst.set(p.method, failed);
+      acc.topFailure = p.topFailure;
+    }
+  }
+  return [...out.values()].sort((a, b) => b.created - a.created);
 }
 
 /** วิธีจ่ายที่ควรดู: กดจ่ายอย่างน้อย 5 ครั้ง สำเร็จต่ำกว่า 70% — เลือกอันที่ไม่สำเร็จมากสุด พร้อมเหตุหลัก */

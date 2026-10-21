@@ -8,7 +8,7 @@ import { PEOPLE_FROM, peopleQueryFrom, RULE_CHANGES, shapeFeatureCard, type AiBu
 import { CACHE_MS, cached, clearBdashCache, RangeTooHeavyError } from "@/lib/bdash/live";
 import { bucketEnd, buckets, parseRange, weekOf, withRange } from "@/lib/bdash/range";
 import { shapeCohorts } from "@/lib/bdash/shape";
-import { paymentToWatch, qiByWeek, thRange } from "@/lib/bdash/view";
+import { byMethod, paymentToWatch, qiByWeek, thRange } from "@/lib/bdash/view";
 
 const TODAY = "2026-10-21";
 
@@ -188,6 +188,24 @@ describe("views", () => {
     expect(paymentToWatch([p("promptpay", 58, 45, 0), p("card", 18, 5, 13)])).toEqual({ method: "บัตรเครดิต/เดบิต", reason: "expired", n: 13, created: 18 });
     expect(paymentToWatch([p("card", 4, 0, 4)])).toBeNull();
     expect(paymentToWatch([p("card", 10, 9, 1)])).toBeNull();
+  });
+
+  it("shows one row per payment method: Omise's old payments count under their method, no gateway split", () => {
+    const row = (method: string, gateway: string, created: number, approved: number, expired: number, topFailure: string | null) => ({
+      method,
+      gateway,
+      created,
+      approved,
+      rejected: 0,
+      expired,
+      waiting: created - approved - expired,
+      topFailure,
+    });
+    const merged = byMethod([row("promptpay", "beam", 60, 45, 2, "expired"), row("card", "beam", 18, 5, 13, "gateway_expired"), row("card", "omise", 11, 9, 1, "unknown"), row("promptpay", "omise", 9, 9, 0, null)]);
+    expect(merged).toEqual([
+      { method: "promptpay", gateway: "all", created: 69, approved: 54, rejected: 0, expired: 2, waiting: 13, topFailure: "expired" },
+      { method: "card", gateway: "all", created: 29, approved: 14, rejected: 0, expired: 14, waiting: 1, topFailure: "gateway_expired" },
+    ]);
   });
 
   it("sums QI days into Monday weeks", () => {
