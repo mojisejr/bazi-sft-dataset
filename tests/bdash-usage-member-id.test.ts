@@ -35,3 +35,49 @@ describe("POST /api/bazi/narrate — member id", () => {
     expect(generateProseLlm.mock.calls[0][0].usageAnonId).toBeNull();
   });
 });
+
+// Owner 2026-10-21: the card and fortune-stick logs now carry the member, so they stop keeping the question text.
+describe("card and fortune-stick readings — member id in, question text out", () => {
+  const QUESTION = "ควรย้ายงานไหม";
+
+  const usageOf = () => {
+    const opts = generateProseLlm.mock.calls[0][0];
+    return { feature: opts.usageFeature, label: opts.usageLabel, anonId: opts.usageAnonId };
+  };
+
+  test("divine cards", async () => {
+    const { drawRandom } = await import("@/lib/bazi/divine-cards/deck");
+    const { buildDivineReading } = await import("@/lib/bazi/divine-cards/reading-engine");
+    const { polishDivineReading } = await import("@/lib/bazi/divine-cards/reading-llm");
+    generateProseLlm.mockResolvedValue({ text: "ok", model: "m" });
+    const cards = drawRandom(3, 7) as unknown as Parameters<typeof buildDivineReading>[0];
+    await polishDivineReading({ reading: buildDivineReading(cards, QUESTION), question: QUESTION, anonId: "member-1" });
+    expect(usageOf()).toEqual({ feature: "divine_cards", label: null, anonId: "member-1" });
+  });
+
+  test("oracle cards", async () => {
+    const { drawRandom } = await import("@/lib/bazi/oracle-cards/deck");
+    const { buildOracleReading } = await import("@/lib/bazi/oracle-cards/reading-engine");
+    const { polishOracleReading } = await import("@/lib/bazi/oracle-cards/reading-llm");
+    generateProseLlm.mockResolvedValue({ text: "ok", model: "m" });
+    const cards = drawRandom(3, 7) as unknown as Parameters<typeof buildOracleReading>[0];
+    await polishOracleReading({ reading: buildOracleReading(cards, QUESTION), question: QUESTION, anonId: "member-1" });
+    expect(usageOf()).toEqual({ feature: "oracle_cards", label: null, anonId: "member-1" });
+  });
+
+  test("fortune sage (เซียมซี)", async () => {
+    const { drawRandom } = await import("@/lib/bazi/fortune-sage/deck");
+    const { polishSageReading } = await import("@/lib/bazi/fortune-sage/reading-llm");
+    generateProseLlm.mockResolvedValue({ text: "ok", model: "m" });
+    await polishSageReading({ stick: drawRandom(7), question: QUESTION, anonId: "member-1" });
+    expect(usageOf()).toEqual({ feature: "fortune_sage", label: null, anonId: "member-1" });
+  });
+
+  test("anonymous use logs no member and still no question", async () => {
+    const { drawRandom } = await import("@/lib/bazi/fortune-sage/deck");
+    const { polishSageReading } = await import("@/lib/bazi/fortune-sage/reading-llm");
+    generateProseLlm.mockResolvedValue({ text: "ok", model: "m" });
+    await polishSageReading({ stick: drawRandom(7), question: QUESTION });
+    expect(usageOf()).toEqual({ feature: "fortune_sage", label: null, anonId: null });
+  });
+});

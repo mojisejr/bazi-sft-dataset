@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   let tailored: string | null = null;
   if (mode === "llm" && question?.trim()) {
     try {
-      const llm = await polishSageReading({ stick, question: question.trim(), apiKey, model, provider });
+      const llm = await polishSageReading({ stick, question: question.trim(), apiKey, model, provider, anonId });
       tailored = llm.text;
     } catch {
       tailored = null;
