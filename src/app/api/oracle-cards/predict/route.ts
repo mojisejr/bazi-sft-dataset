@@ -126,7 +126,7 @@ export async function POST(req: Request) {
   // mode === "llm": เกลาคำจาก engine
   const slots = reading.slots.map((s) => ({ position: s.position, weight: s.weight, role: s.role, no: s.card.no }));
   try {
-    const llm = await polishOracleReading({ reading, question, apiKey, model, provider });
+    const llm = await polishOracleReading({ reading, question, apiKey, model, provider, anonId });
     return Response.json({ source: "llm", cards: cardPayload, slots, engineProse: reading.engineProse, llmProse: llm.text, model: llm.model, qi });
   } catch {
     // LLM ล่ม/ช้า → fallback เป็น engine payload (ผู้ใช้ถามแล้วต้องได้คำตอบเสมอ ไม่ 502) — FE จะโชว์สรุปจาก engine

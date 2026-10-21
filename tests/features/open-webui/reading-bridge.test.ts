@@ -309,3 +309,56 @@ describe("fetchGroundedReading — multi-topic (compound) grounding", () => {
     expect(result).not.toContain("【");
   });
 });
+
+// mumate-bdash-v2-001 slice 1: chat's member id reaches the topic reading's usage log, so bdash can count people.
+describe("fetchGroundedReading — member id for the usage log", () => {
+  test("the llm topic reading carries the member id", async () => {
+    getGeminiApiKeyMock.mockReturnValue("test-key");
+    const fetchMock = vi.fn().mockResolvedValue(topicResponse(true, "ปีหน้าเป็นปีจรดาวลาภ"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchGroundedReading(ORIGIN, {
+      topicId: "wealth_and_investment",
+      timeframe: "next_year",
+      rawInput: RAW_INPUT,
+      anonId: "member-1",
+    });
+
+    expect(urlOf(0, fetchMock)).toBe(`${ORIGIN}/api/reading/topic`);
+    expect(bodyOf(0, fetchMock).mode).toBe("llm");
+    expect(bodyOf(0, fetchMock).anonId).toBe("member-1");
+  });
+
+  test("a request that names the member carries the MuMate client secret; one that does not, does not", async () => {
+    vi.stubEnv("BAZI_CLIENT_ID_SECRET", "s".repeat(43));
+    getGeminiApiKeyMock.mockReturnValue("test-key");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(topicResponse(false))
+      .mockResolvedValueOnce(topicResponse(true, "ปีหน้าเป็นปีจรดาวลาภ"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchGroundedReading(ORIGIN, { topicId: "wealth_and_investment", timeframe: "next_year", rawInput: RAW_INPUT, anonId: "member-1" });
+
+    const headersOf = (call: number) => (fetchMock.mock.calls[call][1] as RequestInit).headers as Record<string, string>;
+    expect(headersOf(0)["x-mumate-client-secret"]).toBe("s".repeat(43));
+    expect(bodyOf(1, fetchMock).mode).toBe("consumer");
+    expect(headersOf(1)).not.toHaveProperty("x-mumate-client-secret");
+    vi.unstubAllEnvs();
+  });
+
+  test("no member id, no anonId field (and the consumer fallback never sends one)", async () => {
+    getGeminiApiKeyMock.mockReturnValue("test-key");
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(topicResponse(false))
+      .mockResolvedValueOnce(topicResponse(true, "ปีหน้าเป็นปีจรดาวลาภ"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await fetchGroundedReading(ORIGIN, { topicId: "wealth_and_investment", timeframe: "next_year", rawInput: RAW_INPUT });
+
+    expect(bodyOf(0, fetchMock)).not.toHaveProperty("anonId");
+    expect(bodyOf(1, fetchMock).mode).toBe("consumer");
+    expect(bodyOf(1, fetchMock)).not.toHaveProperty("anonId");
+  });
+});

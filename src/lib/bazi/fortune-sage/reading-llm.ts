@@ -71,6 +71,8 @@ export async function polishSageReading(
     apiKey?: string;
     model?: string;
     provider?: ReadingLlmProvider;
+    /** สมาชิกที่เปิด — เก็บใน usage log เพื่อนับคนต่อฟีเจอร์ใน bdash (mumate-bdash-v2-001) ไม่มีผลกับคำตอบ */
+    anonId?: string | null;
   },
   deps: Parameters<typeof generateProseLlm>[1] = {},
 ): Promise<SageLlmResult> {
@@ -83,7 +85,9 @@ export async function polishSageReading(
       provider: input.provider ?? "gemini",
       temperature: 0.3,
       usageFeature: "fortune_sage",
-      usageLabel: input.question.slice(0, 200),
+      // ไม่เก็บข้อความคำถามใน log อีก — log นี้ผูกกับสมาชิกแล้ว (owner 2026-10-21, mumate-bdash-v2-001)
+      usageLabel: null,
+      usageAnonId: input.anonId ?? null,
     },
     deps,
   );

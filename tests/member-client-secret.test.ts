@@ -115,6 +115,8 @@ const OPTIONAL_ID_ROUTES: string[] = [
   "louise-hay/chat",
   "reading/newdata-reading/llm",
   "reading/newdata-reading2/llm",
+  "bazi/narrate", // mumate-bdash-v2-001: the member id feeds the usage log
+  "reading/topic", // mumate-bdash-v2-001: chat's grounding passes the member id on
 ];
 
 async function invoke(route: string, method: Method, headers: Record<string, string>, body?: unknown) {
