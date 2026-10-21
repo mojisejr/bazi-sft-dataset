@@ -10,6 +10,8 @@ import { RangeTooHeavyError } from "@/lib/bdash/live";
 import { EARLIEST, parseRange, PRESETS, withRange, type BdashRange } from "@/lib/bdash/range";
 import { thRange } from "@/lib/bdash/view";
 
+import mascot from "./mascot.png";
+
 import "../bdash.css";
 
 export const bdashMetadata: Metadata = { title: "MuMate ภาพรวมธุรกิจ", robots: { index: false, follow: false } };
@@ -28,7 +30,7 @@ export type MenuKey = "overview" | "stay" | "money" | "features" | "chat";
 export const MENUS: ReadonlyArray<{ key: MenuKey; path: string; label: string; question: string; icon: string }> = [
   { key: "overview", path: "/bdash", label: "ภาพรวม", question: "ธุรกิจเป็นอย่างไร และอะไรเปลี่ยน", icon: "home" },
   { key: "stay", path: "/bdash/stay", label: "อยู่ต่อไหม", question: "คนที่สมัครเข้ามา กลับมาใช้อีกไหม และยอมจ่ายเงินไหม", icon: "loop" },
-  { key: "money", path: "/bdash/money", label: "เงินเข้า", question: "กดจ่ายแล้วติดตรงไหน", icon: "coin" },
+  { key: "money", path: "/bdash/money", label: "เงินเข้า", question: "กดจ่ายแล้วติดตรงไหน ใครจ่าย และกลับมาซื้ออีกไหม", icon: "coin" },
   { key: "features", path: "/bdash/features", label: "ฟีเจอร์และ AI", question: "คนใช้ฟีเจอร์ไหน คุ้มค่า AI ไหม และแจก QI มากไปไหม", icon: "grid" },
   { key: "chat", path: "/bdash/chat", label: "แชตถามอะไร", question: "คนสนใจเรื่องไหน ถามเรื่องวันนี้หรือทั้งปี", icon: "chat" },
 ];
@@ -100,7 +102,10 @@ export function BdashShell(props: { active: MenuKey; range: BdashRange; at: numb
       <div className="bd">
         <div className="bd-top">
           <div className="bd-brand">
-            <div className="bd-logo" aria-hidden="true">mu</div>
+            {/* mascot จาก mootech-fe (public/images/v2/mascot/01-nav.png ครอปหัว-ไหล่) · import เป็นไฟล์ static จึงมาทาง /_next/
+                ที่ประตู bdash และ Caddy เปิดอยู่แล้ว (owner 2026-10-21, slice 3) */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- รูปเล็ก 44px ไฟล์เดียว ไม่ต้องผ่านตัวย่อรูป */}
+            <img className="bd-logo" src={mascot.src} width={44} height={44} alt="" aria-hidden="true" />
             <div>
               <h1>ภาพรวมธุรกิจ MuMate</h1>
               <p>สำหรับทีม business · อ่านอย่างเดียว</p>

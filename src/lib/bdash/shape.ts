@@ -72,7 +72,21 @@ export function shapePayments(rows: PaymentSqlRow[]): BdashPaymentRow[] {
     .sort((a, b) => b.created - a.created);
 }
 
-export type QiSqlRow = { day: string } & Record<"buy" | "missions" | "daily" | "referral" | "team" | "other" | "spend", unknown>;
+/** แถวจาก queryPayers — ไม่มี user_id (หน้าแสดงชื่ออย่างเดียว) */
+export type PayerSqlRow = {
+  name: string | null;
+  times: unknown;
+  satang: unknown;
+  yearly: unknown;
+  last_day: string;
+  last_package: string;
+  last_package_desc: string | null;
+  member_end: string | null;
+  buy_days: unknown;
+  span_days: unknown;
+};
+
+export type QiSqlRow ={ day: string } & Record<"buy" | "missions" | "daily" | "referral" | "team" | "other" | "spend", unknown>;
 
 /** 28 วันจนถึง asOf ครบทุกวัน — วันที่ไม่มีรายการใส่ 0 เพื่อให้เส้นกราฟไม่กระโดดข้ามวัน */
 export function fillQiDays(rows: QiSqlRow[], asOf: string, days = 28): BdashQiDay[] {
