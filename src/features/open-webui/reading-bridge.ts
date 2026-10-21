@@ -18,6 +18,7 @@ import { TOPIC_PATH } from "@/lib/bazi/topic-path";
 import { buildAlmanacDay } from "@/lib/bazi/almanac/almanac-engine";
 import { type LuckyHour } from "@/lib/bazi/almanac/types";
 import { getGeminiApiKey } from "@/lib/env";
+import { CLIENT_SECRET_HEADER } from "@/lib/mumate-client";
 
 type Intent = OpenWebUiIntentClassification["intent"];
 
@@ -112,6 +113,8 @@ type GroundArgs = {
   calculatedState?: CalculatedStateValue | null;
   /** ข้อความผู้ใช้ล่าสุด — ใช้ตรวจว่าเป็นคำถาม "วันไหนดี" เพื่อ ground ด้วยวันดีจริง (man-vs-day) */
   message?: string | null;
+  /** สมาชิกที่ถาม — ส่งต่อให้ /api/reading/topic บันทึกใน usage log (bdash นับคน) ไม่มีผลกับคำตอบ */
+  anonId?: string | null;
 };
 
 // คำถามเลือก "วันดี/วันมงคล/ฤกษ์/เดือนนี้วันไหนดีสุด" — ต้องตอบด้วยวันจริง ไม่ใช่เลี่ยงไปพูดวัยจร/ปีจร
@@ -346,10 +349,16 @@ async function fetchNewdataChapterReading(
   }
 }
 
+// /api/reading/topic answers a request that names a member only with the MuMate client secret.
+function memberClientHeader(): Record<string, string> {
+  const secret = process.env.BAZI_CLIENT_ID_SECRET?.trim();
+  return secret ? { [CLIENT_SECRET_HEADER]: secret } : {};
+}
+
 // Topic seam: the existing /api/reading/topic ladder (llm ซินแส voice -> consumer deterministic).
 async function fetchTopicReading(
   origin: string,
-  { topicId, rawInput, calculatedState }: GroundArgs,
+  { topicId, rawInput, calculatedState, anonId }: GroundArgs,
 ): Promise<string | null> {
   let apiKey: string | undefined;
   try {
@@ -361,7 +370,7 @@ async function fetchTopicReading(
   const attempts: Array<Record<string, unknown>> = [];
   // llm mode requires apiKey + rawInput; gives the tuned ซินแสฟันธง voice that matches the PDF.
   if (apiKey) {
-    attempts.push({ topicId, mode: "llm", rawInput, calculatedState, apiKey });
+    attempts.push({ topicId, mode: "llm", rawInput, calculatedState, apiKey, ...(anonId ? { anonId } : {}) });
   }
   // consumer mode is deterministic (no LLM) — cheaper fallback that still carries doctrine + substitution.
   attempts.push({ topicId, mode: "consumer", rawInput, calculatedState });
@@ -370,7 +379,7 @@ async function fetchTopicReading(
     try {
       const res = await fetch(`${origin}/api/reading/topic`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(body.anonId ? memberClientHeader() : {}) },
         body: JSON.stringify(body),
       });
       if (!res.ok) {
@@ -397,6 +406,7 @@ async function groundOneTopic(
   timeframe: TriageTimeframe | null | undefined,
   rawInput: RawInputValue,
   calculatedState?: CalculatedStateValue | null,
+  anonId?: string | null,
 ): Promise<string | null> {
   const plan = resolveGroundingPlan(topicId, timeframe);
   if (!plan) {
@@ -409,11 +419,11 @@ async function groundOneTopic(
       return newdata;
     }
     // Degrade: empty newdata chapter -> deterministic topic reading for the same chapter.
-    return fetchTopicReading(origin, { topicId: plan.topicId, rawInput, calculatedState });
+    return fetchTopicReading(origin, { topicId: plan.topicId, rawInput, calculatedState, anonId });
   }
 
   // Time seam: ground on the turning_points topic reading (liuNian forecast + ปีชง + วัยจร).
-  return fetchTopicReading(origin, { topicId: plan.topicId, rawInput, calculatedState });
+  return fetchTopicReading(origin, { topicId: plan.topicId, rawInput, calculatedState, anonId });
 }
 
 function trimSection(text: string, max = 800): string {
@@ -425,7 +435,7 @@ function trimSection(text: string, max = 800): string {
 // หัวข้อ "จาก engine จริง" มาต่อกันเป็นก้อนเดียว เพื่อไม่ให้ LLM เดาสี/ทิศ/องค์เอง.
 async function fetchCompoundReading(
   origin: string,
-  { topicId, timeframe, rawInput, calculatedState, message }: GroundArgs,
+  { topicId, timeframe, rawInput, calculatedState, message, anonId }: GroundArgs,
   flags: { wantCalendar: boolean; wantColors: boolean; wantDeities: boolean },
 ): Promise<string | null> {
   const jobs: Array<Promise<{ head: string; body: string } | null>> = [];
@@ -438,13 +448,13 @@ async function fetchCompoundReading(
   }
   if (flags.wantColors) {
     jobs.push(
-      groundOneTopic(origin, "colors_directions", "none", rawInput, calculatedState).then((t) =>
+      groundOneTopic(origin, "colors_directions", "none", rawInput, calculatedState, anonId).then((t) =>
         t ? { head: "สีมงคล & ทิศมงคล (จากผลอ่าน)", body: trimSection(t) } : null),
     );
   }
   if (flags.wantDeities) {
     jobs.push(
-      groundOneTopic(origin, "guardian_deities", "none", rawInput, calculatedState).then((t) =>
+      groundOneTopic(origin, "guardian_deities", "none", rawInput, calculatedState, anonId).then((t) =>
         t ? { head: "องค์อุปถัมภ์ / สิ่งที่ควรไหว้ (จากผลอ่าน)", body: trimSection(t) } : null),
     );
   }
@@ -461,7 +471,7 @@ async function fetchCompoundReading(
     (primary === TIME_TOPIC_ID && flags.wantCalendar);
   if (!skipPrimary && primary) {
     jobs.push(
-      groundOneTopic(origin, primary, timeframe, rawInput, calculatedState).then((t) =>
+      groundOneTopic(origin, primary, timeframe, rawInput, calculatedState, anonId).then((t) =>
         t ? { head: "ประเด็นหลักที่ถาม (จากผลอ่าน)", body: trimSection(t) } : null),
     );
   }
@@ -469,7 +479,7 @@ async function fetchCompoundReading(
   const parts = (await Promise.all(jobs)).filter((p): p is { head: string; body: string } => p !== null);
   if (!parts.length) {
     // ทุกหัวข้อว่าง → ตกไปทาง single-topic ปกติ
-    return groundOneTopic(origin, topicId, timeframe, rawInput, calculatedState);
+    return groundOneTopic(origin, topicId, timeframe, rawInput, calculatedState, anonId);
   }
   void message;
   return parts.map((p) => `【${p.head}】\n${p.body}`).join("\n\n");
@@ -481,7 +491,7 @@ export async function fetchGroundedReading(
   origin: string,
   args: GroundArgs,
 ): Promise<string | null> {
-  const { topicId, timeframe, rawInput, calculatedState, message } = args;
+  const { topicId, timeframe, rawInput, calculatedState, message, anonId } = args;
   const wantCalendar = needsPersonalDayCalendar(message, timeframe);
   const wantColors = isColorsDirQuestion(message);
   const wantDeities = isDeityQuestion(message);
@@ -500,5 +510,5 @@ export async function fetchGroundedReading(
     // ไม่มีข้อมูลปฏิทิน → ตกไปใช้ seam ปกติ
   }
 
-  return groundOneTopic(origin, topicId, timeframe, rawInput, calculatedState);
+  return groundOneTopic(origin, topicId, timeframe, rawInput, calculatedState, anonId);
 }

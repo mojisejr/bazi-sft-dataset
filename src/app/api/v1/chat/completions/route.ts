@@ -183,12 +183,14 @@ export type BuildOpenWebUiExecutionContextInput = {
   calculatedState?: BaziStatePayload | null;
   /** same-server origin used to call the reading engine internally (Path A grounding) */
   origin?: string | null;
+  /** สมาชิกที่ถาม — ส่งต่อถึง usage log ของบทอ่านดวง (bdash นับคน) ไม่มีผลกับคำตอบ */
+  anonId?: string | null;
 };
 
 export async function buildOpenWebUiExecutionContext(
   input: BuildOpenWebUiExecutionContextInput,
 ): Promise<OpenWebUiGeminiExecutionContext> {
-  const { result, triage, calculatedState, origin } = input;
+  const { result, triage, calculatedState, origin, anonId } = input;
   const { classification, extraction, topicId, timeframe } = triage;
   // ข้อความผู้ใช้ล่าสุด → ตรวจว่าเป็นคำถาม "วันไหนดี" (ground ด้วย man-vs-day + ปิด honest-precision reframe)
   const message = result.latestUserMessage?.content ?? null;
@@ -217,6 +219,7 @@ export async function buildOpenWebUiExecutionContext(
       rawInput: extraction.rawInput,
       calculatedState,
       message,
+      anonId,
     });
     return {
       ...base,
@@ -252,6 +255,7 @@ export async function buildOpenWebUiExecutionContext(
       rawInput: result.baziConsult.rawInput,
       calculatedState: result.baziConsult.calculatedState,
       message,
+      anonId,
     });
     return {
       ...base,
@@ -283,8 +287,9 @@ async function groundOrFallback(args: {
   rawInput: RawInputValue;
   calculatedState: BaziStatePayload;
   message?: string | null;
+  anonId?: string | null;
 }): Promise<string | null> {
-  const { origin, classification, topicId, timeframe, topicHint, rawInput, calculatedState, message } = args;
+  const { origin, classification, topicId, timeframe, topicHint, rawInput, calculatedState, message, anonId } = args;
   const resolvedTopicId = resolveGroundingTopicId(topicId, topicHint);
   const fallback = stringifyOpenWebUiTruthPacket(classification, calculatedState);
 
@@ -298,6 +303,7 @@ async function groundOrFallback(args: {
     rawInput,
     calculatedState,
     message,
+    anonId,
   });
   return grounded ?? fallback;
 }
@@ -554,6 +560,7 @@ export async function POST(req: Request) {
         triage,
         calculatedState,
         origin,
+        anonId: effectiveUserId,
       }));
 
     // ความรู้เสริม fix จากซินแส (เช่น ฮวงจุ้ยกระเป๋าตังค์) — แนบเมื่อคำถามเข้า keyword

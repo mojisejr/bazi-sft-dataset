@@ -9,6 +9,7 @@ import { z } from "zod";
 
 import { generateProseLlm } from "@/lib/bazi/reading-llm";
 import { guardServerLlm } from "@/lib/bazi/llm-guard";
+import { requireMumateClient } from "@/lib/mumate-client";
 import type { LlmUsageFeature } from "@/db/schema";
 
 export const runtime = "nodejs";
@@ -29,6 +30,8 @@ const BodySchema = z.object({
   question: z.string().trim().max(300).optional(),
   /** ใช้แยกสถิติ/rate-limit ต่อฟีเจอร์ เช่น fortune_sage, almanac, man_vs_day, phone_reading, reaction_chamber */
   feature: z.string().trim().max(40).default("narrate"),
+  /** สมาชิกที่ใช้ (FE ส่งมา) — เก็บใน usage log เพื่อนับคนต่อฟีเจอร์ใน bdash (mumate-bdash-v2-001) ไม่มีผลกับคำตอบ */
+  anonId: z.string().trim().min(1).max(128).optional(),
   apiKey: z.string().trim().min(1).optional(),
   model: z.string().trim().min(1).optional(),
   provider: z.enum(["gemini", "opencode", "anthropic"]).default("gemini"),
@@ -53,6 +56,12 @@ export async function POST(req: Request) {
     return Response.json({ error: { message: "Request body must be valid JSON." } }, { status: 400 });
   }
 
+  // naming a member needs the FE server's secret (hardening slice 1); anonymous use is unchanged
+  if ((payload as { anonId?: unknown } | null)?.anonId) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
+
   const parsed = BodySchema.safeParse(payload);
   if (!parsed.success) {
     return Response.json(
@@ -60,7 +69,7 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const { engineText, domainLabel, question, feature, apiKey, model, provider } = parsed.data;
+  const { engineText, domainLabel, question, feature, anonId, apiKey, model, provider } = parsed.data;
   const q = (question ?? "").trim();
 
   // โหมด AI (gemini) ใช้คีย์เซิร์ฟเวอร์ได้เลย — guard กันยิงรัว/โควตา/เพดานต้นทุน
@@ -99,6 +108,7 @@ export async function POST(req: Request) {
       provider,
       usageFeature,
       usageLabel: domainLabel.slice(0, 200),
+      usageAnonId: anonId ?? null,
     });
     return Response.json({ text: result.text, model: result.model });
   } catch (error) {

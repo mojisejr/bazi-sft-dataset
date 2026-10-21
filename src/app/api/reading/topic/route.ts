@@ -40,6 +40,7 @@ import { getKnowledgeOverlay } from "@/lib/bazi/knowledge-override.server";
 import { runWithKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay-context";
 import { mergeKnowledgeOverlay } from "@/lib/bazi/knowledge/knowledge-overlay";
 import { isAdminAuthorized } from "@/lib/admin-token";
+import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
 
@@ -74,6 +75,8 @@ const ReadingTopicRequestSchema = z
     provider: z.enum(["gemini", "opencode", "anthropic"]).default("gemini"),
     /** คำที่ซินแสเคยแก้ให้ดวงที่ได้ผลคล้ายกัน (โหมด llm) — ใช้เป็นตัวอย่างสำนวนให้ LLM */
     masterExamples: z.array(z.string().trim().min(1)).max(3).optional(),
+    /** สมาชิกที่ถาม (แชตส่งต่อมา) — เก็บใน usage log เพื่อนับคนต่อฟีเจอร์ใน bdash (mumate-bdash-v2-001) ไม่มีผลกับคำตอบ */
+    anonId: z.string().trim().min(1).max(128).optional(),
   })
   .refine((value) => value.rawInput || value.calculatedState, {
     message: "ต้องส่ง rawInput หรือ calculatedState อย่างน้อยหนึ่งอย่าง",
@@ -92,13 +95,19 @@ export async function POST(req: Request) {
     return badRequest("Request body must be valid JSON.", "invalid_json");
   }
 
+  // naming a member needs the MuMate client secret (hardening slice 1); bazi's own chat bridge sends it
+  if ((payload as { anonId?: unknown } | null)?.anonId) {
+    const denied = requireMumateClient(req);
+    if (denied) return denied;
+  }
+
   const parsed = ReadingTopicRequestSchema.safeParse(payload);
 
   if (!parsed.success) {
     return badRequest(parsed.error.issues[0]?.message ?? "Invalid request.", "invalid_payload");
   }
 
-  const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model, provider, masterExamples } =
+  const { topicId, mode, rawInput, calculatedState: providedState, apiKey, model, provider, masterExamples, anonId } =
     parsed.data;
 
   // โหมด AI (gemini) ใช้คีย์เซิร์ฟเวอร์ได้เลย — guard กันยิงรัว/โควตา/เพดานต้นทุน
@@ -219,6 +228,7 @@ export async function POST(req: Request) {
       model,
       provider,
       usageFeature: "reading_topic",
+      usageAnonId: anonId ?? null,
       profile: provider === "gemini" ? GPTCASE_TUNED_PROFILE : undefined,
       ...(masterExamples && masterExamples.length > 0
         ? { masterCorrections: masterExamples }
