@@ -65,7 +65,7 @@ export async function GET(request: Request) {
                u.name AS u_name, u.surname AS u_surname, u.email, prov.provider_name,
                (SELECT c.code FROM activity_coupon_redemption r JOIN activity_coupon c ON c.id = r.coupon_id
                  WHERE r.anon_id = e.anon_id AND c.reward_kind = 'course' AND c.tier_sku = ${course}
-                 ORDER BY r.created_at DESC LIMIT 1) AS coupon_code
+                 ORDER BY r.redeemed_at DESC LIMIT 1) AS coupon_code
           FROM bazi_entitlement e
           LEFT JOIN "user" u ON u.user_id = e.anon_id
           LEFT JOIN LATERAL (SELECT name AS provider_name FROM user_provider up WHERE up.user_id = e.anon_id ORDER BY up.update_at DESC LIMIT 1) prov ON true
