@@ -17,7 +17,6 @@ export const baht = (v: number): string => v.toLocaleString("en-US", { minimumFr
 export const ratio = (a: number, b: number): number | null => (b > 0 ? a / b : null);
 
 export const METHOD_TH: Record<string, string> = { promptpay: "PromptPay", card: "บัตรเครดิต/เดบิต" };
-export const GATEWAY_TH: Record<string, string> = { beam: "Beam", omise: "Omise" };
 
 /** failure_code → เหตุผลที่ทีมอ่านเข้าใจ (code ที่ไม่รู้จักแสดงตามเดิม) */
 export function failureTh(code: string | null): string {
@@ -45,7 +44,10 @@ export type BdashKpis = {
 
 const rate = (c: BdashCohort, n: number | null) => (n === null ? null : ratio(n, c.signups));
 
-export function kpis(s: BdashSnapshot): BdashKpis {
+/** ตัวเลขที่ KPI ต้องใช้ — มาจาก snapshot หรือจากการอ่านสดตามช่วงก็ได้ */
+export type KpiInput = Pick<BdashSnapshot, "cohorts" | "payments"> & { ai: { totalThb: number; activeMembers: number } };
+
+export function kpis(s: KpiInput): BdashKpis {
   const withD7 = s.cohorts.filter((c) => c.d7 !== null && c.signups > 0);
   const last = withD7.at(-1);
   const prev = withD7.at(-2);
@@ -75,4 +77,70 @@ export function kpis(s: BdashSnapshot): BdashKpis {
 export function points(delta: number): string {
   const sign = delta > 0 ? "+" : delta < 0 ? "−" : "±";
   return `${sign}${Math.abs(delta * 100).toFixed(1)} จุด`;
+}
+
+/** "21 ก.ย. – 20 ต.ค. 2569" (ปี พ.ศ.; ข้ามปีจึงใส่ปีทั้งสองฝั่ง) */
+export function thRange(from: string, to: string): string {
+  const y = (d: string) => Number(d.slice(0, 4)) + 543;
+  if (from === to) return `${thDate(to)} ${y(to)}`;
+  return y(from) === y(to) ? `${thDate(from)} – ${thDate(to)} ${y(to)}` : `${thDate(from)} ${y(from)} – ${thDate(to)} ${y(to)}`;
+}
+
+/**
+ * รวมผู้รับเงินเข้าด้วยกัน เหลือแถวละวิธีจ่าย (owner 2026-10-21: จ่ายผ่าน Beam อย่างเดียวแล้ว ไม่ต้องแยก Omise บน bdash).
+ * รายการเก่าที่ผ่าน Omise (ถึง 2026-09-09) ยังนับรวมในวิธีจ่ายของมัน เพราะเป็นเงินที่เข้ามาจริง.
+ * สาเหตุที่ไม่สำเร็จบ่อยสุด = ของแถวที่ไม่สำเร็จมากที่สุด.
+ */
+export function byMethod(payments: BdashPaymentRow[]): BdashPaymentRow[] {
+  const out = new Map<string, BdashPaymentRow>();
+  const worst = new Map<string, number>();
+  for (const p of payments) {
+    const failed = p.created - p.approved - p.waiting;
+    const acc = out.get(p.method);
+    if (!acc) {
+      out.set(p.method, { ...p, gateway: "all" });
+      worst.set(p.method, failed);
+      continue;
+    }
+    acc.created += p.created;
+    acc.approved += p.approved;
+    acc.rejected += p.rejected;
+    acc.expired += p.expired;
+    acc.waiting += p.waiting;
+    if (failed > (worst.get(p.method) ?? 0) && p.topFailure) {
+      worst.set(p.method, failed);
+      acc.topFailure = p.topFailure;
+    }
+  }
+  return [...out.values()].sort((a, b) => b.created - a.created);
+}
+
+/** วิธีจ่ายที่ควรดู: กดจ่ายอย่างน้อย 5 ครั้ง สำเร็จต่ำกว่า 70% — เลือกอันที่ไม่สำเร็จมากสุด พร้อมเหตุหลัก */
+export function paymentToWatch(payments: BdashPaymentRow[]): { method: string; reason: "expired" | "rejected"; n: number; created: number } | null {
+  const weak = payments
+    .filter((p) => p.created >= 5 && p.approved / p.created < 0.7)
+    .sort((a, b) => b.expired + b.rejected - (a.expired + a.rejected));
+  const p = weak[0];
+  if (!p) return null;
+  const reason = p.expired >= p.rejected ? "expired" : "rejected";
+  return { method: METHOD_TH[p.method] ?? p.method, reason, n: reason === "expired" ? p.expired : p.rejected, created: p.created };
+}
+
+/** QI รายวัน → รายสัปดาห์ (วันจันทร์) เมื่อช่วงยาว */
+export function qiByWeek(days: BdashQiDay[]): BdashQiDay[] {
+  const out = new Map<string, BdashQiDay>();
+  for (const d of days) {
+    const dow = new Date(`${d.day}T00:00:00Z`).getUTCDay();
+    const w = addDays(d.day, -((dow + 6) % 7));
+    const acc = out.get(w) ?? { day: w, buy: 0, missions: 0, daily: 0, referral: 0, team: 0, other: 0, spend: 0 };
+    acc.buy += d.buy;
+    acc.missions += d.missions;
+    acc.daily += d.daily;
+    acc.referral += d.referral;
+    acc.team += d.team;
+    acc.other += d.other;
+    acc.spend += d.spend;
+    out.set(w, acc);
+  }
+  return [...out.values()];
 }

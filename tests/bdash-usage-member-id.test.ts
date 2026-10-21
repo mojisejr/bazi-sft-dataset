@@ -34,6 +34,24 @@ describe("POST /api/bazi/narrate — member id", () => {
 
     expect(generateProseLlm.mock.calls[0][0].usageAnonId).toBeNull();
   });
+
+  // slice 2 (owner 2026-10-21): the phone reading's label is the number the member typed, so it no longer sits beside them
+  test("phone reading logs the member but not the number", async () => {
+    generateProseLlm.mockResolvedValue({ text: "คำทำนาย", model: "m" });
+    await narrate({ engineText: "เบอร์ 081-234-5678", domainLabel: "วิเคราะห์เบอร์ 081-234-5678", feature: "phone_reading", anonId: "member-1" });
+
+    const opts = generateProseLlm.mock.calls[0][0];
+    expect(opts.usageLabel).toBeNull();
+    expect(opts.usageAnonId).toBe("member-1");
+    expect(opts.userPrompt).toContain("081-234-5678");
+  });
+
+  test("other narrate features keep their label", async () => {
+    generateProseLlm.mockResolvedValue({ text: "คำทำนาย", model: "m" });
+    await narrate({ engineText: "ผล", domainLabel: "ฤกษ์ยามวันที่ 2026-10-21", feature: "almanac", anonId: "member-1" });
+
+    expect(generateProseLlm.mock.calls[0][0].usageLabel).toBe("ฤกษ์ยามวันที่ 2026-10-21");
+  });
 });
 
 // Owner 2026-10-21: the card and fortune-stick logs now carry the member, so they stop keeping the question text.
