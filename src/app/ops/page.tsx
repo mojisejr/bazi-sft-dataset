@@ -269,6 +269,7 @@ export default function OpsAdminPage() {
       {/* ตั้งค่าแชร์เพื่อน (Pro ฟรี 1 เดือน) — เปิด/ปิด + เพดานคน/แอค + รวม */}
       <PromoShareSettings secret={secret} onNote={note} />
       <CourseVideoEditor secret={secret} onNote={note} />
+      <CourseAccessPanel secret={secret} onNote={note} />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
@@ -1969,6 +1970,148 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             </tbody>
           </table>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 🎓 สิทธิ์คอร์สออนไลน์ (เอ็ม 2026-10-21): ใครเข้าได้ · ให้/ถอนสิทธิ์ · สร้างโค้ด/ลิงก์รับคอร์ส ─────────────
+//   รายชื่อ/ให้สิทธิ์ → /api/ops/course-access · โค้ด → /api/ops/coupon (rewardKind "course", slug ใน tierSku)
+//   ลิงก์รับคอร์ส = https://bazichart.mumate.co/course/redeem?code=<โค้ด> (หน้าเว็บ: ล็อกอิน → แลก → เข้าเรียน)
+type CourseSlugOps = "calendar" | "life-matrix";
+type AccessPerson = { anonId: string; name: string; lineName: string | null; email: string | null; via: "purchase" | "grant" | "coupon"; detail: string; at: string | null };
+type FoundUser = { anonId: string; displayName: string; email: string | null };
+const COURSE_REDEEM_BASE = "https://bazichart.mumate.co/course/redeem?code=";
+
+function randomCourseCode(course: CourseSlugOps): string {
+  const abc = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let s = "";
+  for (let i = 0; i < 6; i++) s += abc[Math.floor(Math.random() * abc.length)];
+  return `${course === "calendar" ? "WTD" : "BLM"}-${s}`;
+}
+
+function CourseAccessPanel({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [course, setCourse] = useState<CourseSlugOps>("calendar");
+  const [people, setPeople] = useState<AccessPerson[]>([]);
+  const [codes, setCodes] = useState<CouponRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  // ให้สิทธิ์รายคน
+  const [q, setQ] = useState("");
+  const [found, setFound] = useState<FoundUser[]>([]);
+  // สร้างโค้ด
+  const [code, setCode] = useState(() => randomCourseCode("calendar"));
+  const [maxUse, setMaxUse] = useState("1");
+  const [endsAt, setEndsAt] = useState("");
+
+  const load = useCallback(async () => {
+    if (!secret) return;
+    const [a, c] = await Promise.all([
+      fetch(`/api/ops/course-access?secret=${encodeURIComponent(secret)}&course=${course}`).then((r) => r.json()).catch(() => ({})),
+      fetch(`/api/ops/coupon?secret=${encodeURIComponent(secret)}`).then((r) => r.json()).catch(() => ({})),
+    ]);
+    setPeople((a as { people?: AccessPerson[] }).people ?? []);
+    const all = ((c as { coupons?: CouponRow[] }).coupons ?? []) as CouponRow[];
+    setCodes(all.filter((x) => x.rewardKind === "course" && x.tierSku === course));
+  }, [secret, course]);
+  useEffect(() => { if (open) void load(); }, [open, load]);
+  useEffect(() => { setCode(randomCourseCode(course)); }, [course]);
+
+  const search = async () => {
+    if (!q.trim()) return;
+    const r = await fetch(`/api/ops/users?q=${encodeURIComponent(q.trim())}&limit=8`, { headers: { "x-ops-secret": secret } });
+    const j = (await r.json().catch(() => ({}))) as { users?: FoundUser[] };
+    setFound(j.users ?? []);
+  };
+  const setAccess = async (anonId: string, action: "grant" | "revoke") => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/course-access", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, course, anonId, action }) });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      onNote(r.ok, r.ok ? (action === "grant" ? "ให้สิทธิ์คอร์สแล้ว" : "ถอนสิทธิ์แล้ว") : (j.error ?? "ไม่สำเร็จ"));
+      if (r.ok) await load();
+    } finally { setBusy(false); }
+  };
+  const createCode = async () => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/coupon", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret, action: "create", code: code.trim(), rewardKind: "course", tierSku: course, amount: 1, maxUseTotal: maxUse || undefined, maxUsePerUser: 1, endsAt: endsAt || undefined }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string; reason?: string };
+      onNote(r.ok, r.ok ? `สร้างโค้ด ${code} แล้ว` : (j.error ?? j.reason ?? "สร้างโค้ดไม่สำเร็จ"));
+      if (r.ok) { setCode(randomCourseCode(course)); await load(); }
+    } finally { setBusy(false); }
+  };
+  const copy = (t: string) => { void navigator.clipboard?.writeText(t); onNote(true, "คัดลอกแล้ว"); };
+  const viaLabel = (v: AccessPerson["via"]) => (v === "purchase" ? "💳 ซื้อเอง" : v === "coupon" ? "🎟️ ใช้โค้ด" : "🛠️ แอดมินให้");
+  const grantedIds = new Set(people.filter((p) => p.via !== "purchase").map((p) => p.anonId));
+
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>🎓 คอร์สออนไลน์ — ใครเข้าได้ / ให้สิทธิ์ / โค้ดรับคอร์ส</h2>
+        <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((v) => !v)}>{open ? "ซ่อน" : "เปิด"}</button>
+      </div>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+            <button style={btn(course === "calendar" ? C.accent : C.border)} onClick={() => setCourse("calendar")}>Win the Day (คอร์สปฏิทิน)</button>
+            <button style={btn(course === "life-matrix" ? C.accent : C.border)} onClick={() => setCourse("life-matrix")}>Bazi Life Matrix</button>
+            <button style={{ ...btn(C.border), marginLeft: "auto" }} onClick={() => void load()}>↻ รีเฟรช</button>
+          </div>
+
+          <p style={{ ...label, fontSize: 13, color: C.text }}>👥 ผู้มีสิทธิ์ ({people.length} คน)</p>
+          <p style={{ fontSize: 12, color: C.sub, margin: "0 0 6px" }}>สมาชิก PLUS/PRO ที่จ่ายเงินจริงเข้าคอร์สปฏิทินได้ด้วย (ไม่แสดงในรายชื่อนี้)</p>
+          <div style={{ maxHeight: 280, overflow: "auto", border: `1px solid ${C.border}`, borderRadius: 8, marginBottom: 12 }}>
+            {people.length === 0 ? <p style={{ fontSize: 13, color: C.sub, padding: 10, margin: 0 }}>ยังไม่มี</p> : people.map((p) => (
+              <div key={`${p.via}-${p.anonId}`} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 10px", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
+                <span style={{ width: 96 }}>{viaLabel(p.via)}</span>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  <b>{p.lineName ?? p.name}</b>{p.lineName && p.name !== "—" ? ` (${p.name})` : ""}{p.email ? ` · ${p.email}` : ""}
+                  <br /><span style={{ color: C.sub, fontSize: 11 }}>{p.detail} · {p.at ?? ""} · <span style={{ cursor: "pointer" }} onClick={() => copy(p.anonId)}>{p.anonId.slice(0, 8)}… ⧉</span></span>
+                </span>
+                {p.via !== "purchase" && <button style={{ ...btn(C.warn), padding: "5px 10px", fontSize: 12 }} disabled={busy} onClick={() => void setAccess(p.anonId, "revoke")}>ถอนสิทธิ์</button>}
+              </div>
+            ))}
+          </div>
+
+          <p style={{ ...label, fontSize: 13, color: C.text }}>➕ ให้สิทธิ์รายคน</p>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+            <input style={{ ...input, flex: 1 }} placeholder="ค้นชื่อ / อีเมล / user id" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void search(); }} />
+            <button style={btn(C.accent)} onClick={() => void search()}>ค้นหา</button>
+          </div>
+          {found.map((u) => (
+            <div key={u.anonId} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, padding: "4px 0" }}>
+              <span style={{ flex: 1 }}>{u.displayName}{u.email ? ` · ${u.email}` : ""} <span style={{ color: C.sub, fontSize: 11 }}>{u.anonId.slice(0, 8)}…</span></span>
+              {grantedIds.has(u.anonId)
+                ? <span style={{ color: C.sub, fontSize: 12 }}>มีสิทธิ์แล้ว</span>
+                : <button style={{ ...btn(C.good), padding: "5px 10px", fontSize: 12 }} disabled={busy} onClick={() => void setAccess(u.anonId, "grant")}>ให้สิทธิ์</button>}
+            </div>
+          ))}
+
+          <p style={{ ...label, fontSize: 13, color: C.text, marginTop: 12 }}>🎟️ สร้างโค้ด / ลิงก์รับคอร์ส</p>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1.4fr auto", gap: 6, alignItems: "end" }}>
+            <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} /></div>
+            <div><span style={label}>ใช้ได้กี่คน</span><input style={input} type="number" min={1} value={maxUse} onChange={(e) => setMaxUse(e.target.value)} placeholder="ว่าง = ไม่จำกัด" /></div>
+            <div><span style={label}>หมดอายุ (ไม่ใส่ = ไม่หมด)</span><input style={input} type="date" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} /></div>
+            <button style={btn(C.accent)} disabled={busy || !code.trim()} onClick={() => void createCode()}>สร้าง</button>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            {codes.length === 0 ? <p style={{ fontSize: 12, color: C.sub }}>ยังไม่มีโค้ดของคอร์สนี้</p> : codes.map((c) => (
+              <div key={c.id} style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13, padding: "5px 0", borderBottom: `1px solid ${C.border}` }}>
+                <b style={{ width: 120 }}>{c.code}</b>
+                <span style={{ color: C.sub, fontSize: 12, flex: 1 }}>
+                  ใช้แล้ว {c.usedCount}{c.maxUseTotal ? `/${c.maxUseTotal}` : ""} · {c.status}{c.endsAt ? ` · หมด ${c.endsAt.slice(0, 10)}` : ""}
+                </span>
+                <button style={{ ...btn(C.border), padding: "5px 10px", fontSize: 12 }} onClick={() => copy(c.code)}>คัดลอกโค้ด</button>
+                <button style={{ ...btn(C.accent), padding: "5px 10px", fontSize: 12 }} onClick={() => copy(COURSE_REDEEM_BASE + encodeURIComponent(c.code))}>คัดลอกลิงก์</button>
+              </div>
+            ))}
+          </div>
+          <p style={{ fontSize: 12, color: C.sub, marginTop: 6 }}>คนรับลิงก์: เปิดลิงก์ → ล็อกอิน → กดรับคอร์ส → เข้าเรียนได้ทันที (หรือพิมพ์โค้ดที่หน้า พลังชี่ › แลกคูปอง) · 1 บัญชีใช้โค้ดเดิมได้ครั้งเดียว · พัก/ลบโค้ดได้ที่การ์ดคูปองด้านล่าง</p>
         </div>
       )}
     </div>
