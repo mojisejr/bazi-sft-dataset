@@ -8,6 +8,7 @@
  */
 import type { DivineReading } from "@/lib/bazi/divine-cards/reading-engine";
 import { aspect15Lines } from "@/lib/bazi/aspect15";
+import { divineDeepContext } from "@/lib/bazi/divine-cards/deep";
 import { generateProseLlm, type ReadingLlmProvider } from "@/lib/bazi/reading-llm";
 
 type GeminiGenerate = (request: {
@@ -37,6 +38,13 @@ const SYSTEM_INSTRUCTION = [
   "- ถ้าถามสิ่งที่ไพ่ชี้เป๊ะไม่ได้ (เลขหวย/ตัวเลข/วันเวลาแน่นอน) → ห้ามให้ตัวเลข แต่ให้ฟันธง \"จังหวะโชค/แนวโน้ม\" ของเรื่องนั้นให้ชัด อย่าเลี่ยงด้วยการเทศนา",
   "- ยังยึดความหมายของไพ่เป็นฐาน ห้ามตอบขัดหรือเกินจากความหมายไพ่",
   "",
+  "ความรู้เชิงลึกของซินแส (ถ้ามีมาให้ในแต่ละใบ — ใช้ให้เต็มที่ เพื่อทายให้แม่นและละเอียดขึ้น):",
+  "- [หัวข้อที่ตรงคำถาม] มีทั้งเชิงบวก/เชิงลบ/น้ำหนักไพ่ — ฟันธงตามฝั่งที่น้ำหนักมากกว่า แล้วเตือนจุดเชิงลบสั้น ๆ เป็นข้อระวัง",
+  "- ความรักมีแยก \"คนโสด\" กับ \"คนมีคู่\" — ใช้ให้ตรงสถานะผู้ถาม (ถ้าไม่รู้สถานะ เลือกที่เข้ากับคำถามที่สุด)",
+  "- \"น้ำหนักทั้งใบ\" (บวก:ลบ) กำหนดน้ำเสียงโดยรวม — บวกมาก=มั่นใจสดใส · ใกล้ 50:50=ชี้ทั้งโอกาสและข้อระวัง",
+  "- [ประวัติองค์เทพ] ใช้เป็นภูมิหลังเสริมความน่าเชื่อถือได้เล็กน้อย (ครึ่งประโยค) ห้ามเล่าประวัติยาว",
+  "- ความยาวคำตอบยังต้องสั้นตามกฎด้านบน — ความรู้เยอะขึ้นแปลว่าแม่นขึ้น ไม่ใช่ยาวขึ้น",
+  "",
   "กฎเหล็ก (ห้ามผิด):",
   "- ตีความได้ แต่ห้ามแต่งข้อเท็จจริงใหม่ที่ไม่มีเค้าในความหมายไพ่ (ห้ามเพิ่มตัวเลข วันเวลา เหตุการณ์เฉพาะที่ไพ่ไม่ได้บอก)",
   "- ห้ามเอ่ยถึง \"engine\" \"น้ำหนัก %\" \"ใบที่ 1/2/3\" หรือกลไกเบื้องหลัง — พูดเป็นคำทำนายลื่น ๆ เหมือนซินแสคุยกับคน",
@@ -45,7 +53,12 @@ const SYSTEM_INSTRUCTION = [
   "ตอบเป็นคำทำนายร้อยแก้วที่ไหลต่อเนื่องตาม 3 จังหวะ ไม่ต้องมีหัวข้อ ไม่ต้องมี JSON",
 ].join("\n");
 
-function buildUserPrompt(reading: DivineReading, question?: string): string {
+function deepBlock(no: number, question?: string): string {
+  const deep = divineDeepContext(no, question);
+  return deep ? `\nความรู้เชิงลึก:\n${deep}` : "";
+}
+
+export function buildUserPrompt(reading: DivineReading, question?: string): string {
   const cards = reading.slots
     .map((slot) => {
       const aspects = aspect15Lines(slot.card.topics);
@@ -54,7 +67,8 @@ function buildUserPrompt(reading: DivineReading, question?: string): string {
         `${slot.card.name} (${slot.card.keywordEn})\n` +
         `คำสำคัญ: ${slot.card.keywords}\n` +
         `ความหมาย: ${slot.card.prophecy}` +
-        (aspects ? `\n${aspects}` : "")
+        (aspects ? `\n${aspects}` : "") +
+        deepBlock(slot.card.no, question)
       );
     })
     .join("\n\n");

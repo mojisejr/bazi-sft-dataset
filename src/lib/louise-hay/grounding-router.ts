@@ -16,6 +16,7 @@ import { classifyOperatorStrengthScore } from "@/lib/bazi/constants/operator-str
 import { buildElementInteractionAB, buildFacets } from "@/lib/bazi/pair-matching";
 import { drawRandom as drawDivine } from "@/lib/bazi/divine-cards/deck";
 import { buildDivineReading } from "@/lib/bazi/divine-cards/reading-engine";
+import { divineDeepContext } from "@/lib/bazi/divine-cards/deep";
 import { drawRandom as drawFortune, TOPICS as FORTUNE_TOPICS } from "@/lib/bazi/fortune-sage/deck";
 import { readHoneycomb, readShortNumber } from "@/lib/bazi/honeycomb/pyramid";
 import { applyMatchingOverrides } from "@/lib/bazi/matching-overlay";
@@ -646,7 +647,12 @@ function groundCard(question: string): GroundingCore {
   return {
     route: "card",
     sourceLabel: `ไพ่ออราเคิลเคี้ยงคุง · ${names}`,
-    text: `ไพ่ที่จั่วได้: ${names}\n${reading.engineProse}`,
+    // ความรู้เชิงลึกรายใบ (ซินแสนุ้ย 2026-10-22) — เฉพาะหัวข้อที่ตรงคำถาม · ประวัติสั้น
+    text:
+      `ไพ่ที่จั่วได้: ${names}\n${reading.engineProse}\n\nความรู้เชิงลึกรายใบ (ใช้ทายให้ตรงคำถาม ละเอียดขึ้น):\n` +
+      drawn
+        .map((c) => `#${c.no} ${c.name}\n${divineDeepContext(c.no, question, { historyChars: 300, sectionChars: 700 })}`)
+        .join("\n\n"),
   };
 }
 
