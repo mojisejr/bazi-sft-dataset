@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const executed: string[] = [];
-let consentRows: { accepted: boolean }[] = [];
+let consentRows: { accepted: boolean; version?: string }[] = [];
 vi.mock("@/db/client", () => ({
   createDbClient: () => ({
     execute: vi.fn(async (q: { queryChunks?: unknown[] }) => {
@@ -14,7 +14,7 @@ vi.mock("@/db/client", () => ({
   }),
 }));
 
-import { logAiQuestion, purgeAiQuestions, scrubPii, subjectFor } from "@/lib/bazi/ai-question-log";
+import { AI_TRAINING_VERSION, logAiQuestion, purgeAiQuestions, scrubPii, subjectFor } from "@/lib/bazi/ai-question-log";
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -44,12 +44,18 @@ describe("ai-question-log", () => {
     await flush(); await flush();
     expect(executed.some((t) => t.includes("INSERT INTO ai_question_log"))).toBe(false);
 
-    consentRows = [{ accepted: false }];
+    consentRows = [{ accepted: false, version: AI_TRAINING_VERSION }];
     logAiQuestion({ anonId: "U1", question: "งานปีนี้" });
     await flush(); await flush();
     expect(executed.some((t) => t.includes("INSERT INTO ai_question_log"))).toBe(false);
 
-    consentRows = [{ accepted: true }];
+    // ยินยอมรุ่นเดิม (ก่อนเพิ่มการวิเคราะห์เพื่อพัฒนาบริการ) = ไม่เก็บ จนกว่าจะตอบรุ่นนี้
+    consentRows = [{ accepted: true, version: "2026-10" }];
+    logAiQuestion({ anonId: "U1", question: "งานปีนี้" });
+    await flush(); await flush();
+    expect(executed.some((t) => t.includes("INSERT INTO ai_question_log"))).toBe(false);
+
+    consentRows = [{ accepted: true, version: AI_TRAINING_VERSION }];
     logAiQuestion({ anonId: "U1", question: "โทร 0812345678 งานปีนี้", persona: "mu", topicId: "career" });
     await flush(); await flush();
     const ins = executed.find((t) => t.includes("INSERT INTO ai_question_log"));
