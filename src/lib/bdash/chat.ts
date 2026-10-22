@@ -9,7 +9,7 @@ import { AI_TRAINING_CONSENT_KIND, AI_TRAINING_VERSION, subjectFor } from "@/lib
 
 import { bkkDay, bkkStart, rowsOf, type Exec } from "./compute";
 import { PEOPLE_FROM } from "./features";
-import { buckets, daysBetween, type BdashRange, type Bucket } from "./range";
+import { bucketEnd, buckets, daysBetween, type BdashRange, type Bucket } from "./range";
 import { addDays } from "./shape";
 
 /** วันแรกที่แชตบันทึกหัวข้อพร้อม member id (slice 1 ขึ้น production 2026-10-21) — ก่อนนี้ไม่มีแถว */
@@ -140,7 +140,8 @@ export type TopicCard = {
   asideShare: number | null;
   timeframes: { key: string; label: string; questions: number; share: number | null }[];
   buckets: string[];
-  series: { topic: string; label: string; values: number[] }[];
+  /** null = ช่องก่อนวันที่แชตเริ่มบันทึกหัวข้อ (ไม่ใช่ศูนย์) */
+  series: { topic: string; label: string; values: (number | null)[] }[];
   /** มีช่วงก่อนหน้าให้เทียบไหม */
   compared: boolean;
   /** ช่วงนี้เริ่มก่อนวันที่แชตเริ่มบันทึกหัวข้อ */
@@ -183,10 +184,10 @@ export function shapeTopicCard(
   const index = new Map(axis.map((b, i) => [b, i]));
   const chosen = rows.filter((r) => tail(r) === 0 && r.questions > 0).slice(0, 4);
   const series = chosen.map((r) => {
-    const values = axis.map(() => 0);
+    const values: (number | null)[] = axis.map((b) => (bucketEnd(b, range) < CHAT_FROM ? null : 0));
     for (const b of bucketRows) {
       const i = index.get(b.bucket);
-      if (b.topic === r.topic && i !== undefined) values[i] += num(b.questions);
+      if (b.topic === r.topic && i !== undefined) values[i] = (values[i] ?? 0) + num(b.questions);
     }
     return { topic: r.topic, label: r.label, values };
   });

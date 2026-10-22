@@ -84,6 +84,12 @@ describe("shapeTopicCard", () => {
     expect(card.rows.find((r) => r.topic === "love_partner")?.previous).toBe(0);
   });
 
+  it("leaves days before recording began empty on the chart rather than zero", () => {
+    const early = parseRange({ range: "7" }, "2026-10-22");
+    const card = shapeTopicCard(early, [t("health", 3, 1, 0, 0)], { questions: 3, people: 1, paid_people: 0 }, [{ topic: "health", bucket: "2026-10-22", questions: "3" }], [], null);
+    expect(card.series[0].values).toEqual([null, null, null, null, null, 0, 3]);
+  });
+
   it("marks a range that starts before recording began", () => {
     const early = parseRange({ range: "30" }, "2026-11-07");
     expect(shapeTopicCard(early, [], { questions: 0, people: 0, paid_people: 0 }, [], [], null)).toMatchObject({ partial: true, questions: 0, asideShare: null });

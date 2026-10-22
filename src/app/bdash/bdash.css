@@ -231,6 +231,8 @@ b .bd-sub { display: inline; }
 .bd-chat { grid-template-columns: minmax(0, 1fr); }
 @container (max-width: 639px) { .bd-topics .bd-wide { display: none; } .bd-topics .bd-narrow { display: grid; } }
 .bd-h4 { margin: 6px 0 0; font-size: 15px; font-weight: 600; }
+/* การ์ดเต็มความกว้าง: กราฟไม่ขยายเกินขนาดที่การ์ดอื่นใช้ (ตัวหนังสือในกราฟย่อขยายตามกล่อง) */
+.bd-topics .bd-chart { max-width: 640px; }
 .bd-filter { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
 .bd-filter label { display: grid; gap: 4px; flex: 1 1 10rem; min-width: 0; font-size: 12.5px; color: var(--bd-muted); }
 .bd-filter select, .bd-filter input { width: 100%; min-width: 0; min-height: 44px; font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 10px;
@@ -241,4 +243,8 @@ b .bd-sub { display: inline; }
 .bd-qs li { display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; background: var(--bd-canvas); }
 .bd-qs p { margin: 0; font-size: 14.5px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
 .bd-tag { display: inline-block; padding: 1px 8px; border-radius: 100px; background: var(--bd-teal-soft); color: var(--bd-teal); font-weight: 600; }
-@media (max-width: 719px) { .bd-card:has(.bd-showall:checked) .bd-qs li.bd-extra { display: grid; } }
+/* .bd-qs li ตั้ง display เอง จึงต้องซ่อน/โชว์แถวเกิน 5 ที่ระดับเดียวกัน */
+@media (max-width: 719px) {
+  .bd-qs li.bd-extra { display: none; }
+  .bd-card:has(.bd-showall:checked) .bd-qs li.bd-extra { display: grid; }
+}
