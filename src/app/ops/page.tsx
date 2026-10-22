@@ -270,6 +270,7 @@ export default function OpsAdminPage() {
       <PromoShareSettings secret={secret} onNote={note} />
       <CourseVideoEditor secret={secret} onNote={note} />
       <CourseAccessPanel secret={secret} onNote={note} />
+      <AiQuestionsPanel secret={secret} onNote={note} />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
@@ -2112,6 +2113,150 @@ function CourseAccessPanel({ secret, onNote }: { secret: string; onNote: (ok: bo
             ))}
           </div>
           <p style={{ fontSize: 12, color: C.sub, marginTop: 6 }}>คนรับลิงก์: เปิดลิงก์ → ล็อกอิน → กดรับคอร์ส → เข้าเรียนได้ทันที (หรือพิมพ์โค้ดที่หน้า พลังชี่ › แลกคูปอง) · 1 บัญชีใช้โค้ดเดิมได้ครั้งเดียว · พัก/ลบโค้ดได้ที่การ์ดคูปองด้านล่าง</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── 💬 คลังคำถาม AI เพื่อเทรน (เอ็ม 2026-10-22): เฉพาะคนที่ยินยอม ai_training · เก็บแต่คำถาม · ไม่มีข้อมูลตัวคน ─────
+//   /api/ops/ai-questions — ดู/กรอง · ติดป้ายดี/ไม่ใช้ · ลบ · export .jsonl ไปเทรน · ลบที่เกิน 2 ปี
+type AiQRow = { id: string; question: string; source: string; persona: string | null; topicId: string | null; label: "good" | "bad" | null; createdAt: string };
+
+function AiQuestionsPanel({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<AiQRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [topics, setTopics] = useState<{ topicId: string | null; n: number }[]>([]);
+  const [q, setQ] = useState("");
+  const [topic, setTopic] = useState("");
+  const [labelF, setLabelF] = useState("");
+  const [days, setDays] = useState("30");
+  const [page, setPage] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const PER = 50;
+
+  const params = useCallback(() => {
+    const p = new URLSearchParams({ secret, limit: String(PER), offset: String(page * PER) });
+    if (q.trim()) p.set("q", q.trim());
+    if (topic) p.set("topic", topic);
+    if (labelF) p.set("label", labelF);
+    if (days) p.set("days", days);
+    return p;
+  }, [secret, page, q, topic, labelF, days]);
+
+  const load = useCallback(async () => {
+    if (!secret) return;
+    const j = (await fetch(`/api/ops/ai-questions?${params().toString()}`).then((r) => r.json()).catch(() => ({}))) as {
+      rows?: AiQRow[];
+      total?: number;
+      topics?: { topicId: string | null; n: number }[];
+      error?: string;
+    };
+    if (j.error) onNote(false, j.error);
+    setRows(j.rows ?? []);
+    setTotal(j.total ?? 0);
+    setTopics(j.topics ?? []);
+    // onNote สร้างใหม่ทุก render — ไม่ใส่ใน deps ไม่งั้นโหลดวนไม่หยุด
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secret, params]);
+  useEffect(() => { if (open) void load(); }, [open, load]);
+
+  const post = async (body: Record<string, unknown>, okMsg: string) => {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/ai-questions", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, ...body }) });
+      const j = (await r.json().catch(() => ({}))) as { error?: string; deleted?: number };
+      onNote(r.ok, r.ok ? (j.deleted !== undefined ? `${okMsg} ${j.deleted} แถว` : okMsg) : (j.error ?? "ไม่สำเร็จ"));
+      if (r.ok) await load();
+    } finally { setBusy(false); }
+  };
+  const exportUrl = () => {
+    const p = params();
+    p.delete("limit");
+    p.delete("offset");
+    p.set("format", "jsonl");
+    return `/api/ops/ai-questions?${p.toString()}`;
+  };
+  const pages = Math.max(1, Math.ceil(total / PER));
+  const personaLabel = (p: string | null) => (p === "mi" ? "เสี่ยวมี่" : p === "mu" ? "เสี่ยวมู่" : (p ?? "-"));
+
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>💬 คลังคำถาม AI (เพื่อเทรน)</h2>
+        <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((v) => !v)}>{open ? "ซ่อน" : "เปิด"}</button>
+      </div>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          <p style={{ fontSize: 12, color: C.sub, margin: "0 0 8px" }}>
+            เก็บเฉพาะคนที่กดยินยอมให้ใช้คำถามพัฒนา AI · เก็บแต่คำถาม ไม่เก็บคำตอบ · ตัดเบอร์/อีเมล/เลขยาว/ลิงก์แล้ว · ไม่มีชื่อคน · คนถอนความยินยอม = ลบของเขาทั้งหมดอัตโนมัติ
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr auto", gap: 6, alignItems: "end" }}>
+            <div>
+              <span style={label}>ค้นคำ</span>
+              <input style={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(0); void load(); } }} />
+            </div>
+            <div>
+              <span style={label}>หัวข้อ</span>
+              <select style={input} value={topic} onChange={(e) => { setTopic(e.target.value); setPage(0); }}>
+                <option value="">ทั้งหมด</option>
+                {topics.map((t) => <option key={t.topicId ?? "-"} value={t.topicId ?? ""}>{t.topicId ?? "(ไม่ระบุ)"} · {t.n}</option>)}
+              </select>
+            </div>
+            <div>
+              <span style={label}>ป้าย</span>
+              <select style={input} value={labelF} onChange={(e) => { setLabelF(e.target.value); setPage(0); }}>
+                <option value="">ทั้งหมด</option>
+                <option value="none">ยังไม่ติด</option>
+                <option value="good">👍 ดี</option>
+                <option value="bad">👎 ไม่ใช้</option>
+              </select>
+            </div>
+            <div>
+              <span style={label}>ช่วง</span>
+              <select style={input} value={days} onChange={(e) => { setDays(e.target.value); setPage(0); }}>
+                <option value="7">7 วัน</option>
+                <option value="30">30 วัน</option>
+                <option value="90">90 วัน</option>
+                <option value="">ทั้งหมด</option>
+              </select>
+            </div>
+            <button style={btn(C.accent)} onClick={() => { setPage(0); void load(); }}>ค้นหา</button>
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", margin: "10px 0" }}>
+            <b style={{ fontSize: 13 }}>{total.toLocaleString()} คำถาม</b>
+            <a style={{ ...btn("#2e9e5b"), textDecoration: "none" }} href={exportUrl()} target="_blank" rel="noreferrer">⬇ export .jsonl (ตามตัวกรอง)</a>
+            <button
+              style={{ ...btn(C.border), marginLeft: "auto" }}
+              disabled={busy}
+              onClick={() => { if (window.confirm("ลบคำถามที่เก่ากว่า 2 ปี?")) void post({ action: "purge-expired" }, "ลบแล้ว"); }}
+            >
+              ลบที่เกิน 2 ปี
+            </button>
+          </div>
+          <div style={{ maxHeight: 420, overflow: "auto", border: `1px solid ${C.border}`, borderRadius: 8 }}>
+            {rows.length === 0 ? <p style={{ fontSize: 13, color: C.sub, padding: 10, margin: 0 }}>ยังไม่มี</p> : rows.map((r) => (
+              <div key={r.id} style={{ display: "flex", gap: 8, alignItems: "center", padding: "6px 10px", borderBottom: `1px solid ${C.border}`, fontSize: 13 }}>
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {r.question}
+                  <br />
+                  <span style={{ color: C.sub, fontSize: 11 }}>
+                    {r.topicId ?? "-"} · {personaLabel(r.persona)} · {r.createdAt.slice(0, 16).replace("T", " ")}
+                    {r.label ? ` · ${r.label === "good" ? "👍 ดี" : "👎 ไม่ใช้"}` : ""}
+                  </span>
+                </span>
+                <button style={{ ...btn(r.label === "good" ? "#2e9e5b" : C.border), padding: "4px 8px", fontSize: 12 }} disabled={busy} onClick={() => void post({ action: "label", ids: [r.id], label: r.label === "good" ? null : "good" }, "ติดป้ายแล้ว")}>👍</button>
+                <button style={{ ...btn(r.label === "bad" ? C.warn : C.border), padding: "4px 8px", fontSize: 12 }} disabled={busy} onClick={() => void post({ action: "label", ids: [r.id], label: r.label === "bad" ? null : "bad" }, "ติดป้ายแล้ว")}>👎</button>
+                <button style={{ ...btn(C.border), padding: "4px 8px", fontSize: 12 }} disabled={busy} onClick={() => void post({ action: "delete", ids: [r.id] }, "ลบแล้ว")}>ลบ</button>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 8, fontSize: 13 }}>
+            <button style={btn(C.border)} disabled={page === 0} onClick={() => setPage((p) => p - 1)}>‹ ก่อนหน้า</button>
+            <span>{page + 1}/{pages}</span>
+            <button style={btn(C.border)} disabled={page + 1 >= pages} onClick={() => setPage((p) => p + 1)}>ถัดไป ›</button>
+          </div>
         </div>
       )}
     </div>

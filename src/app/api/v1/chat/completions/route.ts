@@ -43,6 +43,7 @@ import { RawInputSchema, type RawInputValue } from "@/lib/bazi/schema-types";
 import { qiGate } from "@/lib/bazi/qi/quota";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
 import { logMateChatMeta } from "@/lib/bazi/mate-chat-meta";
+import { logAiQuestion } from "@/lib/bazi/ai-question-log";
 import {
   createGuardedOpenAiSseStream,
   type GlassBoxTrace,
@@ -714,6 +715,8 @@ export async function POST(req: Request) {
     }
     // metadata แชท (ไม่เก็บข้อความ) — สำหรับ analytics /ops: ปริมาณ/สัดส่วน persona/หัวข้อ. fire-and-forget
     logMateChatMeta({ anonId: effectiveUserId, persona: result.persona, topicId: triage.topicId, timeframe: triage.timeframe });
+    // คลังคำถามเพื่อเทรน — เฉพาะคนที่ยินยอม ai_training · เก็บแต่คำถาม ไม่เก็บคำตอบ (เอ็ม 2026-10-22). fire-and-forget
+    logAiQuestion({ anonId: effectiveUserId, question: result.latestUserMessage.content, persona: result.persona, topicId: triage.topicId });
 
     if (!glassBoxTraceEnabled) {
       return reply;

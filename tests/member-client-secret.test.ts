@@ -163,6 +163,7 @@ describe("M5 — every route that reads a member id from the request is guarded 
     "src/app/api/cron/account-purge/route.ts": "Bearer CRON_SECRET",
     "src/app/api/cron/qi-quota-reset/route.ts": "Bearer CRON_SECRET",
     "src/app/api/ops/chat-status/route.ts": "x-ops-secret",
+    "src/app/api/ops/course-access/route.ts": "OPS secret",
     "src/app/api/ops/entitlement/route.ts": "OPS secret",
     "src/app/api/ops/subscription/route.ts": "OPS secret",
     "src/app/api/ops/user-attribution/route.ts": "x-ops-secret",

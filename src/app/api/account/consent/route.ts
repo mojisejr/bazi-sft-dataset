@@ -4,6 +4,7 @@ import { z, ZodError } from "zod";
 import { createDbClient } from "@/db/client";
 import { baziConsent } from "@/db/schema";
 import { requireMumateClient } from "@/lib/mumate-client";
+import { AI_TRAINING_CONSENT_KIND, purgeAiQuestions } from "@/lib/bazi/ai-question-log";
 
 export const runtime = "nodejs";
 
@@ -50,6 +51,8 @@ export async function POST(request: Request) {
       .insert(baziConsent)
       .values({ anonId: body.anonId, kind: body.kind, version: body.version, accepted: body.accepted })
       .returning({ id: baziConsent.id, createdAt: baziConsent.createdAt });
+    // ถอนความยินยอมใช้คำถามเพื่อเทรน → ลบคำถามที่เก็บไว้ของคนนี้ทั้งหมด (PDPA)
+    if (body.kind === AI_TRAINING_CONSENT_KIND && !body.accepted) await purgeAiQuestions(body.anonId);
     return Response.json({ ok: true, id: row.id, createdAt: row.createdAt }, { status: 200 });
   } catch (error) {
     if (error instanceof ZodError) {
