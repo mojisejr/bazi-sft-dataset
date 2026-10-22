@@ -1,6 +1,8 @@
 /**
  * คลังคำถาม AI เพื่อเทรน (เอ็ม 2026-10-22) — เก็บเฉพาะ "คำถาม" (ไม่เก็บคำตอบ) ของคนที่ยินยอม
- * bazi_consent kind='ai_training' (แถวล่าสุด accepted=true) · ไม่ยินยอม/ไม่เคยตอบ = ไม่เก็บ
+ * bazi_consent kind='ai_training' (แถวล่าสุด accepted=true และ version = AI_TRAINING_VERSION) · ไม่ยินยอม/ไม่เคยตอบ = ไม่เก็บ
+ * รุ่น 2026-10.2 (CIEL mumate-bdash-v2-001 slice 4): จุดประสงค์เพิ่มการวิเคราะห์เพื่อพัฒนาบริการ (bdash แชตถามอะไร) —
+ * ยินยอมรุ่นเดิมไม่นับแล้ว จนกว่าจะตอบรุ่นนี้ (fe ถามอีกครั้ง). ต้องตรงกับ AI_TRAINING_VERSION ใน mootech-fe
  *
  * ความเป็นส่วนตัว:
  *   - subject = HMAC-SHA256(anon_id, AI_QUESTION_SALT) — ไม่มี anon_id ในตาราง ย้อนหาตัวคนไม่ได้
@@ -14,6 +16,7 @@ import { sql } from "drizzle-orm";
 import { createDbClient } from "@/db/client";
 
 export const AI_TRAINING_CONSENT_KIND = "ai_training";
+export const AI_TRAINING_VERSION = "2026-10.2";
 export const AI_QUESTION_RETENTION_DAYS = 730;
 const MAX_LEN = 1000;
 
@@ -42,10 +45,11 @@ function rowsOf(r: unknown): Record<string, unknown>[] {
 
 export async function hasAiTrainingConsent(anonId: string): Promise<boolean> {
   const r = await createDbClient().execute(sql`
-    SELECT accepted FROM bazi_consent
+    SELECT accepted, version FROM bazi_consent
      WHERE anon_id = ${anonId} AND kind = ${AI_TRAINING_CONSENT_KIND}
      ORDER BY created_at DESC LIMIT 1`);
-  return rowsOf(r)[0]?.accepted === true;
+  const latest = rowsOf(r)[0];
+  return latest?.accepted === true && latest.version === AI_TRAINING_VERSION;
 }
 
 /** fire-and-forget — ไม่ยินยอม/ไม่มี anonId/ข้อความว่าง = ไม่ทำอะไร · error ไม่กระทบแชท */
