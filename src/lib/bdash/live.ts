@@ -16,6 +16,23 @@ import {
   queryQiDays,
   type Exec,
 } from "./compute";
+import {
+  consentSubjects,
+  previousRange,
+  queryChatTotals,
+  queryConsenters,
+  queryQuestionCount,
+  queryQuestions,
+  queryQuestionTopics,
+  queryTimeframes,
+  queryTopicBuckets,
+  queryTopics,
+  shapeQuestionCard,
+  shapeTopicCard,
+  type QuestionCard,
+  type QuestionFilter,
+  type TopicCard,
+} from "./chat";
 import { queryAiBuckets, queryPeople, queryPeopleTotals, shapeFeatureCard, type FeatureCard } from "./features";
 import type { BdashRange } from "./range";
 import { fillQiDays, shapeCohorts, shapePayments } from "./shape";
@@ -30,7 +47,7 @@ const CACHE_MAX = 60;
 
 export class RangeTooHeavyError extends Error {}
 
-type Page = "overview" | "stay" | "money" | "features";
+type Page = "overview" | "stay" | "money" | "features" | "chat";
 
 const cache = new Map<string, { at: number; value: Promise<unknown> }>();
 
@@ -82,10 +99,11 @@ export async function cached<T>(
   page: Page,
   range: BdashRange,
   work: (q: (name: string) => Exec) => Promise<T>,
-  opts: { run?: Runner; now?: () => number } = {},
+  opts: { run?: Runner; now?: () => number; key?: string } = {},
 ): Promise<{ value: T; at: number }> {
   const now = opts.now ?? Date.now;
-  const key = `${page}|${range.from}|${range.to}`;
+  // key = ตัวกรองเพิ่มเติมของหน้านั้น (เช่น หัวข้อ/คำค้นของการ์ดคำถาม) — ต่างตัวกรองต่างผล
+  const key = `${page}|${range.from}|${range.to}${opts.key ? `|${opts.key}` : ""}`;
   const hit = cache.get(key);
   if (hit && now() - hit.at < CACHE_MS) return { value: (await hit.value) as T, at: hit.at };
 
@@ -119,6 +137,37 @@ export type OverviewData = {
   ai: { totalThb: number; activeMembers: number };
   card: FeatureCard;
 };
+
+export type ChatData = { topics: TopicCard; questions: QuestionCard };
+
+export const loadChat = (range: BdashRange, filter: QuestionFilter, opts?: Omit<NonNullable<Parameters<typeof cached>[3]>, "key">) =>
+  cached<ChatData>(
+    "chat",
+    range,
+    async (q) => {
+      const prev = previousRange(range);
+      const topics = shapeTopicCard(
+        range,
+        await queryTopics(q("topics"), range.from, range.to),
+        await queryChatTotals(q("chat_totals"), range.from, range.to),
+        await queryTopicBuckets(q("topic_buckets"), range),
+        await queryTimeframes(q("timeframes"), range.from, range.to),
+        prev ? await queryTopics(q("topics_previous"), prev.from, prev.to) : null,
+      );
+      const subjects = consentSubjects(await queryConsenters(q("consenters")));
+      const questions = subjects.length
+        ? shapeQuestionCard(
+            subjects.length,
+            await queryQuestionCount(q("question_count"), subjects, range.from, range.to, filter),
+            await queryQuestions(q("questions"), subjects, range.from, range.to, filter),
+            await queryQuestionTopics(q("question_topics"), subjects, range.from, range.to, filter.q),
+            filter,
+          )
+        : shapeQuestionCard(0, { questions: 0, people: 0 }, [], [], filter);
+      return { topics, questions };
+    },
+    { ...opts, key: JSON.stringify(filter) },
+  );
 
 export const loadStay = (range: BdashRange, opts?: Parameters<typeof cached>[3]) =>
   cached<StayData>("stay", range, async (q) => ({ cohorts: shapeCohorts(await queryCohorts(q("cohorts"), range.to), range.to) }), opts);
