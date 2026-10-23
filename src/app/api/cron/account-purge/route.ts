@@ -20,6 +20,7 @@ import {
   baziUserIntent,
   baziWallet,
 } from "@/db/schema";
+import { purgeAiQuestions } from "@/lib/bazi/ai-question-log";
 
 export const runtime = "nodejs";
 
@@ -65,6 +66,8 @@ export async function GET(request: Request) {
       db.delete(baziManifestTask).where(eq(baziManifestTask.anonId, anonId)),
       db.delete(baziManifestCheckin).where(eq(baziManifestCheckin.anonId, anonId)),
       db.delete(baziManifestEntry).where(eq(baziManifestEntry.anonId, anonId)),
+      // คำถามในคลัง AI ผูกด้วย subject (hash ของ anonId) ไม่ใช่ anonId — ลบผ่านตัวช่วยเดียวกับการถอนความยินยอม
+      purgeAiQuestions(anonId),
     ]);
     await db
       .update(baziAccountDeletion)

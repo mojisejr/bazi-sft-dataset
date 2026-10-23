@@ -11,10 +11,17 @@ vi.mock("@/db/client", () => ({
       if (text.includes("bazi_consent")) return { rows: consentRows };
       return { rows: [] };
     }),
+    insert: () => ({ values: async () => undefined }),
   }),
 }));
 
-import { AI_TRAINING_VERSION, logAiQuestion, purgeAiQuestions, scrubPii, subjectFor } from "@/lib/bazi/ai-question-log";
+import { AI_TRAINING_VERSION, logAiQuestion as logWithRealRewrite, purgeAiQuestions, scrubPii, subjectFor } from "@/lib/bazi/ai-question-log";
+import { plausibleRewriteLength, rewriteAiQuestion, type RewriteGenerateContent } from "@/lib/bazi/ai-question-rewrite";
+
+const USAGE = { model: "test-model", inTokens: 1, outTokens: 1 };
+/** โมเดลปลอม: แทนชื่อที่รู้จักด้วย [ชื่อ] — ใช้แทนการเรียก Gemini จริงในเทสต์ */
+const fakeRewrite = async (q: string) => ({ text: q.replace(/สมชาย|น้องมิว/g, "[ชื่อ]"), usage: USAGE });
+const logAiQuestion = (input: Parameters<typeof logWithRealRewrite>[0]) => logWithRealRewrite(input, { rewrite: fakeRewrite });
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -30,6 +37,8 @@ describe("ai-question-log", () => {
     expect(scrubPii("บัตร 1 2345 67890 12 3")).toBe("บัตร [ตัวเลข]");
     expect(scrubPii("ดู https://x.co/abc หน่อย")).toBe("ดู [ลิงก์] หน่อย");
     expect(scrubPii("ปี 2569 การเงินจะดีไหม")).toBe("ปี 2569 การเงินจะดีไหม");
+    expect(scrubPii("เกิด 12/05/2533 ดวงปีนี้")).toBe("เกิด [วันที่] ดวงปีนี้");
+    expect(scrubPii("เกิด 3-1-30 ตอน 10.30 น. ค่ะ")).toBe("เกิด [วันที่] ตอน [เวลา] ค่ะ");
     expect(scrubPii("ก".repeat(2000)).length).toBe(1000);
   });
 
@@ -76,5 +85,80 @@ describe("ai-question-log", () => {
     await purgeAiQuestions("U1");
     expect(executed[0]).toContain("DELETE FROM ai_question_log");
     expect(executed[0]).toContain(subjectFor("U1"));
+  });
+
+  it("เกลาก่อนเก็บ: กฎ → โมเดล → กฎอีกรอบ · ชื่อ วันที่ เบอร์ ไม่เหลือ ความหมายเดิม", async () => {
+    consentRows = [{ accepted: true, version: AI_TRAINING_VERSION }];
+    const seen: string[] = [];
+    logWithRealRewrite(
+      { anonId: "U1", question: "สมชาย เกิด 12/05/2533 ทำงานที่ศิริราช โทร 0812345678 ปีนี้ปวดหลังจะหายไหม" },
+      {
+        rewrite: async (q) => {
+          seen.push(q);
+          // โมเดลแทนชื่อกับสถานที่ แต่ "ลืม" เบอร์ที่หลุดมา → กฎรอบสองต้องจับได้
+          return { text: q.replace("สมชาย", "[ชื่อ]").replace("ศิริราช", "[สถานที่]") + " 0899999999", usage: USAGE };
+        },
+      },
+    );
+    await flush(); await flush(); await flush();
+    expect(seen[0]).not.toContain("12/05/2533");
+    expect(seen[0]).not.toContain("0812345678");
+    const ins = executed.find((t) => t.includes("INSERT INTO ai_question_log"));
+    expect(ins).toBeDefined();
+    expect(ins).toContain("[ชื่อ] เกิด [วันที่] ทำงานที่[สถานที่] โทร [เบอร์] ปีนี้ปวดหลังจะหายไหม [เบอร์]");
+    for (const leak of ["สมชาย", "12/05/2533", "ศิริราช", "0812345678", "0899999999"]) expect(ins).not.toContain(leak);
+  });
+
+  it("เกลาไม่สำเร็จ (null) = ไม่เก็บอะไรเลย", async () => {
+    consentRows = [{ accepted: true, version: AI_TRAINING_VERSION }];
+    logWithRealRewrite({ anonId: "U1", question: "สมชาย งานปีนี้" }, { rewrite: async () => null });
+    await flush(); await flush(); await flush();
+    expect(executed.some((t) => t.includes("INSERT INTO ai_question_log"))).toBe(false);
+  });
+
+  it("ไม่ยินยอม = ไม่ส่งไปเกลาด้วยซ้ำ", async () => {
+    let called = 0;
+    logWithRealRewrite({ anonId: "U1", question: "สมชาย งานปีนี้" }, { rewrite: async () => { called++; return null; } });
+    await flush(); await flush();
+    expect(called).toBe(0);
+  });
+});
+
+describe("rewriteAiQuestion", () => {
+  const env = { GEMINI_API_KEY: "test-key" };
+  const answer = (text: string | null): RewriteGenerateContent => async () => ({ text, usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } });
+
+  it("ส่งคำถามพร้อมคำสั่ง แล้วคืนข้อความที่เกลา + โทเคน", async () => {
+    let req: Parameters<RewriteGenerateContent>[0] | undefined;
+    const r = await rewriteAiQuestion("สมชายงานปีนี้", {
+      env,
+      generateContent: async (request) => {
+        req = request;
+        return { text: JSON.stringify({ text: "[ชื่อ]งานปีนี้" }), usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5 } };
+      },
+    });
+    expect(r?.text).toBe("[ชื่อ]งานปีนี้");
+    expect(r?.usage.inTokens).toBe(10);
+    expect(req?.contents).toBe("สมชายงานปีนี้");
+    expect(req?.config.temperature).toBe(0);
+    expect(req?.config.systemInstruction).toContain("[ชื่อ]");
+  });
+
+  it("ล้ม ว่าง JSON เสีย หรือยาวผิดปกติ (โมเดลตอบแทนเกลา) = null", async () => {
+    expect(await rewriteAiQuestion("งานปีนี้", { env, generateContent: async () => { throw new Error("timeout"); } })).toBeNull();
+    expect(await rewriteAiQuestion("งานปีนี้", { env, generateContent: answer(null) })).toBeNull();
+    expect(await rewriteAiQuestion("งานปีนี้", { env, generateContent: answer("not json") })).toBeNull();
+    expect(await rewriteAiQuestion("งานปีนี้", { env, generateContent: answer(JSON.stringify({ text: "" })) })).toBeNull();
+    expect(await rewriteAiQuestion("งานปีนี้", { env, generateContent: answer(JSON.stringify({ text: "ดวงงานปีนี้ของคุณ ".repeat(20) })) })).toBeNull();
+  });
+
+  it("ไม่มี GEMINI key = null (ไม่ throw)", async () => {
+    expect(await rewriteAiQuestion("งานปีนี้", { env: {} })).toBeNull();
+  });
+
+  it("plausibleRewriteLength เผื่อป้ายแทนชื่อ แต่ไม่รับคำตอบยาว", () => {
+    expect(plausibleRewriteLength("สมชายงาน", "[ชื่อ]งาน")).toBe(true);
+    expect(plausibleRewriteLength("งาน", "")).toBe(false);
+    expect(plausibleRewriteLength("งาน", "x".repeat(100))).toBe(false);
   });
 });

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const captured: { where: SQL | undefined } = { where: undefined };
 const rows: { anonId: string }[] = [];
+const executed: string[] = [];
 
 vi.mock("@/db/client", () => ({
   createDbClient: () => ({
@@ -20,6 +21,10 @@ vi.mock("@/db/client", () => ({
     }),
     delete: () => ({ where: async () => undefined }),
     update: () => ({ set: () => ({ where: async () => undefined }) }),
+    execute: async (q: { queryChunks?: unknown[] }) => {
+      executed.push(JSON.stringify(q?.queryChunks ?? q));
+      return { rows: [] };
+    },
   }),
 }));
 
@@ -36,6 +41,7 @@ describe("account-purge cron — ล้างเฉพาะคำขอ pending
     process.env.CRON_SECRET = "test-cron-secret";
     captured.where = undefined;
     rows.length = 0;
+    executed.length = 0;
   });
   afterEach(() => {
     delete process.env.CRON_SECRET;
@@ -49,6 +55,16 @@ describe("account-purge cron — ล้างเฉพาะคำขอ pending
     expect(q.sql).toContain('"status" = $');
     expect(q.params).toContain("pending");
     expect(q.sql).toContain('"purge_at" <= $');
+  });
+
+  it("ล้างคำถามในคลัง AI ของบัญชีนั้นด้วย (ผูกด้วย subject ไม่ใช่ anonId)", async () => {
+    const { subjectFor } = await import("@/lib/bazi/ai-question-log");
+    rows.push({ anonId: "U-gone" });
+    const res = await GET(authed());
+    expect(res.status).toBe(200);
+    const del = executed.find((t) => t.includes("DELETE FROM ai_question_log"));
+    expect(del).toBeDefined();
+    expect(del).toContain(subjectFor("U-gone"));
   });
 
   it("ไม่มี CRON_SECRET ที่ถูกต้อง → 401 และไม่แตะ DB", async () => {
