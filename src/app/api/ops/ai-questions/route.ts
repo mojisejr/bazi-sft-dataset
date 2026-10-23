@@ -9,7 +9,7 @@ import { sql, type SQL } from "drizzle-orm";
 import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
-import { AI_QUESTION_RETENTION_DAYS } from "@/lib/bazi/ai-question-log";
+import { purgeExpiredAiQuestions } from "@/lib/bazi/ai-question-log";
 
 export const runtime = "nodejs";
 
@@ -110,9 +110,7 @@ export async function POST(request: Request) {
     if (!secret || body.secret !== secret) return unauthorized();
     const db = createDbClient();
     if (body.action === "purge-expired") {
-      const r = await db.execute(sql`
-        DELETE FROM ai_question_log WHERE created_at < now() - (${String(AI_QUESTION_RETENTION_DAYS)} || ' days')::interval RETURNING id`);
-      return Response.json({ ok: true, deleted: rowsOf(r).length });
+      return Response.json({ ok: true, deleted: await purgeExpiredAiQuestions() });
     }
     const ids = sql.join(body.ids.map((id) => sql`${id}::uuid`), sql`, `);
     if (body.action === "delete") {
