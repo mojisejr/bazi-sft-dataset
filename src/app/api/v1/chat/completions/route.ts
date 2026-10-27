@@ -44,6 +44,7 @@ import { qiGate } from "@/lib/bazi/qi/quota";
 import { logLlmUsage } from "@/lib/llm-usage/logger";
 import { logMateChatMeta } from "@/lib/bazi/mate-chat-meta";
 import { logAiQuestion } from "@/lib/bazi/ai-question-log";
+import { wanPhraKnowledge } from "@/lib/bazi/wanphra-knowledge";
 import {
   createGuardedOpenAiSseStream,
   type GlassBoxTrace,
@@ -571,6 +572,11 @@ export async function POST(req: Request) {
     const chatKb = retrieveChatKnowledge(result.latestUserMessage.content);
     if (chatKb) {
       executionContext.staticKnowledge = [executionContext.staticKnowledge, chatKb].filter(Boolean).join("\n\n———\n\n");
+    }
+    // วันพระ (ซินแสนุ้ย 2026-10-27: เดิม LLM แต่งรายการเองผิด) — คำนวณจริงจากปฏิทินจันทรคติไทยแล้วแนบ
+    const wanPhra = wanPhraKnowledge(result.latestUserMessage.content);
+    if (wanPhra) {
+      executionContext.staticKnowledge = [executionContext.staticKnowledge, wanPhra].filter(Boolean).join("\n\n———\n\n");
     }
 
     // ไพ่เซียมซีเคี้ยงคุง (ซินแสนุ้ยสั่ง): คำถามที่ "พื้นดวงตอบไม่ได้" — ลี้ลับ/ของหาย/เหตุการณ์เฉพาะจุด/
