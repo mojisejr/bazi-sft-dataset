@@ -29,6 +29,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/phone-reading", icon: "📱", label: "เบอร์มือถือ" },
   { href: "/divine-cards", icon: "🎴", label: "โหมดเซียน" },
   { href: "/oracle-cards", icon: "🔮", label: "ไพ่ออราเคิล" },
+  { href: "/kiang-kung", icon: "☯️", label: "เคี้ยงคุง 9 ประตู" },
   { href: "/fortune-sage", icon: "🎋", label: "เซียนเสี่ยงทาย" },
   { href: "/honeycomb", icon: "🐝", label: "เบอร์รังผึ้ง" },
   { href: "/almanac", icon: "📅", label: "ปฏิทินโหรา" },
