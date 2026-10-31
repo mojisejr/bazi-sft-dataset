@@ -17,7 +17,14 @@ import {
 } from "@/lib/bazi/nine-gates/rules";
 
 type Card = { no: number; name: string; imageUrl: string | null };
-type DeckKey = "oracle" | "love" | "fengshui" | "divine";
+type DeckKey = "oracle" | "love" | "fengshui";
+/** แผ่นใส (ซินแสนุ้ย 2026-10-31): แต่ละชั้นแยกงานกัน คำทำนายจะอ่านทุกชั้นรวมกัน · เนื้อหาเพิ่มทีละแผ่น */
+type LayerKey = "cards" | "gates" | "dithi";
+const LAYERS: { key: LayerKey; label: string }[] = [
+  { key: "cards", label: "แผ่น 1 · ไพ่ออราเคิล 9 ช่อง" },
+  { key: "gates", label: "แผ่น 2 · 8 ประตู" },
+  { key: "dithi", label: "แผ่น 3 · ดิถี 0–9" },
+];
 
 const DECKS: { key: DeckKey; label: string; name: string; symbol: string }[] = [
   {
@@ -32,12 +39,6 @@ const DECKS: { key: DeckKey; label: string; name: string; symbol: string }[] = [
     label: "ฮวงจุ้ย",
     name: "ไพ่อาถรรพ์ฮวงจุ้ย",
     symbol: "☷",
-  },
-  {
-    key: "divine",
-    label: "จิตวิญญาณ",
-    name: "ไพ่จิตวิญญาณแดนสวรรค์",
-    symbol: "❋",
   },
 ];
 
@@ -141,6 +142,7 @@ export function NineGatesWorkspace() {
   const [masterPos, setMasterPos] = useState<number | null>(null);
   const [gateRoll, setGateRoll] = useState<number | null>(null);
   const [zoom, setZoom] = useState<Card | null>(null);
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({ cards: true, gates: true, dithi: true });
   const [restored, setRestored] = useState(false);
 
   // คืนรอบล่าสุดจากเครื่อง (เปิดหน้าใหม่ไม่หาย)
@@ -423,6 +425,13 @@ export function NineGatesWorkspace() {
             : "ยังไม่มีไพ่ในชุดนี้"}
         </span>
       </div>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }} data-testid="ng-layers">
+        {LAYERS.map((l) => (
+          <label key={l.key} style={{ color: C.text, fontSize: 13 }}>
+            <input type="checkbox" checked={layers[l.key]} onChange={(e) => setLayers((v) => ({ ...v, [l.key]: e.target.checked }))} /> {l.label}
+          </label>
+        ))}
+      </div>
 
       <div
         style={{
@@ -433,9 +442,9 @@ export function NineGatesWorkspace() {
         data-testid="ng-board"
       >
         {PALACES.map((p, i) => {
-          const card = slots[i];
-          const gate = displayedGate(assignments, p.number, masterPos);
-          const isMaster = masterPos === p.number;
+          const card = layers.cards ? slots[i] : null;
+          const gate = layers.gates ? displayedGate(assignments, p.number, masterPos) : undefined;
+          const isMaster = layers.dithi && masterPos === p.number;
           return (
             <button
               key={p.number}
