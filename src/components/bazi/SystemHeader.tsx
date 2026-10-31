@@ -34,6 +34,7 @@ const NAV_LINKS: NavLink[] = [
   { href: "/honeycomb", icon: "🐝", label: "เบอร์รังผึ้ง" },
   { href: "/almanac", icon: "📅", label: "ปฏิทินโหรา" },
   { href: "/man-vs-day", icon: "🗓️", label: "ดวงกับวัน" },
+  { href: "/score-audit", icon: "🧮", label: "ตรวจคะแนน" },
   { href: "/sacred-map", icon: "🗺️", label: "แผนที่มู" },
   { href: "/almanac/yam", icon: "⏱️", label: "ตรวจยาม" },
   { href: "/rectify-hour", icon: "🕰️", label: "สอบยาม" },
