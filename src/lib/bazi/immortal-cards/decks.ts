@@ -29,8 +29,7 @@ export type ImmortalDeck = { key: string; name: string; cards: readonly Immortal
 
 export const IMMORTAL_DECKS: readonly ImmortalDeck[] = [
   { key: "poysian", name: "ไพ่ออราเคิลโป๊ยเซียน", cards: poysianJson as ImmortalCard[], hasContent: true },
-  // จี้กง: มีรูป+ชื่อ รอเอกสารเนื้อหา (ได้แล้วรัน extract แล้วเปลี่ยน hasContent)
-  { key: "jigong", name: "ไพ่ออราเคิลพระอาจารย์จี้กง", cards: jigongJson as ImmortalCard[], hasContent: false },
+  { key: "jigong", name: "ไพ่ออราเคิลพระอาจารย์จี้กง", cards: jigongJson as ImmortalCard[], hasContent: true },
 ];
 
 export function getImmortalDeck(key: string): ImmortalDeck | undefined {
