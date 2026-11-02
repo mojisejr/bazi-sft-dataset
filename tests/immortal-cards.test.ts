@@ -10,8 +10,8 @@ describe("immortal cards", () => {
       expect(d.cards.every((c) => c.imageUrl)).toBe(true);
     }
   });
-  it("โป๊ยเซียนมีเนื้อหาครบ แบ่งหมวด 7/7/7", () => {
-    const d = getImmortalDeck("poysian")!;
+  it.each(["poysian", "jigong"])("%s มีเนื้อหาครบ แบ่งหมวด 7/7/7", (key) => {
+    const d = getImmortalDeck(key)!;
     expect(d.cards.every((c) => c.overall && c.work && c.money && c.loveSingle && c.advice)).toBe(true);
     expect(d.cards.filter((c) => c.category === "เตือน").length).toBe(7);
   });
