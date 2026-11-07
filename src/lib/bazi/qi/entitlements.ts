@@ -152,10 +152,14 @@ export async function getTier(anonId: string): Promise<Tier> {
       ),
     );
   if (rows.some((r) => r.sku === "pro")) return "pro";
+  // 2026-11-07: ห้าม return "plus" ก่อนดู member_subscription — ลูกค้าแลกคูปอง PLUS (bazi_entitlement) แล้วซื้อ PRO
+  // (member_subscription) วันเดียวกัน → engine เห็นแค่ plus (แชท 5/วัน) → "ชี่ไม่พอ" ทั้งที่เป็น PRO. เอาค่าสูงสุดของ 2 ที่
+  const ms = await memberSubscriptionTier(anonId);
+  if (ms === "pro") return "pro";
   if (rows.some((r) => r.sku === "plus")) return "plus";
   // 2026-09-07: สมาชิกที่ซื้อผ่าน mootech-fe อยู่ใน member_subscription (DB เดียวกัน) — ไม่เคยถูก sync มาที่
   // bazi_entitlement เลย ทำให้ PRO/PLUS ได้โควตาไพ่/แชทเท่าฟรี. อ่านตรงจากตารางนั้น (fail-open เป็น free ถ้าตารางไม่มี)
-  return (await memberSubscriptionTier(anonId)) ?? "free";
+  return ms ?? "free";
 }
 
 /** tier จาก member_subscription ของ mootech-fe (แถว ACTIVE ที่ยังไม่หมดอายุ วันไทย) — null = ไม่มี/อ่านไม่ได้ */
@@ -206,6 +210,10 @@ export async function getEntitlementSummary(anonId: string): Promise<Entitlement
   }
 
   // สมาชิกจาก mootech-fe (member_subscription) — ทางเดียวกับ getTier
-  if (tier === "free") tier = (await memberSubscriptionTier(anonId)) ?? "free";
+  // ค่าสูงสุดของ 2 ที่ (คูปอง PLUS ใน bazi_entitlement ห้ามบัง PRO ที่ซื้อใน member_subscription)
+  if (tier !== "pro") {
+    const ms = await memberSubscriptionTier(anonId);
+    if (ms === "pro" || (ms === "plus" && tier === "free")) tier = ms;
+  }
   return { credits, owned, tier };
 }
