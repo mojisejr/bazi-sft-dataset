@@ -173,3 +173,50 @@ export function BarChart(props: { bars: Bar[]; fmt: (v: number) => string; floor
     </div>
   );
 }
+
+/** ตามชั่วโมงของวัน (mumate-manychat-ebook-001 slice 4): แท่งคู่ต่อชั่วโมง (ชุด a เทา ชุด b แดง) และแรเงาชั่วโมงที่ quiet */
+export type HourBar = { hour: number; a: number; b: number; quiet: boolean };
+export function HourChart(props: { hours: HourBar[]; aria: string; tip: (h: HourBar) => string }) {
+  if (props.hours.every((h) => h.a === 0 && h.b === 0)) return <p className="bd-hint">ยังไม่มีข้อมูลในช่วงนี้</p>;
+  const top = niceMax(Math.max(1, ...props.hours.map((h) => Math.max(h.a, h.b) * 1.15)));
+  return (
+    <div className="bd-chart">
+      {SIZES.map(([name, s]) => {
+        const y = (v: number) => s.h - s.m.b - (v / top) * (s.h - s.m.t - s.m.b);
+        const band = (s.w - s.m.l - s.m.r) / 24;
+        const bw = band * 0.36;
+        const every = name === "wide" ? 3 : 6;
+        return (
+          <svg key={name} className={`bd-svg ${name}`} viewBox={`0 0 ${s.w} ${s.h}`} role="img" aria-label={props.aria}>
+            {props.hours.map((h, i) =>
+              h.quiet ? <rect key={`q${h.hour}`} className="quiet" x={s.m.l + i * band} width={band} y={s.m.t} height={y(0) - s.m.t} /> : null,
+            )}
+            {[0, top / 2, top].map((t) => (
+              <g key={t}>
+                <line className="grid" x1={s.m.l} x2={s.w - s.m.r} y1={y(t)} y2={y(t)} />
+                <text className="tick" x={s.m.l - 6} y={y(t)} dy=".32em" textAnchor="end">
+                  {Math.round(t)}
+                </text>
+              </g>
+            ))}
+            {props.hours.map((h, i) => {
+              const x = s.m.l + i * band + band * 0.12;
+              return (
+                <g key={h.hour}>
+                  <title>{props.tip(h)}</title>
+                  <rect className="bar-a" x={x} width={bw} y={y(h.a)} height={Math.max(0, y(0) - y(h.a))} rx={2} />
+                  <rect className="bar-b" x={x + bw + band * 0.04} width={bw} y={y(h.b)} height={Math.max(0, y(0) - y(h.b))} rx={2} />
+                  {h.hour % every === 0 ? (
+                    <text className="tick" x={s.m.l + i * band + band / 2} y={s.h - 6} textAnchor="middle">
+                      {`${String(h.hour).padStart(2, "0")}:00`}
+                    </text>
+                  ) : null}
+                </g>
+              );
+            })}
+          </svg>
+        );
+      })}
+    </div>
+  );
+}

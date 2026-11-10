@@ -5,6 +5,9 @@ import { addDays } from "./shape";
 export const PRESETS = [7, 30, 90] as const;
 export type Preset = (typeof PRESETS)[number];
 export const DEFAULT_PRESET: Preset = 30;
+/** เมนูขาย E-Book (mumate-manychat-ebook-001 slice 4): วันนี้ / 7 / 14 / 28 วัน แบบหน้าที่ทีมใช้ — เมนูอื่นยังเป็น 7 / 30 / 90 */
+export const EBOOK_PRESETS = [1, 7, 14, 28] as const;
+export const EBOOK_DEFAULT = 7;
 /** เลือกเองได้ยาวสุดเท่านี้ — ยาวกว่านี้อ่านสดไม่ทันเวลาที่กันไว้ */
 export const MAX_DAYS = 366;
 /** ข้อมูลที่ bdash อ่านเริ่มจากระบบจ่ายเงินชุดใหม่ (v2_payment) — เลือกก่อนวันนี้ไม่มีอะไรให้ดู */
@@ -15,8 +18,8 @@ export const DAILY_UP_TO = 31;
 export type Bucket = "day" | "week";
 
 export type BdashRange = {
-  /** "7" | "30" | "90" หรือ "custom" */
-  key: `${Preset}` | "custom";
+  /** จำนวนวันของปุ่มที่เลือก เช่น "30" หรือ "custom" */
+  key: `${number}` | "custom";
   from: string;
   /** วันสุดท้าย (รวมวันนี้) */
   to: string;
@@ -38,30 +41,34 @@ export function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000) + 1;
 }
 
-function preset(n: Preset, today: string, note: string | null = null): BdashRange {
+function preset(n: number, today: string, note: string | null = null): BdashRange {
   const from = addDays(today, -(n - 1));
   return { key: `${n}`, from, to: today, days: n, bucket: n > DAILY_UP_TO ? "week" : "day", query: `range=${n}`, note };
 }
 
-/** อ่านช่วงจาก query ของลิงก์ · today = วันไทยของวันนี้ */
-export function parseRange(params: Params, today: string): BdashRange {
+/** อ่านช่วงจาก query ของลิงก์ · today = วันไทยของวันนี้
+ *  opts (เมนูที่มีปุ่มช่วงของตัวเอง): ปุ่มเพิ่มของเมนูนั้น และช่วงเริ่มต้น — ปุ่มของเมนูอื่นยังใช้ได้ เพราะลิงก์พาช่วงข้ามเมนู */
+export function parseRange(params: Params, today: string, opts: { presets?: readonly number[]; def?: number } = {}): BdashRange {
+  const def = opts.def ?? DEFAULT_PRESET;
+  const back = def === 1 ? "วันนี้" : `${def} วันล่าสุด`;
+  const allowed: readonly number[] = [...PRESETS, ...(opts.presets ?? [])];
   const r = one(params.range);
   const from = one(params.from);
   const to = one(params.to);
 
   if (from !== undefined || to !== undefined) {
-    if (!isDay(from) || !isDay(to)) return preset(DEFAULT_PRESET, today, "วันที่ที่เลือกอ่านไม่ออก จึงแสดง 30 วันล่าสุดแทน");
+    if (!isDay(from) || !isDay(to)) return preset(def, today, `วันที่ที่เลือกอ่านไม่ออก จึงแสดง ${back}แทน`);
     const [lo, hi] = from <= to ? [from, to] : [to, from];
     const a = lo < EARLIEST ? EARLIEST : lo > today ? today : lo;
     const b = hi > today ? today : hi < a ? a : hi;
     const days = daysBetween(a, b);
-    if (days > MAX_DAYS) return preset(DEFAULT_PRESET, today, `เลือกได้ยาวสุด ${MAX_DAYS} วัน จึงแสดง 30 วันล่าสุดแทน`);
+    if (days > MAX_DAYS) return preset(def, today, `เลือกได้ยาวสุด ${MAX_DAYS} วัน จึงแสดง ${back}แทน`);
     return { key: "custom", from: a, to: b, days, bucket: days > DAILY_UP_TO ? "week" : "day", query: `from=${a}&to=${b}`, note: null };
   }
 
   const n = Number(r);
-  if (r !== undefined && (PRESETS as readonly number[]).includes(n)) return preset(n as Preset, today);
-  return preset(DEFAULT_PRESET, today, r === undefined ? null : "ช่วงที่เลือกไม่มีในรายการ จึงแสดง 30 วันล่าสุดแทน");
+  if (r !== undefined && allowed.includes(n)) return preset(n, today);
+  return preset(def, today, r === undefined ? null : `ช่วงที่เลือกไม่มีในรายการ จึงแสดง ${back}แทน`);
 }
 
 /** path ของเมนูพร้อมช่วงปัจจุบัน — ช่วงตามไปทุกเมนู */

@@ -33,6 +33,7 @@ import {
   type QuestionFilter,
   type TopicCard,
 } from "./chat";
+import { readEbook, type EbookCard } from "./ebook";
 import { queryAiBuckets, queryPeople, queryPeopleTotals, shapeFeatureCard, type FeatureCard } from "./features";
 import type { BdashRange } from "./range";
 import { fillQiDays, shapeCohorts, shapePayments } from "./shape";
@@ -47,7 +48,7 @@ const CACHE_MAX = 60;
 
 export class RangeTooHeavyError extends Error {}
 
-type Page = "overview" | "stay" | "money" | "features" | "chat";
+type Page = "overview" | "stay" | "money" | "features" | "chat" | "ebook";
 
 const cache = new Map<string, { at: number; value: Promise<unknown> }>();
 
@@ -215,3 +216,6 @@ export const loadOverview = (range: BdashRange, opts?: Parameters<typeof cached>
     },
     opts,
   );
+
+export const loadEbook = (range: BdashRange, opts?: Parameters<typeof cached>[3]) =>
+  cached<EbookCard>("ebook", range, (q) => readEbook(q, range), opts);

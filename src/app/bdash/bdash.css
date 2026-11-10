@@ -164,7 +164,7 @@ body:has(.bd-page) { margin: 0; background: #FAF7F4; }
 /* มือถือ: เมนูเป็นแถบล่าง ห้าช่องเห็นตลอด นิ้วโป้งกดถึง */
 @media (max-width: 719px) {
   .bd-page > .bd { padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-  .bd-nav { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0;
+  .bd-nav { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0;
     padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px)); background: var(--bd-surface); border-top: 1px solid var(--bd-line); }
   .bd-nav a { flex-direction: column; gap: 3px; padding: 6px 2px; border-radius: 12px; font-size: 11.5px; text-align: center; line-height: 1.25; }
   .bd-nav a svg { display: block; width: 22px; height: 22px; }
@@ -248,3 +248,19 @@ b .bd-sub { display: inline; }
   .bd-qs li.bd-extra { display: none; }
   .bd-card:has(.bd-showall:checked) .bd-qs li.bd-extra { display: grid; }
 }
+
+/* ขาย E-Book (mumate-manychat-ebook-001 slice 4) */
+.bd-chart .quiet { fill: var(--bd-chip); }
+.bd-chart .bar-a { fill: var(--bd-muted); opacity: .45; }
+.bd-chart .bar-b { fill: var(--bd-bad); }
+.bd-legend i.dot-a { background: var(--bd-muted); opacity: .45; } .bd-legend i.dot-b { background: var(--bd-bad); }
+.bd-legend i.dot-quiet { background: var(--bd-chip); outline: 1px solid var(--bd-line); }
+.bd-funnel { display: grid; gap: 12px; }
+.bd-step { display: grid; gap: 4px; }
+.bd-step-head { display: flex; gap: 8px; align-items: baseline; font-size: 13.5px; }
+.bd-step-head .bd-pill { margin-left: auto; }
+.bd-step .track { flex: 1; height: 20px; border-radius: 8px; background: var(--bd-chip); overflow: hidden; }
+.bd-step .track span { display: block; height: 100%; border-radius: 8px; background: var(--bd-teal); min-width: 3px; }
+.bd-step.worst .track span { background: var(--bd-bad); }
+.bd-wait { border-style: dashed; }
+.bd-wait ul { margin: 0; padding-left: 1.2em; font-size: 13px; color: var(--bd-muted); line-height: 1.8; }

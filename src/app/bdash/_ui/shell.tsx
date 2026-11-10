@@ -19,13 +19,13 @@ export const bdashMetadata: Metadata = { title: "MuMate ภาพรวมธุ
 export type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 /** เปิดได้เฉพาะผ่านประตู bdash / หลังบ้าน (production) แล้วอ่านช่วงจากลิงก์ */
-export async function openBdash(searchParams: SearchParams): Promise<BdashRange> {
+export async function openBdash(searchParams: SearchParams, opts?: { presets?: readonly number[]; def?: number }): Promise<BdashRange> {
   const h = await headers();
   if (!doorOf(h) && process.env.NODE_ENV === "production") notFound();
-  return parseRange(await searchParams, todayBangkok());
+  return parseRange(await searchParams, todayBangkok(), opts);
 }
 
-export type MenuKey = "overview" | "stay" | "money" | "features" | "chat";
+export type MenuKey = "overview" | "stay" | "money" | "features" | "chat" | "ebook";
 
 export const MENUS: ReadonlyArray<{ key: MenuKey; path: string; label: string; question: string; icon: string }> = [
   { key: "overview", path: "/bdash", label: "ภาพรวม", question: "ธุรกิจเป็นอย่างไร และอะไรเปลี่ยน", icon: "home" },
@@ -33,6 +33,8 @@ export const MENUS: ReadonlyArray<{ key: MenuKey; path: string; label: string; q
   { key: "money", path: "/bdash/money", label: "เงินเข้า", question: "กดจ่ายแล้วติดตรงไหน ใครจ่าย และกลับมาซื้ออีกไหม", icon: "coin" },
   { key: "features", path: "/bdash/features", label: "ฟีเจอร์และ AI", question: "คนใช้ฟีเจอร์ไหน คุ้มค่า AI ไหม และแจก QI มากไปไหม", icon: "grid" },
   { key: "chat", path: "/bdash/chat", label: "แชตถามอะไร", question: "คนสนใจเรื่องไหน ถามเรื่องวันนี้หรือทั้งปี", icon: "chat" },
+  // mumate-manychat-ebook-001 slice 4 — เมนูนี้ลบออกได้ทั้งเมนู (บรรทัดนี้ + /bdash/ebook + lib/bdash/ebook.ts)
+  { key: "ebook", path: "/bdash/ebook", label: "ขาย E-Book", question: "ขายได้กี่เล่ม คนหลุดตรงไหน ทำไมกดซื้อแล้วไม่โอน และคนโอนช่วงไหนของวัน", icon: "book" },
 ];
 
 export const menu = (key: MenuKey) => MENUS.find((m) => m.key === key)!;
@@ -81,6 +83,13 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M9 11h.01M12 11h.01M15 11h.01" />
     </>
   ),
+  book: (
+    <>
+      <path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z" />
+      <path d="M4 21V5" />
+      <path d="M8 7h6M8 11h6" />
+    </>
+  ),
 };
 
 export function Icon({ name }: { name: string }) {
@@ -94,7 +103,8 @@ export function Icon({ name }: { name: string }) {
 const hhmm = (at: number) => new Date(at).toLocaleTimeString("th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit", hour12: false });
 
 /** ทั้งหน้า: หัว + แถบช่วง + เมนู + เนื้อหา */
-export function BdashShell(props: { active: MenuKey; range: BdashRange; at: number | null; children: React.ReactNode }) {
+/** presets = ปุ่มช่วงของเมนูนั้น (ไม่ใส่ = 7 / 30 / 90 เหมือนเดิม) */
+export function BdashShell(props: { active: MenuKey; range: BdashRange; at: number | null; presets?: readonly number[]; children: React.ReactNode }) {
   const { active, range } = props;
   const m = menu(active);
   return (
@@ -126,7 +136,7 @@ export function BdashShell(props: { active: MenuKey; range: BdashRange; at: numb
         </div>
 
         <div className="bd-bar">
-          <RangeBar path={m.path} range={range} />
+          <RangeBar path={m.path} range={range} presets={props.presets ?? PRESETS} />
           <nav className="bd-nav" aria-label="เมนู">
             {MENUS.map((x) => (
               <a key={x.key} href={withRange(x.path, range)} aria-current={x.key === active ? "page" : undefined}>
@@ -150,15 +160,15 @@ export function BdashShell(props: { active: MenuKey; range: BdashRange; at: numb
   );
 }
 
-function RangeBar({ path, range }: { path: string; range: BdashRange }) {
+function RangeBar({ path, range, presets }: { path: string; range: BdashRange; presets: readonly number[] }) {
   const today = todayBangkok();
   return (
     <div className="bd-range">
       <span className="lbl">ดูช่วง</span>
       <div className="bd-seg">
-        {PRESETS.map((n) => (
+        {presets.map((n) => (
           <a key={n} href={`${path}?range=${n}`} aria-current={range.key === `${n}` ? "true" : undefined}>
-            {n} วัน
+            {n === 1 ? "วันนี้" : `${n} วัน`}
           </a>
         ))}
         <details className="bd-custom">
