@@ -1485,6 +1485,7 @@ function CampaignLinkBuilder({ secret, onNote }: { secret: string; onNote: (ok: 
             <div><span style={label}>{amountLabel}</span><input style={input} type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={isDiscount && dkind === "PERCENT" ? "1-99" : rewardKind === "tier" ? "เช่น 30" : undefined} /></div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
+            {isDiscount && <DiscountPreview kind={dkind} amount={amount} maxBaht={dMaxBaht} />}
             <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder={isDiscount ? "เว้น=ไม่จำกัด" : "เว้น=1/คน"} /></div>
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
@@ -1726,6 +1727,37 @@ function PromoShareSettings({ secret, onNote }: { secret: string; onNote: (ok: b
   );
 }
 
+// ราคาหลังลดแบบสด ๆ ตอนกรอกโค้ดส่วนลด (2026-11-11: PROFS97 ตั้งเป็น "ลด 97%" แทน "ขาย 97 บาท" → เหลือ ฿6
+// ต่ำกว่าขั้นต่ำ ฿20 ลูกค้าใช้ไม่ได้). สูตรเดียวกับ mootech-fe lib/discount/rules.ts (PERCENT floor, เพดาน, ขั้นต่ำ ฿20)
+const PREVIEW_PRICES: { label: string; baht: number }[] = [
+  { label: "Pro รายเดือน", baht: 199 },
+  { label: "Pro รายปี", baht: 1590 },
+  { label: "Plus รายปี", baht: 790 },
+];
+function DiscountPreview({ kind, amount, maxBaht }: { kind: "PERCENT" | "FIXED"; amount: string; maxBaht: string }) {
+  const v = Number(amount);
+  if (!amount || !Number.isFinite(v) || v <= 0) return null;
+  const rows = PREVIEW_PRICES.map((p) => {
+    const list = p.baht * 100;
+    let d = kind === "PERCENT" ? Math.floor((list * v) / 100) : Math.round(v * 100);
+    if (kind === "PERCENT" && maxBaht && Number(maxBaht) > 0) d = Math.min(d, Number(maxBaht) * 100);
+    d = Math.min(Math.max(0, d), list);
+    const after = (list - d) / 100;
+    return { ...p, after, bad: list - d < 2000 };
+  });
+  return (
+    <div style={{ gridColumn: "1 / -1", fontSize: 12, lineHeight: 1.7, padding: "6px 10px", borderRadius: 8, background: rows.some((r) => r.bad) ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.10)" }}>
+      <b>ราคาหลังลด</b> ({kind === "PERCENT" ? `ลด ${v}%` : `ลด ${v.toLocaleString("th-TH")} บาท`}){" "}
+      {rows.map((r) => (
+        <span key={r.label} style={{ marginRight: 12, color: r.bad ? "#ef4444" : undefined, fontWeight: r.bad ? 700 : undefined }}>
+          {r.label} ฿{r.baht.toLocaleString("th-TH")} → ฿{r.after.toLocaleString("th-TH")}{r.bad ? " ⚠ ต่ำกว่า ฿20 ลูกค้าใช้ไม่ได้" : ""}
+        </span>
+      ))}
+      {kind === "PERCENT" && v >= 50 && <div style={{ color: "#f59e0b" }}>ตั้งใจจะ “ขายในราคา {v} บาท” ใช่ไหม? → เลือกชนิด “จำนวนเงิน ฿” แล้วใส่ส่วนต่าง (เช่น 199 − {v} = {Math.max(0, 199 - v)})</div>}
+    </div>
+  );
+}
+
 function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
@@ -1881,6 +1913,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             </div>
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
+            {isDiscount && <DiscountPreview kind={dkind} amount={amount} maxBaht={dMaxBaht} />}
             <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder={isDiscount ? "เว้น=ไม่จำกัด" : "เว้น=1 ครั้ง/คน"} /></div>
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
