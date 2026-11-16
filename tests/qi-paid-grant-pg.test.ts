@@ -142,6 +142,30 @@ describe.skipIf(!databaseUrl)('paid QI · actual SQL against disposable PostgreS
     expect(await facts(value.anonId, value.ref)).toEqual({ qi: 130, wallets: 1, ledger: 1, bonuses: 1, claims: 1 })
   })
 
+  it('duplicate historical ledger rows refuse another credit without rewriting history', async () => {
+    const value = input()
+    await direct`INSERT INTO bazi_wallet (anon_id, qi) VALUES (${value.anonId}, 200)`
+    for (let i = 0; i < 2; i++) {
+      await direct`INSERT INTO bazi_ledger_txn (anon_id, qi_delta, reason, ref) VALUES (${value.anonId}, ${value.qi}, ${value.reason}, ${value.ref})`
+    }
+    await expect(grant(value)).rejects.toMatchObject({ code: 'GRANT_CONFLICT', status: 409 })
+    expect(await facts(value.anonId, value.ref)).toEqual({ qi: 200, wallets: 1, ledger: 2, bonuses: 0, claims: 0 })
+  })
+
+  it('historical purchase without a wallet requires review rather than automatic re-credit', async () => {
+    const value = input()
+    await direct`INSERT INTO bazi_ledger_txn (anon_id, qi_delta, reason, ref) VALUES (${value.anonId}, ${value.qi}, ${value.reason}, ${value.ref})`
+    await expect(grant(value)).rejects.toMatchObject({ code: 'GRANT_HISTORY_INCONSISTENT', status: 409 })
+    expect(await facts(value.anonId, value.ref)).toEqual({ qi: 0, wallets: 0, ledger: 1, bonuses: 0, claims: 0 })
+  })
+
+  it('legacy bonus claim without a bonus ledger never awards another bonus', async () => {
+    const value = input()
+    await direct`INSERT INTO bazi_qi_claim (anon_id, code, period_key) VALUES (${value.anonId}, 'first_buy_bonus', 'all')`
+    expect(await grant(value)).toMatchObject({ alreadyGranted: false, firstBuyBonus: false, grantedQi: 100, qi: 100 })
+    expect(await facts(value.anonId, value.ref)).toEqual({ qi: 100, wallets: 1, ledger: 1, bonuses: 0, claims: 1 })
+  })
+
   it('lost COMMIT acknowledgement is unknown; explicit same-ref retry credits nothing twice', async () => {
     const value = input()
     const target = checkedTarget()

@@ -1,0 +1,38 @@
+schema_version: ciel.event.v0.1
+id: evt_20261116T153900_qi_atomic_staging_proof
+type: closeout
+recorded_at: 2026-11-16T15:39:00Z
+recorded_by:
+  agent: codex
+workstream:
+  id: mumate-fe-db-resilience-001
+  objective: Prove atomic paid QI grants before production release.
+outcome:
+  status: prepared-for-authorized-release
+  summary: Atomic paid grant and first-purchase bonus pass synthetic database, compiled-route and old-image graceful-cutover proofs. Production deployment remains pending.
+evidence:
+  repository:
+    head: 799ffc8e35f41d438bac2c0b2081e083d23efce6
+    branch: chat/qi-grant-atomic
+  plan: ciel-os/workstreams/mumate-fe-db-resilience-001/PLAN.md
+  plan_revision: '0.3'
+  slice: '3'
+  pull_request: https://github.com/mojisejr/bazi-sft-dataset/pull/73
+  staging_image_build: https://github.com/mojisejr/bazi-sft-dataset/actions/runs/43897468287
+  pr_build: https://github.com/mojisejr/bazi-sft-dataset/actions/runs/43897705030
+  proof: docs/qi-paid-grant-proof.md
+  checks:
+    - Ten actual-SQL cases pass on local and isolated staging PostgreSQL and transaction pooler; isolation-default case uses the direct companion.
+    - Seven route tests and 107 runtime regression tests pass. Typecheck, changed-file lint, optimized build and gitleaks pass.
+    - Compiled image confirms one credit for ten concurrent requests, conflict rejection, old-receipt replay without mutation and bonus exactly once across different purchases.
+    - Old compiled image finishes an active synthetic paid request before exit143 and refuses new connections during drain.
+  baseline_lint: Ninety-one errors remain in unchanged deployed-source files, outside this patch; not reported as passing.
+  production_preflight: Read-only aggregates show18paid rows and no missing, duplicate or conflicting paid references; no customer data changed.
+unresolved:
+  - Historical wallet consistency is not established by ledger aggregate counts; no balances were corrected.
+  - General earn, spend and referral reward atomicity remain outside this repair.
+  - Advisory locking requires all paid writers to use the new path; old handlers must drain first.
+  - Automatic rollback can restore the old grant risk; it is not a grant-processing hold.
+  - The original FE stall trigger remains unproven; this release contains its effect.
+next_action:
+  action: Verify the exact pair on shared staging and production image availability, merge without squashing, gracefully drain old Bazi, release the proven ancestor SHA with FE2f1003e and observe health and natural reconciliation.
