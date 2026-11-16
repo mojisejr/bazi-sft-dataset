@@ -1,10 +1,12 @@
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z, ZodError } from "zod";
 
 import { createDbClient } from "@/db/client";
-import { baziLedgerTxn, baziReferralRedemption } from "@/db/schema";
-import { applyLedger, getWallet, levelOfXp } from "@/lib/bazi/manifest/ledger";
+import { baziReferralRedemption } from "@/db/schema";
+import { levelOfXp } from "@/lib/bazi/manifest/ledger";
 import { earnQi, QiError } from "@/lib/bazi/qi/engine";
+import { createPaidGrantSqlClient } from "@/db/paid-grant-client";
+import { createPaidQiGrant, PaidQiGrantError } from "@/lib/bazi/qi/paid-grant";
 
 export const runtime = "nodejs";
 
@@ -17,7 +19,8 @@ export const runtime = "nodejs";
  *                        + ครั้งแรกตลอดชีพโบนัส first_buy_bonus +30 (bazi_qi_claim กันซ้ำเอง)
  *     kind="plus"|"pro" → ไม่มีชี่ตรง ๆ; ถ้าผู้ซื้อเคยใช้โค้ดผู้ชวน → ผู้ชวนได้ referral_plus/referral_pro
  *                        (per_referral idempotent ต่อผู้ซื้อ 1 คน ตาม catalog)
- *   ref (charge_id) ทำ idempotency: ถ้า ledger มีแถว reason+ref เดิม → ตอบ alreadyGranted ไม่บวกซ้ำ
+ *   ref (charge_id) เป็น global idempotency key: transaction lock + ตรวจ payload ใน ledger
+ *   wallet, purchase ledger, first-buy claim และ bonus ledger commit พร้อมกัน
  */
 
 const PostSchema = z.object({
@@ -58,42 +61,14 @@ export async function POST(request: Request) {
       }
       const reason = `qi:buy:${body.reason ?? "pack"}`;
 
-      // idempotency ชั้นแรกที่นี่ (ชั้นจริงคือ settleAndProvision ที่ arbiter ด้วย DB แล้ว):
-      // webhook ซ้ำที่หลุดผ่าน settle มาอีกรอบ ต้องไม่บวกชี่ซ้ำ
-      const db = createDbClient();
-      const existing = await db
-        .select({ id: baziLedgerTxn.id })
-        .from(baziLedgerTxn)
-        .where(and(eq(baziLedgerTxn.reason, reason), eq(baziLedgerTxn.ref, body.ref)))
-        .limit(1);
-      if (existing.length) {
-        return Response.json(
-          { anonId: body.anonId, alreadyGranted: true, ...levelOfXp((await getWallet(body.anonId)).xp) },
-          { status: 200 },
-        );
-      }
-
-      let balance = await applyLedger({
+      const result = await createPaidQiGrant(createPaidGrantSqlClient())({
         anonId: body.anonId,
-        qiDelta: body.qi,
+        qi: body.qi,
         reason,
         ref: body.ref,
       });
-      if (!balance) throw new QiError("บันทึกแต้มไม่สำเร็จ", 500);
-
-      // โบนัสซื้อครั้งแรก — earnQi capped เอง ถ้าเคยรับแล้ว (ไม่ throw);
-      // ใช้ยอดหลังโบนัสตอบกลับ ไม่ใช่ยอดก่อนโบนัส
-      let firstBuyBonus = false;
-      try {
-        const bonus = await earnQi(body.anonId, "first_buy_bonus");
-        firstBuyBonus = bonus.awarded;
-        if (bonus.awarded) balance = bonus.balance;
-      } catch {
-        firstBuyBonus = false;
-      }
-
       return Response.json(
-        { anonId: body.anonId, alreadyGranted: false, firstBuyBonus, grantedQi: body.qi, ...balance, ...levelOfXp(balance.xp) },
+        { anonId: body.anonId, ...result, ...levelOfXp(result.xp) },
         { status: 200 },
       );
     }
@@ -115,10 +90,14 @@ export async function POST(request: Request) {
       { status: 200 },
     );
   } catch (error) {
+    if (error instanceof PaidQiGrantError) {
+      return Response.json({ error: error.message, code: error.code }, { status: error.status });
+    }
     if (error instanceof QiError) {
       return Response.json({ error: error.message }, { status: error.status });
     }
-    const message = error instanceof Error ? error.message : "Unknown qi grant error.";
-    return Response.json({ error: message }, { status: 500 });
+    // A connection failure can follow a committed grant. Do not claim rollback,
+    // expose SQL/parameters, or replay it here; the same ref can be retried safely.
+    return Response.json({ error: "QI grant outcome could not be confirmed.", code: "GRANT_UNCONFIRMED" }, { status: 503 });
   }
 }
