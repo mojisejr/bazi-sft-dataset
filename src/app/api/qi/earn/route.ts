@@ -23,6 +23,9 @@ export async function POST(request: Request) {
   if (denied) return denied;
   try {
     const body = PostSchema.parse(await request.json());
+    if (body.code === "first_buy_bonus") {
+      return Response.json({ error: "First-buy bonus is granted only with a paid QI purchase." }, { status: 400 });
+    }
     const result = await earnQi(body.anonId, body.code, body.ref ?? null);
     return Response.json(
       {
