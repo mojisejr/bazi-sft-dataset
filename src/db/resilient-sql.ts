@@ -1,5 +1,7 @@
 import type postgres from "postgres";
 
+import { createStallDiagnostics } from "@/db/stall-diagnostics";
+
 // A postgres.js client that does not let one stalled statement freeze the engine (mumate-vercel-to-do-001 slice 7,
 // 2026-10-10). On 2026-10-09 20:20-20:30 +07 production bazi stopped answering for 9.5 minutes: Supabase's Postgres
 // log showed its statements stuck at PARSE with an empty query - the database had received only the first protocol
@@ -15,6 +17,11 @@ import type postgres from "postgres";
 // Retrying a write is safe for the failure we saw: a statement stuck at PARSE never executed, and a dropped socket
 // aborts its implicit transaction. A duplicate would need a write that was genuinely executing past FIRST_ATTEMPT_MS;
 // every retry is logged with its kind so that case would be visible.
+//
+// 2026-11-17 (mumate-fe-db-resilience-001 slice 7): each stall line also carries `diag` - where the query was when the
+// bound passed (never sent, written behind another query, or being answered), the pool's counts and the wire counters
+// of the database sockets - and an abandoned query that settles later logs `db_query_late_settle`. Bounds, the single
+// retry and the retirement are unchanged; see stall-diagnostics.ts for what may and may not be logged.
 
 type Sql = ReturnType<typeof postgres>;
 type Pending = PromiseLike<unknown> & { values(): PromiseLike<unknown>; catch?: (f: () => void) => unknown };
@@ -52,7 +59,32 @@ export function createResilientSql(createPool: () => Sql, options: Options = {})
   const retryMs = options.retryMs ?? RETRY_ATTEMPT_MS;
   const retireGraceS = options.retireGraceS ?? RETIRE_GRACE_S;
   const log = options.log ?? ((line: string) => console.error(line));
+  const diagnostics = createStallDiagnostics(log);
+  type PoolState = ReturnType<typeof diagnostics.pool>;
+  type Watched = { state: PoolState; entry: ReturnType<typeof diagnostics.track> } | null;
+  const states = new WeakMap<Sql, PoolState>();
   let current = createPool();
+
+  // Diagnostics are best effort: a failure here must never reach the query.
+  function stateOf(pool: Sql) {
+    let state = states.get(pool);
+    if (!state) states.set(pool, (state = diagnostics.pool((pool as unknown as { options?: unknown }).options)));
+    return state;
+  }
+  function watch(pool: Sql, query: unknown, settled: Promise<unknown>, text: unknown, attempt: 1 | 2): Watched {
+    try {
+      const state = stateOf(pool);
+      return { state, entry: diagnostics.track(state, query, settled, kindOf(text), text, attempt) };
+    } catch {
+      return null;
+    }
+  }
+  const describe = (watched: Watched, boundMs: number) => (watched ? diagnostics.stalled(watched.state, watched.entry, boundMs) : {});
+  try {
+    stateOf(current);
+  } catch {
+    // counted from its first query instead
+  }
 
   function retire(stalled: Sql) {
     if (stalled !== current) return; // another query already replaced it
@@ -69,22 +101,29 @@ export function createResilientSql(createPool: () => Sql, options: Options = {})
     const started = Date.now();
     const pool = current;
     const first = asValues ? build(pool).values() : build(pool);
+    // one promise for the query's outcome: the bound races it and the diagnostics watch it
+    const firstSettled = Promise.resolve(first);
+    const firstWatched = watch(pool, first, firstSettled, text, 1);
     try {
-      return await bounded(first, firstMs);
+      return await bounded(firstSettled, firstMs);
     } catch (error) {
       if (!(error instanceof DbStallError)) throw error;
       // the abandoned query settles later (answer or destroyed socket); nobody awaits it any more
       Promise.resolve(first).then(undefined, () => {});
+      const diag = describe(firstWatched, firstMs); // read before the pool is retired
       retire(pool);
-      log(JSON.stringify({ event: "db_query_stall", kind: kindOf(text), waited_ms: Date.now() - started, action: "retry_on_fresh_pool" }));
+      log(JSON.stringify({ event: "db_query_stall", kind: kindOf(text), waited_ms: Date.now() - started, action: "retry_on_fresh_pool", ...diag }));
     }
-    const retried = asValues ? build(current).values() : build(current);
+    const retryPool = current;
+    const retried = asValues ? build(retryPool).values() : build(retryPool);
+    const retriedSettled = Promise.resolve(retried);
+    const retriedWatched = watch(retryPool, retried, retriedSettled, text, 2);
     try {
-      return await bounded(retried, retryMs);
+      return await bounded(retriedSettled, retryMs);
     } catch (error) {
       if (error instanceof DbStallError) {
         Promise.resolve(retried).then(undefined, () => {});
-        log(JSON.stringify({ event: "db_query_stall", kind: kindOf(text), waited_ms: Date.now() - started, action: "gave_up" }));
+        log(JSON.stringify({ event: "db_query_stall", kind: kindOf(text), waited_ms: Date.now() - started, action: "gave_up", ...describe(retriedWatched, retryMs) }));
       }
       throw error;
     }
@@ -117,6 +156,19 @@ export function createResilientSql(createPool: () => Sql, options: Options = {})
           handle((sql) => (sql.unsafe as unknown as (...a: unknown[]) => Pending)(text, params, queryOptions), text);
       }
       if (key === "options") return current.options;
+      if (key === "begin") {
+        // same call as before; the pool's open transactions are counted because their queries bypass this facade
+        return (...args: unknown[]) => {
+          const pool = current;
+          const result = (pool.begin as unknown as (...a: unknown[]) => Promise<unknown>)(...args);
+          try {
+            diagnostics.transaction(stateOf(pool), Promise.resolve(result));
+          } catch {
+            // best effort
+          }
+          return result;
+        };
+      }
       const value = (current as unknown as Record<PropertyKey, unknown>)[key];
       return typeof value === "function" ? (value as (...a: unknown[]) => unknown).bind(current) : value;
     },
