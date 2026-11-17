@@ -1770,6 +1770,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
   const [tierSku, setTierSku] = useState<"plus" | "pro">("plus");
   const [dkind, setDkind] = useState<"PERCENT" | "FIXED">("PERCENT");
   const [dMaxBaht, setDMaxBaht] = useState("");
+  const [dApplies, setDApplies] = useState<string[]>([]); // [] = ทุกแพ็กเกจ
   const [maxUsePerUser, setMaxUsePerUser] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [endsAt, setEndsAt] = useState("");
@@ -1814,7 +1815,7 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
       if (isDiscount) {
         const r = await fetch("/api/ops/discount", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ secret, action: "create", code, kind: dkind, value: Number(amount), maxDiscountBaht: dkind === "PERCENT" && dMaxBaht ? Number(dMaxBaht) : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined }),
+          body: JSON.stringify({ secret, action: "create", code, kind: dkind, value: Number(amount), maxDiscountBaht: dkind === "PERCENT" && dMaxBaht ? Number(dMaxBaht) : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || undefined, maxUsePerUser: maxUsePerUser || undefined, appliesTo: dApplies }),
         });
         const j = (await r.json().catch(() => ({}))) as { discounts?: DiscountRow[]; reason?: string; error?: string };
         if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างไม่สำเร็จ"); return; }
@@ -1914,6 +1915,19 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             {rewardKind === "tier" && <div><span style={label}>Tier</span><select style={input} value={tierSku} onChange={(e) => setTierSku(e.target.value as "plus" | "pro")}><option value="plus">PLUS</option><option value="pro">PRO</option></select></div>}
             {isDiscount && dkind === "PERCENT" && <div><span style={label}>เพดานลด (บาท)</span><input style={input} type="number" value={dMaxBaht} onChange={(e) => setDMaxBaht(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>}
             {isDiscount && <DiscountPreview kind={dkind} amount={amount} maxBaht={dMaxBaht} />}
+            {isDiscount && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <span style={label}>ใช้กับแพ็กเกจ (ไม่เลือก = ทุกแพ็กเกจ)</span>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap", fontSize: 13 }}>
+                  {CAMPAIGN_PACKAGES.map((p) => (
+                    <label key={p.code} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <input type="checkbox" checked={dApplies.includes(p.code)} onChange={(e) => setDApplies((cur) => (e.target.checked ? [...cur, p.code] : cur.filter((x) => x !== p.code)))} />
+                      {p.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div><span style={label}>จำกัด/คน (ครั้ง)</span><input style={input} type="number" value={maxUsePerUser} onChange={(e) => setMaxUsePerUser(e.target.value)} placeholder={isDiscount ? "เว้น=ไม่จำกัด" : "เว้น=1 ครั้ง/คน"} /></div>
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
