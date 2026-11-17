@@ -110,7 +110,11 @@ export type ValidatedDiscount = {
   endsAt: Date | null;
   maxUseTotal: number | null;
   maxUsePerUser: number | null;
+  /** package_code ที่ใช้โค้ดได้; [] = ทุกแพ็กเกจ (2026-11-17: PROFS97 เฉพาะ Pro รายเดือน, DESTINY49 เฉพาะ + รายเดือน) */
+  appliesTo: string[];
 };
+
+export const DISCOUNT_PACKAGES = ["V2_PRO_MONTHLY", "V2_PRO_YEARLY", "V2_PLUS_MONTHLY", "V2_PLUS_YEARLY"] as const;
 
 function parseDate(v: unknown): Date | null | "invalid" {
   if (v == null || v === "") return null;
@@ -156,9 +160,13 @@ export function validateCreate(input: Record<string, unknown>): { ok: true; valu
   const maxUsePerUser = parseCount(input.maxUsePerUser);
   if (maxUseTotal === "invalid" || maxUsePerUser === "invalid") return { ok: false, reason: "จำนวนครั้งต้อง ≥ 1 หรือเว้นว่าง" };
 
+  const rawApplies = Array.isArray(input.appliesTo) ? input.appliesTo : [];
+  const appliesTo = [...new Set(rawApplies.map(String))];
+  if (appliesTo.some((p) => !(DISCOUNT_PACKAGES as readonly string[]).includes(p))) return { ok: false, reason: "แพ็กเกจไม่ถูกต้อง" };
+
   return {
     ok: true,
-    value: { code, kind, value, maxDiscountSatang, startsAt: startsAt || null, endsAt: endsAt || null, maxUseTotal: maxUseTotal || null, maxUsePerUser: maxUsePerUser || null },
+    value: { code, kind, value, maxDiscountSatang, startsAt: startsAt || null, endsAt: endsAt || null, maxUseTotal: maxUseTotal || null, maxUsePerUser: maxUsePerUser || null, appliesTo },
   };
 }
 
@@ -176,7 +184,7 @@ export async function createDiscount(v: ValidatedDiscount): Promise<{ ok: true; 
   const id = randomUUID();
   await db.execute(
     sql`INSERT INTO discount_code (id, code, kind, value, max_discount_satang, applies_to, starts_at, ends_at, max_use_total, max_use_per_user, status, used_count, created_by, created_at)
-        VALUES (${id}, ${v.code}, ${v.kind}, ${v.value}, ${v.maxDiscountSatang}, '{}', ${v.startsAt ? v.startsAt.toISOString() : null}, ${v.endsAt ? v.endsAt.toISOString() : null}, ${v.maxUseTotal}, ${v.maxUsePerUser}, 'ACTIVE', 0, 'ops-engine', now())`,
+        VALUES (${id}, ${v.code}, ${v.kind}, ${v.value}, ${v.maxDiscountSatang}, ${`{${v.appliesTo.join(",")}}`}::text[], ${v.startsAt ? v.startsAt.toISOString() : null}, ${v.endsAt ? v.endsAt.toISOString() : null}, ${v.maxUseTotal}, ${v.maxUsePerUser}, 'ACTIVE', 0, 'ops-engine', now())`,
   );
   return { ok: true, id };
 }
