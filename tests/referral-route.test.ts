@@ -29,6 +29,10 @@ describe("referral GET failure and input contract", () => {
   test("missing member and malformed invite code stay 400 without database calls", async () => {
     expect((await GET(request(""))).status).toBe(400);
     expect((await GET(request("code=invalid"))).status).toBe(400);
+    // Codes are MUMATE plus three to eight digits: the first 900 had three, new ones start at five.
+    for (const bad of ["MUMATE12", "MUMATE123456789", "MUMATE12A45"]) {
+      expect((await GET(request(`code=${bad}`))).status).toBe(400);
+    }
     expect(fixture.createDbClient).not.toHaveBeenCalled();
   });
 

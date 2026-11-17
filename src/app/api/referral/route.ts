@@ -24,9 +24,18 @@ const REWARD_PER_INVITE_QI = 50;
 const REFEREE_REWARD_QI = 30;
 const REFEREE_REWARD_XP = 50;
 
-/** โค้ดรูปแบบ MUMATE + เลข 3 หลัก (ตามจอ MUMATE888) — ชนกันก็สุ่มใหม่ */
-function randomCode(): string {
-  return `MUMATE${randomInt(100, 1000)}`;
+/**
+ * โค้ดรูปแบบ MUMATE + ตัวเลข. โค้ดรุ่นแรกเป็นเลข 3 หลัก (900 ค่า) และถูกใช้ครบเมื่อ 2026-11-17
+ * โค้ดใหม่จึงเริ่มที่ 5 หลัก. โค้ดเก่ายังใช้ได้ทุกโค้ด ตัวตรวจรูปแบบรับ 3 ถึง 8 หลัก.
+ */
+const CODE_PATTERN = /^MUMATE\d{3,8}$/;
+const FIRST_NEW_DIGITS = 5;
+const LAST_NEW_DIGITS = 8;
+const ATTEMPTS_PER_WIDTH = 10;
+
+/** ไม่ขึ้นต้นด้วย 0 เพื่อให้จำนวนหลักคงที่ — ชนกันก็สุ่มใหม่ */
+function randomCode(digits: number): string {
+  return `MUMATE${randomInt(10 ** (digits - 1), 10 ** digits)}`;
 }
 
 class ReferralCodeExhaustedError extends Error {}
@@ -58,23 +67,27 @@ async function getOrCreateCode(anonId: string, diagnostics: { attempts: number }
     .limit(1);
   if (existing[0]) return existing[0].code;
 
-  for (let attempt = 0; attempt < 10; attempt++) {
-    diagnostics.attempts = attempt + 1;
-    const code = randomCode();
-    const inserted = await db
-      .insert(baziReferralCode)
-      .values({ anonId, code })
-      // Cover both unique(code) and the member primary key. Other DB errors still throw.
-      .onConflictDoNothing()
-      .returning({ code: baziReferralCode.code });
-    if (inserted[0]) return inserted[0].code;
-    // A concurrent request may have made this member's code; otherwise retry the code collision.
-    const again = await db
-      .select()
-      .from(baziReferralCode)
-      .where(eq(baziReferralCode.anonId, anonId))
-      .limit(1);
-    if (again[0]) return again[0].code;
+  // Ten collisions in a row mean this width is filling up, so the next width is used instead of
+  // failing. A fixed width has a hard ceiling: three digits ran out and every new member got 503.
+  for (let digits = FIRST_NEW_DIGITS; digits <= LAST_NEW_DIGITS; digits++) {
+    for (let attempt = 0; attempt < ATTEMPTS_PER_WIDTH; attempt++) {
+      diagnostics.attempts += 1;
+      const code = randomCode(digits);
+      const inserted = await db
+        .insert(baziReferralCode)
+        .values({ anonId, code })
+        // Cover both unique(code) and the member primary key. Other DB errors still throw.
+        .onConflictDoNothing()
+        .returning({ code: baziReferralCode.code });
+      if (inserted[0]) return inserted[0].code;
+      // A concurrent request may have made this member's code; otherwise retry the code collision.
+      const again = await db
+        .select()
+        .from(baziReferralCode)
+        .where(eq(baziReferralCode.anonId, anonId))
+        .limit(1);
+      if (again[0]) return again[0].code;
+    }
   }
   throw new ReferralCodeExhaustedError();
 }
@@ -85,7 +98,7 @@ const PostSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .regex(/^MUMATE\d{3}$/, "โค้ดต้องเป็นรูปแบบ MUMATE ตามด้วยเลข 3 หลัก"),
+    .regex(CODE_PATTERN, "โค้ดต้องเป็นรูปแบบ MUMATE ตามด้วยตัวเลข"),
 });
 
 export async function GET(request: Request) {
@@ -99,7 +112,7 @@ export async function GET(request: Request) {
     // ใช้ก่อนสมัคร — ไม่มีตัวตน, ได้แค่ @name ไม่ใช่ข้อมูลส่วนตัว
     const codeParam = url.searchParams.get("code")?.trim().toUpperCase();
     if (codeParam) {
-      if (!/^MUMATE\d{3}$/.test(codeParam)) {
+      if (!CODE_PATTERN.test(codeParam)) {
         return Response.json({ error: "โค้ดไม่ถูกต้อง" }, { status: 400 });
       }
       const db = createDbClient();
