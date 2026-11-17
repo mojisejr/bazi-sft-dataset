@@ -10,12 +10,17 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
 
-const fixture = vi.hoisted(() => ({ db: undefined as unknown, randomInt: vi.fn() }));
-vi.mock("@/db/client", () => ({ createDbClient: () => fixture.db }));
-vi.mock("node:crypto", async (original) => ({
-  ...await original<typeof import("node:crypto")>(),
-  randomInt: fixture.randomInt,
+const fixture = vi.hoisted(() => ({
+  db: undefined as unknown,
+  randomInt: vi.fn(),
+  realRandomInt: undefined as unknown as (min: number, max: number) => number,
 }));
+vi.mock("@/db/client", () => ({ createDbClient: () => fixture.db }));
+vi.mock("node:crypto", async (original) => {
+  const actual = await original<typeof import("node:crypto")>();
+  fixture.realRandomInt = actual.randomInt;
+  return { ...actual, randomInt: fixture.randomInt };
+});
 
 import { GET, POST } from "@/app/api/referral/route";
 import * as schema from "@/db/schema";
@@ -56,7 +61,7 @@ describe.skipIf(!databaseUrl && !required)("referral with real PostgreSQL", () =
   beforeEach(async () => {
     vi.stubEnv("BAZI_CLIENT_ID_SECRET", clientSecret);
     vi.spyOn(console, "error").mockImplementation(() => {});
-    fixture.randomInt.mockReset().mockReturnValue(456);
+    fixture.randomInt.mockReset().mockReturnValue(45678);
     await sql.unsafe(`TRUNCATE ${tables.map((table) => `"${table}"`).join(", ")}`);
     await sql`INSERT INTO bazi_referral_code (anon_id, code) VALUES ('owner', 'MUMATE123')`;
     await sql`INSERT INTO bazi_wallet (anon_id, coins, xp, qi) VALUES ('owner', 10, 20, 70)`;
@@ -108,12 +113,13 @@ describe.skipIf(!databaseUrl && !required)("referral with real PostgreSQL", () =
 
   test("retries a real code collision and returns 200 without changing rewards", async () => {
     const before = await rewardState();
-    fixture.randomInt.mockReturnValueOnce(123).mockReturnValueOnce(456);
+    await sql`INSERT INTO bazi_referral_code (anon_id, code) VALUES ('taken', 'MUMATE12345')`;
+    fixture.randomInt.mockReturnValueOnce(12345).mockReturnValueOnce(45678);
     const response = await GET(request());
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ code: "MUMATE456", rewardPerInvite: 50 });
-    expect(fixture.randomInt).toHaveBeenCalledTimes(2);
-    expect(await sql`SELECT count(*)::int AS n FROM bazi_referral_code`).toMatchObject([{ n: 2 }]);
+    expect(await response.json()).toMatchObject({ code: "MUMATE45678", rewardPerInvite: 50 });
+    expect(fixture.randomInt.mock.calls).toEqual([[10000, 100000], [10000, 100000]]);
+    expect(await sql`SELECT count(*)::int AS n FROM bazi_referral_code`).toMatchObject([{ n: 3 }]);
     expect(await rewardState()).toEqual(before);
   });
 
@@ -131,36 +137,66 @@ describe.skipIf(!databaseUrl && !required)("referral with real PostgreSQL", () =
     const before = await rewardState();
     const responses = await race(["same-member", "same-member"]);
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
-    expect(await Promise.all(responses.map((response) => response.json()))).toMatchObject([{ code: "MUMATE456" }, { code: "MUMATE456" }]);
+    expect(await Promise.all(responses.map((response) => response.json()))).toMatchObject([{ code: "MUMATE45678" }, { code: "MUMATE45678" }]);
     expect(await sql`SELECT count(*)::int AS n FROM bazi_referral_code WHERE anon_id = 'same-member'`).toMatchObject([{ n: 1 }]);
     expect(await rewardState()).toEqual(before);
   });
 
   test("concurrent different members retry a shared candidate and retain unique codes", async () => {
-    fixture.randomInt.mockReturnValueOnce(456).mockReturnValueOnce(456).mockReturnValue(789);
+    fixture.randomInt.mockReturnValueOnce(45678).mockReturnValueOnce(45678).mockReturnValue(78901);
     const responses = await race(["member-a", "member-b"]);
     expect(responses.map((response) => response.status)).toEqual([200, 200]);
     const bodies = await Promise.all(responses.map((response) => response.json()));
-    expect(bodies.map((body) => body.code).sort()).toEqual(["MUMATE456", "MUMATE789"]);
+    expect(bodies.map((body) => body.code).sort()).toEqual(["MUMATE45678", "MUMATE78901"]);
     expect(await sql`SELECT count(*)::int AS n, count(DISTINCT code)::int AS distinct_codes FROM bazi_referral_code`).toMatchObject([{ n: 3, distinct_codes: 3 }]);
   });
 
-  test("ten collisions return a safe 503 and leave rewards unchanged", async () => {
+  test("a full three-digit space no longer blocks new members", async () => {
     const before = await rewardState();
-    fixture.randomInt.mockReturnValue(123);
+    await sql`INSERT INTO bazi_referral_code (anon_id, code)
+      SELECT 'legacy-' || n, 'MUMATE' || n FROM generate_series(100, 999) AS n WHERE n <> 123`;
+    expect(await sql`SELECT count(*)::int AS n FROM bazi_referral_code WHERE code ~ '^MUMATE[0-9]{3}$'`).toMatchObject([{ n: 900 }]);
+    fixture.randomInt.mockImplementation(fixture.realRandomInt);
+    const responses = await Promise.all(["new-a", "new-b", "new-c"].map((member) => GET(request(member))));
+    expect(responses.map((response) => response.status)).toEqual([200, 200, 200]);
+    const codes = (await Promise.all(responses.map((response) => response.json()))).map((body) => body.code as string);
+    for (const code of codes) expect(code).toMatch(/^MUMATE[1-9]\d{4}$/);
+    expect(new Set(codes).size).toBe(3);
+    expect(vi.mocked(console.error)).not.toHaveBeenCalled();
+    expect(await rewardState()).toEqual(before);
+  });
+
+  test("ten collisions at five digits move on to six digits instead of failing", async () => {
+    const before = await rewardState();
+    await sql`INSERT INTO bazi_referral_code (anon_id, code) VALUES ('taken', 'MUMATE12345')`;
+    fixture.randomInt.mockImplementation((min: number) => (min === 10000 ? 12345 : 654321));
+    const response = await GET(request());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ code: "MUMATE654321" });
+    expect(fixture.randomInt).toHaveBeenCalledTimes(11);
+    expect(fixture.randomInt.mock.calls[10]).toEqual([100000, 1000000]);
+    expect(vi.mocked(console.error)).not.toHaveBeenCalled();
+    expect(await rewardState()).toEqual(before);
+  });
+
+  test("collisions at every width return a safe 503 and leave rewards unchanged", async () => {
+    const before = await rewardState();
+    await sql`INSERT INTO bazi_referral_code (anon_id, code) VALUES
+      ('taken-5', 'MUMATE12345'), ('taken-6', 'MUMATE123456'), ('taken-7', 'MUMATE1234567'), ('taken-8', 'MUMATE12345678')`;
+    fixture.randomInt.mockImplementation((min: number) => Number("12345678".slice(0, String(min).length)));
     const response = await GET(request("private-member-marker"));
     expect(response.status).toBe(503);
     const body = await response.json();
     expect(body).toMatchObject({ error: "สร้างโค้ดแนะนำไม่สำเร็จ กรุณาลองใหม่อีกครั้ง" });
-    expect(fixture.randomInt).toHaveBeenCalledTimes(10);
-    expect(JSON.stringify(vi.mocked(console.error).mock.calls)).toContain("referral_code_exhausted");
-    expect(JSON.stringify([body, vi.mocked(console.error).mock.calls])).not.toMatch(/private-member-marker|MUMATE123|params:|insert into/i);
+    expect(fixture.randomInt).toHaveBeenCalledTimes(40);
+    expect(JSON.parse(vi.mocked(console.error).mock.calls[0][0])).toEqual({ event: "referral_code_exhausted", attempts: 40 });
+    expect(JSON.stringify([body, vi.mocked(console.error).mock.calls])).not.toMatch(/private-member-marker|MUMATE1|params:|insert into/i);
     expect(await rewardState()).toEqual(before);
   });
 
   test("a real non-unique database failure is not retried or exposed", async () => {
     const before = await rewardState();
-    await sql`ALTER TABLE bazi_referral_code ADD CONSTRAINT referral_proof_denied CHECK (code <> 'MUMATE456')`;
+    await sql`ALTER TABLE bazi_referral_code ADD CONSTRAINT referral_proof_denied CHECK (code <> 'MUMATE45678')`;
     try {
       const response = await GET(request("private-member-marker"));
       expect(response.status).toBe(500);
@@ -169,7 +205,7 @@ describe.skipIf(!databaseUrl && !required)("referral with real PostgreSQL", () =
       expect(fixture.randomInt).toHaveBeenCalledTimes(1);
       const logs = JSON.stringify(vi.mocked(console.error).mock.calls);
       expect(logs).toContain("23514");
-      expect(JSON.stringify([body, logs])).not.toMatch(/private-member-marker|MUMATE456|params:|insert into/i);
+      expect(JSON.stringify([body, logs])).not.toMatch(/private-member-marker|MUMATE45678|params:|insert into/i);
       expect(await rewardState()).toEqual(before);
     } finally {
       await sql`ALTER TABLE bazi_referral_code DROP CONSTRAINT referral_proof_denied`;
@@ -195,5 +231,29 @@ describe.skipIf(!databaseUrl && !required)("referral with real PostgreSQL", () =
     expect((await POST(request("friend", { anonId: "friend", code: "MUMATE123" }))).status).toBe(409);
     expect((await POST(request("owner", { anonId: "owner", code: "MUMATE123" }))).status).toBe(409);
     expect(await rewardState()).toEqual(awarded);
+  });
+
+  test("a new five-digit code passes lookup and redeem; malformed codes are refused", async () => {
+    await sql`INSERT INTO bazi_referral_code (anon_id, code) VALUES ('new-owner', 'MUMATE45678')`;
+    const lookup = (code: string) => GET(new Request(`http://localhost/api/referral?code=${code}`, { headers: { "x-mumate-client-secret": clientSecret } }));
+    const invite = await lookup("mumate45678");
+    expect(invite.status).toBe(200);
+    expect(await invite.json()).toEqual({ code: "MUMATE45678", inviterName: null });
+    expect((await lookup("MUMATE99999")).status).toBe(404);
+    for (const bad of ["MUMATE12", "MUMATE123456789", "MUMATE12A45", "MUMATE", "XMUMATE12345"]) {
+      expect((await lookup(bad)).status).toBe(400);
+      expect((await POST(request("friend", { anonId: "friend", code: bad }))).status).toBe(400);
+    }
+    const before = await rewardState();
+    const response = await POST(request("friend", { anonId: "friend", code: "MUMATE45678" }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ redeemed: "MUMATE45678", referrerRewardQi: 50, refereeRewardQi: 30 });
+    const after = await rewardState();
+    expect(after.redemptions).toHaveLength(before.redemptions.length + 1);
+    expect(await sql`SELECT anon_id, qi FROM bazi_wallet WHERE anon_id IN ('friend', 'new-owner') ORDER BY anon_id`).toEqual([
+      { anon_id: "friend", qi: 30 },
+      { anon_id: "new-owner", qi: 50 },
+    ]);
+    expect((await POST(request("friend", { anonId: "friend", code: "MUMATE45678" }))).status).toBe(409);
   });
 });
