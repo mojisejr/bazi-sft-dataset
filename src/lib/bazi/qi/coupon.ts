@@ -1,7 +1,7 @@
 // src/lib/bazi/qi/coupon.ts — คูปองกิจกรรม (#2 Phase 2 · ซินแสนุ้ย 2026-09-14).
 // admin สร้าง/พัก (จาก /ops) + user แลกโค้ดรับรางวัล (QI/เครดิตแชท·เปิดไพ่/tier). กันรับซ้ำ 1 คูปอง/บัญชี
 // (UNIQUE coupon_id+anon_id) + เพดานรวม (used_count conditional). รางวัลใช้ primitive เดิม (applyLedger/grantEntitlement).
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { and, desc, eq, sql } from "drizzle-orm";
 
@@ -54,10 +54,103 @@ function shape(r: typeof activityCoupon.$inferSelect): OpsCoupon {
   };
 }
 
-export async function listCoupons(): Promise<OpsCoupon[]> {
+// ── ชุดโค้ดสุ่ม (2026-11-18): โค้ดรูป PREFIX-XXXXXXXX (8 ตัวจาก BATCH_ALPHABET) = สร้างเป็นชุด → ยุบเป็นแถวเดียวในรายการ
+export const BATCH_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // ตัด O/0 I/1/L ที่ดูคล้ายกัน
+export const BATCH_MAX = 5000;
+const BATCH_RE_SQL = "^[A-Za-z0-9]{2,12}-[A-Z2-9]{8}$";
+
+/** รายการคูปอง: ไม่มี q = เฉพาะโค้ดเดี่ยว (ชุดโค้ดสุ่มอยู่ใน listCouponGroups) · มี q = ค้นทุกโค้ดที่มีคำนี้ */
+export async function listCoupons(q?: string): Promise<OpsCoupon[]> {
   const db = createDbClient();
-  const rows = await db.select().from(activityCoupon).orderBy(desc(activityCoupon.createdAt)).limit(300);
+  const term = (q ?? "").trim().toLowerCase();
+  const where = term
+    ? sql`lower(${activityCoupon.code}) LIKE ${"%" + term.replace(/[%_\\]/g, (m) => "\\" + m) + "%"}`
+    : sql`${activityCoupon.code} !~ ${BATCH_RE_SQL}`;
+  const rows = await db.select().from(activityCoupon).where(where).orderBy(desc(activityCoupon.createdAt)).limit(300);
   return rows.map(shape);
+}
+
+export type CouponGroup = {
+  prefix: string;
+  rewardKind: CouponRewardKind;
+  rewardQi: number;
+  creditCount: number;
+  tierSku: string | null;
+  tierDays: number;
+  total: number;
+  used: number;
+  active: number;
+  createdAt: string;
+};
+
+/** สรุปชุดโค้ดสุ่ม (ยุบตาม prefix + รางวัลเดียวกัน) */
+export async function listCouponGroups(): Promise<CouponGroup[]> {
+  const db = createDbClient();
+  const r = await db.execute(sql`
+    SELECT split_part(code, '-', 1) AS prefix, reward_kind, reward_qi, credit_count, tier_sku, tier_days,
+           count(*)::int AS total, count(*) FILTER (WHERE used_count > 0)::int AS used,
+           count(*) FILTER (WHERE status = 'ACTIVE')::int AS active, min(created_at) AS created_at
+    FROM activity_coupon WHERE code ~ ${BATCH_RE_SQL}
+    GROUP BY 1, 2, 3, 4, 5, 6 ORDER BY min(created_at) DESC`);
+  const rows = (Array.isArray(r) ? r : (r as { rows?: unknown[] }).rows ?? []) as Array<Record<string, unknown>>;
+  return rows.map((x) => ({
+    prefix: String(x.prefix), rewardKind: x.reward_kind as CouponRewardKind, rewardQi: Number(x.reward_qi), creditCount: Number(x.credit_count),
+    tierSku: (x.tier_sku as string | null) ?? null, tierDays: Number(x.tier_days), total: Number(x.total), used: Number(x.used), active: Number(x.active),
+    createdAt: iso(x.created_at) ?? "",
+  }));
+}
+
+/** โค้ดทั้งหมดของชุด (ไว้ดาวน์โหลด) */
+export async function listGroupCodes(prefix: string): Promise<Array<{ code: string; usedCount: number; status: string }>> {
+  const db = createDbClient();
+  const rows = await db
+    .select({ code: activityCoupon.code, usedCount: activityCoupon.usedCount, status: activityCoupon.status })
+    .from(activityCoupon)
+    .where(sql`${activityCoupon.code} ~ ${BATCH_RE_SQL} AND split_part(${activityCoupon.code}, '-', 1) = ${prefix}`)
+    .orderBy(activityCoupon.createdAt)
+    .limit(BATCH_MAX * 4);
+  return rows;
+}
+
+/** พัก/เปิด ทั้งชุด */
+export async function setGroupStatus(prefix: string, status: "ACTIVE" | "PAUSED"): Promise<number> {
+  const db = createDbClient();
+  const r = await db
+    .update(activityCoupon)
+    .set({ status })
+    .where(sql`${activityCoupon.code} ~ ${BATCH_RE_SQL} AND split_part(${activityCoupon.code}, '-', 1) = ${prefix}`)
+    .returning({ id: activityCoupon.id });
+  return r.length;
+}
+
+/** สร้างชุดโค้ดสุ่ม PREFIX-XXXXXXXX × count (รางวัล/เพดานเดียวกันจาก validateCreate) — คืนรายการโค้ดที่สร้าง */
+export async function createCouponBatch(
+  prefix: string,
+  count: number,
+  v: ValidatedCoupon,
+): Promise<{ ok: true; codes: string[] } | { ok: false; reason: string }> {
+  const p = prefix.trim().toUpperCase();
+  if (!/^[A-Z0-9]{2,12}$/.test(p)) return { ok: false, reason: "prefix ต้องเป็น A-Z 0-9 ยาว 2-12 ตัว" };
+  if (!Number.isInteger(count) || count < 1 || count > BATCH_MAX) return { ok: false, reason: `จำนวนต้อง 1-${BATCH_MAX}` };
+  const db = createDbClient();
+  const rnd = () => Array.from(randomBytes(8), (b) => BATCH_ALPHABET[b % BATCH_ALPHABET.length]).join("");
+  const want = new Set<string>();
+  while (want.size < count) want.add(`${p}-${rnd()}`);
+  const codes = [...want];
+  const out: string[] = [];
+  for (let i = 0; i < codes.length; i += 500) {
+    const chunk = codes.slice(i, i + 500);
+    const taken = await db.execute(sql`SELECT lower(code) AS c FROM activity_coupon WHERE lower(code) IN (${sql.join(chunk.map((c) => sql`${c.toLowerCase()}`), sql`, `)})`);
+    const takenSet = new Set(((Array.isArray(taken) ? taken : (taken as { rows?: unknown[] }).rows ?? []) as Array<{ c: string }>).map((x) => x.c));
+    const fresh = chunk.filter((c) => !takenSet.has(c.toLowerCase()));
+    if (fresh.length === 0) continue;
+    await db.insert(activityCoupon).values(fresh.map((code) => ({
+      code, rewardKind: v.rewardKind, rewardQi: v.rewardQi, creditCount: v.creditCount, tierSku: v.tierSku, tierDays: v.tierDays,
+      startsAt: v.startsAt, endsAt: v.endsAt, maxUseTotal: v.maxUseTotal, maxUsePerUser: v.maxUsePerUser, status: "ACTIVE",
+    })));
+    out.push(...fresh);
+  }
+  return { ok: true, codes: out };
 }
 
 // ── admin: สร้าง ───────────────────────────────────────────────────────────────
