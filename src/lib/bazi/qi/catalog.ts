@@ -51,6 +51,16 @@ export const QI_EARN_LINES: readonly QiEarnLine[] = [
     note: "โบนัสตั้งต้นครั้งแรกที่สมัครบัญชี — ได้ครั้งเดียวตลอดชีพ",
   },
   {
+    // 2026-11-18 (Kittipon): ผู้ใช้แอปเยอะกว่าเพื่อน OA มาก → ชวนแอด LINE OA รับ 100 ทุกคน ครั้งเดียว.
+    // FE จ่ายผ่าน /api/v2/line-oa-claim เท่านั้น (เช็ก friendship กับ LINE ก่อน) — /api/qi-earn ฝั่ง FE บล็อกโค้ดนี้
+    code: "line_oa_add",
+    kind: "earn",
+    qi: 100,
+    limit: "once",
+    title: "แอดไลน์ Mumate",
+    note: "เพิ่ม LINE OA ของ Mumate เป็นเพื่อน — ได้ครั้งเดียวตลอดชีพ (เช็กสถานะเพื่อนกับ LINE ก่อนจ่าย)",
+  },
+  {
     code: "daily_login",
     kind: "earn",
     qi: 5,
