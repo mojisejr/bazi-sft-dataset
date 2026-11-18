@@ -4,7 +4,9 @@
 //   POST { secret, action:"create", ... } → สร้าง | { secret, action:"status", id, status } → พัก/เปิด
 import { z, ZodError } from "zod";
 
-import { listCoupons, validateCreate, createCoupon, setStatus, deleteCoupon } from "@/lib/bazi/qi/coupon";
+import { listCoupons, listCouponGroups, listGroupCodes, setGroupStatus, createCouponBatch, validateCreate, createCoupon, setStatus, deleteCoupon } from "@/lib/bazi/qi/coupon";
+// 2026-11-18: GET ?q= ค้นโค้ด · ?group=PREFIX → โค้ดทั้งชุด · ตอบ groups (ชุดโค้ดสุ่มยุบ) ด้วยเสมอ
+//             POST action "bulk" { prefix, count, ...รางวัล } สร้างชุดโค้ดสุ่ม · "group_status" { prefix, status } พัก/เปิดทั้งชุด
 
 export const runtime = "nodejs";
 
@@ -17,7 +19,10 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   if (!secret || url.searchParams.get("secret") !== secret) return unauthorized();
   try {
-    return Response.json({ coupons: await listCoupons() }, { status: 200 });
+    const group = url.searchParams.get("group");
+    if (group) return Response.json({ codes: await listGroupCodes(group) }, { status: 200 });
+    const [coupons, groups] = await Promise.all([listCoupons(url.searchParams.get("q") ?? undefined), listCouponGroups()]);
+    return Response.json({ coupons, groups }, { status: 200 });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "coupon list error" }, { status: 500 });
   }
@@ -44,6 +49,20 @@ export async function POST(request: Request) {
       const ok = await setStatus(id, status);
       if (!ok) return Response.json({ error: "unknown id" }, { status: 404 });
       return Response.json({ ok: true, coupons: await listCoupons() }, { status: 200 });
+    }
+    if (body.action === "group_status") {
+      const prefix = typeof body.prefix === "string" ? body.prefix : "";
+      const status = body.status === "PAUSED" ? "PAUSED" : body.status === "ACTIVE" ? "ACTIVE" : null;
+      if (!prefix || !status) return Response.json({ error: "prefix + status required" }, { status: 400 });
+      const n = await setGroupStatus(prefix, status);
+      return Response.json({ ok: true, updated: n, groups: await listCouponGroups() }, { status: 200 });
+    }
+    if (body.action === "bulk") {
+      const checked = validateCreate({ ...body, code: "BATCH-PLACEHOLDER" });
+      if (!checked.ok) return Response.json({ error: "invalid", reason: checked.reason }, { status: 400 });
+      const made = await createCouponBatch(String(body.prefix ?? ""), Number(body.count), checked.value);
+      if (!made.ok) return Response.json({ error: "invalid", reason: made.reason }, { status: 400 });
+      return Response.json({ ok: true, codes: made.codes, groups: await listCouponGroups() }, { status: 200 });
     }
     if (body.action === "delete") {
       const id = typeof body.id === "string" ? body.id : "";

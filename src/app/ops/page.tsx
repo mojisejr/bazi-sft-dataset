@@ -933,6 +933,18 @@ type CouponRow = {
   tierSku: string | null; tierDays: number; startsAt: string | null; endsAt: string | null;
   maxUseTotal: number | null; maxUsePerUser: number | null; usedCount: number; status: string; createdAt: string;
 };
+type CouponGroupRow = {
+  prefix: string; rewardKind: string; rewardQi: number; creditCount: number; tierSku: string | null; tierDays: number;
+  total: number; used: number; active: number; createdAt: string;
+};
+// ดาวน์โหลด CSV (มี BOM ให้ Excel อ่านไทยถูก)
+function downloadCsv(name: string, rows: string[][]) {
+  const text = "\ufeff" + rows.map((r) => r.map((c) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+  a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+}
 type DiscountRow = {
   id: string; code: string; kind: "PERCENT" | "FIXED"; value: number; maxDiscountSatang: number | null;
   startsAt: string | null; endsAt: string | null; maxUseTotal: number | null; maxUsePerUser: number | null;
@@ -1762,6 +1774,11 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
   const isMobile = useIsMobile();
   const [open, setOpen] = useState(false);
   const [rows, setRows] = useState<CouponRow[]>([]);
+  // 2026-11-18: ค้นหา + ชุดโค้ดสุ่ม (ยุบเป็นแถวเดียว) + สร้างชุดโค้ดสุ่ม
+  const [q, setQ] = useState("");
+  const [groups, setGroups] = useState<CouponGroupRow[]>([]);
+  const [bulk, setBulk] = useState(false);
+  const [bulkCount, setBulkCount] = useState("");
   const [discRows, setDiscRows] = useState<DiscountRow[]>([]);
   const [busy, setBusy] = useState(false);
   const [code, setCode] = useState("");
@@ -1785,15 +1802,40 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
     if (!secret) return;
     try {
       const [cr, dr] = await Promise.all([
-        fetch(`/api/ops/coupon?secret=${encodeURIComponent(secret)}`),
+        fetch(`/api/ops/coupon?secret=${encodeURIComponent(secret)}${q.trim() ? `&q=${encodeURIComponent(q.trim())}` : ""}`),
         fetch(`/api/ops/discount?secret=${encodeURIComponent(secret)}`),
       ]);
-      if (cr.ok) setRows((((await cr.json()) as { coupons?: CouponRow[] }).coupons ?? []));
+      if (cr.ok) { const cj = (await cr.json()) as { coupons?: CouponRow[]; groups?: CouponGroupRow[] }; setRows(cj.coupons ?? []); setGroups(cj.groups ?? []); }
       if (dr.ok) setDiscRows((((await dr.json()) as { discounts?: DiscountRow[] }).discounts ?? []));
     } catch { /* ignore */ }
-  }, [secret]);
+  }, [secret, q]);
 
-  useEffect(() => { if (open) void load(); }, [open, load]);
+  // ค้นหาอัตโนมัติหลังหยุดพิมพ์ 0.3 วิ (load เปลี่ยนตาม q)
+  useEffect(() => {
+    if (!open) return;
+    const t = setTimeout(() => void load(), 300);
+    return () => clearTimeout(t);
+  }, [open, load]);
+
+  const groupCodes = async (prefix: string): Promise<string[][]> => {
+    const r = await fetch(`/api/ops/coupon?secret=${encodeURIComponent(secret)}&group=${encodeURIComponent(prefix)}`);
+    const j = (await r.json().catch(() => ({}))) as { codes?: Array<{ code: string; usedCount: number; status: string }> };
+    return (j.codes ?? []).map((c) => [c.code, c.usedCount > 0 ? "ใช้แล้ว" : "ยังไม่ใช้", c.status]);
+  };
+  const downloadGroup = async (g: CouponGroupRow) => {
+    setBusy(true);
+    try { downloadCsv(`coupons-${g.prefix}.csv`, [["โค้ด", "สถานะใช้", "สถานะ"], ...(await groupCodes(g.prefix))]); } finally { setBusy(false); }
+  };
+  const groupStatus = async (g: CouponGroupRow) => {
+    const next = g.active > 0 ? "PAUSED" : "ACTIVE";
+    if (!window.confirm(`${next === "PAUSED" ? "พัก" : "เปิด"}ทั้งชุด ${g.prefix} (${g.total} โค้ด)?`)) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/ops/coupon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ secret, action: "group_status", prefix: g.prefix, status: next }) });
+      const j = (await r.json().catch(() => ({}))) as { groups?: CouponGroupRow[]; error?: string };
+      if (r.ok) setGroups(j.groups ?? []); else onNote(false, j.error ?? "เปลี่ยนสถานะไม่สำเร็จ");
+    } finally { setBusy(false); }
+  };
 
   const resetForm = () => { setCode(""); setAmount(""); setStartsAt(""); setEndsAt(""); setMaxUseTotal(""); setDMaxBaht(""); setMaxUsePerUser(""); };
 
@@ -1822,6 +1864,21 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
         setDiscRows(j.discounts ?? []);
         onNote(true, `สร้างโค้ดส่วนลด ${code.toUpperCase()} แล้ว`);
         resetForm();
+        return;
+      }
+      if (bulk) {
+        const prefix = code.trim().toUpperCase();
+        const r = await fetch("/api/ops/coupon", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          // แต่ละโค้ดในชุด = ใช้ได้ 1 ครั้ง (ถ้าไม่กรอก "ใช้รวม")
+          body: JSON.stringify({ secret, action: "bulk", prefix, count: Number(bulkCount), rewardKind, amount: Number(amount), tierSku: rewardKind === "tier" ? tierSku : undefined, startsAt: startsAt || undefined, endsAt: endsAt || undefined, maxUseTotal: maxUseTotal || 1, maxUsePerUser: maxUsePerUser || undefined }),
+        });
+        const j = (await r.json().catch(() => ({}))) as { codes?: string[]; groups?: CouponGroupRow[]; reason?: string; error?: string };
+        if (!r.ok) { onNote(false, j.reason ?? j.error ?? "สร้างไม่สำเร็จ"); return; }
+        setGroups(j.groups ?? []);
+        downloadCsv(`coupons-${prefix}.csv`, [["โค้ด"], ...(j.codes ?? []).map((c) => [c])]);
+        onNote(true, `สร้างชุด ${prefix} ${(j.codes ?? []).length} โค้ดแล้ว (ดาวน์โหลด CSV ให้แล้ว)`);
+        resetForm(); setBulkCount("");
         return;
       }
       const r = await fetch("/api/ops/coupon", {
@@ -1892,7 +1949,16 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
       {open && (
         <div style={{ marginTop: 12 }}>
           <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2, 1fr)" : "repeat(4, 1fr)", gap: 10, marginBottom: 12 }}>
-            <div><span style={label}>โค้ด</span><input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder="SONGKRAN" /></div>
+            <div>
+              <span style={label}>{bulk ? "คำนำหน้าโค้ด (prefix)" : "โค้ด"}</span>
+              <input style={input} value={code} onChange={(e) => setCode(e.target.value)} placeholder={bulk ? "PRO → PRO-XXXXXXXX" : "SONGKRAN"} />
+              {!isDiscount && (
+                <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, marginTop: 4 }}>
+                  <input type="checkbox" checked={bulk} onChange={(e) => setBulk(e.target.checked)} /> สร้างโค้ดสุ่มหลายโค้ด
+                </label>
+              )}
+            </div>
+            {bulk && !isDiscount && <div><span style={label}>จำนวนโค้ด (สูงสุด 5,000)</span><input style={input} type="number" value={bulkCount} onChange={(e) => setBulkCount(e.target.value)} placeholder="เช่น 1000" /></div>}
             <div><span style={label}>ประเภท</span>
               <select style={input} value={rewardKind} onChange={(e) => setRewardKind(e.target.value as RewardKind)}>
                 <option value="qi">QI</option><option value="chat">เครดิตแชท</option><option value="card">เครดิตเปิดไพ่</option><option value="matching">แมทช์สมพงศ์</option><option value="tier">Tier (วัน)</option><option value="discount">ลดราคา (ตอนจ่ายเงิน)</option>
@@ -1932,10 +1998,43 @@ function CouponManager({ secret, onNote }: { secret: string; onNote: (ok: boolea
             <div><span style={label}>ใช้รวม (ครั้ง)</span><input style={input} type="number" value={maxUseTotal} onChange={(e) => setMaxUseTotal(e.target.value)} placeholder="เว้น=ไม่จำกัด" /></div>
             <div><span style={label}>เริ่ม</span><input style={input} type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} /></div>
             <div><span style={label}>หมดอายุ</span><input style={input} type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} /></div>
-            <div style={{ display: "flex", alignItems: "flex-end" }}><button style={btn(C.good)} disabled={busy || !code.trim() || !amount} onClick={create}>{busy ? "…" : isDiscount ? "สร้างโค้ดส่วนลด" : "สร้างคูปอง"}</button></div>
+            <div style={{ display: "flex", alignItems: "flex-end" }}><button style={btn(C.good)} disabled={busy || !code.trim() || !amount || (bulk && !isDiscount && !bulkCount)} onClick={create}>{busy ? "…" : isDiscount ? "สร้างโค้ดส่วนลด" : bulk ? `สร้าง ${bulkCount || 0} โค้ด + ดาวน์โหลด` : "สร้างคูปอง"}</button></div>
           </div>
 
-          <p style={{ ...label, marginBottom: 4 }}>แจกรางวัล (แลกที่หน้า /v2/qi)</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
+            <input style={{ ...input, flex: 1, minWidth: 200 }} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") void load(); }} placeholder="ค้นหาโค้ดคูปอง (เช่น EBOOK, PRO-VF5A)" />
+            <button style={btn(C.accent)} onClick={() => void load()}>ค้นหา</button>
+            {q && <button style={{ ...btn(C.border), fontWeight: 500 }} onClick={() => setQ("")}>ล้าง</button>}
+          </div>
+
+          {!q.trim() && groups.length > 0 && (
+            <>
+              <p style={{ ...label, marginBottom: 4 }}>ชุดโค้ดสุ่ม (ยุบรวม · กด ดูโค้ด เพื่อค้นในชุด)</p>
+              <div style={{ overflowX: "auto", marginBottom: 18, WebkitOverflowScrolling: "touch" }}>
+              <table style={{ borderCollapse: "collapse", width: "100%", minWidth: isMobile ? 560 : undefined }}>
+                <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>ชุด</th><th style={td}>รางวัล</th><th style={td}>จำนวน</th><th style={td}>ใช้แล้ว</th><th style={td}>เปิดอยู่</th><th style={td} /></tr></thead>
+                <tbody>
+                  {groups.map((g) => (
+                    <tr key={`${g.prefix}-${g.rewardKind}-${g.tierSku}-${g.tierDays}-${g.rewardQi}`}>
+                      <td style={td}><code>{g.prefix}-XXXXXXXX</code></td>
+                      <td style={td}>{rewardText(g as unknown as CouponRow)}</td>
+                      <td style={td}>{g.total.toLocaleString("th-TH")}</td>
+                      <td style={td}>{g.used.toLocaleString("th-TH")}</td>
+                      <td style={{ ...td, color: g.active > 0 ? C.good : C.warn }}>{g.active.toLocaleString("th-TH")}</td>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>
+                        <button style={{ ...btn(C.border), fontWeight: 500 }} disabled={busy} onClick={() => setQ(`${g.prefix}-`)}>ดูโค้ด</button>
+                        <button style={{ ...btn(C.border), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => downloadGroup(g)}>ดาวน์โหลด</button>
+                        <button style={{ ...btn(C.warn), fontWeight: 500, marginLeft: 6 }} disabled={busy} onClick={() => groupStatus(g)}>{g.active > 0 ? "พักทั้งชุด" : "เปิดทั้งชุด"}</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            </>
+          )}
+
+          <p style={{ ...label, marginBottom: 4 }}>{q.trim() ? `ผลค้นหา "${q.trim()}" (สูงสุด 300)` : "แจกรางวัล (แลกที่หน้า /v2/qi)"}</p>
           {/* มือถือ: ครอบ overflow-x ให้ตารางเลื่อนแนวนอนแทนบีบจนอ่านไม่ออก (6 คอลัมน์) */}
           <div style={{ overflowX: "auto", marginBottom: 18, WebkitOverflowScrolling: "touch" }}>
           <table style={{ borderCollapse: "collapse", width: "100%", minWidth: isMobile ? 560 : undefined }}>
