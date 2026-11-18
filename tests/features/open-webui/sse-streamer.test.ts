@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 
 import {
+  ANSWER_FAILED_OBJECT,
+  DEFAULT_ANSWER_FAILED_MESSAGE,
   buildDummyAssistantReply,
   createGuardedOpenAiSseStream,
   createOpenAiSseStream,
@@ -191,7 +193,9 @@ describe("createGuardedOpenAiSseStream", () => {
       'data: {"id":"chatcmpl-timeout","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{"role":"assistant"},"finish_reason":null}]}'
     );
 
-    const contentEvents = events.slice(1, -2).map((event) => JSON.parse(event.replace("data: ", "")));
+    expect(JSON.parse(events[1].replace("data: ", ""))).toEqual({ object: ANSWER_FAILED_OBJECT, reason: "timeout" });
+
+    const contentEvents = events.slice(2, -2).map((event) => JSON.parse(event.replace("data: ", "")));
     const reconstructedContent = contentEvents
       .map((event) => event.choices[0]?.delta?.content ?? "")
       .join("");
@@ -201,6 +205,86 @@ describe("createGuardedOpenAiSseStream", () => {
       'data: {"id":"chatcmpl-timeout","object":"chat.completion.chunk","created":123,"model":"gemini-test","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}'
     );
     expect(events.at(-1)).toBe("data: [DONE]");
+  });
+});
+
+describe("failed answers", () => {
+  const frames = (output: string) => output.trim().split("\n\n").map((event) => event.replace("data: ", ""));
+  const failedFrames = (output: string) =>
+    frames(output).filter((event) => event.includes(ANSWER_FAILED_OBJECT)).map((event) => JSON.parse(event));
+  const contentOf = (output: string) =>
+    frames(output)
+      .filter((event) => event.includes('"content"'))
+      .map((event) => JSON.parse(event).choices[0].delta.content)
+      .join("");
+  const failedLogs = (spy: { mock: { calls: unknown[][] } }): Array<Record<string, unknown>> =>
+    spy.mock.calls
+      .map((call: unknown[]) => String(call[0]))
+      .filter((line: string) => line.includes("chat_answer_failed"))
+      .map((line: string) => JSON.parse(line) as Record<string, unknown>);
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  const cases: Array<[string, () => Promise<never> | Promise<{ model: string; text: string }>, string, { timeoutMs?: number; abort?: boolean }]> = [
+    ["timeout", () => new Promise<never>(() => undefined), "timeout", { timeoutMs: 5 }],
+    ["upstream error", () => Promise.reject(Object.assign(new Error("boom"), { code: "gemini_upstream_error" })), "upstream_error", {}],
+    ["config error", () => Promise.reject(Object.assign(new Error("boom"), { code: "gemini_config_error" })), "config_error", {}],
+    ["empty response", () => Promise.reject(Object.assign(new Error("boom"), { code: "gemini_empty_response" })), "empty_response", {}],
+    ["unexpected error", () => Promise.reject(new Error("unexpected")), "unknown", {}],
+    ["empty reply text", () => Promise.resolve({ model: "gemini-test", text: "  " }), "empty_reply", {}],
+    ["aborted request", () => new Promise<never>(() => undefined), "aborted", { abort: true }],
+  ];
+
+  test.each(cases)("%s: one failure frame before the fallback text, one log line, then [DONE]", async (_name, reply, reason, opts) => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const controller = new AbortController();
+    if (opts.abort) controller.abort();
+
+    const output = await readStream(createGuardedOpenAiSseStream({
+      assistantReply: reply() as Promise<{ model: string; text: string }>,
+      chunkDelayMs: 0,
+      timeoutMs: opts.timeoutMs ?? 1000,
+      abortSignal: controller.signal,
+    }));
+
+    expect(failedFrames(output)).toEqual([{ object: ANSWER_FAILED_OBJECT, reason }]);
+    const all = frames(output);
+    expect(all.findIndex((e) => e.includes(ANSWER_FAILED_OBJECT))).toBeLessThan(all.findIndex((e) => e.includes('"content"')));
+    expect(contentOf(output)).toBe(DEFAULT_ANSWER_FAILED_MESSAGE);
+    expect(all.at(-1)).toBe("[DONE]");
+
+    const logs = failedLogs(log);
+    expect(logs).toHaveLength(1);
+    expect(Object.keys(logs[0]).sort()).toEqual(["event", "reason", "waited_ms"]);
+    expect(logs[0]).toMatchObject({ event: "chat_answer_failed", reason });
+  });
+
+  test("the error message never reaches the stream or the log", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const secretish = "question-text-and-member-9f95";
+    const output = await readStream(createGuardedOpenAiSseStream({
+      assistantReply: Promise.reject(Object.assign(new Error(secretish), { code: "gemini_upstream_error" })),
+      chunkDelayMs: 0,
+    }));
+    expect(output).not.toContain(secretish);
+    expect(log.mock.calls.flat().join(" ")).not.toContain(secretish);
+  });
+
+  test("the member-facing text names no AI provider", () => {
+    expect(DEFAULT_ANSWER_FAILED_MESSAGE).not.toMatch(/gemini|openai|gpt|claude|llm|google/i);
+  });
+
+  test("a real answer carries no failure frame and logs nothing", async () => {
+    const log = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const output = await readStream(createGuardedOpenAiSseStream({
+      assistantReply: Promise.resolve({ model: "gemini-test", text: "สวัสดีโลก" }),
+      chunkDelayMs: 0,
+    }));
+    expect(output).not.toContain(ANSWER_FAILED_OBJECT);
+    expect(contentOf(output)).toBe("สวัสดีโลก");
+    expect(failedLogs(log)).toEqual([]);
   });
 });
 
