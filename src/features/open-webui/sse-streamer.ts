@@ -2,9 +2,11 @@ const SSE_ENCODER = new TextEncoder();
 
 export const OPEN_WEBUI_DUMMY_MODEL = "bazi-open-webui-phase3";
 const DEFAULT_GEMINI_STREAM_TIMEOUT_MS = 15_000;
-// Shown to the member when no answer was produced. It names no AI provider (owner, 2026-11-18) and
-// says no QI was taken: the FE charges only when the stream carries no ANSWER_FAILED_OBJECT frame.
-export const DEFAULT_ANSWER_FAILED_MESSAGE = "ขออภัย ตอนนี้ยังตอบคำถามนี้ไม่ได้ ลองถามใหม่อีกครั้งนะ รอบนี้ไม่หักชี่";
+// Shown to the member when no answer was produced: the team's wording (2026-11-18), naming no AI
+// provider and pointing to LINE OA. The FE charges only when the stream carries no ANSWER_FAILED_OBJECT
+// frame, and mootech-fe lib/chat/failed-reply.ts holds the same text to keep it out of chat history.
+export const DEFAULT_ANSWER_FAILED_MESSAGE =
+  "ขออภัยนะคะ ตอนนี้ระบบอาจใช้เวลาประมวลผลนานกว่าปกติหรือขัดข้องชั่วคราว รบกวนลองใหม่อีกครั้งน้า~ แต่ถ้าลองแล้วยังไม่หาย ทักหาแอดมินได้เลยที่ LINE OA: @mumate ยินดีดูแลค่ะ";
 
 // A failed answer is marked in the stream with one extra frame, the same kind as the Glass Box trace:
 // clients that only read choices[0].delta.content ignore it and still show the fallback text, and the
