@@ -271,6 +271,7 @@ export default function OpsAdminPage() {
       <CourseVideoEditor secret={secret} onNote={note} />
       <CourseAccessPanel secret={secret} onNote={note} />
       <AiQuestionsPanel secret={secret} onNote={note} />
+      <SiamsiReviewsPanel secret={secret} onNote={note} onOpenUser={openUserById} />
 
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "minmax(300px, 400px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
         {/* ── รายชื่อ ── */}
@@ -2267,6 +2268,98 @@ function CourseAccessPanel({ secret, onNote }: { secret: string; onNote: (ok: bo
 
 // ── 💬 คลังคำถาม AI เพื่อเทรน (เอ็ม 2026-10-22): เฉพาะคนที่ยินยอม ai_training · เก็บแต่คำถาม · ไม่มีข้อมูลตัวคน ─────
 //   /api/ops/ai-questions — ดู/กรอง · ติดป้ายดี/ไม่ใช้ · ลบ · export .jsonl ไปเทรน · ลบที่เกิน 2 ปี
+// 2026-11-19: รีวิวเซียมซีโป๊ยเซียน — ใครได้ใบไหน รีวิวอะไร ได้กี่ QI (ไว้ทำคอนเทนต์)
+type SiamsiRevRow = { id: string; anonId: string; userName: string; cardNo: number; cardName: string; category: string | null; rating: 1 | -1; review: string; rewardQi: number; drawnAt: string; reviewedAt: string };
+function SiamsiReviewsPanel({ secret, onNote, onOpenUser }: { secret: string; onNote: (ok: boolean, m: string) => void; onOpenUser: (anonId: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const [rows, setRows] = useState<SiamsiRevRow[]>([]);
+  const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState<{ reviews: number; up: number; down: number; draws: number; qiMonth: number } | null>(null);
+  const [q, setQ] = useState("");
+  const [rating, setRating] = useState("");
+  const [card, setCard] = useState("");
+  const [days, setDays] = useState("30");
+  const [page, setPage] = useState(0);
+  const PER = 50;
+  const td: React.CSSProperties = { borderBottom: `1px solid ${C.border}`, padding: "6px 8px", fontSize: 13 };
+  const params = useCallback(() => {
+    const p = new URLSearchParams({ secret, limit: String(PER), offset: String(page * PER) });
+    if (q.trim()) p.set("q", q.trim());
+    if (rating) p.set("rating", rating);
+    if (card.trim()) p.set("card", card.trim());
+    if (days) p.set("days", days);
+    return p;
+  }, [secret, page, q, rating, card, days]);
+  const load = useCallback(async () => {
+    if (!secret) return;
+    const j = (await fetch(`/api/ops/siamsi-reviews?${params().toString()}`).then((r) => r.json()).catch(() => ({}))) as { rows?: SiamsiRevRow[]; total?: number; stats?: typeof stats; error?: string };
+    if (j.error) onNote(false, j.error);
+    setRows(j.rows ?? []);
+    setTotal(j.total ?? 0);
+    setStats(j.stats ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [secret, params]);
+  useEffect(() => { if (open) void load(); }, [open, load]);
+  const csvUrl = () => { const p = params(); p.delete("limit"); p.delete("offset"); p.set("format", "csv"); return `/api/ops/siamsi-reviews?${p.toString()}`; };
+  const pages = Math.max(1, Math.ceil(total / PER));
+  const copy = (r: SiamsiRevRow) => {
+    const t = `เซียมซีโป๊ยเซียน ใบที่ ${r.cardNo} ${r.cardName}
+${r.rating === 1 ? "👍 ตรง" : "👎 ไม่ตรง"} — "${r.review}"${r.userName ? `
+— ${r.userName}` : ""}`;
+    void navigator.clipboard?.writeText(t).then(() => onNote(true, "คัดลอกรีวิวแล้ว"), () => onNote(false, "คัดลอกไม่ได้"));
+  };
+  return (
+    <div style={{ ...box, marginBottom: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <h2 style={{ fontSize: 15, margin: 0 }}>🎋 รีวิวเซียมซีโป๊ยเซียน (ไว้ทำคอนเทนต์)</h2>
+        <button style={{ ...btn(C.border), marginLeft: "auto", fontWeight: 500 }} onClick={() => setOpen((v) => !v)}>{open ? "ซ่อน" : "เปิด"}</button>
+      </div>
+      {open && (
+        <div style={{ marginTop: 10 }}>
+          {stats && (
+            <p style={{ fontSize: 12, color: C.sub, margin: "0 0 8px" }}>
+              เปิดไพ่ที่ยังเก็บอยู่ {stats.draws.toLocaleString("th-TH")} ครั้ง · รีวิว {stats.reviews.toLocaleString("th-TH")} (👍 {stats.up} · 👎 {stats.down}) · QI จากรีวิวเดือนนี้ {stats.qiMonth.toLocaleString("th-TH")}
+            </p>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: isMobileWidth() ? "1fr 1fr" : "2fr 1fr 0.8fr 1fr auto auto", gap: 6, alignItems: "end" }}>
+            <div><span style={label}>ค้น (ข้อความรีวิว/ชื่อ)</span><input style={input} value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { setPage(0); void load(); } }} /></div>
+            <div><span style={label}>ผล</span><select style={input} value={rating} onChange={(e) => { setRating(e.target.value); setPage(0); }}><option value="">ทั้งหมด</option><option value="up">👍 ตรง</option><option value="down">👎 ไม่ตรง</option></select></div>
+            <div><span style={label}>ใบที่</span><input style={input} value={card} onChange={(e) => setCard(e.target.value.replace(/D/g, ""))} /></div>
+            <div><span style={label}>ช่วง</span><select style={input} value={days} onChange={(e) => { setDays(e.target.value); setPage(0); }}><option value="7">7 วัน</option><option value="30">30 วัน</option><option value="90">90 วัน</option><option value="">ทั้งหมด</option></select></div>
+            <button style={btn(C.accent)} onClick={() => { setPage(0); void load(); }}>ค้นหา</button>
+            <a style={{ ...btn(C.border), fontWeight: 500, textDecoration: "none", textAlign: "center" }} href={csvUrl()}>ดาวน์โหลด CSV</a>
+          </div>
+          <div style={{ overflowX: "auto", marginTop: 10 }}>
+            <table style={{ borderCollapse: "collapse", width: "100%", minWidth: 720 }}>
+              <thead><tr style={{ textAlign: "left", color: C.sub }}><th style={td}>วันที่</th><th style={td}>ผู้ใช้</th><th style={td}>ไพ่</th><th style={td}>ผล</th><th style={td}>รีวิว</th><th style={td}>QI</th><th style={td} /></tr></thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ ...td, whiteSpace: "nowrap" }}>{new Date(r.reviewedAt).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok" })}</td>
+                    <td style={{ ...td, cursor: "pointer", color: C.accent }} title="กดเพื่อดูผู้ใช้" onClick={() => onOpenUser(r.anonId)}>{r.userName || r.anonId.slice(0, 8)}</td>
+                    <td style={td}>#{r.cardNo} {r.cardName}{r.category ? ` (${r.category})` : ""}</td>
+                    <td style={td}>{r.rating === 1 ? "👍" : "👎"}</td>
+                    <td style={{ ...td, maxWidth: 420, whiteSpace: "pre-wrap" }}>{r.review}</td>
+                    <td style={td}>{r.rewardQi}</td>
+                    <td style={td}><button style={{ ...btn(C.border), fontWeight: 500 }} onClick={() => copy(r)}>คัดลอก</button></td>
+                  </tr>
+                ))}
+                {!rows.length && <tr><td style={{ ...td, color: C.sub }} colSpan={7}>ยังไม่มีรีวิว</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8, fontSize: 12 }}>
+            <button style={btn(C.border)} disabled={page === 0} onClick={() => setPage((x) => x - 1)}>‹</button>
+            <span>หน้า {page + 1}/{pages} · {total.toLocaleString("th-TH")} รีวิว</span>
+            <button style={btn(C.border)} disabled={page + 1 >= pages} onClick={() => setPage((x) => x + 1)}>›</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+const isMobileWidth = () => typeof window !== "undefined" && window.innerWidth < 640;
+
 type AiQRow = { id: string; question: string; source: string; persona: string | null; topicId: string | null; label: "good" | "bad" | null; createdAt: string };
 
 function AiQuestionsPanel({ secret, onNote }: { secret: string; onNote: (ok: boolean, m: string) => void }) {
