@@ -1,6 +1,7 @@
 // POST — เซียมซีโป๊ยเซียนสำหรับ FE (ซินแสนุ้ย 2026-11-03): เปิด 1 ใบตามไฟล์ ไม่ผ่าน AI · ตัดโควตา "card" เหมือนเซียมซีเดิม
 import { z } from "zod";
 
+import { recordDraw } from "@/lib/bazi/immortal-cards/history";
 import { drawImmortal, getImmortalDeck } from "@/lib/bazi/immortal-cards/decks";
 import { gateFeature } from "@/lib/bazi/qi/quota";
 import { requireMumateClient } from "@/lib/mumate-client";
@@ -26,5 +27,7 @@ export async function POST(req: Request) {
   const [card] = drawImmortal(getImmortalDeck("poysian")!, 1);
   // deep (ตำราเต็ม) ไม่ส่งออกไป FE
   const { deep: _deep, ...rest } = card;
-  return Response.json({ card: rest, question: question ?? null, qi });
+  // เก็บประวัติ 20 ใบล่าสุด (ดูย้อนหลัง + รีวิวรับ QI) — บันทึกไม่ได้ก็ไม่ล้มการเปิดไพ่
+  const historyId = anonId ? await recordDraw(anonId, card.no, question) : null;
+  return Response.json({ card: rest, question: question ?? null, qi, historyId });
 }
