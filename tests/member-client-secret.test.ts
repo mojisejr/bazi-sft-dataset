@@ -165,6 +165,7 @@ describe("M5 — every route that reads a member id from the request is guarded 
     "src/app/api/ops/chat-status/route.ts": "x-ops-secret",
     "src/app/api/ops/course-access/route.ts": "OPS secret",
     "src/app/api/ops/entitlement/route.ts": "OPS secret",
+    "src/app/api/ops/siamsi-reviews/route.ts": "OPS secret",
     "src/app/api/ops/subscription/route.ts": "OPS secret",
     "src/app/api/ops/user-attribution/route.ts": "x-ops-secret",
     "src/app/api/ops/user-delete/route.ts": "OPS secret",
