@@ -64,6 +64,15 @@ describe("relations with the Goat year 未", () => {
 });
 
 // Plan revision 0.9: the Sinse's reaction method (ciel-os design/SINSE-REACTIONS.md).
+describe("the chart's favourable elements, from the engine", () => {
+  test("the Sinse's chart (day master 戊) takes fire and earth, as public-calc's state gives", async () => {
+    const { chartLuck } = await import("@/features/taisui/year-relations");
+    const luck = await chartLuck({ birthDate: "1979-10-08", birthTime: "13:30", gender: "male" });
+    expect(luck.favorable).toEqual(["ไฟ", "ดิน"]);
+    expect(luck.avoid).toEqual(expect.arrayContaining(["ไม้", "ทอง", "น้ำ"]));
+  });
+});
+
 describe("the Sinse's tables agree with the engine where they overlap", () => {
   test("ผั่ว groups are exactly the engine's twelve stem-branch pillars", () => {
     const fromGroups = Object.values(PHUA_GROUPS).flat().map((p) => `${p[0]}|${p[1]}`).sort();
@@ -90,11 +99,28 @@ describe("the year 丁未 against each branch, by the Sinse", () => {
     expect(strongest("辰")).toBe("heng");
     expect(strongest("子")).toBe("hai");
     expect(strongest("未")).toBe("same");
-    for (const b of ["寅", "申", "酉", "亥", "巳"]) expect([b, strongest(b)]).toEqual([b, "none"]);
+    for (const b of ["寅", "申", "酉", "巳"]) expect([b, strongest(b)]).toEqual([b, "none"]);
+    // 亥 with 未 is a half triad of 亥卯未 as the engine forms one (buildHalfSanHeInteractions: any two of a group)
+    expect(strongest("亥")).toBe("half3");
   });
   test("the year's 丁 over a 卯 forms ผั่ว 丁卯 (help with poison inside), on the bottom character", () => {
     const r = reactionsWith([{ key: "month", stem: "己", branch: "卯" }], { stem: "丁", branch: "未" });
-    expect(r.find((x) => x.kind === "phua")).toMatchObject({ pillar: "month", at: "bottom", pair: "丁卯", group: "poison" });
+    // the year's character on a bottom ผั่ว is its stem 丁, not its branch
+    expect(r.find((x) => x.kind === "phua")).toMatchObject({ pillar: "month", at: "bottom", mine: "卯", year: "丁", pair: "丁卯", group: "poison" });
+  });
+  test("ฮะ carries the engine's element and outcome", () => {
+    // day master 己: its stage on 卯 is 病, on 未 冠带 (strong), so the half triad 卯未 is supported
+    const half = reactionsWith([{ key: "day", stem: "己", branch: "卯" }], { stem: "丁", branch: "未" }, "己").find((x) => x.kind === "half3");
+    expect(half?.into).toEqual({ element: "wood", status: "supported", source: "engine" });
+    // the chart holding 亥 and 卯 completes 亥卯未 with the year, so each half is blocked by the whole triad
+    const whole = reactionsWith([{ key: "day", stem: "己", branch: "卯" }, { key: "year", stem: "辛", branch: "亥" }], { stem: "丁", branch: "未" }, "己");
+    expect(whole.filter((x) => x.kind === "half3").map((x) => x.into?.status)).toEqual(["blocked", "blocked"]);
+    // 丁壬 makes wood; 甲 on 未 is 墓 and on 子 沐浴, neither strong, so it is only supported
+    const stem = reactionsWith([{ key: "month", stem: "壬", branch: "子" }], { stem: "丁", branch: "未" }, "甲").find((x) => x.kind === "stemCombine");
+    expect(stem?.into).toEqual({ element: "wood", status: "supported", source: "engine" });
+    // 午未: the engine gives no element; fire is the Sinse's statement
+    const six = reactionsWith([{ key: "year", stem: "庚", branch: "午" }], { stem: "丁", branch: "未" }, "己").find((x) => x.kind === "six");
+    expect(six?.into).toEqual({ element: "fire", status: "detected", source: "sinse" });
   });
   test("ซำเฮ้ง when the chart holds two of 辰 戌 丑", () => {
     const r = reactionsWith(

@@ -16,6 +16,9 @@ import {
 } from "@/lib/bazi/hour-rectification/domain/interaction-tables";
 import { buildGregorianYearSolarTerms } from "@/lib/bazi/solar-terms";
 import { calculateBaziStructuralState } from "@/lib/bazi/symbolic-engine";
+import { avoidFavorableElements, extractChartFacts, favorableElements } from "@/lib/bazi/newdata-lookup";
+import { calculateBaziStateFromRawInput } from "@/features/bazi-math/bazi-engine-adapter";
+import { createNoOpKnowledgeRepository } from "@/lib/bazi/no-op-knowledge-repository";
 import {
   CONTROLS,
   DESTRUCTION_PAIRS,
@@ -67,6 +70,8 @@ export type YearFacts = {
   reactions: Reaction[];
   /** The year element's role to the day master (ดิถี). */
   role: { dayMaster: string; dayElement: string; role: ElementRole; th: string };
+  /** The engine's favourable elements (用神) and elements to avoid (忌神) for this chart, in Thai, by day-master strength. */
+  luck: { favorable: string[]; avoid: string[] };
   mine: string[];
   months: MonthFacts[];
 };
@@ -140,6 +145,10 @@ function termInstant(year: number, term: string): string {
 
 /** The four (or three) pillars of a birth, from the engine. */
 export function birthPillars(birth: BirthInput): Array<{ key: PillarKey; stem: string; branch: string }> {
+  return birthChart(birth).pillars;
+}
+
+function birthChart(birth: BirthInput) {
   const state = calculateBaziStructuralState({
     birthDate: birth.birthDate,
     // The engine needs a time. With an unknown time the hour pillar is dropped, so noon only keeps
@@ -150,7 +159,7 @@ export function birthPillars(birth: BirthInput): Array<{ key: PillarKey; stem: s
     timezone: "Asia/Bangkok",
   });
   const keys = birth.birthTime ? PILLAR_ORDER : PILLAR_ORDER.filter((k) => k !== "hour");
-  return keys.map((key) => ({ key, stem: state.fourPillars[key].stem, branch: state.fourPillars[key].branch }));
+  return { state, pillars: keys.map((key) => ({ key, stem: state.fourPillars[key].stem, branch: state.fourPillars[key].branch })) };
 }
 
 /**
@@ -177,11 +186,27 @@ function monthState(monthBranch: string, yearBranch: string, pillars: PillarFact
   return because.length ? { state: "peak", because: [...new Set(because)] } : { state: "normal", because };
 }
 
-export function yearFacts(birth: BirthInput, gregorianYear = 2027): YearFacts {
+/**
+ * The chart's favourable elements (用神) and those to avoid (忌神), from the engine's full state.
+ * Built the way /api/bazi/public-calc builds it: calculateBaziStateFromRawInput with the no-op
+ * knowledge repository, so no database is read. The elements come from newdata-lookup's
+ * favorableElements / avoidFavorableElements, which the life timeline and the prayer route also use.
+ */
+export async function chartLuck(birth: BirthInput): Promise<{ favorable: string[]; avoid: string[] }> {
+  const state = await calculateBaziStateFromRawInput(
+    { birthDate: birth.birthDate, birthTime: birth.birthTime ?? "12:00", gender: birth.gender, province: "Thailand", timezone: "Asia/Bangkok" },
+    { repository: createNoOpKnowledgeRepository() },
+  );
+  const facts = extractChartFacts(state, birth.gender, Number(birth.birthDate.slice(0, 4)));
+  return { favorable: favorableElements(facts), avoid: avoidFavorableElements(facts) };
+}
+
+export function yearFacts(birth: BirthInput, gregorianYear = 2027, luck?: { favorable: string[]; avoid: string[] }): YearFacts {
   const year = annualGanzhi(gregorianYear);
   const yearElement = stemElement(year.stem);
-  const chart = birthPillars(birth);
-  const reactions = reactionsWith(chart, year);
+  const { pillars: chart } = birthChart(birth);
+  const reactions = reactionsWith(chart, year, chart.find((p) => p.key === "day")!.stem);
+
   const pillars: PillarFacts[] = chart.map((p) => {
     const mineR = reactions.filter((r) => r.pillar === p.key);
     const element = stemElement(p.stem);
@@ -206,6 +231,7 @@ export function yearFacts(birth: BirthInput, gregorianYear = 2027): YearFacts {
     pillars,
     reactions,
     role: { dayMaster: day.stem, dayElement: stemElement(day.stem), role, th: ROLE_TH[role] },
+    luck: luck ?? { favorable: [], avoid: [] },
     mine: [...new Set(pillars.map((p) => p.branch))],
     months,
   };
