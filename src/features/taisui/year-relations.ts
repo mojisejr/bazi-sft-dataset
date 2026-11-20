@@ -26,6 +26,8 @@ import {
   normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
 
+import { HARD_REACTIONS, ROLE_TH, elementRole, reactionsWith, type ElementRole, type Reaction, type ReactionKind } from "./year-reactions";
+
 /** Strongest first: a pillar's `relation` is the first kind in this order that applies. */
 export const RELATION_ORDER = ["same", "clash", "punish", "harm", "six", "half3", "season", "none"] as const;
 export type Relation = (typeof RELATION_ORDER)[number];
@@ -44,8 +46,9 @@ export type PillarFacts = {
   stem: string;
   branch: string;
   element: string; // stem element, english (wood fire earth metal water)
-  relation: Relation;
-  relations: string[]; // every classical name that applies, e.g. ["冲", "刑"]
+  /** The strongest of the Sinse's reactions on this pillar (top or bottom), `none` when nothing fires. */
+  relation: ReactionKind | "none";
+  relations: string[]; // every classical name that applies on this pillar, e.g. ["破", "天干冲"]
   flow: Flow;
 };
 
@@ -60,6 +63,10 @@ export type YearFacts = {
   year: { gregorian: number; stem: string; branch: string; element: string; lichun: string };
   chart: { hasHour: boolean };
   pillars: PillarFacts[];
+  /** Every reaction of the year with the chart, by the Sinse's method (plan revision 0.9). */
+  reactions: Reaction[];
+  /** The year element's role to the day master (ดิถี). */
+  role: { dayMaster: string; dayElement: string; role: ElementRole; th: string };
   mine: string[];
   months: MonthFacts[];
 };
@@ -173,18 +180,21 @@ function monthState(monthBranch: string, yearBranch: string, pillars: PillarFact
 export function yearFacts(birth: BirthInput, gregorianYear = 2027): YearFacts {
   const year = annualGanzhi(gregorianYear);
   const yearElement = stemElement(year.stem);
-  const pillars: PillarFacts[] = birthPillars(birth).map((p) => {
-    const rel = branchRelations(p.branch, year.branch);
-    const kinds = new Set(rel.map(([k]) => k));
+  const chart = birthPillars(birth);
+  const reactions = reactionsWith(chart, year);
+  const pillars: PillarFacts[] = chart.map((p) => {
+    const mineR = reactions.filter((r) => r.pillar === p.key);
     const element = stemElement(p.stem);
     return {
       ...p,
       element,
-      relation: RELATION_ORDER.find((k) => kinds.has(k)) ?? "none",
-      relations: [...new Set(rel.map(([, name]) => name))],
+      relation: mineR[0]?.kind ?? "none",
+      relations: [...new Set(mineR.map((r) => r.name))],
       flow: elementFlow(yearElement, element),
     };
   });
+  const day = chart.find((p) => p.key === "day")!;
+  const role = elementRole(day.stem, year.stem);
   const months: MonthFacts[] = MONTH_OPENERS.map((m) => ({
     branch: m.branch,
     startsAt: termInstant(m.nextYear ? gregorianYear + 1 : gregorianYear, m.term),
@@ -194,12 +204,18 @@ export function yearFacts(birth: BirthInput, gregorianYear = 2027): YearFacts {
     year: { gregorian: gregorianYear, stem: year.stem, branch: year.branch, element: yearElement, lichun: termInstant(gregorianYear, "立春") },
     chart: { hasHour: Boolean(birth.birthTime) },
     pillars,
+    reactions,
+    role: { dayMaster: day.stem, dayElement: stemElement(day.stem), role, th: ROLE_TH[role] },
     mine: [...new Set(pillars.map((p) => p.branch))],
     months,
   };
 }
 
-/** Two people's year animals against each other, for the red packet (receiver, sender). */
-export function pairRelation(receiverYearBranch: string, senderYearBranch: string): Relation {
-  return strongestRelation(receiverYearBranch, senderYearBranch);
+/** Two people's year animals against each other, for the red packet (receiver, sender), by the Sinse's branch tables. */
+export function pairRelation(receiverYearBranch: string, senderYearBranch: string): ReactionKind | "none" {
+  const r = reactionsWith([{ key: "year", stem: "", branch: receiverYearBranch }], { stem: "", branch: senderYearBranch })
+    .filter((x) => x.at === "bottom" && x.kind !== "phua" && x.kind !== "samheng");
+  return r[0]?.kind ?? "none";
 }
+
+export { HARD_REACTIONS };
