@@ -1,6 +1,6 @@
 import { z, ZodError } from "zod";
 
-import { pairRelation, yearFacts, birthPillars } from "@/features/taisui/year-relations";
+import { chartLuck, pairRelation, yearFacts, birthPillars } from "@/features/taisui/year-relations";
 import { requireMumateClient } from "@/lib/mumate-client";
 
 export const runtime = "nodejs";
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   if (denied) return denied;
   try {
     const body = Body.parse(await request.json());
-    const facts = yearFacts(body.birth, body.year ?? 2027);
+    const facts = yearFacts(body.birth, body.year ?? 2027, await chartLuck(body.birth));
     const partner = body.partner
       ? (() => {
           const sender = birthPillars({ ...body.partner, birthTime: body.partner.birthTime });

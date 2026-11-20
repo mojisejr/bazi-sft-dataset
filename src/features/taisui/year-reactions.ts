@@ -14,11 +14,12 @@ import {
   SIX_COMBINATION_PAIRS,
   STEM_BRANCH_DESTRUCTION_PAIRS,
   STEM_CLASH_PAIRS,
+  SAN_HE_GROUPS,
   STEM_COMBINATION_TRANSFORMS,
   STEM_TO_ELEMENT,
   normalizeBranchPairKey,
 } from "@/lib/bazi/symbolic-engine.constants";
-import { branchHalfSanHe } from "@/lib/bazi/hour-rectification/domain/interaction-tables";
+import { resolveCanonicalTwelveQiStage } from "@/lib/bazi/pillar-display";
 
 import { SAMHENG_GROUPS, SINSE_HENG_PAIRS, phuaGroupOf, type PhuaGroup, type SamhengGroup } from "./sinse-tables";
 
@@ -43,7 +44,25 @@ export type Reaction = {
   /** ผั่ว: the pillar it forms and the Sinse's group. ซำเฮ้ง: the three branches and the group. */
   pair?: string;
   group?: PhuaGroup | SamhengGroup;
+  /** ฮะ only: the element the pair makes and how far it gets, by the engine's own rules. */
+  into?: Combine;
 };
+
+/**
+ * A ฮะ's outcome, read the way symbolic-engine.interactions reads one inside a chart:
+ * - stem combine: `transformed` when the day master stands strong (长生 冠带 临官 帝旺) on either
+ *   branch under the pair, else `supported` (resolveStemCombinationOutcomes);
+ * - half triad: `blocked` when the chart and the year complete the whole triad, `supported` when the
+ *   day master stands strong on either branch, else `detected` (resolveBranchCombinationOutcomes);
+ * - six combination: the engine records it as `detected` with no element. 午未 making fire is the
+ *   Sinse's own statement (2026-11-20), marked `source: "sinse"`.
+ */
+export type Combine = { element: string; status: "transformed" | "supported" | "detected" | "blocked"; source: "engine" | "sinse" };
+
+/** The engine's strong stages, as isSupportiveTwelveQiStage in symbolic-engine.interactions (not exported there). */
+const STRONG_STAGES = new Set(["长生", "临官", "帝旺", "冠带"]);
+const HAN_ELEMENT: Record<string, string> = { 木: "wood", 火: "fire", 土: "earth", 金: "metal", 水: "water" };
+const SINSE_SIX: Record<string, string> = { [normalizeBranchPairKey("午", "未")]: "fire" };
 
 /** The year element's role to the day master (ดิถี), in the Sinse's five words. */
 export type ElementRole = "companion" | "output" | "wealth" | "power" | "resource";
@@ -69,9 +88,10 @@ export function elementRole(dayMasterStem: string, yearStem: string): ElementRol
 }
 
 /** Every reaction of a target pillar (a year, a month, a day) with a chart's pillars. */
-export function reactionsWith(chart: ChartPillar[], target: { stem: string; branch: string }): Reaction[] {
+export function reactionsWith(chart: ChartPillar[], target: { stem: string; branch: string }, dayMaster?: string): Reaction[] {
   const out: Reaction[] = [];
   const { stem: ys, branch: yb } = target;
+  const strong = (branch: string) => Boolean(dayMaster) && STRONG_STAGES.has(resolveCanonicalTwelveQiStage(dayMaster!, branch));
   for (const p of chart) {
     const bottom = { pillar: p.key, at: "bottom" as const, mine: p.branch, year: yb };
     const top = { pillar: p.key, at: "top" as const, mine: p.stem, year: ys };
@@ -80,18 +100,30 @@ export function reactionsWith(chart: ChartPillar[], target: { stem: string; bran
     if (branchPair(SINSE_HENG_PAIRS, p.branch, yb)) out.push({ kind: "heng", name: "刑", ...bottom });
     if (branchPair(HARM_PAIRS, p.branch, yb)) out.push({ kind: "hai", name: "害", ...bottom });
     if (p.branch === yb) out.push({ kind: "same", name: "伏吟", ...bottom });
-    if (branchPair(SIX_COMBINATION_PAIRS, p.branch, yb)) out.push({ kind: "six", name: "六合", ...bottom });
-    if (branchHalfSanHe(p.branch, yb)) out.push({ kind: "half3", name: "半三合", ...bottom });
+    if (branchPair(SIX_COMBINATION_PAIRS, p.branch, yb)) {
+      const sinse = SINSE_SIX[normalizeBranchPairKey(p.branch, yb)]
+      out.push({ kind: "six", name: "六合", ...bottom, ...(sinse ? { into: { element: sinse, status: "detected" as const, source: "sinse" as const } } : {}) });
+    }
+    // half triad as the engine forms one (buildHalfSanHeInteractions): two different branches of one 三合 group
+    const tri = p.branch !== yb ? SAN_HE_GROUPS.find((g) => (g.branches as readonly string[]).includes(p.branch) && (g.branches as readonly string[]).includes(yb)) : undefined;
+    if (tri) {
+      const third = (tri.branches as readonly string[]).find((b) => b !== p.branch && b !== yb)!;
+      const whole = chart.some((q) => q.branch === third);
+      const status = whole ? "blocked" : strong(p.branch) || strong(yb) ? "supported" : "detected";
+      out.push({ kind: "half3", name: "半三合", ...bottom, into: { element: tri.element, status, source: "engine" } });
+    }
     // ผั่ว across the two pillars: the year's stem over this branch, and this stem over the year's branch
     if (STEM_BRANCH_DESTRUCTION_PAIRS.has(`${ys}|${p.branch}`)) {
-      out.push({ kind: "phua", name: "破", ...bottom, pair: ys + p.branch, group: phuaGroupOf(ys, p.branch) ?? undefined });
+      // the year's character here is its stem (丁 over this branch), not its branch
+      out.push({ kind: "phua", name: "破", ...bottom, year: ys, pair: ys + p.branch, group: phuaGroupOf(ys, p.branch) ?? undefined });
     }
     if (STEM_BRANCH_DESTRUCTION_PAIRS.has(`${p.stem}|${yb}`)) {
       out.push({ kind: "phua", name: "破", ...top, mine: p.stem, year: yb, pair: p.stem + yb, group: phuaGroupOf(p.stem, yb) ?? undefined });
     }
     // stems
     if (pairHas(STEM_CLASH_PAIRS, p.stem, ys)) out.push({ kind: "stemClash", name: "天干冲", ...top });
-    if (pairHas(new Set(STEM_COMBINATION_TRANSFORMS.keys()), p.stem, ys)) out.push({ kind: "stemCombine", name: "天干合", ...top });
+    const han = STEM_COMBINATION_TRANSFORMS.get(`${p.stem}|${ys}`) ?? STEM_COMBINATION_TRANSFORMS.get(`${ys}|${p.stem}`);
+    if (han) out.push({ kind: "stemCombine", name: "天干合", ...top, into: { element: HAN_ELEMENT[han] ?? "", status: strong(p.branch) || strong(yb) ? "transformed" : "supported", source: "engine" } });
   }
   // ซำเฮ้ง: the target's branch plus two other branches of the same group in the chart
   for (const [group, members] of Object.entries(SAMHENG_GROUPS) as Array<[SamhengGroup, readonly string[]]>) {
